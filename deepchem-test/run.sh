@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SEED=2
+SEED=$1
 HIDDEN=300
 BASE=MPN-s"$SEED"h"$HIDDEN"
 echo "random seed $SEED"
