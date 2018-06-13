@@ -21,7 +21,7 @@ Results on classification datasets (AUC score, the higher the better)
 | Toxcast	| 0.726 ± 0.014	| 0.716 ± 0.014 |
 | Sider |	0.638 ± 0.020	| 0.638 ± 0.012 |
 | clintox	| 0.919 ± 0.048	| 0.807 ± 0.047 |
-| MUV	| 0.095 ± 0.02 | 0.046 ± 0.031 |
+| MUV	| 0.067 ± 0.03 | 0.046 ± 0.031 |
 | HIV |	0.763 ± 0.001 |	0.763 ± 0.016 |
 | PCBA	| 0.218 ± 0.001 | 	0.136 ± 0.003 | 
 
