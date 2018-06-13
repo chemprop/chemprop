@@ -19,7 +19,7 @@ parser.add_option("-b", "--batch", dest="batch_size", default=50)
 parser.add_option("-w", "--hidden", dest="hidden_size", default=300)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-p", "--dropout", dest="dropout", default=0)
-parser.add_option("-n", "--num_task", dest="num_task", default=0)
+parser.add_option("-n", "--num_task", dest="num_task", default=1)
 opts,args = parser.parse_args()
    
 batch_size = int(opts.batch_size)
