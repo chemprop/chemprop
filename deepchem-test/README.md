@@ -5,7 +5,7 @@ properties. To run our model on those datasets,
 ```
 bash run.sh 1
 ```
-where 1 is the random seed for randomly splitting the dataset into training, validation and testing.
+where 1 is the random seed for randomly splitting the dataset into training, validation and testing (not applied to datasets with scaffold splitting).
 
 ## Results
 
