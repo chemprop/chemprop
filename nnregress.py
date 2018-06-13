@@ -26,9 +26,7 @@ batch_size = int(opts.batch_size)
 depth = int(opts.depth)
 hidden_size = int(opts.hidden_size)
 num_epoch = int(opts.epoch)
-attention = int(opts.attention)
 dropout = float(opts.dropout)
-seed = int(opts.seed)
 
 def get_data(path):
     data = []

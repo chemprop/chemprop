@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn.functional as F
-import numpy as np
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 import math, random, sys
@@ -11,7 +10,6 @@ from optparse import OptionParser
 from collections import deque
 
 from mpn import *
-from splitutils import scaffold_split
 
 parser = OptionParser()
 parser.add_option("-t", "--train", dest="train_path")
@@ -31,10 +29,8 @@ batch_size = int(opts.batch_size)
 depth = int(opts.depth)
 hidden_size = int(opts.hidden_size)
 num_epoch = int(opts.epoch)
-attention = int(opts.attention)
 dropout = float(opts.dropout)
-seed = int(opts.seed)
-anneal_ter = int(opts.anneal)
+anneal_iter = int(opts.anneal)
 
 def get_data(path):
     data = []
@@ -52,7 +48,7 @@ train = get_data(opts.train_path)
 valid = get_data(opts.valid_path)
 test = get_data(opts.test_path)
 
-num_tasks = len(data[0][1])
+num_tasks = len(train[0][1])
 print "Number of tasks:", num_tasks
 
 encoder = MPN(hidden_size, depth, dropout=dropout)
@@ -140,11 +136,11 @@ for epoch in xrange(num_epoch):
             sys.stdout.flush()
             mse,it = 0,0
 
-        if anneal > 0 and i % anneal == 0:
+        if anneal_iter > 0 and i % anneal_iter == 0:
             scheduler.step()
             torch.save(model.state_dict(), opts.save_path + "/model.iter-%d-%d" % (epoch,i))
 
-    if anneal == -1: #anneal == len(train)
+    if anneal_iter == -1: #anneal == len(train)
         scheduler.step()
 
     cur_loss = valid_loss(valid)
