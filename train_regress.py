@@ -43,7 +43,7 @@ train = get_data(opts.train_path)
 valid = get_data(opts.valid_path)
 test = get_data(opts.test_path)
 
-num_tasks = len(data[0][1])
+num_tasks = len(train[0][1])
 print "Number of tasks:", num_tasks
 
 encoder = MPN(hidden_size, depth)

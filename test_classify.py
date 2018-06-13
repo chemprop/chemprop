@@ -11,7 +11,6 @@ from optparse import OptionParser
 from collections import deque
 
 from mpn import *
-from splitutils import scaffold_split
 
 parser = OptionParser()
 parser.add_option("-t", "--test", dest="test_path")
