@@ -27,14 +27,14 @@ batch_size = int(opts.batch_size)
 depth = int(opts.depth)
 hidden_size = int(opts.hidden_size)
 dropout = float(opts.dropout)
-num_task = int(opts.num_task)
+num_tasks = int(opts.num_task)
 
 def get_data(path):
     data = []
     with open(path) as f:
         f.readline()
         for line in f:
-            smiles = line.strip("\r\n ")
+            smiles = line.strip("\r\n ").split(',')[0]
             data.append(smiles)
     return data
 
@@ -51,14 +51,12 @@ model.load_state_dict(torch.load(opts.model_path))
 model = model.cuda()
 
 model.train(False)
-all_preds = [[] for i in xrange(num_tasks)]
-all_labels = [[] for i in xrange(num_tasks)]
-
 for k in xrange(0, len(test), batch_size):
-    mol_batch = test[k:k+batch_size]
-    mol_batch = mol2graph(mol_batch)
+    batch = test[k:k+batch_size]
+    mol_batch = mol2graph(batch)
     score = model(mol_batch).view(-1,num_tasks,2)
-    for i in xrange(len(mol_batch)):
+    score = F.softmax(score, dim=2)
+    for i in xrange(len(batch)):
         for j in xrange(num_tasks):
             print "%.4f" % score[i,j,1],
         print
