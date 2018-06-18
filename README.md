@@ -1,6 +1,16 @@
 # Property Prediction
 This repository contains graph convolutional networks (or message passing network) for molecule property prediction. 
 
+## Installation
+Requirements: Please use conda package manager for library installation.
+ * RDKit: `conda install -c rdkit rdkit`
+ * scikit-learn: `conda install scikit-learn`
+ * pytorch: Please follow the installation guide on pytorch.org
+ * numpy
+
+## Deepchem test
+We provide scripts + README for running deepchem benchmark datasets in deepchem-test/
+
 ## Training (Classification task)
 ```
 mkdir model
