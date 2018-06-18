@@ -6,6 +6,8 @@ BASE=MPN-s"$SEED"h"$HIDDEN"
 echo "random seed $SEED"
 mkdir -p $BASE
 
+gunzip data/*.gz
+
 #Small datasets
 echo "training delaney"
 mkdir -p $BASE/delaney
@@ -18,6 +20,14 @@ python nnregress.py --train data/freesolv.csv --hidden $HIDDEN --save_dir $BASE/
 echo "training lipo"
 mkdir -p $BASE/lipo
 python nnregress.py --train data/lipo.csv --hidden $HIDDEN --save_dir $BASE/lipo --seed $SEED --batch 10 | tee $BASE/lipo/LOG
+
+echo "training qm8"
+mkdir -p $BASE/qm8
+python nnregress_qm.py --train data/qm8.csv --hidden $HIDDEN --save_dir $BASE/qm8 --seed $SEED | tee $BASE/qm8/LOG
+
+echo "training qm9"
+mkdir -p $BASE/qm9
+python nnregress_qm.py --train data/qm9.csv --hidden 1200 --save_dir $BASE/qm9 --seed $SEED | tee $BASE/qm9/LOG
 
 echo "training bace"
 mkdir -p $BASE/bace
