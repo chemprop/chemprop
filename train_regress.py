@@ -30,12 +30,13 @@ dropout = float(opts.dropout)
 
 def get_data(path):
     data = []
+    func = lambda x : float(x) if x != '' else None
     with open(path) as f:
         f.readline()
         for line in f:
             vals = line.strip("\r\n ").split(',')
             smiles = vals[0]
-            vals = [float(x) for x in vals[1:]]
+            vals = [func(x) for x in vals[1:]]
             data.append((smiles,vals))
     return data
 
@@ -53,7 +54,7 @@ model = nn.Sequential(
         nn.ReLU(), 
         nn.Linear(hidden_size, num_tasks)
     )
-loss_fn = nn.MSELoss().cuda()
+loss_fn = nn.MSELoss(reduce=False).cuda()
 model = model.cuda()
 
 for param in model.parameters():
@@ -73,19 +74,24 @@ def valid_loss(data):
         val_loss = nn.MSELoss(reduce=False)
 
     err = torch.zeros(num_tasks)
+    ndata = torch.zeros(num_tasks)
     model.train(False)
     for i in xrange(0, len(data), batch_size):
         batch = data[i:i+batch_size]
         mol_batch, label_batch = zip(*batch)
         mol_batch = mol2graph(mol_batch)
+        mask = [map(lambda x: x is not None, lb) for lb in label_batch]
+        mask = create_var(torch.Tensor(mask))
+        label_batch = [map(lambda x: 0 if x is None else x, lb) for lb in label_batch]
         labels = create_var(torch.Tensor(label_batch))
 
         preds = model(mol_batch)
-        loss = val_loss(preds, labels)
+        loss = val_loss(preds, labels) * mask
+        ndata += mask.data.sum(dim=0).cpu()
         err += loss.data.sum(dim=0).cpu()
 
     model.train(True)
-    err = err / len(data)
+    err = err / ndata
     if opts.metric == 'rmse':
         return err.sqrt().sum() / num_tasks
     else:
@@ -99,13 +105,17 @@ for epoch in xrange(num_epoch):
         batch = train[i:i+batch_size]
         mol_batch, label_batch = zip(*batch)
         mol_batch = mol2graph(mol_batch)
+        mask = [map(lambda x: x is not None, lb) for lb in label_batch]
+        mask = create_var(torch.Tensor(mask))
+        label_batch = [map(lambda x: 0 if x is None else x, lb) for lb in label_batch]
         labels = create_var(torch.Tensor(label_batch))
 
         model.zero_grad()
-        preds = model(mol_batch).view(-1)
-        labels = labels.view(-1)
-        loss = loss_fn(preds, labels)
+        preds = model(mol_batch)
+        loss = loss_fn(preds, labels) * mask
+        loss = loss.sum() / mask.sum()
         mse += loss.data[0] * batch_size 
+        loss = loss * num_tasks
         it += batch_size
         loss.backward()
         optimizer.step()
