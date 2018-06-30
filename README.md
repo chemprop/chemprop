@@ -3,14 +3,15 @@ This repository contains graph convolutional networks (or message passing networ
 
 ## Installation
 Requirements: Please use conda package manager for library installation.
+ * Python 2.7: We currently does not support python 3.
  * RDKit: `conda install -c rdkit rdkit`
  * scikit-learn: `conda install scikit-learn`
  * pytorch (GPU): Please follow the installation guide on pytorch.org
- * numpy
+ * numpy `conda install numpy`
  * cuda-8.0 + cuDNN
 
 ## Deepchem test
-We provide scripts + README for running deepchem benchmark datasets in deepchem-test/
+We provide scripts and README for running deepchem benchmark datasets in `deepchem-test/`
 
 ## Training (Classification task)
 ```
