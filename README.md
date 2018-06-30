@@ -19,7 +19,7 @@ mkdir model
 python train_classify.py --train $TRAIN_FILE --valid $VALID_FILE --test $TEST_FILE --save_dir model --epoch 30
 ```
 This script will train the network 30 epochs, and save the best model in `model/model.best`.
-The input file `TRAIN_FILE` has to be a CSV file with a header row.
+The input file `TRAIN_FILE` has to be a **CSV file with a header row**. One example is `deepchem-test/data/bace.csv`
 
 The above code assumes the task is binary classification.
 
