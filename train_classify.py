@@ -4,6 +4,7 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+import os
 
 import math, random, sys
 from optparse import OptionParser
