@@ -5,6 +5,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn.functional as F
 import numpy as np
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+import sys
 
 import math, random, sys
 from optparse import OptionParser
@@ -55,6 +56,7 @@ for k in xrange(0, len(test), batch_size):
     mol_batch = mol2graph(batch)
     score = model(mol_batch)
     for i in xrange(len(batch)):
+        sys.stdout.write("%s" % batch[i])
         for j in xrange(num_tasks):
-            print "%.4f" % score[i,j],
-        print
+            sys.stdout.write(",%.4f" % score[i,j])
+        sys.stdout.write("\n")

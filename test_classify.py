@@ -56,6 +56,7 @@ for k in xrange(0, len(test), batch_size):
     score = model(mol_batch).view(-1,num_tasks,2)
     score = F.softmax(score, dim=2)
     for i in xrange(len(batch)):
+        sys.stdout.write("%s" % batch[i])
         for j in xrange(num_tasks):
-            print "%.4f" % score[i,j,1],
-        print
+            sys.stdout.write(",%.4f" % score[i,j,1])
+        sys.stdout.write("\n")
