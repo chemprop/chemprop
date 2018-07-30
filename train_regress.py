@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
+import os
 
 import math, random, sys
 from optparse import OptionParser
@@ -27,6 +28,9 @@ depth = int(opts.depth)
 hidden_size = int(opts.hidden_size)
 num_epoch = int(opts.epoch)
 dropout = float(opts.dropout)
+
+if not os.path.isdir(opts.save_path):
+    raise ValueError('save directory does not exist')
 
 def get_data(path):
     data = []

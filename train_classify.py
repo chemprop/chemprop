@@ -32,6 +32,9 @@ num_epoch = int(opts.epoch)
 dropout = float(opts.dropout)
 anneal_iter = int(opts.anneal)
 
+if not os.path.isdir(opts.save_path):
+    raise ValueError('save directory does not exist')
+
 def get_data(path):
     data = []
     func = lambda x : int(float(x)) if x != '' else -1
