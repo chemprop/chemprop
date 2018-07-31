@@ -148,7 +148,7 @@ for epoch in xrange(num_epoch):
         scheduler.step()
 
     cur_loss = valid_loss(valid)
-    print "validation error: %.4f" % cur_loss
+    print "validation accuracy: %.4f" % cur_loss
     if opts.save_path is not None:
         torch.save(model.state_dict(), opts.save_path + "/model.iter-" + str(epoch))
         if cur_loss > best_loss:
@@ -156,4 +156,4 @@ for epoch in xrange(num_epoch):
             torch.save(model.state_dict(), opts.save_path + "/model.best")
 
 model.load_state_dict(torch.load(opts.save_path + "/model.best"))
-print "test error: %.4f" % valid_loss(test)
+print "test accuracy: %.4f" % valid_loss(test)
