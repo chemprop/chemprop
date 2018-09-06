@@ -6,8 +6,10 @@ import os
 
 import math, random, sys
 from optparse import OptionParser
-import pandas as pd
-from mpn import *
+# ensure .../chemprop is on PYTHONPATH
+from chemprop.mpn import *
+from chemprop.dio import load_split_data
+from chemprop.utils import cuda_available
 
 parser = OptionParser()
 parser.add_option("-t", "--data", dest="data_path")
@@ -35,27 +37,8 @@ dropout = float(opts.dropout)
 if not os.path.isdir(opts.save_path):
     os.makedirs(opts.save_path)
 
-def format_list(x,y):
-    return [(s[0], [_v for _v in v]) for s, v in zip(x, y)]
-
-
-from chemprop.dio import load_split_data
-
-def get_data(path):
-    data = []
-    func = lambda x: float(x) if x != '' else None
-    with open(path) as f:
-        f.readline()
-        for line in f:
-            vals = line.strip("\r\n ").split(',')
-            smiles = vals[0]
-            vals = [func(x) for x in vals[1:]]
-            data.append((smiles, vals))
-    return data
-
 
 train, valid, test = load_split_data(opts.data_path, opts.valid_split, opts.test_split, opts.seed, opts.scale)
-
 num_tasks = len(train[0][1])
 print("Number of tasks:", num_tasks)
 
@@ -66,15 +49,6 @@ model = nn.Sequential(
         nn.ReLU(),
         nn.Linear(hidden_size, num_tasks)
     )
-
-
-def cuda_available():
-    try:
-        has_cuda = torch.cuda.get_device_capability(torch.cuda.current_device())[0] > 3
-    except AssertionError as e:
-        has_cuda = False
-    return has_cuda
-
 
 print("Cuda available: ", cuda_available())
 
