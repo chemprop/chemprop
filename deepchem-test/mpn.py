@@ -93,7 +93,7 @@ def mol2graph(mol_batch, addHs=False):
 
 class MPN(nn.Module):
 
-    def __init__(self, hidden_size, depth, dropout=0):
+    def __init__(self, hidden_size, depth, dropout=0, act_func="ReLU"):
         super(MPN, self).__init__()
         self.hidden_size = hidden_size
         self.depth = depth
@@ -102,6 +102,12 @@ class MPN(nn.Module):
         self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
         self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+        if act_func == "ReLU":
+            self.act_func = nn.ReLU()
+        elif act_func == "LeakyReLU":
+            self.act_func = nn.LeakyReLU(0.1)
+        elif act_func == "PReLU":
+            self.act_func = nn.PReLU()
 
     def forward(self, mol_graph):
         fatoms,fbonds,agraph,bgraph,scope = mol_graph
@@ -111,20 +117,20 @@ class MPN(nn.Module):
         bgraph = create_var(bgraph)
 
         binput = self.W_i(fbonds)
-        message = F.relu(binput)
+        message = self.act_func(binput)
 
         for i in xrange(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
             nei_message = nei_message.sum(dim=1)
             nei_message = self.W_h(nei_message)
-            message = F.relu(binput + nei_message)
+            message = self.act_func(binput + nei_message)
             if self.dropout > 0:
                 message = F.dropout(message, self.dropout, self.training)
 
         nei_message = index_select_ND(message, 0, agraph)
         nei_message = nei_message.sum(dim=1)
         ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = F.relu(self.W_o(ainput))
+        atom_hiddens = self.act_func(self.W_o(ainput))
         if self.dropout > 0:
             atom_hiddens = F.dropout(atom_hiddens, self.dropout, self.training)
         
@@ -133,55 +139,6 @@ class MPN(nn.Module):
             mol_vec = atom_hiddens.narrow(0, st, le).sum(dim=0) / le
             mol_vecs.append(mol_vec)
 
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
-
-class AttMPN(nn.Module):
-
-    def __init__(self, hidden_size, depth, dropout=0):
-        super(AttMPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
-
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
-        self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_b = nn.Linear(hidden_size, hidden_size)
-
-    def forward(self, mol_graph):
-        fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
-
-        binput = self.W_i(fbonds)
-        message = nn.ReLU()(binput)
-
-        for i in xrange(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
-            nei_message = self.W_h(nei_message)
-            message = nn.ReLU()(binput + nei_message)
-            
-        nei_message = index_select_ND(message, 0, agraph)
-        nei_message = nei_message.sum(dim=1)
-        ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = nn.ReLU()(self.W_o(ainput))
-
-        mol_vecs = []
-        for st,le in scope:
-            cur_hiddens = atom_hiddens.narrow(0, st, le)
-            att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
-            att_w = F.softmax(att_w, dim=1)
-            att_hiddens = torch.matmul(att_w, cur_hiddens)
-            att_hiddens = F.relu(self.W_b(att_hiddens))
-            att_hiddens = F.dropout(att_hiddens, self.dropout, training=self.training)
-            mol_vec = (cur_hiddens + att_hiddens).sum(dim=0) / le
-            mol_vecs.append(mol_vec)
-        
         mol_vecs = torch.stack(mol_vecs, dim=0)
         return mol_vecs
 
