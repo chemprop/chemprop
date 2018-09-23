@@ -1,43 +1,5 @@
-# Property Prediction
-This repository contains graph convolutional networks (or message passing network) for molecule property prediction. 
+# Deepchem Benchmark Test
 
-## Installation
-Requirements:
- * cuda >= 8.0 + cuDNN
- * Python 3/conda: Please follow the installation guide on [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-   * Create a conda environment with `conda create -n <name> python=3.7`
-   * Activate the environment with `conda activate <name>`
- * pytorch: Please follow the installation guide on [https://pytorch.org/](https://pytorch.org/)
- * RDKit: `conda install -c rdkit rdkit`
- * Other packages: `pip install -r requirements.txt`
-
-## Training
-To train a model, run:
-```
-python train.py --data_path <path> --dataset_type <type> --save_dir <dir>
-```
-where `<path>` is the path to a CSV file containing a dataset, `<type>` is either "classification" or "regression" depending on the type of the dataset, and `<dir>` is the directory where model checkpoints will be saved.
-
-For example:
-```
-python train.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
-
-```
-By default, the script will train the network for 30 epochs and save the best model in `$DIR/model.best`.
-The data file must be be a **CSV file with a header row**. For instance:
-```
-smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
-CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
-CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
-...
-```
-
-Note:
-* Classification is assumed to be binary.
-* Empty values in the CSV are ignored.
-* `--save_dir` may be left out if you don't want to save model checkpoints.
-
-## Deepchem test
 We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
 properties. To run our model on those datasets,  
 ```
@@ -45,7 +7,7 @@ bash run.sh 1
 ```
 where 1 is the random seed for randomly splitting the dataset into training, validation and testing (not applied to datasets with scaffold splitting).
 
-### Results
+## Results
 
 We compared our model against the graph convolution in deepchem. Our results are averaged over 3 runs with different random seeds, namely different splits accross datasets.
 
