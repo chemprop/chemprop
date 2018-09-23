@@ -46,7 +46,8 @@ def main(args):
         num_tasks=args.num_tasks,
         sigmoid=args.dataset == 'classification',
         dropout=args.dropout,
-        activation=args.activation
+        activation=args.activation,
+        attention=args.attention
     )
     print(model)
     print('Number of parameters = {:,}'.format(param_count(model)))
@@ -141,6 +142,8 @@ if __name__ == '__main__':
                         help='Dropout probability')
     parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
                         help='Activation function')
+    parser.add_argument('--attention', action='store_true', default=False,
+                        help='Perform self attention over the atoms in a molecule.')
 
     args = parser.parse_args()
 

@@ -132,7 +132,8 @@ def build_MPN(hidden_size: int,
               num_tasks: int,
               sigmoid: bool,
               dropout: float = 0.0,
-              activation: str = "ReLU") -> nn.Module:
+              activation: str = "ReLU",
+              attention: bool = False) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
@@ -142,13 +143,15 @@ def build_MPN(hidden_size: int,
     :param sigmoid: Whether to add a sigmoid layer at the end for classification.
     :param dropout: Dropout probability.
     :param activation: Activation function.
+    :param attention: Whether to perform self attention over the atoms in a molecule.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     encoder = MPN(
         hidden_size=hidden_size,
         depth=depth,
         dropout=dropout,
-        activation=activation
+        activation=activation,
+        attention=attention
     )
     modules = [
         encoder,
@@ -177,7 +180,8 @@ class MPN(nn.Module):
                  hidden_size: int,
                  depth: int,
                  dropout: float = 0.0,
-                 activation: str = "ReLU"):
+                 activation: str = "ReLU",
+                 attention: bool = False):
         """
         Initializes the MPN.
 
@@ -185,15 +189,21 @@ class MPN(nn.Module):
         :param depth: Number of message passing steps.
         :param dropout: Dropout probability.
         :param activation: Activation function.
+        :param attention: Whether to perform self attention over the atoms in a molecule.
         """
         super(MPN, self).__init__()
         self.hidden_size = hidden_size
         self.depth = depth
         self.dropout = dropout
+        self.attention = attention
 
+        self.dropout_layer = nn.Dropout(p=self.dropout)
         self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
         self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+        if self.attention:
+            self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
+            self.W_b = nn.Linear(hidden_size, hidden_size)
 
         if activation == "ReLU":
             self.act_func = nn.ReLU()
@@ -225,19 +235,29 @@ class MPN(nn.Module):
             nei_message = nei_message.sum(dim=1)
             nei_message = self.W_h(nei_message)
             message = self.act_func(binput + nei_message)
-            if self.dropout > 0:
-                message = F.dropout(message, self.dropout, self.training)
+            message = self.dropout_layer(message)
 
         nei_message = index_select_ND(message, 0, agraph)
         nei_message = nei_message.sum(dim=1)
         ainput = torch.cat([fatoms, nei_message], dim=1)
         atom_hiddens = self.act_func(self.W_o(ainput))
-        if self.dropout > 0:
-            atom_hiddens = F.dropout(atom_hiddens, self.dropout, self.training)
+        atom_hiddens = self.dropout_layer(atom_hiddens)
 
         mol_vecs = []
         for st, le in scope:
-            mol_vec = atom_hiddens.narrow(0, st, le).sum(dim=0) / le
+            cur_hiddens = atom_hiddens.narrow(0, st, le)
+
+            if self.attention:
+                att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
+                att_w = F.softmax(att_w, dim=1)
+                att_hiddens = torch.matmul(att_w, cur_hiddens)
+                att_hiddens = self.act_func(self.W_b(att_hiddens))
+                att_hiddens = self.dropout_layer(att_hiddens)
+                mol_vec = (cur_hiddens + att_hiddens)
+            else:
+                mol_vec = cur_hiddens
+
+            mol_vec = mol_vec.sum(dim=0) / le
             mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)
