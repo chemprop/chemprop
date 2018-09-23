@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import rdkit.Chem as Chem
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 import torch.nn as nn
 
 from nn_utils import index_select_ND

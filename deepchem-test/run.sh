@@ -23,11 +23,11 @@ python train.py --data_path data/lipo.csv --dataset_type regression --hidden_siz
 
 echo "training qm8"
 mkdir -p $BASE/qm8
-python train.py --data_path data/qm8.csv --dataset_type regression --metric mae --scale --hidden_size $HIDDEN --save_dir $BASE/qm8 --seed $SEED | tee $BASE/qm8/LOG
+python train.py --data_path data/qm8.csv --dataset_type regression --metric mae --hidden_size $HIDDEN --save_dir $BASE/qm8 --seed $SEED | tee $BASE/qm8/LOG
 
 echo "training qm9"
 mkdir -p $BASE/qm9
-python train.py --data_path data/qm9.csv --dataset_type regression --metric mae --scale --hidden_size 1200 --save_dir $BASE/qm9 --seed $SEED | tee $BASE/qm9/LOG
+python train.py --data_path data/qm9.csv --dataset_type regression --metric mae --hidden_size 1200 --save_dir $BASE/qm9 --seed $SEED | tee $BASE/qm9/LOG
 
 echo "training bace"
 mkdir -p $BASE/bace

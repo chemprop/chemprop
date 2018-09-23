@@ -30,8 +30,8 @@ def main(args):
     )
     print('Number of tasks = {}'.format(num_tasks))
     
-    # Initialize scaler which subtracts mean and divides by standard deviation
-    if args.scale:
+    # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
+    if args.dataset_type == 'regression':
         print('Fitting scaler')
         train_labels = list(zip(*train_data))[1]
         scaler = StandardScaler().fit(train_labels)
@@ -141,9 +141,6 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.9,
                         help='Gamma factor for exponential decay learning rate scheduler'
                              '(lr = gamma * lr)')
-    parser.add_argument('--scale', action='store_true', default=False,
-                        help='Scale labels by subtracting mean and dividing by standard deviation'
-                             '(useful for qm regression datasets)')
 
     # Model arguments
     parser.add_argument('--hidden_size', type=int, default=300,
