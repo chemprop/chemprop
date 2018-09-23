@@ -35,11 +35,15 @@ def train(data: List[Tuple[str, List[float]]],
         batch = data[i:i + batch_size]
         mol_batch, label_batch = zip(*batch)
         mol_batch = mol2graph(mol_batch)
+
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = [[0 if x is None else x for x in lb] for lb in label_batch]
         if scaler is not None:
             labels = scaler.transform(labels)  # subtract mean, divide by std
         labels = torch.Tensor(labels)
+
+        if next(model.parameters()).is_cuda:
+            mask, labels = mask.cuda(), labels.cuda()
 
         # Run model
         model.zero_grad()

@@ -1,17 +1,16 @@
 from argparse import ArgumentParser
-import math
 import os
 from pprint import pprint
+from tempfile import TemporaryDirectory
 
 from sklearn.preprocessing import StandardScaler
 import torch
-import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 
 from mpn import build_MPN
-from nnutils import param_count
+from nn_utils import param_count
 from train_utils import train, evaluate
 from utils import get_data, get_loss_func, get_metric_func, split_data
 
@@ -43,8 +42,8 @@ def main(args):
     model = build_MPN(
         hidden_size=args.hidden_size,
         depth=args.depth,
-        num_tasks=args.num_tasks,
-        sigmoid=args.dataset == 'classification',
+        num_tasks=num_tasks,
+        sigmoid=args.dataset_type == 'classification',
         dropout=args.dropout,
         activation=args.activation,
         attention=args.attention
@@ -65,37 +64,50 @@ def main(args):
     scheduler.step()
 
     # Run training
-    best_loss = float('inf')
+    best_score = float('inf') if args.minimize_score else -float('inf')
     for epoch in trange(args.epochs):
         print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
 
         train(
-            train_data,
-            args.batch_size,
-            num_tasks,
-            model,
-            loss_func,
-            optimizer,
-            scaler
+            data=train_data,
+            batch_size=args.batch_size,
+            num_tasks=num_tasks,
+            model=model,
+            loss_func=loss_func,
+            optimizer=optimizer,
+            scaler=scaler
         )
         scheduler.step()
-        val_loss, val_metric = evaluate(
-            val_data,
-            args.batch_size,
-            num_tasks,
-            model,
-            metric_func,
-            scaler
+        val_score = evaluate(
+            data=val_data,
+            batch_size=args.batch_size,
+            num_tasks=num_tasks,
+            model=model,
+            metric_func=metric_func,
+            scaler=scaler
         )
-        print('Validation loss = {:.3f}'.format(val_loss))
+        print('Validation {} = {:.3f}'.format(args.metric, val_score))
 
         # Save model checkpoints
         if args.save_dir is not None:
             torch.save(model.state_dict(), os.path.join(args.save_dir, "model.iter-" + str(epoch)))
 
-            if val_loss < best_loss:
-                best_loss = val_loss
+            if args.minimize_score and val_score < best_score or \
+                    not args.minimize_score and val_score > best_score:
+                best_score = val_score
                 torch.save(model.state_dict(), os.path.join(args.save_dir, "model.best"))
+
+    # Evaluate on test set
+    model.load_state_dict(torch.load(os.path.join(args.save_dir + "/model.best")))
+    test_score = evaluate(
+        data=test_data,
+        batch_size=args.batch_size,
+        num_tasks=num_tasks,
+        model=model,
+        metric_func=metric_func,
+        scaler=scaler
+    )
+    print("Test {} = {:.3f}".format(args.metric, test_score))
 
 
 if __name__ == '__main__':
@@ -148,8 +160,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Argument modification/checking
-    os.makedirs(args.save_dir, exist_ok=True)
-    args.cuda = args.cuda and torch.cuda.is_available()
+    if args.save_dir is not None:
+        os.makedirs(args.save_dir, exist_ok=True)
+    else:
+        temp_dir = TemporaryDirectory()
+        args.save_dir = temp_dir.name
+
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    del args.no_cuda
 
     if args.metric is None:
         args.metric = 'roc' if args.dataset_type == 'classification' else 'rmse'
@@ -157,5 +175,7 @@ if __name__ == '__main__':
     if not (args.dataset_type == 'classification' and args.metric in ['roc', 'prc-auc'] or
             args.dataset_type == 'regression' and args.metric in ['rmse', 'mae']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
+
+    args.minimize_score = args.metric in ['rmse', 'mae']
 
     main(args)
