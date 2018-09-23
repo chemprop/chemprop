@@ -2,9 +2,7 @@ from argparse import ArgumentParser
 import math
 import os
 from pprint import pprint
-from typing import Callable, List, Tuple
 
-from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
@@ -12,117 +10,10 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 
-from mpn import mol2graph, MPN
+from mpn import build_MPN
 from nnutils import param_count
-from utils import get_data, split_data
-
-
-def train(data: List[Tuple[str, List[float]]],
-          batch_size: int,
-          num_tasks: int,
-          model: nn.Module,
-          loss_fn: Callable,
-          optimizer: Adam,
-          scaler: StandardScaler = None):
-    """
-    Trains a model for an epoch.
-
-    :param data: Training data.
-    :param batch_size: Batch size.
-    :param num_tasks: Number of tasks.
-    :param model: Model.
-    :param loss_fn: Loss function.
-    :param optimizer: Optimizer.
-    :param scaler: A StandardScaler object fit on the training labels.
-    """
-    model.train()
-
-    loss_sum, num_iter = 0, 0
-    for i in range(0, len(data), batch_size):
-        # Prepare batch
-        batch = data[i:i + batch_size]
-        mol_batch, label_batch = zip(*batch)
-        mol_batch = mol2graph(mol_batch)
-        mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = [[0 if x is None else x for x in lb] for lb in label_batch]
-        if scaler is not None:
-            labels = scaler.transform(labels)  # subtract mean, divide by std
-        labels = torch.Tensor(labels)
-
-        # Run model
-        model.zero_grad()
-        preds = model(mol_batch)
-        loss = loss_fn(preds, labels) * mask
-        loss = loss.sum() / mask.sum()
-
-        loss_sum += loss.item() * batch_size
-        num_iter += batch_size
-
-        loss = loss * num_tasks
-        loss.backward()
-        optimizer.step()
-
-        if i % 1000 == 0:
-            pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
-            gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
-            print("Loss = {:.4f}, PNorm = {:.4f}, GNorm = {:.4f}".format(math.sqrt(loss_sum / num_iter), pnorm, gnorm))
-            loss_sum, num_iter = 0, 0
-
-
-def evaluate(data: List[Tuple[str, List[float]]],
-             batch_size: int,
-             num_tasks: int,
-             model: nn.Module,
-             metric: Callable,
-             scaler: StandardScaler = None) -> float:
-    """
-    Evaluates a model on a dataset.
-
-    :param data: Validation dataset.
-    :param batch_size: Batch size.
-    :param num_tasks: Number of tasks.
-    :param model: Model.
-    :param metric: Metric function which takes in a list of labels and a list of predictions.
-    :param scaler: A StandardScaler object fit on the training labels.
-    :return: Root mean square error.
-    """
-    model.eval()
-
-    all_preds = [[] for _ in range(num_tasks)]
-    all_labels = [[] for _ in range(num_tasks)]
-    for i in range(0, len(data), batch_size):
-        # Prepare batch
-        batch = data[i:i + batch_size]
-        mol_batch, label_batch = zip(*batch)
-        mol_batch = mol2graph(mol_batch)
-        mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = [[0 if x is None else x for x in lb] for lb in label_batch]
-
-        # Run model
-        preds = model(mol_batch)
-        preds = preds.data.cpu().numpy()
-        if scaler is not None:
-            preds = scaler.inverse_transform(preds)
-
-        # Collect predictions and labels, skipping those without labels (i.e. masked out)
-        for i in range(num_tasks):
-            for j in range(len(batch)):
-                if mask[j][i] == 1:
-                    all_preds[i].append(preds[j][i])
-                    all_labels[i].append(labels[j][i])
-
-    # Compute metric
-    results = []
-    for i in range(num_tasks):
-        # Skip if all labels are identical
-        if all(label == 0 for label in all_labels[i]) or all(label == 1 for label in all_labels[i]):
-            continue
-        results.append(metric(all_labels[i], all_preds[i]))
-
-    # Average
-    result = sum(results) / len(results)
-
-    return result
+from train_utils import train, evaluate
+from utils import get_data, get_loss_func, get_metric_func, split_data
 
 
 def main(args):
@@ -133,78 +24,46 @@ def main(args):
     train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
 
-    # Initialize scaler which subtracts mean and divides by standard deviation
-    if args.scale:
-        train_labels = list(zip(*train_data))[1]
-        scaler = StandardScaler().fit(train_labels)
-    else:
-        scaler = None
-
     print('Train size = {:,}, val size = {:,}, test size = {:,}'.format(
         len(train_data),
         len(val_data),
         len(test_data))
     )
-
     print('Number of tasks = {}'.format(num_tasks))
+    
+    # Initialize scaler which subtracts mean and divides by standard deviation
+    if args.scale:
+        print('Fitting scaler')
+        train_labels = list(zip(*train_data))[1]
+        scaler = StandardScaler().fit(train_labels)
+    else:
+        scaler = None
 
     print('Building model')
-    encoder = MPN(
+    model = build_MPN(
         hidden_size=args.hidden_size,
         depth=args.depth,
+        num_tasks=args.num_tasks,
+        sigmoid=args.dataset == 'classification',
         dropout=args.dropout,
-        act_func=args.act_func
+        activation=args.activation
     )
-    modules = [
-        encoder,
-        nn.Linear(args.hidden_size, args.hidden_size),
-        nn.ReLU(),
-        nn.Linear(args.hidden_size, num_tasks)
-    ]
-    if args.dataset_type == 'classification':
-        modules.append(nn.Sigmoid())
-    model = nn.Sequential(*modules)
-
-    if args.cuda:
-        model = model.cuda()
-
-    # Initialize parameters
-    for param in model.parameters():
-        if param.dim() == 1:
-            nn.init.constant_(param, 0)
-        else:
-            nn.init.xavier_normal_(param)
-
     print(model)
     print('Number of parameters = {:,}'.format(param_count(model)))
+    if args.cuda:
+        print('Moving model to cuda')
+        model = model.cuda()
 
-    # Loss function
-    if args.dataset_type == 'classification':
-        loss_fn = nn.BCELoss(reduction='none')
-    elif args.dataset_type == 'regression':
-        loss_fn = nn.MSELoss(reduction='none')
-    else:
-        raise ValueError('Dataset type "{}" not supported.'.format(args.dataset_type))
-
-    # Metric function
-    if args.metric == 'roc':
-        metric = roc_auc_score
-    elif args.metric == 'prc-auc':
-        def metric(labels, preds):
-            precision, recall, _ = precision_recall_curve(labels, preds)
-            return auc(recall, precision)
-    elif args.metric == 'rmse':
-        metric = lambda labels, preds: math.sqrt(mean_squared_error(labels, preds))
-    elif args.metric == 'mae':
-        metric = mean_absolute_error
-    else:
-        raise ValueError('Metric "{}" not supported.'.format(args.metric))
+    # Get loss and metric functions
+    loss_func = get_loss_func(args.dataset_type)
+    metric_func = get_metric_func(args.metric)
 
     # Optimizer and learning rate scheduler
     optimizer = Adam(model.parameters(), lr=args.lr)
     scheduler = ExponentialLR(optimizer, gamma=args.gamma)
     scheduler.step()
 
+    # Run training
     best_loss = float('inf')
     for epoch in trange(args.epochs):
         print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
@@ -214,7 +73,7 @@ def main(args):
             args.batch_size,
             num_tasks,
             model,
-            loss_fn,
+            loss_func,
             optimizer,
             scaler
         )
@@ -224,7 +83,7 @@ def main(args):
             args.batch_size,
             num_tasks,
             model,
-            metric,
+            metric_func,
             scaler
         )
         print('Validation loss = {:.3f}'.format(val_loss))
@@ -278,8 +137,8 @@ if __name__ == '__main__':
     parser.add_argument('--depth', type=int, default=3,
                         help='Number of message passing steps')
     parser.add_argument('--dropout', type=float, default=0.0,
-                        help='Dropout rate')
-    parser.add_argument('--act_func', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
+                        help='Dropout probability')
+    parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
                         help='Activation function')
 
     args = parser.parse_args()

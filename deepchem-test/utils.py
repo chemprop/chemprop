@@ -1,5 +1,9 @@
+import math
 import random
-from typing import List, Tuple
+from typing import Callable, List, Tuple
+
+from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
+import torch.nn as nn
 
 
 def get_data(path: str) -> List[Tuple[str, List[float]]]:
@@ -49,3 +53,44 @@ def split_data(data: List[Tuple[str, List[float]]],
     test = data[train_size + val_size:]
 
     return train, val, test
+
+
+def get_loss_func(dataset_type: str) -> nn.Module:
+    """
+    Gets the loss function corresponding to a given dataset type.
+
+    :param dataset_type: The dataset type ("classification" or "regression").
+    :return: A PyTorch loss function.
+    """
+    if dataset_type == 'classification':
+        return nn.BCELoss(reduction='none')
+
+    if dataset_type == 'regression':
+        return nn.MSELoss(reduction='none')
+
+    raise ValueError('Dataset type "{}" not supported.'.format(dataset_type))
+
+
+def get_metric_func(metric: str) -> Callable:
+    """
+    Gets the metric function corresponding to a given metric name.
+
+    :param metric: The name of the metric.
+    :return: A metric function which takes as arguments a list of labels and a list of predictions.
+    """
+    if metric == 'roc':
+        return roc_auc_score
+
+    if metric == 'prc-auc':
+        def metric_func(labels, preds):
+            precision, recall, _ = precision_recall_curve(labels, preds)
+            return auc(recall, precision)
+        return metric_func
+
+    if metric == 'rmse':
+        return lambda labels, preds: math.sqrt(mean_squared_error(labels, preds))
+
+    if metric == 'mae':
+        return mean_absolute_error
+
+    raise ValueError('Metric "{}" not supported.'.format(metric))

@@ -1,24 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 
 def param_count(model: nn.Module) -> int:
     """
     Determines number of trainable parameters.
-    
+
     :param model: An nn.Module.
     :return: The number of trainable parameters.
     """
     return sum(param.numel() for param in model.parameters() if param.requires_grad)
-
-
-def create_var(tensor, requires_grad=None):
-    if requires_grad is None:
-        return Variable(tensor).cuda()
-    else:
-        return Variable(tensor, requires_grad=requires_grad).cuda()
 
 
 def index_select_ND(source, dim, index):
@@ -49,7 +41,7 @@ def GRU(x, h_nei, W_z, W_r, U_r, W_h):
 
 class GraphGRU(nn.Module):
 
-    def __init__(self, input_size, hidden_size, depth):
+    def __init__(self, input_size: int, hidden_size: int, depth: int):
         super(GraphGRU, self).__init__()
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -63,8 +55,9 @@ class GraphGRU(nn.Module):
     def forward(self, h, x, mess_graph):
         mask = torch.ones(h.size(0), 1)
         mask[0] = 0  # first vector is padding
-        mask = create_var(mask)
-        for it in xrange(self.depth):
+        if next(self.parameters()).is_cuda:
+            mask = mask.cuda()
+        for it in range(self.depth):
             h_nei = index_select_ND(h, 0, mess_graph)
             sum_h = h_nei.sum(dim=1)
             z_input = torch.cat([x, sum_h], dim=1)
