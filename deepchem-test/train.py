@@ -4,6 +4,8 @@ import os
 from pprint import pprint
 from typing import Callable, List, Tuple
 
+from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
+from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -20,7 +22,8 @@ def train(data: List[Tuple[str, List[float]]],
           num_tasks: int,
           model: nn.Module,
           loss_fn: Callable,
-          optimizer: Adam):
+          optimizer: Adam,
+          scaler: StandardScaler = None):
     """
     Trains a model for an epoch.
 
@@ -30,6 +33,7 @@ def train(data: List[Tuple[str, List[float]]],
     :param model: Model.
     :param loss_fn: Loss function.
     :param optimizer: Optimizer.
+    :param scaler: A StandardScaler object fit on the training labels.
     """
     model.train()
 
@@ -40,7 +44,10 @@ def train(data: List[Tuple[str, List[float]]],
         mol_batch, label_batch = zip(*batch)
         mol_batch = mol2graph(mol_batch)
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
+        labels = [[0 if x is None else x for x in lb] for lb in label_batch]
+        if scaler is not None:
+            labels = scaler.transform(labels)  # subtract mean, divide by std
+        labels = torch.Tensor(labels)
 
         # Run model
         model.zero_grad()
@@ -66,7 +73,8 @@ def evaluate(data: List[Tuple[str, List[float]]],
              batch_size: int,
              num_tasks: int,
              model: nn.Module,
-             loss_fn: Callable) -> float:
+             metric: Callable,
+             scaler: StandardScaler = None) -> float:
     """
     Evaluates a model on a dataset.
 
@@ -74,31 +82,47 @@ def evaluate(data: List[Tuple[str, List[float]]],
     :param batch_size: Batch size.
     :param num_tasks: Number of tasks.
     :param model: Model.
-    :param loss_fn: Loss function.
+    :param metric: Metric function which takes in a list of labels and a list of predictions.
+    :param scaler: A StandardScaler object fit on the training labels.
     :return: Root mean square error.
     """
     model.eval()
 
-    err = torch.zeros(num_tasks)
-    ndata = torch.zeros(num_tasks)
+    all_preds = [[] for _ in range(num_tasks)]
+    all_labels = [[] for _ in range(num_tasks)]
     for i in range(0, len(data), batch_size):
         # Prepare batch
         batch = data[i:i + batch_size]
         mol_batch, label_batch = zip(*batch)
         mol_batch = mol2graph(mol_batch)
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
+        labels = [[0 if x is None else x for x in lb] for lb in label_batch]
 
         # Run model
         preds = model(mol_batch)
-        loss = loss_fn(preds, labels) * mask
-        ndata += mask.data.sum(dim=0).cpu()
-        err += loss.data.sum(dim=0).cpu()
+        preds = preds.data.cpu().numpy()
+        if scaler is not None:
+            preds = scaler.inverse_transform(preds)
 
-    err = err / ndata
-    rmse = (err.sqrt().sum() / num_tasks).item()
+        # Collect predictions and labels, skipping those without labels (i.e. masked out)
+        for i in range(num_tasks):
+            for j in range(len(batch)):
+                if mask[j][i] == 1:
+                    all_preds[i].append(preds[j][i])
+                    all_labels[i].append(labels[j][i])
 
-    return rmse
+    # Compute metric
+    results = []
+    for i in range(num_tasks):
+        # Skip if all labels are identical
+        if all(label == 0 for label in all_labels[i]) or all(label == 1 for label in all_labels[i]):
+            continue
+        results.append(metric(all_labels[i], all_preds[i]))
+
+    # Average
+    result = sum(results) / len(results)
+
+    return result
 
 
 def main(args):
@@ -108,6 +132,13 @@ def main(args):
     data = get_data(args.data_path)
     train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
+
+    # Initialize scaler which subtracts mean and divides by standard deviation
+    if args.scale:
+        train_labels = list(zip(*train_data))[1]
+        scaler = StandardScaler().fit(train_labels)
+    else:
+        scaler = None
 
     print('Train size = {:,}, val size = {:,}, test size = {:,}'.format(
         len(train_data),
@@ -148,12 +179,26 @@ def main(args):
     print('Number of parameters = {:,}'.format(param_count(model)))
 
     # Loss function
-    if args.dataset_type in ['classification', 'cls']:
+    if args.dataset_type == 'classification':
         loss_fn = nn.BCELoss(reduction='none')
-    elif args.dataset_type in ['regression', 'reg']:
+    elif args.dataset_type == 'regression':
         loss_fn = nn.MSELoss(reduction='none')
     else:
         raise ValueError('Dataset type "{}" not supported.'.format(args.dataset_type))
+
+    # Metric function
+    if args.metric == 'roc':
+        metric = roc_auc_score
+    elif args.metric == 'prc-auc':
+        def metric(labels, preds):
+            precision, recall, _ = precision_recall_curve(labels, preds)
+            return auc(recall, precision)
+    elif args.metric == 'rmse':
+        metric = lambda labels, preds: math.sqrt(mean_squared_error(labels, preds))
+    elif args.metric == 'mae':
+        metric = mean_absolute_error
+    else:
+        raise ValueError('Metric "{}" not supported.'.format(args.metric))
 
     # Optimizer and learning rate scheduler
     optimizer = Adam(model.parameters(), lr=args.lr)
@@ -170,7 +215,8 @@ def main(args):
             num_tasks,
             model,
             loss_fn,
-            optimizer
+            optimizer,
+            scaler
         )
         scheduler.step()
         val_loss, val_metric = evaluate(
@@ -178,8 +224,8 @@ def main(args):
             args.batch_size,
             num_tasks,
             model,
-            loss_fn,
-            args.metric
+            metric,
+            scaler
         )
         print('Validation loss = {:.3f}'.format(val_loss))
 
@@ -222,6 +268,9 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.9,
                         help='Gamma factor for exponential decay learning rate scheduler'
                              '(lr = gamma * lr)')
+    parser.add_argument('--scale', action='store_true', default=False,
+                        help='Scale labels by subtracting mean and dividing by standard deviation'
+                             '(useful for qm regression datasets)')
 
     # Model arguments
     parser.add_argument('--hidden_size', type=int, default=300,
