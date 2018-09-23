@@ -105,13 +105,14 @@ if __name__ == '__main__':
                         help='Path to data CSV file')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
-    parser.add_argument('--dataset_type', type=str, choices=['classification', 'cls', 'regression', 'reg'],
+    parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
-    parser.add_argument('--metric', type=str, choices=['roc', 'prc-auc', 'rmse', 'mae'],
+    parser.add_argument('--metric', type=str, default=None, choices=['roc', 'prc-auc', 'rmse', 'mae'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
-                             '(loss is determined by the `dataset_type` argument).')
+                             '(loss is determined by the `dataset_type` argument).'
+                             'Note: Defaults to "roc" for classification and "rmse" for regression.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed to use when splitting data into train/val/test sets')
     parser.add_argument('--no_cuda', action='store_true', default=False,
@@ -147,10 +148,8 @@ if __name__ == '__main__':
     os.makedirs(args.save_dir, exist_ok=True)
     args.cuda = args.cuda and torch.cuda.is_available()
 
-    if args.dataset_type == 'cls':
-        args.dataset_type = 'classification'
-    elif args.dataset_type == 'reg':
-        args.dataset_type = 'regression'
+    if args.metric is None:
+        args.metric = 'roc' if args.dataset_type == 'classification' else 'rmse'
 
     if not (args.dataset_type == 'classification' and args.metric in ['roc', 'prc-auc'] or
             args.dataset_type == 'regression' and args.metric in ['rmse', 'mae']):

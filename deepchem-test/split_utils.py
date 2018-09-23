@@ -2,7 +2,7 @@ from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 
-class ScaffoldGenerator(object):
+class ScaffoldGenerator:
     """
     Generate molecular scaffolds.
     Parameters
@@ -11,10 +11,10 @@ class ScaffoldGenerator(object):
         Include chirality in scaffolds.
     """
 
-    def __init__(self, include_chirality=False):
+    def __init__(self, include_chirality: bool = False):
         self.include_chirality = include_chirality
 
-    def get_scaffold(self, mol):
+    def get_scaffold(self, mol: Chem.rdchem.Mol) -> str:
         """
         Get Murcko scaffolds for molecules.
         Murcko scaffolds are described in DOI: 10.1021/jm9602928. They are
@@ -22,13 +22,13 @@ class ScaffoldGenerator(object):
         linker atoms between them.
         Parameters
         ----------
-        mols : array_like
+        mol : array_like
             Molecules.
         """
         return MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=self.include_chirality)
 
 
-def generate_scaffold(smiles, include_chirality=False):
+def generate_scaffold(smiles: str, include_chirality: bool = False) -> str:
     """Compute the Bemis-Murcko scaffold for a SMILES string."""
     mol = Chem.MolFromSmiles(smiles)
     engine = ScaffoldGenerator(include_chirality=include_chirality)
@@ -36,7 +36,7 @@ def generate_scaffold(smiles, include_chirality=False):
     return scaffold
 
 
-def scaffold_split(dataset, frac_train=.8, frac_valid=.1, frac_test=.1):
+def scaffold_split(dataset, frac_train: float = .8, frac_valid: float = .1, frac_test: float = .1):
     scaffolds = {}
     data_len = len(dataset)
     for ind, tup in enumerate(dataset):
