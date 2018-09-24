@@ -5,6 +5,7 @@ from train import run_training
 
 
 def cross_validate(args):
+    """k-fold cross validation"""
     # Run training on different random seeds for each fold
     test_scores = []
     for seed in range(args.num_folds):

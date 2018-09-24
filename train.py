@@ -15,6 +15,7 @@ from utils import get_data, get_loss_func, get_metric_func, split_data
 
 
 def run_training(args) -> float:
+    """Trains a model and returns test score on the model checkpoint with the highest validation score"""
     pprint(vars(args))
 
     print('Loading data')

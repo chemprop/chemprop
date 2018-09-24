@@ -6,6 +6,7 @@ import torch
 
 
 def get_parser():
+    """Builds an argument parser"""
     parser = ArgumentParser()
 
     # General arguments
@@ -57,6 +58,7 @@ def get_parser():
 
 
 def modify_args(args):
+    """Modifies and validates arguments"""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
     # Argument modification/checking
@@ -80,6 +82,7 @@ def modify_args(args):
 
 
 def parse_args():
+    """Parses arguments (includes modifying/validating arguments)"""
     parser = get_parser()
     args = parser.parse_args()
     modify_args(args)
