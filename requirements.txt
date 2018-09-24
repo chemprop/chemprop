@@ -1,3 +1,4 @@
+hpbandster
 numpy
 scikit-learn
 scipy
