@@ -1,6 +1,7 @@
 import os
 from pprint import pprint
 
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 import torch
 from torch.optim import Adam
@@ -10,7 +11,7 @@ from tqdm import trange
 from mpn import build_MPN
 from nn_utils import param_count
 from parsing import parse_args
-from train_utils import train, evaluate, evaluate_ensemble
+from train_utils import train, predict, evaluate, evaluate_predictions
 from utils import get_data, get_loss_func, get_metric_func, split_data
 
 
@@ -89,7 +90,6 @@ def run_training(args) -> float:
                 model=model,
                 data=val_data,
                 batch_size=args.batch_size,
-                num_tasks=num_tasks,
                 metric_func=metric_func,
                 scaler=scaler,
                 three_d=args.three_d
@@ -103,23 +103,40 @@ def run_training(args) -> float:
                 torch.save(model.state_dict(), os.path.join(args.save_dir, 'model_{}.pt'.format(model_idx)))
 
     # Evaluate on test set
-    def model_generator():
-        for model_idx in range(args.ensemble_size):
-            model.load_state_dict(torch.load(os.path.join(args.save_dir + '/model_{}.pt'.format(model_idx))))
-            yield model
+    smiles, labels = zip(*test_data)
+    sum_preds = np.zeros((len(smiles), num_tasks))
 
-    test_score = evaluate_ensemble(
-        models=model_generator(),
-        data=test_data,
-        batch_size=args.batch_size,
-        num_tasks=num_tasks,
-        metric_func=metric_func,
-        scaler=scaler,
-        three_d=args.three_d
+    # Predict and evaluate each model individually
+    for model_idx in range(args.ensemble_size):
+        # Load state dict from best validation set performance
+        model.load_state_dict(torch.load(os.path.join(args.save_dir + '/model_{}.pt'.format(model_idx))))
+
+        model_preds = predict(
+            model=model,
+            smiles=smiles,
+            batch_size=args.batch_size,
+            scaler=scaler,
+            three_d=args.three_d
+        )
+        model_score = evaluate_predictions(
+            preds=model_preds,
+            labels=labels,
+            metric_func=metric_func
+        )
+        print('Model {} test {} = {:.3f}'.format(model_idx, args.metric, model_score))
+
+        sum_preds += np.array(model_preds)
+
+    # Evaluate ensemble
+    avg_preds = sum_preds / args.ensemble_size
+    ensemble_score = evaluate_predictions(
+        preds=avg_preds.tolist(),
+        labels=labels,
+        metric_func=metric_func
     )
-    print("Test {} = {:.3f}".format(args.metric, test_score))
+    print('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
 
-    return test_score
+    return ensemble_score
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ def cross_validate(args):
     # Run training on different random seeds for each fold
     test_scores = []
     for seed in range(args.num_folds):
+        print('Fold {}'.format(seed))
         args.seed = seed
         test_scores.append(run_training(args))
 

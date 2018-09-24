@@ -68,112 +68,110 @@ def train(model: nn.Module,
             loss_sum, num_iter = 0, 0
 
 
-def predict_ensemble(models: Iterable[nn.Module],
-                     smiles: List[str],
-                     batch_size: int,
-                     num_tasks: int,
-                     scaler: StandardScaler = None,
-                     three_d: bool = False) -> np.ndarray:
+def predict(model: nn.Module,
+            smiles: List[str],
+            batch_size: int,
+            scaler: StandardScaler = None,
+            three_d: bool = False) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
-    :param models: An iterable over models.
+    :param model: A model.
     :param smiles: A list of smiles strings.
     :param batch_size: Batch size.
-    :param num_tasks: Number of tasks.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
-    :return: A 2D ndarray of predictions. The outer dimension is examples
-    while the inner dimension is tasks.
+    :return: A list of lists of predictions. The outer list is examples
+    while the inner list is tasks.
     """
     with torch.no_grad():
-        sum_preds = np.zeros((len(smiles), num_tasks))
-        model_count = 0
-        for model in models:
-            model.eval()
+        model.eval()
 
-            model_preds = []
-            for i in range(0, len(smiles), batch_size):
-                # Prepare batch
-                mol_batch = smiles[i:i + batch_size]
-                mol_batch = mol2graph(mol_batch, three_d=three_d)
+        preds = []
+        for i in range(0, len(smiles), batch_size):
+            # Prepare batch
+            mol_batch = smiles[i:i + batch_size]
+            mol_batch = mol2graph(mol_batch, three_d=three_d)
 
-                # Run model
-                preds = model(mol_batch)
-                preds = preds.data.cpu().numpy()
-                if scaler is not None:
-                    preds = scaler.inverse_transform(preds)
+            # Run model
+            batch_preds = model(mol_batch)
+            batch_preds = batch_preds.data.cpu().numpy()
+            if scaler is not None:
+                batch_preds = scaler.inverse_transform(batch_preds)
 
-                model_preds.extend(preds.tolist())
+            preds.extend(batch_preds.tolist())
 
-            sum_preds += np.array(model_preds)
-            model_count += 1
-
-        avg_preds = sum_preds / model_count
-
-        return avg_preds
+        return preds
 
 
-def predict(model: nn.Module, *args, **kwargs):
-    """Makes predictions on a dataset using a single model. See `predict_ensemble` for `args` and `kwargs`."""
-    return predict_ensemble([model], *args, **kwargs)
+def evaluate_predictions(preds: List[List[float]],
+                         labels: List[List[float]],
+                         metric_func: Callable) -> float:
+    """
+    Evaluates predictions using a metric function and filtering out invalid labels.
+
+    :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
+    :param labels: A list of lists of shape (data_size, num_tasks) with labels.
+    :param metric_func: Metric function which takes in a list of labels and a list of predictions.
+    :return: Score based on `metric_func`.
+    """
+    data_size, num_tasks = len(preds), len(preds[0])
+
+    # Filter out empty labels
+    # valid_preds and valid_labels have shape (num_tasks, data_size)
+    valid_preds = [[] for _ in range(num_tasks)]
+    valid_labels = [[] for _ in range(num_tasks)]
+    for i in range(num_tasks):
+        for j in range(data_size):
+            if labels[j][i] is not None:  # Skip those without labels
+                valid_preds[i].append(preds[j][i])
+                valid_labels[i].append(labels[j][i])
+
+    # Compute metric
+    results = []
+    for i in range(num_tasks):
+        # Skip if all labels are identical
+        if all(label == 0 for label in valid_labels[i]) or all(label == 1 for label in valid_labels[i]):
+            continue
+        results.append(metric_func(valid_labels[i], valid_preds[i]))
+
+    # Average across tasks
+    result = sum(results) / len(results)
+
+    return result
 
 
-def evaluate_ensemble(models: Iterable[nn.Module],
-                      data: List[Tuple[str, List[float]]],
-                      batch_size: int,
-                      num_tasks: int,
-                      metric_func: Callable,
-                      scaler: StandardScaler = None,
-                      three_d: bool = False) -> float:
+def evaluate(model: nn.Module,
+             data: List[Tuple[str, List[float]]],
+             batch_size: int,
+             metric_func: Callable,
+             scaler: StandardScaler = None,
+             three_d: bool = False) -> float:
     """
     Evaluates an ensemble of models on a dataset.
 
-    :param models: A iterable over models.
+    :param model: A model.
     :param data: Dataset.
     :param batch_size: Batch size.
-    :param num_tasks: Number of tasks.
     :param metric_func: Metric function which takes in a list of labels and a list of predictions.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
     :return: Score based on `metric_func`.
     """
-    with torch.no_grad():
-        # all_preds and all_labels have shape (data_size, num_tasks)
-        smiles, all_labels = zip(*data)
-        all_preds = predict_ensemble(
-            models=models,
-            smiles=smiles,
-            batch_size=batch_size,
-            num_tasks=num_tasks,
-            scaler=scaler,
-            three_d=three_d
-        )
+    smiles, labels = zip(*data)
 
-        # Filter out empty labels
-        # preds and labels have shape (num_tasks, data_size)
-        preds = [[] for _ in range(num_tasks)]
-        labels = [[] for _ in range(num_tasks)]
-        for i in range(num_tasks):
-            for j in range(len(data)):
-                if all_labels[j][i] is not None:  # Skip those without labels
-                    preds[i].append(all_preds[j][i])
-                    labels[i].append(all_labels[j][i])
+    preds = predict(
+        model=model,
+        smiles=smiles,
+        batch_size=batch_size,
+        scaler=scaler,
+        three_d=three_d
+    )
 
-        # Compute metric
-        results = []
-        for i in range(num_tasks):
-            # Skip if all labels are identical
-            if all(label == 0 for label in labels[i]) or all(label == 1 for label in labels[i]):
-                continue
-            results.append(metric_func(labels[i], preds[i]))
+    result = evaluate_predictions(
+        preds=preds,
+        labels=labels,
+        metric_func=metric_func
+    )
 
-        # Average
-        result = sum(results) / len(results)
-
-        return result
-
-
-def evaluate(model: nn.Module, *args, **kwargs) -> float:
-    """Evaluates a single model on a dataset. See `evaluate_ensemble` for `args` and `kwargs`."""
-    return evaluate_ensemble([model], *args, **kwargs)
+    return result
