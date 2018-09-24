@@ -37,6 +37,14 @@ Note:
 * Empty values in the CSV are ignored.
 * `--save_dir` may be left out if you don't want to save model checkpoints.
 
+## Cross validation
+
+To run `k`-fold cross-validation, use the `cross_validate.py` script just as you would use the `train.py` script but with the `--num_folds` flag (`k=5` is the default). For example,
+```
+python cross_validate.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints --num_folds <k>
+
+```
+
 ## Deepchem test
 We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
 properties. To run our model on those datasets,  
