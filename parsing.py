@@ -14,8 +14,9 @@ def get_parser():
                         help='Path to data CSV file')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
-    parser.add_argument('--checkpoint_path', type=str, default=None,
-                        help='Path to model checkpoint to load')
+    parser.add_argument('--checkpoint_paths', type=str, nargs='*', default=None,
+                        help='Paths to model checkpoints to load'
+                             '(number of paths should match `ensemble_size` argument)')
     parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
@@ -41,6 +42,8 @@ def get_parser():
                              '(lr = gamma * lr)')
 
     # Model arguments
+    parser.add_argument('--ensemble_size', type=int, default=1,
+                        help='Number of models in ensemble')
     parser.add_argument('--hidden_size', type=int, default=300,
                         help='Dimensionality of hidden layers in MPN')
     parser.add_argument('--depth', type=int, default=3,
@@ -79,6 +82,9 @@ def modify_args(args):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
     args.minimize_score = args.metric in ['rmse', 'mae']
+
+    if args.checkpoint_paths is not None:
+        assert len(args.checkpoint_paths) == args.ensemble_size
 
 
 def parse_args():
