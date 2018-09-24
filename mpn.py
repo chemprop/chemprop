@@ -72,7 +72,7 @@ def atom_features(atom: Chem.rdchem.Atom, atom_position: List[int] = None) -> to
                         + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
                         + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0, 1, 2])
                         + [atom.GetIsAromatic()]
-                        + atom_position if atom_position is not None else [])
+                        + (atom_position if atom_position is not None else []))
 
 
 def bond_features(bond: Chem.rdchem.Bond, distance: float = None) -> torch.Tensor:
