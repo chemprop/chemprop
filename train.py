@@ -108,7 +108,8 @@ def main(args):
         num_tasks=num_tasks,
         model=model,
         metric_func=metric_func,
-        scaler=scaler
+        scaler=scaler,
+        three_d=args.three_d
     )
     print("Test {} = {:.3f}".format(args.metric, test_score))
 

@@ -20,6 +20,9 @@ ATOM_FDIM = 100 + len(HYBRID_LIST) + 6 + 5 + 4 + 7 + 5 + 3 + 1
 BOND_FDIM = 6 + 6
 MAX_NB = 12
 
+# Memoization
+SMILES_TO_FEATURES = {}
+
 
 def get_atom_fdim(three_d: bool = False) -> int:
     """
@@ -110,42 +113,63 @@ def mol2graph(mol_batch: List[str],
     total_atoms = 0
 
     for smiles in mol_batch:
-        mol = Chem.MolFromSmiles(smiles)
-        if addHs:
-            mol = Chem.AddHs(mol)
-        if three_d:
-            mol3d = deepcopy(mol)  # make sure not to mess up original molecule when other features are extracted
-            mol3d = Chem.AddHs(mol3d)
-            AllChem.EmbedMolecule(mol3d, AllChem.ETKDG())
-            conformer = mol3d.GetConformer()
-        n_atoms = mol.GetNumAtoms()
-        for atom in mol.GetAtoms():
-            atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if three_d else None
-            fatoms.append(atom_features(atom, atom_position=atom_position))
-            in_bonds.append([])
+        if smiles in SMILES_TO_FEATURES:
+            mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms = SMILES_TO_FEATURES[smiles]
+        else:
+            mol_fatoms, mol_fbonds, mol_all_bonds = [], [], []
 
-        for bond in mol.GetBonds():
-            a1 = bond.GetBeginAtom()
-            a2 = bond.GetEndAtom()
-            x = a1.GetIdx() + total_atoms
-            y = a2.GetIdx() + total_atoms
+            # Convert smiles to molecule
+            mol = Chem.MolFromSmiles(smiles)
+            if addHs:
+                mol = Chem.AddHs(mol)
+            n_atoms = mol.GetNumAtoms()
 
+            # Get 3D info
             if three_d:
-                a1_position = np.array(conformer.GetAtomPosition(a1.GetIdx()))
-                a2_position = np.array(conformer.GetAtomPosition(a2.GetIdx()))
-                distance = np.linalg.norm(a1_position - a2_position)
-            else:
-                distance = None
+                mol3d = deepcopy(mol)  # make sure not to mess up original molecule when other features are extracted
+                mol3d = Chem.AddHs(mol3d)
+                AllChem.EmbedMolecule(mol3d, AllChem.ETKDG())
+                conformer = mol3d.GetConformer()
 
-            b = len(all_bonds)
-            all_bonds.append((x, y))
-            fbonds.append(torch.cat([fatoms[x], bond_features(bond, distance=distance)], 0))
-            in_bonds[y].append(b)
+            # Get atom features
+            for atom in mol.GetAtoms():
+                atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if three_d else None
+                mol_fatoms.append(atom_features(atom, atom_position=atom_position))
 
-            b = len(all_bonds)
-            all_bonds.append((y, x))
-            fbonds.append(torch.cat([fatoms[y], bond_features(bond, distance=distance)], 0))
-            in_bonds[x].append(b)
+            # Get bond features
+            for bond in mol.GetBonds():
+                a1, a2 = bond.GetBeginAtom(), bond.GetEndAtom()
+                a1_idx, a2_idx = a1.GetIdx(), a2.GetIdx()
+
+                if three_d:
+                    a1_position = np.array(conformer.GetAtomPosition(a1.GetIdx()))
+                    a2_position = np.array(conformer.GetAtomPosition(a2.GetIdx()))
+                    distance = np.linalg.norm(a1_position - a2_position)
+                else:
+                    distance = None
+
+                mol_all_bonds.append((a1_idx, a2_idx))
+                mol_fbonds.append(torch.cat([mol_fatoms[a1_idx], bond_features(bond, distance=distance)], 0))
+
+                mol_all_bonds.append((a2_idx, a1_idx))
+                mol_fbonds.append(torch.cat([mol_fatoms[a2_idx], bond_features(bond, distance=distance)], 0))
+
+            # Memoize
+            SMILES_TO_FEATURES[smiles] = (mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms)
+
+        # Add molecule features to batch features
+        fatoms.extend(mol_fatoms)
+        fbonds.extend(mol_fbonds)
+
+        in_bonds.extend([[] for _ in range(n_atoms)])
+
+        for a1_idx, a2_idx in mol_all_bonds:
+            a1_idx += total_atoms
+            a2_idx += total_atoms
+
+            bond_idx = len(all_bonds)
+            all_bonds.append((a1_idx, a2_idx))
+            in_bonds[a2_idx].append(bond_idx)
 
         scope.append((total_atoms, n_atoms))
         total_atoms += n_atoms
