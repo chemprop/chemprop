@@ -1,6 +1,9 @@
+from copy import deepcopy
 from typing import List, Tuple
 
-import rdkit.Chem as Chem
+import numpy as np
+from rdkit import Chem
+from rdkit.Chem import AllChem
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -18,6 +21,26 @@ BOND_FDIM = 6 + 6
 MAX_NB = 12
 
 
+def get_atom_fdim(three_d: bool = False) -> int:
+    """
+    Gets the dimensionality of atom features.
+
+    :param three_d: Whether to include 3D coordinates in atom features.
+    :return: The number of atom features.
+    """
+    return ATOM_FDIM + (3 * three_d)
+
+
+def get_bond_fdim(three_d: bool = False) -> int:
+    """
+    Gets the dimensionality of bond features.
+
+    :param three_d: Whether to include 3D distance between atoms in bond features.
+    :return: The number of bond features.
+    """
+    return BOND_FDIM + (1 * three_d)
+
+
 def onek_encoding_unk(x: int, allowable_set: List[int]) -> List[bool]:
     """
     Creates a one-hot encoding.
@@ -32,11 +55,12 @@ def onek_encoding_unk(x: int, allowable_set: List[int]) -> List[bool]:
     return [x == s for s in allowable_set]
 
 
-def atom_features(atom: Chem.rdchem.Atom) -> torch.Tensor:
+def atom_features(atom: Chem.rdchem.Atom, atom_position: List[int] = None) -> torch.Tensor:
     """
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
+    :param atom_position: The 3D coordinates of the atom.
     :return: A PyTorch tensor containing the atom features.
     """
     return torch.Tensor(onek_encoding_unk(atom.GetAtomicNum() - 1, ELEM_LIST)
@@ -47,14 +71,16 @@ def atom_features(atom: Chem.rdchem.Atom) -> torch.Tensor:
                         + onek_encoding_unk(int(atom.GetTotalNumHs()), [0, 1, 2, 3, 4])
                         + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
                         + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0, 1, 2])
-                        + [atom.GetIsAromatic()])
+                        + [atom.GetIsAromatic()]
+                        + atom_position if atom_position is not None else [])
 
 
-def bond_features(bond: Chem.rdchem.Bond) -> torch.Tensor:
+def bond_features(bond: Chem.rdchem.Bond, distance: float = None) -> torch.Tensor:
     """
     Builds a feature vector for a bond.
 
     :param bond: A RDKit bond.
+    :param distance: The distance in 3D space between the two atoms in the bond.
     :return: A PyTorch tensor containing the bond features.
     """
     bt = bond.GetBondType()
@@ -62,19 +88,22 @@ def bond_features(bond: Chem.rdchem.Bond) -> torch.Tensor:
     fbond = [bt == Chem.rdchem.BondType.SINGLE, bt == Chem.rdchem.BondType.DOUBLE, bt == Chem.rdchem.BondType.TRIPLE,
              bt == Chem.rdchem.BondType.AROMATIC, bond.GetIsConjugated(), bond.IsInRing()]
     fstereo = onek_encoding_unk(stereo, [0, 1, 2, 3, 4, 5])
-    return torch.Tensor(fbond + fstereo)
+    fdistance = [distance] if distance is not None else []
+    return torch.Tensor(fbond + fstereo + fdistance)
 
 
 def mol2graph(mol_batch: List[str],
-              addHs: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
+              addHs: bool = False,
+              three_d: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
     """
     Converts a list of SMILES strings to a batch of molecular graphs consisting of of PyTorch tensors.
 
     :param mol_batch: A list of SMILES strings.
     :param addHs: Whether to include Hydrogen atoms in each molecular graph.
+    :param three_d: Whether to include 3D information in atom and bond features.
     :return: A tuple of tensors representing a batch of molecular graphs. TODO: Better explanation.
     """
-    padding = torch.zeros(ATOM_FDIM + BOND_FDIM)
+    padding = torch.zeros(get_atom_fdim(three_d) + get_bond_fdim(three_d))
     fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
     in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
     scope = []
@@ -84,9 +113,15 @@ def mol2graph(mol_batch: List[str],
         mol = Chem.MolFromSmiles(smiles)
         if addHs:
             mol = Chem.AddHs(mol)
+        if three_d:
+            mol3d = deepcopy(mol)  # make sure not to mess up original molecule when other features are extracted
+            mol3d = Chem.AddHs(mol3d)
+            AllChem.EmbedMolecule(mol3d, AllChem.ETKDG())
+            conformer = mol3d.GetConformer()
         n_atoms = mol.GetNumAtoms()
         for atom in mol.GetAtoms():
-            fatoms.append(atom_features(atom))
+            atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if three_d else None
+            fatoms.append(atom_features(atom, atom_position=atom_position))
             in_bonds.append([])
 
         for bond in mol.GetBonds():
@@ -95,14 +130,21 @@ def mol2graph(mol_batch: List[str],
             x = a1.GetIdx() + total_atoms
             y = a2.GetIdx() + total_atoms
 
+            if three_d:
+                a1_position = np.array(conformer.GetAtomPosition(a1.GetIdx()))
+                a2_position = np.array(conformer.GetAtomPosition(a2.GetIdx()))
+                distance = np.linalg.norm(a1_position - a2_position)
+            else:
+                distance = None
+
             b = len(all_bonds)
             all_bonds.append((x, y))
-            fbonds.append(torch.cat([fatoms[x], bond_features(bond)], 0))
+            fbonds.append(torch.cat([fatoms[x], bond_features(bond, distance=distance)], 0))
             in_bonds[y].append(b)
 
             b = len(all_bonds)
             all_bonds.append((y, x))
-            fbonds.append(torch.cat([fatoms[y], bond_features(bond)], 0))
+            fbonds.append(torch.cat([fatoms[y], bond_features(bond, distance=distance)], 0))
             in_bonds[x].append(b)
 
         scope.append((total_atoms, n_atoms))
@@ -133,7 +175,8 @@ def build_MPN(hidden_size: int,
               sigmoid: bool,
               dropout: float = 0.0,
               activation: str = "ReLU",
-              attention: bool = False) -> nn.Module:
+              attention: bool = False,
+              three_d: bool = False) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
@@ -144,6 +187,7 @@ def build_MPN(hidden_size: int,
     :param dropout: Dropout probability.
     :param activation: Activation function.
     :param attention: Whether to perform self attention over the atoms in a molecule.
+    :param three_d: Whether to include 3D information in atom and bond features.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     encoder = MPN(
@@ -151,7 +195,8 @@ def build_MPN(hidden_size: int,
         depth=depth,
         dropout=dropout,
         activation=activation,
-        attention=attention
+        attention=attention,
+        three_d=three_d
     )
     modules = [
         encoder,
@@ -181,7 +226,8 @@ class MPN(nn.Module):
                  depth: int,
                  dropout: float = 0.0,
                  activation: str = "ReLU",
-                 attention: bool = False):
+                 attention: bool = False,
+                 three_d: bool = False):
         """
         Initializes the MPN.
 
@@ -190,6 +236,7 @@ class MPN(nn.Module):
         :param dropout: Dropout probability.
         :param activation: Activation function.
         :param attention: Whether to perform self attention over the atoms in a molecule.
+        :param three_d: Whether to include 3D information in atom and bond features.
         """
         super(MPN, self).__init__()
         self.hidden_size = hidden_size
@@ -198,9 +245,9 @@ class MPN(nn.Module):
         self.attention = attention
 
         self.dropout_layer = nn.Dropout(p=self.dropout)
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
+        self.W_i = nn.Linear(get_atom_fdim(three_d) + get_bond_fdim(three_d), hidden_size, bias=False)
         self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+        self.W_o = nn.Linear(get_atom_fdim(three_d) + hidden_size, hidden_size)
         if self.attention:
             self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
             self.W_b = nn.Linear(hidden_size, hidden_size)

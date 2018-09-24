@@ -46,7 +46,8 @@ def main(args):
         sigmoid=args.dataset_type == 'classification',
         dropout=args.dropout,
         activation=args.activation,
-        attention=args.attention
+        attention=args.attention,
+        three_d=args.three_d
     )
     print(model)
     print('Number of parameters = {:,}'.format(param_count(model)))
@@ -75,7 +76,8 @@ def main(args):
             model=model,
             loss_func=loss_func,
             optimizer=optimizer,
-            scaler=scaler
+            scaler=scaler,
+            three_d=args.three_d
         )
         scheduler.step()
         val_score = evaluate(
@@ -84,7 +86,8 @@ def main(args):
             num_tasks=num_tasks,
             model=model,
             metric_func=metric_func,
-            scaler=scaler
+            scaler=scaler,
+            three_d=args.three_d
         )
         print('Validation {} = {:.3f}'.format(args.metric, val_score))
 
@@ -153,6 +156,8 @@ if __name__ == '__main__':
                         help='Activation function')
     parser.add_argument('--attention', action='store_true', default=False,
                         help='Perform self attention over the atoms in a molecule.')
+    parser.add_argument('--three_d', action='store_true', default=False,
+                        help='Adds 3D coordinates to atom and bond features')
 
     args = parser.parse_args()
 

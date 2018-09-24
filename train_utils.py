@@ -15,7 +15,8 @@ def train(data: List[Tuple[str, List[float]]],
           model: nn.Module,
           loss_func: Callable,
           optimizer: Adam,
-          scaler: StandardScaler = None):
+          scaler: StandardScaler = None,
+          three_d: bool = False):
     """
     Trains a model for an epoch.
 
@@ -26,6 +27,7 @@ def train(data: List[Tuple[str, List[float]]],
     :param loss_func: Loss function.
     :param optimizer: Optimizer.
     :param scaler: A StandardScaler object fit on the training labels.
+    :param three_d: Whether to include 3D information in atom and bond features.
     """
     model.train()
 
@@ -34,7 +36,7 @@ def train(data: List[Tuple[str, List[float]]],
         # Prepare batch
         batch = data[i:i + batch_size]
         mol_batch, label_batch = zip(*batch)
-        mol_batch = mol2graph(mol_batch)
+        mol_batch = mol2graph(mol_batch, three_d=three_d)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = [[0 if x is None else x for x in lb] for lb in label_batch]
@@ -70,7 +72,8 @@ def evaluate(data: List[Tuple[str, List[float]]],
              num_tasks: int,
              model: nn.Module,
              metric_func: Callable,
-             scaler: StandardScaler = None) -> float:
+             scaler: StandardScaler = None,
+             three_d: bool = False) -> float:
     """
     Evaluates a model on a dataset.
 
@@ -80,7 +83,8 @@ def evaluate(data: List[Tuple[str, List[float]]],
     :param model: Model.
     :param metric_func: Metric function which takes in a list of labels and a list of predictions.
     :param scaler: A StandardScaler object fit on the training labels.
-    :return: Root mean square error.
+    :param three_d: Whether to include 3D information in atom and bond features.
+    :return: Score based on `metric_func`.
     """
     with torch.no_grad():
         model.eval()
@@ -91,7 +95,7 @@ def evaluate(data: List[Tuple[str, List[float]]],
             # Prepare batch
             batch = data[i:i + batch_size]
             mol_batch, label_batch = zip(*batch)
-            mol_batch = mol2graph(mol_batch)
+            mol_batch = mol2graph(mol_batch, three_d=three_d)
             mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
             labels = [[0 if x is None else x for x in lb] for lb in label_batch]
 
