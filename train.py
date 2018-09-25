@@ -4,6 +4,7 @@ from pprint import pformat
 
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from tensorboardX import SummaryWriter
 import torch
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -52,6 +53,11 @@ def run_training(args) -> float:
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
+        # Tensorboard writer
+        save_dir = os.path.join(args.save_dir, 'model_{}'.format(model_idx))
+        os.makedirs(save_dir, exist_ok=True)
+        writer = SummaryWriter(log_dir=save_dir)
+
         # Build/load model
         logger.debug('Building model {}'.format(model_idx))
         model = build_MPN(
@@ -80,20 +86,24 @@ def run_training(args) -> float:
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
-        best_epoch = 0
+        best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
             logger.debug('Epoch {}'.format(epoch))
-            logger.debug("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
-            train(
+            lr = scheduler.get_lr()[0]
+            logger.debug("Learning rate = {:.3e}".format(lr))
+            writer.add_scalar('learning_rate', lr, n_iter)
+
+            n_iter = train(
                 model=model,
                 data=train_data,
                 batch_size=args.batch_size,
-                num_tasks=num_tasks,
+                n_iter=n_iter,
                 loss_func=loss_func,
                 optimizer=optimizer,
                 scaler=scaler,
                 three_d=args.three_d,
-                logger=logger
+                logger=logger,
+                writer=writer
             )
             scheduler.step()
             val_score = evaluate(
@@ -104,13 +114,15 @@ def run_training(args) -> float:
                 scaler=scaler,
                 three_d=args.three_d
             )
+
             logger.debug('Validation {} = {:.3f}'.format(args.metric, val_score))
+            writer.add_scalar('validation_{}'.format(args.metric), val_score, n_iter)
 
             # Save model checkpoint if improved validation score
             if args.minimize_score and val_score < best_score or \
                     not args.minimize_score and val_score > best_score:
                 best_score, best_epoch = val_score, epoch
-                torch.save(model.state_dict(), os.path.join(args.save_dir, 'model_{}.pt'.format(model_idx)))
+                torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
 
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
 
@@ -154,12 +166,15 @@ def run_training(args) -> float:
 def cross_validate(args):
     """k-fold cross validation"""
     init_seed = args.seed
+    save_dir = args.save_dir
 
     # Run training on different random seeds for each fold
     test_scores = []
     for fold_num in range(args.num_folds):
         logger.info('Fold {}'.format(fold_num))
         args.seed = init_seed + fold_num
+        args.save_dir = os.path.join(save_dir, 'fold_{}'.format(fold_num))
+        os.makedirs(args.save_dir, exist_ok=True)
         test_scores.append(run_training(args))
 
     # Report results

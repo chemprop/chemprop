@@ -8,6 +8,10 @@ Requirements:
    * Create a conda environment with `conda create -n <name> python=3.7`
    * Activate the environment with `conda activate <name>`
  * pytorch: Please follow the installation guide on [https://pytorch.org/](https://pytorch.org/)
+   * Typically it's `conda install pytorch torchvision -c pytorch`
+ * tensorflow: Needed for Tensorboard training visualization
+   * CPU-only: `pip install tensorflow`
+   * GPU: `pip install tensorflow-gpu`
  * RDKit: `conda install -c rdkit rdkit`
  * Other packages: `pip install -r requirements.txt`
 

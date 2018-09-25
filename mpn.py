@@ -99,7 +99,7 @@ def bond_features(bond: Chem.rdchem.Bond, distance: float = None) -> torch.Tenso
     ]
     fstereo = onek_encoding_unk(int(bond.GetStereo()), [0, 1, 2, 3, 4, 5])
     fdistance = [distance] if distance is not None else []
-    
+
     return torch.Tensor(fbond + fstereo + fdistance)
 
 

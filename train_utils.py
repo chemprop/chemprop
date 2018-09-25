@@ -3,6 +3,7 @@ import math
 from typing import Callable, List, Tuple
 
 from sklearn.preprocessing import StandardScaler
+from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -14,28 +15,33 @@ from mpn import mol2graph
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
           batch_size: int,
-          num_tasks: int,
+          n_iter: int,
           loss_func: Callable,
           optimizer: Adam,
           scaler: StandardScaler = None,
           three_d: bool = False,
-          logger: logging.Logger = None):
+          logger: logging.Logger = None,
+          writer: SummaryWriter = None,
+          log_frequency: int = 100) -> int:
     """
     Trains a model for an epoch.
 
     :param model: Model.
     :param data: Training data.
     :param batch_size: Batch size.
-    :param num_tasks: Number of tasks.
+    :param n_iter: The number of iterations (training examples) trained on so far.
     :param loss_func: Loss function.
     :param optimizer: Optimizer.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
     :param logger: A logger for printing intermediate results.
+    :param writer: A tensorboardX SummaryWriter.
+    :param log_frequency: The number of batches between each logging of the current loss.
+    :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
 
-    loss_sum, num_iter = 0, 0
+    loss_sum, iter_count = 0, 0
     for i in trange(0, len(data), batch_size):
         # Prepare batch
         batch = data[i:i + batch_size]
@@ -56,20 +62,32 @@ def train(model: nn.Module,
         preds = model(mol_batch)
         loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
-        loss = loss * num_tasks
 
         if logger is not None:
             loss_sum += loss.item()
-            num_iter += batch_size
+            iter_count += len(batch)
 
         loss.backward()
         optimizer.step()
 
-        if logger is not None and i % 1000 == 0:
+        n_iter += len(batch)
+
+        # Log and/or add to tensorboard
+        if (n_iter // batch_size) % log_frequency == 0 and (logger is not None or writer is not None):
             pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
             gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
-            logger.debug("Loss = {:.4f}, PNorm = {:.4f}, GNorm = {:.4f}".format(loss_sum / num_iter, pnorm, gnorm))
+            loss_avg = loss_sum / iter_count
             loss_sum, num_iter = 0, 0
+
+            if logger is not None:
+                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}".format(loss_avg, pnorm, gnorm))
+
+            if writer is not None:
+                writer.add_scalar('train_loss', loss_avg, n_iter)
+                writer.add_scalar('param_norm', pnorm, n_iter)
+                writer.add_scalar('gradient_norm', gnorm, n_iter)
+
+    return n_iter
 
 
 def predict(model: nn.Module,
