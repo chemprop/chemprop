@@ -161,7 +161,12 @@ def mol2graph(mol_batch: List[str],
                 AllChem.EmbedMolecule(mol, AllChem.ETKDG())
                 if not addHs:
                     mol = Chem.RemoveHs(mol)
-                distances_3d = Chem.Get3DDistanceMatrix(mol)
+                try:
+                    distances_3d = Chem.Get3DDistanceMatrix(mol)
+                except:
+                    #random distance matrix, in case rdkit errors out
+                    distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
+                    distances_3d = np.abs(distances_3d - distances_3d.transpose())
 
             # Get topological (i.e. path-length) distance matrix and number of atoms
             distances_path = Chem.GetDistanceMatrix(mol)
