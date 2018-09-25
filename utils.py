@@ -78,7 +78,7 @@ def get_metric_func(metric: str) -> Callable:
     :param metric: The name of the metric.
     :return: A metric function which takes as arguments a list of labels and a list of predictions.
     """
-    if metric == 'roc':
+    if metric == 'auc':
         return roc_auc_score
 
     if metric == 'prc-auc':

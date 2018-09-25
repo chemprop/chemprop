@@ -11,7 +11,19 @@ Requirements:
  * RDKit: `conda install -c rdkit rdkit`
  * Other packages: `pip install -r requirements.txt`
 
+## Data
+
+The data file must be be a **CSV file with a header row**. For example:
+```
+smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
+CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
+CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
+...
+```
+Data sets from [deepchem](http://moleculenet.ai/) are available in the `data` directory.
+
 ## Training
+
 To train a model, run:
 ```
 python train.py --data_path <path> --dataset_type <type> --save_dir <dir>
@@ -21,33 +33,35 @@ where `<path>` is the path to a CSV file containing a dataset, `<type>` is eithe
 For example:
 ```
 python train.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
+```
+By default, the script will train the network for 30 epochs and save the best model in `<dir>/model_0.pt`.
 
-```
-By default, the script will train the network for 30 epochs and save the best model in `$DIR/model.best`.
-The data file must be be a **CSV file with a header row**. For instance:
-```
-smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
-CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
-CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
-...
-```
-
-Note:
+Notes:
 * Classification is assumed to be binary.
 * Empty values in the CSV are ignored.
 * `--save_dir` may be left out if you don't want to save model checkpoints.
+* The default metric for classification is AUC and the default metric for regression is RMSE. The qm8 and qm9 datasets use MAE instead of RMSE, so you need to specify `--metric mae`.
 
-## Cross validation
+### Cross validation
 
-To run `k`-fold cross-validation, use the `cross_validate.py` script just as you would use the `train.py` script but with the `--num_folds` flag (`k=5` is the default). For example,
+k-fold cross-validation can be run by specifying the `--num_folds` argument (which is 1 by default). For example:
 ```
-python cross_validate.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints --num_folds <k>
-
+python train.py --data_path data/tox21.csv --dataset_type classification --num_folds 5
 ```
+Note: Currently if `--save_dir` is specified, only the models from the last fold will be saved in the directory since the model checkpoints overwrite each other.
+
+
+## Ensembling
+
+To train an ensemble, simply specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
+```
+python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 3
+```
+If `--save_dir` is specified, all the models in the ensemble will be saved as `model_0.pt`, `model_1.pt`, ..., `model_<ensemble_size - 1>.pt`.
 
 ## Deepchem test
 We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
-properties. To run our model on those datasets,  
+properties. To train our model on those datasets, run:
 ```
 bash run.sh 1
 ```

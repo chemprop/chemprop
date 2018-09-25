@@ -1,5 +1,6 @@
+import logging
 import os
-from pprint import pprint
+from pprint import pformat
 
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -15,25 +16,31 @@ from train_utils import train, predict, evaluate, evaluate_predictions
 from utils import get_data, get_loss_func, get_metric_func, split_data
 
 
+# Initialize logger
+logger = logging.getLogger('train')
+logger.setLevel(logging.DEBUG)
+
+
 def run_training(args) -> float:
     """Trains a model and returns test score on the model checkpoint with the highest validation score"""
-    pprint(vars(args))
+    logger.debug(pformat(vars(args)))
 
-    print('Loading data')
+    logger.debug('Loading data')
     data = get_data(args.data_path)
+    logger.debug('Splitting data with seed {}'.format(args.seed))
     train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
 
-    print('Train size = {:,}, val size = {:,}, test size = {:,}'.format(
+    logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(train_data),
         len(val_data),
         len(test_data))
     )
-    print('Number of tasks = {}'.format(num_tasks))
+    logger.debug('Number of tasks = {}'.format(num_tasks))
     
     # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
     if args.dataset_type == 'regression':
-        print('Fitting scaler')
+        logger.debug('Fitting scaler')
         train_labels = list(zip(*train_data))[1]
         scaler = StandardScaler().fit(train_labels)
     else:
@@ -46,7 +53,7 @@ def run_training(args) -> float:
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Build/load model
-        print('Building model {}'.format(model_idx))
+        logger.debug('Building model {}'.format(model_idx))
         model = build_MPN(
             hidden_size=args.hidden_size,
             depth=args.depth,
@@ -58,12 +65,12 @@ def run_training(args) -> float:
             three_d=args.three_d
         )
         if args.checkpoint_paths is not None:
-            print('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
+            logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
             model.load_state_dict(torch.load(args.checkpoint_paths[model_idx]))
-        print(model)
-        print('Number of parameters = {:,}'.format(param_count(model)))
+        logger.debug(model)
+        logger.debug('Number of parameters = {:,}'.format(param_count(model)))
         if args.cuda:
-            print('Moving model to cuda')
+            logger.debug('Moving model to cuda')
             model = model.cuda()
 
         # Optimizer and learning rate scheduler
@@ -73,8 +80,9 @@ def run_training(args) -> float:
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
-        for _ in trange(args.epochs):
-            print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
+        best_epoch = 0
+        for epoch in trange(args.epochs):
+            logger.debug("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
             train(
                 model=model,
                 data=train_data,
@@ -83,7 +91,8 @@ def run_training(args) -> float:
                 loss_func=loss_func,
                 optimizer=optimizer,
                 scaler=scaler,
-                three_d=args.three_d
+                three_d=args.three_d,
+                quiet=args.quiet
             )
             scheduler.step()
             val_score = evaluate(
@@ -94,13 +103,15 @@ def run_training(args) -> float:
                 scaler=scaler,
                 three_d=args.three_d
             )
-            print('Validation {} = {:.3f}'.format(args.metric, val_score))
+            logger.debug('Validation {} = {:.3f}'.format(args.metric, val_score))
 
             # Save model checkpoint if improved validation score
             if args.minimize_score and val_score < best_score or \
                     not args.minimize_score and val_score > best_score:
-                best_score = val_score
+                best_score, best_epoch = val_score, epoch
                 torch.save(model.state_dict(), os.path.join(args.save_dir, 'model_{}.pt'.format(model_idx)))
+
+        logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
 
     # Evaluate on test set
     smiles, labels = zip(*test_data)
@@ -123,7 +134,7 @@ def run_training(args) -> float:
             labels=labels,
             metric_func=metric_func
         )
-        print('Model {} test {} = {:.3f}'.format(model_idx, args.metric, model_score))
+        logger.info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, model_score))
 
         sum_preds += np.array(model_preds)
 
@@ -134,10 +145,39 @@ def run_training(args) -> float:
         labels=labels,
         metric_func=metric_func
     )
-    print('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
+    logger.info('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
 
     return ensemble_score
 
 
+def cross_validate(args):
+    """k-fold cross validation"""
+    init_seed = args.seed
+
+    # Run training on different random seeds for each fold
+    test_scores = []
+    for fold_num in range(args.num_folds):
+        logger.info('Fold {}'.format(fold_num))
+        args.seed = init_seed + fold_num
+        test_scores.append(run_training(args))
+
+    # Report results
+    logger.info('{}-fold cross validation'.format(args.num_folds))
+    for fold_num, score in enumerate(test_scores):
+        logger.info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, score))
+    logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(test_scores), np.std(test_scores)))
+
+
 if __name__ == '__main__':
-    run_training(parse_args())
+    args = parse_args()
+
+    # Set logger depending on desired verbosity
+    ch = logging.StreamHandler()
+    if args.quiet:
+        ch.setLevel(logging.INFO)
+    else:
+        ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
+
+    # Run training
+    cross_validate(args)

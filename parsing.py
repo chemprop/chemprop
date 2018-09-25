@@ -20,13 +20,19 @@ def get_parser():
     parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
-    parser.add_argument('--metric', type=str, default=None, choices=['roc', 'prc-auc', 'rmse', 'mae'],
+    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
-                             'Note: Defaults to "roc" for classification and "rmse" for regression.')
+                             'Note: Defaults to "auc" for classification and "rmse" for regression.')
     parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed to use when splitting data into train/val/test sets')
+                        help='Random seed to use when splitting data into train/val/test sets.'
+                             'When `num_folds` > 1, the first fold uses this seed and all'
+                             'subsequent folds add 1 to the seed.')
+    parser.add_argument('--num_folds', type=int, default=1,
+                        help='Number of folds when performing cross validation')
+    parser.add_argument('--quiet', action='store_true', default=False,
+                        help='Skip non-essential print statements')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')
 
@@ -75,9 +81,9 @@ def modify_args(args):
     del args.no_cuda
 
     if args.metric is None:
-        args.metric = 'roc' if args.dataset_type == 'classification' else 'rmse'
+        args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
 
-    if not (args.dataset_type == 'classification' and args.metric in ['roc', 'prc-auc'] or
+    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc'] or
             args.dataset_type == 'regression' and args.metric in ['rmse', 'mae']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 

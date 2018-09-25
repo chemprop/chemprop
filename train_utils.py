@@ -1,11 +1,11 @@
 import math
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, List, Tuple
 
-import numpy as np
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+from tqdm import trange
 
 from mpn import mol2graph
 
@@ -17,7 +17,8 @@ def train(model: nn.Module,
           loss_func: Callable,
           optimizer: Adam,
           scaler: StandardScaler = None,
-          three_d: bool = False):
+          three_d: bool = False,
+          quiet: bool = False):
     """
     Trains a model for an epoch.
 
@@ -29,11 +30,12 @@ def train(model: nn.Module,
     :param optimizer: Optimizer.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
+    :param quiet: Whether to skip printing intermediate results during training.
     """
     model.train()
 
     loss_sum, num_iter = 0, 0
-    for i in range(0, len(data), batch_size):
+    for i in trange(0, len(data), batch_size):
         # Prepare batch
         batch = data[i:i + batch_size]
         mol_batch, label_batch = zip(*batch)
@@ -54,14 +56,15 @@ def train(model: nn.Module,
         loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
 
-        loss_sum += loss.item() * batch_size
-        num_iter += batch_size
+        if not quiet:
+            loss_sum += loss.item() * batch_size
+            num_iter += batch_size
 
         loss = loss * num_tasks
         loss.backward()
         optimizer.step()
 
-        if i % 1000 == 0:
+        if not quiet and i % 1000 == 0:
             pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
             gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
             print("Loss = {:.4f}, PNorm = {:.4f}, GNorm = {:.4f}".format(math.sqrt(loss_sum / num_iter), pnorm, gnorm))
