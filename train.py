@@ -61,16 +61,8 @@ def run_training(args) -> float:
         # Build/load model
         logger.debug('Building model {}'.format(model_idx))
         model = build_MPN(
-            hidden_size=args.hidden_size,
-            depth=args.depth,
-            num_tasks=num_tasks,
-            sigmoid=args.dataset_type == 'classification',
-            dropout=args.dropout,
-            activation=args.activation,
-            attention=args.attention,
-            message_attention=args.message_attention,
-            three_d=args.three_d,
-            virtual_edges=args.virtual_edges
+            args, 
+            num_tasks=num_tasks
         )
         if args.checkpoint_paths is not None:
             logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))

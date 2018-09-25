@@ -233,16 +233,7 @@ def mol2graph(mol_batch: List[str],
     return fatoms, fbonds, agraph, bgraph, scope
 
 
-def build_MPN(hidden_size: int,
-              depth: int,
-              num_tasks: int,
-              sigmoid: bool,
-              dropout: float = 0.0,
-              activation: str = "ReLU",
-              attention: bool = False,
-              message_attention: bool = False,
-              three_d: bool = False,
-              virtual_edges: bool = False) -> nn.Module:
+def build_MPN(args, num_tasks) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
@@ -257,23 +248,14 @@ def build_MPN(hidden_size: int,
     :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
-    encoder = MPN(
-        hidden_size=hidden_size,
-        depth=depth,
-        dropout=dropout,
-        activation=activation,
-        attention=attention,
-        message_attention=message_attention,
-        three_d=three_d,
-        virtual_edges=virtual_edges
-    )
+    encoder = MPN(args)
     modules = [
         encoder,
-        nn.Linear(hidden_size, hidden_size),
+        nn.Linear(args.hidden_size, args.hidden_size),
         nn.ReLU(),
-        nn.Linear(hidden_size, num_tasks)
+        nn.Linear(args.hidden_size, num_tasks)
     ]
-    if sigmoid:
+    if args.dataset_type == 'classification':
         modules.append(nn.Sigmoid())
 
     model = nn.Sequential(*modules)
@@ -290,15 +272,7 @@ def build_MPN(hidden_size: int,
 class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self,
-                 hidden_size: int,
-                 depth: int,
-                 dropout: float = 0.0,
-                 activation: str = "ReLU",
-                 attention: bool = False,
-                 message_attention: bool = False,
-                 three_d: bool = False,
-                 virtual_edges: bool = False):
+    def __init__(self, args):
         """
         Initializes the MPN.
 
@@ -312,35 +286,35 @@ class MPN(nn.Module):
         :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
         """
         super(MPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
-        self.attention = attention
-        self.message_attention = message_attention
+        self.hidden_size = args.hidden_size
+        self.depth = args.depth
+        self.dropout = args.dropout
+        self.attention = args.attention
+        self.message_attention = args.message_attention
 
         self.dropout_layer = nn.Dropout(p=self.dropout)
-        self.W_i = nn.Linear(get_atom_fdim() + get_bond_fdim(three_d=three_d, virtual_edges=virtual_edges),
-                             hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(get_atom_fdim() + hidden_size, hidden_size)
+        self.W_i = nn.Linear(get_atom_fdim() + get_bond_fdim(three_d=args.three_d, virtual_edges=args.virtual_edges),
+                             args.hidden_size, bias=False)
+        self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+        self.W_o = nn.Linear(get_atom_fdim() + args.hidden_size, args.hidden_size)
         if self.attention:
-            self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
-            self.W_b = nn.Linear(hidden_size, hidden_size)
+            self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+            self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
         if self.message_attention:
-            self.W_ma1 = nn.Linear(hidden_size, 1, bias=False)
+            self.W_ma1 = nn.Linear(args.hidden_size, 1, bias=False)
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
 
-        if activation == "ReLU":
+        if args.activation == "ReLU":
             self.act_func = nn.ReLU()
-        elif activation == "LeakyReLU":
+        elif args.activation == "LeakyReLU":
             self.act_func = nn.LeakyReLU(0.1)
-        elif activation == "PReLU":
+        elif args.activation == "PReLU":
             self.act_func = nn.PReLU()
-        elif activation == 'tanh':
+        elif args.activation == 'tanh':
             self.act_func = nn.Tanh()
         else:
-            raise ValueError('Activation "{}" not supported.'.format(activation))
+            raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
     def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]) -> torch.Tensor:
         """
