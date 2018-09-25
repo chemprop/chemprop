@@ -1,3 +1,4 @@
+import logging
 import math
 from typing import Callable, List, Tuple
 
@@ -18,7 +19,7 @@ def train(model: nn.Module,
           optimizer: Adam,
           scaler: StandardScaler = None,
           three_d: bool = False,
-          quiet: bool = False):
+          logger: logging.Logger = None):
     """
     Trains a model for an epoch.
 
@@ -30,7 +31,7 @@ def train(model: nn.Module,
     :param optimizer: Optimizer.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
-    :param quiet: Whether to skip printing intermediate results during training.
+    :param logger: A logger for printing intermediate results.
     """
     model.train()
 
@@ -55,19 +56,19 @@ def train(model: nn.Module,
         preds = model(mol_batch)
         loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
+        loss = loss * num_tasks
 
-        if not quiet:
-            loss_sum += loss.item() * batch_size
+        if logger is not None:
+            loss_sum += loss.item()
             num_iter += batch_size
 
-        loss = loss * num_tasks
         loss.backward()
         optimizer.step()
 
-        if not quiet and i % 1000 == 0:
+        if logger is not None and i % 1000 == 0:
             pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
             gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
-            print("Loss = {:.4f}, PNorm = {:.4f}, GNorm = {:.4f}".format(math.sqrt(loss_sum / num_iter), pnorm, gnorm))
+            logger.debug("Loss = {:.4f}, PNorm = {:.4f}, GNorm = {:.4f}".format(loss_sum / num_iter, pnorm, gnorm))
             loss_sum, num_iter = 0, 0
 
 

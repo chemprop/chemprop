@@ -13,7 +13,7 @@ from mpn import build_MPN
 from nn_utils import param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_loss_func, get_metric_func, split_data
+from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data
 
 
 # Initialize logger
@@ -82,6 +82,7 @@ def run_training(args) -> float:
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch = 0
         for epoch in trange(args.epochs):
+            logger.debug('Epoch {}'.format(epoch))
             logger.debug("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
             train(
                 model=model,
@@ -92,7 +93,7 @@ def run_training(args) -> float:
                 optimizer=optimizer,
                 scaler=scaler,
                 three_d=args.three_d,
-                quiet=args.quiet
+                logger=logger
             )
             scheduler.step()
             val_score = evaluate(
@@ -170,14 +171,5 @@ def cross_validate(args):
 
 if __name__ == '__main__':
     args = parse_args()
-
-    # Set logger depending on desired verbosity
-    ch = logging.StreamHandler()
-    if args.quiet:
-        ch.setLevel(logging.INFO)
-    else:
-        ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
-
-    # Run training
+    set_logger(logger, args.save_dir, args.quiet)
     cross_validate(args)
