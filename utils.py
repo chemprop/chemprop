@@ -1,4 +1,6 @@
+import logging
 import math
+import os
 import random
 from typing import Callable, List, Tuple
 
@@ -78,7 +80,7 @@ def get_metric_func(metric: str) -> Callable:
     :param metric: The name of the metric.
     :return: A metric function which takes as arguments a list of labels and a list of predictions.
     """
-    if metric == 'roc':
+    if metric == 'auc':
         return roc_auc_score
 
     if metric == 'prc-auc':
@@ -94,3 +96,31 @@ def get_metric_func(metric: str) -> Callable:
         return mean_absolute_error
 
     raise ValueError('Metric "{}" not supported.'.format(metric))
+
+
+def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
+    """
+    Sets up a logger with a stream handler and two file handlers.
+
+    The stream handler prints to the screen depending on the value of `quiet`.
+    One file handler (verbose.log) saves all logs, the other (quiet.log) only saves important info.
+
+    :param logger: A logger.
+    :param save_dir: The directory in which to save the logs.
+    :param quiet: Whether the stream handler should be quiet (i.e. print only important info).
+    """
+    # Set logger depending on desired verbosity
+    ch = logging.StreamHandler()
+    if quiet:
+        ch.setLevel(logging.INFO)
+    else:
+        ch.setLevel(logging.DEBUG)
+
+    fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
+    fh_v.setLevel(logging.DEBUG)
+    fh_q = logging.FileHandler(os.path.join(save_dir, 'quiet.log'))
+    fh_q.setLevel(logging.INFO)
+
+    logger.addHandler(ch)
+    logger.addHandler(fh_v)
+    logger.addHandler(fh_q)

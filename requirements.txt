@@ -2,4 +2,5 @@ hpbandster
 numpy
 scikit-learn
 scipy
+tensorboardX
 tqdm
