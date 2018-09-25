@@ -295,13 +295,18 @@ class MPN(nn.Module):
         self.dropout_layer = nn.Dropout(p=self.dropout)
         self.W_i = nn.Linear(get_atom_fdim() + get_bond_fdim(three_d=args.three_d, virtual_edges=args.virtual_edges),
                              args.hidden_size, bias=False)
-        self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+        if self.message_attention:
+            #fixed at 3 attention heads
+            self.num_heads = 3
+            self.W_h = nn.Linear(self.num_heads*args.hidden_size, args.hidden_size, bias=False)
+        else:
+            self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
         self.W_o = nn.Linear(get_atom_fdim() + args.hidden_size, args.hidden_size)
         if self.attention:
             self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
             self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
         if self.message_attention:
-            self.W_ma1 = nn.Linear(args.hidden_size, 1, bias=False)
+            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=False) for i in range(self.num_heads)])
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
 
@@ -333,11 +338,17 @@ class MPN(nn.Module):
         for i in range(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
             if self.message_attention:
-                nei_message = nei_message * torch.softmax(self.W_ma1(nei_message), dim=1).repeat((1, 1, self.hidden_size)) #num_bonds x num_messages x 1
-            nei_message = nei_message.sum(dim=1) # num_bonds x num_messages x hidden
+                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1)) #num_bonds x 1 x hidden
+                attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2) for i in range(self.num_heads)] #num_bonds x maxnb
+                attention_weights = [torch.softmax(attention_scores[i], dim=1) for i in range(self.num_heads)] #num_bonds x maxnb
+                message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size)) for i in range(self.num_heads)] #num_bonds x maxnb x hidden
+                message_components = [component.sum(dim=1) for component in message_components] #num_bonds x hidden
+                nei_message = torch.cat(message_components, dim=1) #num_bonds x 3*hidden
+            else:
+                nei_message = nei_message.sum(dim=1) # num_bonds x hidden
             nei_message = self.W_h(nei_message)
             message = self.act_func(binput + nei_message)
-            message = self.dropout_layer(message)
+            message = self.dropout_layer(message) #num_bonds x hidden
 
         nei_message = index_select_ND(message, 0, agraph)
         nei_message = nei_message.sum(dim=1)
