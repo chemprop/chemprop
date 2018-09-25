@@ -63,19 +63,21 @@ def atom_features(atom: Chem.rdchem.Atom, atom_position: List[int] = None) -> to
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
-    :param atom_position: The 3D coordinates of the atom.
+    :param atom_position: The 3D coordinates of the atom (a list with three floats).
     :return: A PyTorch tensor containing the atom features.
     """
-    return torch.Tensor(onek_encoding_unk(atom.GetAtomicNum() - 1, ELEM_LIST)
-                        + onek_encoding_unk(atom.GetDegree(), [0, 1, 2, 3, 4, 5])
-                        + onek_encoding_unk(atom.GetFormalCharge(), [-1, -2, 1, 2, 0])
-                        + onek_encoding_unk(int(atom.GetChiralTag()), [0, 1, 2, 3])
-                        + onek_encoding_unk(int(atom.GetImplicitValence()), [0, 1, 2, 3, 4, 5, 6])
-                        + onek_encoding_unk(int(atom.GetTotalNumHs()), [0, 1, 2, 3, 4])
-                        + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
-                        + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0, 1, 2])
-                        + [atom.GetIsAromatic()]
-                        + (atom_position if atom_position is not None else []))
+    return torch.Tensor(
+        onek_encoding_unk(atom.GetAtomicNum() - 1, ELEM_LIST)
+        + onek_encoding_unk(atom.GetDegree(), [0, 1, 2, 3, 4, 5])
+        + onek_encoding_unk(atom.GetFormalCharge(), [-1, -2, 1, 2, 0])
+        + onek_encoding_unk(int(atom.GetChiralTag()), [0, 1, 2, 3])
+        + onek_encoding_unk(int(atom.GetImplicitValence()), [0, 1, 2, 3, 4, 5, 6])
+        + onek_encoding_unk(int(atom.GetTotalNumHs()), [0, 1, 2, 3, 4])
+        + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
+        + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0, 1, 2])
+        + [atom.GetIsAromatic()]
+        + (atom_position if atom_position is not None else [])
+    )
 
 
 def bond_features(bond: Chem.rdchem.Bond, distance: float = None) -> torch.Tensor:
@@ -87,11 +89,17 @@ def bond_features(bond: Chem.rdchem.Bond, distance: float = None) -> torch.Tenso
     :return: A PyTorch tensor containing the bond features.
     """
     bt = bond.GetBondType()
-    stereo = int(bond.GetStereo())
-    fbond = [bt == Chem.rdchem.BondType.SINGLE, bt == Chem.rdchem.BondType.DOUBLE, bt == Chem.rdchem.BondType.TRIPLE,
-             bt == Chem.rdchem.BondType.AROMATIC, bond.GetIsConjugated(), bond.IsInRing()]
-    fstereo = onek_encoding_unk(stereo, [0, 1, 2, 3, 4, 5])
+    fbond = [
+        bt == Chem.rdchem.BondType.SINGLE,
+        bt == Chem.rdchem.BondType.DOUBLE,
+        bt == Chem.rdchem.BondType.TRIPLE,
+        bt == Chem.rdchem.BondType.AROMATIC,
+        bond.GetIsConjugated(),
+        bond.IsInRing()
+    ]
+    fstereo = onek_encoding_unk(int(bond.GetStereo()), [0, 1, 2, 3, 4, 5])
     fdistance = [distance] if distance is not None else []
+    
     return torch.Tensor(fbond + fstereo + fdistance)
 
 
