@@ -176,6 +176,7 @@ def build_MPN(hidden_size: int,
               dropout: float = 0.0,
               activation: str = "ReLU",
               attention: bool = False,
+              message_attention: bool = False,
               three_d: bool = False) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
@@ -196,6 +197,7 @@ def build_MPN(hidden_size: int,
         dropout=dropout,
         activation=activation,
         attention=attention,
+        message_attention=message_attention,
         three_d=three_d
     )
     modules = [
@@ -227,6 +229,7 @@ class MPN(nn.Module):
                  dropout: float = 0.0,
                  activation: str = "ReLU",
                  attention: bool = False,
+                 message_attention: bool = False,
                  three_d: bool = False):
         """
         Initializes the MPN.
@@ -236,6 +239,7 @@ class MPN(nn.Module):
         :param dropout: Dropout probability.
         :param activation: Activation function.
         :param attention: Whether to perform self attention over the atoms in a molecule.
+        :param message_attention: Whether to perform attention over incoming messages. 
         :param three_d: Whether to include 3D information in atom and bond features.
         """
         super(MPN, self).__init__()
@@ -243,6 +247,7 @@ class MPN(nn.Module):
         self.depth = depth
         self.dropout = dropout
         self.attention = attention
+        self.message_attention = message_attention
 
         self.dropout_layer = nn.Dropout(p=self.dropout)
         self.W_i = nn.Linear(get_atom_fdim(three_d) + get_bond_fdim(three_d), hidden_size, bias=False)
@@ -251,6 +256,10 @@ class MPN(nn.Module):
         if self.attention:
             self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
             self.W_b = nn.Linear(hidden_size, hidden_size)
+        if self.message_attention:
+            self.W_ma1 = nn.Linear(hidden_size, 1, bias=False)
+            # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
+            # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
 
         if activation == "ReLU":
             self.act_func = nn.ReLU()
@@ -279,7 +288,9 @@ class MPN(nn.Module):
 
         for i in range(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
+            if self.message_attention:
+                nei_message = nei_message * torch.softmax(self.W_ma1(nei_message), dim=1).repeat((1, 1, self.hidden_size)) #num_bonds x num_messages x 1
+            nei_message = nei_message.sum(dim=1) # num_bonds x num_messages x hidden
             nei_message = self.W_h(nei_message)
             message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)

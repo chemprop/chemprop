@@ -47,6 +47,7 @@ def main(args):
         dropout=args.dropout,
         activation=args.activation,
         attention=args.attention,
+        message_attention=args.message_attention,
         three_d=args.three_d
     )
     print(model)
@@ -156,6 +157,8 @@ if __name__ == '__main__':
                         help='Activation function')
     parser.add_argument('--attention', action='store_true', default=False,
                         help='Perform self attention over the atoms in a molecule.')
+    parser.add_argument('--message_attention', action='store_true', default=False,
+                        help='Perform attention over messages.')
     parser.add_argument('--three_d', action='store_true', default=False,
                         help='Adds 3D coordinates to atom and bond features')
 
