@@ -77,7 +77,7 @@ def train(model: nn.Module,
             pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
             gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
             loss_avg = loss_sum / iter_count
-            loss_sum, num_iter = 0, 0
+            loss_sum, iter_count = 0, 0
 
             if logger is not None:
                 logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}".format(loss_avg, pnorm, gnorm))
