@@ -68,7 +68,8 @@ def run_training(args) -> float:
             dropout=args.dropout,
             activation=args.activation,
             attention=args.attention,
-            three_d=args.three_d
+            three_d=args.three_d,
+            virtual_edges=args.virtual_edges
         )
         if args.checkpoint_paths is not None:
             logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
@@ -105,6 +106,7 @@ def run_training(args) -> float:
                 optimizer=optimizer,
                 scaler=scaler,
                 three_d=args.three_d,
+                virtual_edges=args.virtual_edges,
                 logger=logger,
                 writer=writer
             )
@@ -115,7 +117,8 @@ def run_training(args) -> float:
                 batch_size=args.batch_size,
                 metric_func=metric_func,
                 scaler=scaler,
-                three_d=args.three_d
+                three_d=args.three_d,
+                virtual_edges=args.virtual_edges
             )
 
             logger.debug('Validation {} = {:.3f}'.format(args.metric, val_score))
@@ -143,7 +146,8 @@ def run_training(args) -> float:
             smiles=smiles,
             batch_size=args.batch_size,
             scaler=scaler,
-            three_d=args.three_d
+            three_d=args.three_d,
+            virtual_edges=args.virtual_edges
         )
         model_score = evaluate_predictions(
             preds=model_preds,

@@ -20,6 +20,7 @@ def train(model: nn.Module,
           optimizer: Adam,
           scaler: StandardScaler = None,
           three_d: bool = False,
+          virtual_edges: bool = False,
           logger: logging.Logger = None,
           writer: SummaryWriter = None,
           log_frequency: int = 100) -> int:
@@ -34,6 +35,7 @@ def train(model: nn.Module,
     :param optimizer: Optimizer.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
+    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
     :param logger: A logger for printing intermediate results.
     :param writer: A tensorboardX SummaryWriter.
     :param log_frequency: The number of batches between each logging of the current loss.
@@ -46,7 +48,7 @@ def train(model: nn.Module,
         # Prepare batch
         batch = data[i:i + batch_size]
         mol_batch, label_batch = zip(*batch)
-        mol_batch = mol2graph(mol_batch, three_d=three_d)
+        mol_batch = mol2graph(mol_batch, three_d=three_d, virtual_edges=virtual_edges)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = [[0 if x is None else x for x in lb] for lb in label_batch]
@@ -94,7 +96,8 @@ def predict(model: nn.Module,
             smiles: List[str],
             batch_size: int,
             scaler: StandardScaler = None,
-            three_d: bool = False) -> List[List[float]]:
+            three_d: bool = False,
+            virtual_edges: bool = False) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
@@ -103,6 +106,7 @@ def predict(model: nn.Module,
     :param batch_size: Batch size.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
+    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """
@@ -113,7 +117,7 @@ def predict(model: nn.Module,
         for i in range(0, len(smiles), batch_size):
             # Prepare batch
             mol_batch = smiles[i:i + batch_size]
-            mol_batch = mol2graph(mol_batch, three_d=three_d)
+            mol_batch = mol2graph(mol_batch, three_d=three_d, virtual_edges=virtual_edges)
 
             # Run model
             batch_preds = model(mol_batch)
@@ -168,7 +172,8 @@ def evaluate(model: nn.Module,
              batch_size: int,
              metric_func: Callable,
              scaler: StandardScaler = None,
-             three_d: bool = False) -> float:
+             three_d: bool = False,
+             virtual_edges: bool = False) -> float:
     """
     Evaluates an ensemble of models on a dataset.
 
@@ -178,6 +183,7 @@ def evaluate(model: nn.Module,
     :param metric_func: Metric function which takes in a list of labels and a list of predictions.
     :param scaler: A StandardScaler object fit on the training labels.
     :param three_d: Whether to include 3D information in atom and bond features.
+    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
     :return: Score based on `metric_func`.
     """
     smiles, labels = zip(*data)
@@ -187,7 +193,8 @@ def evaluate(model: nn.Module,
         smiles=smiles,
         batch_size=batch_size,
         scaler=scaler,
-        three_d=three_d
+        three_d=three_d,
+        virtual_edges=virtual_edges
     )
 
     result = evaluate_predictions(

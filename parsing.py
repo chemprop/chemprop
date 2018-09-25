@@ -62,6 +62,8 @@ def get_parser():
                         help='Perform self attention over the atoms in a molecule.')
     parser.add_argument('--three_d', action='store_true', default=False,
                         help='Adds 3D coordinates to atom and bond features')
+    parser.add_argument('--virtual_edges', action='store_true', default=False,
+                        help='Adds virtual edges between non-bonded atoms')
 
     return parser
 
