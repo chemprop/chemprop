@@ -73,6 +73,9 @@ def run_training(args) -> float:
         if args.checkpoint_paths is not None:
             logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
             model.load_state_dict(torch.load(args.checkpoint_paths[model_idx]))
+            # TODO: maybe remove the line below - it's a hack to ensure that you can evaluate
+            # on test set if training for 0 epochs
+            torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
         logger.debug(model)
         logger.debug('Number of parameters = {:,}'.format(param_count(model)))
         if args.cuda:
@@ -133,7 +136,7 @@ def run_training(args) -> float:
     # Predict and evaluate each model individually
     for model_idx in range(args.ensemble_size):
         # Load state dict from best validation set performance
-        model.load_state_dict(torch.load(os.path.join(args.save_dir + '/model_{}.pt'.format(model_idx))))
+        model.load_state_dict(torch.load(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx))))
 
         model_preds = predict(
             model=model,
