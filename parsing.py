@@ -50,6 +50,9 @@ def get_parser():
     parser.add_argument('--gamma', type=float, default=0.9,
                         help='Gamma factor for exponential decay learning rate scheduler'
                              '(lr = gamma * lr)')
+    parser.add_argument('--truncate_outliers', action='store_true', default=False,
+                        help='Truncates outliers in the training set to improve training stability'
+                             '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -63,7 +66,7 @@ def get_parser():
     parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
                         help='Activation function')
     parser.add_argument('--attention', action='store_true', default=False,
-                        help='Perform self attention over the atoms in a molecule.')
+                        help='Perform self attention over the atoms in a molecule')
     parser.add_argument('--message_attention', action='store_true', default=False,
                         help='Perform attention over messages.')
     parser.add_argument('--message_attention_heads', type=int, default=1,
