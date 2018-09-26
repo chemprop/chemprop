@@ -165,6 +165,7 @@ def mol2graph(mol_batch: List[str],
                     distances_3d = Chem.Get3DDistanceMatrix(mol)
                 except:
                     #random distance matrix, in case rdkit errors out
+                    # print('warning: rdkit error, generating random distance matrix')
                     distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
                     distances_3d = np.abs(distances_3d - distances_3d.transpose())
 
@@ -301,8 +302,7 @@ class MPN(nn.Module):
         self.W_i = nn.Linear(get_atom_fdim() + get_bond_fdim(three_d=args.three_d, virtual_edges=args.virtual_edges),
                              args.hidden_size, bias=False)
         if self.message_attention:
-            #fixed at 3 attention heads
-            self.num_heads = 3
+            self.num_heads = args.message_attention_heads
             self.W_h = nn.Linear(self.num_heads*args.hidden_size, args.hidden_size, bias=False)
         else:
             self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
