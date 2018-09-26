@@ -60,16 +60,15 @@ def run_training(args) -> float:
 
         # Build/load model
         logger.debug('Building model {}'.format(model_idx))
-        model = build_MPN(
-            args, 
-            num_tasks=num_tasks
-        )
+        model = build_MPN(num_tasks, args)
+
         if args.checkpoint_paths is not None:
             logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
             model.load_state_dict(torch.load(args.checkpoint_paths[model_idx]))
             # TODO: maybe remove the line below - it's a hack to ensure that you can evaluate
             # on test set if training for 0 epochs
             torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
+
         logger.debug(model)
         logger.debug('Number of parameters = {:,}'.format(param_count(model)))
         if args.cuda:
@@ -93,13 +92,11 @@ def run_training(args) -> float:
             n_iter = train(
                 model=model,
                 data=train_data,
-                batch_size=args.batch_size,
                 n_iter=n_iter,
                 loss_func=loss_func,
                 optimizer=optimizer,
+                args=args,
                 scaler=scaler,
-                three_d=args.three_d,
-                virtual_edges=args.virtual_edges,
                 logger=logger,
                 writer=writer
             )
@@ -107,11 +104,9 @@ def run_training(args) -> float:
             val_score = evaluate(
                 model=model,
                 data=val_data,
-                batch_size=args.batch_size,
                 metric_func=metric_func,
-                scaler=scaler,
-                three_d=args.three_d,
-                virtual_edges=args.virtual_edges
+                args=args,
+                scaler=scaler
             )
 
             logger.debug('Validation {} = {:.3f}'.format(args.metric, val_score))
@@ -137,10 +132,8 @@ def run_training(args) -> float:
         model_preds = predict(
             model=model,
             smiles=smiles,
-            batch_size=args.batch_size,
-            scaler=scaler,
-            three_d=args.three_d,
-            virtual_edges=args.virtual_edges
+            args=args,
+            scaler=scaler
         )
         model_score = evaluate_predictions(
             preds=model_preds,
@@ -161,6 +154,7 @@ def run_training(args) -> float:
     logger.info('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
 
     return ensemble_score
+
 
 def cross_validate(args):
     """k-fold cross validation"""

@@ -1,4 +1,4 @@
-from copy import deepcopy
+from argparse import Namespace
 from typing import List, Tuple
 
 import numpy as np
@@ -37,24 +37,14 @@ BOND_FDIM = 14
 SMILES_TO_FEATURES = {}
 
 
-def get_atom_fdim() -> int:
-    """
-    Gets the dimensionality of atom features.
-
-    :return: The number of atom features.
-    """
+def get_atom_fdim(args: Namespace) -> int:
+    """Gets the dimensionality of atom features."""
     return ATOM_FDIM
 
 
-def get_bond_fdim(three_d: bool = False, virtual_edges: bool = False) -> int:
-    """
-    Gets the dimensionality of bond features.
-
-    :param three_d: Whether to include 3D distance between atoms in bond features.
-    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
-    :return: The number of bond features.
-    """
-    return BOND_FDIM + three_d + (11 * virtual_edges)
+def get_bond_fdim(args: Namespace) -> int:
+    """Gets the dimensionality of bond features."""
+    return BOND_FDIM + args.three_d + (11 * args.virtual_edges)
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -124,20 +114,15 @@ def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d
     return torch.Tensor(fbond + fdistance_path + fdistance_3d)
 
 
-def mol2graph(mol_batch: List[str],
-              addHs: bool = False,
-              three_d: bool = False,
-              virtual_edges: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
+def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
     """
     Converts a list of SMILES strings to a batch of molecular graphs consisting of of PyTorch tensors.
 
     :param mol_batch: A list of SMILES strings.
-    :param addHs: Whether to include Hydrogen atoms in each molecular graph.
-    :param three_d: Whether to include 3D information in atom and bond features.
-    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
+    :param args: Arguments.
     :return: A tuple of tensors representing a batch of molecular graphs. TODO: Better explanation.
     """
-    padding = torch.zeros(get_atom_fdim() + get_bond_fdim(three_d=three_d, virtual_edges=virtual_edges))
+    padding = torch.zeros(get_atom_fdim(args) + get_bond_fdim(args))
     fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
     in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
     scope = []
@@ -152,19 +137,19 @@ def mol2graph(mol_batch: List[str],
             # Convert smiles to molecule
             mol = Chem.MolFromSmiles(smiles)
 
-            if addHs:
+            if args.addHs:
                 mol = Chem.AddHs(mol)
 
             # Get 3D distance matrix
-            if three_d:
+            if args.three_d:
                 mol = Chem.AddHs(mol)
                 AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-                if not addHs:
+                if not args.addHs:
                     mol = Chem.RemoveHs(mol)
                 try:
                     distances_3d = Chem.Get3DDistanceMatrix(mol)
                 except:
-                    #random distance matrix, in case rdkit errors out
+                    # random distance matrix, in case rdkit errors out
                     distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
                     distances_3d = np.abs(distances_3d - distances_3d.transpose())
 
@@ -181,11 +166,11 @@ def mol2graph(mol_batch: List[str],
                 for a2 in range(a1 + 1, n_atoms):
                     bond = mol.GetBondBetweenAtoms(a1, a2)
 
-                    if bond is None and not virtual_edges:
+                    if bond is None and not args.virtual_edges:
                         continue
 
-                    distance_3d = distances_3d[a1, a2] if three_d else None
-                    distance_path = distances_path[a1, a2] if virtual_edges else None
+                    distance_3d = distances_3d[a1, a2] if args.three_d else None
+                    distance_path = distances_path[a1, a2] if args.virtual_edges else None
 
                     mol_all_bonds.append((a1, a2))
                     mol_fbonds.append(torch.cat([mol_fatoms[a1], bond_features(bond,
@@ -238,19 +223,12 @@ def mol2graph(mol_batch: List[str],
     return fatoms, fbonds, agraph, bgraph, scope
 
 
-def build_MPN(args, num_tasks) -> nn.Module:
+def build_MPN(num_tasks: int, args: Namespace) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
-    :param hidden_size: Dimensionality of hidden layers.
-    :param depth: Number of message passing steps.
     :param num_tasks: Number of tasks to predict.
-    :param sigmoid: Whether to add a sigmoid layer at the end for classification.
-    :param dropout: Dropout probability.
-    :param activation: Activation function.
-    :param attention: Whether to perform self attention over the atoms in a molecule.
-    :param three_d: Whether to include 3D information in atom and bond features.
-    :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
+    :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     encoder = MPN(args)
@@ -277,19 +255,8 @@ def build_MPN(args, num_tasks) -> nn.Module:
 class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args):
-        """
-        Initializes the MPN.
-
-        :param hidden_size: Hidden dimensionality.
-        :param depth: Number of message passing steps.
-        :param dropout: Dropout probability.
-        :param activation: Activation function.
-        :param attention: Whether to perform self attention over the atoms in a molecule.
-        :param message_attention: Whether to perform attention over incoming messages. 
-        :param three_d: Whether to include 3D information in atom and bond features.
-        :param virtual_edges: Whether to include virtual edges between non-bonded atoms.
-        """
+    def __init__(self, args: Namespace):
+        """Initializes the MPN."""
         super(MPN, self).__init__()
         self.hidden_size = args.hidden_size
         self.depth = args.depth
@@ -298,20 +265,20 @@ class MPN(nn.Module):
         self.message_attention = args.message_attention
 
         self.dropout_layer = nn.Dropout(p=self.dropout)
-        self.W_i = nn.Linear(get_atom_fdim() + get_bond_fdim(three_d=args.three_d, virtual_edges=args.virtual_edges),
-                             args.hidden_size, bias=False)
+        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=False)
         if self.message_attention:
-            #fixed at 3 attention heads
+            # fixed at 3 attention heads
             self.num_heads = 3
-            self.W_h = nn.Linear(self.num_heads*args.hidden_size, args.hidden_size, bias=False)
+            self.W_h = nn.Linear(self.num_heads * args.hidden_size, args.hidden_size, bias=False)
         else:
             self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
-        self.W_o = nn.Linear(get_atom_fdim() + args.hidden_size, args.hidden_size)
+        self.W_o = nn.Linear(get_atom_fdim(args) + args.hidden_size, args.hidden_size)
         if self.attention:
             self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
             self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
         if self.message_attention:
-            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=False) for i in range(self.num_heads)])
+            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+                                       for _ in range(self.num_heads)])
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
 
@@ -343,17 +310,20 @@ class MPN(nn.Module):
         for i in range(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
             if self.message_attention:
-                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1)) #num_bonds x 1 x hidden
-                attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2) for i in range(self.num_heads)] #num_bonds x maxnb
-                attention_weights = [torch.softmax(attention_scores[i], dim=1) for i in range(self.num_heads)] #num_bonds x maxnb
-                message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size)) for i in range(self.num_heads)] #num_bonds x maxnb x hidden
-                message_components = [component.sum(dim=1) for component in message_components] #num_bonds x hidden
-                nei_message = torch.cat(message_components, dim=1) #num_bonds x 3*hidden
+                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
+                attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
+                                    for i in range(self.num_heads)]  # num_bonds x maxnb
+                attention_weights = [torch.softmax(attention_scores[i], dim=1)
+                                     for i in range(self.num_heads)]  # num_bonds x maxnb
+                message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
+                                      for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
+                message_components = [component.sum(dim=1) for component in message_components]  # num_bonds x hidden
+                nei_message = torch.cat(message_components, dim=1)  # num_bonds x 3*hidden
             else:
-                nei_message = nei_message.sum(dim=1) # num_bonds x hidden
+                nei_message = nei_message.sum(dim=1)  # num_bonds x hidden
             nei_message = self.W_h(nei_message)
             message = self.act_func(binput + nei_message)
-            message = self.dropout_layer(message) #num_bonds x hidden
+            message = self.dropout_layer(message)  # num_bonds x hidden
 
         nei_message = index_select_ND(message, 0, agraph)
         nei_message = nei_message.sum(dim=1)
