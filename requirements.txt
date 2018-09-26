@@ -1,4 +1,5 @@
 hpbandster
+matplotlib
 numpy
 scikit-learn
 scipy

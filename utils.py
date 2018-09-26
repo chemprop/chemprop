@@ -8,6 +8,28 @@ from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precis
 import torch.nn as nn
 
 
+def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
+    """
+    Gets smiles string and target values from a CSV file along with the header.
+
+    :param path: Path to a CSV file.
+    :return: A tuple where the first element is a list containing the header strings
+     and the second element is a list of tuples where each tuple contains a smiles string and
+    a list of target values (which are None if the target value is not specified).
+    """
+    data = []
+    with open(path) as f:
+        header = f.readline().strip().split(',')
+
+        for line in f:
+            line = line.strip().split(',')
+            smiles = line[0]
+            values = [float(x) if x != '' else None for x in line[1:]]
+            data.append((smiles, values))
+
+    return header, data
+
+
 def get_data(path: str) -> List[Tuple[str, List[float]]]:
     """
     Gets smiles string and target values from a CSV file.
@@ -16,17 +38,7 @@ def get_data(path: str) -> List[Tuple[str, List[float]]]:
     :return: A list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
     """
-    data = []
-    with open(path) as f:
-        f.readline()  # remove header
-
-        for line in f:
-            line = line.strip().split(',')
-            smiles = line[0]
-            values = [float(x) if x != '' else None for x in line[1:]]
-            data.append((smiles, values))
-
-    return data
+    return get_data_with_header(path)[1]
 
 
 def split_data(data: List[Tuple[str, List[float]]],

@@ -1,4 +1,4 @@
-import argparse
+from argparse import ArgumentParser, Namespace
 import csv
 import math
 import os
@@ -24,7 +24,7 @@ from utils import get_data, get_loss_func, get_metric_func, split_data
 
 
 class MPNWorker(Worker):
-    def __init__(self, args, **kwargs):
+    def __init__(self, args: Namespace, **kwargs):
         super(MPNWorker, self).__init__(**kwargs)
 
         self.data_path = args.data_path
@@ -166,7 +166,7 @@ class MPNWorker(Worker):
         return cs
 
 
-def optimize_hyperparameters(args):
+def optimize_hyperparameters(args: Namespace):
     # Save intermediate results
     result_logger = hpres.json_result_logger(directory=args.results_dir, overwrite=False)
 
@@ -226,7 +226,7 @@ def optimize_hyperparameters(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
 
     # General arguments
     parser.add_argument('--data_path', type=str,

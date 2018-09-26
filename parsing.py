@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import os
 from tempfile import TemporaryDirectory
 
@@ -33,6 +33,8 @@ def get_parser():
                         help='Number of folds when performing cross validation')
     parser.add_argument('--quiet', action='store_true', default=False,
                         help='Skip non-essential print statements')
+    parser.add_argument('--log_frequency', type=int, default=100,
+                        help='The number of batches between each logging of the training loss')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')
 
@@ -64,6 +66,8 @@ def get_parser():
                         help='Perform attention over messages.')
     parser.add_argument('--message_attention_heads', type=int, default=1,
                         help='Number of heads to use for message attention')
+    parser.add_argument('--addHs', action='store_true', default=False,
+                        help='Explicitly adds hydrogens to the molecular graph')
     parser.add_argument('--three_d', action='store_true', default=False,
                         help='Adds 3D coordinates to atom and bond features')
     parser.add_argument('--virtual_edges', action='store_true', default=False,
@@ -72,7 +76,7 @@ def get_parser():
     return parser
 
 
-def modify_args(args):
+def modify_args(args: Namespace):
     """Modifies and validates arguments"""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
