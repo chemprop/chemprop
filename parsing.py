@@ -67,6 +67,8 @@ def get_parser():
                         help='Perform self attention over the atoms in a molecule')
     parser.add_argument('--message_attention', action='store_true', default=False,
                         help='Perform attention over messages.')
+    parser.add_argument('--message_attention_heads', type=int, default=1,
+                        help='Number of heads to use for message attention')
     parser.add_argument('--addHs', action='store_true', default=False,
                         help='Explicitly adds hydrogens to the molecular graph')
     parser.add_argument('--three_d', action='store_true', default=False,

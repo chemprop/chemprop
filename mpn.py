@@ -267,9 +267,8 @@ class MPN(nn.Module):
         self.dropout_layer = nn.Dropout(p=self.dropout)
         self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=False)
         if self.message_attention:
-            # fixed at 3 attention heads
-            self.num_heads = 3
-            self.W_h = nn.Linear(self.num_heads * args.hidden_size, args.hidden_size, bias=False)
+            self.num_heads = args.message_attention_heads
+            self.W_h = nn.Linear(self.num_heads*args.hidden_size, args.hidden_size, bias=False)
         else:
             self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
         self.W_o = nn.Linear(get_atom_fdim(args) + args.hidden_size, args.hidden_size)
