@@ -1,4 +1,5 @@
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
+from copy import deepcopy
 import csv
 import math
 import os
@@ -12,13 +13,13 @@ import hpbandster.core.result as hpres
 from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
 from sklearn.preprocessing import StandardScaler
-import torch
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 
 from mpn import build_MPN
 from nn_utils import param_count
+from parsing import get_parser, modify_args
 from train_utils import train, evaluate
 from utils import get_data, get_loss_func, get_metric_func, split_data
 
@@ -27,16 +28,12 @@ class MPNWorker(Worker):
     def __init__(self, args: Namespace, **kwargs):
         super(MPNWorker, self).__init__(**kwargs)
 
-        self.data_path = args.data_path
-        self.batch_size = args.batch_size
-        self.dataset_type = args.dataset_type
+        self.args = args
         self.sign = -1 if args.dataset_type == 'classification' else 1
-        self.metric = args.metric
-        self.cuda = args.cuda
 
         print('Loading data')
-        data = get_data(self.data_path)
-        self.train_data, self.val_data, self.test_data = split_data(data, seed=args.seed)
+        data = get_data(self.args.data_path)
+        self.train_data, self.val_data, self.test_data = split_data(data, seed=self.args.seed)
         self.num_tasks = len(data[0][1])
 
         print('Train size = {}, val size = {}, test size = {}'.format(
@@ -47,7 +44,7 @@ class MPNWorker(Worker):
         print('Number of tasks = {}'.format(self.num_tasks))
 
         # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
-        if args.dataset_type == 'regression':
+        if self.args.dataset_type == 'regression':
             print('Fitting scaler')
             train_labels = list(zip(*self.train_data))[1]
             self.scaler = StandardScaler().fit(train_labels)
@@ -55,8 +52,8 @@ class MPNWorker(Worker):
             self.scaler = None
 
         # Get loss and metric functions
-        self.loss_func = get_loss_func(args.dataset_type)
-        self.metric_func = get_metric_func(args.metric)
+        self.loss_func = get_loss_func(self.args.dataset_type)
+        self.metric_func = get_metric_func(self.args.metric)
 
     def compute(self,
                 config: dict,
@@ -74,20 +71,18 @@ class MPNWorker(Worker):
         """
         pprint(config)
 
+        # Update args
+        args = deepcopy(self.args)
+        for key, value in config.items():
+            if hasattr(args, key):
+                setattr(args, key, value)
+
         # Build model
-        model = build_MPN(
-            hidden_size=config['hidden_size'],
-            depth=config['depth'],
-            num_tasks=self.num_tasks,
-            sigmoid=self.dataset_type == 'classification',
-            dropout=config['dropout'],
-            activation=config['activation'],
-            attention=config['attention']
-        )
+        model = build_MPN(self.num_tasks, args)
         print(model)
         num_params = param_count(model)
         print('Number of parameters = {:,}'.format(num_params))
-        if self.cuda:
+        if args.cuda:
             print('Moving model to cuda')
             model = model.cuda()
 
@@ -100,34 +95,31 @@ class MPNWorker(Worker):
             print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
 
             train(
-                data=self.train_data,
-                batch_size=self.batch_size,
-                num_tasks=self.num_tasks,
                 model=model,
+                data=self.train_data,
                 loss_func=self.loss_func,
                 optimizer=optimizer,
+                args=args,
                 scaler=self.scaler
             )
             scheduler.step()
             val_score = evaluate(
-                data=self.val_data,
-                batch_size=self.batch_size,
-                num_tasks=self.num_tasks,
                 model=model,
+                data=self.val_data,
                 metric_func=self.metric_func,
+                args=args,
                 scaler=self.scaler
             )
 
-            print('Validation {} = {:.3f}'.format(self.metric, val_score))
+            print('Validation {} = {:.3f}'.format(args.metric, val_score))
 
         # Compute losses
         scores = {
             split: evaluate(
-                data=data,
-                batch_size=self.batch_size,
-                num_tasks=self.num_tasks,
                 model=model,
+                data=data,
                 metric_func=self.metric_func,
+                args=args,
                 scaler=self.scaler
             ) for split, data in [('train', self.train_data),
                                   ('val', self.val_data),
@@ -153,22 +145,26 @@ class MPNWorker(Worker):
         """
         cs = CS.ConfigurationSpace()
 
-        hidden_size = CSH.UniformIntegerHyperparameter('hidden_size', lower=200, upper=500)
-        depth = CSH.UniformIntegerHyperparameter('depth', lower=2, upper=8)
-        dropout = CSH.UniformFloatHyperparameter('dropout', lower=0.0, upper=0.4)
-        activation = CSH.CategoricalHyperparameter('activation', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'])
-        attention = CSH.CategoricalHyperparameter('attention', choices=[True, False])
-        lr = CSH.UniformFloatHyperparameter('lr', lower=1e-4, upper=1e-2)
-        gamma = CSH.UniformFloatHyperparameter('gamma', lower=0.85, upper=0.95)
-
-        cs.add_hyperparameters([hidden_size, depth, dropout, activation, attention, lr, gamma])
+        cs.add_hyperparameters([
+            CSH.UniformIntegerHyperparameter('hidden_size', lower=200, upper=1000),
+            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=8),
+            CSH.UniformFloatHyperparameter('dropout', lower=0.0, upper=0.4),
+            # CSH.CategoricalHyperparameter('activation', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'])
+            CSH.Constant('activation', 'ReLU'),
+            # CSH.CategoricalHyperparameter('attention', choices=[True, False]),
+            CSH.Constant('attention', 0),
+            # CSH.UniformFloatHyperparameter('lr', lower=1e-4, upper=1e-2),
+            CSH.Constant('lr', 1e-3),
+            # CSH.UniformFloatHyperparameter('gamma', lower=0.85, upper=0.95)
+            CSH.Constant('gamma', 0.9),
+        ])
 
         return cs
 
 
 def optimize_hyperparameters(args: Namespace):
     # Save intermediate results
-    result_logger = hpres.json_result_logger(directory=args.results_dir, overwrite=False)
+    result_logger = hpres.json_result_logger(directory=args.results_dir, overwrite=True)
 
     # Start HpBandSter server
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=args.port)
@@ -179,13 +175,15 @@ def optimize_hyperparameters(args: Namespace):
     worker.run(background=True)
 
     # Create HpBandSter BOHB optimizer
-    bohb = BOHB(configspace=worker.get_configspace(),
-                run_id='example1',
-                nameserver='127.0.0.1',
-                result_logger=result_logger,
-                eta=args.eta,
-                min_budget=args.min_budget,
-                max_budget=args.max_budget)
+    bohb = BOHB(
+        configspace=worker.get_configspace(),
+        run_id='example1',
+        nameserver='127.0.0.1',
+        result_logger=result_logger,
+        eta=args.eta,
+        min_budget=args.min_budget,
+        max_budget=args.max_budget
+    )
     res = bohb.run(n_iterations=args.n_iterations)
 
     # Print results
@@ -226,33 +224,11 @@ def optimize_hyperparameters(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-
-    # General arguments
-    parser.add_argument('--data_path', type=str,
-                        help='Path to data CSV file')
-    parser.add_argument('--results_dir', type=str, default='hyper_opt_results',
+    parser = get_parser()
+    parser.add_argument('--results_dir', type=str,
                         help='Path to directory where results will be saved')
-    parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression'],
-                        help='Type of dataset, i.e. classification (cls) or regression (reg).'
-                             'This determines the loss function used during training.')
-    parser.add_argument('--metric', type=str, default=None, choices=['roc', 'prc-auc', 'rmse', 'mae'],
-                        help='Metric to use during evaluation.'
-                             'Note: Does NOT affect loss function used during training'
-                             '(loss is determined by the `dataset_type` argument).'
-                             'Note: Defaults to "roc" for classification and "rmse" for regression.')
-    parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed to use when splitting data into train/val/test sets')
-    parser.add_argument('--no_cuda', action='store_true', default=False,
-                        help='Turn off cuda')
     parser.add_argument('--port', type=int, default=9090,
                         help='Port for HpBandSter to use')
-
-    # Training args
-    parser.add_argument('--batch_size', type=int, default=50,
-                        help='Batch size')
-
-    # Hyperparameter optimization arguments
     parser.add_argument('--min_budget', type=int, default=3,
                         help='Minimum budget (number of iterations during training) to use')
     parser.add_argument('--max_budget', type=int, default=30,
@@ -261,20 +237,10 @@ if __name__ == '__main__':
                         help='Factor by which to cut number of trials (1/eta trials remain)')
     parser.add_argument('--n_iterations', type=int, default=4,
                         help='Number of iterations of BOHB algorithm')
-
     args = parser.parse_args()
 
+    modify_args(args)
+
     os.makedirs(args.results_dir, exist_ok=True)
-
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
-    del args.no_cuda
-
-    if args.metric is None:
-        args.metric = 'roc' if args.dataset_type == 'classification' else 'rmse'
-
-    if not (args.dataset_type == 'classification' and args.metric in ['roc', 'prc-auc'] or
-            args.dataset_type == 'regression' and args.metric in ['rmse', 'mae']):
-        raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
-
 
     optimize_hyperparameters(args)

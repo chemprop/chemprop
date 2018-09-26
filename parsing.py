@@ -33,7 +33,7 @@ def get_parser():
                         help='Number of folds when performing cross validation')
     parser.add_argument('--quiet', action='store_true', default=False,
                         help='Skip non-essential print statements')
-    parser.add_argument('--log_frequency', type=int, default=100,
+    parser.add_argument('--log_frequency', type=int, default=10,
                         help='The number of batches between each logging of the training loss')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')

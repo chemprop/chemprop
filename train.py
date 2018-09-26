@@ -98,10 +98,10 @@ def run_training(args: Namespace) -> float:
             n_iter = train(
                 model=model,
                 data=train_data,
-                n_iter=n_iter,
                 loss_func=loss_func,
                 optimizer=optimizer,
                 args=args,
+                n_iter=n_iter,
                 scaler=scaler,
                 logger=logger,
                 writer=writer
