@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from tqdm import trange
+import numpy as np
 
 from mpn import mol2graph
 
@@ -50,6 +51,8 @@ def train(model: nn.Module,
         if scaler is not None:
             labels = scaler.transform(labels)  # subtract mean, divide by std
         labels = torch.Tensor(labels)
+        if args.dataset_type == 'regression_with_binning':
+            labels = labels.long().squeeze(1)
 
         if next(model.parameters()).is_cuda:
             mask, labels = mask.cuda(), labels.cuda()
@@ -115,8 +118,15 @@ def predict(model: nn.Module,
             batch_preds = batch_preds.data.cpu().numpy()
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)
-
-            preds.extend(batch_preds.tolist())
+            
+            if args.dataset_type == 'regression_with_binning':
+                indices = np.argmax(batch_preds, axis=1)
+                preds.extend(indices.tolist())
+            else:
+                preds.extend(batch_preds.tolist())
+        
+        if args.dataset_type == 'regression_with_binning':
+            preds = args.bin_predictions[np.array(preds)].reshape(-1, 1).tolist()
 
         return preds
 
