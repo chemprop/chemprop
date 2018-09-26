@@ -7,7 +7,7 @@ from rdkit.Chem import AllChem
 from tqdm import tqdm
 
 
-def fingerprint(data_path, save_path):
+def fingerprint(data_path: str, save_path: str):
     data = []
     with open(data_path) as f:
         header = f.readline().strip().split(',')

@@ -1,3 +1,4 @@
+from argparse import Namespace
 import logging
 import os
 from pprint import pformat
@@ -22,7 +23,7 @@ logger = logging.getLogger('train')
 logger.setLevel(logging.DEBUG)
 
 
-def run_training(args) -> float:
+def run_training(args: Namespace) -> float:
     """Trains a model and returns test score on the model checkpoint with the highest validation score"""
     logger.debug(pformat(vars(args)))
 
@@ -156,7 +157,7 @@ def run_training(args) -> float:
     return ensemble_score
 
 
-def cross_validate(args):
+def cross_validate(args: Namespace):
     """k-fold cross validation"""
     init_seed = args.seed
     save_dir = args.save_dir

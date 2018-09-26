@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import os
 from tempfile import TemporaryDirectory
 
@@ -74,7 +74,7 @@ def get_parser():
     return parser
 
 
-def modify_args(args):
+def modify_args(args: Namespace):
     """Modifies and validates arguments"""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
