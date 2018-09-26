@@ -16,10 +16,10 @@ from mpn import mol2graph
 
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
-          n_iter: int,
           loss_func: Callable,
           optimizer: Adam,
           args: Namespace,
+          n_iter: int = 0,
           scaler: StandardScaler = None,
           logger: logging.Logger = None,
           writer: SummaryWriter = None) -> int:
@@ -28,10 +28,10 @@ def train(model: nn.Module,
 
     :param model: Model.
     :param data: Training data.
-    :param n_iter: The number of iterations (training examples) trained on so far.
     :param loss_func: Loss function.
     :param optimizer: Optimizer.
     :param args: Arguments.
+    :param n_iter: The number of iterations (training examples) trained on so far.
     :param scaler: A StandardScaler object fit on the training labels.
     :param logger: A logger for printing intermediate results.
     :param writer: A tensorboardX SummaryWriter.
