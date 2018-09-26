@@ -15,7 +15,7 @@ from mpn import build_MPN
 from nn_utils import param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data
+from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers
 
 
 # Initialize logger
@@ -39,7 +39,12 @@ def run_training(args: Namespace) -> float:
         len(test_data))
     )
     logger.debug('Number of tasks = {}'.format(num_tasks))
-    
+
+    # Optionally truncate outlier values
+    if args.truncate_outliers:
+        print('Truncating outliers in train set')
+        train_data = truncate_outliers(train_data)
+
     # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
     if args.dataset_type == 'regression':
         logger.debug('Fitting scaler')

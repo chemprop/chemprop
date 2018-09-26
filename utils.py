@@ -4,6 +4,7 @@ import os
 import random
 from typing import Callable, List, Tuple
 
+import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
 import torch.nn as nn
 
@@ -67,6 +68,31 @@ def split_data(data: List[Tuple[str, List[float]]],
     test = data[train_size + val_size:]
 
     return train, val, test
+
+
+def truncate_outliers(data: List[Tuple[str, List[float]]]) -> List[Tuple[str, List[float]]]:
+    """Truncates outlier values in a regression dataset.
+
+    Every value which is outside mean ± 3 * std are truncated to equal mean ± 3 * std.
+
+    :param data: A list of data points (smiles string, target values).
+    :return: The same data but with outliers truncated.
+    """
+    # Determine mean and standard deviation by task
+    smiles, values = zip(*data)
+    values_by_task = np.array(values).T
+    means = np.mean(values, axis=0)
+    stds = np.std(values, axis=0)
+
+    # Truncate values
+    for i, task_values in enumerate(values_by_task):
+        values_by_task[i] = np.clip(task_values, means[i] - 3 * stds[i], means[i] + 3 * stds[i])
+
+    # Reconstruct data
+    values = values_by_task.T.tolist()
+    data = list(zip(smiles, values))
+
+    return data
 
 
 def get_loss_func(dataset_type: str) -> nn.Module:
