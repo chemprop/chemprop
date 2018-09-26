@@ -14,19 +14,14 @@ import numpy as np
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))
     old_data = deepcopy(data)
-    regress = np.array([d[1][0] for d in data])
-    bin_edges = np.quantile(regress, [float(i)/float(num_bins) for i in range(num_bins+1)])
-    for i in range(len(data)):
-        bin_index = (bin_edges <= regress[i]).sum() - 1
-        # if bin_index >= num_bins:
-        #     print(regress[i])
-        bin_index = min(bin_index, num_bins-1)
-        for elt in range(len(data[i][1])):
-            data[i][1].pop()
-        # for b in range(num_bins):
-        #     data[i][1].append(0)
-        # data[i][1][bin_index] = 1
-        data[i][1].append(bin_index)
+    num_tasks = len(data[0][1])
+    for task in range(num_tasks):
+        regress = np.array([d[1][task] for d in data])
+        bin_edges = np.quantile(regress, [float(i)/float(num_bins) for i in range(num_bins+1)])
+        for i in range(len(data)):
+            bin_index = (bin_edges <= regress[i]).sum() - 1
+            bin_index = min(bin_index, num_bins-1)
+            data[i][1][task] = bin_index
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
 def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[float]]]]:

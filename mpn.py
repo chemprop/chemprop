@@ -232,7 +232,7 @@ def build_MPN(num_tasks: int, args: Namespace) -> nn.Module:
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     if args.dataset_type == 'regression_with_binning':
-        output_size = args.num_bins
+        output_size = args.num_bins * num_tasks
     else:
         output_size = num_tasks
     encoder = MPN(args)

@@ -39,6 +39,7 @@ def run_training(args: Namespace) -> float:
         logger.debug('Splitting data with seed {}'.format(args.seed))
         train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
+    args.num_tasks = num_tasks
 
     logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(train_data),
