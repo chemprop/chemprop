@@ -162,3 +162,13 @@ def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
     logger.addHandler(ch)
     logger.addHandler(fh_v)
     logger.addHandler(fh_q)
+
+
+def compute_pnorm(model: nn.Module) -> float:
+    """Computes the norm of the parameters of a model."""
+    return math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
+
+
+def compute_gnorm(model: nn.Module) -> float:
+    """Computes the norm of the gradients of a model."""
+    return math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))

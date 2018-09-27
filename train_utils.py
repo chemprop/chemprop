@@ -11,6 +11,7 @@ from torch.optim import Adam
 from tqdm import trange
 
 from mpn import mol2graph
+from utils import compute_gnorm, compute_pnorm
 
 
 def train(model: nn.Module,
@@ -71,8 +72,8 @@ def train(model: nn.Module,
 
         # Log and/or add to tensorboard
         if (n_iter // args.batch_size) % args.log_frequency == 0 and (logger is not None or writer is not None):
-            pnorm = math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
-            gnorm = math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters()]))
+            pnorm = compute_pnorm(model)
+            gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
             loss_sum, iter_count = 0, 0
 
