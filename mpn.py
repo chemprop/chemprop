@@ -150,6 +150,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                     distances_3d = Chem.Get3DDistanceMatrix(mol)
                 except:
                     # random distance matrix, in case rdkit errors out
+                    # print('distance embedding failed')
                     distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
                     distances_3d = np.abs(distances_3d - distances_3d.transpose())
 
@@ -231,12 +232,16 @@ def build_MPN(num_tasks: int, args: Namespace) -> nn.Module:
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
+    if args.dataset_type == 'regression_with_binning':
+        output_size = args.num_bins * num_tasks
+    else:
+        output_size = num_tasks
     encoder = MPN(args)
     modules = [
         encoder,
         nn.Linear(args.hidden_size, args.hidden_size),
         nn.ReLU(),
-        nn.Linear(args.hidden_size, num_tasks)
+        nn.Linear(args.hidden_size, output_size)
     ]
     if args.dataset_type == 'classification':
         modules.append(nn.Sigmoid())

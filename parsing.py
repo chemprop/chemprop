@@ -17,9 +17,11 @@ def get_parser():
     parser.add_argument('--checkpoint_paths', type=str, nargs='*', default=None,
                         help='Paths to model checkpoints to load'
                              '(number of paths should match `ensemble_size` argument)')
-    parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression'],
+    parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression', 'regression_with_binning'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
+    parser.add_argument('--num_bins', type=int, default=20,
+                        help='Number of bins for regression with binning')
     parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
@@ -97,7 +99,7 @@ def modify_args(args: Namespace):
         args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
 
     if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc'] or
-            args.dataset_type == 'regression' and args.metric in ['rmse', 'mae']):
+            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
     args.minimize_score = args.metric in ['rmse', 'mae']

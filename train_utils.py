@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from tqdm import trange
+import numpy as np
 
 from mpn import mol2graph
 from utils import compute_gnorm, compute_pnorm
@@ -58,7 +59,14 @@ def train(model: nn.Module,
         # Run model
         model.zero_grad()
         preds = model(mol_batch)
-        loss = loss_func(preds, labels) * mask
+        if args.dataset_type == 'regression_with_binning':
+            preds = preds.view(labels.size(0), labels.size(1), -1)
+            labels = labels.long()
+            loss = 0
+            for task in range(labels.size(1)):
+                loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task] #for some reason cross entropy doesn't support multi target
+        else:
+            loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
 
         if logger is not None:
@@ -116,8 +124,16 @@ def predict(model: nn.Module,
             batch_preds = batch_preds.data.cpu().numpy()
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)
-
-            preds.extend(batch_preds.tolist())
+            
+            if args.dataset_type == 'regression_with_binning':
+                batch_preds = batch_preds.reshape((batch_preds.shape[0], args.num_tasks, args.num_bins))
+                indices = np.argmax(batch_preds, axis=2)
+                preds.extend(indices.tolist())
+            else:
+                preds.extend(batch_preds.tolist())
+        
+        if args.dataset_type == 'regression_with_binning':
+            preds = args.bin_predictions[np.array(preds)].tolist()
 
         return preds
 

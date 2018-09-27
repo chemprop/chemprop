@@ -28,10 +28,18 @@ def run_training(args: Namespace) -> float:
     logger.debug(pformat(vars(args)))
 
     logger.debug('Loading data')
-    data = get_data(args.data_path)
-    logger.debug('Splitting data with seed {}'.format(args.seed))
-    train_data, val_data, test_data = split_data(data, seed=args.seed)
+    data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins) 
+    if args.dataset_type == 'regression_with_binning': #note: for now, binning based on whole dataset, not just training set
+        data, bin_predictions, regression_data = data
+        args.bin_predictions = bin_predictions
+        logger.debug('Splitting data with seed {}'.format(args.seed))
+        train_data, _, _ = split_data(data, seed=args.seed)
+        _, val_data, test_data = split_data(regression_data, seed=args.seed)
+    else:
+        logger.debug('Splitting data with seed {}'.format(args.seed))
+        train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
+    args.num_tasks = num_tasks
 
     logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(train_data),

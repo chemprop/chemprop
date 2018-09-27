@@ -2,12 +2,26 @@ import logging
 import math
 import os
 import random
+from copy import deepcopy
 from typing import Callable, List, Tuple
 
 import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
 import torch.nn as nn
+import numpy as np
 
+def convert_to_classes(data, num_bins=20):
+    print('Num bins for binning: {}'.format(num_bins))
+    old_data = deepcopy(data)
+    num_tasks = len(data[0][1])
+    for task in range(num_tasks):
+        regress = np.array([d[1][task] for d in data])
+        bin_edges = np.quantile(regress, [float(i)/float(num_bins) for i in range(num_bins+1)])
+        for i in range(len(data)):
+            bin_index = (bin_edges <= regress[i]).sum() - 1
+            bin_index = min(bin_index, num_bins-1)
+            data[i][1][task] = bin_index
+    return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
 def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
     """
@@ -30,8 +44,7 @@ def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[flo
 
     return header, data
 
-
-def get_data(path: str) -> List[Tuple[str, List[float]]]:
+def get_data(path: str, dataset_type: str=None, num_bins: str=20) -> List[Tuple[str, List[float]]]:
     """
     Gets smiles string and target values from a CSV file.
 
@@ -39,8 +52,10 @@ def get_data(path: str) -> List[Tuple[str, List[float]]]:
     :return: A list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
     """
-    return get_data_with_header(path)[1]
-
+    data = get_data_with_header(path)[1]
+    if dataset_type == 'regression_with_binning':
+        data = convert_to_classes(data, num_bins)
+    return data
 
 def split_data(data: List[Tuple[str, List[float]]],
                sizes: Tuple[float] = (0.8, 0.1, 0.1),
@@ -99,11 +114,14 @@ def get_loss_func(dataset_type: str) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
-    :param dataset_type: The dataset type ("classification" or "regression").
+    :param dataset_type: The dataset type ("classification" or "regression" or "regression_with_binning").
     :return: A PyTorch loss function.
     """
     if dataset_type == 'classification':
         return nn.BCELoss(reduction='none')
+    
+    if dataset_type == 'regression_with_binning':
+        return nn.CrossEntropyLoss(reduction='none')
 
     if dataset_type == 'regression':
         return nn.MSELoss(reduction='none')
