@@ -10,7 +10,6 @@ from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precis
 import torch.nn as nn
 import numpy as np
 
-#TODO for now only works on one regression target
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))
     old_data = deepcopy(data)

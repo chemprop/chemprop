@@ -64,6 +64,8 @@ def train(model: nn.Module,
             loss = 0
             for task in range(labels.size(1)):
                 loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task] #for some reason cross entropy doesn't support multi target
+        else:
+            loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
 
         if logger is not None:

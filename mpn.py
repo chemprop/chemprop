@@ -150,6 +150,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                     distances_3d = Chem.Get3DDistanceMatrix(mol)
                 except:
                     # random distance matrix, in case rdkit errors out
+                    # print('distance embedding failed')
                     distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
                     distances_3d = np.abs(distances_3d - distances_3d.transpose())
 
