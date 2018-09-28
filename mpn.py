@@ -155,7 +155,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                 except:
                     # zero distance matrix, in case rdkit errors out
                     print('distance embedding failed')
-                    distances_3d = np.zeros(mol.GetNumAtoms(), mol.GetNumAtoms())
+                    distances_3d = np.zeros((mol.GetNumAtoms(), mol.GetNumAtoms()))
                     conformer = DummyConformer()
 
             # Get topological (i.e. path-length) distance matrix and number of atoms
