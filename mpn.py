@@ -36,10 +36,13 @@ BOND_FDIM = 14
 # Memoization
 SMILES_TO_FEATURES = {}
 
+class DummyConformer: #for use when 3d embedding fails
+    def GetAtomPosition(self, id):
+        return [0, 0, 0]
 
 def get_atom_fdim(args: Namespace) -> int:
     """Gets the dimensionality of atom features."""
-    return ATOM_FDIM
+    return ATOM_FDIM + 3 * args.three_d
 
 
 def get_bond_fdim(args: Namespace) -> int:
@@ -63,25 +66,25 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom) -> torch.Tensor:
+def atom_features(atom: Chem.rdchem.Atom, atom_position: List[float] = None) -> torch.Tensor:
     """
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
     :return: A PyTorch tensor containing the atom features.
     """
-    return torch.Tensor(
-        onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num'])
-        + onek_encoding_unk(atom.GetDegree(), ATOM_FEATURES['degree'])
-        + onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge'])
-        + onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag'])
-        + onek_encoding_unk(int(atom.GetImplicitValence()), ATOM_FEATURES['implicit_valence'])
-        + onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs'])
-        + onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization'])
-        + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons'])
-        + [atom.GetIsAromatic()]
-    )
-
+    features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) \
+                + onek_encoding_unk(atom.GetDegree(), ATOM_FEATURES['degree']) \
+                + onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge']) \
+                + onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag']) \
+                + onek_encoding_unk(int(atom.GetImplicitValence()), ATOM_FEATURES['implicit_valence']) \
+                + onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) \
+                + onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) \
+                + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons']) \
+                + [atom.GetIsAromatic()]
+    if atom_position is not None:
+        features += atom_position
+    return torch.Tensor(features)
 
 def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d: float = None) -> torch.Tensor:
     """
@@ -148,11 +151,12 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                     mol = Chem.RemoveHs(mol)
                 try:
                     distances_3d = Chem.Get3DDistanceMatrix(mol)
+                    conformer = mol.GetConformer()
                 except:
-                    # random distance matrix, in case rdkit errors out
-                    # print('distance embedding failed')
-                    distances_3d = np.random.rand(mol.GetNumAtoms(), mol.GetNumAtoms())
-                    distances_3d = np.abs(distances_3d - distances_3d.transpose())
+                    # zero distance matrix, in case rdkit errors out
+                    print('distance embedding failed')
+                    distances_3d = np.zeros(mol.GetNumAtoms(), mol.GetNumAtoms())
+                    conformer = DummyConformer()
 
             # Get topological (i.e. path-length) distance matrix and number of atoms
             distances_path = Chem.GetDistanceMatrix(mol)
@@ -160,7 +164,8 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
 
             # Get atom features
             for atom in mol.GetAtoms():
-                mol_fatoms.append(atom_features(atom))
+                atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
+                mol_fatoms.append(atom_features(atom, atom_position))
 
             # Get bond features
             for a1 in range(n_atoms):
