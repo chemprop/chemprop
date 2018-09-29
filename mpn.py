@@ -273,6 +273,8 @@ class MPN(nn.Module):
         self.dropout = args.dropout
         self.attention = args.attention
         self.message_attention = args.message_attention
+        self.master_node = args.master_node
+        self.master_dim = args.master_dim
 
         self.dropout_layer = nn.Dropout(p=self.dropout)
         self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=False)
@@ -290,6 +292,9 @@ class MPN(nn.Module):
                                        for _ in range(self.num_heads)])
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
+        if self.master_node:
+            self.GRU_master = nn.GRU(args.hidden_size, args.master_dim)
+            self.W_master_out = nn.Linear(args.master_dim, args.hidden_size)
 
         if args.activation == "ReLU":
             self.act_func = nn.ReLU()
@@ -331,7 +336,13 @@ class MPN(nn.Module):
             else:
                 nei_message = nei_message.sum(dim=1)  # num_bonds x hidden
             nei_message = self.W_h(nei_message)
-            message = self.act_func(binput + nei_message)
+            if self.master_node:
+                # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
+                master_state = self.GRU_master(nei_message.unsqueeze(1))
+                master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
+                message = self.act_func(binput + nei_message + self.W_master_out(master_state).repeat((nei_message.size(0), 1)))
+            else:
+                message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
 
         nei_message = index_select_ND(message, 0, agraph)
