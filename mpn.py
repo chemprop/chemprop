@@ -293,8 +293,10 @@ class MPN(nn.Module):
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
         if self.master_node:
-            self.GRU_master = nn.GRU(args.hidden_size, args.master_dim)
+            # self.GRU_master = nn.GRU(args.hidden_size, args.master_dim)
+            self.W_master_in = nn.Linear(args.hidden_size, args.master_dim)
             self.W_master_out = nn.Linear(args.master_dim, args.hidden_size)
+            self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         if args.activation == "ReLU":
             self.act_func = nn.ReLU()
@@ -338,9 +340,11 @@ class MPN(nn.Module):
             nei_message = self.W_h(nei_message)
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
-                master_state = self.GRU_master(nei_message.unsqueeze(1))
-                master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
+                # master_state = self.GRU_master(nei_message.unsqueeze(1))
+                # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
+                master_state = self.act_func(self.W_master_in(nei_message.sum(dim=0))).unsqueeze(0)
                 message = self.act_func(binput + nei_message + self.W_master_out(master_state).repeat((nei_message.size(0), 1)))
+                message = self.layer_norm(message)
             else:
                 message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
