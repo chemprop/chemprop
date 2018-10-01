@@ -36,9 +36,11 @@ BOND_FDIM = 14
 # Memoization
 SMILES_TO_FEATURES = {}
 
-class DummyConformer: #for use when 3d embedding fails
-    def GetAtomPosition(self, id):
+
+class DummyConformer:  # for use when 3d embedding fails
+    def GetAtomPosition(self, id: int) -> List[int]:
         return [0, 0, 0]
+
 
 def get_atom_fdim(args: Namespace) -> int:
     """Gets the dimensionality of atom features."""
@@ -71,6 +73,7 @@ def atom_features(atom: Chem.rdchem.Atom, atom_position: List[float] = None) -> 
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
+    :param atom_position: A length-3 list containing the xyz coordinates of the atom.
     :return: A PyTorch tensor containing the atom features.
     """
     features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) \
@@ -85,6 +88,7 @@ def atom_features(atom: Chem.rdchem.Atom, atom_position: List[float] = None) -> 
     if atom_position is not None:
         features += atom_position
     return torch.Tensor(features)
+
 
 def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d: float = None) -> torch.Tensor:
     """
@@ -123,7 +127,14 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
 
     :param mol_batch: A list of SMILES strings.
     :param args: Arguments.
-    :return: A tuple of tensors representing a batch of molecular graphs. TODO: Better explanation.
+    :return: A tuple of tensors representing a batch of molecular graphs with the following elements:
+    1) fatoms: A tensor of shape (num_atoms, atom_fdim) containing the atom features.
+    2) fbonds: A tensor of shape (num_bonds, bond_fdim) containing the bond features.
+    3) agraph: A tensor of shape (num_atoms, max_num_bonds) where agraph[a] contains the indices of atoms bonded to a.
+    4) bgraph: A tensor of shape (num_bonds, max_num_bonds) where bgraph[b] contains the indices of the bonds that
+    start where bond b ends. (Ex. If b = (x, y) then bgraph[b] contains all bonds (y, z) for any atom z bonded to y.)
+    5) scope: A list of tuples of length batch_size where each tuple is (start, size) where start is the index of
+    the first atom in a given molecular graph and size is the number of atoms in that graph.
     """
     padding = torch.zeros(get_atom_fdim(args) + get_bond_fdim(args))
     fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
@@ -328,7 +339,7 @@ class MPN(nn.Module):
         """
         Encodes a batch of molecular graphs.
 
-        :param mol_graph: A tuple containing a batch of molecular graphs.
+        :param mol_graph: A tuple containing a batch of molecular graphs (see mol2graph docstring for details).
         :return: A PyTorch tensor containing the encoding of the graph.
         """
         fatoms, fbonds, agraph, bgraph, scope = mol_graph
@@ -341,7 +352,8 @@ class MPN(nn.Module):
 
         # Message passing
         for i in range(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
+            import pdb; pdb.set_trace()
+            nei_message = index_select_ND(message, bgraph)
             if self.message_attention:
                 message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
                 attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
@@ -367,7 +379,7 @@ class MPN(nn.Module):
             message = self.dropout_layer(message)  # num_bonds x hidden
 
         # Get atom hidden states from message hidden states
-        nei_message = index_select_ND(message, 0, agraph)
+        nei_message = index_select_ND(message, agraph)
         nei_message = nei_message.sum(dim=1)
         ainput = torch.cat([fatoms, nei_message], dim=1)
         atom_hiddens = self.act_func(self.W_o(ainput))
