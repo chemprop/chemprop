@@ -1,8 +1,9 @@
+import os
+print(os.getcwd())
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
-import os
 
 import math, random, sys
 from optparse import OptionParser
@@ -12,9 +13,10 @@ from chemprop.dio import load_split_data
 from chemprop.utils import cuda_available
 
 parser = OptionParser()
-parser.add_option("-t", "--data", dest="data_path")
+parser.add_option("-t", "--data_train", dest="data_train_path")
+parser.add_option("-q", "--data_test", dest="data_test_path")
 parser.add_option("-v", "--valid_split", dest="valid_split", default=.25)
-parser.add_option("-z", "--test_split", dest="test_split", default=.25)
+parser.add_option("-z", "--test_split", dest="test_split", default=.0)
 parser.add_option("-m", "--save_dir", dest="save_path")
 parser.add_option("-b", "--batch", dest="batch_size", default=50)
 parser.add_option("-w", "--hidden", dest="hidden_size", default=300)
@@ -24,7 +26,6 @@ parser.add_option("-p", "--dropout", dest="dropout", default=0)
 parser.add_option("-x", "--metric", dest="metric", default='rmse')
 parser.add_option("-s", "--seed", dest="seed", default=1)
 parser.add_option("-c", "--scale", dest="scale", default=True)
-
 
 opts, args = parser.parse_args()
 
@@ -38,7 +39,9 @@ if not os.path.isdir(opts.save_path):
     os.makedirs(opts.save_path)
 
 
-train, valid, test = load_split_data(opts.data_path, opts.valid_split, opts.test_split, opts.seed, opts.scale)
+train, valid, _ = load_split_data(opts.data_train_path, opts.valid_split, opts.test_split, opts.seed, opts.scale) # test data in separate file => split=0
+test, _, _      = load_split_data(opts.data_test_path, 0., 0., opts.seed, opts.scale) #abuse function to load test data
+print(len(train), len(valid), len(test))
 num_tasks = len(train[0][1])
 print("Number of tasks:", num_tasks)
 
