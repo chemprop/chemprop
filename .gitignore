@@ -1,2 +1,4 @@
 *.pyc
 deepchem-test/jtnn
+.ipynb_checkpoints/*
+.idea/*
