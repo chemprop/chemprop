@@ -1,26 +1,34 @@
 import os
 models = ["chemprop", ]
-root = "/gpfs/nobackup/scratch/share/palmera2/descriptors_collection_aug_dump_prio1/"
-data_files = [root + f for f in [
+
+dataset = "descriptor_collection_MoDD4Q_2018.06.24_2018-09-24.csv_processed"
+data_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/data/{}".format(dataset)
+results_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/results/{}".format(dataset)
+
+data_files = [
+    "HOMO_H2O.csv",
+    "LUMO_H2O.csv",
+    "Moment_HBacc_H2O.csv",
+    "ionization_potential_H2O.csv",
     "dipol_H2O.csv",
     "H_HB_H2O.csv",
     "H_MF_H2O.csv",
-    "ionization_potential_H2O.csv",
-    "Moment_HBacc_H2O.csv",
-    "mu_Cyclohexan.csv",
-    "mu_Ethanol.csv",
-    "mu_H2O.csv",
-    "mu_solvent_H2O.csv",
     "polarizability_H2O.csv",
     "electron_affinity_H2O.csv",
     "H_int_H2O.csv"  ,
     "H_vdW_H2O.csv",
     "log_p_ow.csv",
     "Moment_HBdon_H2O.csv",
+    "mu_Cyclohexan.csv",
+    "mu_Ethanol.csv",
+    "mu_H2O.csv",
+    "mu_solvent_H2O.csv",
     "mu_DMSO.csv",
     "mu_Ethylacetat.csv" ,
     "mu_Octanol.csv",
-    "mu_Triglyme.csv",]]
+    "mu_Triglyme.csv",
+    "prio1.csv"
+    ]
 
 gpu_job_info = {
     "mem": "16GB",
@@ -38,8 +46,6 @@ cpu_job_info = {
 
 job_info = cpu_job_info
 
-results_dir = "/gpfs/backup/users/home/palmera2/lib/chemprop/results/"
-
 def write_utf8(f, s):
     f.write(s.encode('utf-8'))
 
@@ -55,14 +61,16 @@ def select_str(job_info):
 with open("master.sh", "wb") as f_master:
     f_master.write("#!/bin/bash\n".encode('utf-8'))
     for data_file in data_files:
+        data_train_fn = data_root + "/train/" + data_file
+        data_test_fn = data_root + "/test/" + data_file
         for model in models:
-            job_name = model + "." + data_file.rsplit("/", 1)[1]
+            job_name = model + "." + data_file
             if job_info["ngpus"] > 0:
                 job_name += "_gpu"
             else:
                 job_name += "_cpu"
-            job_fn =job_name +".job"
-            _results_dir = results_dir + job_name
+            job_fn =job_name + ".job"
+            results_folder = results_root + "/" + data_file + "/graphconv/" + model
             with open(os.path.join("jobs", job_fn), "wb") as f_job:
                 write_utf8(f_job, "#!/bin/bash\n")
                 write_utf8(f_job, select_str(job_info))
@@ -75,10 +83,13 @@ with open("master.sh", "wb") as f_master:
                 write_utf8(f_job,
                            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/software/app/intel/python2.7/2018.1/intelpython2/lib\n")
                 write_utf8(f_job, "source /gpfs/backup/users/home/palmera2/lib/chemprop/venv/bin/activate\n")
-                write_utf8(f_job, "cd /gpfs/backup/users/home/palmera2/lib/chemprop/chemprop\n")
-                write_utf8(f_job, "\n")
-                write_utf8(f_job, "date +\" % m / % d / % Y % H: % M: % S $HOSTNAME\"\n")
-                write_utf8(f_job, "python train_test_regress.py --data \"{}\" --save_dir \"{}\"\n".format(data_file,
-                                                                                                          _results_dir))
-                write_utf8(f_job, "date +\" % m / % d / % Y % H: % M: % S\"\n")
+                write_utf8(f_job, "cd /gpfs/backup/users/home/palmera2/lib/chemprop/\n")
+                write_utf8(f_job, "$HOSTNAME\n")
+                write_utf8(f_job, "date\n")
+                write_utf8(f_job, "python chemprop/train_test_regress.py"
+                        + " --data_train {}".format(data_train_fn)
+                        + " --data_test {}".format(data_test_fn)
+                        + " --save_dir {}".format(results_folder)
+                        + "\n")
+                write_utf8(f_job, "date\n")
             f_master.write("qsub jobs/{}\n".format(job_fn).encode('utf-8'))
