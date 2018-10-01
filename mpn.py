@@ -269,40 +269,55 @@ class MPN(nn.Module):
         """Initializes the MPN."""
         super(MPN, self).__init__()
         self.hidden_size = args.hidden_size
+        self.bias = args.bias
         self.depth = args.depth
         self.dropout = args.dropout
         self.attention = args.attention
         self.message_attention = args.message_attention
         self.master_node = args.master_node
         self.master_dim = args.master_dim
+        self.deepset = args.deepset
 
-        self.dropout_layer = nn.Dropout(p=self.dropout)
-        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=False)
+        # Input
+        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=self.bias)
+
+        # Message passing
         if self.message_attention:
             self.num_heads = args.message_attention_heads
-            self.W_h = nn.Linear(self.num_heads*args.hidden_size, args.hidden_size, bias=False)
-        else:
-            self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
-        self.W_o = nn.Linear(get_atom_fdim(args) + args.hidden_size, args.hidden_size)
-        if self.attention:
-            self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=False)
-            self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
-        if self.message_attention:
-            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=False)
+            self.W_h = nn.Linear(self.num_heads * args.hidden_size, args.hidden_size, bias=self.bias)
+            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
                                        for _ in range(self.num_heads)])
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
-            # self.W_ma2 = nn.Linear(hidden_size, 1, bias=False)
+            # self.W_ma2 = nn.Linear(hidden_size, 1, bias=self.bias)
+        else:
+            self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+
         if self.master_node:
             # self.GRU_master = nn.GRU(args.hidden_size, args.master_dim)
             self.W_master_in = nn.Linear(args.hidden_size, args.master_dim)
             self.W_master_out = nn.Linear(args.master_dim, args.hidden_size)
             self.layer_norm = nn.LayerNorm(self.hidden_size)
 
-        if args.activation == "ReLU":
+        # Readout
+        self.W_o = nn.Linear(get_atom_fdim(args) + args.hidden_size, args.hidden_size)
+
+        if self.deepset:
+            self.W_s2s_a = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+            self.W_s2s_b = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+
+        if self.attention:
+            self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+            self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
+
+        # Dropout
+        self.dropout_layer = nn.Dropout(p=self.dropout)
+
+        # Activation
+        if args.activation == 'ReLU':
             self.act_func = nn.ReLU()
-        elif args.activation == "LeakyReLU":
+        elif args.activation == 'LeakyReLU':
             self.act_func = nn.LeakyReLU(0.1)
-        elif args.activation == "PReLU":
+        elif args.activation == 'PReLU':
             self.act_func = nn.PReLU()
         elif args.activation == 'tanh':
             self.act_func = nn.Tanh()
@@ -320,16 +335,18 @@ class MPN(nn.Module):
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
+        # Input
         binput = self.W_i(fbonds)
         message = self.act_func(binput)
 
+        # Message passing
         for i in range(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
             if self.message_attention:
                 message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
                 attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
                                     for i in range(self.num_heads)]  # num_bonds x maxnb
-                attention_weights = [torch.softmax(attention_scores[i], dim=1)
+                attention_weights = [F.softmax(attention_scores[i], dim=1)
                                      for i in range(self.num_heads)]  # num_bonds x maxnb
                 message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
                                       for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
@@ -349,12 +366,14 @@ class MPN(nn.Module):
                 message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
 
+        # Get atom hidden states from message hidden states
         nei_message = index_select_ND(message, 0, agraph)
         nei_message = nei_message.sum(dim=1)
         ainput = torch.cat([fatoms, nei_message], dim=1)
         atom_hiddens = self.act_func(self.W_o(ainput))
         atom_hiddens = self.dropout_layer(atom_hiddens)
 
+        # Readout
         mol_vecs = []
         for st, le in scope:
             cur_hiddens = atom_hiddens.narrow(0, st, le)
@@ -368,6 +387,11 @@ class MPN(nn.Module):
                 mol_vec = (cur_hiddens + att_hiddens)
             else:
                 mol_vec = cur_hiddens
+
+            if self.deepset:
+                mol_vec = self.W_s2s_a(mol_vec)
+                mol_vec = self.act_func(mol_vec)
+                mol_vec = self.W_s2s_b(mol_vec)
 
             mol_vec = mol_vec.sum(dim=0) / le
             mol_vecs.append(mol_vec)

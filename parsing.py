@@ -59,6 +59,8 @@ def get_parser():
                         help='Number of models in ensemble')
     parser.add_argument('--hidden_size', type=int, default=300,
                         help='Dimensionality of hidden layers in MPN')
+    parser.add_argument('--bias', action='store_true', default=False,
+                        help='Whether to add bias to linear layers')
     parser.add_argument('--depth', type=int, default=3,
                         help='Number of message passing steps')
     parser.add_argument('--dropout', type=float, default=0.0,
@@ -81,6 +83,8 @@ def get_parser():
                         help='Adds 3D coordinates to atom and bond features')
     parser.add_argument('--virtual_edges', action='store_true', default=False,
                         help='Adds virtual edges between non-bonded atoms')
+    parser.add_argument('--deepset', action='store_true', default=False,
+                        help='Modify readout function to perform a Deep Sets set operation after message passing')
 
     return parser
 
