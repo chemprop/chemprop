@@ -24,7 +24,7 @@ parser.add_option("-p", "--dropout", dest="dropout", default=0)
 parser.add_option("-c", "--metric", dest="metric", default='roc')
 parser.add_option("-g", "--seed", dest="seed", default=1)
 parser.add_option("-s", "--split", dest="split", default='random')
-parser.add_option("-a", "--anneal", dest="anneal", default=-1)
+parser.add_option("-a", "--act_func", dest="act_func", default='ReLU')
 opts,args = parser.parse_args()
    
 batch_size = int(opts.batch_size)
@@ -33,7 +33,6 @@ hidden_size = int(opts.hidden_size)
 num_epoch = int(opts.epoch)
 dropout = float(opts.dropout)
 seed = int(opts.seed)
-anneal_iter = int(opts.anneal)
 
 def get_data(path):
     data = []
@@ -63,7 +62,7 @@ elif opts.split == 'scaffold':
 num_tasks = len(data[0][1])
 print "Number of tasks:", num_tasks
 
-encoder = MPN(hidden_size, depth, dropout=dropout)
+encoder = MPN(hidden_size, depth, dropout=dropout, act_func=opts.act_func)
 model = nn.Sequential(
         encoder,
         nn.Linear(hidden_size, hidden_size), 
@@ -148,13 +147,7 @@ for epoch in xrange(num_epoch):
             sys.stdout.flush()
             mse,it = 0,0
 
-        if anneal_iter > 0 and i % anneal_iter == 0:
-            scheduler.step()
-            torch.save(model.state_dict(), opts.save_path + "/model.iter-%d-%d" % (epoch,i))
-
-    if anneal_iter == -1: #anneal == len(train)
-        scheduler.step()
-
+    scheduler.step()
     cur_loss = valid_loss(valid)
     print "validation error: %.4f" % cur_loss
     if opts.save_path is not None:

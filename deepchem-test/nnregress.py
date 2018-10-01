@@ -19,6 +19,7 @@ parser.add_option("-e", "--epoch", dest="epoch", default=30)
 parser.add_option("-p", "--dropout", dest="dropout", default=0)
 parser.add_option("-g", "--seed", dest="seed", default=1)
 parser.add_option("-x", "--metric", dest="metric", default='rmse')
+parser.add_option("-a", "--act_func", dest="act_func", default='ReLU')
 opts,args = parser.parse_args()
    
 batch_size = int(opts.batch_size)
@@ -50,7 +51,10 @@ test = data[train_size + test_size : ]
 num_tasks = len(data[0][1])
 print "Number of tasks:", num_tasks
 
-encoder = MPN(hidden_size, depth)
+torch.manual_seed(1)
+torch.cuda.manual_seed(1)
+
+encoder = MPN(hidden_size, depth, dropout=dropout, act_func=opts.act_func)
 model = nn.Sequential(
         encoder,
         nn.Linear(hidden_size, hidden_size), 
@@ -59,6 +63,7 @@ model = nn.Sequential(
     )
 loss_fn = nn.MSELoss().cuda()
 model = model.cuda()
+print model
 
 for param in model.parameters():
     if param.dim() == 1:
