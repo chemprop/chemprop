@@ -321,7 +321,7 @@ class MPN(nn.Module):
 
         if self.set2set:
             self.set2set_rnn = nn.LSTM(
-                input_size=self.hidden_size * 2,
+                input_size=self.hidden_size,
                 hidden_size=self.hidden_size,
                 dropout=self.dropout,
                 bias=False  # no bias so that an input of all zeros stays all zero
@@ -421,21 +421,18 @@ class MPN(nn.Module):
 
             # Run RNN
             for _ in range(self.set2set_iters):
-                # Attention over atoms in each molecule
+                # Compute attention weights over atoms in each molecule
                 query = query.squeeze(0).unsqueeze(2)  # (batch_size,  hidden_size, 1)
                 dot = torch.bmm(memory, query)  # (batch_size, max_num_atoms, 1)
                 dot = dot * mask + (1 - mask) * (-1e+20)  # (batch_size, max_num_atoms, 1)
                 attention = F.softmax(dot, dim=1)  # (batch_size, max_num_atoms, 1)
 
-                # Construct next input
+                # Construct next input as attention over memory
                 attended = torch.bmm(memory_transposed, attention)  # (batch_size, hidden_size, 1)
-                attended = attended.squeeze(2)  # (batch_size, hidden_size)
-                query = query.squeeze(2)  # (batch_size, hidden_size)
-                input = torch.cat((query, attended), dim=1)  # (batch_size, hidden_size * 2)
+                attended = attended.view(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
 
                 # Run RNN for one step
-                input = input.unsqueeze(0)  # (1, batch_size, hidden_size * 2)
-                query, _ = self.set2set_rnn(input)  # (1, batch_size, hidden_size)
+                query, _ = self.set2set_rnn(attended)  # (1, batch_size, hidden_size)
 
             # Final RNN output is the molecule encodings
             mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
