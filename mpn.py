@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from nn_utils import index_select_ND
+from nn_utils import create_mask, index_select_ND
 
 # Atom feature sizes
 ATOM_FEATURES = {
@@ -351,7 +351,7 @@ class MPN(nn.Module):
         Encodes a batch of molecular graphs.
 
         :param mol_graph: A tuple containing a batch of molecular graphs (see mol2graph docstring for details).
-        :return: A PyTorch tensor containing the encoding of the graph.
+        :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
         fatoms, fbonds, agraph, bgraph, scope = mol_graph
         if next(self.parameters()).is_cuda:
@@ -396,51 +396,64 @@ class MPN(nn.Module):
         atom_hiddens = self.dropout_layer(atom_hiddens)
 
         # Readout
-        mol_vecs = []
-        for start, size in scope:
-            cur_hiddens = atom_hiddens.narrow(0, start, size)
+        if self.set2set:
+            # Set up sizes
+            batch_size = len(scope)
+            lengths = [length for _, length in scope]
+            max_num_atoms = max(lengths)
 
-            if self.attention:
-                att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
-                att_w = F.softmax(att_w, dim=1)
-                att_hiddens = torch.matmul(att_w, cur_hiddens)
-                att_hiddens = self.act_func(self.W_b(att_hiddens))
-                att_hiddens = self.dropout_layer(att_hiddens)
-                mol_vec = (cur_hiddens + att_hiddens)
-            else:
-                mol_vec = cur_hiddens  # (num_atoms, hidden_size)
+            # Set up memory from atom features
+            memory = torch.zeros(batch_size, max_num_atoms, self.hidden_size)  # (batch_size, max_num_atoms, hidden_size)
+            for i, (start, size) in enumerate(scope):
+                memory[i, :size] = atom_hiddens.narrow(0, start, size)
+            memory_transposed = memory.transpose(2, 1)  # (batch_size, hidden_size, max_num_atoms)
 
-            if self.set2set:
-                # Set up memory from atom features
-                memory = mol_vec.unsqueeze(1)  # (num_atoms, 1, hidden_size)
-                mol_vec_transposed = mol_vec.transpose(0, 1)  # (hidden_size, num_atoms)
+            # Create mask (1s for atoms, 0s for not atoms)
+            mask = create_mask(lengths, cuda=next(self.parameters()).is_cuda)  # (max_num_atoms, batch_size)
+            mask = mask.t().unsqueeze(2)  # (batch_size, max_num_atoms, 1)
 
-                # Set up query
-                query = torch.ones(1, 1, self.hidden_size)  # (1, 1, hidden_size)
-                if next(self.parameters()).is_cuda:
-                    query = query.cuda()
+            # Set up query
+            query = torch.ones(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
 
-                for _ in range(self.set2set_iters):
-                    # Attention over atoms
-                    query = query.view(1, self.hidden_size, 1)  # (1, hidden_size, 1)
-                    query = query.repeat(len(memory), 1, 1)  # (num_atoms, hidden_size, 1)
-                    dot = torch.bmm(memory, query)  # (num_atoms, 1, 1)
-                    dot = dot.squeeze(-1)  # (num_atoms, 1)
-                    attention = F.softmax(dot, dim=0)  # (num_atoms, 1)
+            # Move to cuda
+            if next(self.parameters()).is_cuda:
+                memory, memory_transposed, query = memory.cuda(), memory_transposed.cuda(), query.cuda()
 
-                    # Construct next input
-                    attended = torch.mm(mol_vec_transposed, attention)  # (hidden_size, 1)
-                    attended = attended.squeeze(1)  # (hidden_size,)
-                    query = query[0].squeeze(1)  # (hidden_size,)
-                    input = torch.cat((query, attended), dim=0)  # (hidden_size * 2,)
+            # Run RNN
+            for _ in range(self.set2set_iters):
+                # Attention over atoms in each molecule
+                query = query.squeeze(0).unsqueeze(2)  # (batch_size,  hidden_size, 1)
+                dot = torch.bmm(memory, query)  # (batch_size, max_num_atoms, 1)
+                dot = dot * mask + (1 - mask) * (-1e+20)  # (batch_size, max_num_atoms, 1)
+                attention = F.softmax(dot, dim=1)  # (batch_size, max_num_atoms, 1)
 
-                    # Run RNN for one step
-                    input = input.unsqueeze(0).unsqueeze(0)  # (1, 1, hidden_size * 2)
-                    query, _ = self.set2set_rnn(input)  # (1, 1, hidden_size)
+                # Construct next input
+                attended = torch.bmm(memory_transposed, attention)  # (batch_size, hidden_size, 1)
+                attended = attended.squeeze(2)  # (batch_size, hidden_size)
+                query = query.squeeze(2)  # (batch_size, hidden_size)
+                input = torch.cat((query, attended), dim=1)  # (batch_size, hidden_size * 2)
 
-                query = query.view(-1)  # (hidden_size,)
-                mol_vecs.append(query)
-            else:
+                # Run RNN for one step
+                input = input.unsqueeze(0)  # (1, batch_size, hidden_size * 2)
+                query, _ = self.set2set_rnn(input)  # (1, batch_size, hidden_size)
+
+            # Final RNN output is the molecule encodings
+            mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
+        else:
+            mol_vecs = []
+            for start, size in scope:
+                cur_hiddens = atom_hiddens.narrow(0, start, size)
+
+                if self.attention:
+                    att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
+                    att_w = F.softmax(att_w, dim=1)
+                    att_hiddens = torch.matmul(att_w, cur_hiddens)
+                    att_hiddens = self.act_func(self.W_b(att_hiddens))
+                    att_hiddens = self.dropout_layer(att_hiddens)
+                    mol_vec = (cur_hiddens + att_hiddens)
+                else:
+                    mol_vec = cur_hiddens  # (num_atoms, hidden_size)
+
                 if self.deepset:
                     mol_vec = self.W_s2s_a(mol_vec)
                     mol_vec = self.act_func(mol_vec)
@@ -449,5 +462,6 @@ class MPN(nn.Module):
                 mol_vec = mol_vec.sum(dim=0) / size
                 mol_vecs.append(mol_vec)
 
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+
+        return mol_vecs  # (num_molecules, hidden_size)
