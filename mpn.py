@@ -285,40 +285,51 @@ class MPN(nn.Module):
         self.dropout = args.dropout
         self.attention = args.attention
         self.message_attention = args.message_attention
+        self.message_attention_heads = args.message_attention_heads
         self.master_node = args.master_node
         self.master_dim = args.master_dim
         self.deepset = args.deepset
+        self.set2set = args.set2set
+        self.set2set_iters = args.set2set_iters
 
         # Input
-        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), args.hidden_size, bias=self.bias)
+        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), self.hidden_size, bias=self.bias)
 
         # Message passing
         if self.message_attention:
-            self.num_heads = args.message_attention_heads
-            self.W_h = nn.Linear(self.num_heads * args.hidden_size, args.hidden_size, bias=self.bias)
-            self.W_ma = nn.ModuleList([nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+            self.num_heads = self.message_attention_heads
+            self.W_h = nn.Linear(self.num_heads * self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
                                        for _ in range(self.num_heads)])
             # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=self.bias)
         else:
-            self.W_h = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+            self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
         if self.master_node:
-            # self.GRU_master = nn.GRU(args.hidden_size, args.master_dim)
-            self.W_master_in = nn.Linear(args.hidden_size, args.master_dim)
-            self.W_master_out = nn.Linear(args.master_dim, args.hidden_size)
+            # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
+            self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
+            self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
             self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
-        self.W_o = nn.Linear(get_atom_fdim(args) + args.hidden_size, args.hidden_size)
+        self.W_o = nn.Linear(get_atom_fdim(args) + self.hidden_size, self.hidden_size)
 
         if self.deepset:
-            self.W_s2s_a = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
-            self.W_s2s_b = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
+            self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+
+        if self.set2set:
+            self.set2set_rnn = nn.LSTM(
+                input_size=self.hidden_size * 2,
+                hidden_size=self.hidden_size,
+                dropout=self.dropout,
+                bias=False  # no bias so that an input of all zeros stays all zero
+            )
 
         if self.attention:
-            self.W_a = nn.Linear(args.hidden_size, args.hidden_size, bias=self.bias)
-            self.W_b = nn.Linear(args.hidden_size, args.hidden_size)
+            self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -352,7 +363,6 @@ class MPN(nn.Module):
 
         # Message passing
         for i in range(self.depth - 1):
-            import pdb; pdb.set_trace()
             nei_message = index_select_ND(message, bgraph)
             if self.message_attention:
                 message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
@@ -387,8 +397,8 @@ class MPN(nn.Module):
 
         # Readout
         mol_vecs = []
-        for st, le in scope:
-            cur_hiddens = atom_hiddens.narrow(0, st, le)
+        for start, size in scope:
+            cur_hiddens = atom_hiddens.narrow(0, start, size)
 
             if self.attention:
                 att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
@@ -398,15 +408,46 @@ class MPN(nn.Module):
                 att_hiddens = self.dropout_layer(att_hiddens)
                 mol_vec = (cur_hiddens + att_hiddens)
             else:
-                mol_vec = cur_hiddens
+                mol_vec = cur_hiddens  # (num_atoms, hidden_size)
 
-            if self.deepset:
-                mol_vec = self.W_s2s_a(mol_vec)
-                mol_vec = self.act_func(mol_vec)
-                mol_vec = self.W_s2s_b(mol_vec)
+            if self.set2set:
+                # Set up memory from atom features
+                memory = mol_vec.unsqueeze(1)  # (num_atoms, 1, hidden_size)
+                mol_vec_transposed = mol_vec.transpose(0, 1)  # (hidden_size, num_atoms)
 
-            mol_vec = mol_vec.sum(dim=0) / le
-            mol_vecs.append(mol_vec)
+                # Set up query
+                query = torch.ones(1, 1, self.hidden_size)  # (1, 1, hidden_size)
+                if next(self.parameters()).is_cuda:
+                    query = query.cuda()
+
+                for _ in range(self.set2set_iters):
+                    # Attention over atoms
+                    query = query.view(1, self.hidden_size, 1)  # (1, hidden_size, 1)
+                    query = query.repeat(len(memory), 1, 1)  # (num_atoms, hidden_size, 1)
+                    dot = torch.bmm(memory, query)  # (num_atoms, 1, 1)
+                    dot = dot.squeeze(-1)  # (num_atoms, 1)
+                    attention = F.softmax(dot, dim=0)  # (num_atoms, 1)
+
+                    # Construct next input
+                    attended = torch.mm(mol_vec_transposed, attention)  # (hidden_size, 1)
+                    attended = attended.squeeze(1)  # (hidden_size,)
+                    query = query[0].squeeze(1)  # (hidden_size,)
+                    input = torch.cat((query, attended), dim=0)  # (hidden_size * 2,)
+
+                    # Run RNN for one step
+                    input = input.unsqueeze(0).unsqueeze(0)  # (1, 1, hidden_size * 2)
+                    query, _ = self.set2set_rnn(input)  # (1, 1, hidden_size)
+
+                query = query.view(-1)  # (hidden_size,)
+                mol_vecs.append(query)
+            else:
+                if self.deepset:
+                    mol_vec = self.W_s2s_a(mol_vec)
+                    mol_vec = self.act_func(mol_vec)
+                    mol_vec = self.W_s2s_b(mol_vec)
+
+                mol_vec = mol_vec.sum(dim=0) / size
+                mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)
         return mol_vecs

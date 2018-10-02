@@ -84,7 +84,11 @@ def get_parser():
     parser.add_argument('--virtual_edges', action='store_true', default=False,
                         help='Adds virtual edges between non-bonded atoms')
     parser.add_argument('--deepset', action='store_true', default=False,
-                        help='Modify readout function to perform a Deep Sets set operation after message passing')
+                        help='Modify readout function to perform a Deep Sets set operation using linear layers')
+    parser.add_argument('--set2set', action='store_true', default=False,
+                        help='Modify readout function to perform a set2set operation using an RNN')
+    parser.add_argument('--set2set_iters', type=int, default=3,
+                        help='Number of set2set RNN iterations to perform')
 
     return parser
 
