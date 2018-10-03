@@ -1,27 +1,28 @@
 from argparse import Namespace
 import logging
-import math
+import random
 from typing import Callable, List, Tuple
 
 from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
 
 from mpn import mol2graph
+from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 
 
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
           loss_func: Callable,
-          optimizer: Adam,
+          optimizer: Optimizer,
+          scheduler: NoamLR,
           args: Namespace,
           n_iter: int = 0,
-          scaler: StandardScaler = None,
           logger: logging.Logger = None,
           writer: SummaryWriter = None) -> int:
     """
@@ -31,14 +32,15 @@ def train(model: nn.Module,
     :param data: Training data.
     :param loss_func: Loss function.
     :param optimizer: Optimizer.
+    :param scheduler: A NoamLR learning rate scheduler.
     :param args: Arguments.
     :param n_iter: The number of iterations (training examples) trained on so far.
-    :param scaler: A StandardScaler object fit on the training labels.
     :param logger: A logger for printing intermediate results.
     :param writer: A tensorboardX SummaryWriter.
     :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
+    random.shuffle(data)
 
     loss_sum, iter_count = 0, 0
     for i in trange(0, len(data), args.batch_size):
@@ -48,10 +50,7 @@ def train(model: nn.Module,
         mol_batch = mol2graph(mol_batch, args)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = [[0 if x is None else x for x in lb] for lb in label_batch]
-        if scaler is not None:
-            labels = scaler.transform(labels)  # subtract mean, divide by std
-        labels = torch.Tensor(labels)
+        labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
 
         if next(model.parameters()).is_cuda:
             mask, labels = mask.cuda(), labels.cuda()
@@ -64,7 +63,7 @@ def train(model: nn.Module,
             labels = labels.long()
             loss = 0
             for task in range(labels.size(1)):
-                loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task] #for some reason cross entropy doesn't support multi target
+                loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
         else:
             loss = loss_func(preds, labels) * mask
         loss = loss.sum() / mask.sum()
@@ -75,23 +74,26 @@ def train(model: nn.Module,
 
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         n_iter += len(batch)
 
         # Log and/or add to tensorboard
         if (n_iter // args.batch_size) % args.log_frequency == 0 and (logger is not None or writer is not None):
+            lr = scheduler.get_lr()[0]
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
             loss_sum, iter_count = 0, 0
 
             if logger is not None:
-                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}".format(loss_avg, pnorm, gnorm))
+                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4f}".format(loss_avg, pnorm, gnorm, lr))
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)
                 writer.add_scalar('param_norm', pnorm, n_iter)
                 writer.add_scalar('gradient_norm', gnorm, n_iter)
+                writer.add_scalar('learning_rate', lr, n_iter)
 
     return n_iter
 

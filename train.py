@@ -8,11 +8,10 @@ from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
 import torch
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 
 from mpn import build_MPN
-from nn_utils import param_count
+from nn_utils import NoamLR, param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
 from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers
@@ -53,11 +52,12 @@ def run_training(args: Namespace) -> float:
         print('Truncating outliers in train set')
         train_data = truncate_outliers(train_data)
 
-    # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
+    # Initialize scaler and scaler training labels by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         logger.debug('Fitting scaler')
-        train_labels = list(zip(*train_data))[1]
+        train_smiles, train_labels = zip(*train_data)
         scaler = StandardScaler().fit(train_labels)
+        train_data = list(zip(train_smiles, scaler.transform(train_labels).tolist()))
     else:
         scaler = None
 
@@ -90,31 +90,34 @@ def run_training(args: Namespace) -> float:
             model = model.cuda()
 
         # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=args.lr)
-        scheduler = ExponentialLR(optimizer, gamma=args.gamma)
-        scheduler.step()
+        optimizer = Adam(model.parameters(), lr=args.init_lr)
+        scheduler = NoamLR(
+            optimizer,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=args.epochs,
+            steps_per_epoch=len(train_data) // args.batch_size,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
             logger.debug('Epoch {}'.format(epoch))
-            lr = scheduler.get_lr()[0]
-            logger.debug("Learning rate = {:.3e}".format(lr))
-            writer.add_scalar('learning_rate', lr, n_iter)
 
             n_iter = train(
                 model=model,
                 data=train_data,
                 loss_func=loss_func,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
-                scaler=scaler,
                 logger=logger,
                 writer=writer
             )
-            scheduler.step()
             val_score = evaluate(
                 model=model,
                 data=val_data,

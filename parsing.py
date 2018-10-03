@@ -45,14 +45,19 @@ def get_parser():
                         help='Number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=50,
                         help='Batch size')
-    parser.add_argument('--lr', type=float, default=1e-3,
-                        help='Learning rate')
-    parser.add_argument('--gamma', type=float, default=0.9,
-                        help='Gamma factor for exponential decay learning rate scheduler'
-                             '(lr = gamma * lr)')
     parser.add_argument('--truncate_outliers', action='store_true', default=False,
                         help='Truncates outliers in the training set to improve training stability'
                              '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
+    parser.add_argument('--warmup_epochs', type=int, default=2,
+                        help='Number of epochs during which learning rate increases linearly from'
+                             'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
+                             'from max_lr to final_lr.')
+    parser.add_argument('--init_lr', type=float, default=1e-4,
+                        help='Initial learning rate')
+    parser.add_argument('--max_lr', type=float, default=1e-3,
+                        help='Maximum learning rate')
+    parser.add_argument('--final_lr', type=float, default=1e-4,
+                        help='Final learning rate')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,

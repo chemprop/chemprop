@@ -219,23 +219,17 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
         scope.append((total_atoms, n_atoms))
         total_atoms += n_atoms
 
-    total_bonds = len(all_bonds)
     max_num_bonds = max(len(bonds) for bonds in in_bonds)
 
     fatoms = torch.stack(fatoms, dim=0)
     fbonds = torch.stack(fbonds, dim=0)
-    agraph = torch.zeros(total_atoms, max_num_bonds, dtype=torch.long)
-    bgraph = torch.zeros(total_bonds, max_num_bonds, dtype=torch.long)
 
-    for a in range(total_atoms):
-        for i, b in enumerate(in_bonds[a]):
-            agraph[a, i] = b
+    # Map each atom to all bonds going into that atom
+    agraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in in_bonds])  # zero padding
 
-    for b1 in range(1, total_bonds):
-        x, y = all_bonds[b1]
-        for i, b2 in enumerate(in_bonds[x]):
-            if all_bonds[b2][0] != y:
-                bgraph[b1, i] = b2
+    # Map each bond to all bonds going into that bond's start atom
+    bgraph = [[]] + [[bond if all_bonds[bond][0] != a2 else 0 for bond in in_bonds[a1]] for a1, a2 in all_bonds[1:]]
+    bgraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in bgraph])  # zero padding
 
     return fatoms, fbonds, agraph, bgraph, scope
 
