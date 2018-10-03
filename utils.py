@@ -6,9 +6,8 @@ from copy import deepcopy
 from typing import Callable, List, Tuple
 
 import numpy as np
-from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
+from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score
 import torch.nn as nn
-import numpy as np
 
 
 def convert_to_classes(data, num_bins=20):
@@ -154,6 +153,9 @@ def get_metric_func(metric: str) -> Callable:
 
     if metric == 'mae':
         return mean_absolute_error
+
+    if metric == 'r2':
+        return r2_score
 
     raise ValueError('Metric "{}" not supported.'.format(metric))
 

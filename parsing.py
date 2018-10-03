@@ -22,7 +22,7 @@ def get_parser():
                              'This determines the loss function used during training.')
     parser.add_argument('--num_bins', type=int, default=20,
                         help='Number of bins for regression with binning')
-    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae'],
+    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
@@ -118,10 +118,10 @@ def modify_args(args: Namespace):
         args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
 
     if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc'] or
-            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae']):
+            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
-    args.minimize_score = args.metric in ['rmse', 'mae']
+    args.minimize_score = args.metric in ['rmse', 'mae', 'r2']
 
     if args.checkpoint_paths is not None:
         assert len(args.checkpoint_paths) == args.ensemble_size
