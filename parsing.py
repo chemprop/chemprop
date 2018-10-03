@@ -132,6 +132,8 @@ def modify_args(args: Namespace):
                     args.checkpoint_paths.append(os.path.join(root, fname))
 
         args.ensemble_size = len(args.checkpoint_paths)
+    else:
+        args.checkpoint_paths = None
 
 
 def parse_args():
