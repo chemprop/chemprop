@@ -21,6 +21,12 @@ class StandardScaler:
         transformed_with_nan = (X - self.means)/self.stds
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
         return transformed_with_none
+    
+    def inverse_transform(self, X):
+        X = np.array(X).astype(float)
+        transformed_with_nan = X * self.stds + self.means
+        transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+        return transformed_with_none
 
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))
