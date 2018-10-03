@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
+from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
@@ -73,6 +74,8 @@ def train(model: nn.Module,
             iter_count += len(batch)
 
         loss.backward()
+        if args.max_grad_norm is not None:
+            clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
         scheduler.step()
 

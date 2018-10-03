@@ -58,6 +58,8 @@ def get_parser():
                         help='Maximum learning rate')
     parser.add_argument('--final_lr', type=float, default=1e-4,
                         help='Final learning rate')
+    parser.add_argument('--max_grad_norm', type=float, default=None,
+                        help='Maximum gradient norm when performing gradient clipping')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
