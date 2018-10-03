@@ -14,9 +14,9 @@ def get_parser():
                         help='Path to data CSV file')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
-    parser.add_argument('--checkpoint_paths', type=str, nargs='*', default=None,
-                        help='Paths to model checkpoints to load'
-                             '(number of paths should match `ensemble_size` argument)')
+    parser.add_argument('--checkpoint_dir', type=str, default=None,
+                        help='Directory from which to load model checkpoints'
+                             '(walks directory and ensembles all models that are found)')
     parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression', 'regression_with_binning'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
@@ -123,8 +123,15 @@ def modify_args(args: Namespace):
 
     args.minimize_score = args.metric in ['rmse', 'mae', 'r2']
 
-    if args.checkpoint_paths is not None:
-        assert len(args.checkpoint_paths) == args.ensemble_size
+    if args.checkpoint_dir is not None:
+        args.checkpoint_paths = []
+
+        for root, _, files in os.walk(args.checkpoint_dir):
+            for fname in files:
+                if fname == 'model.pt':
+                    args.checkpoint_paths.append(os.path.join(root, fname))
+
+        args.ensemble_size = len(args.checkpoint_paths)
 
 
 def parse_args():

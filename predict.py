@@ -1,3 +1,4 @@
+import os
 from pprint import pprint
 
 import numpy as np
@@ -78,14 +79,19 @@ def make_predictions(args):
 if __name__ == '__main__':
     parser = get_parser()
     # TODO: Save the scaler so that training data doesn't need to be reloaded
-    parser.add_argument('--train_path', type=str,
+    parser.add_argument('--train_path', type=str, required=True,
                         help='Path to CSV file containing training data')
-    parser.add_argument('--test_path', type=str,
+    parser.add_argument('--test_path', type=str, required=True,
                         help='Path to CSV file containing testing data for which predictions will be made')
-    parser.add_argument('--save_path', type=str,
+    parser.add_argument('--save_path', type=str, required=True,
                         help='Path to CSV file where predictions will be saved')
-    # Specify model(s) to load with `--checkpoint_paths`
+    # Specify `--checkpoint_dir`
     args = parser.parse_args()
+
+    # Create directory for save_path
+    save_dir = os.path.dirname(args.save_path)
+    if save_dir != '':
+        os.makedirs(save_dir)
 
     modify_args(args)
 
