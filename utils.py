@@ -10,6 +10,7 @@ from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precis
 import torch.nn as nn
 import numpy as np
 
+
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))
     old_data = deepcopy(data)
@@ -22,6 +23,7 @@ def convert_to_classes(data, num_bins=20):
             bin_index = min(bin_index, num_bins-1)
             data[i][1][task] = bin_index
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
+
 
 def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
     """
@@ -44,6 +46,7 @@ def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[flo
 
     return header, data
 
+
 def get_data(path: str, dataset_type: str=None, num_bins: str=20) -> List[Tuple[str, List[float]]]:
     """
     Gets smiles string and target values from a CSV file.
@@ -56,6 +59,7 @@ def get_data(path: str, dataset_type: str=None, num_bins: str=20) -> List[Tuple[
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
     return data
+
 
 def split_data(data: List[Tuple[str, List[float]]],
                sizes: Tuple[float] = (0.8, 0.1, 0.1),
