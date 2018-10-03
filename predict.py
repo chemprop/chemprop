@@ -1,14 +1,14 @@
 from pprint import pprint
 
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 import torch
 
 from mpn import build_MPN
 from nn_utils import param_count
 from parsing import get_parser, modify_args
 from train_utils import predict
-from utils import get_data, get_data_with_header
+from utils import get_data, get_data_with_header, StandardScaler
 
 
 # TODO: SUPPORT ALL OPTIONS THAT TRAIN DOES
