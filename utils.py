@@ -9,6 +9,18 @@ import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score
 import torch.nn as nn
 
+class StandardScaler:
+    def fit(self, X):
+        X = np.array(X).astype(float)
+        self.means = np.nanmean(X, axis=0)
+        self.stds = np.nanstd(X, axis=0)
+        return self
+
+    def transform(self, X):
+        X = np.array(X).astype(float)
+        transformed_with_nan = (X - self.means)/self.stds
+        transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+        return transformed_with_none
 
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))

@@ -4,7 +4,7 @@ import os
 from pprint import pformat
 
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
 import torch
 from torch.optim import Adam
@@ -14,7 +14,7 @@ from mpn import build_MPN
 from nn_utils import NoamLR, param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers
+from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
 
 
 # Initialize logger

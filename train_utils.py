@@ -172,6 +172,7 @@ def evaluate_predictions(preds: List[List[float]],
         # Skip if all labels are identical
         if all(label == 0 for label in valid_labels[i]) or all(label == 1 for label in valid_labels[i]):
             continue
+        import pdb; pdb.set_trace()
         results.append(metric_func(valid_labels[i], valid_preds[i]))
 
     # Average across tasks
