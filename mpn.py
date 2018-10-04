@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from model import get_atom_fdim, get_bond_fdim
+from featurization import get_atom_fdim, get_bond_fdim
 from nn_utils import create_mask, index_select_ND
 
 

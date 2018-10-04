@@ -9,7 +9,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 import torch
 import torch.nn as nn
 
-from model import mol2graph
+from featurization import mol2graph
 from mpn import MPN
 from nn_utils import GraphGRU, index_select_ND
 

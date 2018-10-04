@@ -12,7 +12,7 @@ from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
 
-from mpn import mol2graph
+from featurization import mol2graph
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 
