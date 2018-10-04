@@ -4,13 +4,12 @@ import os
 from pprint import pformat
 
 import numpy as np
-# from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
 import torch
 from torch.optim import Adam
 from tqdm import trange
 
-from mpn import build_MPN
+from model import build_model
 from nn_utils import NoamLR, param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
@@ -74,7 +73,7 @@ def run_training(args: Namespace) -> float:
 
         # Build/load model
         logger.debug('Building model {}'.format(model_idx))
-        model = build_MPN(num_tasks, args)
+        model = build_model(num_tasks, args)
 
         if args.checkpoint_paths is not None:
             logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))

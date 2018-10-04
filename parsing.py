@@ -12,6 +12,8 @@ def get_parser():
     # General arguments
     parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file')
+    parser.add_argument('--vocab_path', type=str,
+                        help='Path to .vocab file if using jtnn')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--checkpoint_dir', type=str, default=None,
@@ -96,6 +98,8 @@ def get_parser():
                         help='Modify readout function to perform a set2set operation using an RNN')
     parser.add_argument('--set2set_iters', type=int, default=3,
                         help='Number of set2set RNN iterations to perform')
+    parser.add_argument('--jtnn', action='store_true', default=False,
+                        help='Build junction tree and perform message passing over both original graph and tree')
 
     return parser
 

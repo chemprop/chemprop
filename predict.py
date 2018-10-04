@@ -2,10 +2,9 @@ import os
 from pprint import pprint
 
 import numpy as np
-# from sklearn.preprocessing import StandardScaler
 import torch
 
-from mpn import build_MPN
+from model import build_model
 from nn_utils import param_count
 from parsing import get_parser, modify_args
 from train_utils import predict
@@ -40,7 +39,7 @@ def make_predictions(args):
 
     # Build model
     print('Building model')
-    model = build_MPN(num_tasks, args)
+    model = build_model(num_tasks, args)
 
     print(model)
     print('Number of parameters = {:,}'.format(param_count(model)))
