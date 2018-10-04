@@ -121,8 +121,7 @@ def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d
     return torch.Tensor(fbond + fdistance_path + fdistance_3d)
 
 
-def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
-    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
+def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]:
     """
     Converts a list of SMILES strings to a batch of molecular graphs consisting of of PyTorch tensors.
 
@@ -134,14 +133,17 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
     3) agraph: A tensor of shape (num_atoms, max_num_bonds) where agraph[a] contains the indices of atoms bonded to a.
     4) bgraph: A tensor of shape (num_bonds, max_num_bonds) where bgraph[b] contains the indices of the bonds that
     start where bond b ends. (Ex. If b = (x, y) then bgraph[b] contains all bonds (y, z) for any atom z bonded to y.)
-    5) scope: A list of tuples of length batch_size where each tuple is (start, size) where start is the index of
+    5) ascope: A list of tuples of length batch_size where each tuple is (start, size) where start is the index of
     the first atom in a given molecular graph and size is the number of atoms in that graph.
+    6) bscope: Similar to ascope but for bond indices rather than atom indices.
     """
     padding = torch.zeros(get_atom_fdim(args) + get_bond_fdim(args))
     fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
     in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
-    scope = []
+    ascope = []
+    bscope = []
     total_atoms = 0
+    total_bonds = 0
 
     for smiles in mol_batch:
         if smiles in SMILES_TO_FEATURES:
@@ -179,6 +181,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
                 atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
                 mol_fatoms.append(atom_features(atom, atom_position))
 
+            n_bonds = 0
             # Get bond features
             for a1 in range(n_atoms):
                 for a2 in range(a1 + 1, n_atoms):
@@ -199,7 +202,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
                     mol_fbonds.append(torch.cat([mol_fatoms[a2], bond_features(bond,
                                                                                distance_path=distance_path,
                                                                                distance_3d=distance_3d)], dim=0))
-
+                    n_bonds += 2
             # Memoize
             SMILES_TO_FEATURES[smiles] = (mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms)
 
@@ -217,8 +220,10 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
             all_bonds.append((a1, a2))
             in_bonds[a2].append(bond_idx)
 
-        scope.append((total_atoms, n_atoms))
+        ascope.append((total_atoms, n_atoms))
+        bscope.append((total_bonds, n_bonds))
         total_atoms += n_atoms
+        total_bonds += n_bonds
 
     max_num_bonds = max(len(bonds) for bonds in in_bonds)
 
@@ -232,7 +237,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[
     bgraph = [[]] + [[bond if all_bonds[bond][0] != a2 else 0 for bond in in_bonds[a1]] for a1, a2 in all_bonds[1:]]
     bgraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in bgraph])  # zero padding
 
-    return fatoms, fbonds, agraph, bgraph, scope
+    return fatoms, fbonds, agraph, bgraph, ascope, bscope
 
 
 def build_model(num_tasks: int, args: Namespace) -> nn.Module:

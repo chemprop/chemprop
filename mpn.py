@@ -46,7 +46,7 @@ class MPN(nn.Module):
             # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
             self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
             self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
-            self.layer_norm = nn.LayerNorm(self.hidden_size)
+            # self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
         self.W_o = nn.Linear(get_atom_fdim(args) + self.hidden_size, self.hidden_size)
@@ -82,14 +82,14 @@ class MPN(nn.Module):
         else:
             raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
-    def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]) -> torch.Tensor:
+    def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
         :param mol_graph: A tuple containing a batch of molecular graphs (see mol2graph docstring for details).
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        fatoms, fbonds, agraph, bgraph, scope = mol_graph
+        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
@@ -117,9 +117,14 @@ class MPN(nn.Module):
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
                 # master_state = self.GRU_master(nei_message.unsqueeze(1))
                 # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
-                master_state = self.act_func(self.W_master_in(nei_message.sum(dim=0))).unsqueeze(0)
-                message = self.act_func(binput + nei_message + self.W_master_out(master_state).repeat((nei_message.size(0), 1)))
-                message = self.layer_norm(message)
+                mol_vecs = [torch.zeros(self.hidden_size).cuda()]
+                for start, size in bscope:
+                    mol_vec = nei_message.narrow(0, start, size)
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs += [mol_vec for _ in range(size)]
+                master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # (num_bonds, hidden_size)
+                message = self.act_func(binput + nei_message + self.W_master_out(master_state))
+                # message = self.layer_norm(message)
             else:
                 message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
@@ -134,13 +139,13 @@ class MPN(nn.Module):
         # Readout
         if self.set2set:
             # Set up sizes
-            batch_size = len(scope)
-            lengths = [length for _, length in scope]
+            batch_size = len(ascope)
+            lengths = [length for _, length in ascope]
             max_num_atoms = max(lengths)
 
             # Set up memory from atom features
             memory = torch.zeros(batch_size, max_num_atoms, self.hidden_size)  # (batch_size, max_num_atoms, hidden_size)
-            for i, (start, size) in enumerate(scope):
+            for i, (start, size) in enumerate(ascope):
                 memory[i, :size] = atom_hiddens.narrow(0, start, size)
             memory_transposed = memory.transpose(2, 1)  # (batch_size, hidden_size, max_num_atoms)
 
@@ -174,7 +179,7 @@ class MPN(nn.Module):
             mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
         else:
             mol_vecs = []
-            for start, size in scope:
+            for start, size in ascope:
                 cur_hiddens = atom_hiddens.narrow(0, start, size)
 
                 if self.attention:
