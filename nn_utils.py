@@ -142,7 +142,7 @@ class NoamLR(_LRScheduler):
         self.optimizer.param_groups[0]['lr'] = self.lr
 
 
-def GRU(x, h_nei, W_z, W_r, U_r, W_h):
+def GRU(x: torch.Tensor, h_nei: torch.Tensor, W_z: nn.Linear, W_r: nn.Linear, U_r: nn.Linear, W_h: nn.Linear) -> torch.Tensor:
     hidden_size = x.size()[-1]
     sum_h = h_nei.sum(dim=1)
     z_input = torch.cat([x, sum_h], dim=1)
@@ -157,6 +157,7 @@ def GRU(x, h_nei, W_z, W_r, U_r, W_h):
     h_input = torch.cat([x, sum_gated_h], dim=1)
     pre_h = nn.Tanh()(W_h(h_input))
     new_h = (1.0 - z) * sum_h + z * pre_h
+
     return new_h
 
 
@@ -164,6 +165,7 @@ class GraphGRU(nn.Module):
 
     def __init__(self, input_size: int, hidden_size: int, depth: int):
         super(GraphGRU, self).__init__()
+
         self.hidden_size = hidden_size
         self.input_size = input_size
         self.depth = depth
@@ -173,13 +175,13 @@ class GraphGRU(nn.Module):
         self.U_r = nn.Linear(hidden_size, hidden_size)
         self.W_h = nn.Linear(input_size + hidden_size, hidden_size)
 
-    def forward(self, h, x, mess_graph):
+    def forward(self, h: torch.Tensor, x: torch.Tensor, mess_graph: torch.Tensor) -> torch.Tensor:
         mask = torch.ones(h.size(0), 1)
         mask[0] = 0  # first vector is padding
         if next(self.parameters()).is_cuda:
             mask = mask.cuda()
         for it in range(self.depth):
-            h_nei = index_select_ND(h, 0, mess_graph)
+            h_nei = index_select_ND(h, mess_graph)
             sum_h = h_nei.sum(dim=1)
             z_input = torch.cat([x, sum_h], dim=1)
             z = F.sigmoid(self.W_z(z_input))

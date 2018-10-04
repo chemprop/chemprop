@@ -1,4 +1,5 @@
 from argparse import Namespace
+from collections import defaultdict
 from copy import deepcopy
 from typing import List, Tuple
 
@@ -166,7 +167,7 @@ def tree_decomp(mol: Chem.rdchem.Mol) -> Tuple[List[List[int]], List[Tuple[int, 
             nei_list[atom].append(i)
 
     # Build edges and add singleton cliques
-    edges = dict()
+    edges = defaultdict(int)
     for atom in range(n_atoms):
         if len(nei_list[atom]) <= 1:
             continue
@@ -215,6 +216,7 @@ class JTNN(nn.Module):
 
         self.hidden_size = args.hidden_size
         self.depth = args.depth
+        self.args = args
 
         self.jtnn = JTNNEncoder(self.vocab.size(), self.hidden_size, depth=5)
         self.mpn = MPN(args)
@@ -224,7 +226,8 @@ class JTNN(nn.Module):
         tree_vec = self.jtnn(*self.tensorize(mol_batch))
 
         smiles_batch = [mol_tree.smiles for mol_tree in mol_batch]
-        mol_vec = self.mpn(mol2graph(smiles_batch))
+        mol_vec = self.mpn(smiles_batch)
+
         return torch.cat([tree_vec, mol_vec], dim=-1)
 
     def tensorize(self, tree_batch: List[MolTree]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:

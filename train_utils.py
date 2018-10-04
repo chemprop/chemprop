@@ -12,7 +12,6 @@ from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
 
-from featurization import mol2graph
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 
@@ -48,7 +47,6 @@ def train(model: nn.Module,
         # Prepare batch
         batch = data[i:i + args.batch_size]
         mol_batch, label_batch = zip(*batch)
-        mol_batch = mol2graph(mol_batch, args)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
@@ -122,7 +120,6 @@ def predict(model: nn.Module,
         for i in range(0, len(smiles), args.batch_size):
             # Prepare batch
             mol_batch = smiles[i:i + args.batch_size]
-            mol_batch = mol2graph(mol_batch, args)
 
             # Run model
             batch_preds = model(mol_batch)

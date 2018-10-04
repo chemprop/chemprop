@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from featurization import get_atom_fdim, get_bond_fdim
+from featurization import get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND
 
 
@@ -27,6 +27,7 @@ class MPN(nn.Module):
         self.deepset = args.deepset
         self.set2set = args.set2set
         self.set2set_iters = args.set2set_iters
+        self.args = args
 
         # Input
         self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), self.hidden_size, bias=self.bias)
@@ -82,14 +83,14 @@ class MPN(nn.Module):
         else:
             raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
-    def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
+    def forward(self, mol_batch: List[str]) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
-        :param mol_graph: A tuple containing a batch of molecular graphs (see mol2graph docstring for details).
+        :param mol_batch: A list of SMILES strings.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
+        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol2graph(mol_batch, self.args)
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
