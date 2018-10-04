@@ -140,7 +140,9 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
     fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
     in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
     scope = []
+    bscope = []
     total_atoms = 0
+    total_bonds = 0
 
     for smiles in mol_batch:
         if smiles in SMILES_TO_FEATURES:
@@ -178,6 +180,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                 atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
                 mol_fatoms.append(atom_features(atom, atom_position))
 
+            n_bonds = 0
             # Get bond features
             for a1 in range(n_atoms):
                 for a2 in range(a1 + 1, n_atoms):
@@ -198,7 +201,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                     mol_fbonds.append(torch.cat([mol_fatoms[a2], bond_features(bond,
                                                                                distance_path=distance_path,
                                                                                distance_3d=distance_3d)], dim=0))
-
+                    n_bonds += 2
             # Memoize
             SMILES_TO_FEATURES[smiles] = (mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms)
 
@@ -217,7 +220,9 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
             in_bonds[a2].append(bond_idx)
 
         scope.append((total_atoms, n_atoms))
+        bscope.append((total_bonds, n_bonds))
         total_atoms += n_atoms
+        total_bonds += n_bonds
 
     max_num_bonds = max(len(bonds) for bonds in in_bonds)
 
@@ -231,7 +236,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
     bgraph = [[]] + [[bond if all_bonds[bond][0] != a2 else 0 for bond in in_bonds[a1]] for a1, a2 in all_bonds[1:]]
     bgraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in bgraph])  # zero padding
 
-    return fatoms, fbonds, agraph, bgraph, scope
+    return fatoms, fbonds, agraph, bgraph, scope, bscope
 
 
 def build_MPN(num_tasks: int, args: Namespace) -> nn.Module:
@@ -304,7 +309,7 @@ class MPN(nn.Module):
             # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
             self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
             self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
-            self.layer_norm = nn.LayerNorm(self.hidden_size)
+            # self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
         self.W_o = nn.Linear(get_atom_fdim(args) + self.hidden_size, self.hidden_size)
@@ -347,7 +352,7 @@ class MPN(nn.Module):
         :param mol_graph: A tuple containing a batch of molecular graphs (see mol2graph docstring for details).
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        fatoms, fbonds, agraph, bgraph, scope = mol_graph
+        fatoms, fbonds, agraph, bgraph, scope, bscope = mol_graph
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
@@ -375,9 +380,14 @@ class MPN(nn.Module):
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
                 # master_state = self.GRU_master(nei_message.unsqueeze(1))
                 # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
-                master_state = self.act_func(self.W_master_in(nei_message.sum(dim=0))).unsqueeze(0)
-                message = self.act_func(binput + nei_message + self.W_master_out(master_state).repeat((nei_message.size(0), 1)))
-                message = self.layer_norm(message)
+                mol_vecs = [torch.zeros(self.hidden_size).cuda()]
+                for start, size in bscope:
+                    mol_vec = nei_message.narrow(0, start, size)
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs += [mol_vec for _ in range(size)]
+                master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # (num_bonds, hidden_size)
+                message = self.act_func(binput + nei_message + self.W_master_out(master_state))
+                # message = self.layer_norm(message)
             else:
                 message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
