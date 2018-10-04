@@ -17,6 +17,9 @@ from nn_utils import GraphGRU, index_select_ND
 MAX_NB = 20
 MST_MAX_WEIGHT = 100
 
+# Memoize
+SMILES_TO_MOLTREE = dict()
+
 
 class Vocab:
     def __init__(self, smiles_list: List[str]):
@@ -221,11 +224,14 @@ class JTNN(nn.Module):
         self.jtnn = JTNNEncoder(self.vocab.size(), self.hidden_size, depth=5)
         self.mpn = MPN(args)
 
-    def forward(self, mol_batch: List[str]):
-        mol_batch = [MolTree(m) for m in mol_batch]
-        tree_vec = self.jtnn(*self.tensorize(mol_batch))
-
-        smiles_batch = [mol_tree.smiles for mol_tree in mol_batch]
+    def forward(self, smiles_batch: List[str]):
+        # Get MolTrees with memoization
+        mol_batch = [SMILES_TO_MOLTREE[smiles]
+                     if smiles in SMILES_TO_MOLTREE else SMILES_TO_MOLTREE.setdefault(smiles, MolTree(smiles))
+                     for smiles in smiles_batch]
+        mol_batch_tensors = self.tensorize(mol_batch)
+        
+        tree_vec = self.jtnn(*mol_batch_tensors)
         mol_vec = self.mpn(smiles_batch)
 
         return torch.cat([tree_vec, mol_vec], dim=-1)
@@ -250,8 +256,8 @@ class JTNN(nn.Module):
                 mess_dict[(y.idx, x.idx)] = len(messages)
                 messages.append((y, x))
 
-        node_graph = [[] for i in range(len(node_batch))]
-        mess_graph = [[] for i in range(len(messages))]
+        node_graph = [[] for _ in range(len(node_batch))]
+        mess_graph = [[] for _ in range(len(messages))]
         fmess = [0] * len(messages)
 
         for x, y in messages[1:]:

@@ -2,7 +2,6 @@ from typing import List
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -170,6 +169,9 @@ class GraphGRU(nn.Module):
         self.input_size = input_size
         self.depth = depth
 
+        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
+
         self.W_z = nn.Linear(input_size + hidden_size, hidden_size)
         self.W_r = nn.Linear(input_size, hidden_size, bias=False)
         self.U_r = nn.Linear(hidden_size, hidden_size)
@@ -184,16 +186,16 @@ class GraphGRU(nn.Module):
             h_nei = index_select_ND(h, mess_graph)
             sum_h = h_nei.sum(dim=1)
             z_input = torch.cat([x, sum_h], dim=1)
-            z = F.sigmoid(self.W_z(z_input))
+            z = self.sigmoid(self.W_z(z_input))
 
             r_1 = self.W_r(x).view(-1, 1, self.hidden_size)
             r_2 = self.U_r(h_nei)
-            r = F.sigmoid(r_1 + r_2)
+            r = self.sigmoid(r_1 + r_2)
 
             gated_h = r * h_nei
             sum_gated_h = gated_h.sum(dim=1)
             h_input = torch.cat([x, sum_gated_h], dim=1)
-            pre_h = F.tanh(self.W_h(h_input))
+            pre_h = self.tanh(self.W_h(h_input))
             h = (1.0 - z) * sum_h + z * pre_h
             h = h * mask
 
