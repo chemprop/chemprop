@@ -1,6 +1,7 @@
 from argparse import ArgumentParser, Namespace
 import os
 from tempfile import TemporaryDirectory
+from typing import Union
 
 import torch
 
@@ -50,7 +51,7 @@ def get_parser():
     parser.add_argument('--truncate_outliers', action='store_true', default=False,
                         help='Truncates outliers in the training set to improve training stability'
                              '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
-    parser.add_argument('--warmup_epochs', type=int, default=2,
+    parser.add_argument('--warmup_epochs', type=Union[float, int], default=2,
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')

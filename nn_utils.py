@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import torch
 import torch.nn as nn
@@ -83,7 +83,7 @@ class NoamLR(_LRScheduler):
     """
     def __init__(self,
                  optimizer: Optimizer,
-                 warmup_epochs: int,
+                 warmup_epochs: Union[float, int],
                  total_epochs: int,
                  steps_per_epoch: int,
                  init_lr: float,
@@ -110,7 +110,7 @@ class NoamLR(_LRScheduler):
 
         self.current_step = 0
         self.lr = init_lr
-        self.warmup_steps = self.warmup_epochs * self.steps_per_epoch
+        self.warmup_steps = int(self.warmup_epochs * self.steps_per_epoch)
         self.total_steps = self.total_epochs * self.steps_per_epoch
         self.linear_increment = (self.max_lr - self.init_lr) / self.warmup_steps
         self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
