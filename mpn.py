@@ -119,6 +119,8 @@ class MPN(nn.Module):
                 # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
                 mol_vecs = [torch.zeros(self.hidden_size).cuda()]
                 for start, size in bscope:
+                    if size == 0:
+                        continue
                     mol_vec = nei_message.narrow(0, start, size)
                     mol_vec = mol_vec.sum(dim=0) / size
                     mol_vecs += [mol_vec for _ in range(size)]
