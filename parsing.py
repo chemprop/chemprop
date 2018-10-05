@@ -42,6 +42,8 @@ def get_parser():
                         help='The number of batches between each logging of the training loss')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')
+    parser.add_argument('--show_individual_scores', action='store_true', default=False,
+                        help='Show all scores for individual targets, not just average, at the end')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,

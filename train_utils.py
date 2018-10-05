@@ -174,7 +174,7 @@ def evaluate_predictions(preds: List[List[float]],
     # Average across tasks
     result = sum(results) / len(results)
 
-    return result
+    return result, results
 
 
 def evaluate(model: nn.Module,
@@ -201,7 +201,7 @@ def evaluate(model: nn.Module,
         scaler=scaler
     )
 
-    result = evaluate_predictions(
+    result, _ = evaluate_predictions(
         preds=preds,
         labels=labels,
         metric_func=metric_func
