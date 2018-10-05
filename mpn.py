@@ -183,25 +183,28 @@ class MPN(nn.Module):
         else:
             mol_vecs = []
             for start, size in ascope:
-                cur_hiddens = atom_hiddens.narrow(0, start, size)
-
-                if self.attention:
-                    att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
-                    att_w = F.softmax(att_w, dim=1)
-                    att_hiddens = torch.matmul(att_w, cur_hiddens)
-                    att_hiddens = self.act_func(self.W_b(att_hiddens))
-                    att_hiddens = self.dropout_layer(att_hiddens)
-                    mol_vec = (cur_hiddens + att_hiddens)
+                if size == 0:
+                    mol_vecs.append(torch.zeros(self.hidden_size).cuda())
                 else:
-                    mol_vec = cur_hiddens  # (num_atoms, hidden_size)
+                    cur_hiddens = atom_hiddens.narrow(0, start, size)
 
-                if self.deepset:
-                    mol_vec = self.W_s2s_a(mol_vec)
-                    mol_vec = self.act_func(mol_vec)
-                    mol_vec = self.W_s2s_b(mol_vec)
+                    if self.attention:
+                        att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
+                        att_w = F.softmax(att_w, dim=1)
+                        att_hiddens = torch.matmul(att_w, cur_hiddens)
+                        att_hiddens = self.act_func(self.W_b(att_hiddens))
+                        att_hiddens = self.dropout_layer(att_hiddens)
+                        mol_vec = (cur_hiddens + att_hiddens)
+                    else:
+                        mol_vec = cur_hiddens  # (num_atoms, hidden_size)
 
-                mol_vec = mol_vec.sum(dim=0) / size
-                mol_vecs.append(mol_vec)
+                    if self.deepset:
+                        mol_vec = self.W_s2s_a(mol_vec)
+                        mol_vec = self.act_func(mol_vec)
+                        mol_vec = self.W_s2s_b(mol_vec)
+
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs.append(mol_vec)
 
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
 

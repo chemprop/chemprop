@@ -151,7 +151,7 @@ def run_training(args: Namespace) -> float:
             args=args,
             scaler=scaler
         )
-        model_score = evaluate_predictions(
+        model_score, _ = evaluate_predictions(
             preds=model_preds,
             labels=labels,
             metric_func=metric_func
@@ -162,14 +162,14 @@ def run_training(args: Namespace) -> float:
 
     # Evaluate ensemble
     avg_preds = sum_preds / args.ensemble_size
-    ensemble_score = evaluate_predictions(
+    ensemble_score, ensemble_indiv_scores = evaluate_predictions(
         preds=avg_preds.tolist(),
         labels=labels,
         metric_func=metric_func
     )
     logger.info('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
 
-    return ensemble_score
+    return ensemble_score, ensemble_indiv_scores
 
 
 def cross_validate(args: Namespace):
@@ -179,19 +179,23 @@ def cross_validate(args: Namespace):
 
     # Run training on different random seeds for each fold
     test_scores = []
+    indiv_test_scores = []
     for fold_num in range(args.num_folds):
         logger.info('Fold {}'.format(fold_num))
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, 'fold_{}'.format(fold_num))
         os.makedirs(args.save_dir, exist_ok=True)
-        test_scores.append(run_training(args))
+        ensemble_scores, ensemble_indiv_scores = run_training(args)
+        test_scores.append(ensemble_scores)
+        indiv_test_scores.append(ensemble_indiv_scores)
 
     # Report results
     logger.info('{}-fold cross validation'.format(args.num_folds))
     for fold_num, score in enumerate(test_scores):
         logger.info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, score))
     logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(test_scores), np.std(test_scores)))
-
+    if args.show_individual_scores:
+        logger.info('Individual task scores: {}'.format(np.mean(indiv_test_scores, axis=0)))
 
 if __name__ == '__main__':
     args = parse_args()
