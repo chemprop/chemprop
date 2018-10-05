@@ -5,7 +5,7 @@ This repository contains graph convolutional networks (or message passing networ
 Requirements:
  * cuda >= 8.0 + cuDNN
  * Python 3/conda: Please follow the installation guide on [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-   * Create a conda environment with `conda create -n <name> python=3.7`
+   * Create a conda environment with `conda create -n <name> python=3.6`
    * Activate the environment with `conda activate <name>`
  * pytorch: Please follow the installation guide on [https://pytorch.org/](https://pytorch.org/)
    * Typically it's `conda install pytorch torchvision -c pytorch`
@@ -38,7 +38,6 @@ For example:
 ```
 python train.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
 ```
-By default, the script will train the network for 30 epochs and save the best model in `<dir>/model_0.pt`.
 
 Notes:
 * Classification is assumed to be binary.
@@ -52,16 +51,17 @@ k-fold cross-validation can be run by specifying the `--num_folds` argument (whi
 ```
 python train.py --data_path data/tox21.csv --dataset_type classification --num_folds 5
 ```
-Note: Currently if `--save_dir` is specified, only the models from the last fold will be saved in the directory since the model checkpoints overwrite each other.
-
 
 ## Ensembling
 
-To train an ensemble, simply specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
+To train an ensemble, specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
 ```
-python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 3
+python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 5
 ```
-If `--save_dir` is specified, all the models in the ensemble will be saved as `model_0.pt`, `model_1.pt`, ..., `model_<ensemble_size - 1>.pt`.
+
+## TensorBoard
+
+During training, TensorBoard logs are automatically saved to the same directory as the model checkpoints. To view TensorBoard logs, run `tensorboard --logdir=<dir>` where `<dir>` is the path to the checkpoint directory. Then navigate to [http://localhost:6006](http://localhost:6006).
 
 ## Deepchem test
 We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
@@ -72,6 +72,8 @@ bash run.sh 1
 where 1 is the random seed for randomly splitting the dataset into training, validation and testing (not applied to datasets with scaffold splitting).
 
 ### Results
+
+**Note:** The results below are out of date. We will try to update these results soon.
 
 We compared our model against the graph convolution in deepchem. Our results are averaged over 3 runs with different random seeds, namely different splits accross datasets.
 
