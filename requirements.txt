@@ -1,0 +1,7 @@
+hpbandster
+matplotlib
+numpy
+scikit-learn
+scipy
+tensorboardX
+tqdm

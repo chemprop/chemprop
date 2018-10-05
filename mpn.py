@@ -1,187 +1,211 @@
+from argparse import Namespace
+from typing import List, Tuple
+
 import torch
-import torch.nn as nn
-import rdkit.Chem as Chem
 import torch.nn.functional as F
+import torch.nn as nn
 
-from nnutils import *
+from featurization import get_atom_fdim, get_bond_fdim, mol2graph
+from nn_utils import create_mask, index_select_ND
 
-ELEM_LIST = range(100)
-HYBRID_LIST = [
-    Chem.rdchem.HybridizationType.SP, Chem.rdchem.HybridizationType.SP2,
-    Chem.rdchem.HybridizationType.SP3, Chem.rdchem.HybridizationType.SP3D,
-    Chem.rdchem.HybridizationType.SP3D2
-]
-ATOM_FDIM = 100 + len(HYBRID_LIST) + 6 + 5 + 4 + 7 + 5 + 3 + 1
-BOND_FDIM = 6 + 6
-MAX_NB = 12
-
-def onek_encoding_unk(x, allowable_set):
-    if x not in allowable_set:
-        x = allowable_set[-1]
-    return map(lambda s: x == s, allowable_set)
-
-def atom_features(atom):
-    return torch.Tensor(onek_encoding_unk(atom.GetAtomicNum() - 1, ELEM_LIST) 
-            + onek_encoding_unk(atom.GetDegree(), [0,1,2,3,4,5]) 
-            + onek_encoding_unk(atom.GetFormalCharge(), [-1,-2,1,2,0])
-            + onek_encoding_unk(int(atom.GetChiralTag()), [0,1,2,3])
-            + onek_encoding_unk(int(atom.GetImplicitValence()), [0,1,2,3,4,5,6])
-            + onek_encoding_unk(int(atom.GetTotalNumHs()), [0,1,2,3,4])
-            + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
-            + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0,1,2])
-            + [atom.GetIsAromatic()])
-
-def bond_features(bond):
-    bt = bond.GetBondType()
-    stereo = int(bond.GetStereo())
-    fbond = [bt == Chem.rdchem.BondType.SINGLE, bt == Chem.rdchem.BondType.DOUBLE, bt == Chem.rdchem.BondType.TRIPLE, bt == Chem.rdchem.BondType.AROMATIC, bond.GetIsConjugated(), bond.IsInRing()]
-    fstereo = onek_encoding_unk(stereo, [0,1,2,3,4,5])
-    return torch.Tensor(fbond + fstereo)
-
-def mol2graph(mol_batch, addHs=False):
-    padding = torch.zeros(ATOM_FDIM + BOND_FDIM)
-    fatoms,fbonds = [],[padding] #Ensure bond is 1-indexed
-    in_bonds,all_bonds = [],[(-1,-1)] #Ensure bond is 1-indexed
-    scope = []
-    total_atoms = 0
-
-    for smiles in mol_batch:
-        mol = Chem.MolFromSmiles(smiles)
-        if addHs:
-            mol = Chem.AddHs(mol)
-        n_atoms = mol.GetNumAtoms()
-        for atom in mol.GetAtoms():
-            fatoms.append( atom_features(atom) )
-            in_bonds.append([])
-
-        for bond in mol.GetBonds():
-            a1 = bond.GetBeginAtom()
-            a2 = bond.GetEndAtom()
-            x = a1.GetIdx() + total_atoms
-            y = a2.GetIdx() + total_atoms
-
-            b = len(all_bonds) 
-            all_bonds.append((x,y))
-            fbonds.append( torch.cat([fatoms[x], bond_features(bond)], 0) )
-            in_bonds[y].append(b)
-
-            b = len(all_bonds)
-            all_bonds.append((y,x))
-            fbonds.append( torch.cat([fatoms[y], bond_features(bond)], 0) )
-            in_bonds[x].append(b)
-        
-        scope.append((total_atoms,n_atoms))
-        total_atoms += n_atoms
-
-    total_bonds = len(all_bonds)
-    fatoms = torch.stack(fatoms, 0)
-    fbonds = torch.stack(fbonds, 0)
-    agraph = torch.zeros(total_atoms,MAX_NB).long()
-    bgraph = torch.zeros(total_bonds,MAX_NB).long()
-
-    for a in xrange(total_atoms):
-        for i,b in enumerate(in_bonds[a]):
-            agraph[a,i] = b
-
-    for b1 in xrange(1, total_bonds):
-        x,y = all_bonds[b1]
-        for i,b2 in enumerate(in_bonds[x]):
-            if all_bonds[b2][0] != y:
-                bgraph[b1,i] = b2
-
-    return fatoms, fbonds, agraph, bgraph, scope
 
 class MPN(nn.Module):
+    """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, hidden_size, depth, dropout=0):
+    def __init__(self, args: Namespace):
+        """Initializes the MPN."""
         super(MPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
+        self.hidden_size = args.hidden_size
+        self.bias = args.bias
+        self.depth = args.depth
+        self.dropout = args.dropout
+        self.attention = args.attention
+        self.message_attention = args.message_attention
+        self.message_attention_heads = args.message_attention_heads
+        self.master_node = args.master_node
+        self.master_dim = args.master_dim
+        self.deepset = args.deepset
+        self.set2set = args.set2set
+        self.set2set_iters = args.set2set_iters
+        self.args = args
 
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+        # Input
+        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), self.hidden_size, bias=self.bias)
 
-    def forward(self, mol_graph):
-        fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
+        # Message passing
+        if self.message_attention:
+            self.num_heads = self.message_attention_heads
+            self.W_h = nn.Linear(self.num_heads * self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+                                       for _ in range(self.num_heads)])
+            # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
+            # self.W_ma2 = nn.Linear(hidden_size, 1, bias=self.bias)
+        else:
+            self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
+        if self.master_node:
+            # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
+            self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
+            self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
+            # self.layer_norm = nn.LayerNorm(self.hidden_size)
+
+        # Readout
+        self.W_o = nn.Linear(get_atom_fdim(args) + self.hidden_size, self.hidden_size)
+
+        if self.deepset:
+            self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+
+        if self.set2set:
+            self.set2set_rnn = nn.LSTM(
+                input_size=self.hidden_size,
+                hidden_size=self.hidden_size,
+                dropout=self.dropout,
+                bias=False  # no bias so that an input of all zeros stays all zero
+            )
+
+        if self.attention:
+            self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
+
+        # Dropout
+        self.dropout_layer = nn.Dropout(p=self.dropout)
+
+        # Activation
+        if args.activation == 'ReLU':
+            self.act_func = nn.ReLU()
+        elif args.activation == 'LeakyReLU':
+            self.act_func = nn.LeakyReLU(0.1)
+        elif args.activation == 'PReLU':
+            self.act_func = nn.PReLU()
+        elif args.activation == 'tanh':
+            self.act_func = nn.Tanh()
+        else:
+            raise ValueError('Activation "{}" not supported.'.format(args.activation))
+
+    def forward(self, mol_batch: List[str]) -> torch.Tensor:
+        """
+        Encodes a batch of molecular graphs.
+
+        :param mol_batch: A list of SMILES strings.
+        :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
+        """
+        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol2graph(mol_batch, self.args)
+        if next(self.parameters()).is_cuda:
+            fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
+
+        # Input
         binput = self.W_i(fbonds)
-        message = F.relu(binput)
+        message = self.act_func(binput)
 
-        for i in xrange(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
+        # Message passing
+        for i in range(self.depth - 1):
+            nei_message = index_select_ND(message, bgraph)
+            if self.message_attention:
+                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
+                attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
+                                    for i in range(self.num_heads)]  # num_bonds x maxnb
+                attention_weights = [F.softmax(attention_scores[i], dim=1)
+                                     for i in range(self.num_heads)]  # num_bonds x maxnb
+                message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
+                                      for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
+                message_components = [component.sum(dim=1) for component in message_components]  # num_bonds x hidden
+                nei_message = torch.cat(message_components, dim=1)  # num_bonds x 3*hidden
+            else:
+                nei_message = nei_message.sum(dim=1)  # num_bonds x hidden
             nei_message = self.W_h(nei_message)
-            message = F.relu(binput + nei_message)
-            if self.dropout > 0:
-                message = F.dropout(message, self.dropout, self.training)
+            if self.master_node:
+                # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
+                # master_state = self.GRU_master(nei_message.unsqueeze(1))
+                # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
+                mol_vecs = [torch.zeros(self.hidden_size).cuda()]
+                for start, size in bscope:
+                    if size == 0:
+                        continue
+                    mol_vec = nei_message.narrow(0, start, size)
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs += [mol_vec for _ in range(size)]
+                master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # (num_bonds, hidden_size)
+                message = self.act_func(binput + nei_message + self.W_master_out(master_state))
+                # message = self.layer_norm(message)
+            else:
+                message = self.act_func(binput + nei_message)
+            message = self.dropout_layer(message)  # num_bonds x hidden
 
-        nei_message = index_select_ND(message, 0, agraph)
+        # Get atom hidden states from message hidden states
+        nei_message = index_select_ND(message, agraph)
         nei_message = nei_message.sum(dim=1)
         ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = F.relu(self.W_o(ainput))
-        if self.dropout > 0:
-            atom_hiddens = F.dropout(atom_hiddens, self.dropout, self.training)
-        
-        mol_vecs = []
-        for st,le in scope:
-            mol_vec = atom_hiddens.narrow(0, st, le).sum(dim=0) / le
-            mol_vecs.append(mol_vec)
+        atom_hiddens = self.act_func(self.W_o(ainput))
+        atom_hiddens = self.dropout_layer(atom_hiddens)
 
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
+        # Readout
+        if self.set2set:
+            # Set up sizes
+            batch_size = len(ascope)
+            lengths = [length for _, length in ascope]
+            max_num_atoms = max(lengths)
 
-class AttMPN(nn.Module):
+            # Set up memory from atom features
+            memory = torch.zeros(batch_size, max_num_atoms, self.hidden_size)  # (batch_size, max_num_atoms, hidden_size)
+            for i, (start, size) in enumerate(ascope):
+                memory[i, :size] = atom_hiddens.narrow(0, start, size)
+            memory_transposed = memory.transpose(2, 1)  # (batch_size, hidden_size, max_num_atoms)
 
-    def __init__(self, hidden_size, depth, dropout=0):
-        super(AttMPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
+            # Create mask (1s for atoms, 0s for not atoms)
+            mask = create_mask(lengths, cuda=next(self.parameters()).is_cuda)  # (max_num_atoms, batch_size)
+            mask = mask.t().unsqueeze(2)  # (batch_size, max_num_atoms, 1)
 
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
-        self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_b = nn.Linear(hidden_size, hidden_size)
+            # Set up query
+            query = torch.ones(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
 
-    def forward(self, mol_graph):
-        fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
+            # Move to cuda
+            if next(self.parameters()).is_cuda:
+                memory, memory_transposed, query = memory.cuda(), memory_transposed.cuda(), query.cuda()
 
-        binput = self.W_i(fbonds)
-        message = nn.ReLU()(binput)
+            # Run RNN
+            for _ in range(self.set2set_iters):
+                # Compute attention weights over atoms in each molecule
+                query = query.squeeze(0).unsqueeze(2)  # (batch_size,  hidden_size, 1)
+                dot = torch.bmm(memory, query)  # (batch_size, max_num_atoms, 1)
+                dot = dot * mask + (1 - mask) * (-1e+20)  # (batch_size, max_num_atoms, 1)
+                attention = F.softmax(dot, dim=1)  # (batch_size, max_num_atoms, 1)
 
-        for i in xrange(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
-            nei_message = self.W_h(nei_message)
-            message = nn.ReLU()(binput + nei_message)
-            
-        nei_message = index_select_ND(message, 0, agraph)
-        nei_message = nei_message.sum(dim=1)
-        ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = nn.ReLU()(self.W_o(ainput))
+                # Construct next input as attention over memory
+                attended = torch.bmm(memory_transposed, attention)  # (batch_size, hidden_size, 1)
+                attended = attended.view(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
 
-        mol_vecs = []
-        for st,le in scope:
-            cur_hiddens = atom_hiddens.narrow(0, st, le)
-            att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
-            att_w = F.softmax(att_w, dim=1)
-            att_hiddens = torch.matmul(att_w, cur_hiddens)
-            att_hiddens = F.relu(self.W_b(att_hiddens))
-            att_hiddens = F.dropout(att_hiddens, self.dropout, training=self.training)
-            mol_vec = (cur_hiddens + att_hiddens).sum(dim=0) / le
-            mol_vecs.append(mol_vec)
-        
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
+                # Run RNN for one step
+                query, _ = self.set2set_rnn(attended)  # (1, batch_size, hidden_size)
 
+            # Final RNN output is the molecule encodings
+            mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
+        else:
+            mol_vecs = []
+            for start, size in ascope:
+                if size == 0:
+                    mol_vecs.append(torch.zeros(self.hidden_size).cuda())
+                else:
+                    cur_hiddens = atom_hiddens.narrow(0, start, size)
+
+                    if self.attention:
+                        att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
+                        att_w = F.softmax(att_w, dim=1)
+                        att_hiddens = torch.matmul(att_w, cur_hiddens)
+                        att_hiddens = self.act_func(self.W_b(att_hiddens))
+                        att_hiddens = self.dropout_layer(att_hiddens)
+                        mol_vec = (cur_hiddens + att_hiddens)
+                    else:
+                        mol_vec = cur_hiddens  # (num_atoms, hidden_size)
+
+                    if self.deepset:
+                        mol_vec = self.W_s2s_a(mol_vec)
+                        mol_vec = self.act_func(mol_vec)
+                        mol_vec = self.W_s2s_b(mol_vec)
+
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs.append(mol_vec)
+
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+
+        return mol_vecs  # (num_molecules, hidden_size)
