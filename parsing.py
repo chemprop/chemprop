@@ -6,6 +6,10 @@ from typing import Union
 import torch
 
 
+def float_or_int(value: Union[float, int]) -> Union[float, int]:
+    return float(value) if '.' in value else int(value)
+
+
 def get_parser():
     """Builds an argument parser"""
     parser = ArgumentParser()
@@ -53,7 +57,7 @@ def get_parser():
     parser.add_argument('--truncate_outliers', action='store_true', default=False,
                         help='Truncates outliers in the training set to improve training stability'
                              '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
-    parser.add_argument('--warmup_epochs', type=Union[float, int], default=2,
+    parser.add_argument('--warmup_epochs', type=float_or_int, default=2,
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')
