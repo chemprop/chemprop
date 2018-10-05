@@ -10,8 +10,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 import torch
 import torch.nn as nn
 
-from featurization import mol2graph
-from mpn import MPN
+from mpn import MPN, MPNEncoder
 from nn_utils import GraphGRU, index_select_ND
 
 MAX_NB = 20
@@ -221,7 +220,8 @@ class JTNN(nn.Module):
         self.depth = args.depth
         self.args = args
 
-        self.jtnn = JTNNEncoder(self.vocab.size(), self.hidden_size, depth=5)
+        self.jtnn = MPNEncoder(args, atom_fdim=self.hidden_size, bond_fdim=self.hidden_size)
+        self.embedding = nn.Embedding(self.vocab.size(), self.hidden_size)
         self.mpn = MPN(args)
 
     def forward(self, smiles_batch: List[str]):
@@ -229,9 +229,14 @@ class JTNN(nn.Module):
         mol_batch = [SMILES_TO_MOLTREE[smiles]
                      if smiles in SMILES_TO_MOLTREE else SMILES_TO_MOLTREE.setdefault(smiles, MolTree(smiles))
                      for smiles in smiles_batch]
-        mol_batch_tensors = self.tensorize(mol_batch)
-        
-        tree_vec = self.jtnn(*mol_batch_tensors)
+        fnode, fmess, node_graph, mess_graph, scope = self.tensorize(mol_batch)
+
+        if next(self.parameters()).is_cuda:
+            fnode, fmess, node_graph, mess_graph = fnode.cuda(), fmess.cuda(), node_graph.cuda(), mess_graph.cuda()
+
+        fnode = self.embedding(fnode)
+        fmess = index_select_ND(fnode, fmess)
+        tree_vec = self.jtnn((fnode, fmess, node_graph, mess_graph, scope, []))
         mol_vec = self.mpn(smiles_batch)
 
         return torch.cat([tree_vec, mol_vec], dim=-1)

@@ -9,12 +9,14 @@ from featurization import get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND
 
 
-class MPN(nn.Module):
+class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: Namespace):
+    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int):
         """Initializes the MPN."""
-        super(MPN, self).__init__()
+        super(MPNEncoder, self).__init__()
+        self.atom_fdim = atom_fdim
+        self.bond_fdim = bond_fdim
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
@@ -30,7 +32,7 @@ class MPN(nn.Module):
         self.args = args
 
         # Input
-        self.W_i = nn.Linear(get_atom_fdim(args) + get_bond_fdim(args), self.hidden_size, bias=self.bias)
+        self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
 
         # Message passing
         if self.message_attention:
@@ -50,7 +52,7 @@ class MPN(nn.Module):
             # self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
-        self.W_o = nn.Linear(get_atom_fdim(args) + self.hidden_size, self.hidden_size)
+        self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
         if self.deepset:
             self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
@@ -83,14 +85,14 @@ class MPN(nn.Module):
         else:
             raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
-    def forward(self, mol_batch: List[str]) -> torch.Tensor:
+    def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
-        :param mol_batch: A list of SMILES strings.
+        :param mol_graph: See docstring for featurization.mol2graph
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol2graph(mol_batch, self.args)
+        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
@@ -209,3 +211,21 @@ class MPN(nn.Module):
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
 
         return mol_vecs  # (num_molecules, hidden_size)
+
+
+class MPN(MPNEncoder):
+    """A message passing neural network for encoding a molecule."""
+
+    def __init__(self, args: Namespace):
+        atom_fdim = get_atom_fdim(args)
+        bond_fdim = atom_fdim + get_bond_fdim(args)
+        super(MPN, self).__init__(args, atom_fdim, bond_fdim)
+
+    def forward(self, mol_batch: List[str]) -> torch.Tensor:
+        """
+        Encodes a batch of molecular SMILES strings.
+
+        :param mol_batch: A list of SMILES strings.
+        :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
+        """
+        return super(MPN, self).forward(mol2graph(mol_batch, self.args))
