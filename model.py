@@ -26,7 +26,7 @@ def build_model(num_tasks: int, args: Namespace) -> nn.Module:
 
     modules = [
         encoder,
-        nn.Linear(args.hidden_size, args.hidden_size),
+        nn.Linear(args.hidden_size * (1 + args.jtnn), args.hidden_size),
         nn.ReLU(),
         nn.Linear(args.hidden_size, output_size)
     ]

@@ -1,4 +1,5 @@
 from argparse import Namespace
+from collections import defaultdict
 from copy import deepcopy
 from typing import List, Tuple
 
@@ -15,6 +16,9 @@ from nn_utils import GraphGRU, index_select_ND
 
 MAX_NB = 20
 MST_MAX_WEIGHT = 100
+
+# Memoize
+SMILES_TO_MOLTREE = dict()
 
 
 class Vocab:
@@ -166,7 +170,7 @@ def tree_decomp(mol: Chem.rdchem.Mol) -> Tuple[List[List[int]], List[Tuple[int, 
             nei_list[atom].append(i)
 
     # Build edges and add singleton cliques
-    edges = dict()
+    edges = defaultdict(int)
     for atom in range(n_atoms):
         if len(nei_list[atom]) <= 1:
             continue
@@ -215,16 +219,21 @@ class JTNN(nn.Module):
 
         self.hidden_size = args.hidden_size
         self.depth = args.depth
+        self.args = args
 
         self.jtnn = JTNNEncoder(self.vocab.size(), self.hidden_size, depth=5)
         self.mpn = MPN(args)
 
-    def forward(self, mol_batch: List[str]):
-        mol_batch = [MolTree(m) for m in mol_batch]
-        tree_vec = self.jtnn(*self.tensorize(mol_batch))
+    def forward(self, smiles_batch: List[str]):
+        # Get MolTrees with memoization
+        mol_batch = [SMILES_TO_MOLTREE[smiles]
+                     if smiles in SMILES_TO_MOLTREE else SMILES_TO_MOLTREE.setdefault(smiles, MolTree(smiles))
+                     for smiles in smiles_batch]
+        mol_batch_tensors = self.tensorize(mol_batch)
+        
+        tree_vec = self.jtnn(*mol_batch_tensors)
+        mol_vec = self.mpn(smiles_batch)
 
-        smiles_batch = [mol_tree.smiles for mol_tree in mol_batch]
-        mol_vec = self.mpn(mol2graph(smiles_batch))
         return torch.cat([tree_vec, mol_vec], dim=-1)
 
     def tensorize(self, tree_batch: List[MolTree]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]]]:
@@ -247,8 +256,8 @@ class JTNN(nn.Module):
                 mess_dict[(y.idx, x.idx)] = len(messages)
                 messages.append((y, x))
 
-        node_graph = [[] for i in range(len(node_batch))]
-        mess_graph = [[] for i in range(len(messages))]
+        node_graph = [[] for _ in range(len(node_batch))]
+        mess_graph = [[] for _ in range(len(messages))]
         fmess = [0] * len(messages)
 
         for x, y in messages[1:]:
