@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # Create directory for save_path
     save_dir = os.path.dirname(args.save_path)
     if save_dir != '':
-        os.makedirs(save_dir)
+        os.makedirs(save_dir, exist_ok=True)
 
     modify_args(args)
 
