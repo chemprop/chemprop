@@ -93,6 +93,8 @@ def get_parser():
                         help='Add a master node to exchange information more easily')
     parser.add_argument('--master_dim', type=int, default=600,
                         help='Number of dimensions for master node state')
+    parser.add_argument('--use_master_as_output', action='store_true', default=False,
+                        help='Use master node state as output')
     parser.add_argument('--addHs', action='store_true', default=False,
                         help='Explicitly adds hydrogens to the molecular graph')
     parser.add_argument('--three_d', action='store_true', default=False,

@@ -26,6 +26,7 @@ class MPNEncoder(nn.Module):
         self.message_attention_heads = args.message_attention_heads
         self.master_node = args.master_node
         self.master_dim = args.master_dim
+        self.use_master_as_output = args.use_master_as_output
         self.deepset = args.deepset
         self.set2set = args.set2set
         self.set2set_iters = args.set2set_iters
@@ -52,7 +53,8 @@ class MPNEncoder(nn.Module):
             # self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
-        self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+        if not (self.master_node and self.use_master_as_output):
+            self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
         if self.deepset:
             self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
@@ -133,6 +135,16 @@ class MPNEncoder(nn.Module):
             else:
                 message = self.act_func(binput + nei_message)
             message = self.dropout_layer(message)  # num_bonds x hidden
+        
+        if self.master_node and self.use_master_as_output:
+            assert self.hidden_size == self.master_dim
+            mol_vecs = []
+            for start, size in bscope:
+                if size == 0:
+                    mol_vecs.append(torch.zeros(self.hidden_size).cuda())
+                else:
+                    mol_vecs.append(master_state[start])
+            return torch.stack(mol_vecs, dim=0)
 
         # Get atom hidden states from message hidden states
         nei_message = index_select_ND(message, agraph)

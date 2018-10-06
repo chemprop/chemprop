@@ -138,7 +138,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
     ascope = []
     bscope = []
     total_atoms = 0
-    total_bonds = 0
+    total_bonds = 1
 
     for smiles in mol_batch:
         if smiles in SMILES_TO_FEATURES:
