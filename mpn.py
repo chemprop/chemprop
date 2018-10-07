@@ -111,6 +111,7 @@ class MPNEncoder(nn.Module):
         :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
+        mol_graph, semiF_features = mol_graph
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
         if next(self.parameters()).is_cuda:
@@ -282,9 +283,13 @@ class MPNEncoder(nn.Module):
                     mol_vec = mol_vec.sum(dim=0) / size
                     mol_vecs.append(mol_vec)
 
-            mol_vecs = torch.stack(mol_vecs, dim=0)  # num_molecules x hidden
-
-        return mol_vecs  # num_molecules x hidden
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+        
+        semiF_features = np.stack(semiF_features).todense()
+        semiF_features = torch.from_numpy(semiF_features).cuda()
+        print(semiF_features.size())
+        import pdb; pdb.set_trace()
+        return torch.cat(mol_vecs, semiF_features, dim=1)  # (num_molecules, hidden_size)
 
 
 class MPN(nn.Module):

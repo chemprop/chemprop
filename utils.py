@@ -3,8 +3,12 @@ import math
 import os
 import random
 from copy import deepcopy
+<<<<<<< HEAD
 from typing import Callable, List, Optional, Tuple, Union
 from argparse import Namespace
+=======
+from typing import Callable, List, Tuple
+>>>>>>> ready for initial testing
 import pickle
 
 import numpy as np
@@ -145,6 +149,10 @@ def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) 
 
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
+def get_semiF(path):
+    with open(path) as f:
+        data = pickle.load(f)
+    return data
 
 def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     """
@@ -173,6 +181,7 @@ def get_desired_labels(args: Namespace, task_names: List[str]) -> List[str]:
 
 
 def get_data(path: str,
+             semiF_path: str,
              dataset_type: str = None,
              num_bins: int = 20,
              use_compound_names: bool = False,
@@ -209,6 +218,10 @@ def get_data(path: str,
                 smiles = line[0]
                 values = [float(x) if x != '' else None for x in line[1:]]
             data.append((smiles, values))
+    
+    semiF_data = get_semiF(semiF_path)
+    assert len(data) == len(semiF_data)
+    data = [((data[i][0], semiF_data[i]), data[i][1]) for i in range(len(data))]
 
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
@@ -216,12 +229,26 @@ def get_data(path: str,
     if use_compound_names and get_header:
         return header, compound_names, data
 
+<<<<<<< HEAD
     if use_compound_names:
         return compound_names, data
 
     if get_header:
         return header, data
 
+=======
+def get_data(path: str, semiF_path, dataset_type: str=None, num_bins: str=20) -> List[Tuple[str, List[float]]]:
+    """
+    Gets smiles string and target values from a CSV file.
+
+    :param path: Path to a CSV file.
+    :return: A list of tuples where each tuple contains a smiles string and
+    a list of target values (which are None if the target value is not specified).
+    """
+    data = get_data_with_header(path, semiF_path)[1]
+    if dataset_type == 'regression_with_binning':
+        data = convert_to_classes(data, num_bins)
+>>>>>>> ready for initial testing
     return data
 
 
