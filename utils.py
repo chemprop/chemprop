@@ -84,7 +84,7 @@ def get_data(path: str, dataset_type: str=None, num_bins: str=20, use_compound_n
     :return: A list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
     """
-    data = get_data_with_header(path, compound_names)[1]
+    data = get_data_with_header(path, use_compound_names)[1]
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
     return data
