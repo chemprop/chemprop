@@ -18,7 +18,7 @@ def make_predictions(args):
 
     print('Loading data')
     header, train_data = get_data_with_header(args.train_path)
-    test_data = get_data(args.test_path)
+    test_data, compound_names = get_data(args.test_path, use_compound_names=True)
 
     num_tasks = len(train_data[0][1])
     args.num_tasks = num_tasks
@@ -69,9 +69,11 @@ def make_predictions(args):
 
     # Save predictions
     print('Saving predictions to {}'.format(args.save_path))
+    assert len(smiles) == len(avg_preds)
     with open(args.save_path, 'w') as f:
-        f.write(','.join(header[1:]) + '\n')
-        for pred in avg_preds:
+        f.write(','.join(header[2:]) + '\n')
+        for cn, pred in zip(compound_names, avg_preds):
+            f.write(cn + ',')
             f.write(','.join(str(p) for p in pred) + '\n')
 
 

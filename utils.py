@@ -42,7 +42,7 @@ def convert_to_classes(data, num_bins=20):
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
 
-def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
+def get_data_with_header(path: str, use_compound_names: bool=False) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
     """
     Gets smiles string and target values from a CSV file along with the header.
 
@@ -52,19 +52,31 @@ def get_data_with_header(path: str) -> Tuple[List[str], List[Tuple[str, List[flo
     a list of target values (which are None if the target value is not specified).
     """
     data = []
+    if use_compound_names:
+        compound_names = []
+
     with open(path) as f:
         header = f.readline().strip().split(',')
 
         for line in f:
             line = line.strip().split(',')
-            smiles = line[0]
-            values = [float(x) if x != '' else None for x in line[1:]]
+            if use_compound_names:
+                names = line[0]
+                smiles = line[1]
+                values = [float(x) if x != '' else None for x in line[2:]]
+                compound_names.append(names)
+            else:
+                smiles = line[0]
+                values = [float(x) if x != '' else None for x in line[1:]]
             data.append((smiles, values))
 
-    return header, data
+    if use_compound_names:
+        return header, (data, compound_names)
+    else:
+        return header, data
 
 
-def get_data(path: str, dataset_type: str=None, num_bins: str=20) -> List[Tuple[str, List[float]]]:
+def get_data(path: str, dataset_type: str=None, num_bins: str=20, use_compound_names: bool=False) -> List[Tuple[str, List[float]]]:
     """
     Gets smiles string and target values from a CSV file.
 
@@ -72,7 +84,7 @@ def get_data(path: str, dataset_type: str=None, num_bins: str=20) -> List[Tuple[
     :return: A list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
     """
-    data = get_data_with_header(path)[1]
+    data = get_data_with_header(path, compound_names)[1]
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
     return data
