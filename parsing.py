@@ -29,6 +29,8 @@ def get_parser():
                              'This determines the loss function used during training.')
     parser.add_argument('--num_bins', type=int, default=20,
                         help='Number of bins for regression with binning')
+    parser.add_argument('--separate_test_set', type=str,
+                        help='Path to separate test set, optional')
     parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'

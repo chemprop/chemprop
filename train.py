@@ -35,7 +35,11 @@ def run_training(args: Namespace) -> float:
         _, val_data, test_data = split_data(regression_data, seed=args.seed)
     else:
         logger.debug('Splitting data with seed {}'.format(args.seed))
-        train_data, val_data, test_data = split_data(data, seed=args.seed)
+        if args.separate_test_set:
+            train_data, val_data = split_data(data, sizes=(0.8, 0.2, 0), seed=args.seed)
+            test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins) 
+        else:
+            train_data, val_data, test_data = split_data(data, seed=args.seed)
     num_tasks = len(data[0][1])
     args.num_tasks = num_tasks
 
