@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import os
 
 def resplit(args):
     with open(args.train_path, 'r') as f:
@@ -26,8 +27,7 @@ def resplit(args):
         
 
 if __name__ == '__main__':
-    parser = get_parser()
-    # TODO: Save the scaler so that training data doesn't need to be reloaded
+    parser = ArgumentParser()
     parser.add_argument('--train_path', type=str, required=True,
                         help='Path to CSV file containing training data')
     parser.add_argument('--val_path', type=str, required=True,
