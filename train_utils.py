@@ -11,6 +11,7 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
+import pickle
 
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
@@ -24,7 +25,8 @@ def train(model: nn.Module,
           args: Namespace,
           n_iter: int = 0,
           logger: logging.Logger = None,
-          writer: SummaryWriter = None) -> int:
+          writer: SummaryWriter = None,
+          chunk_names=False) -> int:
     """
     Trains a model for an epoch.
 
@@ -41,6 +43,24 @@ def train(model: nn.Module,
     """
     model.train()
     random.shuffle(data)
+    if chunk_names:
+        print('chunked data')
+
+        for path in data:
+            with open(path, 'rb') as f:
+                chunk = pickle.load(f)
+            random.shuffle(chunk)
+            n_iter = train( model, 
+                            chunk, 
+                            loss_func, 
+                            optimizer, 
+                            scheduler, 
+                            args, 
+                            n_iter,
+                            logger,
+                            writer,
+                            False)
+        return n_iter
 
     loss_sum, iter_count = 0, 0
     for i in trange(0, len(data), args.batch_size):

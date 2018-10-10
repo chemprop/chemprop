@@ -1,6 +1,7 @@
 from argparse import Namespace
 import logging
 import os
+import math
 from pprint import pformat
 
 import numpy as np
@@ -8,6 +9,7 @@ from tensorboardX import SummaryWriter
 import torch
 from torch.optim import Adam
 from tqdm import trange
+import pickle
 
 from model import build_model
 from nn_utils import NoamLR, param_count
@@ -64,6 +66,18 @@ def run_training(args: Namespace) -> float:
     else:
         scaler = None
 
+    train_data_length = len(train_data)
+    if args.num_chunks > 1:
+        chunk_len = math.ceil(len(train_data) / args.num_chunks)
+        os.makedirs(args.chunk_temp_dir, exist_ok=True)
+        train_paths = []
+        for i in range(args.num_chunks):
+            chunk_path = os.path.join(args.chunk_temp_dir, str(i) + '.txt')
+            with open(chunk_path, 'wb') as f:
+                pickle.dump(train_data[i*chunk_len:(i+1)*chunk_len], f)
+            train_paths.append(chunk_path)
+        train_data = train_paths
+
     # Get loss and metric functions
     loss_func = get_loss_func(args.dataset_type)
     metric_func = get_metric_func(args.metric)
@@ -98,7 +112,7 @@ def run_training(args: Namespace) -> float:
             optimizer,
             warmup_epochs=args.warmup_epochs,
             total_epochs=args.epochs,
-            steps_per_epoch=len(train_data) // args.batch_size,
+            steps_per_epoch=train_data_length // args.batch_size,
             init_lr=args.init_lr,
             max_lr=args.max_lr,
             final_lr=args.final_lr
@@ -119,7 +133,8 @@ def run_training(args: Namespace) -> float:
                 args=args,
                 n_iter=n_iter,
                 logger=logger,
-                writer=writer
+                writer=writer,
+                chunk_names=(args.num_chunks>1)
             )
             val_score = evaluate(
                 model=model,
@@ -200,6 +215,8 @@ def cross_validate(args: Namespace):
     logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(test_scores), np.std(test_scores)))
     if args.show_individual_scores:
         logger.info('Individual task scores: {}'.format(np.mean(indiv_test_scores, axis=0)))
+    if args.num_chunks > 1:
+        os.removedirs(args.chunk_temp_dir)
 
 if __name__ == '__main__':
     args = parse_args()

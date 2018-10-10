@@ -29,6 +29,10 @@ def get_parser():
                              'This determines the loss function used during training.')
     parser.add_argument('--num_bins', type=int, default=20,
                         help='Number of bins for regression with binning')
+    parser.add_argument('--num_chunks', type=int, default=1,
+                        help='Specify > 1 if your dataset is really big')
+    parser.add_argument('--chunk_temp_dir', type=str, default='temp_chunks',
+                        help='temp dir to store chunks in')                
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
     parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2'],
