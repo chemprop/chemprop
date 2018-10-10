@@ -61,10 +61,10 @@ class MPNWorker(Worker):
         cs = CS.ConfigurationSpace()
 
         cs.add_hyperparameters([
-            CSH.UniformIntegerHyperparameter('hidden_size', lower=150, upper=1200),
-            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=6),
+            CSH.UniformIntegerHyperparameter('hidden_size', lower=150, upper=1800),
+            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=9),
             CSH.CategoricalHyperparameter('master_node', choices=[True, False]),
-            CSH.UniformIntegerHyperparameter('master_dim', lower=100, upper=1200)
+            CSH.UniformIntegerHyperparameter('master_dim', lower=150, upper=1800)
         ])
 
         return cs
@@ -137,13 +137,13 @@ if __name__ == '__main__':
                         help='Path to directory where results will be saved')
     parser.add_argument('--port', type=int, default=9090,
                         help='Port for HpBandSter to use')
-    parser.add_argument('--min_budget', type=int, default=3,
+    parser.add_argument('--min_budget', type=int, default=5,
                         help='Minimum budget (number of iterations during training) to use')
-    parser.add_argument('--max_budget', type=int, default=30,
+    parser.add_argument('--max_budget', type=int, default=45,
                         help='Maximum budget (number of iterations during training) to use')
     parser.add_argument('--eta', type=int, default=2,
                         help='Factor by which to cut number of trials (1/eta trials remain)')
-    parser.add_argument('--n_iterations', type=int, default=4,
+    parser.add_argument('--n_iterations', type=int, default=16,
                         help='Number of iterations of BOHB algorithm')
     args = parser.parse_args()
 
