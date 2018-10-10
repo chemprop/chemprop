@@ -28,7 +28,7 @@ class MPNWorker(Worker):
         super(MPNWorker, self).__init__(**kwargs)
 
         self.args = args
-        self.sign = -1 if args.dataset_type == 'classification' else 1
+        self.sign = -1 if args.metric in ['auc', 'pr-auc', 'r2'] else 1
 
         print('Loading data')
         data = get_data(self.args.data_path)
