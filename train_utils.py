@@ -44,8 +44,6 @@ def train(model: nn.Module,
     model.train()
     random.shuffle(data)
     if chunk_names:
-        print('chunked data')
-
         for path in data:
             with open(path, 'rb') as f:
                 chunk = pickle.load(f)
