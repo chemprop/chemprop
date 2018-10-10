@@ -1,6 +1,7 @@
 from argparse import Namespace
 from copy import deepcopy
 import csv
+import math
 import os
 import pickle
 from pprint import pprint
@@ -43,7 +44,7 @@ class MPNWorker(Worker):
         for key, value in config.items():
             if hasattr(args, key):
                 setattr(args, key, value)
-        args.epochs = budget
+        args.epochs = math.ceil(budget)
 
         # Run training
         loss, _ = run_training(args)
