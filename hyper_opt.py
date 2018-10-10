@@ -1,7 +1,6 @@
 from argparse import Namespace
 from copy import deepcopy
 import csv
-import math
 import os
 import pickle
 from pprint import pprint
@@ -12,51 +11,16 @@ import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
 from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
-from utils import StandardScaler
-from torch.optim import Adam
-from tqdm import trange
 
-from model import build_model
-from nn_utils import NoamLR, param_count
 from parsing import get_parser, modify_args
-from train_utils import train, evaluate
-from utils import get_data, get_loss_func, get_metric_func, split_data
+from train import run_training
 
 
 class MPNWorker(Worker):
     def __init__(self, args: Namespace, **kwargs):
         super(MPNWorker, self).__init__(**kwargs)
-
         self.args = args
         self.sign = -1 if args.metric in ['auc', 'pr-auc', 'r2'] else 1
-
-        print('Loading data')
-        data = get_data(self.args.data_path)
-        if args.separate_test_set:
-            self.train_data, self.val_data, _ = split_data(data, sizes=(0.8, 0.2, 0.0), seed=args.seed)
-            self.test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins)
-        else:
-            self.train_data, self.val_data, self.test_data = split_data(data, seed=args.seed)
-        self.num_tasks = len(data[0][1])
-
-        print('Train size = {}, val size = {}, test size = {}'.format(
-            len(self.train_data),
-            len(self.val_data),
-            len(self.test_data))
-        )
-        print('Number of tasks = {}'.format(self.num_tasks))
-
-        # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
-        if self.args.dataset_type == 'regression':
-            print('Fitting scaler')
-            train_labels = list(zip(*self.train_data))[1]
-            self.scaler = StandardScaler().fit(train_labels)
-        else:
-            self.scaler = None
-
-        # Get loss and metric functions
-        self.loss_func = get_loss_func(self.args.dataset_type)
-        self.metric_func = get_metric_func(self.args.metric)
 
     def compute(self,
                 config: dict,
@@ -79,74 +43,12 @@ class MPNWorker(Worker):
         for key, value in config.items():
             if hasattr(args, key):
                 setattr(args, key, value)
+        args.epochs = budget
 
-        # Build model
-        model = build_model(self.num_tasks, args)
-        print(model)
-        num_params = param_count(model)
-        print('Number of parameters = {:,}'.format(num_params))
-        if args.cuda:
-            print('Moving model to cuda')
-            model = model.cuda()
+        # Run training
+        loss, _ = run_training(args)
 
-        # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=args.init_lr)
-        scheduler = NoamLR(
-            optimizer,
-            warmup_epochs=args.warmup_epochs,
-            total_epochs=args.epochs,
-            steps_per_epoch=len(self.train_data) // args.batch_size,
-            init_lr=args.init_lr,
-            max_lr=args.max_lr,
-            final_lr=args.final_lr
-        )
-
-        n_iter = 0
-        for _ in trange(math.ceil(budget)):
-            print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
-
-            n_iter = train(
-                model=model,
-                data=self.train_data,
-                loss_func=self.loss_func,
-                optimizer=optimizer,
-                scheduler=scheduler,
-                args=args,
-                n_iter=n_iter,
-                chunk_names=(args.num_chunks > 1)
-            )
-            val_score = evaluate(
-                model=model,
-                data=self.val_data,
-                metric_func=self.metric_func,
-                args=args,
-                scaler=self.scaler
-            )
-
-            print('Validation {} = {:.3f}'.format(args.metric, val_score))
-
-        # Compute losses
-        scores = {
-            split: evaluate(
-                model=model,
-                data=data,
-                metric_func=self.metric_func,
-                args=args,
-                scaler=self.scaler
-            ) for split, data in [('train', self.train_data),
-                                  ('val', self.val_data),
-                                  ('test', self.test_data)]
-        }
-
-        return {
-            'loss': self.sign * scores['val'],  # BOHB optimizer tries to minimize loss
-            'info': {
-                'train_loss': scores['train'],
-                'val_loss': scores['val'],
-                'test_loss': scores['test'],
-                'num_params': num_params
-            }
-        }
+        return {'loss': self.sign * loss}  # BOHB optimizer tries to minimize loss
 
     @staticmethod
     def get_configspace():
