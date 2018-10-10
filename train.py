@@ -153,7 +153,15 @@ def run_training(args: Namespace) -> float:
                 best_score, best_epoch = val_score, epoch
                 torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
 
+        test_score = evaluate(
+            model=model,
+            data=test_data,
+            metric_func=metric_func,
+            args=args,
+            scaler=scaler
+        )
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
+        logger.info('Model {} test {} = {:.3f} on epoch {}'.format(model_idx, args.metric, test_score, best_epoch))
 
     # Evaluate on test set
     smiles, labels = zip(*test_data)
