@@ -140,7 +140,7 @@ def modify_args(args: Namespace):
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
-    args.minimize_score = args.metric in ['rmse', 'mae', 'r2']
+    args.minimize_score = args.metric in ['rmse', 'mae']
 
     if args.checkpoint_dir is not None:
         args.checkpoint_paths = []

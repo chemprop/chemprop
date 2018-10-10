@@ -226,6 +226,7 @@ def cross_validate(args: Namespace):
     if args.num_chunks > 1:
         os.removedirs(args.chunk_temp_dir)
 
+
 if __name__ == '__main__':
     args = parse_args()
     set_logger(logger, args.save_dir, args.quiet)
