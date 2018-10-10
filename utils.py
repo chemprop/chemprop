@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score
 import torch.nn as nn
 
+
 class StandardScaler:
     def fit(self, X):
         X = np.array(X).astype(float)
@@ -27,6 +28,7 @@ class StandardScaler:
         transformed_with_nan = X * self.stds + self.means
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
         return transformed_with_none
+
 
 def convert_to_classes(data, num_bins=20):
     print('Num bins for binning: {}'.format(num_bins))
@@ -91,7 +93,7 @@ def get_data(path: str, dataset_type: str=None, num_bins: str=20, use_compound_n
 
 
 def split_data(data: List[Tuple[str, List[float]]],
-               sizes: Tuple[float] = (0.8, 0.1, 0.1),
+               sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0) -> Tuple[List[Tuple[str, List[float]]],
                                        List[Tuple[str, List[float]]],
                                        List[Tuple[str, List[float]]]]:

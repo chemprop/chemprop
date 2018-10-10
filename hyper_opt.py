@@ -12,13 +12,12 @@ import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
 from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
-from sklearn.preprocessing import StandardScaler
+from utils import StandardScaler
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 
-from mpn import build_MPN
-from nn_utils import param_count
+from model import build_model
+from nn_utils import NoamLR, param_count
 from parsing import get_parser, modify_args
 from train_utils import train, evaluate
 from utils import get_data, get_loss_func, get_metric_func, split_data
@@ -33,7 +32,11 @@ class MPNWorker(Worker):
 
         print('Loading data')
         data = get_data(self.args.data_path)
-        self.train_data, self.val_data, self.test_data = split_data(data, seed=self.args.seed)
+        if args.separate_test_set:
+            self.train_data, self.val_data, _ = split_data(data, sizes=(0.8, 0.2, 0.0), seed=args.seed)
+            self.test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins)
+        else:
+            self.train_data, self.val_data, self.test_data = split_data(data, seed=args.seed)
         self.num_tasks = len(data[0][1])
 
         print('Train size = {}, val size = {}, test size = {}'.format(
@@ -71,14 +74,14 @@ class MPNWorker(Worker):
         """
         pprint(config)
 
-        # Update args
+        # Update args with config
         args = deepcopy(self.args)
         for key, value in config.items():
             if hasattr(args, key):
                 setattr(args, key, value)
 
         # Build model
-        model = build_MPN(self.num_tasks, args)
+        model = build_model(self.num_tasks, args)
         print(model)
         num_params = param_count(model)
         print('Number of parameters = {:,}'.format(num_params))
@@ -87,22 +90,31 @@ class MPNWorker(Worker):
             model = model.cuda()
 
         # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=config['lr'])
-        scheduler = ExponentialLR(optimizer, config['gamma'])
-        scheduler.step()
+        optimizer = Adam(model.parameters(), lr=args.init_lr)
+        scheduler = NoamLR(
+            optimizer,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=args.epochs,
+            steps_per_epoch=len(self.train_data) // args.batch_size,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
 
+        n_iter = 0
         for _ in trange(math.ceil(budget)):
             print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
 
-            train(
+            n_iter = train(
                 model=model,
                 data=self.train_data,
                 loss_func=self.loss_func,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 args=args,
-                scaler=self.scaler
+                n_iter=n_iter,
+                chunk_names=(args.num_chunks > 1)
             )
-            scheduler.step()
             val_score = evaluate(
                 model=model,
                 data=self.val_data,
@@ -146,17 +158,10 @@ class MPNWorker(Worker):
         cs = CS.ConfigurationSpace()
 
         cs.add_hyperparameters([
-            CSH.UniformIntegerHyperparameter('hidden_size', lower=200, upper=1000),
-            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=8),
-            CSH.UniformFloatHyperparameter('dropout', lower=0.0, upper=0.4),
-            # CSH.CategoricalHyperparameter('activation', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'])
-            CSH.Constant('activation', 'ReLU'),
-            # CSH.CategoricalHyperparameter('attention', choices=[True, False]),
-            CSH.Constant('attention', 0),
-            # CSH.UniformFloatHyperparameter('lr', lower=1e-4, upper=1e-2),
-            CSH.Constant('lr', 1e-3),
-            # CSH.UniformFloatHyperparameter('gamma', lower=0.85, upper=0.95)
-            CSH.Constant('gamma', 0.9),
+            CSH.UniformIntegerHyperparameter('hidden_size', lower=150, upper=1200),
+            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=6),
+            CSH.CategoricalHyperparameter('master_node', choices=[True, False]),
+            CSH.UniformIntegerHyperparameter('master_dim', lower=100, upper=1200)
         ])
 
         return cs
