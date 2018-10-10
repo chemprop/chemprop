@@ -99,8 +99,8 @@ delaney	| 0.687 ± 0.037 | 	0.58 ± 0.03 |
 Freesolv |	0.915 ± 0.154	| 1.15 ± 0.12 |
 Lipo |	0.565 ± 0.052 |	0.655 ± 0.036 |
 qm8 |	0.008 ± 0.000 | 0.0143 ± 0.0011 |
-qm9 |	2.65 ± 0.016*	| 3.2 ± 1.5 |
+qm9 |	2.47 ± 0.036*	| 3.2 ± 1.5 |
 
-*MUV, HIV, PCBA are using an older version of the model. qm9 is using virtual edges.
+*MUV, HIV, PCBA are using an older version of the model. qm9 is using virtual edges with depth 3 and hidden size 1800.
 Others are using hidden size 1800, depth 6, master node with otherwise default settings.
 We did a few hyperparameter experiments on qm9, but did no searching on the other datasets, so there may still be further room for improvement, for example checking if we're overfitting on the smaller sets. 
