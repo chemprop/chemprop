@@ -1,3 +1,5 @@
+from argparse import ArgumentParser, Namespace
+
 def resplit(args):
     with open(args.train_path, 'r') as f:
         train_len = sum(1 for line in f) - 1
@@ -11,13 +13,13 @@ def resplit(args):
         wvf.write(header + '\n')
         for i in range(train_len):
             line = rtf.readline().strip()
-            if i < args.val_frac*train_len:
+            if i < (1-args.val_frac)*train_len:
                 wtf.write(line + '\n')
             else:
                 wvf.write(line + '\n')
         for i in range(val_len):
             line = rvf.readline().strip()
-            if i < args.val_frac*train_len:
+            if i < (1-args.val_frac)*train_len:
                 wtf.write(line + '\n')
             else:
                 wvf.write(line + '\n')
