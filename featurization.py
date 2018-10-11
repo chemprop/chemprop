@@ -187,7 +187,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                         if not args.virtual_edges:
                             continue
 
-                        if args.drop_virtual_edges and hash(str(mol_fatoms[a2])) % n_atoms != 0:
+                        if args.drop_virtual_edges and hash(str(a2)) % n_atoms != 0:
                             continue
 
                     distance_3d = distances_3d[a1, a2] if args.three_d else None
