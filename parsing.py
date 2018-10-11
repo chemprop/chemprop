@@ -44,6 +44,8 @@ def get_parser():
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
+    parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
+                        help='Split proportions for train/validation/test sets')
     parser.add_argument('--num_folds', type=int, default=1,
                         help='Number of folds when performing cross validation')
     parser.add_argument('--quiet', action='store_true', default=False,
@@ -107,6 +109,8 @@ def get_parser():
                         help='Adds 3D coordinates to atom and bond features')
     parser.add_argument('--virtual_edges', action='store_true', default=False,
                         help='Adds virtual edges between non-bonded atoms')
+    parser.add_argument('--drop_virtual_edges', action='store_true', default=False,
+                        help='Randomly drops O(n_atoms) virtual edges so O(n_atoms) edges total instead of O(n_atoms^2)')
     parser.add_argument('--deepset', action='store_true', default=False,
                         help='Modify readout function to perform a Deep Sets set operation using linear layers')
     parser.add_argument('--set2set', action='store_true', default=False,
