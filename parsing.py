@@ -87,6 +87,8 @@ def get_parser():
                         help='Whether to add bias to linear layers')
     parser.add_argument('--depth', type=int, default=3,
                         help='Number of message passing steps')
+    parser.add_argument('--layer_norm', action='store_true', default=False,
+                        help='Add layer norm after each message passing step')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout probability')
     parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],

@@ -20,6 +20,7 @@ class MPNEncoder(nn.Module):
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
+        self.use_layer_norm = args.layer_norm
         self.dropout = args.dropout
         self.attention = args.attention
         self.message_attention = args.message_attention
@@ -71,6 +72,10 @@ class MPNEncoder(nn.Module):
         if self.attention:
             self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
+
+        # Layer norm
+        if args.use_layer_norm:
+            self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -134,6 +139,8 @@ class MPNEncoder(nn.Module):
                 # message = self.layer_norm(message)
             else:
                 message = self.act_func(binput + nei_message)
+            if self.use_layer_norm:
+                message = self.layer_norm(message)
             message = self.dropout_layer(message)  # num_bonds x hidden
         
         if self.master_node and self.use_master_as_output:
