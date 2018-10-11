@@ -74,7 +74,7 @@ class MPNEncoder(nn.Module):
             self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
 
         # Layer norm
-        if args.use_layer_norm:
+        if self.use_layer_norm:
             self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Dropout
