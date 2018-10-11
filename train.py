@@ -152,7 +152,8 @@ def run_training(args: Namespace) -> float:
                     not args.minimize_score and val_score > best_score:
                 best_score, best_epoch = val_score, epoch
                 torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
-
+        
+        model.load_state_dict(torch.load(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx))))
         test_score = evaluate(
             model=model,
             data=test_data,
