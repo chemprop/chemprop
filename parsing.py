@@ -97,6 +97,8 @@ def get_parser():
                         help='Perform self attention over the atoms in a molecule')
     parser.add_argument('--message_attention', action='store_true', default=False,
                         help='Perform attention over messages.')
+    parser.add_argument('--global_attention', action='store_true', default=False,
+                        help='True to perform global attention across all messages on each message passing step')
     parser.add_argument('--message_attention_heads', type=int, default=1,
                         help='Number of heads to use for message attention')
     parser.add_argument('--master_node', action='store_true', default=False,

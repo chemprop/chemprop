@@ -24,6 +24,7 @@ class MPNEncoder(nn.Module):
         self.dropout = args.dropout
         self.attention = args.attention
         self.message_attention = args.message_attention
+        self.global_attention = args.global_attention
         self.message_attention_heads = args.message_attention_heads
         self.master_node = args.master_node
         self.master_dim = args.master_dim
@@ -46,6 +47,10 @@ class MPNEncoder(nn.Module):
             # self.W_ma2 = nn.Linear(hidden_size, 1, bias=self.bias)
         else:
             self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+
+        if self.global_attention:
+            self.W_ga1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+            self.W_ga2 = nn.Linear(self.hidden_size, self.hidden_size)
 
         if self.master_node:
             # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
@@ -107,12 +112,32 @@ class MPNEncoder(nn.Module):
         binput = self.W_i(fbonds)
         message = self.act_func(binput)
 
+        if self.message_attention:
+            message_attention_mask = (bgraph != 0).float()
+
+            if next(self.parameters()).is_cuda:
+                message_attention_mask = message_attention_mask.cuda()
+
+        if self.global_attention:
+            global_attention_mask = torch.zeros(bgraph.size(0), bgraph.size(0))  # num_bonds x num_bonds
+
+            for start, length in bscope:
+                for i in range(start, start + length):
+                    global_attention_mask[i, start:start + length] = 1
+
+            if next(self.parameters()).is_cuda:
+                global_attention_mask = global_attention_mask.cuda()
+
         # Message passing
         for i in range(self.depth - 1):
             nei_message = index_select_ND(message, bgraph)
+
             if self.message_attention:
-                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x 1 x hidden
+                # TODO: Parallelize attention heads
+                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x maxnb x hidden
                 attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
+                                    for i in range(self.num_heads)]  # num_bonds x maxnb
+                attention_scores = [attention_scores[i] * message_attention_mask + (1 - message_attention_mask) * (-1e+20)
                                     for i in range(self.num_heads)]  # num_bonds x maxnb
                 attention_weights = [F.softmax(attention_scores[i], dim=1)
                                      for i in range(self.num_heads)]  # num_bonds x maxnb
@@ -122,7 +147,9 @@ class MPNEncoder(nn.Module):
                 nei_message = torch.cat(message_components, dim=1)  # num_bonds x 3*hidden
             else:
                 nei_message = nei_message.sum(dim=1)  # num_bonds x hidden
-            nei_message = self.W_h(nei_message)
+
+            nei_message = self.W_h(nei_message)  # num_bonds x hidden
+
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
                 # master_state = self.GRU_master(nei_message.unsqueeze(1))
@@ -136,11 +163,21 @@ class MPNEncoder(nn.Module):
                     mol_vecs += [mol_vec for _ in range(size)]
                 master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # (num_bonds, hidden_size)
                 message = self.act_func(binput + nei_message + self.W_master_out(master_state))
-                # message = self.layer_norm(message)
             else:
-                message = self.act_func(binput + nei_message)
+                message = self.act_func(binput + nei_message)  # num_bonds x hidden_size
+
+            if self.global_attention:
+                attention_scores = torch.matmul(self.W_ga1(message), message.t())  # num_bonds x num_bonds
+                attention_scores = attention_scores * global_attention_mask + (1 - global_attention_mask) * (-1e+20)  # num_bonds x num_bonds
+                attention_weights = F.softmax(attention_scores, dim=1)  # num_bonds x num_bonds
+                attention_hiddens = torch.matmul(attention_weights, message)  # num_bonds x hidden_size
+                attention_hiddens = self.act_func(self.W_ga2(attention_hiddens))  # num_bonds x hidden_size
+                attention_hiddens = self.dropout_layer(attention_hiddens)  # num_bonds x hidden_size
+                message = message + attention_hiddens  # num_bonds x hidden_size
+
             if self.use_layer_norm:
                 message = self.layer_norm(message)
+
             message = self.dropout_layer(message)  # num_bonds x hidden
         
         if self.master_node and self.use_master_as_output:
@@ -203,6 +240,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
         else:
             mol_vecs = []
+            # TODO: MAYBE DO THIS WITH MASKING INSTEAD OF A LOOP
             for start, size in ascope:
                 if size == 0:
                     mol_vecs.append(torch.zeros(self.hidden_size).cuda())
