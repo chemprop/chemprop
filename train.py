@@ -3,6 +3,7 @@ import logging
 import os
 import math
 from pprint import pformat
+from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
@@ -15,7 +16,7 @@ from model import build_model
 from nn_utils import NoamLR, param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
+from utils import get_data, get_task_names, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
 
 
 # Initialize logger
@@ -23,13 +24,15 @@ logger = logging.getLogger('train')
 logger.setLevel(logging.DEBUG)
 
 
-def run_training(args: Namespace) -> float:
-    """Trains a model and returns test score on the model checkpoint with the highest validation score"""
+def run_training(args: Namespace) -> List[float]:
+    """Trains a model and returns test scores on the model checkpoint with the highest validation score"""
     logger.debug(pformat(vars(args)))
 
     logger.debug('Loading data')
-    data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins) 
-    if args.dataset_type == 'regression_with_binning':  # note: for now, binning based on whole dataset, not just training set
+    task_names = get_task_names(args.data_path)
+    data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins)
+
+    if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
         data, bin_predictions, regression_data = data
         args.bin_predictions = bin_predictions
         logger.debug('Splitting data with seed {}'.format(args.seed))
@@ -66,6 +69,7 @@ def run_training(args: Namespace) -> float:
     else:
         scaler = None
 
+    # Chunk training data if too large to load in memory all at once
     train_data_length = len(train_data)
     if args.num_chunks > 1:
         chunk_len = math.ceil(len(train_data) / args.num_chunks)
@@ -74,13 +78,17 @@ def run_training(args: Namespace) -> float:
         for i in range(args.num_chunks):
             chunk_path = os.path.join(args.chunk_temp_dir, str(i) + '.txt')
             with open(chunk_path, 'wb') as f:
-                pickle.dump(train_data[i*chunk_len:(i+1)*chunk_len], f)
+                pickle.dump(train_data[i * chunk_len:(i + 1) * chunk_len], f)
             train_paths.append(chunk_path)
         train_data = train_paths
 
     # Get loss and metric functions
     loss_func = get_loss_func(args.dataset_type)
     metric_func = get_metric_func(args.metric)
+
+    # Set up test set evaluation
+    test_smiles, test_labels = zip(*test_data)
+    sum_test_preds = np.zeros((len(test_smiles), num_tasks))
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
@@ -136,7 +144,7 @@ def run_training(args: Namespace) -> float:
                 writer=writer,
                 chunk_names=(args.num_chunks>1)
             )
-            val_score = evaluate(
+            val_scores = evaluate(
                 model=model,
                 data=val_data,
                 metric_func=metric_func,
@@ -144,86 +152,105 @@ def run_training(args: Namespace) -> float:
                 scaler=scaler
             )
 
-            logger.debug('Validation {} = {:.3f}'.format(args.metric, val_score))
-            writer.add_scalar('validation_{}'.format(args.metric), val_score, n_iter)
+            # Average validation score
+            avg_val_score = np.mean(val_scores)
+            logger.debug('Validation {} = {:.3f}'.format(args.metric, avg_val_score))
+            writer.add_scalar('validation_{}'.format(args.metric), avg_val_score, n_iter)
+
+            # Individual validation scores
+            for task_name, val_score in zip(task_names, val_scores):
+                logger.debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
+                writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
 
             # Save model checkpoint if improved validation score
-            if args.minimize_score and val_score < best_score or \
-                    not args.minimize_score and val_score > best_score:
-                best_score, best_epoch = val_score, epoch
+            if args.minimize_score and avg_val_score < best_score or \
+                    not args.minimize_score and avg_val_score > best_score:
+                best_score, best_epoch = avg_val_score, epoch
                 torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
-        
-        model.load_state_dict(torch.load(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx))))
-        test_score = evaluate(
-            model=model,
-            data=test_data,
-            metric_func=metric_func,
-            args=args,
-            scaler=scaler
-        )
+
+        # Evaluate on test set using model using model with best validation score
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        logger.info('Model {} test {} = {:.3f} on epoch {}'.format(model_idx, args.metric, test_score, best_epoch))
-
-    # Evaluate on test set
-    smiles, labels = zip(*test_data)
-    sum_preds = np.zeros((len(smiles), num_tasks))
-
-    # Predict and evaluate each model individually
-    for model_idx in range(args.ensemble_size):
-        # Load state dict from best validation set performance
         model.load_state_dict(torch.load(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx))))
-
-        model_preds = predict(
+        test_preds = predict(
             model=model,
-            smiles=smiles,
+            smiles=test_smiles,
             args=args,
             scaler=scaler
         )
-        model_score, _ = evaluate_predictions(
-            preds=model_preds,
-            labels=labels,
+        test_scores = evaluate_predictions(
+            preds=test_preds,
+            labels=test_labels,
             metric_func=metric_func
         )
-        logger.info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, model_score))
+        sum_test_preds += np.array(test_preds)
 
-        sum_preds += np.array(model_preds)
+        # Average test score
+        avg_test_score = np.mean(test_scores)
+        logger.info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, avg_test_score))
+        writer.add_scalar('test_{}'.format(args.metric), avg_test_score, n_iter)
 
-    # Evaluate ensemble
-    avg_preds = sum_preds / args.ensemble_size
-    ensemble_score, ensemble_indiv_scores = evaluate_predictions(
-        preds=avg_preds.tolist(),
-        labels=labels,
+        # Individual test scores
+        for task_name, test_score in zip(task_names, test_scores):
+            logger.info('Model {} test {} {} = {:.3f}'.format(model_idx, task_name, args.metric, test_score))
+            writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
+
+    # Evaluate ensemble on test set
+    avg_test_preds = sum_test_preds / args.ensemble_size
+    ensemble_scores = evaluate_predictions(
+        preds=avg_test_preds.tolist(),
+        labels=test_labels,
         metric_func=metric_func
     )
-    logger.info('Ensemble test {} = {:.3f}'.format(args.metric, ensemble_score))
 
-    return ensemble_score, ensemble_indiv_scores
+    # Average ensemble score
+    logger.info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
+
+    # Individual ensemble scores
+    for task_name, ensemble_score in zip(task_names, ensemble_scores):
+        logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
+
+    return ensemble_scores
 
 
 def cross_validate(args: Namespace):
     """k-fold cross validation"""
     init_seed = args.seed
     save_dir = args.save_dir
+    task_names = get_task_names(args.data_path)
 
     # Run training on different random seeds for each fold
-    test_scores = []
-    indiv_test_scores = []
+    all_scores = []
     for fold_num in range(args.num_folds):
         logger.info('Fold {}'.format(fold_num))
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, 'fold_{}'.format(fold_num))
         os.makedirs(args.save_dir, exist_ok=True)
-        ensemble_scores, ensemble_indiv_scores = run_training(args)
-        test_scores.append(ensemble_scores)
-        indiv_test_scores.append(ensemble_indiv_scores)
+        model_scores = run_training(args)
+        all_scores.append(model_scores)
+    all_scores = np.array(all_scores)
 
     # Report results
     logger.info('{}-fold cross validation'.format(args.num_folds))
-    for fold_num, score in enumerate(test_scores):
-        logger.info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, score))
-    logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(test_scores), np.std(test_scores)))
-    if args.show_individual_scores:
-        logger.info('Individual task scores: {}'.format(np.mean(indiv_test_scores, axis=0)))
+
+    # Report scores for each model
+    for fold_num, scores in enumerate(all_scores):
+        logger.info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, np.mean(scores)))
+
+        for task_name, score in zip(task_names, scores):
+            logger.info('Seed {} ==> test {} {} = {:.3f}'.format(init_seed + fold_num, task_name, args.metric, score))
+
+    # Report scores across models
+    avg_scores = np.mean(all_scores, axis=1)  # average score for each model across tasks
+    logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(avg_scores), np.std(avg_scores)))
+
+    for task_num, task_name in enumerate(task_names):
+        logger.info('Overall test {} {} = {:.3f} ± {:.3f}'.format(
+            task_name,
+            args.metric,
+            np.mean(all_scores[:, task_num]),
+            np.std(all_scores[:, task_num]))
+        )
+
     if args.num_chunks > 1:
         os.removedirs(args.chunk_temp_dir)
 

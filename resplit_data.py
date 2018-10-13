@@ -1,11 +1,13 @@
 from argparse import ArgumentParser, Namespace
 import os
 
-def resplit(args):
+
+def resplit(args: Namespace):
     with open(args.train_path, 'r') as f:
-        train_len = sum(1 for line in f) - 1
+        train_len = sum(1 for _ in f) - 1
     with open(args.val_path, 'r') as f:
-        val_len = sum(1 for line in f) - 1
+        val_len = sum(1 for _ in f) - 1
+
     with open(args.train_path, 'r') as rtf, open(args.val_path, 'r') as rvf, \
             open(args.train_save, 'w') as wtf, open(args.val_save, 'w') as wvf:
         header = rtf.readline().strip()
@@ -14,17 +16,17 @@ def resplit(args):
         wvf.write(header + '\n')
         for i in range(train_len):
             line = rtf.readline().strip()
-            if i < (1-args.val_frac)*train_len:
+            if i < (1 - args.val_frac) * train_len:
                 wtf.write(line + '\n')
             else:
                 wvf.write(line + '\n')
         for i in range(val_len):
             line = rvf.readline().strip()
-            if i < (1-args.val_frac)*train_len:
+            if i < (1 - args.val_frac) * train_len:
                 wtf.write(line + '\n')
             else:
                 wvf.write(line + '\n')
-        
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -36,7 +38,7 @@ if __name__ == '__main__':
                         help='Path to CSV file for new train data')
     parser.add_argument('--val_save', type=str, required=True,
                         help='Path to CSV file for new val data')
-    parser.add_argument('--val_frac', type=float, required=True, default=0.2,
+    parser.add_argument('--val_frac', type=float, default=0.2,
                         help='frac of data to use for validation')
     args = parser.parse_args()
 

@@ -26,7 +26,7 @@ def train(model: nn.Module,
           n_iter: int = 0,
           logger: logging.Logger = None,
           writer: SummaryWriter = None,
-          chunk_names=False) -> int:
+          chunk_names: bool = False) -> int:
     """
     Trains a model for an epoch.
 
@@ -39,25 +39,30 @@ def train(model: nn.Module,
     :param n_iter: The number of iterations (training examples) trained on so far.
     :param logger: A logger for printing intermediate results.
     :param writer: A tensorboardX SummaryWriter.
+    :param chunk_names: Whether to train on the data in chunks. In this case,
+    data must be a list of paths to the data chunks.
     :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
     random.shuffle(data)
+
     if chunk_names:
         for path in data:
             with open(path, 'rb') as f:
                 chunk = pickle.load(f)
             random.shuffle(chunk)
-            n_iter = train( model, 
-                            chunk, 
-                            loss_func, 
-                            optimizer, 
-                            scheduler, 
-                            args, 
-                            n_iter,
-                            logger,
-                            writer,
-                            False)
+            n_iter = train(
+                model=model,
+                data=chunk,
+                loss_func=loss_func,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                args=args,
+                n_iter=n_iter,
+                logger=logger,
+                writer=writer
+            )
+
         return n_iter
 
     loss_sum, iter_count = 0, 0
@@ -160,14 +165,14 @@ def predict(model: nn.Module,
 
 def evaluate_predictions(preds: List[List[float]],
                          labels: List[List[float]],
-                         metric_func: Callable) -> float:
+                         metric_func: Callable) -> List[float]:
     """
     Evaluates predictions using a metric function and filtering out invalid labels.
 
     :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
     :param labels: A list of lists of shape (data_size, num_tasks) with labels.
     :param metric_func: Metric function which takes in a list of labels and a list of predictions.
-    :return: Score based on `metric_func`.
+    :return: A list with the score for each task based on `metric_func`.
     """
     data_size, num_tasks = len(preds), len(preds[0])
 
@@ -189,17 +194,14 @@ def evaluate_predictions(preds: List[List[float]],
             continue
         results.append(metric_func(valid_labels[i], valid_preds[i]))
 
-    # Average across tasks
-    result = sum(results) / len(results)
-
-    return result, results
+    return results
 
 
 def evaluate(model: nn.Module,
              data: List[Tuple[str, List[float]]],
              metric_func: Callable,
              args: Namespace,
-             scaler: StandardScaler = None) -> float:
+             scaler: StandardScaler = None) -> List[float]:
     """
     Evaluates an ensemble of models on a dataset.
 
@@ -208,7 +210,7 @@ def evaluate(model: nn.Module,
     :param metric_func: Metric function which takes in a list of labels and a list of predictions.
     :param args: Arguments.
     :param scaler: A StandardScaler object fit on the training labels.
-    :return: Score based on `metric_func`.
+    :return: A list with the score for each task based on `metric_func`.
     """
     smiles, labels = zip(*data)
 
@@ -219,10 +221,10 @@ def evaluate(model: nn.Module,
         scaler=scaler
     )
 
-    result, _ = evaluate_predictions(
+    results = evaluate_predictions(
         preds=preds,
         labels=labels,
         metric_func=metric_func
     )
 
-    return result
+    return results

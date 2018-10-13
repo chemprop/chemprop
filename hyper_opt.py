@@ -12,6 +12,7 @@ import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
 from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
+import numpy as np
 
 from parsing import get_parser, modify_args
 from train import run_training
@@ -47,9 +48,9 @@ class MPNWorker(Worker):
         args.epochs = math.ceil(budget)
 
         # Run training
-        loss, _ = run_training(args)
+        scores = run_training(args)
 
-        return {'loss': self.sign * loss}  # BOHB optimizer tries to minimize loss
+        return {'loss': self.sign * np.mean(scores)}  # BOHB optimizer tries to minimize loss
 
     @staticmethod
     def get_configspace():

@@ -3,7 +3,7 @@ import math
 import os
 import random
 from copy import deepcopy
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score
@@ -11,44 +11,102 @@ import torch.nn as nn
 
 
 class StandardScaler:
-    def fit(self, X):
+    def fit(self, X: List[List[float]]) -> 'StandardScaler':
+        """
+        Learns means and standard deviations across the 0-th axis.
+
+        :param X: A list of lists of floats.
+        :return: The fitted StandardScaler.
+        """
         X = np.array(X).astype(float)
         self.means = np.nanmean(X, axis=0)
         self.stds = np.nanstd(X, axis=0)
+
         return self
 
-    def transform(self, X):
+    def transform(self, X: List[List[float]]):
+        """
+        Transforms the data by subtracting the means and dividing by the standard deviations.
+
+        :param X: A list of lists of floats.
+        :return: The transformed data.
+        """
         X = np.array(X).astype(float)
         transformed_with_nan = (X - self.means)/self.stds
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+
         return transformed_with_none
     
-    def inverse_transform(self, X):
+    def inverse_transform(self, X: List[List[float]]):
+        """
+        Performs the inverse transformation by multiplying by the standard deviations and adding the means.
+
+        :param X: A list of lists of floats.
+        :return: The inverse transformed data.
+        """
         X = np.array(X).astype(float)
         transformed_with_nan = X * self.stds + self.means
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+
         return transformed_with_none
 
 
-def convert_to_classes(data, num_bins=20):
+def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) -> Tuple[List[Tuple[str, List[float]]],
+                                                                                         np.ndarray,
+                                                                                         List[Tuple[str, List[float]]]]:
+    """
+    Converts regression data to classification data by binning.
+
+    :param data: Regression data in the format (smiles, [value_1, value_2, ...]).
+    :param num_bins: The number of bins to use when doing regression_with_binning.
+    :return: A tuple with the new classification data, a numpy array with the bin centers,
+    and the original regression data.
+    """
     print('Num bins for binning: {}'.format(num_bins))
     old_data = deepcopy(data)
     num_tasks = len(data[0][1])
     for task in range(num_tasks):
         regress = np.array([d[1][task] for d in data])
         bin_edges = np.quantile(regress, [float(i)/float(num_bins) for i in range(num_bins+1)])
+
         for i in range(len(data)):
             bin_index = (bin_edges <= regress[i]).sum() - 1
             bin_index = min(bin_index, num_bins-1)
             data[i][1][task] = bin_index
+
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
 
-def get_data_with_header(path: str, use_compound_names: bool=False) -> Tuple[List[str], List[Tuple[str, List[float]]]]:
+def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     """
-    Gets smiles string and target values from a CSV file along with the header.
+    Gets the task names from a data CSV file.
 
     :param path: Path to a CSV file.
+    :param use_compound_names: Whether file has compound names in addition to smiles strings.
+    :return: A list of task names.
+    """
+    index = 2 if use_compound_names else 1
+    with open(path) as f:
+        task_names = f.readline().strip().split(',')[index:]
+
+    return task_names
+
+
+def get_data(path: str,
+             dataset_type: str = None,
+             num_bins: int = 20,
+             use_compound_names: bool = False,
+             get_header: bool = False) -> Union[Tuple[List[str], List[Tuple[str, List[float]]]],
+                                                List[str], Tuple[List[str], List[Tuple[str, List[float]]]],
+                                                List[str], List[str], Tuple[List[str], List[Tuple[str, List[float]]]]]:
+    """
+    Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
+
+    :param path: Path to a CSV file.
+    :param dataset_type: The type of the dataset (ex. classification, regression, regression_with_binning).
+    :param num_bins: The number of bins to use when doing regression_with_binning.
+    :param use_compound_names: Whether file has compound names in addition to smiles strings.
+    :param get_header: Whether to get the header in addition to the data.
     :return: A tuple where the first element is a list containing the header strings
      and the second element is a list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
@@ -72,23 +130,18 @@ def get_data_with_header(path: str, use_compound_names: bool=False) -> Tuple[Lis
                 values = [float(x) if x != '' else None for x in line[1:]]
             data.append((smiles, values))
 
-    if use_compound_names:
-        return header, (data, compound_names)
-    else:
-        return header, data
-
-
-def get_data(path: str, dataset_type: str=None, num_bins: str=20, use_compound_names: bool=False) -> List[Tuple[str, List[float]]]:
-    """
-    Gets smiles string and target values from a CSV file.
-
-    :param path: Path to a CSV file.
-    :return: A list of tuples where each tuple contains a smiles string and
-    a list of target values (which are None if the target value is not specified).
-    """
-    data = get_data_with_header(path, use_compound_names)[1]
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
+
+    if use_compound_names and get_header:
+        return header, compound_names, data
+
+    if use_compound_names:
+        return compound_names, data
+
+    if get_header:
+        return header, data
+
     return data
 
 
