@@ -8,7 +8,7 @@ from model import build_model
 from nn_utils import param_count
 from parsing import get_parser, modify_args
 from train_utils import predict
-from utils import get_data, get_data_with_header, StandardScaler
+from utils import get_data, get_task_names, StandardScaler
 
 
 # TODO: SUPPORT ALL OPTIONS THAT TRAIN DOES
@@ -17,8 +17,12 @@ def make_predictions(args):
     pprint(vars(args))
 
     print('Loading data')
-    header, train_data = get_data_with_header(args.train_path)
-    test_data = get_data(args.test_path)
+    task_names = get_task_names(args.train_path)
+    train_data = get_data(args.train_path)
+    if args.compound_names:
+        compound_names, test_data = get_data(args.test_path, use_compound_names=True)
+    else:
+        test_data = get_data(args.test_data)
 
     num_tasks = len(train_data[0][1])
     args.num_tasks = num_tasks
@@ -32,7 +36,7 @@ def make_predictions(args):
     # Initialize scaler and scaler training labels by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         print('Fitting scaler')
-        train_smiles, train_labels = zip(*train_data)
+        _, train_labels = zip(*train_data)
         scaler = StandardScaler().fit(train_labels)
     else:
         scaler = None
@@ -47,32 +51,37 @@ def make_predictions(args):
         print('Moving model to cuda')
         model = model.cuda()
 
-    # Evaluate on test set
-    smiles, labels = zip(*test_data)
-    sum_preds = np.zeros((len(smiles), num_tasks))
+    # Predict on test set
+    test_smiles, _ = zip(*test_data)
+    sum_preds = np.zeros((len(test_smiles), num_tasks))
 
-    # Predict and evaluate each model individually
+    # Predict with each model individually
     for checkpoint_path in args.checkpoint_paths:
         # Load state dict from checkpoint
         model.load_state_dict(torch.load(checkpoint_path))
         model_preds = predict(
             model=model,
-            smiles=smiles,
+            smiles=test_smiles,
             args=args,
             scaler=scaler
         )
         sum_preds += np.array(model_preds)
 
-    # Evaluate ensemble
+    # Ensemble predictions
     avg_preds = sum_preds / args.ensemble_size
     avg_preds = avg_preds.tolist()
 
     # Save predictions
+    assert len(test_smiles) == len(avg_preds)
     print('Saving predictions to {}'.format(args.save_path))
+
     with open(args.save_path, 'w') as f:
-        f.write(','.join(header[1:]) + '\n')
-        for pred in avg_preds:
-            f.write(','.join(str(p) for p in pred) + '\n')
+        f.write(','.join(task_names) + '\n')
+
+        for i in range(len(avg_preds)):
+            if args.compound_names:
+                f.write(compound_names[i] + ',')
+            f.write(','.join(str(p) for p in avg_preds[i]) + '\n')
 
 
 if __name__ == '__main__':
@@ -84,7 +93,9 @@ if __name__ == '__main__':
                         help='Path to CSV file containing testing data for which predictions will be made')
     parser.add_argument('--save_path', type=str, required=True,
                         help='Path to CSV file where predictions will be saved')
-    # Specify `--checkpoint_dir`
+    parser.add_argument('--compound_names', action='store_true', default=False,
+                        help='Save compound name in addition to predicted values (use when test file has compound names)')
+    # Note: Need to specify `--checkpoint_dir`
     args = parser.parse_args()
 
     # Create directory for save_path

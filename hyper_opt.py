@@ -12,48 +12,17 @@ import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
 from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
-from sklearn.preprocessing import StandardScaler
-from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
-from tqdm import trange
+import numpy as np
 
-from mpn import build_MPN
-from nn_utils import param_count
 from parsing import get_parser, modify_args
-from train_utils import train, evaluate
-from utils import get_data, get_loss_func, get_metric_func, split_data
+from train import run_training
 
 
 class MPNWorker(Worker):
     def __init__(self, args: Namespace, **kwargs):
         super(MPNWorker, self).__init__(**kwargs)
-
         self.args = args
-        self.sign = -1 if args.dataset_type == 'classification' else 1
-
-        print('Loading data')
-        data = get_data(self.args.data_path)
-        self.train_data, self.val_data, self.test_data = split_data(data, seed=self.args.seed)
-        self.num_tasks = len(data[0][1])
-
-        print('Train size = {}, val size = {}, test size = {}'.format(
-            len(self.train_data),
-            len(self.val_data),
-            len(self.test_data))
-        )
-        print('Number of tasks = {}'.format(self.num_tasks))
-
-        # Initialize scaler which subtracts mean and divides by standard deviation for regression datasets
-        if self.args.dataset_type == 'regression':
-            print('Fitting scaler')
-            train_labels = list(zip(*self.train_data))[1]
-            self.scaler = StandardScaler().fit(train_labels)
-        else:
-            self.scaler = None
-
-        # Get loss and metric functions
-        self.loss_func = get_loss_func(self.args.dataset_type)
-        self.metric_func = get_metric_func(self.args.metric)
+        self.sign = -1 if args.metric in ['auc', 'pr-auc', 'r2'] else 1
 
     def compute(self,
                 config: dict,
@@ -71,70 +40,17 @@ class MPNWorker(Worker):
         """
         pprint(config)
 
-        # Update args
+        # Update args with config
         args = deepcopy(self.args)
         for key, value in config.items():
             if hasattr(args, key):
                 setattr(args, key, value)
+        args.epochs = math.ceil(budget)
 
-        # Build model
-        model = build_MPN(self.num_tasks, args)
-        print(model)
-        num_params = param_count(model)
-        print('Number of parameters = {:,}'.format(num_params))
-        if args.cuda:
-            print('Moving model to cuda')
-            model = model.cuda()
+        # Run training
+        scores = run_training(args)
 
-        # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=config['lr'])
-        scheduler = ExponentialLR(optimizer, config['gamma'])
-        scheduler.step()
-
-        for _ in trange(math.ceil(budget)):
-            print("Learning rate = {:.3e}".format(scheduler.get_lr()[0]))
-
-            train(
-                model=model,
-                data=self.train_data,
-                loss_func=self.loss_func,
-                optimizer=optimizer,
-                args=args,
-                scaler=self.scaler
-            )
-            scheduler.step()
-            val_score = evaluate(
-                model=model,
-                data=self.val_data,
-                metric_func=self.metric_func,
-                args=args,
-                scaler=self.scaler
-            )
-
-            print('Validation {} = {:.3f}'.format(args.metric, val_score))
-
-        # Compute losses
-        scores = {
-            split: evaluate(
-                model=model,
-                data=data,
-                metric_func=self.metric_func,
-                args=args,
-                scaler=self.scaler
-            ) for split, data in [('train', self.train_data),
-                                  ('val', self.val_data),
-                                  ('test', self.test_data)]
-        }
-
-        return {
-            'loss': self.sign * scores['val'],  # BOHB optimizer tries to minimize loss
-            'info': {
-                'train_loss': scores['train'],
-                'val_loss': scores['val'],
-                'test_loss': scores['test'],
-                'num_params': num_params
-            }
-        }
+        return {'loss': self.sign * np.mean(scores)}  # BOHB optimizer tries to minimize loss
 
     @staticmethod
     def get_configspace():
@@ -146,17 +62,10 @@ class MPNWorker(Worker):
         cs = CS.ConfigurationSpace()
 
         cs.add_hyperparameters([
-            CSH.UniformIntegerHyperparameter('hidden_size', lower=200, upper=1000),
-            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=8),
-            CSH.UniformFloatHyperparameter('dropout', lower=0.0, upper=0.4),
-            # CSH.CategoricalHyperparameter('activation', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'])
-            CSH.Constant('activation', 'ReLU'),
-            # CSH.CategoricalHyperparameter('attention', choices=[True, False]),
-            CSH.Constant('attention', 0),
-            # CSH.UniformFloatHyperparameter('lr', lower=1e-4, upper=1e-2),
-            CSH.Constant('lr', 1e-3),
-            # CSH.UniformFloatHyperparameter('gamma', lower=0.85, upper=0.95)
-            CSH.Constant('gamma', 0.9),
+            CSH.UniformIntegerHyperparameter('hidden_size', lower=150, upper=1800),
+            CSH.UniformIntegerHyperparameter('depth', lower=2, upper=9),
+            CSH.CategoricalHyperparameter('master_node', choices=[True, False]),
+            CSH.UniformIntegerHyperparameter('master_dim', lower=150, upper=1800)
         ])
 
         return cs
@@ -229,13 +138,13 @@ if __name__ == '__main__':
                         help='Path to directory where results will be saved')
     parser.add_argument('--port', type=int, default=9090,
                         help='Port for HpBandSter to use')
-    parser.add_argument('--min_budget', type=int, default=3,
+    parser.add_argument('--min_budget', type=int, default=5,
                         help='Minimum budget (number of iterations during training) to use')
-    parser.add_argument('--max_budget', type=int, default=30,
+    parser.add_argument('--max_budget', type=int, default=45,
                         help='Maximum budget (number of iterations during training) to use')
     parser.add_argument('--eta', type=int, default=2,
                         help='Factor by which to cut number of trials (1/eta trials remain)')
-    parser.add_argument('--n_iterations', type=int, default=4,
+    parser.add_argument('--n_iterations', type=int, default=16,
                         help='Number of iterations of BOHB algorithm')
     args = parser.parse_args()
 

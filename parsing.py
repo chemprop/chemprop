@@ -44,6 +44,8 @@ def get_parser():
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
+    parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
+                        help='Split proportions for train/validation/test sets')
     parser.add_argument('--num_folds', type=int, default=1,
                         help='Number of folds when performing cross validation')
     parser.add_argument('--quiet', action='store_true', default=False,
@@ -85,6 +87,8 @@ def get_parser():
                         help='Whether to add bias to linear layers')
     parser.add_argument('--depth', type=int, default=3,
                         help='Number of message passing steps')
+    parser.add_argument('--layer_norm', action='store_true', default=False,
+                        help='Add layer norm after each message passing step')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout probability')
     parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
@@ -93,6 +97,8 @@ def get_parser():
                         help='Perform self attention over the atoms in a molecule')
     parser.add_argument('--message_attention', action='store_true', default=False,
                         help='Perform attention over messages.')
+    parser.add_argument('--global_attention', action='store_true', default=False,
+                        help='True to perform global attention across all messages on each message passing step')
     parser.add_argument('--message_attention_heads', type=int, default=1,
                         help='Number of heads to use for message attention')
     parser.add_argument('--master_node', action='store_true', default=False,
@@ -107,6 +113,8 @@ def get_parser():
                         help='Adds 3D coordinates to atom and bond features')
     parser.add_argument('--virtual_edges', action='store_true', default=False,
                         help='Adds virtual edges between non-bonded atoms')
+    parser.add_argument('--drop_virtual_edges', action='store_true', default=False,
+                        help='Randomly drops O(n_atoms) virtual edges so O(n_atoms) edges total instead of O(n_atoms^2)')
     parser.add_argument('--deepset', action='store_true', default=False,
                         help='Modify readout function to perform a Deep Sets set operation using linear layers')
     parser.add_argument('--set2set', action='store_true', default=False,
@@ -140,7 +148,7 @@ def modify_args(args: Namespace):
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
-    args.minimize_score = args.metric in ['rmse', 'mae', 'r2']
+    args.minimize_score = args.metric in ['rmse', 'mae']
 
     if args.checkpoint_dir is not None:
         args.checkpoint_paths = []

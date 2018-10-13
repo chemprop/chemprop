@@ -182,8 +182,13 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                 for a2 in range(a1 + 1, n_atoms):
                     bond = mol.GetBondBetweenAtoms(a1, a2)
 
-                    if bond is None and not args.virtual_edges:
-                        continue
+                    # Randomly drop O(n_atoms) virtual edges so a total of O(n_atoms) edges instead of O(n_atoms^2)
+                    if bond is None:
+                        if not args.virtual_edges:
+                            continue
+
+                        if args.drop_virtual_edges and hash(str(a2)) % n_atoms != 0:
+                            continue
 
                     distance_3d = distances_3d[a1, a2] if args.three_d else None
                     distance_path = distances_path[a1, a2] if args.virtual_edges else None
@@ -229,7 +234,7 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
     agraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in in_bonds])  # zero padding
 
     # Map each bond to all bonds going into that bond's start atom
-    bgraph = [[]] + [[bond if all_bonds[bond][0] != a2 else 0 for bond in in_bonds[a1]] for a1, a2 in all_bonds[1:]]
+    bgraph = [[]] + [[bond for bond in in_bonds[a1] if all_bonds[bond][0] != a2] for a1, a2 in all_bonds[1:]]
     bgraph = torch.LongTensor([bonds + [0] * (max_num_bonds - len(bonds)) for bonds in bgraph])  # zero padding
 
     return fatoms, fbonds, agraph, bgraph, ascope, bscope
