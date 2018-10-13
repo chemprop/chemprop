@@ -2,6 +2,7 @@ from argparse import Namespace
 import logging
 import random
 from typing import Callable, List, Tuple
+import os
 
 from sklearn.preprocessing import StandardScaler
 from tensorboardX import SummaryWriter
@@ -12,10 +13,11 @@ from torch.optim import Optimizer
 from tqdm import trange
 import numpy as np
 import pickle
+from tqdm import tqdm
 
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
-
+import featurization
 
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
@@ -44,7 +46,14 @@ def train(model: nn.Module,
     model.train()
     random.shuffle(data)
     if chunk_names:
-        for path in data:
+        for path, memo_path in tqdm(data, total=len(data)):
+            featurization.SMILES_TO_FEATURES = dict()
+            if os.path.isfile(memo_path):
+                found_memo = True
+                with open(memo_path, 'rb') as f:
+                    featurization.SMILES_TO_FEATURES = pickle.load(f)
+            else:
+                found_memo = False
             with open(path, 'rb') as f:
                 chunk = pickle.load(f)
             random.shuffle(chunk)
@@ -58,6 +67,9 @@ def train(model: nn.Module,
                             logger,
                             writer,
                             False)
+            if not found_memo:
+                with open(memo_path, 'wb') as f:
+                    pickle.dump(featurization.SMILES_TO_FEATURES, f)
         return n_iter
 
     loss_sum, iter_count = 0, 0

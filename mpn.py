@@ -87,6 +87,8 @@ class MPNEncoder(nn.Module):
         else:
             raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
+        self.cached_zero_vector = torch.zeros(self.hidden_size).cuda()
+
     def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
@@ -122,7 +124,7 @@ class MPNEncoder(nn.Module):
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
                 # master_state = self.GRU_master(nei_message.unsqueeze(1))
                 # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
-                mol_vecs = [torch.zeros(self.hidden_size).cuda()]
+                mol_vecs = [self.cached_zero_vector]
                 for start, size in bscope:
                     if size == 0:
                         continue
@@ -141,7 +143,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = []
             for start, size in bscope:
                 if size == 0:
-                    mol_vecs.append(torch.zeros(self.hidden_size).cuda())
+                    mol_vecs.append(self.cached_zero_vector)
                 else:
                     mol_vecs.append(master_state[start])
             return torch.stack(mol_vecs, dim=0)
@@ -198,7 +200,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = []
             for start, size in ascope:
                 if size == 0:
-                    mol_vecs.append(torch.zeros(self.hidden_size).cuda())
+                    mol_vecs.append(self.cached_zero_vector)
                 else:
                     cur_hiddens = atom_hiddens.narrow(0, start, size)
 

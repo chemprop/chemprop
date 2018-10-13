@@ -10,6 +10,7 @@ import torch
 from torch.optim import Adam
 from tqdm import trange
 import pickle
+import shutil
 
 from model import build_model
 from nn_utils import NoamLR, param_count
@@ -73,9 +74,10 @@ def run_training(args: Namespace) -> float:
         train_paths = []
         for i in range(args.num_chunks):
             chunk_path = os.path.join(args.chunk_temp_dir, str(i) + '.txt')
+            memo_path = os.path.join(args.chunk_temp_dir, 'memo' + str(i) + '.txt')
             with open(chunk_path, 'wb') as f:
                 pickle.dump(train_data[i*chunk_len:(i+1)*chunk_len], f)
-            train_paths.append(chunk_path)
+            train_paths.append((chunk_path, memo_path))
         train_data = train_paths
 
     # Get loss and metric functions
@@ -216,7 +218,7 @@ def cross_validate(args: Namespace):
     if args.show_individual_scores:
         logger.info('Individual task scores: {}'.format(np.mean(indiv_test_scores, axis=0)))
     if args.num_chunks > 1:
-        os.removedirs(args.chunk_temp_dir)
+        shutil.rmtree(args.chunk_temp_dir)
 
 if __name__ == '__main__':
     args = parse_args()
