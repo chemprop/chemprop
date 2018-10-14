@@ -1,21 +1,30 @@
 from argparse import ArgumentParser, Namespace
 import os
 from tempfile import TemporaryDirectory
-from typing import Union
 
 import torch
 
 
-def float_or_int(value: Union[float, int]) -> Union[float, int]:
-    return float(value) if '.' in value else int(value)
+def add_hyper_opt_args(parser: ArgumentParser):
+    """Add hyperparameter optimization arguments to an ArgumentParser."""
+    parser.add_argument('--results_dir', type=str, required=True,
+                        help='Path to directory where results will be saved')
+    parser.add_argument('--port', type=int, default=9090,
+                        help='Port for HpBandSter to use')
+    parser.add_argument('--min_budget', type=int, default=5,
+                        help='Minimum budget (number of iterations during training) to use')
+    parser.add_argument('--max_budget', type=int, default=45,
+                        help='Maximum budget (number of iterations during training) to use')
+    parser.add_argument('--eta', type=int, default=2,
+                        help='Factor by which to cut number of trials (1/eta trials remain)')
+    parser.add_argument('--n_iterations', type=int, default=16,
+                        help='Number of iterations of BOHB algorithm')
 
 
-def get_parser():
-    """Builds an argument parser"""
-    parser = ArgumentParser()
-
+def add_train_args(parser: ArgumentParser):
+    """Add training arguments to an ArgumentParser."""
     # General arguments
-    parser.add_argument('--data_path', type=str,
+    parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV file')
     parser.add_argument('--vocab_path', type=str,
                         help='Path to .vocab file if using jtnn')
@@ -24,7 +33,8 @@ def get_parser():
     parser.add_argument('--checkpoint_dir', type=str, default=None,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
-    parser.add_argument('--dataset_type', type=str, choices=['classification', 'regression', 'regression_with_binning'],
+    parser.add_argument('--dataset_type', type=str, required=True,
+                        choices=['classification', 'regression', 'regression_with_binning'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
     parser.add_argument('--num_bins', type=int, default=20,
@@ -62,7 +72,7 @@ def get_parser():
                         help='Turn off cuda')
     parser.add_argument('--show_individual_scores', action='store_true', default=False,
                         help='Show all scores for individual targets, not just average, at the end')
-    parser.add_argument('--labels_to_show', type=str,
+    parser.add_argument('--labels_to_show', type=str, nargs='+',
                         help='List of targets to show individual scores for, if specified')
 
     # Training arguments
@@ -73,7 +83,7 @@ def get_parser():
     parser.add_argument('--truncate_outliers', action='store_true', default=False,
                         help='Truncates outliers in the training set to improve training stability'
                              '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
-    parser.add_argument('--warmup_epochs', type=float_or_int, default=2,
+    parser.add_argument('--warmup_epochs', type=float, default=2.0,
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')
@@ -132,14 +142,32 @@ def get_parser():
     parser.add_argument('--jtnn', action='store_true', default=False,
                         help='Build junction tree and perform message passing over both original graph and tree')
 
-    return parser
+
+def modify_hyper_opt_args(args: Namespace):
+    """Modifies and validates hyperparameter optimization arguments."""
+    os.makedirs(args.results_dir, exist_ok=True)
 
 
-def modify_args(args: Namespace):
-    """Modifies and validates arguments"""
+def update_args_from_checkpoint_dir(args: Namespace):
+    """Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size."""
+    if args.checkpoint_dir is None:
+        args.checkpoint_paths = None
+        return
+
+    args.checkpoint_paths = []
+
+    for root, _, files in os.walk(args.checkpoint_dir):
+        for fname in files:
+            if fname == 'model.pt':
+                args.checkpoint_paths.append(os.path.join(root, fname))
+
+    args.ensemble_size = len(args.checkpoint_paths)
+
+
+def modify_train_args(args: Namespace):
+    """Modifies and validates training arguments."""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
-    # Argument modification/checking
     if args.save_dir is not None:
         os.makedirs(args.save_dir, exist_ok=True)
     else:
@@ -158,23 +186,32 @@ def modify_args(args: Namespace):
 
     args.minimize_score = args.metric in ['rmse', 'mae']
 
-    if args.checkpoint_dir is not None:
-        args.checkpoint_paths = []
+    update_args_from_checkpoint_dir(args)
 
-        for root, _, files in os.walk(args.checkpoint_dir):
-            for fname in files:
-                if fname == 'model.pt':
-                    args.checkpoint_paths.append(os.path.join(root, fname))
-
-        args.ensemble_size = len(args.checkpoint_paths)
-    else:
-        args.checkpoint_paths = None
+    if args.jtnn:
+        if not hasattr(args, 'vocab_path'):
+            raise ValueError('Must provide vocab_path when using jtnn')
+        elif not os.path.exists(args.vocab_path):
+            raise ValueError('Vocab path "{}" does not exist'.format(args.vocab_path))
 
 
-def parse_args():
-    """Parses arguments (includes modifying/validating arguments)"""
-    parser = get_parser()
+def parse_hyper_opt_args() -> Namespace:
+    """Parses arguments for hyperparameter optimization (includes training arguments)."""
+    parser = ArgumentParser()
+    add_train_args(parser)
+    add_hyper_opt_args(parser)
     args = parser.parse_args()
-    modify_args(args)
+    modify_train_args(args)
+    modify_hyper_opt_args(args)
+
+    return args
+
+
+def parse_train_args() -> Namespace:
+    """Parses arguments for training (includes modifying/validating arguments)."""
+    parser = ArgumentParser()
+    add_train_args(parser)
+    args = parser.parse_args()
+    modify_train_args(args)
 
     return args

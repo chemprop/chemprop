@@ -6,18 +6,17 @@ from jtnn import JTNN
 from mpn import MPN
 
 
-def build_model(num_tasks: int, args: Namespace) -> nn.Module:
+def build_model(args: Namespace) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
-    :param num_tasks: Number of tasks to predict.
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     if args.dataset_type == 'regression_with_binning':
-        output_size = args.num_bins * num_tasks
+        output_size = args.num_bins * args.num_tasks
     else:
-        output_size = num_tasks
+        output_size = args.num_tasks
 
     if args.jtnn:
         encoder = JTNN(args)

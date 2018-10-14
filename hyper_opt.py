@@ -14,7 +14,7 @@ from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
 import numpy as np
 
-from parsing import get_parser, modify_args
+from parsing import parse_hyper_opt_args
 from train import run_training
 
 
@@ -133,23 +133,5 @@ def optimize_hyperparameters(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = get_parser()
-    parser.add_argument('--results_dir', type=str,
-                        help='Path to directory where results will be saved')
-    parser.add_argument('--port', type=int, default=9090,
-                        help='Port for HpBandSter to use')
-    parser.add_argument('--min_budget', type=int, default=5,
-                        help='Minimum budget (number of iterations during training) to use')
-    parser.add_argument('--max_budget', type=int, default=45,
-                        help='Maximum budget (number of iterations during training) to use')
-    parser.add_argument('--eta', type=int, default=2,
-                        help='Factor by which to cut number of trials (1/eta trials remain)')
-    parser.add_argument('--n_iterations', type=int, default=16,
-                        help='Number of iterations of BOHB algorithm')
-    args = parser.parse_args()
-
-    modify_args(args)
-
-    os.makedirs(args.results_dir, exist_ok=True)
-
+    args = parse_hyper_opt_args()
     optimize_hyperparameters(args)

@@ -9,10 +9,18 @@ import pickle
 
 import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, accuracy_score
+import torch
 import torch.nn as nn
+
+from model import build_model
 
 
 class StandardScaler:
+    def __init__(self, means: np.ndarray = None, stds: np.ndarray = None):
+        """Initialize StandardScaler, optionally with means and standard deviations precomputed."""
+        self.means = means
+        self.stds = stds
+
     def fit(self, X: List[List[float]]) -> 'StandardScaler':
         """
         Learns means and standard deviations across the 0-th axis.
@@ -51,6 +59,46 @@ class StandardScaler:
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
 
         return transformed_with_none
+
+
+def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, path: str):
+    """
+    Saves a model checkpoint.
+
+    :param model: A PyTorch model.
+    :param scaler: A fitted StandardScaler.
+    :param args: Arguments namespace.
+    :param path: Path where checkpoint will be saved.
+    """
+    state = {
+        'args': args,
+        'state_dict': model.state_dict(),
+        'scaler': {
+            'means': scaler.means,
+            'stds': scaler.stds
+        } if scaler is not None else None
+    }
+    torch.save(state, path)
+
+
+def load_checkpoint(path: str, get_scaler: bool = False) -> Union[nn.Module, Tuple[nn.Module, StandardScaler]]:
+    """
+    Loads a model checkpoint and optionally the scaler the model was trained with.
+
+    :param path: Path where checkpoint is saved.
+    :param get_scaler: Whether to also load the scaler the model was trained with.
+    :return: The loaded model and optionally the scaler.
+    """
+    state = torch.load(path)
+    model = build_model(state['args'])
+    model.load_state_dict(state['state_dict'])
+
+    if not get_scaler:
+        return model
+
+    scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
+
+    return model, scaler
 
 
 def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) -> Tuple[List[Tuple[str, List[float]]],
@@ -92,6 +140,7 @@ def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
         task_names = f.readline().strip().split(',')[index:]
 
     return task_names
+
 
 def get_desired_labels(args: Namespace, task_names: List[str]) -> List[str]:
     if args.show_individual_scores and args.labels_to_show:

@@ -97,7 +97,9 @@ class MPNEncoder(nn.Module):
         else:
             raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
-        self.cached_zero_vector = torch.zeros(self.hidden_size).cuda()
+        self.cached_zero_vector = torch.zeros(self.hidden_size)
+        if args.cuda:
+            self.cached_zero_vector = self.cached_zero_vector.cuda()
 
     def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
         """

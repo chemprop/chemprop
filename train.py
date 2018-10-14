@@ -7,7 +7,6 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
-import torch
 from torch.optim import Adam
 from tqdm import trange
 import pickle
@@ -15,9 +14,10 @@ import shutil
 
 from model import build_model
 from nn_utils import NoamLR, param_count
-from parsing import parse_args
+from parsing import parse_train_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_task_names, get_desired_labels, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
+from utils import get_data, get_task_names, get_desired_labels, get_loss_func, get_metric_func, load_checkpoint, \
+    save_checkpoint, set_logger, split_data, truncate_outliers, StandardScaler
 
 
 # Initialize logger
@@ -47,15 +47,14 @@ def run_training(args: Namespace) -> List[float]:
             test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
-    num_tasks = len(data[0][1])
-    args.num_tasks = num_tasks
+    args.num_tasks = len(data[0][1])
 
     logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(train_data),
         len(val_data),
         len(test_data))
     )
-    logger.debug('Number of tasks = {}'.format(num_tasks))
+    logger.debug('Number of tasks = {}'.format(args.num_tasks))
 
     # Optionally truncate outlier values
     if args.truncate_outliers:
@@ -91,7 +90,7 @@ def run_training(args: Namespace) -> List[float]:
 
     # Set up test set evaluation
     test_smiles, test_labels = zip(*test_data)
-    sum_test_preds = np.zeros((len(test_smiles), num_tasks))
+    sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
@@ -100,16 +99,15 @@ def run_training(args: Namespace) -> List[float]:
         os.makedirs(save_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=save_dir)
 
-        # Build/load model
-        logger.debug('Building model {}'.format(model_idx))
-        model = build_model(num_tasks, args)
-
+        # Load/build model
         if args.checkpoint_paths is not None:
-            logger.debug('Loading model from {}'.format(args.checkpoint_paths[model_idx]))
-            model.load_state_dict(torch.load(args.checkpoint_paths[model_idx]))
-            # TODO: maybe remove the line below - it's a hack to ensure that you can evaluate
-            # on test set if training for 0 epochs
-            torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
+            logger.debug('Loading model {} from {}'.format(model_idx, args.checkpoint_paths[model_idx]))
+            model = load_checkpoint(args.checkpoint_paths[model_idx])
+            # Ensure that model is saved in correct location for evaluation
+            save_checkpoint(model, scaler, args, os.path.join(save_dir, 'model.pt'))
+        else:
+            logger.debug('Building model {}'.format(model_idx))
+            model = build_model(args)
 
         logger.debug(model)
         logger.debug('Number of parameters = {:,}'.format(param_count(model)))
@@ -171,11 +169,11 @@ def run_training(args: Namespace) -> List[float]:
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                torch.save(model.state_dict(), os.path.join(save_dir, 'model.pt'))
+                save_checkpoint(model, scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Evaluate on test set using model using model with best validation score
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        model.load_state_dict(torch.load(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx))))
+        model = load_checkpoint(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx)))
         test_preds = predict(
             model=model,
             smiles=test_smiles,
@@ -268,6 +266,6 @@ def cross_validate(args: Namespace):
 
 
 if __name__ == '__main__':
-    args = parse_args()
+    args = parse_train_args()
     set_logger(logger, args.save_dir, args.quiet)
     cross_validate(args)
