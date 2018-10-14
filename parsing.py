@@ -50,6 +50,10 @@ def get_parser():
                         help='Split proportions for train/validation/test sets')
     parser.add_argument('--num_folds', type=int, default=1,
                         help='Number of folds when performing cross validation')
+    parser.add_argument('--folds_file', type=str, 
+                        help='Optional file of fold labels')
+    parser.add_argument('--test_fold_index', type=int,
+                        help='Which fold to use as test for leave-one-out cross val')
     parser.add_argument('--quiet', action='store_true', default=False,
                         help='Skip non-essential print statements')
     parser.add_argument('--log_frequency', type=int, default=10,

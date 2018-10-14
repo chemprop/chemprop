@@ -5,6 +5,7 @@ import random
 from copy import deepcopy
 from typing import Callable, List, Tuple, Union
 from argparse import Namespace
+import pickle
 
 import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, accuracy_score
@@ -157,6 +158,7 @@ def get_data(path: str,
 
 
 def split_data(data: List[Tuple[str, List[float]]],
+               args: Namespace,
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0) -> Tuple[List[Tuple[str, List[float]]],
                                        List[Tuple[str, List[float]]],
@@ -168,20 +170,41 @@ def split_data(data: List[Tuple[str, List[float]]],
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
+    :param args: Namespace of arguments
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert len(sizes) == 3, sum(sizes) == 1
+    if args.folds_file:
+        assert sizes[2] == 0 #test set is created separately
+        with open(args.folds_file, 'rb') as f:
+            all_fold_indices = pickle.load(f)
+        assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
+        folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
 
-    random.seed(seed)
-    random.shuffle(data)
+        test = folds[args.test_fold_index]
+        train_val = []
+        for i in range(len(folds)):
+            if i != args.test_fold_index:
+                train_val.extend(folds[i])
 
-    train_size, val_size = [int(size * len(data)) for size in sizes[:2]]
+        random.seed(seed)
+        random.shuffle(train_val)
+        train_size = int(sizes[0] * len(train_val))
+        train = train_val[:train_size]
+        val = train_val[train_size:]
+        return train, val, test
 
-    train = data[:train_size]
-    val = data[train_size:train_size + val_size]
-    test = data[train_size + val_size:]
+    else:
+        random.seed(seed)
+        random.shuffle(data)
 
-    return train, val, test
+        train_size, val_size = [int(size * len(data)) for size in sizes[:2]]
+
+        train = data[:train_size]
+        val = data[train_size:train_size + val_size]
+        test = data[train_size + val_size:]
+
+        return train, val, test
 
 
 def truncate_outliers(data: List[Tuple[str, List[float]]]) -> List[Tuple[str, List[float]]]:
