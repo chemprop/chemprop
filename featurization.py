@@ -204,7 +204,8 @@ def mol2graph(mol_batch: List[str], args: Namespace) -> Tuple[torch.Tensor, torc
                                                                                distance_3d=distance_3d)], dim=0))
                     n_bonds += 2
             # Memoize if we're not chunking to save memory
-            SMILES_TO_FEATURES[smiles] = (mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms, n_bonds)
+            if args.num_chunks == 1 or args.memoize_chunks:
+                SMILES_TO_FEATURES[smiles] = (mol_fatoms, mol_fbonds, mol_all_bonds, n_atoms, n_bonds)
 
         # Add molecule features to batch features
         fatoms.extend(mol_fatoms)

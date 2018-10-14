@@ -32,10 +32,12 @@ def get_parser():
     parser.add_argument('--num_chunks', type=int, default=1,
                         help='Specify > 1 if your dataset is really big')
     parser.add_argument('--chunk_temp_dir', type=str, default='temp_chunks',
-                        help='temp dir to store chunks in')                
+                        help='temp dir to store chunks in')
+    parser.add_argument('--memoize_chunks', action='store_true', default=False,
+                        help='store memo dicts for mol2graph in chunk_temp_dir when chunking, at large disk space cost')
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
-    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2'],
+    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
@@ -56,6 +58,8 @@ def get_parser():
                         help='Turn off cuda')
     parser.add_argument('--show_individual_scores', action='store_true', default=False,
                         help='Show all scores for individual targets, not just average, at the end')
+    parser.add_argument('--labels_to_show', type=str,
+                        help='List of targets to show individual scores for, if specified')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,
@@ -144,7 +148,7 @@ def modify_args(args: Namespace):
     if args.metric is None:
         args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
 
-    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc'] or
+    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']):
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 

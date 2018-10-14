@@ -61,7 +61,7 @@ def train(model: nn.Module,
                 chunk = pickle.load(f)
             random.shuffle(chunk)
             n_iter = train( model=model, 
-                            chunk=chunk, 
+                            data=chunk, 
                             loss_func=loss_func, 
                             optimizer=optimizer, 
                             scheduler=scheduler, 
@@ -72,7 +72,7 @@ def train(model: nn.Module,
                             chunk_names=False)
             if not found_memo:
                 with open(memo_path, 'wb') as f:
-                    pickle.dump(featurization.SMILES_TO_FEATURES, f)
+                    pickle.dump(featurization.SMILES_TO_FEATURES, f, protocol=pickle.HIGHEST_PROTOCOL)
         return n_iter
 
     loss_sum, iter_count = 0, 0

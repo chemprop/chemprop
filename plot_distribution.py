@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from utils import get_data_with_header
+from utils import get_data
 
 
 def plot_distribution(data_path: str, save_dir: str, bins: int):
@@ -15,7 +15,7 @@ def plot_distribution(data_path: str, save_dir: str, bins: int):
     :param bins: Number of bins in histogram.
     """
     # Get values
-    header, data = get_data_with_header(data_path)
+    header, data = get_data(args.data_path, get_header=True)
     task_names = header[1:]
     _, values = zip(*data)
 

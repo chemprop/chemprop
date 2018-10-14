@@ -22,7 +22,7 @@ def make_predictions(args):
     if args.compound_names:
         compound_names, test_data = get_data(args.test_path, use_compound_names=True)
     else:
-        test_data = get_data(args.test_data)
+        test_data = get_data(args.test_path)
 
     num_tasks = len(train_data[0][1])
     args.num_tasks = num_tasks

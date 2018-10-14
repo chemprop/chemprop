@@ -4,12 +4,12 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from utils import get_data_with_header
+from utils import get_data
 
 
 def average_duplicates(args):
     print('Loading data')
-    header, data = get_data_with_header(args.data_path)
+    header, data = get_data(args.data_path, get_header=True)
     print('Data size = {:,}'.format(len(data)))
 
     # Map SMILES string to lists of values

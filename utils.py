@@ -4,9 +4,10 @@ import os
 import random
 from copy import deepcopy
 from typing import Callable, List, Tuple, Union
+from argparse import Namespace
 
 import numpy as np
-from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score
+from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, accuracy_score
 import torch.nn as nn
 
 
@@ -90,6 +91,16 @@ def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
         task_names = f.readline().strip().split(',')[index:]
 
     return task_names
+
+def get_desired_labels(args: Namespace, task_names: List[str]) -> List[str]:
+    if args.show_individual_scores and args.labels_to_show:
+        desired_labels = []
+        with open(args.labels_to_show, 'r') as f:
+            for line in f:
+                desired_labels.append(line.strip())
+    else:
+        desired_labels = task_names
+    return desired_labels
 
 
 def get_data(path: str,
@@ -241,6 +252,12 @@ def get_metric_func(metric: str) -> Callable:
 
     if metric == 'r2':
         return r2_score
+    
+    if metric == 'accuracy':
+        def metric_func(labels, preds):
+            hard_preds = [1 if p > 0.5 else 0 for p in preds]
+            return accuracy_score(labels, hard_preds)
+        return metric_func
 
     raise ValueError('Metric "{}" not supported.'.format(metric))
 

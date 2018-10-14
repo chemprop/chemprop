@@ -17,7 +17,7 @@ from model import build_model
 from nn_utils import NoamLR, param_count
 from parsing import parse_args
 from train_utils import train, predict, evaluate, evaluate_predictions
-from utils import get_data, get_task_names, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
+from utils import get_data, get_task_names, get_desired_labels, get_loss_func, get_metric_func, set_logger, split_data, truncate_outliers, StandardScaler
 
 
 # Initialize logger
@@ -31,6 +31,7 @@ def run_training(args: Namespace) -> List[float]:
 
     logger.debug('Loading data')
     task_names = get_task_names(args.data_path)
+    desired_labels = get_desired_labels(args, task_names)
     data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins)
 
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
@@ -159,10 +160,12 @@ def run_training(args: Namespace) -> List[float]:
             logger.debug('Validation {} = {:.3f}'.format(args.metric, avg_val_score))
             writer.add_scalar('validation_{}'.format(args.metric), avg_val_score, n_iter)
 
-            # Individual validation scores
-            for task_name, val_score in zip(task_names, val_scores):
-                logger.debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
-                writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
+            if args.show_individual_scores:
+                # Individual validation scores
+                for task_name, val_score in zip(task_names, val_scores):
+                    if task_name in desired_labels:
+                        logger.debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
+                        writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
 
             # Save model checkpoint if improved validation score
             if args.minimize_score and avg_val_score < best_score or \
@@ -191,10 +194,12 @@ def run_training(args: Namespace) -> List[float]:
         logger.info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, avg_test_score))
         writer.add_scalar('test_{}'.format(args.metric), avg_test_score, n_iter)
 
-        # Individual test scores
-        for task_name, test_score in zip(task_names, test_scores):
-            logger.info('Model {} test {} {} = {:.3f}'.format(model_idx, task_name, args.metric, test_score))
-            writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
+        if args.show_individual_scores:
+            # Individual test scores
+            for task_name, test_score in zip(task_names, test_scores):
+                if task_name in desired_labels:
+                    logger.info('Model {} test {} {} = {:.3f}'.format(model_idx, task_name, args.metric, test_score))
+                    writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
 
     # Evaluate ensemble on test set
     avg_test_preds = sum_test_preds / args.ensemble_size
@@ -219,6 +224,7 @@ def cross_validate(args: Namespace):
     init_seed = args.seed
     save_dir = args.save_dir
     task_names = get_task_names(args.data_path)
+    desired_labels = get_desired_labels(args, task_names)
 
     # Run training on different random seeds for each fold
     all_scores = []
@@ -238,20 +244,24 @@ def cross_validate(args: Namespace):
     for fold_num, scores in enumerate(all_scores):
         logger.info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, np.mean(scores)))
 
-        for task_name, score in zip(task_names, scores):
-            logger.info('Seed {} ==> test {} {} = {:.3f}'.format(init_seed + fold_num, task_name, args.metric, score))
+        if args.show_individual_scores:
+            for task_name, score in zip(task_names, scores):
+                if task_name in desired_labels:
+                    logger.info('Seed {} ==> test {} {} = {:.3f}'.format(init_seed + fold_num, task_name, args.metric, score))
 
     # Report scores across models
     avg_scores = np.mean(all_scores, axis=1)  # average score for each model across tasks
     logger.info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(avg_scores), np.std(avg_scores)))
 
-    for task_num, task_name in enumerate(task_names):
-        logger.info('Overall test {} {} = {:.3f} ± {:.3f}'.format(
-            task_name,
-            args.metric,
-            np.mean(all_scores[:, task_num]),
-            np.std(all_scores[:, task_num]))
-        )
+    if args.show_individual_scores:
+        for task_num, task_name in enumerate(task_names):
+            if task_name in desired_labels:
+                logger.info('Overall test {} {} = {:.3f} ± {:.3f}'.format(
+                    task_name,
+                    args.metric,
+                    np.mean(all_scores[:, task_num]),
+                    np.std(all_scores[:, task_num]))
+                )
 
     if args.num_chunks > 1:
         shutil.rmtree(args.chunk_temp_dir)
