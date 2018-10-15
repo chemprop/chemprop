@@ -5,6 +5,16 @@ from tempfile import TemporaryDirectory
 import torch
 
 
+def add_predict_args(parser: ArgumentParser):
+    """Add predict arguments to an ArgumentParser."""
+    parser.add_argument('--test_path', type=str, required=True,
+                        help='Path to CSV file containing testing data for which predictions will be made')
+    parser.add_argument('--compound_names', action='store_true', default=False,
+                        help='Use when test data file contains compound names in addition to SMILES strings')
+    parser.add_argument('--preds_path', type=str, required=True,
+                        help='Path to CSV file where predictions will be saved')
+
+
 def add_hyper_opt_args(parser: ArgumentParser):
     """Add hyperparameter optimization arguments to an ArgumentParser."""
     parser.add_argument('--results_dir', type=str, required=True,

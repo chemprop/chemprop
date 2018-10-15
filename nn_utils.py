@@ -113,7 +113,8 @@ class NoamLR(_LRScheduler):
         self.warmup_steps = int(self.warmup_epochs * self.steps_per_epoch)
         self.total_steps = self.total_epochs * self.steps_per_epoch
         self.linear_increment = (self.max_lr - self.init_lr) / self.warmup_steps
-        self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
+        if self.total_steps > self.warmup_steps:  # avoid division by 0
+            self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
 
         super(NoamLR, self).__init__(optimizer)
 
@@ -135,8 +136,10 @@ class NoamLR(_LRScheduler):
 
         if self.current_step <= self.warmup_steps:
             self.lr = self.init_lr + self.current_step * self.linear_increment
-        else:
+        elif self.current_step <= self.total_steps:
             self.lr = self.max_lr * (self.exponential_gamma ** (self.current_step - self.warmup_steps))
+        else:  # theoretically this case should never be reached since training should stop at total_steps
+            self.lr = self.final_lr
 
         self.optimizer.param_groups[0]['lr'] = self.lr
 

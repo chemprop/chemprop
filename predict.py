@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from parsing import update_args_from_checkpoint_dir
+from parsing import add_predict_args, update_args_from_checkpoint_dir
 from train_utils import predict
 from utils import get_data, get_task_names, load_checkpoint
 
@@ -13,17 +13,11 @@ from utils import get_data, get_task_names, load_checkpoint
 def make_predictions(args: Namespace):
     """Makes predictions."""
     print('Loading data')
-    task_names = get_task_names(args.test_path)
-
     if args.compound_names:
         compound_names, test_data = get_data(args.test_path, use_compound_names=True)
     else:
         test_data = get_data(args.test_path)
-
-    args.num_tasks = len(test_data[0][1])
-
     print('Test size = {:,}'.format(len(test_data)))
-    print('Number of tasks = {}'.format(args.num_tasks))
 
     # Predict on test set
     test_smiles, _ = zip(*test_data)
@@ -32,7 +26,8 @@ def make_predictions(args: Namespace):
     # Predict with each model individually
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
-        model, scaler = load_checkpoint(checkpoint_path, get_scaler=True)
+        model, scaler, train_args = load_checkpoint(checkpoint_path, get_scaler=True, get_args=True)
+        args.num_tasks, args.task_names = train_args.num_tasks, train_args.task_names
 
         if args.cuda:
             print('Moving model to cuda')
@@ -52,10 +47,12 @@ def make_predictions(args: Namespace):
 
     # Save predictions
     assert len(test_smiles) == len(avg_preds)
-    print('Saving predictions to {}'.format(args.save_path))
+    print('Saving predictions to {}'.format(args.preds_path))
 
-    with open(args.save_path, 'w') as f:
-        f.write(','.join(task_names) + '\n')
+    with open(args.preds_path, 'w') as f:
+        if args.compound_names:
+            f.write('compound_name,')
+        f.write(','.join(args.task_names) + '\n')
 
         for i in range(len(avg_preds)):
             if args.compound_names:
@@ -65,19 +62,14 @@ def make_predictions(args: Namespace):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--test_path', type=str, required=True,
-                        help='Path to CSV file containing testing data for which predictions will be made')
+    add_predict_args(parser)
     parser.add_argument('--dataset_type', type=str, required=True,
                         choices=['classification', 'regression', 'regression_with_binning'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
                              'This determines the loss function used during training.')
-    parser.add_argument('--compound_names', action='store_true', default=False,
-                        help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--checkpoint_dir', type=str, required=True,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
-    parser.add_argument('--save_path', type=str, required=True,
-                        help='Path to CSV file where predictions will be saved')
     parser.add_argument('--batch_size', type=int, default=50,
                         help='Batch size')
     parser.add_argument('--no_cuda', action='store_true', default=False,
@@ -91,9 +83,9 @@ if __name__ == '__main__':
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     del args.no_cuda
 
-    # Create directory for save_path
-    save_dir = os.path.dirname(args.save_path)
-    if save_dir != '':
-        os.makedirs(save_dir, exist_ok=True)
+    # Create directory for preds path
+    preds_dir = os.path.dirname(args.preds_path)
+    if preds_dir != '':
+        os.makedirs(preds_dir, exist_ok=True)
 
     make_predictions(args)

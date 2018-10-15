@@ -30,8 +30,10 @@ def run_training(args: Namespace) -> List[float]:
     logger.debug(pformat(vars(args)))
 
     logger.debug('Loading data')
-    task_names = get_task_names(args.data_path)
-    desired_labels = get_desired_labels(args, task_names)
+    args.task_names = get_task_names(args.data_path)
+    args.num_tasks = len(args.task_names)
+    logger.debug('Number of tasks = {}'.format(args.num_tasks))
+    desired_labels = get_desired_labels(args, args.task_names)
     data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins)
 
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
@@ -47,14 +49,12 @@ def run_training(args: Namespace) -> List[float]:
             test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
-    args.num_tasks = len(data[0][1])
 
     logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(train_data),
         len(val_data),
         len(test_data))
     )
-    logger.debug('Number of tasks = {}'.format(args.num_tasks))
 
     # Optionally truncate outlier values
     if args.truncate_outliers:
@@ -143,7 +143,7 @@ def run_training(args: Namespace) -> List[float]:
                 n_iter=n_iter,
                 logger=logger,
                 writer=writer,
-                chunk_names=(args.num_chunks>1)
+                chunk_names=(args.num_chunks > 1)
             )
             val_scores = evaluate(
                 model=model,
@@ -160,7 +160,7 @@ def run_training(args: Namespace) -> List[float]:
 
             if args.show_individual_scores:
                 # Individual validation scores
-                for task_name, val_score in zip(task_names, val_scores):
+                for task_name, val_score in zip(args.task_names, val_scores):
                     if task_name in desired_labels:
                         logger.debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
                         writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
@@ -194,7 +194,7 @@ def run_training(args: Namespace) -> List[float]:
 
         if args.show_individual_scores:
             # Individual test scores
-            for task_name, test_score in zip(task_names, test_scores):
+            for task_name, test_score in zip(args.task_names, test_scores):
                 if task_name in desired_labels:
                     logger.info('Model {} test {} {} = {:.3f}'.format(model_idx, task_name, args.metric, test_score))
                     writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
@@ -211,7 +211,7 @@ def run_training(args: Namespace) -> List[float]:
     logger.info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
 
     # Individual ensemble scores
-    for task_name, ensemble_score in zip(task_names, ensemble_scores):
+    for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
         logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
 
     return ensemble_scores
@@ -219,6 +219,8 @@ def run_training(args: Namespace) -> List[float]:
 
 def cross_validate(args: Namespace):
     """k-fold cross validation"""
+    set_logger(logger, args.save_dir, args.quiet)
+
     init_seed = args.seed
     save_dir = args.save_dir
     task_names = get_task_names(args.data_path)
@@ -267,5 +269,4 @@ def cross_validate(args: Namespace):
 
 if __name__ == '__main__':
     args = parse_train_args()
-    set_logger(logger, args.save_dir, args.quiet)
     cross_validate(args)

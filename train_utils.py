@@ -19,6 +19,7 @@ from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 import featurization
 
+
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
           loss_func: Callable,
@@ -60,16 +61,18 @@ def train(model: nn.Module,
             with open(path, 'rb') as f:
                 chunk = pickle.load(f)
             random.shuffle(chunk)
-            n_iter = train( model=model, 
-                            data=chunk, 
-                            loss_func=loss_func, 
-                            optimizer=optimizer, 
-                            scheduler=scheduler, 
-                            args=args, 
-                            n_iter=n_iter,
-                            logger=logger,
-                            writer=writer,
-                            chunk_names=False)
+            n_iter = train(
+                model=model,
+                data=chunk,
+                loss_func=loss_func,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                args=args,
+                n_iter=n_iter,
+                logger=logger,
+                writer=writer,
+                chunk_names=False
+            )
             if not found_memo:
                 with open(memo_path, 'wb') as f:
                     pickle.dump(featurization.SMILES_TO_FEATURES, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -121,7 +124,7 @@ def train(model: nn.Module,
             loss_sum, iter_count = 0, 0
 
             if logger is not None:
-                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4f}".format(loss_avg, pnorm, gnorm, lr))
+                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)

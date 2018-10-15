@@ -3,7 +3,7 @@ import math
 import os
 import random
 from copy import deepcopy
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 from argparse import Namespace
 import pickle
 
@@ -81,24 +81,37 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
     torch.save(state, path)
 
 
-def load_checkpoint(path: str, get_scaler: bool = False) -> Union[nn.Module, Tuple[nn.Module, StandardScaler]]:
+def load_checkpoint(path: str,
+                    get_scaler: bool = False,
+                    get_args: bool = False) -> Union[nn.Module,
+                                                     Tuple[nn.Module, StandardScaler],
+                                                     Tuple[nn.Module, Namespace],
+                                                     Tuple[nn.Module, StandardScaler, Namespace]]:
     """
     Loads a model checkpoint and optionally the scaler the model was trained with.
 
     :param path: Path where checkpoint is saved.
     :param get_scaler: Whether to also load the scaler the model was trained with.
+    :param get_args: Whether to also load the args the model was trained with.
     :return: The loaded model and optionally the scaler.
     """
     state = torch.load(path)
-    model = build_model(state['args'])
+    args = state['args']
+    model = build_model(args)
     model.load_state_dict(state['state_dict'])
 
-    if not get_scaler:
-        return model
+    if get_scaler:
+        scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
 
-    scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
+        if get_args:
+            return model, scaler, args
 
-    return model, scaler
+        return model, scaler
+
+    if get_args:
+        return model, args
+
+    return model
 
 
 def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) -> Tuple[List[Tuple[str, List[float]]],
@@ -157,9 +170,9 @@ def get_data(path: str,
              dataset_type: str = None,
              num_bins: int = 20,
              use_compound_names: bool = False,
-             get_header: bool = False) -> Union[Tuple[List[str], List[Tuple[str, List[float]]]],
-                                                List[str], Tuple[List[str], List[Tuple[str, List[float]]]],
-                                                List[str], List[str], Tuple[List[str], List[Tuple[str, List[float]]]]]:
+             get_header: bool = False) -> Union[Tuple[List[str], List[Tuple[str, List[Optional[float]]]]],
+                                                Tuple[List[str], Tuple[List[str], List[Tuple[str, List[Optional[float]]]]]],
+                                                Tuple[List[str], List[str], Tuple[List[str], List[Tuple[str, List[Optional[float]]]]]]]:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 

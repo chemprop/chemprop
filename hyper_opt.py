@@ -93,41 +93,7 @@ def optimize_hyperparameters(args: Namespace):
         min_budget=args.min_budget,
         max_budget=args.max_budget
     )
-    res = bohb.run(n_iterations=args.n_iterations)
-
-    # Print results
-    id2config = res.get_id2config_mapping()
-    incumbent = res.get_incumbent_id()
-
-    print('Best found configuration:', id2config[incumbent]['config'])
-    print('Performance of best configuration:', res.get_runs_by_id(incumbent)[-1]['info'])
-    print('A total of %i unique configurations where sampled.' % len(id2config.keys()))
-    print('A total of %i runs were executed.' % len(res.get_all_runs()))
-    print('Total budget corresponds to %.1f full function evaluations.' % (
-                sum([r.budget for r in res.get_all_runs()]) / args.max_budget))
-
-    # Save all results with pickle
-    with open(os.path.join(args.results_dir, 'results.pkl'), 'wb') as f:
-        pickle.dump(res, f)
-
-    # Save best result for each config in CSV format
-    results = []
-    for id, config in id2config.items():
-        for info in res.get_runs_by_id(id):
-            results.append(
-                dict(
-                    **config['config'],
-                    **info['info'],
-                    budget=info['budget']
-                )
-            )
-    results.sort(key=lambda r: r['val_loss'])
-
-    with open(os.path.join(args.results_dir, 'results.csv'), 'w') as f:
-        writer = csv.DictWriter(f, fieldnames=results[0].keys())
-        writer.writeheader()
-        writer.writerows(results)
-
+    bohb.run(n_iterations=args.n_iterations)
     bohb.shutdown(shutdown_workers=True)
     NS.shutdown()
 
