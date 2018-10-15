@@ -107,6 +107,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Maximum gradient norm when performing gradient clipping')
 
     # Model arguments
+    parser.add_argument('--message_type', type=str, default='bond', choices=['bond', 'atom'],
+                        help='Whether messages are associated with bonds or atoms')
     parser.add_argument('--ensemble_size', type=int, default=1,
                         help='Number of models in ensemble')
     parser.add_argument('--hidden_size', type=int, default=300,

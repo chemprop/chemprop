@@ -212,8 +212,9 @@ def run_training(args: Namespace) -> List[float]:
     logger.info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
 
     # Individual ensemble scores
-    for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
-        logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
+    if args.show_individual_scores:
+        for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
+            logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
 
     return ensemble_scores
 

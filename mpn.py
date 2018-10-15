@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from featurization import get_atom_fdim, get_bond_fdim, mol2graph
+from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND, visualize_attention
 
 
@@ -102,14 +102,14 @@ class MPNEncoder(nn.Module):
             self.cached_zero_vector = self.cached_zero_vector.cuda()
 
     def forward(self,
-                mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]],
+                mol_graph: BatchMolGraph,
                 viz_attention: bool = False,
                 viz_dir: str = None,
                 smiles: List[str] = None) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
-        :param mol_graph: See docstring for featurization.mol2graph.
+        :param mol_graph: A BatchMolGraph representing a batch of molecular graphs.
         :param viz_attention: Whether to visualize attention weights.
         :param viz_dir: Directory in which to save visualized attention weights.
         :param smiles: A list of smiles strings corresponding to mol_graph. Used only when visualizing attention.
