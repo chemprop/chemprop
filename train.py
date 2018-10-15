@@ -256,7 +256,7 @@ def cross_validate(args: Namespace):
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):
             if task_name in desired_labels:
-                logger.info('Overall test {} {} = {:.3f} ± {:.3f}'.format(
+                logger.info('Overall test {} {} = {:.3f} +/- {:.3f}'.format(
                     task_name,
                     args.metric,
                     np.mean(all_scores[:, task_num]),
