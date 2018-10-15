@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 from featurization import get_atom_fdim, get_bond_fdim, mol2graph
-from nn_utils import create_mask, index_select_ND
+from nn_utils import create_mask, index_select_ND, visualize_attention
 
 
 class MPNEncoder(nn.Module):
@@ -101,23 +101,34 @@ class MPNEncoder(nn.Module):
         if args.cuda:
             self.cached_zero_vector = self.cached_zero_vector.cuda()
 
-    def forward(self, mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]]) -> torch.Tensor:
+    def forward(self,
+                mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]],
+                viz_attention: bool = False,
+                viz_dir: str = None,
+                smiles: List[str] = None) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
-        :param mol_graph: See docstring for featurization.mol2graph
+        :param mol_graph: See docstring for featurization.mol2graph.
+        :param viz_attention: Whether to visualize attention weights.
+        :param viz_dir: Directory in which to save visualized attention weights.
+        :param smiles: A list of smiles strings corresponding to mol_graph. Used only when visualizing attention.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
+        if viz_attention:
+            assert viz_dir is not None
+            assert smiles is not None
+
         fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
         if next(self.parameters()).is_cuda:
             fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
 
         # Input
-        binput = self.W_i(fbonds)
-        message = self.act_func(binput)
+        binput = self.W_i(fbonds)  # num_bonds x hidden_size
+        message = self.act_func(binput)  # num_bonds x hidden_size
 
         if self.message_attention:
-            message_attention_mask = (bgraph != 0).float()
+            message_attention_mask = (bgraph != 0).float()  # num_bonds x max_num_bonds
 
             if next(self.parameters()).is_cuda:
                 message_attention_mask = message_attention_mask.cuda()
@@ -178,6 +189,9 @@ class MPNEncoder(nn.Module):
                 attention_hiddens = self.act_func(self.W_ga2(attention_hiddens))  # num_bonds x hidden_size
                 attention_hiddens = self.dropout_layer(attention_hiddens)  # num_bonds x hidden_size
                 message = message + attention_hiddens  # num_bonds x hidden_size
+
+                if viz_attention:
+                    visualize_attention(viz_dir, smiles, mol_graph, attention_weights)
 
             if self.use_layer_norm:
                 message = self.layer_norm(message)
@@ -244,7 +258,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
         else:
             mol_vecs = []
-            # TODO: MAYBE DO THIS WITH MASKING INSTEAD OF A LOOP
+            # TODO: Maybe do this in parallel with masking rather than looping
             for start, size in ascope:
                 if size == 0:
                     mol_vecs.append(self.cached_zero_vector)
@@ -274,19 +288,33 @@ class MPNEncoder(nn.Module):
         return mol_vecs  # (num_molecules, hidden_size)
 
 
-class MPN(MPNEncoder):
+class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
     def __init__(self, args: Namespace):
-        atom_fdim = get_atom_fdim(args)
-        bond_fdim = atom_fdim + get_bond_fdim(args)
-        super(MPN, self).__init__(args, atom_fdim, bond_fdim)
+        super(MPN, self).__init__()
+        self.args = args
+        self.atom_fdim = get_atom_fdim(args)
+        self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
-    def forward(self, mol_batch: List[str]) -> torch.Tensor:
+    def forward(self, smiles: List[str]) -> torch.Tensor:
         """
         Encodes a batch of molecular SMILES strings.
 
-        :param mol_batch: A list of SMILES strings.
+        :param smiles: A list of SMILES strings.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        return super(MPN, self).forward(mol2graph(mol_batch, self.args))
+        return self.encoder.forward(mol2graph(smiles, self.args))
+
+    def viz_attention(self, smiles: List[str], viz_dir: str):
+        """
+        Visualizes attention weights for a batch of molecular SMILES strings
+
+        :param smiles: A list of SMILES strings.
+        :param viz_dir: Directory in which to save visualized attention weights.
+        """
+        self.encoder.forward(mol2graph(smiles, self.args),
+                             viz_attention=True,
+                             viz_dir=viz_dir,
+                             smiles=smiles)

@@ -82,6 +82,7 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
 
 
 def load_checkpoint(path: str,
+                    cuda: bool = False,
                     get_scaler: bool = False,
                     get_args: bool = False) -> Union[nn.Module,
                                                      Tuple[nn.Module, StandardScaler],
@@ -91,6 +92,7 @@ def load_checkpoint(path: str,
     Loads a model checkpoint and optionally the scaler the model was trained with.
 
     :param path: Path where checkpoint is saved.
+    :param cuda: Whether to move model to cuda.
     :param get_scaler: Whether to also load the scaler the model was trained with.
     :param get_args: Whether to also load the args the model was trained with.
     :return: The loaded model and optionally the scaler.
@@ -99,6 +101,10 @@ def load_checkpoint(path: str,
     args = state['args']
     model = build_model(args)
     model.load_state_dict(state['state_dict'])
+
+    if cuda:
+        print('Moving model to cuda')
+        model = model.cuda()
 
     if get_scaler:
         scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None

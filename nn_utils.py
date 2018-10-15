@@ -1,5 +1,6 @@
-from typing import List, Union
+from typing import List, Tuple, Union
 
+from rdkit import Chem
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
@@ -142,6 +143,27 @@ class NoamLR(_LRScheduler):
             self.lr = self.final_lr
 
         self.optimizer.param_groups[0]['lr'] = self.lr
+
+
+# TODO
+def visualize_attention(viz_dir: str,
+                        smiles: List[str],
+                        mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]],
+                        attention: torch.FloatTensor):
+    fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
+
+    # Get mapping from bond to the atom it goes into
+    bond_to_atom = {}
+    for atom in range(len(agraph)):
+        for bond in agraph[atom]:
+            bond_to_atom[bond] = atom
+
+    for smile, (atom_start, atom_length), (bond_start, bond_length) in zip(smiles, ascope, bscope):
+        mol = Chem.MolFromSmiles(smile)
+
+        for atom in range(atom_start, atom_start + atom_length):
+            pass
+
 
 
 def GRU(x: torch.Tensor, h_nei: torch.Tensor, W_z: nn.Linear, W_r: nn.Linear, U_r: nn.Linear, W_h: nn.Linear) -> torch.Tensor:

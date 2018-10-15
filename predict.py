@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from parsing import add_predict_args, update_args_from_checkpoint_dir
 from train_utils import predict
-from utils import get_data, get_task_names, load_checkpoint
+from utils import get_data, load_checkpoint
 
 
 def make_predictions(args: Namespace):
@@ -26,12 +26,8 @@ def make_predictions(args: Namespace):
     # Predict with each model individually
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
-        model, scaler, train_args = load_checkpoint(checkpoint_path, get_scaler=True, get_args=True)
+        model, scaler, train_args = load_checkpoint(checkpoint_path, cuda=args.cuda, get_scaler=True, get_args=True)
         args.num_tasks, args.task_names = train_args.num_tasks, train_args.task_names
-
-        if args.cuda:
-            print('Moving model to cuda')
-            model = model.cuda()
 
         model_preds = predict(
             model=model,
