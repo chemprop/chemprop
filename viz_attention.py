@@ -16,10 +16,11 @@ def visualize_attention(args: Namespace):
 
     print('Loading model from "{}"'.format(args.checkpoint_path))
     model = load_checkpoint(args.checkpoint_path, cuda=args.cuda)
+    mpn = model[0]
 
     for i in trange(0, len(smiles), args.batch_size):
         smiles_batch = smiles[i:i + args.batch_size]
-        model.viz_attention(smiles_batch, viz_dir=args.viz_dir)
+        mpn.viz_attention(smiles_batch, viz_dir=args.viz_dir)
 
 
 if __name__ == '__main__':
@@ -28,10 +29,6 @@ if __name__ == '__main__':
                         help='Path to data CSV file')
     parser.add_argument('--viz_dir', type=str, required=True,
                         help='Path where attention PNGs will be saved')
-    parser.add_argument('--dataset_type', type=str, required=True,
-                        choices=['classification', 'regression', 'regression_with_binning'],
-                        help='Type of dataset, i.e. classification (cls) or regression (reg).'
-                             'This determines the loss function used during training.')
     parser.add_argument('--checkpoint_path', type=str, required=True,
                         help='Path to a model checkpoint')
     parser.add_argument('--batch_size', type=int, default=50,

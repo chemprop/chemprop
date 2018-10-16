@@ -75,14 +75,14 @@ def train(model: nn.Module,
             )
             if not found_memo:
                 with open(memo_path, 'wb') as f:
-                    pickle.dump(featurization.SMILES_TO_FEATURES, f, protocol=pickle.HIGHEST_PROTOCOL)
+                    pickle.dump(featurization.SMILES_TO_GRAPH, f, protocol=pickle.HIGHEST_PROTOCOL)
         return n_iter
 
     loss_sum, iter_count = 0, 0
     for i in trange(0, len(data), args.batch_size):
         # Prepare batch
         batch = data[i:i + args.batch_size]
-        mol_batch, label_batch = zip(*batch)
+        smiles_batch, label_batch = zip(*batch)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
@@ -92,7 +92,7 @@ def train(model: nn.Module,
 
         # Run model
         model.zero_grad()
-        preds = model(mol_batch)
+        preds = model(smiles_batch)
         if args.dataset_type == 'regression_with_binning':
             preds = preds.view(labels.size(0), labels.size(1), -1)
             labels = labels.long()
@@ -155,10 +155,10 @@ def predict(model: nn.Module,
         preds = []
         for i in range(0, len(smiles), args.batch_size):
             # Prepare batch
-            mol_batch = smiles[i:i + args.batch_size]
+            smiles_batch = smiles[i:i + args.batch_size]
 
             # Run model
-            batch_preds = model(mol_batch)
+            batch_preds = model(smiles_batch)
             batch_preds = batch_preds.data.cpu().numpy()
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)

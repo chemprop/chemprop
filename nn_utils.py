@@ -1,10 +1,15 @@
+import os
 from typing import List, Union
 
+import matplotlib
+import matplotlib.pyplot as plt
 from rdkit import Chem
+from rdkit.Chem.Draw import SimilarityMaps
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
+from tqdm import trange, tqdm
 
 from featurization import BatchMolGraph
 
@@ -147,25 +152,44 @@ class NoamLR(_LRScheduler):
         self.optimizer.param_groups[0]['lr'] = self.lr
 
 
-# TODO
 def visualize_attention(viz_dir: str,
-                        smiles: List[str],
                         mol_graph: BatchMolGraph,
-                        attention: torch.FloatTensor):
-    f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
+                        attention_weights: torch.FloatTensor,
+                        depth: int):
+    """
+    Saves figures of attention maps.
 
-    # Get mapping from bond to the atom it goes into
-    bond_to_atom = {}
-    for atom in range(len(agraph)):
-        for bond in agraph[atom]:
-            bond_to_atom[bond] = atom
+    :param viz_dir: Directory in which to save attention map figures.
+    :param mol_graph: BatchMolGraph containing a batch of molecular graphs.
+    :param attention_weights: A num_bonds x num_bonds PyTorch FloatTensor containing attention weights.
+    :param depth: The current depth (i.e. message passing step).
+    """
+    for i in trange(mol_graph.n_mols):
+        smiles = mol_graph.smiles_batch[i]
+        mol = Chem.MolFromSmiles(smiles)
 
-    for smile, (atom_start, atom_length), (bond_start, bond_length) in zip(smiles, ascope, bscope):
-        mol = Chem.MolFromSmiles(smile)
+        smiles_viz_dir = os.path.join(viz_dir, smiles)
+        os.makedirs(smiles_viz_dir, exist_ok=True)
 
-        for atom in range(atom_start, atom_start + atom_length):
-            pass
+        a_start, a_size = mol_graph.a_scope[i]
+        b_start, b_size = mol_graph.b_scope[i]
 
+        for b in trange(b_start, b_start + b_size):
+            # b = a1 --> a2
+            a1, a2 = mol_graph.b2a[b].item() - a_start, mol_graph.b2a[mol_graph.b2revb[b]].item() - a_start
+
+            # Convert weights from bond weights to atom weights
+            b_weights = attention_weights[b]  # num_bonds
+            a2b = mol_graph.a2b[a_start:a_start + a_size]  # restrict a2b to this molecule
+            a_weights = index_select_ND(b_weights, a2b)  # num_atoms x max_num_bonds
+            a_weights = a_weights.sum(dim=1)  # num_atoms
+            a_weights = a_weights.cpu().data.numpy()
+
+            # Plot attention weights on molecule
+            fig = SimilarityMaps.GetSimilarityMapFromWeights(mol, a_weights, highlightMap={a1: (1, 1, 0), a2: (0, 1, 0)})
+            save_path = os.path.join(smiles_viz_dir, 'bond_{}_depth_{}.png'.format(b - b_start, depth))
+            fig.savefig(save_path, bbox_inches='tight')
+            plt.close(fig)
 
 
 def GRU(x: torch.Tensor, h_nei: torch.Tensor, W_z: nn.Linear, W_r: nn.Linear, U_r: nn.Linear, W_h: nn.Linear) -> torch.Tensor:

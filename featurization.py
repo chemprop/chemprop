@@ -121,7 +121,8 @@ def bond_features(bond: Chem.rdchem.Bond,
 
 
 class MolGraph:
-    def __init__(self, smile: str, args: Namespace):
+    def __init__(self, smiles: str, args: Namespace):
+        self.smiles = smiles
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
         self.f_atoms = []  # mapping from atom index to atom features
@@ -131,7 +132,7 @@ class MolGraph:
         self.b2revb = []  # mapping from bond index to the index of the reverse bond
 
         # Convert smiles to molecule
-        mol = Chem.MolFromSmiles(smile)
+        mol = Chem.MolFromSmiles(smiles)
 
         # Add hydrogens
         if args.addHs:
@@ -196,6 +197,9 @@ class MolGraph:
 
 class BatchMolGraph:
     def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
+        self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
+        self.n_mols = len(self.smiles_batch)
+
         self.atom_fdim = get_atom_fdim(args)
         self.bond_fdim = get_atom_fdim(args) + get_bond_fdim(args)
 
@@ -251,23 +255,23 @@ class BatchMolGraph:
         return self.b2b
 
 
-def mol2graph(smiles: List[str], args: Namespace) -> BatchMolGraph:
+def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
     """
     Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
 
-    :param smiles: A list of SMILES strings.
+    :param smiles_batch: A list of SMILES strings.
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
     mol_graphs = []
-    for smile in smiles:
-        if smile in SMILES_TO_GRAPH:
-            mol_graph = SMILES_TO_GRAPH[smile]
+    for smiles in smiles_batch:
+        if smiles in SMILES_TO_GRAPH:
+            mol_graph = SMILES_TO_GRAPH[smiles]
         else:
-            mol_graph = MolGraph(smile, args)
+            mol_graph = MolGraph(smiles, args)
             # Memoize if we're not chunking to save memory
             if args.num_chunks == 1 or args.memoize_chunks:
-                SMILES_TO_GRAPH[smile] = mol_graph
+                SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
 
     return BatchMolGraph(mol_graphs, args)
