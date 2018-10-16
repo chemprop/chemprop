@@ -4,6 +4,7 @@ from typing import List
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
+import numpy as np
 
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention
@@ -33,6 +34,9 @@ class MPNEncoder(nn.Module):
         self.set2set = args.set2set
         self.set2set_iters = args.set2set_iters
         self.args = args
+
+        if args.semiF_only:
+            return # won't use any of the graph stuff in this case
 
         # Input
         self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
@@ -111,6 +115,13 @@ class MPNEncoder(nn.Module):
         :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
+        if self.args.semiF_path:
+            mol_graph, semiF_features = mol_graph
+            if self.args.semiF_only:
+                semiF_features = np.stack([features.todense() for features in semiF_features])
+                semiF_features = torch.from_numpy(semiF_features).float().cuda()
+                return semiF_features
+
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
         if next(self.parameters()).is_cuda:
@@ -285,10 +296,13 @@ class MPNEncoder(nn.Module):
                     mol_vec = mol_vec.sum(dim=0) / a_size
                     mol_vecs.append(mol_vec)
 
-            mol_vecs = torch.stack(mol_vecs, dim=0)  # num_molecules x hidden
-
-        return mol_vecs  # num_molecules x hidden
-
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+        
+        if self.args.semiF_path:
+            semiF_features = np.stack([features.todense() for features in semiF_features])
+            semiF_features = torch.from_numpy(semiF_features).float().cuda()
+            return torch.cat([mol_vecs, semiF_features], dim=1)  # (num_molecules, hidden_size)
+        return mol_vecs # num_molecules x hidden
 
 class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""

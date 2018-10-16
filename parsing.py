@@ -38,6 +38,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to data CSV file')
     parser.add_argument('--vocab_path', type=str,
                         help='Path to .vocab file if using jtnn')
+    parser.add_argument('--semiF_path', type=str,
+                        help='Path to semiF features if using semiF features')
+    parser.add_argument('--semiF_only', action='store_true', default=False,
+                        help='use only the semiF FFN, no graph network')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--checkpoint_dir', type=str, default=None,

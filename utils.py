@@ -146,6 +146,10 @@ def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) 
 
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
+def get_semiF(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data
 
 def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     """
@@ -187,8 +191,7 @@ def get_header(path: str) -> List[str]:
 
 
 def get_data(path: str,
-             dataset_type: str = None,
-             num_bins: int = 20,
+             args: Namespace = None,
              use_compound_names: bool = False,
              get_header: bool = False,
              smiles_only: bool = False) -> Union[Union[List[str], List[Tuple[str, List[Optional[float]]]]],
@@ -224,14 +227,19 @@ def get_data(path: str,
             else:
                 smiles = line[0]
                 values = [float(x) if x != '' else None for x in line[1:]]
-
             if smiles_only:
                 data.append(smiles)
             else:
                 data.append((smiles, values))
+    
+    if args is not None and args.semiF_path:
+        semiF_data = get_semiF(args.semiF_path)
+        assert len(data) == semiF_data.shape[0]
+        data = [((data[i][0], semiF_data[i]), data[i][1]) for i in range(len(data))]
+        args.semiF_dim = semiF_data[0].shape[1] #infer the dimension size of these features for use in model building
 
-    if dataset_type == 'regression_with_binning':
-        data = convert_to_classes(data, num_bins)
+    if args is not None and args.dataset_type == 'regression_with_binning':
+        data = convert_to_classes(data, args.num_bins)
 
     if use_compound_names and get_header:
         return header, compound_names, data

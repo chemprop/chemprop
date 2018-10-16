@@ -83,6 +83,8 @@ def train(model: nn.Module,
         # Prepare batch
         batch = data[i:i + args.batch_size]
         smiles_batch, label_batch = zip(*batch)
+        if args.semiF_path:
+            smiles_batch = zip(*smiles_batch)
 
         mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
         labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
@@ -156,6 +158,8 @@ def predict(model: nn.Module,
         for i in range(0, len(smiles), args.batch_size):
             # Prepare batch
             smiles_batch = smiles[i:i + args.batch_size]
+            if args.semiF_path:
+                smiles_batch = zip(*smiles_batch)
 
             # Run model
             batch_preds = model(smiles_batch)

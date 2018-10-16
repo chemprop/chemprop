@@ -10,7 +10,7 @@ from utils import get_data, split_data, save_checkpoint, StandardScaler
 def update_old_checkpoint(args: Namespace):
     """Updates an old checkpoint (just state dict) to a new checkpoint with args and scaler."""
     # Load data
-    data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins)
+    data = get_data(args.data_path, args)
 
     # Split data
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
