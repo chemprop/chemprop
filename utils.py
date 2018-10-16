@@ -254,10 +254,10 @@ def split_data(data: List[Tuple[str, List[float]]],
     Splits data into training, validation, and test splits.
 
     :param data: A list of data points (smiles string, target values).
+    :param args: Namespace of arguments
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
-    :param args: Namespace of arguments
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert len(sizes) == 3, sum(sizes) == 1

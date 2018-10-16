@@ -63,14 +63,21 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
     return scaffolds
 
 
-def scaffold_split(args: Namespace) -> Tuple[List[Tuple[str, List[Optional[float]]]],
-                                             List[Tuple[str, List[Optional[float]]]],
-                                             List[Tuple[str, List[Optional[float]]]]]:
-    """Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split."""
+def scaffold_split(data: List[Tuple[str, List[float]]],
+                   sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> Tuple[List[Tuple[str, List[float]]],
+                                                                                 List[Tuple[str, List[float]]],
+                                                                                 List[Tuple[str, List[float]]]]:
+    """
+    Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
+
+    :param data: A list of data points (smiles string, target values).
+    :param sizes: A length-3 tuple with the proportions of data in the
+    train, validation, and test sets.
+    :return: A tuple containing the train, validation, and test splits of the data.
+    """
     assert sum(args.split_sizes) == 1
 
     # Get data
-    data = get_data(args.data_path)
     print('Data size = {:,}'.format(len(data)))
     smiles, _ = zip(*data)
     scaffolds = scaffold_to_smiles(smiles, use_indices=True)  # mapping from scaffold to set of indices into smiles/data
@@ -81,7 +88,7 @@ def scaffold_split(args: Namespace) -> Tuple[List[Tuple[str, List[Optional[float
     index_sets = sorted(index_sets, key=lambda index_set: len(index_set), reverse=True)
 
     # Split
-    train_size, val_size = args.split_sizes[0] * len(data), args.split_sizes[1] * len(data)
+    train_size, val_size = sizes[0] * len(data), sizes[1] * len(data)
     train_indices, val_indices, test_indices = [], [], []
     train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
 
@@ -126,7 +133,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Split data
-    train, val, test = scaffold_split(args)
+    data = get_data(args.data_path)
+    train, val, test = scaffold_split(data, args.split_sizes)
 
     # Save splits
     header = get_header(args.data_path)
