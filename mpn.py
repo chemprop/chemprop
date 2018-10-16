@@ -119,24 +119,27 @@ class MPNEncoder(nn.Module):
             assert viz_dir is not None
             assert smiles is not None
 
-        fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
+        f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
+
         if next(self.parameters()).is_cuda:
-            fatoms, fbonds, agraph, bgraph = fatoms.cuda(), fbonds.cuda(), agraph.cuda(), bgraph.cuda()
+            f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
 
         # Input
-        binput = self.W_i(fbonds)  # num_bonds x hidden_size
-        message = self.act_func(binput)  # num_bonds x hidden_size
+        b_input = self.W_i(f_bonds)  # num_bonds x hidden_size
+        b_message = self.act_func(b_input)  # num_bonds x hidden_size
 
+        # TODO: update
         if self.message_attention:
             message_attention_mask = (bgraph != 0).float()  # num_bonds x max_num_bonds
 
             if next(self.parameters()).is_cuda:
                 message_attention_mask = message_attention_mask.cuda()
 
+        # TODO: update
         if self.global_attention:
             global_attention_mask = torch.zeros(bgraph.size(0), bgraph.size(0))  # num_bonds x num_bonds
 
-            for start, length in bscope:
+            for start, length in b_scope:
                 for i in range(start, start + length):
                     global_attention_mask[i, start:start + length] = 1
 
@@ -145,8 +148,14 @@ class MPNEncoder(nn.Module):
 
         # Message passing
         for i in range(self.depth - 1):
-            nei_message = index_select_ND(message, bgraph)
+            # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
+            # b_message      a_message = sum(nei_a_message)      rev_b_message
+            nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+            a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+            rev_b_message = b_message[b2revb]  # num_bonds x hidden
+            b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
 
+            # TODO: update
             if self.message_attention:
                 # TODO: Parallelize attention heads
                 message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x maxnb x hidden
@@ -160,27 +169,27 @@ class MPNEncoder(nn.Module):
                                       for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
                 message_components = [component.sum(dim=1) for component in message_components]  # num_bonds x hidden
                 nei_message = torch.cat(message_components, dim=1)  # num_bonds x 3*hidden
-            else:
-                nei_message = nei_message.sum(dim=1)  # num_bonds x hidden
 
-            nei_message = self.W_h(nei_message)  # num_bonds x hidden
+            b_message = self.W_h(b_message)  # num_bonds x hidden
 
+            # TODO: update
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
                 # master_state = self.GRU_master(nei_message.unsqueeze(1))
                 # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
                 mol_vecs = [self.cached_zero_vector]
-                for start, size in bscope:
+                for start, size in b_scope:
                     if size == 0:
                         continue
                     mol_vec = nei_message.narrow(0, start, size)
                     mol_vec = mol_vec.sum(dim=0) / size
                     mol_vecs += [mol_vec for _ in range(size)]
                 master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # (num_bonds, hidden_size)
-                message = self.act_func(binput + nei_message + self.W_master_out(master_state))
+                message = self.act_func(b_input + nei_message + self.W_master_out(master_state))
             else:
-                message = self.act_func(binput + nei_message)  # num_bonds x hidden_size
+                b_message = self.act_func(b_input + b_message)  # num_bonds x hidden_size
 
+            # TODO: update
             if self.global_attention:
                 attention_scores = torch.matmul(self.W_ga1(message), message.t())  # num_bonds x num_bonds
                 attention_scores = attention_scores * global_attention_mask + (1 - global_attention_mask) * (-1e+20)  # num_bonds x num_bonds
@@ -194,10 +203,11 @@ class MPNEncoder(nn.Module):
                     visualize_attention(viz_dir, smiles, mol_graph, attention_weights)
 
             if self.use_layer_norm:
-                message = self.layer_norm(message)
+                b_message = self.layer_norm(b_message)
 
-            message = self.dropout_layer(message)  # num_bonds x hidden
-        
+            b_message = self.dropout_layer(b_message)  # num_bonds x hidden
+
+        # TODO: update
         if self.master_node and self.use_master_as_output:
             assert self.hidden_size == self.master_dim
             mol_vecs = []
@@ -209,22 +219,22 @@ class MPNEncoder(nn.Module):
             return torch.stack(mol_vecs, dim=0)
 
         # Get atom hidden states from message hidden states
-        nei_message = index_select_ND(message, agraph)
-        nei_message = nei_message.sum(dim=1)
-        ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = self.act_func(self.W_o(ainput))
-        atom_hiddens = self.dropout_layer(atom_hiddens)
+        nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+        a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+        a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
+        atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
+        atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
 
         # Readout
         if self.set2set:
             # Set up sizes
-            batch_size = len(ascope)
-            lengths = [length for _, length in ascope]
+            batch_size = len(a_scope)
+            lengths = [length for _, length in a_scope]
             max_num_atoms = max(lengths)
 
             # Set up memory from atom features
             memory = torch.zeros(batch_size, max_num_atoms, self.hidden_size)  # (batch_size, max_num_atoms, hidden_size)
-            for i, (start, size) in enumerate(ascope):
+            for i, (start, size) in enumerate(a_scope):
                 memory[i, :size] = atom_hiddens.narrow(0, start, size)
             memory_transposed = memory.transpose(2, 1)  # (batch_size, hidden_size, max_num_atoms)
 
@@ -259,7 +269,7 @@ class MPNEncoder(nn.Module):
         else:
             mol_vecs = []
             # TODO: Maybe do this in parallel with masking rather than looping
-            for start, size in ascope:
+            for start, size in a_scope:
                 if size == 0:
                     mol_vecs.append(self.cached_zero_vector)
                 else:
@@ -283,9 +293,9 @@ class MPNEncoder(nn.Module):
                     mol_vec = mol_vec.sum(dim=0) / size
                     mol_vecs.append(mol_vec)
 
-            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # num_molecules x hidden
 
-        return mol_vecs  # (num_molecules, hidden_size)
+        return mol_vecs  # num_molecules x hidden
 
 
 class MPN(nn.Module):

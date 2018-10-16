@@ -1,7 +1,5 @@
-from abc import ABC, abstractmethod
 from argparse import Namespace
-from collections import defaultdict
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 from rdkit import Chem
@@ -65,7 +63,8 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom, atom_position: List[float] = None) -> torch.Tensor:
+def atom_features(atom: Chem.rdchem.Atom,
+                  atom_position: List[float] = None) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
 
@@ -84,10 +83,13 @@ def atom_features(atom: Chem.rdchem.Atom, atom_position: List[float] = None) -> 
                + [atom.GetIsAromatic()]
     if atom_position is not None:
         features += atom_position
-    return torch.Tensor(features)
+
+    return features
 
 
-def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d: float = None) -> torch.Tensor:
+def bond_features(bond: Chem.rdchem.Bond,
+                  distance_path: int = None,
+                  distance_3d: float = None) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for a bond.
 
@@ -115,21 +117,18 @@ def bond_features(bond: Chem.rdchem.Bond, distance_path: int = None, distance_3d
     fdistance_path = onek_encoding_unk(distance_path, list(range(10))) if distance_path is not None else []
     fdistance_3d = [distance_3d] if distance_3d is not None else []
 
-    return torch.Tensor(fbond + fdistance_path + fdistance_3d)
+    return fbond + fdistance_path + fdistance_3d
 
 
 class MolGraph:
     def __init__(self, smile: str, args: Namespace):
-        # Note: Bond features are undirected even though bonds are directed, so two indices map to each bond feature
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
         self.f_atoms = []  # mapping from atom index to atom features
-        self.f_bonds = {}  # mapping from bond index to bond features (dict b/c two indices map to each feature)
-        self.a2a = defaultdict(list)  # mapping from atom index to neighboring atom indices
-        self.a2b = defaultdict(list)  # mapping from atom index to incoming bond indices
-        self.b2a = {}  # mapping from bond index to tuple of bonded atom indices (out_atom, in_atom)
-        self.f_bonds_with_atom = []  # mapping from bond index to concat(bond, in_atom) features
-        self.b2b = {}  # mapping from bond index to indices of bonds going into atom this bond comes from
+        self.f_bonds = []  # mapping from bond index to concat(in_atom, bond) features
+        self.a2b = []  # mapping from atom index to incoming bond indices
+        self.b2a = []  # mapping from bond index to the index of the atom the bond is going into
+        self.b2revb = []  # mapping from bond index to the index of the reverse bond
 
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smile)
@@ -161,6 +160,7 @@ class MolGraph:
         for atom in mol.GetAtoms():
             atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
             self.f_atoms.append(atom_features(atom, atom_position))
+            self.a2b.append([])
 
         # Get bond features
         for a1 in range(self.n_atoms):
@@ -178,77 +178,67 @@ class MolGraph:
                 distance_3d = distances_3d[a1, a2] if args.three_d else None
                 distance_path = distances_path[a1, a2] if args.virtual_edges else None
 
-                # Get bond feature (note: two indices b/c directed edges)
-                b1 = self.n_bonds
-                b2 = self.n_bonds + 1
                 f_bond = bond_features(bond, distance_path=distance_path, distance_3d=distance_3d)
-                self.f_bonds[b1] = f_bond
-                self.f_bonds[b2] = f_bond
-                self.n_bonds += 2
+                self.f_bonds.append(self.f_atoms[a1] + f_bond)
+                self.f_bonds.append(self.f_atoms[a2] + f_bond)
 
                 # Update index mappings
-                self.a2a[a1].append(a2)
-                self.a2a[a2].append(a1)
-                self.a2b[a1].append(b1)
-                self.a2b[a2].append(b2)
-                self.b2a[b1] = (a2, a1)
-                self.b2a[b2] = (a1, a2)
-
-        # Update bond-to-bond mapping and combine bond and atom features for f_bond_with_atom
-        for b in range(self.n_bonds):
-            a1, a2 = self.b2a[b]
-            in_bonds = self.a2b[a1]
-            self.b2b[b] = [bond for bond in in_bonds if self.b2a[b][1] != a1]  # leave out reverse of bond
-            self.f_bonds_with_atom.append(torch.cat([self.f_atoms[a1], self.f_bonds[b]], dim=0))
+                b1 = self.n_bonds
+                b2 = b1 + 1
+                self.a2b[a1].append(b1)  # b1 = a2 --> a1
+                self.b2a.append(a1)
+                self.a2b[a2].append(b2)  # b2 = a1 --> a2
+                self.b2a.append(a2)
+                self.b2revb.append(b2)
+                self.b2revb.append(b1)
+                self.n_bonds += 2
 
 
-class BatchMolGraph(ABC):
-    def __init__(self, mol_graphs: List[MolGraph]):
-        self.mol_graphs = mol_graphs
+class BatchMolGraph:
+    def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
+        self.atom_fdim = get_atom_fdim(args)
+        self.bond_fdim = get_atom_fdim(args) + get_bond_fdim(args)
 
-
-class BatchMolGraphAtom(BatchMolGraph):
-    def __init__(self, mol_graphs: List[MolGraph]):
-        super(BatchMolGraphAtom, self).__init__(mol_graphs)
-
-
-class BatchMolGraphBond(BatchMolGraph):
-    def __init__(self, mol_graphs: List[MolGraph]):
-        super(BatchMolGraphBond, self).__init__(mol_graphs)
-
-        self.atom_fdim = len(mol_graphs[0].f_atoms[0])
-        self.bond_fdim = len(mol_graphs[0].f_bonds_with_atom[0])
-
-        self.n_atoms = 0  # number of atoms
+        # Start n_atoms and n_bonds at 1 b/c zero padding
+        self.n_atoms = 1  # number of atoms
         self.n_bonds = 1  # number of bonds (start at 1 b/c need index 0 as padding)
-        self.ascope = []  # list of tuples indicating (start_atom_index, num_atoms) for each molecule
-        self.bscope = []  # list of tuples indicating (start_bond_index, num_bonds) for each molecule
+        self.a_scope = []  # list of tuples indicating (start_atom_index, num_atoms) for each molecule
+        self.b_scope = []  # list of tuples indicating (start_bond_index, num_bonds) for each molecule
 
-        f_atoms = []  # atom features
-        f_bonds = [torch.zeros(self.bond_fdim)]  # combined atom/bond features
-        a2b = {}  # mapping from atom index to incoming bond indices
-        b2b = {0: []}  # mapping from bond index to incoming bond indices (index 0 for padding)
+        # All start with zero padding so that indexing with zero padding returns zeros
+        f_atoms = [[0] * self.atom_fdim]  # atom features
+        f_bonds = [[0] * self.bond_fdim]  # combined atom/bond features
+        a2b = [[]]  # mapping from atom index to incoming bond indices
+        b2a = [0]  # mapping from bond index to the index of the atom the bond is going into
+        b2revb = [0]  # mapping from bond index to the index of the reverse bond
         for mol_graph in mol_graphs:
             f_atoms.extend(mol_graph.f_atoms)
-            f_bonds.extend(mol_graph.f_bonds_with_atom)
+            f_bonds.extend(mol_graph.f_bonds)
 
-            for atom in range(mol_graph.n_atoms):
-                a2b[self.n_atoms + atom] = mol_graph.a2b[atom]
+            for a in range(mol_graph.n_atoms):
+                a2b.append([b + self.n_bonds for b in mol_graph.a2b[a]])
 
-            for bond in range(mol_graph.n_bonds):
-                b2b[self.n_bonds + bond] = mol_graph.b2b[bond]
+            for b in range(mol_graph.n_bonds):
+                b2a.append(self.n_atoms + mol_graph.b2a[b])
+                b2revb.append(self.n_bonds + mol_graph.b2revb[b])
 
-            self.ascope.append((self.n_atoms, mol_graph.n_atoms))
-            self.bscope.append((self.n_bonds, mol_graph.n_bonds))
+            self.a_scope.append((self.n_atoms, mol_graph.n_atoms))
+            self.b_scope.append((self.n_bonds, mol_graph.n_bonds))
             self.n_atoms += mol_graph.n_atoms
             self.n_bonds += mol_graph.n_bonds
 
-        self.max_num_bonds = max(len(in_bonds) for in_bonds in b2b.values())
+        self.max_num_bonds = max(len(in_bonds) for in_bonds in a2b)
 
-        self.f_atoms = torch.cat(f_atoms, dim=0)
-        self.f_bonds = torch.cat(f_bonds, dim=0)
+        self.f_atoms = torch.FloatTensor(f_atoms)
+        self.f_bonds = torch.FloatTensor(f_bonds)
         self.a2b = torch.LongTensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)])
-        self.b2b = torch.LongTensor([b2b[b] + [0] * (self.max_num_bonds - len(b2b[b])) for b in range(self.n_bonds)])
+        self.b2a = torch.LongTensor(b2a)
+        self.b2revb = torch.LongTensor(b2revb)
+
+    def get_components(self) -> Tuple[torch.FloatTensor, torch.FloatTensor,
+                                      torch.LongTensor, torch.LongTensor, torch.LongTensor,
+                                      List[Tuple[int, int]], List[Tuple[int, int]]]:
+        return self.f_atoms, self.f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
 
 def mol2graph(smiles: List[str], args: Namespace) -> BatchMolGraph:
@@ -261,13 +251,13 @@ def mol2graph(smiles: List[str], args: Namespace) -> BatchMolGraph:
     """
     mol_graphs = []
     for smile in smiles:
-        if smile not in SMILES_TO_GRAPH:
-            SMILES_TO_GRAPH[smile] = MolGraph(smile, args)
-        mol_graphs.append(SMILES_TO_GRAPH[smile])
+        if smile in SMILES_TO_GRAPH:
+            mol_graph = SMILES_TO_GRAPH[smile]
+        else:
+            mol_graph = MolGraph(smile, args)
+            # Memoize if we're not chunking to save memory
+            if args.num_chunks == 1 or args.memoize_chunks:
+                SMILES_TO_GRAPH[smile] = mol_graph
+        mol_graphs.append(mol_graph)
 
-    if args.message_type == 'bond':
-        return BatchMolGraphBond(mol_graphs)
-    elif args.message_type == 'atom':
-        return BatchMolGraphAtom(mol_graphs)
-    else:
-        raise ValueError('Message type "{}" not supported.'.format(args.message_type))
+    return BatchMolGraph(mol_graphs, args)
