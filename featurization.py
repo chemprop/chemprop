@@ -263,7 +263,14 @@ def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    mol_batch, semiF_features = mol_batch
+    if args.semiF_path:
+        try:
+            smiles_batch, semiF_features = smiles_batch
+        except:
+            import pdb; pdb.set_trace() # TODO this happened once, but I haven't been able to reproduce...
+        if args.semiF_only:
+            return (None, semiF_features) # molgraph won't be used in this case, so save some time
+
     mol_graphs = []
     for smiles in smiles_batch:
         if smiles in SMILES_TO_GRAPH:
@@ -274,5 +281,7 @@ def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
             if args.num_chunks == 1 or args.memoize_chunks:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
-
-    return (BatchMolGraph(mol_graphs, args), semiF_features)
+    
+    if args.semiF_path:
+        return (BatchMolGraph(mol_graphs, args), semiF_features)
+    return BatchMolGraph(mol_graphs, args)

@@ -22,10 +22,17 @@ def build_model(args: Namespace) -> nn.Module:
         encoder = JTNN(args)
     else:
         encoder = MPN(args)
+    
+    if args.semiF_only:
+        first_linear_dim = args.semiF_dim
+    else:
+        first_linear_dim = args.hidden_size * (1 + args.jtnn)
+        if args.semiF_path:
+            first_linear_dim += args.semiF_dim
 
     modules = [
         encoder,
-        nn.Linear(args.hidden_size * (1 + args.jtnn) + 3039, args.hidden_size),
+        nn.Linear(first_linear_dim, args.hidden_size),
         nn.ReLU(),
         nn.Linear(args.hidden_size, output_size)
     ]
