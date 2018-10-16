@@ -172,13 +172,26 @@ def get_desired_labels(args: Namespace, task_names: List[str]) -> List[str]:
     return desired_labels
 
 
+def get_header(path: str) -> List[str]:
+    """
+    Returns the header of a data CSV file.
+
+    :param path: Path to a CSV file.
+    :return: A list of strings containing the strings in the comma-separated header.
+    """
+    with open(path) as f:
+        header = f.readline().strip().split(',')
+
+    return header
+
+
 def get_data(path: str,
              dataset_type: str = None,
              num_bins: int = 20,
              use_compound_names: bool = False,
-             get_header: bool = False) -> Union[Tuple[List[str], List[Tuple[str, List[Optional[float]]]]],
-                                                Tuple[List[str], Tuple[List[str], List[Tuple[str, List[Optional[float]]]]]],
-                                                Tuple[List[str], List[str], Tuple[List[str], List[Tuple[str, List[Optional[float]]]]]]]:
+             get_header: bool = False) -> Union[List[Tuple[str, List[Optional[float]]]],
+                                                Tuple[List[str], List[Tuple[str, List[Optional[float]]]]],
+                                                Tuple[List[str], List[str], List[Tuple[str, List[Optional[float]]]]]]:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
