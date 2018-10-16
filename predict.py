@@ -14,13 +14,12 @@ def make_predictions(args: Namespace):
     """Makes predictions."""
     print('Loading data')
     if args.compound_names:
-        compound_names, test_data = get_data(args.test_path, use_compound_names=True)
+        compound_names, test_smiles = get_data(args.test_path, use_compound_names=True, smiles_only=True)
     else:
-        test_data = get_data(args.test_path)
-    print('Test size = {:,}'.format(len(test_data)))
+        test_smiles = get_data(args.test_path)
+    print('Test size = {:,}'.format(len(test_smiles)))
 
     # Predict on test set
-    test_smiles, _ = zip(*test_data)
     sum_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     # Predict with each model individually

@@ -189,9 +189,10 @@ def get_data(path: str,
              dataset_type: str = None,
              num_bins: int = 20,
              use_compound_names: bool = False,
-             get_header: bool = False) -> Union[List[Tuple[str, List[Optional[float]]]],
-                                                Tuple[List[str], List[Tuple[str, List[Optional[float]]]]],
-                                                Tuple[List[str], List[str], List[Tuple[str, List[Optional[float]]]]]]:
+             get_header: bool = False,
+             smiles_only: bool = False) -> Union[Union[List[str], List[Tuple[str, List[Optional[float]]]]],
+                                                 Tuple[List[str], Union[List[str], List[Tuple[str, List[Optional[float]]]]]],
+                                                 Tuple[List[str], List[str], Union[List[str], List[Tuple[str, List[Optional[float]]]]]]]:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
@@ -200,6 +201,7 @@ def get_data(path: str,
     :param num_bins: The number of bins to use when doing regression_with_binning.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :param get_header: Whether to get the header in addition to the data.
+    :param smiles_only: Whether to only get smiles and not labels.
     :return: A tuple where the first element is a list containing the header strings
      and the second element is a list of tuples where each tuple contains a smiles string and
     a list of target values (which are None if the target value is not specified).
@@ -221,7 +223,11 @@ def get_data(path: str,
             else:
                 smiles = line[0]
                 values = [float(x) if x != '' else None for x in line[1:]]
-            data.append((smiles, values))
+
+            if smiles_only:
+                data.append(smiles)
+            else:
+                data.append((smiles, values))
 
     if dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, num_bins)
