@@ -7,7 +7,16 @@ from rdkit.Chem import AllChem
 from tqdm import tqdm
 
 
-def fingerprint(data_path: str, save_path: str):
+def morgan_fingerprint(smiles: str) -> np.ndarray:
+    mol = Chem.MolFromSmiles(smiles)
+    fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
+    fp = np.zeros((1,))
+    DataStructs.ConvertToNumpyArray(fp_vect, fp)
+
+    return fp
+
+
+def save_fingerprints(data_path: str, save_path: str):
     data = []
     with open(data_path) as f:
         header = f.readline().strip().split(',')
@@ -25,12 +34,7 @@ def fingerprint(data_path: str, save_path: str):
         f.write(header[0] + ',fingerprint,' + ','.join(header[1:]) + '\n')
 
         for smiles, vals in tqdm(data, total=len(data)):
-            mol = Chem.MolFromSmiles(smiles)
-            fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
-            data = np.zeros((1,))
-            DataStructs.ConvertToNumpyArray(fp_vect, data)
-            fp = ''.join([str(int(x)) for x in data])
-
+            fp = morgan_fingerprint(smiles)
             f.write(smiles + ',' + fp + ',' + ','.join(vals) + '\n')
 
 
@@ -40,4 +44,4 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, help='Path to CSV with morgan fingerprints')
     args = parser.parse_args()
 
-    fingerprint(args.data_path, args.save_path)
+    save_fingerprints(args.data_path, args.save_path)
