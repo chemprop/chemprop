@@ -234,11 +234,21 @@ class BatchMolGraph:
         self.a2b = torch.LongTensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)])
         self.b2a = torch.LongTensor(b2a)
         self.b2revb = torch.LongTensor(b2revb)
+        self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
 
     def get_components(self) -> Tuple[torch.FloatTensor, torch.FloatTensor,
                                       torch.LongTensor, torch.LongTensor, torch.LongTensor,
                                       List[Tuple[int, int]], List[Tuple[int, int]]]:
         return self.f_atoms, self.f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
+
+    def get_b2b(self):
+        if self.b2b is None:
+            b2b = self.a2b[self.b2a]  # num_bonds x max_num_bonds
+            # b2b includes reverse edge for each bond so need to mask out
+            revmask = (b2b != self.b2revb.unsqueeze(1).repeat(1, b2b.size(1))).long()  # num_bonds x max_num_bonds
+            self.b2b = b2b * revmask
+
+        return self.b2b
 
 
 def mol2graph(smiles: List[str], args: Namespace) -> BatchMolGraph:

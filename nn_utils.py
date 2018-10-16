@@ -1,10 +1,12 @@
-from typing import List, Tuple, Union
+from typing import List, Union
 
 from rdkit import Chem
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
+
+from featurization import BatchMolGraph
 
 
 def param_count(model: nn.Module) -> int:
@@ -148,9 +150,9 @@ class NoamLR(_LRScheduler):
 # TODO
 def visualize_attention(viz_dir: str,
                         smiles: List[str],
-                        mol_graph: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, List[Tuple[int, int]], List[Tuple[int, int]]],
+                        mol_graph: BatchMolGraph,
                         attention: torch.FloatTensor):
-    fatoms, fbonds, agraph, bgraph, ascope, bscope = mol_graph
+    f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
     # Get mapping from bond to the atom it goes into
     bond_to_atom = {}
