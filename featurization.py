@@ -127,7 +127,7 @@ class MolGraph:
         self.f_atoms = []  # mapping from atom index to atom features
         self.f_bonds = []  # mapping from bond index to concat(in_atom, bond) features
         self.a2b = []  # mapping from atom index to incoming bond indices
-        self.b2a = []  # mapping from bond index to the index of the atom the bond is going into
+        self.b2a = []  # mapping from bond index to the index of the atom the bond is coming from
         self.b2revb = []  # mapping from bond index to the index of the reverse bond
 
         # Convert smiles to molecule
@@ -185,9 +185,9 @@ class MolGraph:
                 # Update index mappings
                 b1 = self.n_bonds
                 b2 = b1 + 1
-                self.a2b[a1].append(b1)  # b1 = a2 --> a1
+                self.a2b[a2].append(b1)  # b1 = a1 --> a2
                 self.b2a.append(a1)
-                self.a2b[a2].append(b2)  # b2 = a1 --> a2
+                self.a2b[a1].append(b2)  # b2 = a2 --> a1
                 self.b2a.append(a2)
                 self.b2revb.append(b2)
                 self.b2revb.append(b1)
@@ -209,7 +209,7 @@ class BatchMolGraph:
         f_atoms = [[0] * self.atom_fdim]  # atom features
         f_bonds = [[0] * self.bond_fdim]  # combined atom/bond features
         a2b = [[]]  # mapping from atom index to incoming bond indices
-        b2a = [0]  # mapping from bond index to the index of the atom the bond is going into
+        b2a = [0]  # mapping from bond index to the index of the atom the bond is coming from
         b2revb = [0]  # mapping from bond index to the index of the reverse bond
         for mol_graph in mol_graphs:
             f_atoms.extend(mol_graph.f_atoms)

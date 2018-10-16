@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import List, Tuple
+from typing import List
 
 import torch
 import torch.nn.functional as F
@@ -315,7 +315,8 @@ class MPN(nn.Module):
         :param smiles: A list of SMILES strings.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        return self.encoder.forward(mol2graph(smiles, self.args))
+        return self.encoder.forward(mol2graph(smiles, self.args)
+)
 
     def viz_attention(self, smiles: List[str], viz_dir: str):
         """
