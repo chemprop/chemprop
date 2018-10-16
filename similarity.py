@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from itertools import  product
 from typing import List
 
+import math
 import numpy as np
 from rdkit import Chem
 from rdkit import DataStructs
@@ -20,23 +21,38 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     :param smiles_2: A list of smiles strings.
     """
     # Get scaffolds
-    scaffolds_1 = set(scaffold_to_smiles(smiles_1).keys())
-    scaffolds_2 = set(scaffold_to_smiles(smiles_2).keys())
+    scaffolds_1, smiles_sets_1 = zip(*scaffold_to_smiles(smiles_1).items())
+    scaffolds_2, smiles_sets_2 = zip(*scaffold_to_smiles(smiles_2).items())
 
     # Determine similarity
+    scaffolds_1, scaffolds_2 = set(scaffolds_1), set(scaffolds_2)
     intersection = scaffolds_1 & scaffolds_2
     union = scaffolds_1 | scaffolds_2
-    unique_1 = scaffolds_1 - scaffolds_2
-    unique_2 = scaffolds_2 - scaffolds_1
+    in_1_not_2 = scaffolds_1 - scaffolds_2
+    in_2_not_1 = scaffolds_2 - scaffolds_1
+    sizes_1 = np.array([len(smiles_set) for smiles_set in smiles_sets_1])
+    sizes_2 = np.array([len(smiles_set) for smiles_set in smiles_sets_2])
 
     # Print results
+    print()
+    print('Number of molecules in dataset 1 = {:,}'.format(np.sum(sizes_1)))
     print('Number of scaffolds in dataset 1 = {:,}'.format(len(scaffolds_1)))
+    print('Average number of molecules per scaffold in dataset 1 = {:.4f} +/- {:.4f}'.format(np.mean(sizes_1), np.std(sizes_1)))
+    print('Percentiles for molecules per scaffold in dataset 1')
+    print(' | '.join(['{}% = {:,}'.format(i, int(np.percentile(sizes_1, i))) for i in range(0, 101, 10)]))
+    print()
+    print('Number of molecules in dataset 2 = {:,}'.format(np.sum(sizes_2)))
     print('Number of scaffolds in dataset 2 = {:,}'.format(len(scaffolds_2)))
+    print('Average number of molecules per scaffold in dataset 2 = {:.4f} +/- {:.4f}'.format(np.mean(sizes_2), np.std(sizes_2)))
+    print('Percentiles for molecules per scaffold in dataset 2')
+    print(' | '.join(['{}% = {:,}'.format(i, int(np.percentile(sizes_2, i))) for i in range(0, 101, 10)]))
+    print()
     print('Number of scaffolds in intersection = {:,}'.format(len(intersection)))
     print('Number of scaffolds in union = {:,}'.format(len(union)))
     print('Intersection over union = {:.4f}'.format(len(intersection) / len(union)))
-    print('Number of unique scaffolds in dataset 1 = {:,}'.format(len(unique_1)))
-    print('Number of unique scaffolds in dataset 2 = {:,}'.format(len(unique_2)))
+    print()
+    print('Number of scaffolds in dataset 1 not in dataset 2 = {:,}'.format(len(in_1_not_2)))
+    print('Number of scaffolds in dataset 2 not in dataset 1 = {:,}'.format(len(in_2_not_1)))
 
 
 def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sample_rate: float):
@@ -50,10 +66,20 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
     """
     # Compute similarities
     similarities = []
-    for smile_1, smile_2 in tqdm(product(smiles_1, smiles_2), total=len(smiles_1) * len(smiles_2)):
-        if np.random.rand() > sample_rate:
-            continue
+    num_pairs = len(smiles_1) * len(smiles_2)
 
+    # Sample to improve speed
+    if sample_rate < 1.0:
+        sample_num_pairs = sample_rate * num_pairs
+        sample_size = math.ceil(math.sqrt(sample_num_pairs))
+        sample_smiles_1 = np.random.choice(smiles_1, size=sample_size, replace=True)
+        sample_smiles_2 = np.random.choice(smiles_2, size=sample_size, replace=True)
+    else:
+        sample_smiles_1, sample_smiles_2 = smiles_1, smiles_2
+
+    sample_num_pairs = len(sample_smiles_1) * len(sample_smiles_2)
+
+    for smile_1, smile_2 in tqdm(product(sample_smiles_1, sample_smiles_2), total=sample_num_pairs):
         mol_1, mol_2 = Chem.MolFromSmiles(smile_1), Chem.MolFromSmiles(smile_2)
         fp_1, fp_2 = AllChem.GetMorganFingerprint(mol_1, radius), AllChem.GetMorganFingerprint(mol_2, radius)
         similarity = DataStructs.DiceSimilarity(fp_1, fp_2)
@@ -61,10 +87,12 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
     similarities = np.array(similarities)
 
     # Print results
+    print()
     print('Average dice similarity = {:.4f} +/- {:.4f}'.format(np.mean(similarities), np.std(similarities)))
     print('Minimum dice similarity = {:.4f}'.format(np.min(similarities)))
     print('Maximum dice similarity = {:.4f}'.format(np.max(similarities)))
-    print('Percentiles')
+    print()
+    print('Percentiles for dice similarity')
     print(' | '.join(['{}% = {:.4f}'.format(i, np.percentile(similarities, i)) for i in range(0, 101, 10)]))
 
 

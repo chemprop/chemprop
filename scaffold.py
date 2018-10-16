@@ -1,9 +1,10 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Set, Tuple, Union
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
+from tqdm import tqdm
 
 from utils import get_data, get_header
 
@@ -53,7 +54,7 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
     :return: A dictionary mapping each unique scaffold to all smiles (or smiles indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
-    for i, smiles in enumerate(all_smiles):
+    for i, smiles in tqdm(enumerate(all_smiles), total=len(all_smiles)):
         scaffold = generate_scaffold(smiles)
         if use_indices:
             scaffolds[scaffold].add(i)
