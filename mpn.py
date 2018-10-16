@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
-from nn_utils import create_mask, index_select_ND, visualize_attention
+from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention
 
 
 class MPNEncoder(nn.Module):
@@ -190,7 +190,7 @@ class MPNEncoder(nn.Module):
                 b_message = b_message + attention_hiddens  # num_bonds x hidden_size
 
                 if viz_dir is not None:
-                    visualize_attention(viz_dir, mol_graph, attention_weights, depth)
+                    visualize_bond_attention(viz_dir, mol_graph, attention_weights, depth)
 
             if self.use_layer_norm:
                 b_message = self.layer_norm(b_message)
@@ -258,11 +258,11 @@ class MPNEncoder(nn.Module):
         else:
             mol_vecs = []
             # TODO: Maybe do this in parallel with masking rather than looping
-            for start, size in a_scope:
-                if size == 0:
+            for i, (a_start, a_size) in enumerate(a_scope):
+                if a_size == 0:
                     mol_vecs.append(self.cached_zero_vector)
                 else:
-                    cur_hiddens = atom_hiddens.narrow(0, start, size)
+                    cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
 
                     if self.attention:
                         att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
@@ -271,6 +271,9 @@ class MPNEncoder(nn.Module):
                         att_hiddens = self.act_func(self.W_b(att_hiddens))
                         att_hiddens = self.dropout_layer(att_hiddens)
                         mol_vec = (cur_hiddens + att_hiddens)
+
+                        if viz_dir is not None:
+                            visualize_atom_attention(viz_dir, mol_graph.smiles_batch[i], a_size, att_w)
                     else:
                         mol_vec = cur_hiddens  # (num_atoms, hidden_size)
 
@@ -279,7 +282,7 @@ class MPNEncoder(nn.Module):
                         mol_vec = self.act_func(mol_vec)
                         mol_vec = self.W_s2s_b(mol_vec)
 
-                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vec = mol_vec.sum(dim=0) / a_size
                     mol_vecs.append(mol_vec)
 
             mol_vecs = torch.stack(mol_vecs, dim=0)  # num_molecules x hidden

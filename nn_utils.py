@@ -152,12 +152,12 @@ class NoamLR(_LRScheduler):
         self.optimizer.param_groups[0]['lr'] = self.lr
 
 
-def visualize_attention(viz_dir: str,
-                        mol_graph: BatchMolGraph,
-                        attention_weights: torch.FloatTensor,
-                        depth: int):
+def visualize_bond_attention(viz_dir: str,
+                             mol_graph: BatchMolGraph,
+                             attention_weights: torch.FloatTensor,
+                             depth: int):
     """
-    Saves figures of attention maps.
+    Saves figures of attention maps between bonds.
 
     :param viz_dir: Directory in which to save attention map figures.
     :param mol_graph: BatchMolGraph containing a batch of molecular graphs.
@@ -190,6 +190,33 @@ def visualize_attention(viz_dir: str,
             save_path = os.path.join(smiles_viz_dir, 'bond_{}_depth_{}.png'.format(b - b_start, depth))
             fig.savefig(save_path, bbox_inches='tight')
             plt.close(fig)
+
+
+def visualize_atom_attention(viz_dir: str,
+                             smiles: str,
+                             num_atoms: int,
+                             attention_weights: torch.FloatTensor):
+    """
+    Saves figures of attention maps between atoms. Note: works on a single molecule, not in batch
+
+    :param viz_dir: Directory in which to save attention map figures.
+    :param smiles: Smiles string for molecule.
+    :param num_atoms: The number of atoms in this molecule.
+    :param attention_weights: A num_atoms x num_atoms PyTorch FloatTensor containing attention weights.
+    """
+    mol = Chem.MolFromSmiles(smiles)
+
+    smiles_viz_dir = os.path.join(viz_dir, smiles)
+    os.makedirs(smiles_viz_dir, exist_ok=True)
+
+    for a in trange(num_atoms):
+        a_weights = attention_weights[a].cpu().data.numpy()  # num_atoms
+
+        # Plot attention weights on molecule
+        fig = SimilarityMaps.GetSimilarityMapFromWeights(mol, a_weights, highlightMap={a: (0, 1, 0)})
+        save_path = os.path.join(smiles_viz_dir, 'atom_{}.png'.format(a))
+        fig.savefig(save_path, bbox_inches='tight')
+        plt.close(fig)
 
 
 def GRU(x: torch.Tensor, h_nei: torch.Tensor, W_z: nn.Linear, W_r: nn.Linear, U_r: nn.Linear, W_h: nn.Linear) -> torch.Tensor:
