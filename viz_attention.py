@@ -10,9 +10,8 @@ from utils import get_data, load_checkpoint
 def visualize_attention(args: Namespace):
     """Visualizes attention weights."""
     print('Loading data')
-    data = get_data(args.data_path)
-    print('Data size = {:,}'.format(len(data)))
-    smiles, _ = zip(*data)
+    smiles = get_data(args.data_path, smiles_only=True)
+    print('Data size = {:,}'.format(len(smiles)))
 
     print('Loading model from "{}"'.format(args.checkpoint_path))
     model = load_checkpoint(args.checkpoint_path, cuda=args.cuda)

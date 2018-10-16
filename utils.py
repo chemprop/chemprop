@@ -97,8 +97,9 @@ def load_checkpoint(path: str,
     :param get_args: Whether to also load the args the model was trained with.
     :return: The loaded model and optionally the scaler.
     """
-    state = torch.load(path)
+    state = torch.load(path, map_location=lambda storage, loc: storage)
     args = state['args']
+    args.cuda = cuda
     model = build_model(args)
     model.load_state_dict(state['state_dict'])
 
