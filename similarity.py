@@ -52,7 +52,9 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     print('Intersection over union = {:.4f}'.format(len(intersection) / len(union)))
     print()
     print('Number of scaffolds in dataset 1 not in dataset 2 = {:,}'.format(len(in_1_not_2)))
+    print('Percent of scaffolds in dataset 1 not in dataset 2 = {:.2f}%'.format(100 * len(in_1_not_2) / len(scaffolds_1)))
     print('Number of scaffolds in dataset 2 not in dataset 1 = {:,}'.format(len(in_2_not_1)))
+    print('Percent of scaffolds in dataset 2 not in dataset 1 = {:.2f}%'.format(100 * len(in_2_not_1) / len(scaffolds_2)))
 
 
 def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sample_rate: float):
