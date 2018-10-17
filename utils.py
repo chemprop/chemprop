@@ -201,8 +201,7 @@ def get_data(path: str,
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
     :param path: Path to a CSV file.
-    :param dataset_type: The type of the dataset (ex. classification, regression, regression_with_binning).
-    :param num_bins: The number of bins to use when doing regression_with_binning.
+    :param args: Arguments.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :param get_header: Whether to get the header in addition to the data.
     :param smiles_only: Whether to only get smiles and not labels.
