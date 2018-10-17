@@ -80,7 +80,7 @@ def atom_features(atom: Chem.rdchem.Atom,
                + onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) \
                + onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) \
                + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons']) \
-               + [atom.GetIsAromatic()]
+               + [1 if atom.GetIsAromatic() else 0]
     if atom_position is not None:
         features += atom_position
 
@@ -156,13 +156,19 @@ class MolGraph:
         # Get topological (i.e. path-length) distance matrix and number of atoms
         distances_path = Chem.GetDistanceMatrix(mol)
         self.n_atoms = mol.GetNumAtoms()
-
+        
         # Get atom features
         for atom in mol.GetAtoms():
             atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
             self.f_atoms.append(atom_features(atom, atom_position))
             self.a2b.append([])
 
+        if args.learn_virtual_edges:
+            model = args.lve_model #this is the MPN model, added to args so we can access it here
+            f_atoms_cuda = torch.Tensor(self.f_atoms).cuda()
+            processed_f_atoms_cuda = model.lve(f_atoms_cuda)
+            lve_scores = torch.matmul(processed_f_atoms_cuda, f_atoms_cuda.t())
+            symmetric_lve_scores = lve_scores + lve_scores.t()
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
@@ -173,8 +179,18 @@ class MolGraph:
                     if not args.virtual_edges:
                         continue
 
-                    if args.drop_virtual_edges and hash(str(a2)) % self.n_atoms != 0:
+                    if args.drop_virtual_edges and hash(str((a1, a2))) % n_atoms != 0:
                         continue
+
+                    # this option below doesn't seem to be as good
+                    # if args.drop_virtual_edges and (hash(mol_fatoms[a1])+hash(mol_fatoms[a2])) % n_atoms != 0:
+                    #     continue
+
+                    if args.learn_virtual_edges:
+                        # if score less than 0, don't add the edge
+                        model = args.lve_model
+                        if symmetric_lve_scores[a1, a2] < 0: #want symmetry in a1/a2
+                            continue
 
                 distance_3d = distances_3d[a1, a2] if args.three_d else None
                 distance_path = distances_path[a1, a2] if args.virtual_edges else None
@@ -193,7 +209,6 @@ class MolGraph:
                 self.b2revb.append(b2)
                 self.b2revb.append(b1)
                 self.n_bonds += 2
-
 
 class BatchMolGraph:
     def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
@@ -263,15 +278,23 @@ def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
+    if args.semiF_path:
+        # this line crashed once, but I haven't been able to reproduce, so let Kevin know if this crashes
+        smiles_batch, semiF_features = smiles_batch
+        if args.semiF_only:
+            return (None, semiF_features) # molgraph won't be used in this case, so save some time
+
     mol_graphs = []
     for smiles in smiles_batch:
         if smiles in SMILES_TO_GRAPH:
             mol_graph = SMILES_TO_GRAPH[smiles]
         else:
             mol_graph = MolGraph(smiles, args)
-            # Memoize if we're not chunking to save memory
-            if args.num_chunks == 1 or args.memoize_chunks:
+            # Memoize if we're not chunking or learning virtual edges, to save memory
+            if (args.num_chunks == 1 or args.memoize_chunks) and not args.learn_virtual_edges:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
-
+    
+    if args.semiF_path:
+        return (BatchMolGraph(mol_graphs, args), semiF_features)
     return BatchMolGraph(mol_graphs, args)

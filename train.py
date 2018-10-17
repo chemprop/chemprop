@@ -34,7 +34,7 @@ def run_training(args: Namespace) -> List[float]:
     args.num_tasks = len(args.task_names)
     logger.debug('Number of tasks = {}'.format(args.num_tasks))
     desired_labels = get_desired_labels(args, args.task_names)
-    data = get_data(args.data_path, args.dataset_type, num_bins=args.num_bins)
+    data = get_data(args.data_path, args)
 
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
         data, bin_predictions, regression_data = data
@@ -46,7 +46,7 @@ def run_training(args: Namespace) -> List[float]:
         logger.debug('Splitting data with seed {}'.format(args.seed))
         if args.separate_test_set:
             train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed)
-            test_data = get_data(args.separate_test_set, args.dataset_type, num_bins=args.num_bins) 
+            test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
 
@@ -174,7 +174,7 @@ def run_training(args: Namespace) -> List[float]:
 
         # Evaluate on test set using model using model with best validation score
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        model = load_checkpoint(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx)))
+        model = load_checkpoint(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx)), cuda=args.cuda)
         test_preds = predict(
             model=model,
             smiles=test_smiles,

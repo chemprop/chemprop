@@ -22,13 +22,34 @@ def build_model(args: Namespace) -> nn.Module:
         encoder = JTNN(args)
     else:
         encoder = MPN(args)
+    if args.learn_virtual_edges:
+        args.lve_model = encoder.encoder # to make this accessible during featurization, to select virtual edges
+    
+    if args.semiF_only:
+        first_linear_dim = args.semiF_dim
+    else:
+        first_linear_dim = args.hidden_size * (1 + args.jtnn)
+        if args.semiF_path:
+            first_linear_dim += args.semiF_dim
 
-    modules = [
-        encoder,
-        nn.Linear(args.hidden_size * (1 + args.jtnn), args.hidden_size),
-        nn.ReLU(),
-        nn.Linear(args.hidden_size, output_size)
-    ]
+    if args.semiF_only:
+        modules = [
+            encoder,
+            nn.Linear(first_linear_dim, args.hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(args.hidden_size, output_size)
+        ]
+    else:
+        modules = [
+            encoder,
+            nn.Linear(first_linear_dim, args.hidden_size),
+            nn.ReLU(),
+            nn.Linear(args.hidden_size, output_size)
+        ]
     if args.dataset_type == 'classification':
         modules.append(nn.Sigmoid())
 
