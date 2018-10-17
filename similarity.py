@@ -21,8 +21,10 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     :param smiles_2: A list of smiles strings.
     """
     # Get scaffolds
-    scaffolds_1, smiles_sets_1 = zip(*scaffold_to_smiles(smiles_1).items())
-    scaffolds_2, smiles_sets_2 = zip(*scaffold_to_smiles(smiles_2).items())
+    scaffold_to_smiles_1 = scaffold_to_smiles(smiles_1)
+    scaffold_to_smiles_2 = scaffold_to_smiles(smiles_2)
+    scaffolds_1, smiles_sets_1 = zip(*scaffold_to_smiles_1.items())
+    scaffolds_2, smiles_sets_2 = zip(*scaffold_to_smiles_2.items())
 
     # Determine similarity
     scaffolds_1, scaffolds_2 = set(scaffolds_1), set(scaffolds_2)
@@ -32,6 +34,8 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     in_2_not_1 = scaffolds_2 - scaffolds_1
     sizes_1 = np.array([len(smiles_set) for smiles_set in smiles_sets_1])
     sizes_2 = np.array([len(smiles_set) for smiles_set in smiles_sets_2])
+    smiles_in_1_not_2 = [smiles for scaffold in in_1_not_2 for smiles in scaffold_to_smiles_1[scaffold]]
+    smiles_in_2_not_1 = [smiles for scaffold in in_2_not_1 for smiles in scaffold_to_smiles_2[scaffold]]
 
     # Print results
     print()
@@ -55,6 +59,11 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     print('Percent of scaffolds in dataset 1 not in dataset 2 = {:.2f}%'.format(100 * len(in_1_not_2) / len(scaffolds_1)))
     print('Number of scaffolds in dataset 2 not in dataset 1 = {:,}'.format(len(in_2_not_1)))
     print('Percent of scaffolds in dataset 2 not in dataset 1 = {:.2f}%'.format(100 * len(in_2_not_1) / len(scaffolds_2)))
+    print()
+    print('Number of molecules with scaffold in dataset 1 not in dataset 2 = {:,}'.format(len(smiles_in_1_not_2)))
+    print('Percent of molecules with scaffold in dataset 1 not in dataset 2 = {:.2f}%'.format(100 * len(smiles_in_1_not_2) / np.sum(sizes_1)))
+    print('Number of molecules with scaffold in dataset 2 not in dataset 1 = {:,}'.format(len(smiles_in_2_not_1)))
+    print('Percent of molecules with scaffold in dataset 2 not in dataset 1 = {:.2f}%'.format(100 * len(smiles_in_2_not_1) / np.sum(sizes_2)))
 
 
 def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sample_rate: float):
