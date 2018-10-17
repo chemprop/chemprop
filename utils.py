@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 
 from model import build_model
+from scaffold import scaffold_split
 
 
 class StandardScaler:
@@ -146,10 +147,13 @@ def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) 
 
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
+
 def get_semiF(path):
     with open(path, 'rb') as f:
         data = pickle.load(f)
+
     return data
+
 
 def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     """
@@ -255,7 +259,8 @@ def get_data(path: str,
 def split_data(data: List[Tuple[str, List[float]]],
                args: Namespace,
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-               seed: int = 0) -> Tuple[List[Tuple[str, List[float]]],
+               seed: int = 0,
+               logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
                                        List[Tuple[str, List[float]]],
                                        List[Tuple[str, List[float]]]]:
     """
@@ -266,11 +271,13 @@ def split_data(data: List[Tuple[str, List[float]]],
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
+    :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert len(sizes) == 3, sum(sizes) == 1
+
     if args.folds_file:
-        assert sizes[2] == 0 #test set is created separately
+        assert sizes[2] == 0  # test set is created separately
         with open(args.folds_file, 'rb') as f:
             all_fold_indices = pickle.load(f)
         assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
@@ -287,7 +294,11 @@ def split_data(data: List[Tuple[str, List[float]]],
         train_size = int(sizes[0] * len(train_val))
         train = train_val[:train_size]
         val = train_val[train_size:]
+
         return train, val, test
+
+    elif args.scaffold_split:
+        return scaffold_split(data, sizes=sizes, logger=logger)
 
     else:
         random.seed(seed)

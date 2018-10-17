@@ -1,12 +1,10 @@
-from argparse import ArgumentParser
 from collections import defaultdict
+import logging
 from typing import Dict, List, Set, Tuple, Union
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm import tqdm
-
-from utils import get_data, get_header
 
 
 class ScaffoldGenerator:
@@ -65,7 +63,8 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
 
 
 def scaffold_split(data: List[Tuple[str, List[float]]],
-                   sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> Tuple[List[Tuple[str, List[float]]],
+                   sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+                   logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
                                                                                  List[Tuple[str, List[float]]],
                                                                                  List[Tuple[str, List[float]]]]:
     """
@@ -74,15 +73,14 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
     :param data: A list of data points (smiles string, target values).
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
+    :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
-    assert sum(args.split_sizes) == 1
+    assert sum(sizes) == 1
 
     # Get data
-    print('Data size = {:,}'.format(len(data)))
     smiles, _ = zip(*data)
     scaffolds = scaffold_to_smiles(smiles, use_indices=True)  # mapping from scaffold to set of indices into smiles/data
-    print('Number of scaffolds = {:,}'.format(len(scaffolds)))
 
     # Sort from largest to smallest scaffold sets
     index_sets = [sorted(list(index_set)) for index_set in scaffolds.values()]
@@ -104,43 +102,16 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
             test_indices += index_set
             test_scaffold_count += 1
 
-    print('Number of train scaffolds = {:,}'.format(train_scaffold_count))
-    print('Number of val scaffolds = {:,}'.format(val_scaffold_count))
-    print('Number of test scaffolds = {:,}'.format(test_scaffold_count))
+    if logger is not None:
+        logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
+            len(scaffolds),
+            train_scaffold_count,
+            val_scaffold_count,
+            test_scaffold_count
+        ))
 
     train = [data[i] for i in train_indices]
     val = [data[i] for i in val_indices]
     test = [data[i] for i in test_indices]
 
-    print('Train size = {:,}'.format(len(train)))
-    print('Val size = {:,}'.format(len(val)))
-    print('Test size = {:,}'.format(len(test)))
-
     return train, val, test
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True,
-                        help='Path to data CSV file')
-    parser.add_argument('--train_save', type=str, required=True,
-                        help='Path where train CSV will be saved')
-    parser.add_argument('--val_save', type=str, required=True,
-                        help='Path where validation CSV will be saved')
-    parser.add_argument('--test_save', type=str, required=True,
-                        help='Path where test CSV will be saved')
-    parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
-                        help='Split proportions for train/validation/test sets')
-    args = parser.parse_args()
-
-    # Split data
-    data = get_data(args.data_path)
-    train, val, test = scaffold_split(data, args.split_sizes)
-
-    # Save splits
-    header = get_header(args.data_path)
-    for fname, data in [(args.train_save, train), (args.val_save, val), (args.test_save, test)]:
-        with open(fname, 'w') as f:
-            f.write(','.join(header) + '\n')
-            for smiles, labels in data:
-                f.write(smiles + ',' + ','.join(str(l) if l is not None else '' for l in labels) + '\n')

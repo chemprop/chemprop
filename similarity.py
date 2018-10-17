@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     smiles_1 = get_data(args.data_path_1, smiles_only=True, use_compound_names=args.compound_names_1)
     smiles_2 = get_data(args.data_path_2, smiles_only=True, use_compound_names=args.compound_names_2)
-    
+
     if args.compound_names_1:
         _, smiles_1 = smiles_1
     if args.compound_names_2:

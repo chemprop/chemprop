@@ -40,17 +40,18 @@ def run_training(args: Namespace) -> List[float]:
         data, bin_predictions, regression_data = data
         args.bin_predictions = bin_predictions
         logger.debug('Splitting data with seed {}'.format(args.seed))
-        train_data, _, _ = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
-        _, val_data, test_data = split_data(regression_data, args, seed=args.seed)
+        train_data, _, _ = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+        _, val_data, test_data = split_data(regression_data, args, seed=args.seed, logger=logger)
     else:
         logger.debug('Splitting data with seed {}'.format(args.seed))
         if args.separate_test_set:
-            train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed)
+            train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed, logger=logger)
             test_data = get_data(args.separate_test_set, args) 
         else:
-            train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
+            train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
-    logger.debug('Train size = {:,} | val size = {:,} | test size = {:,}'.format(
+    logger.debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
+        len(data),
         len(train_data),
         len(val_data),
         len(test_data))

@@ -61,6 +61,8 @@ def add_train_args(parser: ArgumentParser):
                         help='store memo dicts for mol2graph in chunk_temp_dir when chunking, at large disk space cost')
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
+    parser.add_argument('--scaffold_split', action='store_true', default=False,
+                        help='Whether to split train/val/test by molecular scaffold instead of randomly')
     parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
