@@ -23,47 +23,64 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     # Get scaffolds
     scaffold_to_smiles_1 = scaffold_to_smiles(smiles_1)
     scaffold_to_smiles_2 = scaffold_to_smiles(smiles_2)
+
     scaffolds_1, smiles_sets_1 = zip(*scaffold_to_smiles_1.items())
     scaffolds_2, smiles_sets_2 = zip(*scaffold_to_smiles_2.items())
 
+    smiles_to_scaffold = {smiles: scaffold for scaffold, smiles_set in scaffold_to_smiles_1.items() for smiles in smiles_set}
+    smiles_to_scaffold.update({smiles: scaffold for scaffold, smiles_set in scaffold_to_smiles_2.items() for smiles in smiles_set})
+
+
     # Determine similarity
     scaffolds_1, scaffolds_2 = set(scaffolds_1), set(scaffolds_2)
-    intersection = scaffolds_1 & scaffolds_2
-    union = scaffolds_1 | scaffolds_2
-    in_1_not_2 = scaffolds_1 - scaffolds_2
-    in_2_not_1 = scaffolds_2 - scaffolds_1
+    smiles_1, smiles_2 = set(smiles_1), set(smiles_2)
+
+    all_scaffolds = scaffolds_1 | scaffolds_2
+    all_smiles = smiles_1 | smiles_2
+
+    scaffolds_intersection = scaffolds_1 & scaffolds_2
+    # smiles_intersection is smiles with a scaffold that appears in both datasets
+    smiles_intersection = {smiles for smiles in all_smiles if smiles_to_scaffold[smiles] in scaffolds_intersection}
+
+    smiles_in_1_with_scaffold_in_2 = {smiles for smiles in smiles_1 if smiles_to_scaffold[smiles] in scaffolds_2}
+    smiles_in_2_with_scaffold_in_1 = {smiles for smiles in smiles_2 if smiles_to_scaffold[smiles] in scaffolds_1}
+
     sizes_1 = np.array([len(smiles_set) for smiles_set in smiles_sets_1])
     sizes_2 = np.array([len(smiles_set) for smiles_set in smiles_sets_2])
-    smiles_in_1_not_2 = [smiles for scaffold in in_1_not_2 for smiles in scaffold_to_smiles_1[scaffold]]
-    smiles_in_2_not_1 = [smiles for scaffold in in_2_not_1 for smiles in scaffold_to_smiles_2[scaffold]]
 
     # Print results
     print()
+    print('Number of molecules = {:,}'.format(len(all_smiles)))
+    print('Number of scaffolds = {:,}'.format(len(all_scaffolds)))
+    print()
+    print('Number of scaffolds in both datasets = {:,}'.format(len(scaffolds_intersection)))
+    print('Scaffold intersection over union = {:.4f}'.format(len(scaffolds_intersection) / len(all_scaffolds)))
+    print()
+    print('Number of molecules with scaffold in both datasets = {:,}'.format(len(smiles_intersection)))
+    print('Molecule intersection over union = {:.4f}'.format(len(smiles_intersection) / len(all_smiles)))
+    print()
     print('Number of molecules in dataset 1 = {:,}'.format(np.sum(sizes_1)))
     print('Number of scaffolds in dataset 1 = {:,}'.format(len(scaffolds_1)))
+    print()
+    print('Number of molecules in dataset 2 = {:,}'.format(np.sum(sizes_2)))
+    print('Number of scaffolds in dataset 2 = {:,}'.format(len(scaffolds_2)))
+    print()
+    print('Percent of scaffolds in dataset 1 which are also in dataset 2 = {:.2f}%'.format(100 * len(scaffolds_intersection) / len(scaffolds_1)))
+    print('Percent of scaffolds in dataset 2 which are also in dataset 1 = {:.2f}%'.format(100 * len(scaffolds_intersection) / len(scaffolds_2)))
+    print()
+    print('Number of molecules in dataset 1 with scaffolds in dataset 2 = {:,}'.format(len(smiles_in_1_with_scaffold_in_2)))
+    print('Percent of molecules in dataset 1 with scaffolds in dataset 2 = {:.2f}%'.format(100 * len(smiles_in_1_with_scaffold_in_2) / len(smiles_1)))
+    print()
+    print('Number of molecules in dataset 2 with scaffolds in dataset 1 = {:,}'.format(len(smiles_in_2_with_scaffold_in_1)))
+    print('Percent of molecules in dataset 2 with scaffolds in dataset 1 = {:.2f}%'.format(100 * len(smiles_in_2_with_scaffold_in_1) / len(smiles_2)))
+    print()
     print('Average number of molecules per scaffold in dataset 1 = {:.4f} +/- {:.4f}'.format(np.mean(sizes_1), np.std(sizes_1)))
     print('Percentiles for molecules per scaffold in dataset 1')
     print(' | '.join(['{}% = {:,}'.format(i, int(np.percentile(sizes_1, i))) for i in range(0, 101, 10)]))
     print()
-    print('Number of molecules in dataset 2 = {:,}'.format(np.sum(sizes_2)))
-    print('Number of scaffolds in dataset 2 = {:,}'.format(len(scaffolds_2)))
     print('Average number of molecules per scaffold in dataset 2 = {:.4f} +/- {:.4f}'.format(np.mean(sizes_2), np.std(sizes_2)))
     print('Percentiles for molecules per scaffold in dataset 2')
     print(' | '.join(['{}% = {:,}'.format(i, int(np.percentile(sizes_2, i))) for i in range(0, 101, 10)]))
-    print()
-    print('Number of scaffolds in intersection = {:,}'.format(len(intersection)))
-    print('Number of scaffolds in union = {:,}'.format(len(union)))
-    print('Intersection over union = {:.4f}'.format(len(intersection) / len(union)))
-    print()
-    print('Number of scaffolds in dataset 1 not in dataset 2 = {:,}'.format(len(in_1_not_2)))
-    print('Percent of scaffolds in dataset 1 not in dataset 2 = {:.2f}%'.format(100 * len(in_1_not_2) / len(scaffolds_1)))
-    print('Number of scaffolds in dataset 2 not in dataset 1 = {:,}'.format(len(in_2_not_1)))
-    print('Percent of scaffolds in dataset 2 not in dataset 1 = {:.2f}%'.format(100 * len(in_2_not_1) / len(scaffolds_2)))
-    print()
-    print('Number of molecules with scaffold in dataset 1 not in dataset 2 = {:,}'.format(len(smiles_in_1_not_2)))
-    print('Percent of molecules with scaffold in dataset 1 not in dataset 2 = {:.2f}%'.format(100 * len(smiles_in_1_not_2) / np.sum(sizes_1)))
-    print('Number of molecules with scaffold in dataset 2 not in dataset 1 = {:,}'.format(len(smiles_in_2_not_1)))
-    print('Percent of molecules with scaffold in dataset 2 not in dataset 1 = {:.2f}%'.format(100 * len(smiles_in_2_not_1) / np.sum(sizes_2)))
 
 
 def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sample_rate: float):
