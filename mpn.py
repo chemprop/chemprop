@@ -33,6 +33,7 @@ class MPNEncoder(nn.Module):
         self.deepset = args.deepset
         self.set2set = args.set2set
         self.set2set_iters = args.set2set_iters
+        self.learn_virtual_edges = args.learn_virtual_edges
         self.args = args
 
         if args.semiF_only:
@@ -47,8 +48,6 @@ class MPNEncoder(nn.Module):
             self.W_h = nn.Linear(self.num_heads * self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
                                        for _ in range(self.num_heads)])
-            # uncomment this later if you want attention over binput + nei_message? or on atom incoming at end
-            # self.W_ma2 = nn.Linear(hidden_size, 1, bias=self.bias)
         else:
             self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
@@ -57,10 +56,8 @@ class MPNEncoder(nn.Module):
             self.W_ga2 = nn.Linear(self.hidden_size, self.hidden_size)
 
         if self.master_node:
-            # self.GRU_master = nn.GRU(self.hidden_size, self.master_dim)
             self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
             self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
-            # self.layer_norm = nn.LayerNorm(self.hidden_size)
 
         # Readout
         if not (self.master_node and self.use_master_as_output):
@@ -81,6 +78,9 @@ class MPNEncoder(nn.Module):
         if self.attention:
             self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
+        
+        if self.learn_virtual_edges:
+            self.lve = nn.Linear(self.atom_fdim, self.atom_fdim)
 
         # Layer norm
         if self.use_layer_norm:
@@ -127,6 +127,13 @@ class MPNEncoder(nn.Module):
         if next(self.parameters()).is_cuda:
             f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
 
+        if self.learn_virtual_edges:
+            atom1_features, atom2_features = f_atoms[b2a], f_atoms[b2a[b2revb]] #each num_bonds x atom_fdim
+            ve_score = torch.sum(self.lve(atom1_features) * atom2_features, dim=1) + torch.sum(self.lve(atom2_features) * atom1_features, dim=1)
+            is_ve_indicator_index = self.atom_fdim # in current featurization, the first bond feature is 1 or 0 for virtual or not virtual
+            num_virtual = f_bonds[:, is_ve_indicator_index].sum()
+            straight_through_mask = torch.ones(f_bonds.size(0)).cuda() + f_bonds[:, is_ve_indicator_index] * (ve_score - ve_score.detach()) / num_virtual #normalize for grad norm
+            straight_through_mask = straight_through_mask.unsqueeze(1).repeat((1, self.hidden_size)) # num_bonds x hidden_size
         # Input
         b_input = self.W_i(f_bonds)  # num_bonds x hidden_size
         b_message = self.act_func(b_input)  # num_bonds x hidden_size
@@ -151,6 +158,8 @@ class MPNEncoder(nn.Module):
 
         # Message passing
         for depth in range(self.depth - 1):
+            if self.learn_virtual_edges:
+                b_message = b_message * straight_through_mask
             if self.message_attention:
                 # TODO: Parallelize attention heads
                 nei_b_message = index_select_ND(b_message, b2b)
@@ -219,6 +228,8 @@ class MPNEncoder(nn.Module):
             return torch.stack(mol_vecs, dim=0)
 
         # Get atom hidden states from message hidden states
+        if self.learn_virtual_edges:
+            b_message = b_message * straight_through_mask
         nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
