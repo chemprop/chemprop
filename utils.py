@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 
 from model import build_model
-from scaffold import scaffold_split
+from scaffold import scaffold_split, scaffold_split_one
 
 
 class StandardScaler:
@@ -296,6 +296,9 @@ def split_data(data: List[Tuple[str, List[float]]],
         val = train_val[train_size:]
 
         return train, val, test
+
+    elif args.scaffold_split_one:
+        return scaffold_split_one(data)
 
     elif args.scaffold_split:
         return scaffold_split(data, sizes=sizes, logger=logger)

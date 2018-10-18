@@ -65,8 +65,8 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
 def scaffold_split(data: List[Tuple[str, List[float]]],
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                    logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
-                                                                                 List[Tuple[str, List[float]]],
-                                                                                 List[Tuple[str, List[float]]]]:
+                                                           List[Tuple[str, List[float]]],
+                                                           List[Tuple[str, List[float]]]]:
     """
     Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
 
@@ -80,11 +80,12 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
 
     # Get data
     smiles, _ = zip(*data)
-    scaffolds = scaffold_to_smiles(smiles, use_indices=True)  # mapping from scaffold to set of indices into smiles/data
+    scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
 
     # Sort from largest to smallest scaffold sets
-    index_sets = [sorted(list(index_set)) for index_set in scaffolds.values()]
-    index_sets = sorted(index_sets, key=lambda index_set: len(index_set), reverse=True)
+    index_sets = sorted(list(scaffold_to_indices_map.values()),
+                        key=lambda index_set: len(index_set),
+                        reverse=True)
 
     # Split
     train_size, val_size = sizes[0] * len(data), sizes[1] * len(data)
@@ -104,7 +105,7 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
 
     if logger is not None:
         logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
-            len(scaffolds),
+            len(scaffold_to_indices_map),
             train_scaffold_count,
             val_scaffold_count,
             test_scaffold_count
@@ -113,5 +114,32 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
     train = [data[i] for i in train_indices]
     val = [data[i] for i in val_indices]
     test = [data[i] for i in test_indices]
+
+    return train, val, test
+
+
+def scaffold_split_one(data: List[Tuple[str, List[float]]]) -> Tuple[List[Tuple[str, List[float]]],
+                                                                     List[Tuple[str, List[float]]],
+                                                                     List[Tuple[str, List[float]]]]:
+    """
+    Split a dataset by scaffold such that train has all molecules from the largest scaffold
+    (i.e. the scaffold with the most molecules), val has all molecules from the second largest
+    scaffold, and test has all molecules from the third largest scaffold.
+
+    :param data: A list of data points (smiles string, target values).
+    :return: A tuple containing the train, validation, and test splits of the data.
+    """
+    # Get data
+    smiles, _ = zip(*data)
+    scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
+
+    # Sort from largest to smallest scaffold sets
+    scaffolds = sorted(list(scaffold_to_indices_map.keys()),
+                       key=lambda scaffold: len(scaffold_to_indices_map[scaffold]),
+                       reverse=True)
+
+    train = [data[index] for index in scaffold_to_indices_map[scaffolds[0]]]
+    val = [data[index] for index in scaffold_to_indices_map[scaffolds[1]]]
+    test = [data[index] for index in scaffold_to_indices_map[scaffolds[2]]]
 
     return train, val, test
