@@ -24,6 +24,12 @@ ATOM_FEATURES = {
     'num_radical_electrons': [0, 1, 2]
 }
 
+# Distance feature sizes
+PATH_DISTANCE_BINS = list(range(10))
+THREE_D_DISTANCE_MAX = 20
+THREE_D_DISTANCE_STEP = 1
+THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE_STEP))
+
 # len(choices) + 1 to include room for uncommon values; + 1 at end for IsAromatic
 ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 1
 BOND_FDIM = 14
@@ -32,19 +38,16 @@ BOND_FDIM = 14
 SMILES_TO_GRAPH = {}
 
 
-class DummyConformer:  # for use when 3d embedding fails
-    def GetAtomPosition(self, id: int) -> List[int]:
-        return [0, 0, 0]
-
-
 def get_atom_fdim(args: Namespace) -> int:
     """Gets the dimensionality of atom features."""
-    return ATOM_FDIM + 3 * args.three_d
+    return ATOM_FDIM
 
 
 def get_bond_fdim(args: Namespace) -> int:
     """Gets the dimensionality of bond features."""
-    return BOND_FDIM + args.three_d + (11 * args.virtual_edges)
+    return BOND_FDIM + \
+           args.virtual_edges * (1 + len(PATH_DISTANCE_BINS)) + \
+           args.three_d * (1 + len(THREE_D_DISTANCE_BINS))
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -63,40 +66,34 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom,
-                  atom_position: List[float] = None) -> List[Union[bool, int, float]]:
+def atom_features(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
-    :param atom_position: A length-3 list containing the xyz coordinates of the atom.
     :return: A PyTorch tensor containing the atom features.
     """
-    features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) \
-               + onek_encoding_unk(atom.GetDegree(), ATOM_FEATURES['degree']) \
-               + onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge']) \
-               + onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag']) \
-               + onek_encoding_unk(int(atom.GetImplicitValence()), ATOM_FEATURES['implicit_valence']) \
-               + onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) \
-               + onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) \
-               + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons']) \
-               + [1 if atom.GetIsAromatic() else 0]
-    if atom_position is not None:
-        features += atom_position
-
-    return features
+    return onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
+           onek_encoding_unk(atom.GetDegree(), ATOM_FEATURES['degree']) + \
+           onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge']) + \
+           onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag']) + \
+           onek_encoding_unk(int(atom.GetImplicitValence()), ATOM_FEATURES['implicit_valence']) + \
+           onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) + \
+           onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) + \
+           onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons']) + \
+           [1 if atom.GetIsAromatic() else 0]
 
 
 def bond_features(bond: Chem.rdchem.Bond,
                   distance_path: int = None,
-                  distance_3d: float = None) -> List[Union[bool, int, float]]:
+                  distance_3d: int = None) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for a bond.
 
     :param bond: A RDKit bond.
     :param distance_path: The topological (path) distance between the atoms in the bond.
     Note: This is always 1 if the atoms are actually bonded and >1 for "virtual" edges between non-bonded atoms.
-    :param distance_3d: The Euclidean distance between the atoms in 3D space.
+    :param distance_3d: The bin index of the 3D distance in THREE_D_DISTANCE_BINS.
     :return: A PyTorch tensor containing the bond features.
     """
     if bond is None:
@@ -114,10 +111,13 @@ def bond_features(bond: Chem.rdchem.Bond,
         ]
         fbond += onek_encoding_unk(int(bond.GetStereo()), list(range(6)))
 
-    fdistance_path = onek_encoding_unk(distance_path, list(range(10))) if distance_path is not None else []
-    fdistance_3d = [distance_3d] if distance_3d is not None else []
+    if distance_path is not None:
+        fbond += onek_encoding_unk(distance_path, PATH_DISTANCE_BINS)
 
-    return fbond + fdistance_path + fdistance_3d
+    if distance_3d is not None:
+        fbond += onek_encoding_unk(distance_3d, THREE_D_DISTANCE_BINS)
+
+    return fbond
 
 
 class MolGraph:
@@ -146,12 +146,11 @@ class MolGraph:
                 mol = Chem.RemoveHs(mol)
             try:
                 distances_3d = Chem.Get3DDistanceMatrix(mol)
-                conformer = mol.GetConformer()
+                distances_3d = np.digitize(distances_3d, THREE_D_DISTANCE_BINS)  # bin 3d distances
             except:
                 # zero distance matrix, in case rdkit errors out
                 print('distance embedding failed')
                 distances_3d = np.zeros((mol.GetNumAtoms(), mol.GetNumAtoms()))
-                conformer = DummyConformer()
 
         # Get topological (i.e. path-length) distance matrix and number of atoms
         distances_path = Chem.GetDistanceMatrix(mol)
@@ -159,16 +158,16 @@ class MolGraph:
         
         # Get atom features
         for atom in mol.GetAtoms():
-            atom_position = list(conformer.GetAtomPosition(atom.GetIdx())) if args.three_d else None
-            self.f_atoms.append(atom_features(atom, atom_position))
+            self.f_atoms.append(atom_features(atom))
             self.a2b.append([])
 
         if args.learn_virtual_edges:
-            model = args.lve_model #this is the MPN model, added to args so we can access it here
+            model = args.lve_model  # this is the MPN model, added to args so we can access it here
             f_atoms_cuda = torch.Tensor(self.f_atoms).cuda()
             processed_f_atoms_cuda = model.lve(f_atoms_cuda)
             lve_scores = torch.matmul(processed_f_atoms_cuda, f_atoms_cuda.t())
             symmetric_lve_scores = lve_scores + lve_scores.t()
+
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
@@ -179,7 +178,7 @@ class MolGraph:
                     if not args.virtual_edges:
                         continue
 
-                    if args.drop_virtual_edges and hash(str((a1, a2))) % n_atoms != 0:
+                    if args.drop_virtual_edges and hash(str((a1, a2))) % self.n_atoms != 0:
                         continue
 
                     # this option below doesn't seem to be as good
@@ -189,7 +188,7 @@ class MolGraph:
                     if args.learn_virtual_edges:
                         # if score less than 0, don't add the edge
                         model = args.lve_model
-                        if symmetric_lve_scores[a1, a2] < 0: #want symmetry in a1/a2
+                        if symmetric_lve_scores[a1, a2] < 0:  # want symmetry in a1/a2
                             continue
 
                 distance_3d = distances_3d[a1, a2] if args.three_d else None
@@ -209,6 +208,7 @@ class MolGraph:
                 self.b2revb.append(b2)
                 self.b2revb.append(b1)
                 self.n_bonds += 2
+
 
 class BatchMolGraph:
     def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
