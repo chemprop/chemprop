@@ -49,6 +49,8 @@ def run_training(args: Namespace) -> List[float]:
             test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+    if args.adversarial:
+        test_smiles, _ = zip(*test_data)
 
     logger.debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
@@ -145,7 +147,8 @@ def run_training(args: Namespace) -> List[float]:
                 n_iter=n_iter,
                 logger=logger,
                 writer=writer,
-                chunk_names=(args.num_chunks > 1)
+                chunk_names=(args.num_chunks > 1),
+                test_smiles=test_smiles if args.adversarial else None
             )
             val_scores = evaluate(
                 model=model,
@@ -218,7 +221,6 @@ def run_training(args: Namespace) -> List[float]:
             logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
 
     return ensemble_scores
-
 
 def cross_validate(args: Namespace):
     """k-fold cross validation"""

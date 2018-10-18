@@ -10,15 +10,13 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
-from tqdm import trange
+from tqdm import trange, tqdm
 import numpy as np
 import pickle
-from tqdm import tqdm
 
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 import featurization
-
 
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
@@ -29,7 +27,8 @@ def train(model: nn.Module,
           n_iter: int = 0,
           logger: logging.Logger = None,
           writer: SummaryWriter = None,
-          chunk_names: bool = False) -> int:
+          chunk_names: bool = False,
+          test_smiles: List[str] = None) -> int:
     """
     Trains a model for an epoch.
 
@@ -44,10 +43,13 @@ def train(model: nn.Module,
     :param writer: A tensorboardX SummaryWriter.
     :param chunk_names: Whether to train on the data in chunks. In this case,
     data must be a list of paths to the data chunks.
+    :param test_smiles: Test smiles strings without labels, used for adversarial setting.
     :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
     random.shuffle(data)
+    if args.adversarial:
+        train_smiles, _ = zip(*data)
 
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
@@ -71,7 +73,8 @@ def train(model: nn.Module,
                 n_iter=n_iter,
                 logger=logger,
                 writer=writer,
-                chunk_names=False
+                chunk_names=False,
+                test_smiles=test_smiles
             )
             if not found_memo:
                 with open(memo_path, 'wb') as f:
@@ -79,6 +82,8 @@ def train(model: nn.Module,
         return n_iter
 
     loss_sum, iter_count = 0, 0
+    if args.adversarial:
+        d_loss_sum, g_loss_sum, gp_loss_sum = 0, 0, 0
     for i in trange(0, len(data), args.batch_size):
         # Prepare batch
         batch = data[i:i + args.batch_size]
@@ -115,6 +120,20 @@ def train(model: nn.Module,
         optimizer.step()
         scheduler.step()
 
+        if args.adversarial:
+            for _ in range(args.gan_d_per_g):
+                train_smiles_batch = random.sample(train_smiles, args.batch_size)
+                test_smiles_batch = random.sample(test_smiles, args.batch_size)
+                d_loss, gp_loss = model[0].gan.train_D(train_smiles_batch, test_smiles_batch)
+            train_smiles_batch = random.sample(train_smiles, args.batch_size)
+            test_smiles_batch = random.sample(test_smiles, args.batch_size)
+            g_loss = model[0].gan.train_G(train_smiles_batch, test_smiles_batch)
+            if logger is not None:
+                # we probably care about the d_loss only right before going into the generator training
+                d_loss_sum += d_loss / args.gan_d_per_g
+                gp_loss_sum += gp_loss / args.gan_d_per_g
+                g_loss_sum += g_loss
+
         n_iter += len(batch)
 
         # Log and/or add to tensorboard
@@ -123,10 +142,15 @@ def train(model: nn.Module,
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
+            if args.adversarial:
+                d_loss_avg, g_loss_avg, gp_loss_avg = d_loss_sum / iter_count, g_loss_sum / iter_count, gp_loss_sum / iter_count
+                d_loss_sum, g_loss_sum, gp_loss_sum = 0, 0, 0
             loss_sum, iter_count = 0, 0
 
             if logger is not None:
                 logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
+                if args.adversarial:
+                    logger.debug("D Loss = {:.4e}, G Loss = {:.4f}, GP Loss = {:.4f}".format(d_loss_avg, g_loss_avg, gp_loss_avg))
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)

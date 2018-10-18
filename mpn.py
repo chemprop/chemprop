@@ -4,11 +4,12 @@ from typing import List
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
+import torch.autograd as autograd
+from torch.optim import Adam
 import numpy as np
 
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention
-
 
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
@@ -324,6 +325,8 @@ class MPN(nn.Module):
         self.atom_fdim = get_atom_fdim(args)
         self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
+        if args.adversarial:
+            self.gan = GAN(args, self.encoder)
 
     def forward(self, smiles_batch: List[str]) -> torch.Tensor:
         """
@@ -332,8 +335,7 @@ class MPN(nn.Module):
         :param smiles_batch: A list of SMILES strings.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        return self.encoder.forward(mol2graph(smiles_batch, self.args)
-)
+        return self.encoder.forward(mol2graph(smiles_batch, self.args))
 
     def viz_attention(self, smiles: List[str], viz_dir: str):
         """
@@ -343,3 +345,79 @@ class MPN(nn.Module):
         :param viz_dir: Directory in which to save visualized attention weights.
         """
         self.encoder.forward(mol2graph(smiles, self.args), viz_dir=viz_dir)
+
+class GAN(nn.Module):
+    def __init__(self, args: Namespace, mpn_encoder):
+        super(GAN, self).__init__()
+        self.args = args
+        self.encoder = mpn_encoder
+
+        self.hidden_size = args.hidden_size
+        self.act_func = self.encoder.act_func
+
+        self.netD = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size), #doesn't support jtnn or semiF features rn
+            self.act_func,
+            nn.Linear(self.hidden_size, self.hidden_size),
+            self.act_func,
+            nn.Linear(self.hidden_size, 1)
+        )
+        self.beta = args.wgan_beta
+
+        # the optimizers don't really belong here, but we put it here so that we don't clutter code for other opts
+        #TODO could have schedulers for these optimizers too, if we want
+        self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr)
+        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr*10)
+    
+    #the following methods are code borrowed from Wengong and modified
+    def train_D(self, fake_smiles: List[str], real_smiles: List[str]):
+        self.netD.zero_grad()
+
+        real_vecs = self.encoder(mol2graph(real_smiles, self.args)).detach()
+        fake_vecs = self.encoder(mol2graph(fake_smiles, self.args)).detach()
+        real_score = self.netD(real_vecs)
+        fake_score = self.netD(fake_vecs)
+
+        score = fake_score.mean() - real_score.mean() #maximize -> minimize minus
+        score.backward()
+
+        #Gradient Penalty
+        inter_gp, inter_norm = self.gradient_penalty(real_vecs, fake_vecs)
+        inter_gp.backward()
+
+        self.optimizerD.step()
+
+        return -score.item(), inter_norm
+    
+    def train_G(self, fake_smiles: List[str], real_smiles: List[str]):
+        self.encoder.zero_grad()
+
+        real_vecs = self.encoder(mol2graph(real_smiles, self.args))
+        fake_vecs = self.encoder(mol2graph(fake_smiles, self.args))
+        real_score = self.netD(real_vecs)
+        fake_score = self.netD(fake_vecs)
+
+        score = real_score.mean() - fake_score.mean() 
+        score.backward()
+
+        self.optimizerG.step()
+        self.netD.zero_grad() #technically not necessary since it'll get zero'd in the next iteration anyway
+
+        return score.item()
+    
+    def gradient_penalty(self, real_vecs, fake_vecs):
+        assert real_vecs.size() == fake_vecs.size()
+        eps = torch.rand(real_vecs.size(0), 1).cuda()
+        inter_data = eps * real_vecs + (1 - eps) * fake_vecs
+        inter_data = autograd.Variable(inter_data, requires_grad=True) #TODO check if this is necessary (we detached earlier)
+        inter_score = self.netD(inter_data)
+        inter_score = inter_score.view(-1) #bs*hidden
+
+        inter_grad = autograd.grad(inter_score, inter_data, 
+                grad_outputs=torch.ones(inter_score.size()).cuda(),
+                create_graph=True, retain_graph=True, only_inputs=True)[0]
+
+        inter_norm = inter_grad.norm(2, dim=1)
+        inter_gp = ((inter_norm - 1) ** 2).mean() * self.beta
+
+        return inter_gp, inter_norm.mean().item()
