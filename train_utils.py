@@ -83,7 +83,7 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
     if args.adversarial:
-        d_loss_sum, g_loss_sum, gp_loss_sum = 0, 0, 0
+        d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
     for i in trange(0, len(data), args.batch_size):
         # Prepare batch
         batch = data[i:i + args.batch_size]
@@ -124,15 +124,15 @@ def train(model: nn.Module,
             for _ in range(args.gan_d_per_g):
                 train_smiles_batch = random.sample(train_smiles, args.batch_size)
                 test_smiles_batch = random.sample(test_smiles, args.batch_size)
-                d_loss, gp_loss = model[0].gan.train_D(train_smiles_batch, test_smiles_batch)
+                d_loss, gp_norm = model[0].gan.train_D(train_smiles_batch, test_smiles_batch)
             train_smiles_batch = random.sample(train_smiles, args.batch_size)
             test_smiles_batch = random.sample(test_smiles, args.batch_size)
             g_loss = model[0].gan.train_G(train_smiles_batch, test_smiles_batch)
             if logger is not None:
-                # we probably care about the d_loss only right before going into the generator training
-                d_loss_sum += d_loss / args.gan_d_per_g
-                gp_loss_sum += gp_loss / args.gan_d_per_g
-                g_loss_sum += g_loss
+                # we probably only care about the g_loss honestly
+                d_loss_sum += d_loss * args.batch_size
+                gp_norm_sum += gp_norm * args.batch_size
+                g_loss_sum += g_loss * args.batch_size
 
         n_iter += len(batch)
 
@@ -143,14 +143,14 @@ def train(model: nn.Module,
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
             if args.adversarial:
-                d_loss_avg, g_loss_avg, gp_loss_avg = d_loss_sum / iter_count, g_loss_sum / iter_count, gp_loss_sum / iter_count
-                d_loss_sum, g_loss_sum, gp_loss_sum = 0, 0, 0
+                d_loss_avg, g_loss_avg, gp_norm_avg = d_loss_sum / iter_count, g_loss_sum / iter_count, gp_norm_sum / iter_count
+                d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
             loss_sum, iter_count = 0, 0
 
             if logger is not None:
                 logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
                 if args.adversarial:
-                    logger.debug("D Loss = {:.4e}, G Loss = {:.4f}, GP Loss = {:.4f}".format(d_loss_avg, g_loss_avg, gp_loss_avg))
+                    logger.debug("D Loss = {:.4e}, G Loss = {:.4e}, GP Norm = {:.4}".format(d_loss_avg, g_loss_avg, gp_norm_avg))
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)

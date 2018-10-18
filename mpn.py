@@ -9,7 +9,7 @@ from torch.optim import Adam
 import numpy as np
 
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
-from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention
+from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR
 
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
@@ -360,6 +360,8 @@ class GAN(nn.Module):
             self.act_func,
             nn.Linear(self.hidden_size, self.hidden_size),
             self.act_func,
+            nn.Linear(self.hidden_size, self.hidden_size),
+            self.act_func,
             nn.Linear(self.hidden_size, 1)
         )
         self.beta = args.wgan_beta
@@ -367,7 +369,25 @@ class GAN(nn.Module):
         # the optimizers don't really belong here, but we put it here so that we don't clutter code for other opts
         #TODO could have schedulers for these optimizers too, if we want
         self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr)
-        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr*10)
+        self.schedulerG = NoamLR(
+            self.optimizerG,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=args.epochs,
+            steps_per_epoch=args.train_data_length // args.batch_size,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
+        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr)
+        self.schedulerD = NoamLR(
+            self.optimizerD,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=args.epochs,
+            steps_per_epoch=(args.train_data_length // args.batch_size) * args.gan_d_per_g,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
     
     #the following methods are code borrowed from Wengong and modified
     def train_D(self, fake_smiles: List[str], real_smiles: List[str]):
@@ -386,6 +406,7 @@ class GAN(nn.Module):
         inter_gp.backward()
 
         self.optimizerD.step()
+        self.schedulerD.step()
 
         return -score.item(), inter_norm
     
@@ -401,6 +422,7 @@ class GAN(nn.Module):
         score.backward()
 
         self.optimizerG.step()
+        self.schedulerG.step()
         self.netD.zero_grad() #technically not necessary since it'll get zero'd in the next iteration anyway
 
         return score.item()

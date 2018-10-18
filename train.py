@@ -4,6 +4,7 @@ import os
 import math
 from pprint import pformat
 from typing import List
+import random
 
 import numpy as np
 from tensorboardX import SummaryWriter
@@ -51,6 +52,7 @@ def run_training(args: Namespace) -> List[float]:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
     if args.adversarial:
         test_smiles, _ = zip(*test_data)
+        args.train_data_length = len(train_data) # kinda hacky, but less cluttered
 
     logger.debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
