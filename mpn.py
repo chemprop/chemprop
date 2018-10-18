@@ -374,9 +374,9 @@ class GAN(nn.Module):
             warmup_epochs=args.warmup_epochs,
             total_epochs=args.epochs,
             steps_per_epoch=args.train_data_length // args.batch_size,
-            init_lr=args.init_lr,
-            max_lr=args.max_lr,
-            final_lr=args.final_lr
+            init_lr=args.init_lr * args.gan_lr_mult,
+            max_lr=args.max_lr * args.gan_lr_mult,
+            final_lr=args.final_lr * args.gan_lr_mult
         )
         self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr)
         self.schedulerD = NoamLR(

@@ -173,6 +173,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Multiplier for WGAN gradient penalty')
     parser.add_argument('--gan_d_per_g', type=int, default=5,
                         help='GAN discriminator training iterations per generator training iteration')
+    parser.add_argument('--gan_lr_mult', type=float, default=1,
+                        help='Multiplier for GAN generator learning rate')
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
