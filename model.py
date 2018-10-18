@@ -32,16 +32,20 @@ def build_model(args: Namespace) -> nn.Module:
         if args.semiF_path:
             first_linear_dim += args.semiF_dim
 
-    if args.semiF_only:
+    if args.semiF_only or args.more_ffn_capacity:
         modules = [
             encoder,
-            nn.Linear(first_linear_dim, args.hidden_size),
+            nn.Dropout(args.ffn_input_dropout),
+            nn.Linear(first_linear_dim, args.ffn_hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
+            nn.Dropout(args.ffn_dropout),
+            nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
+            nn.Dropout(args.ffn_dropout),
+            nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
             nn.ReLU(),
-            nn.Linear(args.hidden_size, output_size)
+            nn.Dropout(args.ffn_dropout),
+            nn.Linear(args.ffn_hidden_dim, output_size)
         ]
     else:
         modules = [

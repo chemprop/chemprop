@@ -13,7 +13,6 @@ from tqdm import trange, tqdm
 
 from featurization import BatchMolGraph
 
-
 def param_count(model: nn.Module) -> int:
     """
     Determines number of trainable parameters.

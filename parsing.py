@@ -159,7 +159,22 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of set2set RNN iterations to perform')
     parser.add_argument('--jtnn', action='store_true', default=False,
                         help='Build junction tree and perform message passing over both original graph and tree')
-
+    parser.add_argument('--more_ffn_capacity', action='store_true', default=False,
+                        help='Give more capacity to the output layers after the graph network')
+    parser.add_argument('--ffn_input_dropout', type=float, default=0.2,
+                        help='Input dropout for higher-capacity FFN')
+    parser.add_argument('--ffn_dropout', type=float, default=0.5,
+                        help='Dropout for higher-capacity FFN')
+    parser.add_argument('--ffn_hidden_dim', type=int, default=2048,
+                        help='Hidden dim for higher-capacity FFN')
+    parser.add_argument('--adversarial', action='store_true', default=False,
+                        help='Adversarial scaffold regularization')
+    parser.add_argument('--wgan_beta', type=float, default=10,
+                        help='Multiplier for WGAN gradient penalty')
+    parser.add_argument('--gan_d_per_g', type=int, default=5,
+                        help='GAN discriminator training iterations per generator training iteration')
+    parser.add_argument('--gan_lr_mult', type=float, default=1,
+                        help='Multiplier for GAN generator learning rate')
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
