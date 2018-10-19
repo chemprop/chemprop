@@ -28,6 +28,7 @@ def train(model: nn.Module,
           logger: logging.Logger = None,
           writer: SummaryWriter = None,
           chunk_names: bool = False,
+          val_smiles: List[str] = None,
           test_smiles: List[str] = None) -> int:
     """
     Trains a model for an epoch.
@@ -50,6 +51,7 @@ def train(model: nn.Module,
     random.shuffle(data)
     if args.adversarial:
         train_smiles, _ = zip(*data)
+        train_val_smiles = train_smiles + val_smiles
 
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
@@ -122,12 +124,12 @@ def train(model: nn.Module,
 
         if args.adversarial:
             for _ in range(args.gan_d_per_g):
-                train_smiles_batch = random.sample(train_smiles, args.batch_size)
+                train_val_smiles_batch = random.sample(train_val_smiles, args.batch_size)
                 test_smiles_batch = random.sample(test_smiles, args.batch_size)
-                d_loss, gp_norm = model[0].gan.train_D(train_smiles_batch, test_smiles_batch)
-            train_smiles_batch = random.sample(train_smiles, args.batch_size)
+                d_loss, gp_norm = model[0].gan.train_D(train_val_smiles_batch, test_smiles_batch)
+            train_val_smiles_batch = random.sample(train_val_smiles, args.batch_size)
             test_smiles_batch = random.sample(test_smiles, args.batch_size)
-            g_loss = model[0].gan.train_G(train_smiles_batch, test_smiles_batch)
+            g_loss = model[0].gan.train_G(train_val_smiles_batch, test_smiles_batch)
             if logger is not None:
                 # we probably only care about the g_loss honestly
                 d_loss_sum += d_loss * args.batch_size

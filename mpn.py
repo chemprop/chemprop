@@ -367,27 +367,29 @@ class GAN(nn.Module):
         self.beta = args.wgan_beta
 
         # the optimizers don't really belong here, but we put it here so that we don't clutter code for other opts
-        #TODO could have schedulers for these optimizers too, if we want
-        self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr)
-        self.schedulerG = NoamLR(
-            self.optimizerG,
-            warmup_epochs=args.warmup_epochs,
-            total_epochs=args.epochs,
-            steps_per_epoch=args.train_data_length // args.batch_size,
-            init_lr=args.init_lr * args.gan_lr_mult,
-            max_lr=args.max_lr * args.gan_lr_mult,
-            final_lr=args.final_lr * args.gan_lr_mult
-        )
-        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr)
-        self.schedulerD = NoamLR(
-            self.optimizerD,
-            warmup_epochs=args.warmup_epochs,
-            total_epochs=args.epochs,
-            steps_per_epoch=(args.train_data_length // args.batch_size) * args.gan_d_per_g,
-            init_lr=args.init_lr,
-            max_lr=args.max_lr,
-            final_lr=args.final_lr
-        )
+        self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr * args.gan_lr_mult, betas=(0, 0.9))
+        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr * args.gan_lr_mult, betas=(0, 0.9))
+
+        self.use_scheduler = args.gan_use_scheduler
+        if self.use_scheduler:
+            self.schedulerG = NoamLR(
+                self.optimizerG,
+                warmup_epochs=args.warmup_epochs,
+                total_epochs=args.epochs,
+                steps_per_epoch=args.train_data_length // args.batch_size,
+                init_lr=args.init_lr * args.gan_lr_mult,
+                max_lr=args.max_lr * args.gan_lr_mult,
+                final_lr=args.final_lr * args.gan_lr_mult
+            )
+            self.schedulerD = NoamLR(
+                self.optimizerD,
+                warmup_epochs=args.warmup_epochs,
+                total_epochs=args.epochs,
+                steps_per_epoch=(args.train_data_length // args.batch_size) * args.gan_d_per_g,
+                init_lr=args.init_lr * args.gan_lr_mult,
+                max_lr=args.max_lr * args.gan_lr_mult,
+                final_lr=args.final_lr * args.gan_lr_mult
+            )
     
     #the following methods are code borrowed from Wengong and modified
     def train_D(self, fake_smiles: List[str], real_smiles: List[str]):
@@ -406,7 +408,8 @@ class GAN(nn.Module):
         inter_gp.backward()
 
         self.optimizerD.step()
-        self.schedulerD.step()
+        if self.use_scheduler:
+            self.schedulerD.step()
 
         return -score.item(), inter_norm
     
@@ -422,7 +425,8 @@ class GAN(nn.Module):
         score.backward()
 
         self.optimizerG.step()
-        self.schedulerG.step()
+        if self.use_scheduler:
+            self.schedulerG.step()
         self.netD.zero_grad() #technically not necessary since it'll get zero'd in the next iteration anyway
 
         return score.item()

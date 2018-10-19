@@ -51,6 +51,7 @@ def run_training(args: Namespace) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
     if args.adversarial:
+        val_smiles, _ = zip(*val_data)
         test_smiles, _ = zip(*test_data)
         args.train_data_length = len(train_data) # kinda hacky, but less cluttered
 
@@ -150,6 +151,7 @@ def run_training(args: Namespace) -> List[float]:
                 logger=logger,
                 writer=writer,
                 chunk_names=(args.num_chunks > 1),
+                val_smiles=val_smiles if args.adversarial else None,
                 test_smiles=test_smiles if args.adversarial else None
             )
             val_scores = evaluate(
