@@ -49,9 +49,6 @@ def train(model: nn.Module,
     """
     model.train()
     random.shuffle(data)
-    if args.adversarial:
-        train_smiles, _ = zip(*data)
-        train_val_smiles = train_smiles + val_smiles
 
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
@@ -76,6 +73,7 @@ def train(model: nn.Module,
                 logger=logger,
                 writer=writer,
                 chunk_names=False,
+                val_smiles=val_smiles,
                 test_smiles=test_smiles
             )
             if not found_memo:
@@ -85,6 +83,8 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
     if args.adversarial:
+        train_smiles, _ = zip(*data)
+        train_val_smiles = train_smiles + val_smiles
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
     for i in trange(0, len(data), args.batch_size):
         # Prepare batch
