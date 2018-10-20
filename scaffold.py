@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Tuple, Union
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm import tqdm
-
+import numpy as np
 
 class ScaffoldGenerator:
     """
@@ -110,12 +110,28 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
             val_scaffold_count,
             test_scaffold_count
         ))
+    
+    log_scaffold_stats(data, index_sets, logger)
 
     train = [data[i] for i in train_indices]
     val = [data[i] for i in val_indices]
     test = [data[i] for i in test_indices]
 
     return train, val, test
+
+
+def log_scaffold_stats(data, index_sets, logger=None):
+    # print some statistics about scaffolds
+    label_avgs = []
+    for index_set in index_sets:
+        data_set = [data[i] for i in index_set]
+        _, labels = zip(*data_set)
+        labels = np.array(labels, dtype=np.float)
+        label_avgs.append(np.nanmean(labels, axis=0))
+    stats = [label_avgs[i][:10] for i in range(min(10, len(label_avgs)))]
+    if logger is not None:
+        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency, capped at 10 scaffolds and 10 labels: {}'.format(stats))
+    return stats
 
 
 def scaffold_split_one(data: List[Tuple[str, List[float]]]) -> Tuple[List[Tuple[str, List[float]]],

@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 
 from model import build_model
-from scaffold import scaffold_split, scaffold_split_one
+from scaffold import scaffold_split, scaffold_split_one, log_scaffold_stats
 
 
 class StandardScaler:
@@ -281,6 +281,9 @@ def split_data(data: List[Tuple[str, List[float]]],
         with open(args.folds_file, 'rb') as f:
             all_fold_indices = pickle.load(f)
         assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
+        
+        log_scaffold_stats(data, all_fold_indices, logger)
+
         folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
 
         test = folds[args.test_fold_index]
