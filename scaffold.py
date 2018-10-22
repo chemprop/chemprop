@@ -123,14 +123,16 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
 def log_scaffold_stats(data, index_sets, logger=None):
     # print some statistics about scaffolds
     label_avgs = []
+    counts = []
     for index_set in index_sets:
         data_set = [data[i] for i in index_set]
         _, labels = zip(*data_set)
         labels = np.array(labels, dtype=np.float)
         label_avgs.append(np.nanmean(labels, axis=0))
-    stats = [label_avgs[i][:10] for i in range(min(10, len(label_avgs)))]
+        counts.append(np.count_nonzero(~np.isnan(labels), axis=0))
+    stats = [(label_avgs[i][:20], counts[i][:20]) for i in range(min(10, len(label_avgs)))]
     if logger is not None:
-        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency, capped at 10 scaffolds and 10 labels: {}'.format(stats))
+        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency, capped at 10 scaffolds and 20 labels: {}'.format(stats))
     return stats
 
 
