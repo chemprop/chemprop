@@ -3,7 +3,7 @@ from argparse import Namespace
 import torch.nn as nn
 
 from jtnn import JTNN
-from mpn import MPN
+from mpn import MPN, GAN
 
 
 def build_model(args: Namespace) -> nn.Module:
@@ -58,6 +58,10 @@ def build_model(args: Namespace) -> nn.Module:
         modules.append(nn.Sigmoid())
 
     model = nn.Sequential(*modules)
+
+    if args.adversarial:
+        args.output_size = output_size
+        model = GAN(args, model)
 
     for param in model.parameters():
         if param.dim() == 1:

@@ -325,8 +325,6 @@ class MPN(nn.Module):
         self.atom_fdim = get_atom_fdim(args)
         self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
-        if args.adversarial:
-            self.gan = GAN(args, self.encoder)
 
     def forward(self, smiles_batch: List[str]) -> torch.Tensor:
         """
@@ -335,7 +333,10 @@ class MPN(nn.Module):
         :param smiles_batch: A list of SMILES strings.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        return self.encoder.forward(mol2graph(smiles_batch, self.args))
+        output = self.encoder.forward(mol2graph(smiles_batch, self.args))
+        if self.args.adversarial:
+            self.saved_encoder_output = output
+        return output
 
     def viz_attention(self, smiles: List[str], viz_dir: str):
         """
@@ -347,16 +348,18 @@ class MPN(nn.Module):
         self.encoder.forward(mol2graph(smiles, self.args), viz_dir=viz_dir)
 
 class GAN(nn.Module):
-    def __init__(self, args: Namespace, mpn_encoder):
+    def __init__(self, args: Namespace, prediction_model: nn.Module):
         super(GAN, self).__init__()
         self.args = args
-        self.encoder = mpn_encoder
+        self.prediction_model = prediction_model
+        self.encoder = prediction_model[0] # assumes MPNEncoder is the first module in the nn.Sequential
 
         self.hidden_size = args.hidden_size
-        self.act_func = self.encoder.act_func
+        self.disc_input_size = args.hidden_size + args.output_size
+        self.act_func = self.encoder.encoder.act_func
 
         self.netD = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size), #doesn't support jtnn or semiF features rn
+            nn.Linear(self.disc_input_size, self.hidden_size), #doesn't support jtnn or semiF features rn
             self.act_func,
             nn.Linear(self.hidden_size, self.hidden_size),
             self.act_func,
@@ -390,13 +393,23 @@ class GAN(nn.Module):
                 max_lr=args.max_lr * args.gan_lr_mult,
                 final_lr=args.final_lr * args.gan_lr_mult
             )
+        
+    def forward(self, smiles_batch: List[str]) -> torch.Tensor:
+        return self.prediction_model(smiles_batch)
     
     #the following methods are code borrowed from Wengong and modified
     def train_D(self, fake_smiles: List[str], real_smiles: List[str]):
         self.netD.zero_grad()
 
-        real_vecs = self.encoder(mol2graph(real_smiles, self.args)).detach()
-        fake_vecs = self.encoder(mol2graph(fake_smiles, self.args)).detach()
+        real_output = self.prediction_model(real_smiles).detach()
+        real_enc_output = self.encoder.saved_encoder_output.detach()
+        real_vecs = torch.cat([real_enc_output, real_output], dim=1)
+        fake_output = self.prediction_model(fake_smiles).detach()
+        fake_enc_output = self.encoder.saved_encoder_output.detach()
+        fake_vecs = torch.cat([fake_enc_output, fake_output], dim=1)
+
+        # real_vecs = self.encoder(mol2graph(real_smiles, self.args)).detach()
+        # fake_vecs = self.encoder(mol2graph(fake_smiles, self.args)).detach()
         real_score = self.netD(real_vecs)
         fake_score = self.netD(fake_vecs)
 
@@ -416,8 +429,15 @@ class GAN(nn.Module):
     def train_G(self, fake_smiles: List[str], real_smiles: List[str]):
         self.encoder.zero_grad()
 
-        real_vecs = self.encoder(mol2graph(real_smiles, self.args))
-        fake_vecs = self.encoder(mol2graph(fake_smiles, self.args))
+        real_output = self.prediction_model(real_smiles).detach()
+        real_enc_output = self.encoder.saved_encoder_output
+        real_vecs = torch.cat([real_enc_output, real_output], dim=1)
+        fake_output = self.prediction_model(fake_smiles).detach()
+        fake_enc_output = self.encoder.saved_encoder_output
+        fake_vecs = torch.cat([fake_enc_output, fake_output], dim=1)
+
+        # real_vecs = self.encoder(mol2graph(real_smiles, self.args))
+        # fake_vecs = self.encoder(mol2graph(fake_smiles, self.args))
         real_score = self.netD(real_vecs)
         fake_score = self.netD(fake_vecs)
 

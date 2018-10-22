@@ -126,10 +126,10 @@ def train(model: nn.Module,
             for _ in range(args.gan_d_per_g):
                 train_val_smiles_batch = random.sample(train_val_smiles, args.batch_size)
                 test_smiles_batch = random.sample(test_smiles, args.batch_size)
-                d_loss, gp_norm = model[0].gan.train_D(train_val_smiles_batch, test_smiles_batch)
+                d_loss, gp_norm = model.train_D(train_val_smiles_batch, test_smiles_batch)
             train_val_smiles_batch = random.sample(train_val_smiles, args.batch_size)
             test_smiles_batch = random.sample(test_smiles, args.batch_size)
-            g_loss = model[0].gan.train_G(train_val_smiles_batch, test_smiles_batch)
+            g_loss = model.train_G(train_val_smiles_batch, test_smiles_batch)
             if logger is not None:
                 # we probably only care about the g_loss honestly
                 d_loss_sum += d_loss * args.batch_size
