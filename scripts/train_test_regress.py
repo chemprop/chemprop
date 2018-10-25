@@ -45,7 +45,7 @@ print(len(train), len(valid), len(test))
 num_tasks = len(train[0][1])
 print("Number of tasks:", num_tasks)
 
-model = load_chemprop_model_architecture()
+model = load_chemprop_model_architecture(num_tasks=num_tasks)
 model, loss_fn = set_processor(model)
 
 optimizer = optim.Adam(model.parameters(), lr=1e-3)

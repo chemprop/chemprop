@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_option("-x", "--metric", dest="metric", default='rmse')
     parser.add_option("-s", "--seed", dest="seed", default=1)
     parser.add_option("-c", "--scale", dest="scale", default=True)
+    parser.add_option("-i", "--initial_tasks", dest="initial_tasks", default=18)
 
     opts, args = parser.parse_args()
     batch_size = int(opts.batch_size)
@@ -32,8 +33,7 @@ if __name__ == "__main__":
     hidden_size = int(opts.hidden_size)
     num_epoch = int(opts.epoch)
     dropout = float(opts.dropout)
-
-    model = load_chemprop_model_architecture(num_tasks=18)
+    model = load_chemprop_model_architecture(num_tasks=initial_tasks)
     model = load_stored_weights(model, opts.model_path)
     model, loss_fn = set_processor(model)
 
