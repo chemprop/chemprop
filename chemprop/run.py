@@ -94,7 +94,8 @@ def valid_loss(model, data, metric, batch_size=100):
         err += loss.data.sum(dim=0).cpu()
     model.train(True)
     err = err / ndata
-    print(err, err.sqrt(), num_tasks)
+    if num_tasks > 1:
+        print("Individual errors:", err)
     if metric == 'rmse':
         return err.sqrt().sum() / num_tasks
     else:
