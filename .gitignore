@@ -2,3 +2,6 @@
 deepchem-test/jtnn
 .ipynb_checkpoints/*
 .idea/*
+results/*
+retrain_jobs/*
+jobs/*

@@ -1,12 +1,17 @@
 import os
-
-models = ["chemprop", ]
-
+# Which base dataset to train on
 dataset = "descriptor_collection_MoDD4Q_2018.06.24_2018-09-24.csv_processed"
+
+#Where to write these files too
+output_dr = "/mmprojects/palmera2/Projects/MIT/chemprop/tmp"
+
+# Files on remote computer
+data_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/data/{}".format(dataset)
+results_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/results/{}".format(dataset)
+
 model_path = "/gpfs/nobackup/scratch/share/palmera2/modd4q/results/descriptor_collection_MoDD4Q_2018.06.24_2018-09-24.csv_processed/prio1.csv/graphconv/chemprop/model.best"
 property_list = "Y:\palmera2\Projects\MoDD4Q\data\descriptors.csv"
-data_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/data/{}".format(dataset)
-results_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/results/retrain/{}".format(dataset)
+models = ["chemprop", ]
 
 data_files = [
     "HOMO_H2O.csv",

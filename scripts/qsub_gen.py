@@ -1,10 +1,16 @@
 import os
-models = ["chemprop", ]
 
+# Which base dataset to train on
 dataset = "descriptor_collection_MoDD4Q_2018.06.24_2018-09-24.csv_processed"
+
+#Where to write these files too
+output_dr = "/mmprojects/palmera2/Projects/MIT/chemprop/tmp"
+
+# Files on remote computer
 data_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/data/{}".format(dataset)
 results_root = "/gpfs/nobackup/scratch/share/palmera2/modd4q/results/{}".format(dataset)
 
+# Individual training tasks for properties in this dataset
 data_files = [
     "HOMO_H2O.csv",
     "LUMO_H2O.csv",
@@ -15,7 +21,7 @@ data_files = [
     "H_MF_H2O.csv",
     "polarizability_H2O.csv",
     "electron_affinity_H2O.csv",
-    "H_int_H2O.csv"  ,
+    "H_int_H2O.csv" ,
     "H_vdW_H2O.csv",
     "log_p_ow.csv",
     "Moment_HBdon_H2O.csv",
@@ -27,7 +33,12 @@ data_files = [
     "mu_Ethylacetat.csv" ,
     "mu_Octanol.csv",
     "mu_Triglyme.csv",
-    "prio1.csv"
+    "prio1.csv",
+    "pca100.csv"
+    ]
+
+data_files = [
+     "pca100.csv"
     ]
 
 gpu_job_info = {
@@ -44,6 +55,8 @@ cpu_job_info = {
     "ngpus": 0
 }
 
+models = ["chemprop", ]
+
 job_info = cpu_job_info
 
 def write_utf8(f, s):
@@ -58,7 +71,7 @@ def select_str(job_info):
     s += "\n"
     return s
 
-with open("master.sh", "wb") as f_master:
+with open(os.path.join(output_dr, "master.sh"), "wb") as f_master:
     f_master.write("#!/bin/bash\n".encode('utf-8'))
     for data_file in data_files:
         data_train_fn = data_root + "/train/" + data_file
@@ -71,7 +84,7 @@ with open("master.sh", "wb") as f_master:
                 job_name += "_cpu"
             job_fn =job_name + ".job"
             results_folder = results_root + "/" + data_file + "/graphconv/" + model
-            with open(os.path.join("jobs", job_fn), "wb") as f_job:
+            with open(os.path.join(output_dr, "jobs", job_fn), "wb") as f_job:
                 write_utf8(f_job, "#!/bin/bash\n")
                 write_utf8(f_job, select_str(job_info))
                 write_utf8(f_job, "#PBS -l walltime={}\n".format(job_info["walltime"]))
