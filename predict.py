@@ -16,17 +16,20 @@ def make_predictions(args: Namespace):
     if args.compound_names:
         compound_names, test_smiles = get_data(args.test_path, use_compound_names=True, smiles_only=True)
     else:
-        test_smiles = get_data(args.test_path)
+        test_smiles = get_data(args.test_path, smiles_only=True)
     print('Test size = {:,}'.format(len(test_smiles)))
 
     # Predict on test set
-    sum_preds = np.zeros((len(test_smiles), args.num_tasks))
+    sum_preds = None
+    args.semiF_path = None
 
     # Predict with each model individually
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         model, scaler, train_args = load_checkpoint(checkpoint_path, cuda=args.cuda, get_scaler=True, get_args=True)
         args.num_tasks, args.task_names = train_args.num_tasks, train_args.task_names
+        if sum_preds is None:
+            sum_preds = np.zeros((len(test_smiles), args.num_tasks))
 
         model_preds = predict(
             model=model,
