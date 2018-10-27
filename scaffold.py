@@ -1,11 +1,13 @@
 from collections import defaultdict
 import logging
+from morgan_fingerprint import morgan_fingerprint
 from typing import Dict, List, Set, Tuple, Union
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm import tqdm
 import numpy as np
+from sklearn.cluster import MiniBatchKMeans
 
 class ScaffoldGenerator:
     """
@@ -161,3 +163,28 @@ def scaffold_split_one(data: List[Tuple[str, List[float]]]) -> Tuple[List[Tuple[
     test = [data[index] for index in scaffold_to_indices_map[scaffolds[2]]]
 
     return train, val, test
+
+def cluster_split(data: List[Tuple[str, List[float]]],
+                   n_clusters: int,
+                   logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
+                                                           List[Tuple[str, List[float]]],
+                                                           List[Tuple[str, List[float]]]]:
+    """
+    Split a dataset by K-means clustering on Morgan fingerprints. 
+
+    :param data: A list of data points (smiles string, target values).
+    :param n_clusters: Number of clusters for KNN
+    :param logger: A logger.
+    :return: A tuple containing the KNN splits. 
+    """
+
+    smiles, _ = zip(*data)
+    fp = [morgan_fingerprint(s) for s in smiles]
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters)
+    cluster_labels = kmeans.fit_predict(fp)
+
+    clusters = [[] for _ in range(n_clusters)]
+    for i in range(len(data)):
+        clusters[cluster_labels[i]].append(data[i])
+    
+    return clusters
