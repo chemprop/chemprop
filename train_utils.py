@@ -109,6 +109,7 @@ def train(model: nn.Module,
                 train_batch.append(tb)
                 train_labels.append(tl)
             test_batch = test_smiles[i:i + args.batch_size]
+            model.zero_grad()
             loss = model.compute_loss(train_batch, train_labels, test_batch)
             if logger is not None:
                 loss_sum += loss.item()

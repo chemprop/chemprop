@@ -98,7 +98,7 @@ class HLoss(nn.Module):
         b = -1.0 * b.sum()
         return b
 
-class Classifier(torch.nn.Module):
+class Classifier(nn.Module):
     def __init__(self, args):
         super(Classifier, self).__init__()
         modules = [ nn.Dropout(p=0.2),
@@ -124,8 +124,12 @@ class MOE(nn.Module):
         self.mmd = MMD(args)
         self.Us = nn.ParameterList([nn.Parameter(torch.zeros((args.hidden_size, args.m_rank)), requires_grad=True) for _ in range(args.num_sources)])
         #note zeros are replaced during initialization later
-        self.mtl_criterion = nn.L1Loss()
-        self.moe_criterion = nn.L1Loss()
+        if args.dataset_type == 'regression':
+            self.mtl_criterion = nn.MSELoss()
+            self.moe_criterion = nn.MSELoss()
+        elif args.dataset_type == 'classification': #this half untested
+            self.mtl_criterion = nn.BCELoss()
+            self.moe_criterion = nn.BCELoss()
         self.entropy_criterion = HLoss()
         self.lambda_moe = args.lambda_moe
         self.lambda_critic = args.lambda_critic
