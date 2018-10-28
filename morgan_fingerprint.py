@@ -7,9 +7,17 @@ from rdkit.Chem import AllChem
 from tqdm import tqdm
 
 
-def morgan_fingerprint(smiles: str) -> np.ndarray:
+def morgan_fingerprint(smiles: str, radius: int = 3, num_bits: int = 2048) -> np.ndarray:
+    """
+    Generates a morgan fingerprint for a smiles string.
+
+    :param smiles: A smiles string for a molecule.
+    :param radius: The radius of the fingerprint.
+    :param num_bits: The number of bits to use in the fingerprint.
+    :return: A 1-D numpy array containing the morgan fingerprint.
+    """
     mol = Chem.MolFromSmiles(smiles)
-    fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
+    fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
     fp = np.zeros((1,))
     DataStructs.ConvertToNumpyArray(fp_vect, fp)
 
@@ -17,6 +25,12 @@ def morgan_fingerprint(smiles: str) -> np.ndarray:
 
 
 def save_fingerprints(data_path: str, save_path: str):
+    """
+    Saves morgan fingerprint between smiles and target values in CSV file.
+
+    :param data_path: Path to data CSV file containing smiles and target values.
+    :param save_path: Path where data with morgan fingerprint will be saved.
+    """
     data = []
     with open(data_path) as f:
         header = f.readline().strip().split(',')

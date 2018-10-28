@@ -13,29 +13,34 @@ def build_model(args: Namespace) -> nn.Module:
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
+    # Regression with binning
     if args.dataset_type == 'regression_with_binning':
         output_size = args.num_bins * args.num_tasks
     else:
         output_size = args.num_tasks
 
+    # JTNN
     if args.jtnn:
         encoder = JTNN(args)
     else:
         encoder = MPN(args)
+
+    # Learning virtual edges
     if args.learn_virtual_edges:
-        args.lve_model = encoder.encoder # to make this accessible during featurization, to select virtual edges
-    
-    if args.semiF_only:
-        first_linear_dim = args.semiF_dim
+        args.lve_model = encoder.encoder  # to make this accessible during featurization, to select virtual edges
+
+    # Additional features
+    if args.features_only:
+        first_linear_dim = args.features_dim
     else:
         first_linear_dim = args.hidden_size * (1 + args.jtnn)
-        if args.semiF_path:
-            first_linear_dim += args.semiF_dim
+        if args.features:
+            first_linear_dim += args.features_dim
     
     if args.moe:
         model = MOE(args)
     else:
-        if args.semiF_only or args.more_ffn_capacity:
+        if args.features_only or args.more_ffn_capacity:
             modules = [
                 encoder,
                 nn.Dropout(args.ffn_input_dropout),
@@ -57,15 +62,19 @@ def build_model(args: Namespace) -> nn.Module:
                 nn.ReLU(),
                 nn.Linear(args.hidden_size, output_size)
             ]
+
+        # Classification
         if args.dataset_type == 'classification':
             modules.append(nn.Sigmoid())
 
+        # Combined model
         model = nn.Sequential(*modules)
 
         if args.adversarial:
             args.output_size = output_size
             model = GAN(args, model)
 
+    # Initialize weights
     for param in model.parameters():
         if param.dim() == 1:
             nn.init.constant_(param, 0)

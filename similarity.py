@@ -136,7 +136,7 @@ if __name__ == '__main__':
                         help='Whether data_path_2 has compound names in addition to smiles')
     parser.add_argument('--similarity_measure', type=str, required=True, choices=['scaffold', 'morgan'],
                         help='Similarity measure to use to compare the two datasets')
-    parser.add_argument('--radius', type=int, default=6,
+    parser.add_argument('--radius', type=int, default=3,
                         help='Radius of Morgan fingerprint')
     parser.add_argument('--sample_rate', type=float, default=1.0,
                         help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
