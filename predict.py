@@ -21,13 +21,17 @@ def make_predictions(args: Namespace):
 
     # Predict on test set
     sum_preds = None
-    args.semiF_path = None
 
     # Predict with each model individually
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
+        # Load model
         model, scaler, train_args = load_checkpoint(checkpoint_path, cuda=args.cuda, get_scaler=True, get_args=True)
-        args.num_tasks, args.task_names = train_args.num_tasks, train_args.task_names
+
+        # Update args
+        args.dataset_type, args.num_tasks, args.task_names, args.features = \
+            train_args.dataset_type, train_args.num_tasks, train_args.task_names, train_args.features
+
         if sum_preds is None:
             sum_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -61,10 +65,6 @@ def make_predictions(args: Namespace):
 if __name__ == '__main__':
     parser = ArgumentParser()
     add_predict_args(parser)
-    parser.add_argument('--dataset_type', type=str, required=True,
-                        choices=['classification', 'regression', 'regression_with_binning'],
-                        help='Type of dataset, i.e. classification (cls) or regression (reg).'
-                             'This determines the loss function used during training.')
     parser.add_argument('--checkpoint_dir', type=str, required=True,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')

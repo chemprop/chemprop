@@ -18,6 +18,7 @@ from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 import featurization
 
+
 def train(model: nn.Module,
           data: List[Tuple[str, List[float]]],
           loss_func: Callable,
@@ -86,7 +87,7 @@ def train(model: nn.Module,
         train_smiles, _ = zip(*data)
         train_val_smiles = train_smiles + val_smiles
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
-    
+
     if args.moe:
         test_smiles = list(test_smiles)
         random.shuffle(test_smiles)
@@ -117,7 +118,8 @@ def train(model: nn.Module,
             # Prepare batch
             batch = data[i:i + args.batch_size]
             smiles_batch, label_batch = zip(*batch)
-            if args.semiF_path:
+
+            if args.features:
                 smiles_batch = zip(*smiles_batch)
 
             mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
@@ -211,7 +213,7 @@ def predict(model: nn.Module,
         for i in range(0, len(smiles), args.batch_size):
             # Prepare batch
             smiles_batch = smiles[i:i + args.batch_size]
-            if args.semiF_path:
+            if args.features:
                 smiles_batch = zip(*smiles_batch)
 
             # Run model

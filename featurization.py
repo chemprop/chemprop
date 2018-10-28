@@ -270,7 +270,7 @@ class BatchMolGraph:
         return self.b2b
 
 
-def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
+def mol2graph(smiles_batch: List[str], args: Namespace) -> Union[BatchMolGraph, Tuple[BatchMolGraph, np.ndarray]]:
     """
     Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
 
@@ -278,11 +278,11 @@ def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    if args.semiF_path:
+    if args.features:
         # this line crashed once, but I haven't been able to reproduce, so let Kevin know if this crashes
-        smiles_batch, semiF_features = smiles_batch
-        if args.semiF_only:
-            return (None, semiF_features) # molgraph won't be used in this case, so save some time
+        smiles_batch, features_batch = smiles_batch
+        if args.features_only:
+            return None, features_batch  # molgraph won't be used in this case, so save some time
 
     mol_graphs = []
     for smiles in smiles_batch:
@@ -295,6 +295,7 @@ def mol2graph(smiles_batch: List[str], args: Namespace) -> BatchMolGraph:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
     
-    if args.semiF_path:
-        return (BatchMolGraph(mol_graphs, args), semiF_features)
+    if args.features:
+        return BatchMolGraph(mol_graphs, args), features_batch
+
     return BatchMolGraph(mol_graphs, args)

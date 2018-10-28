@@ -38,10 +38,12 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to data CSV file')
     parser.add_argument('--vocab_path', type=str,
                         help='Path to .vocab file if using jtnn')
-    parser.add_argument('--semiF_path', type=str,
-                        help='Path to semiF features if using semiF features')
-    parser.add_argument('--semiF_only', action='store_true', default=False,
-                        help='use only the semiF FFN, no graph network')
+    parser.add_argument('--features_only', action='store_true', default=False,
+                        help='Use only the additional features in an FFN, no graph network')
+    parser.add_argument('--features_generator', type=str, choices=['morgan'],
+                        help='Method of generating additional features')
+    parser.add_argument('--features_path', type=str,
+                        help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--checkpoint_dir', type=str, default=None,
@@ -193,6 +195,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--num_sources', type=int, default=10,
                         help='Number of source tasks for moe')
 
+
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
     os.makedirs(args.results_dir, exist_ok=True)
@@ -243,6 +246,8 @@ def modify_train_args(args: Namespace):
             raise ValueError('Must provide vocab_path when using jtnn')
         elif not os.path.exists(args.vocab_path):
             raise ValueError('Vocab path "{}" does not exist'.format(args.vocab_path))
+
+    args.features = args.features_generator or args.features_path
 
 
 def parse_hyper_opt_args() -> Namespace:
