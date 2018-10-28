@@ -33,37 +33,38 @@ def build_model(args: Namespace) -> nn.Module:
             first_linear_dim += args.semiF_dim
     
     if args.moe:
-        modules = [MOE(args)]
-    elif args.semiF_only or args.more_ffn_capacity:
-        modules = [
-            encoder,
-            nn.Dropout(args.ffn_input_dropout),
-            nn.Linear(first_linear_dim, args.ffn_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(args.ffn_dropout),
-            nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(args.ffn_dropout),
-            nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(args.ffn_dropout),
-            nn.Linear(args.ffn_hidden_dim, output_size)
-        ]
+        model = MOE(args)
     else:
-        modules = [
-            encoder,
-            nn.Linear(first_linear_dim, args.hidden_size),
-            nn.ReLU(),
-            nn.Linear(args.hidden_size, output_size)
-        ]
-    if args.dataset_type == 'classification':
-        modules.append(nn.Sigmoid())
+        if args.semiF_only or args.more_ffn_capacity:
+            modules = [
+                encoder,
+                nn.Dropout(args.ffn_input_dropout),
+                nn.Linear(first_linear_dim, args.ffn_hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(args.ffn_dropout),
+                nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(args.ffn_dropout),
+                nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(args.ffn_dropout),
+                nn.Linear(args.ffn_hidden_dim, output_size)
+            ]
+        else:
+            modules = [
+                encoder,
+                nn.Linear(first_linear_dim, args.hidden_size),
+                nn.ReLU(),
+                nn.Linear(args.hidden_size, output_size)
+            ]
+        if args.dataset_type == 'classification':
+            modules.append(nn.Sigmoid())
 
-    model = nn.Sequential(*modules)
+        model = nn.Sequential(*modules)
 
-    if args.adversarial:
-        args.output_size = output_size
-        model = GAN(args, model)
+        if args.adversarial:
+            args.output_size = output_size
+            model = GAN(args, model)
 
     for param in model.parameters():
         if param.dim() == 1:

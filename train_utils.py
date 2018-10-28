@@ -88,9 +88,14 @@ def train(model: nn.Module,
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
     
     if args.moe:
-        test_smiles.shuffle()
-        data = [d.shuffle() for d in data]
-        model.compute_domain_encs(data)
+        test_smiles = list(test_smiles)
+        random.shuffle(test_smiles)
+        train_smiles = []
+        for d in data:
+            random.shuffle(d)
+            smiles, labels = zip(*d)
+            train_smiles.append(smiles)
+        model.compute_domain_encs(train_smiles)
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
     else:
         num_iters = len(data)
@@ -105,6 +110,9 @@ def train(model: nn.Module,
                 train_labels.append(tl)
             test_batch = test_smiles[i:i + args.batch_size]
             loss = model.compute_loss(train_batch, train_labels, test_batch)
+            if logger is not None:
+                loss_sum += loss.item()
+                iter_count += len(batch)
         else:
             # Prepare batch
             batch = data[i:i + args.batch_size]
