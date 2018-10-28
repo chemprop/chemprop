@@ -1,3 +1,4 @@
+from argparse import Namespace
 from collections import defaultdict
 import logging
 from typing import Dict, List, Set, Tuple, Union
@@ -63,6 +64,7 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
 
 
 def scaffold_split(data: List[Tuple[str, List[float]]],
+                   args: Namespace,
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                    logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
                                                            List[Tuple[str, List[float]]],
@@ -80,6 +82,8 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
 
     # Get data
     smiles, _ = zip(*data)
+    if args.features:
+        smiles, _ = zip(*smiles)
     scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
 
     # Sort from largest to smallest scaffold sets
@@ -136,9 +140,9 @@ def log_scaffold_stats(data, index_sets, logger=None):
     return stats
 
 
-def scaffold_split_one(data: List[Tuple[str, List[float]]]) -> Tuple[List[Tuple[str, List[float]]],
-                                                                     List[Tuple[str, List[float]]],
-                                                                     List[Tuple[str, List[float]]]]:
+def scaffold_split_one(data: List[Tuple[str, List[float]]], args: Namespace) -> Tuple[List[Tuple[str, List[float]]],
+                                                                                      List[Tuple[str, List[float]]],
+                                                                                      List[Tuple[str, List[float]]]]:
     """
     Split a dataset by scaffold such that train has all molecules from the largest scaffold
     (i.e. the scaffold with the most molecules), val has all molecules from the second largest
@@ -149,6 +153,8 @@ def scaffold_split_one(data: List[Tuple[str, List[float]]]) -> Tuple[List[Tuple[
     """
     # Get data
     smiles, _ = zip(*data)
+    if args.features:
+        smiles, _ = zip(*smiles)
     scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
 
     # Sort from largest to smallest scaffold sets

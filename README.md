@@ -1,5 +1,21 @@
 # Property Prediction
-This repository contains graph convolutional networks (or message passing network) for molecule property prediction. 
+This repository contains graph convolutional networks (or message passing network) for molecule property prediction.
+
+## Table of Contents
+
+* [Installation](#installation)
+* [Data](#data)
+* [Training](#training)
+  + [Train/Validation/Test Split](#train-validation-test-split)
+    - [Random split](#random-split)
+    - [Separate test set](#separate-test-set)
+  + [Cross validation](#cross-validation)
+  + [Ensembling](#ensembling)
+  + [Model hyperparameters and augmentations](#model-hyperparameters-and-augmentations)
+* [Predicting](#predicting)
+* [TensorBoard](#tensorboard)
+* [Deepchem test](#deepchem-test)
+  + [Results](#results)
 
 ## Installation
 Requirements:
@@ -45,6 +61,16 @@ Notes:
 * `--save_dir` may be left out if you don't want to save model checkpoints.
 * The default metric for classification is AUC and the default metric for regression is RMSE. The qm8 and qm9 datasets use MAE instead of RMSE, so you need to specify `--metric mae`.
 
+### Train/Validation/Test Split
+
+#### Random split
+
+By default, the data in `--data_path` will be split randomly into train, validation, and test sets using the seed specified by `--seed` (default = 0). By default, the train set contains 80% of the data while the validation and test sets contain 10% of the data each. These sizes can be controlled with `--split_sizes` (for example, the default would be `--split_sizes 0.8 0.1 0.1`).
+
+#### Separate test set
+
+To use a different data set for testing, specify `--separate_test_path`. In this case, the data in `--data_path` will be split into only train and validation sets (80% and 20% of the data), and the test set will contain all the dta in `--separate_test_path`.
+
 ### Cross validation
 
 k-fold cross-validation can be run by specifying the `--num_folds` argument (which is 1 by default). For example:
@@ -52,11 +78,30 @@ k-fold cross-validation can be run by specifying the `--num_folds` argument (whi
 python train.py --data_path data/tox21.csv --dataset_type classification --num_folds 5
 ```
 
-## Ensembling
+### Ensembling
 
 To train an ensemble, specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
 ```
 python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 5
+```
+
+### Model hyperparameters and augmentations
+
+The base message passing architecture can be modified in a range of ways that can be controlled through command line arguments. The full range of options can be seen in `parsing.py`. Suggested modifications are:
+* `--hidden_size <int>` Control the hidden size of the neural network layers.
+* `--depth <int>` Control the number of message passing steps.
+* `--virtual_edges` Adds "virtual" edges connected non-bonded atoms to improve information flow. This works very well on some datasets (ex. QM9) but very poorly on others (ex. delaney).
+
+## Predicting
+
+To load a trained model and make predictions, run `predict.py` and specify:
+* `--test_path` Path to the data to predict on.
+* `--checkpoint_dir` Directory where the checkpoints were saved (i.e. `--save_dir` during training).
+* `--preds_path` Path where a CSV file containing the predictions will be saved.
+
+For example:
+```
+python predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_preds.csv
 ```
 
 ## TensorBoard

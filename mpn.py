@@ -11,6 +11,7 @@ import numpy as np
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
 from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR
 
+
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
@@ -37,8 +38,8 @@ class MPNEncoder(nn.Module):
         self.learn_virtual_edges = args.learn_virtual_edges
         self.args = args
 
-        if args.semiF_only:
-            return # won't use any of the graph stuff in this case
+        if args.features_only:
+            return  # won't use any of the graph stuff in this case
 
         # Input
         self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
@@ -116,12 +117,16 @@ class MPNEncoder(nn.Module):
         :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if self.args.semiF_path:
-            mol_graph, semiF_features = mol_graph
-            if self.args.semiF_only:
-                semiF_features = np.stack([features.todense() for features in semiF_features])
-                semiF_features = torch.from_numpy(semiF_features).float().cuda()
-                return semiF_features
+        if self.args.features:
+            mol_graph, features_batch = mol_graph
+
+            if self.args.features_only:
+                features_batch = torch.from_numpy(np.stack(features_batch)).float()
+
+                if self.args.cuda:  # can't use next(self.parameters()).is_cuda b/c no parameters
+                    features_batch = features_batch.cuda()
+
+                return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
@@ -310,11 +315,16 @@ class MPNEncoder(nn.Module):
 
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
         
-        if self.args.semiF_path:
-            semiF_features = np.stack([features.todense() for features in semiF_features])
-            semiF_features = torch.from_numpy(semiF_features).float().cuda()
-            return torch.cat([mol_vecs, semiF_features], dim=1)  # (num_molecules, hidden_size)
-        return mol_vecs # num_molecules x hidden
+        if self.args.features:
+            features_batch = torch.from_numpy(np.stack(features_batch)).float()
+
+            if next(self.parameters()).is_cuda:
+                features_batch = features_batch.cuda()
+
+            return torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
+
+        return mol_vecs  # num_molecules x hidden
+
 
 class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""
@@ -347,6 +357,7 @@ class MPN(nn.Module):
         """
         self.encoder.forward(mol2graph(smiles, self.args), viz_dir=viz_dir)
 
+
 class GAN(nn.Module):
     def __init__(self, args: Namespace, prediction_model: nn.Module):
         super(GAN, self).__init__()
@@ -359,7 +370,7 @@ class GAN(nn.Module):
         self.act_func = self.encoder.encoder.act_func
 
         self.netD = nn.Sequential(
-            nn.Linear(self.disc_input_size, self.hidden_size), #doesn't support jtnn or semiF features rn
+            nn.Linear(self.disc_input_size, self.hidden_size), #doesn't support jtnn or additional features rn
             self.act_func,
             nn.Linear(self.hidden_size, self.hidden_size),
             self.act_func,
@@ -397,7 +408,7 @@ class GAN(nn.Module):
     def forward(self, smiles_batch: List[str]) -> torch.Tensor:
         return self.prediction_model(smiles_batch)
     
-    #the following methods are code borrowed from Wengong and modified
+    # the following methods are code borrowed from Wengong and modified
     def train_D(self, fake_smiles: List[str], real_smiles: List[str]):
         self.netD.zero_grad()
 
@@ -455,13 +466,15 @@ class GAN(nn.Module):
         assert real_vecs.size() == fake_vecs.size()
         eps = torch.rand(real_vecs.size(0), 1).cuda()
         inter_data = eps * real_vecs + (1 - eps) * fake_vecs
-        inter_data = autograd.Variable(inter_data, requires_grad=True) #TODO check if this is necessary (we detached earlier)
+        inter_data = autograd.Variable(inter_data, requires_grad=True) # TODO check if this is necessary (we detached earlier)
         inter_score = self.netD(inter_data)
-        inter_score = inter_score.view(-1) #bs*hidden
+        inter_score = inter_score.view(-1) # bs*hidden
 
-        inter_grad = autograd.grad(inter_score, inter_data, 
-                grad_outputs=torch.ones(inter_score.size()).cuda(),
-                create_graph=True, retain_graph=True, only_inputs=True)[0]
+        inter_grad = autograd.grad(inter_score, inter_data,
+                                   grad_outputs=torch.ones(inter_score.size()).cuda(),
+                                   create_graph=True,
+                                   retain_graph=True,
+                                   only_inputs=True)[0]
 
         inter_norm = inter_grad.norm(2, dim=1)
         inter_gp = ((inter_norm - 1) ** 2).mean() * self.beta

@@ -11,8 +11,10 @@ import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, accuracy_score
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 from model import build_model
+from morgan_fingerprint import morgan_fingerprint
 from scaffold import scaffold_split, scaffold_split_one, log_scaffold_stats
 
 
@@ -148,11 +150,12 @@ def convert_to_classes(data: List[Tuple[str, List[float]]], num_bins: int = 20) 
     return data, np.array([(bin_edges[i] + bin_edges[i+1])/2 for i in range(num_bins)]), old_data
 
 
-def get_semiF(path):
+def get_features(path: str) -> List[np.ndarray]:
     with open(path, 'rb') as f:
-        data = pickle.load(f)
+        features = pickle.load(f)
+    features = [np.array(feat.todense()) for feat in features]
 
-    return data
+    return features
 
 
 def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
@@ -235,11 +238,19 @@ def get_data(path: str,
             else:
                 data.append((smiles, values))
     
-    if args is not None and args.semiF_path:
-        semiF_data = get_semiF(args.semiF_path)
-        assert len(data) == semiF_data.shape[0]
-        data = [((data[i][0], semiF_data[i]), data[i][1]) for i in range(len(data))]
-        args.semiF_dim = semiF_data[0].shape[1] #infer the dimension size of these features for use in model building
+    if args is not None:
+        # Generate additional features
+        if args.features_generator:
+            morgan_fps = [morgan_fingerprint(smiles) for smiles, _ in tqdm(data, total=len(data))]
+            data = [((smiles, morgan_fp), values) for (smiles, values), morgan_fp in zip(data, morgan_fps)]
+            args.features_dim = morgan_fps[0].shape[0]
+
+        # Load additional features
+        elif args.features_path:
+            features_data = get_features(args.features_path)
+            assert len(data) == features_data.shape[0]
+            data = [((smiles, features), values) for (smiles, values), features in zip(data, features_data)]
+            args.features_dim = features_data[0].shape[1]  # infer the dimension size of these features for use in model building
 
     if args is not None and args.dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, args.num_bins)
@@ -301,10 +312,10 @@ def split_data(data: List[Tuple[str, List[float]]],
         return train, val, test
 
     elif args.scaffold_split_one:
-        return scaffold_split_one(data)
+        return scaffold_split_one(data, args)
 
     elif args.scaffold_split:
-        return scaffold_split(data, sizes=sizes, logger=logger)
+        return scaffold_split(data, args, sizes=sizes, logger=logger)
 
     else:
         random.seed(seed)
