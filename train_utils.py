@@ -86,35 +86,54 @@ def train(model: nn.Module,
         train_smiles, _ = zip(*data)
         train_val_smiles = train_smiles + val_smiles
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
-    for i in trange(0, len(data), args.batch_size):
-        # Prepare batch
-        batch = data[i:i + args.batch_size]
-        smiles_batch, label_batch = zip(*batch)
-        if args.semiF_path:
-            smiles_batch = zip(*smiles_batch)
+    
+    if args.moe:
+        test_smiles.shuffle()
+        data = [d.shuffle() for d in data]
+        model.compute_domain_encs(data)
+        num_iters = min(len(test_smiles), min([len(d) for d in data]))
+    else:
+        num_iters = len(data)
 
-        mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-        labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
-
-        if next(model.parameters()).is_cuda:
-            mask, labels = mask.cuda(), labels.cuda()
-
-        # Run model
-        model.zero_grad()
-        preds = model(smiles_batch)
-        if args.dataset_type == 'regression_with_binning':
-            preds = preds.view(labels.size(0), labels.size(1), -1)
-            labels = labels.long()
-            loss = 0
-            for task in range(labels.size(1)):
-                loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
+    for i in trange(0, num_iters, args.batch_size):
+        if args.moe:
+            batch = [d[i:i + args.batch_size] for d in data]
+            train_batch, train_labels = [], []
+            for b in batch:
+                tb, tl = zip(*b)
+                train_batch.append(tb)
+                train_labels.append(tl)
+            test_batch = test_smiles[i:i + args.batch_size]
+            loss = model.compute_loss(train_batch, train_labels, test_batch)
         else:
-            loss = loss_func(preds, labels) * mask
-        loss = loss.sum() / mask.sum()
+            # Prepare batch
+            batch = data[i:i + args.batch_size]
+            smiles_batch, label_batch = zip(*batch)
+            if args.semiF_path:
+                smiles_batch = zip(*smiles_batch)
 
-        if logger is not None:
-            loss_sum += loss.item()
-            iter_count += len(batch)
+            mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
+            labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
+
+            if next(model.parameters()).is_cuda:
+                mask, labels = mask.cuda(), labels.cuda()
+
+            # Run model
+            model.zero_grad()
+            preds = model(smiles_batch)
+            if args.dataset_type == 'regression_with_binning':
+                preds = preds.view(labels.size(0), labels.size(1), -1)
+                labels = labels.long()
+                loss = 0
+                for task in range(labels.size(1)):
+                    loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
+            else:
+                loss = loss_func(preds, labels) * mask
+            loss = loss.sum() / mask.sum()
+
+            if logger is not None:
+                loss_sum += loss.item()
+                iter_count += len(batch)
 
         loss.backward()
         if args.max_grad_norm is not None:

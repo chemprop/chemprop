@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from jtnn import JTNN
 from mpn import MPN, GAN
-
+from moe import MOE
 
 def build_model(args: Namespace) -> nn.Module:
     """
@@ -31,8 +31,10 @@ def build_model(args: Namespace) -> nn.Module:
         first_linear_dim = args.hidden_size * (1 + args.jtnn)
         if args.semiF_path:
             first_linear_dim += args.semiF_dim
-
-    if args.semiF_only or args.more_ffn_capacity:
+    
+    if args.moe:
+        modules = [MOE(args)]
+    elif args.semiF_only or args.more_ffn_capacity:
         modules = [
             encoder,
             nn.Dropout(args.ffn_input_dropout),

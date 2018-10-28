@@ -19,6 +19,7 @@ from parsing import parse_train_args
 from train_utils import train, predict, evaluate, evaluate_predictions
 from utils import get_data, get_task_names, get_desired_labels, get_loss_func, get_metric_func, load_checkpoint, \
     save_checkpoint, set_logger, split_data, truncate_outliers, StandardScaler
+from scaffold import cluster_split
 
 
 # Initialize logger
@@ -50,7 +51,7 @@ def run_training(args: Namespace) -> List[float]:
             test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
-    if args.adversarial:
+    if args.adversarial or args.moe:
         val_smiles, _ = zip(*val_data)
         test_smiles, _ = zip(*test_data)
         args.train_data_length = len(train_data) # kinda hacky, but less cluttered
@@ -89,6 +90,9 @@ def run_training(args: Namespace) -> List[float]:
                 pickle.dump(train_data[i * chunk_len:(i + 1) * chunk_len], f)
             train_paths.append((chunk_path, memo_path))
         train_data = train_paths
+    
+    if args.moe:
+        train_data = cluster_split(train_data, args.num_sources)
 
     # Get loss and metric functions
     loss_func = get_loss_func(args.dataset_type)
@@ -152,7 +156,7 @@ def run_training(args: Namespace) -> List[float]:
                 writer=writer,
                 chunk_names=(args.num_chunks > 1),
                 val_smiles=val_smiles if args.adversarial else None,
-                test_smiles=test_smiles if args.adversarial else None
+                test_smiles=test_smiles if args.adversarial or args.moe else None
             )
             val_scores = evaluate(
                 model=model,

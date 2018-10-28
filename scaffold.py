@@ -174,7 +174,7 @@ def cluster_split(data: List[Tuple[str, List[float]]],
 
     :param data: A list of data points (smiles string, target values).
     :param n_clusters: Number of clusters for KNN
-    :param logger: A logger.
+    :param logger: A logger. Currently unused.
     :return: A tuple containing the KNN splits. 
     """
 

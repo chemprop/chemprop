@@ -76,12 +76,15 @@ class HLoss(nn.Module):
         return b
 
 class Classifier(torch.nn.Module):
-    def __init__(self, c):
+    def __init__(self, args):
         super(Classifier, self).__init__()
         self.net = nn.Sequential(
                                 nn.Dropout(p=0.2),
-                                nn.Tanh(),
-                                nn.Linear(c, 1)
+                                nn.ReLU(),
+                                nn.Linear(args.hidden_size, args.hidden_size),
+                                nn.Dropout(p=0.2),
+                                nn.ReLU(),
+                                nn.Linear(args.hidden_size, args.num_tasks)
                             )
     def forward(self, x):
         return self.net(x)
@@ -90,7 +93,8 @@ class MOE(nn.Module):
     def __init__(self, args):
         super(MOE, self).__init__()
         self.args = args
-        self.classifiers = nn.ModuleList([Classifier(args.hidden_size) for _ in range(args.num_sources)])
+        self.num_sources = args.num_sources
+        self.classifiers = nn.ModuleList([Classifier(args) for _ in range(args.num_sources)])
         self.encoder = MPN(args)
         self.Us = nn.ParameterList([torch.FloatTensor(args.hidden_size, args.m_rank) for _ in range(args.num_sources)])
         self.mtl_criterion = nn.L1Loss()
@@ -106,7 +110,31 @@ class MOE(nn.Module):
         mahalanobis_distances_new = mahalanobis_distances_new.diag().sqrt()
         return mahalanobis_distances_new.detach() #TODO check is this detach correct? and check dims
     
-    def forward(self, train_smiles, train_labels, test_smiles): #TODO parallelize?
+    def forward(self, smiles):
+        encodings = self.encoder(smiles)
+        classifier_outputs = [self.classifiers[i](smiles) for i in range(self.num_sources)]
+
+        source_ids = range(self.num_sources)
+        source_alphas = [-self.mahalanobis_metric(encodings, 
+                            self.domain_encs[i], i)
+                            for i in source_ids]
+        source_alphas = F.softmax(source_alphas)
+
+        output_moe = sum([ alpha.unsqueeze(1).repeat(1, 1) *
+                                F.softmax(classifier_outputs[id], dim=1)
+                        for alpha, id in zip(source_alphas, source_ids)])
+        return output_moe
+    
+    def compute_domain_encs(self, all_train_smiles):
+        # domain_encoding in jiang's code, if i read it correctly. should be called at beginning of each epoch
+        domain_encs = []
+        for i in range(len(all_train_smiles)):
+            batch_encs = [self.encoder(all_train_smiles[i][j]) for j in range(len(all_train_smiles[i]))]
+            means = [torch.mean(batch_encs[i], dim=0, keepdim=True) for i in range(len(batch_encs))]
+            domain_encs.append(torch.means(torch.cat(means, dim=0), dim=0))
+        self.domain_encs = domain_encs
+
+    def compute_loss(self, train_smiles, train_labels, test_smiles): #TODO parallelize?
         '''
         Computes and aggregates relevant losses for mixture of experts model. 
         :param train_smiles: n_sources x batch_size array of smiles
@@ -116,7 +144,6 @@ class MOE(nn.Module):
         '''
         encodings = [self.encoder(train_smiles) for _ in range(len(train_smiles))] # each bs x hs
         all_encodings = torch.cat(encodings, dim=0) # nsource*bs x hs
-        domain_encs = [torch.mean(encodings[i], dim=0) for i in range(len(encodings))] # domain_encoding in jiang's code, if i read it correctly
         
         classifier_outputs = [] # will be nsource x nsource of bs x hs
         for i in range(len(encodings)):
@@ -136,12 +163,12 @@ class MOE(nn.Module):
         for i in source_ids:
             support_ids = [x for x in source_ids if x != i]
             support_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               domain_encs[j][0], j)
+                               self.domain_encs[j], j)
                                 for j in support_ids]
             support_alphas = F.softmax(support_alphas)
 
             source_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               domain_encs[j][0], j)
+                               self.domain_encs[j], j)
                                 for j in source_ids]
             source_alphas = F.softmax(source_alphas)
 

@@ -180,6 +180,18 @@ def add_train_args(parser: ArgumentParser):
                         help='Multiplier for GAN generator learning rate')
     parser.add_argument('--gan_use_scheduler', action='store_true', default=False,
                         help='Use noam scheduler for GAN optimizers')
+    parser.add_argument('--moe', action='store_true', default=False,
+                        help='Use mixture of experts model')
+    parser.add_argument('--lambda_moe', type=float, default=0.1,
+                        help='Multiplier for moe vs mtl loss')
+    parser.add_argument('--lambda_critic', type=float, default=1.0,
+                        help='Multiplier for critic loss')
+    parser.add_argument('--lambda_entropy', type=float, default=0.001,
+                        help='Multiplier for entropy regularization')
+    parser.add_argument('--m_rank', type=int, default=100,
+                        help='Mahalanobis matrix rank in moe model')
+    parser.add_argument('--num_sources', type=int, default=10,
+                        help='Number of source tasks for moe')
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
