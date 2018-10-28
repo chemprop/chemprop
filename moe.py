@@ -125,11 +125,11 @@ class MOE(nn.Module):
         self.Us = nn.ParameterList([nn.Parameter(torch.zeros((args.hidden_size, args.m_rank)), requires_grad=True) for _ in range(args.num_sources)])
         #note zeros are replaced during initialization later
         if args.dataset_type == 'regression':
-            self.mtl_criterion = nn.MSELoss()
-            self.moe_criterion = nn.MSELoss()
+            self.mtl_criterion = nn.MSELoss(reduction='none')
+            self.moe_criterion = nn.MSELoss(reduction='none')
         elif args.dataset_type == 'classification': #this half untested
-            self.mtl_criterion = nn.BCELoss()
-            self.moe_criterion = nn.BCELoss()
+            self.mtl_criterion = nn.BCELoss(reduction='none')
+            self.moe_criterion = nn.BCELoss(reduction='none')
         self.entropy_criterion = HLoss()
         self.lambda_moe = args.lambda_moe
         self.lambda_critic = args.lambda_critic
@@ -187,10 +187,18 @@ class MOE(nn.Module):
             classifier_outputs.append(outputs)
         supervised_outputs = torch.cat([classifier_outputs[i][i] for i in range(len(encodings))], dim=0)
         train_labels = [torch.Tensor(list(tl)) for tl in train_labels]
+        train_label_masks = []
+        for i in range(len(train_labels)):
+            train_label_masks.append(torch.Tensor([[x is not None for x in lb] for lb in train_labels[i]]))
+            train_labels[i] = torch.Tensor([[0 if x is None else x for x in lb] for lb in train_labels[i]])
         if self.args.cuda:
             train_labels = [tl.cuda() for tl in train_labels]
+            train_label_masks = [tlm.cuda() for tlm in train_label_masks]
         supervised_labels = torch.cat(train_labels, dim=0)
+        supervised_mask = torch.cat(train_label_masks, dim=0)
         mtl_loss = self.mtl_criterion(supervised_outputs, supervised_labels)
+        mtl_loss = mtl_loss * supervised_mask
+        mtl_loss = mtl_loss.sum() / supervised_mask.sum()
         
         test_encodings = self.encoder(test_smiles)
         adv_loss = self.mmd(all_encodings, test_encodings)
@@ -212,8 +220,11 @@ class MOE(nn.Module):
 
             output_moe_i = sum([ support_alphas[idx].unsqueeze(1).repeat(1, 1) *
                                  classifier_outputs[i][j] for idx, j in enumerate(support_ids)])
-            moe_loss += self.moe_criterion(output_moe_i,
+            moe_loss_i = self.moe_criterion(output_moe_i,
                                  train_labels[i])
+            moe_loss_i = moe_loss_i * train_label_masks[i]
+            moe_loss_i = moe_loss_i.sum() / train_label_masks[i].sum()
+            moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
         
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
