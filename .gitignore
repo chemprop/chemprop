@@ -3,3 +3,4 @@ deepchem-test/jtnn
 deepchem-test/data
 *.idea
 *.DS_Store
+*.vscode
