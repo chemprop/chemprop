@@ -143,7 +143,7 @@ class MOE(nn.Module):
         mahalanobis_distances_new = mahalanobis_distances_new.diag().sqrt()
         return mahalanobis_distances_new.detach()  # TODO check is this detach correct? and check dims
     
-    def forward(self, smiles):
+    def forward(self, smiles, features=None):
         encodings = self.encoder(smiles)
         classifier_outputs = [self.classifiers[i](encodings) for i in range(self.num_sources)]
 
