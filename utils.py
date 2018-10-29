@@ -92,6 +92,7 @@ def load_checkpoint(path: str,
                     get_args: bool = False,
                     num_tasks: int = None,
                     dataset_type: str = None,
+                    encoder_only: bool = False,
                     logger: logging.Logger = None) -> Union[nn.Module,
                                                             Tuple[nn.Module, StandardScaler],
                                                             Tuple[nn.Module, Namespace],
@@ -106,6 +107,7 @@ def load_checkpoint(path: str,
     :param num_tasks: The number of tasks. Only necessary if different now than when trained.
     :param dataset_type: The type of the dataset ("classification" or "regression"). Only necessary
     if different now than when trained.
+    :param encoder_only: Whether to only load weights from encoder.
     :param logger: A logger.
     :return: The loaded model and optionally the scaler.
     """
@@ -121,12 +123,15 @@ def load_checkpoint(path: str,
     # Skip missing parameters and parameters of mismatched size
     pretrained_state_dict = {}
     for param_name in loaded_state_dict.keys():
+        if encoder_only and 'encoder' not in param_name:
+            continue
+
         if param_name not in model_state_dict:
             if logger is not None:
-                logger.info('Loaded parameter "{}" cannot be found in model parameters. Skipping.'.format(param_name))
+                logger.info('Pretrained parameter "{}" cannot be found in model parameters. Skipping.'.format(param_name))
         elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
             if logger is not None:
-                logger.info('Loaded parameter "{}" of shape {} does not match corresponding '
+                logger.info('Pretrained parameter "{}" of shape {} does not match corresponding '
                             'model parameter of shape {}.Skipping.'.format(param_name,
                                                                            loaded_state_dict[param_name].shape,
                                                                            model_state_dict[param_name].shape))

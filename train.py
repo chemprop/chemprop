@@ -116,6 +116,7 @@ def run_training(args: Namespace) -> List[float]:
             model = load_checkpoint(args.checkpoint_paths[model_idx],
                                     num_tasks=args.num_tasks,
                                     dataset_type=args.dataset_type,
+                                    encoder_only=args.load_encoder_only,
                                     logger=logger)
         else:
             logger.debug('Building model {}'.format(model_idx))
@@ -190,7 +191,7 @@ def run_training(args: Namespace) -> List[float]:
 
         # Evaluate on test set using model using model with best validation score
         logger.info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        model = load_checkpoint(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx)), cuda=args.cuda, logger=logger)
+        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
         test_preds = predict(
             model=model,
             data=test_data,

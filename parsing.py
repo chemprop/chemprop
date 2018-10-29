@@ -51,6 +51,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--checkpoint_dir', type=str, default=None,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
+    parser.add_argument('--load_encoder_only', action='store_true', default=False,
+                        help='If a checkpoint_dir is specified for training, only loads weights from encoder'
+                             'and not from the final feed-forward network')
     parser.add_argument('--dataset_type', type=str, required=True,
                         choices=['classification', 'regression', 'regression_with_binning'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
@@ -116,6 +119,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Maximum learning rate')
     parser.add_argument('--final_lr', type=float, default=1e-4,
                         help='Final learning rate')
+    parser.add_argument('--lr_scaler', type=float, default=1.0,
+                        help='Amount by which to scale init_lr, max_lr, and final_lr (for convenience)')
     parser.add_argument('--max_grad_norm', type=float, default=None,
                         help='Maximum gradient norm when performing gradient clipping')
 
@@ -172,7 +177,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Input dropout for higher-capacity FFN')
     parser.add_argument('--ffn_dropout', type=float, default=0.5,
                         help='Dropout for higher-capacity FFN')
-    parser.add_argument('--ffn_hidden_dim', type=int, default=2048,
+    parser.add_argument('--ffn_hidden_dim', type=int, default=600,
                         help='Hidden dim for higher-capacity FFN')
     parser.add_argument('--adversarial', action='store_true', default=False,
                         help='Adversarial scaffold regularization')
@@ -254,6 +259,11 @@ def modify_train_args(args: Namespace):
     if args.predict_features:
         assert args.features_generator or args.features_path
         args.use_input_features = False
+
+    args.init_lr *= args.lr_scaler
+    args.max_lr *= args.lr_scaler
+    args.final_lr *= args.lr_scaler
+    del args.lr_scaler
 
 
 def parse_hyper_opt_args() -> Namespace:
