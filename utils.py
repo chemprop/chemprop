@@ -89,10 +89,12 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
 def load_checkpoint(path: str,
                     cuda: bool = False,
                     get_scaler: bool = False,
-                    get_args: bool = False) -> Union[nn.Module,
-                                                     Tuple[nn.Module, StandardScaler],
-                                                     Tuple[nn.Module, Namespace],
-                                                     Tuple[nn.Module, StandardScaler, Namespace]]:
+                    get_args: bool = False,
+                    num_tasks: int = None,
+                    logger: logging.Logger = None) -> Union[nn.Module,
+                                                            Tuple[nn.Module, StandardScaler],
+                                                            Tuple[nn.Module, Namespace],
+                                                            Tuple[nn.Module, StandardScaler, Namespace]]:
     """
     Loads a model checkpoint and optionally the scaler the model was trained with.
 
@@ -100,13 +102,37 @@ def load_checkpoint(path: str,
     :param cuda: Whether to move model to cuda.
     :param get_scaler: Whether to also load the scaler the model was trained with.
     :param get_args: Whether to also load the args the model was trained with.
+    :param num_tasks: The number of tasks. Only necessary if different now than when trained.
+    :param logger: A logger.
     :return: The loaded model and optionally the scaler.
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
-    args = state['args']
+    args, loaded_state_dict = state['args'], state['state_dict']
     args.cuda = cuda
+    args.num_tasks = num_tasks or args.num_tasks
+
     model = build_model(args)
-    model.load_state_dict(state['state_dict'])
+    model_state_dict = model.state_dict()
+
+    # Skip missing parameters and parameters of mismatched size
+    pretrained_state_dict = {}
+    for param_name in loaded_state_dict.keys():
+        if param_name not in model_state_dict:
+            if logger is not None:
+                logger.info('Loaded parameter "{}" cannot be found in model parameters. Skipping.'.format(param_name))
+        elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
+            if logger is not None:
+                logger.info('Loaded parameter "{}" of shape {} does not match corresponding '
+                            'model parameter of shape {}.Skipping.'.format(param_name,
+                                                                           loaded_state_dict[param_name].shape,
+                                                                           model_state_dict[param_name].shape))
+        else:
+            pretrained_state_dict[param_name] = loaded_state_dict[param_name]
+
+    # Load pretrained weights
+    model_state_dict.update(pretrained_state_dict)
+    model.load_state_dict(model_state_dict)
+
     if args.moe:
         model.domain_encs = state['domain_encs']
         if args.cuda:
