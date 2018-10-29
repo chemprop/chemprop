@@ -123,6 +123,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Amount by which to scale init_lr, max_lr, and final_lr (for convenience)')
     parser.add_argument('--max_grad_norm', type=float, default=None,
                         help='Maximum gradient norm when performing gradient clipping')
+    parser.add_argument('--weight_decay', type=float, default=0.0,
+                        help='L2 penalty on optimizer to keep parameter norms small')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,

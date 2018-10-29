@@ -132,7 +132,7 @@ def run_training(args: Namespace) -> List[float]:
         save_checkpoint(model, scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=args.init_lr)
+        optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         scheduler = NoamLR(
             optimizer,
             warmup_epochs=args.warmup_epochs,
