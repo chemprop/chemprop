@@ -78,6 +78,38 @@ def create_mask(lengths: List[int], cuda: bool = False) -> torch.Tensor:
     return mask
 
 
+def get_activation_function(activation: str) -> nn.Module:
+    """
+    Gets an activation function module given the name of the activation.
+
+    :param activation: The name of the activation function.
+    :return: The activation function module.
+    """
+    if activation == 'ReLU':
+        return nn.ReLU()
+    elif activation == 'LeakyReLU':
+        return nn.LeakyReLU(0.1)
+    elif activation == 'PReLU':
+        return nn.PReLU()
+    elif activation == 'tanh':
+        return nn.Tanh()
+    else:
+        raise ValueError('Activation "{}" not supported.'.format(args.activation))
+
+
+def initialize_weights(model: nn.Module):
+    """
+    Initializes the weights of a model in place.
+
+    :param model: An nn.Module.
+    """
+    for param in model.parameters():
+        if param.dim() == 1:
+            nn.init.constant_(param, 0)
+        else:
+            nn.init.xavier_normal_(param)
+
+
 class NoamLR(_LRScheduler):
     """
     Noam learning rate scheduler with piecewise linear increase and exponential decay.

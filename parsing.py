@@ -173,14 +173,14 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of set2set RNN iterations to perform')
     parser.add_argument('--jtnn', action='store_true', default=False,
                         help='Build junction tree and perform message passing over both original graph and tree')
-    parser.add_argument('--more_ffn_capacity', action='store_true', default=False,
-                        help='Give more capacity to the output layers after the graph network')
-    parser.add_argument('--ffn_input_dropout', type=float, default=0.2,
+    parser.add_argument('--ffn_input_dropout', type=float, default=0.0,
                         help='Input dropout for higher-capacity FFN')
-    parser.add_argument('--ffn_dropout', type=float, default=0.5,
+    parser.add_argument('--ffn_dropout', type=float, default=0.0,
                         help='Dropout for higher-capacity FFN')
     parser.add_argument('--ffn_hidden_dim', type=int, default=600,
                         help='Hidden dim for higher-capacity FFN')
+    parser.add_argument('--ffn_num_layers', type=int, default=2,
+                        help='Number of layers in FFN after MPN encoding')
     parser.add_argument('--adversarial', action='store_true', default=False,
                         help='Adversarial scaffold regularization')
     parser.add_argument('--wgan_beta', type=float, default=10,
@@ -268,6 +268,8 @@ def modify_train_args(args: Namespace):
     args.max_lr *= args.lr_scaler
     args.final_lr *= args.lr_scaler
     del args.lr_scaler
+
+    assert args.ffn_num_layers >= 1
 
 
 def parse_hyper_opt_args() -> Namespace:

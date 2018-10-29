@@ -5,6 +5,7 @@ import torch.nn as nn
 from jtnn import JTNN
 from mpn import MPN, GAN
 from moe import MOE
+from nn_utils import get_activation_function, initialize_weights
 
 
 class MoleculeModel(nn.Module):
@@ -40,6 +41,12 @@ def build_model(args: Namespace) -> nn.Module:
     if args.learn_virtual_edges:
         args.lve_model = encoder.encoder  # to make this accessible during featurization, to select virtual edges
 
+    if args.moe:
+        model = MOE(args)
+        initialize_weights(model)
+
+        return model
+
     # Additional features
     if args.features_only:
         first_linear_dim = args.features_dim
@@ -47,48 +54,42 @@ def build_model(args: Namespace) -> nn.Module:
         first_linear_dim = args.hidden_size * (1 + args.jtnn)
         if args.use_input_features:
             first_linear_dim += args.features_dim
-    
-    if args.moe:
-        model = MOE(args)
+
+    # Create FFN layers
+    if args.ffn_num_layers == 1:
+        ffn = [
+            nn.Dropout(args.ffn_input_dropout),
+            nn.Linear(first_linear_dim, output_size)
+        ]
     else:
-        if args.features_only or args.more_ffn_capacity:
-            ffn = [
-                nn.Dropout(args.ffn_input_dropout),
-                nn.Linear(first_linear_dim, args.ffn_hidden_dim),
-                nn.ReLU(),
+        ffn = [
+            nn.Dropout(args.ffn_input_dropout),
+            nn.Linear(first_linear_dim, args.ffn_hidden_dim)
+        ]
+        for _ in range(args.ffn_num_layers - 2):
+            ffn.extend([
+                get_activation_function(args.activation),
                 nn.Dropout(args.ffn_dropout),
                 nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(args.ffn_dropout),
-                nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(args.ffn_dropout),
-                nn.Linear(args.ffn_hidden_dim, output_size)
-            ]
-        else:
-            ffn = [
-                nn.Linear(first_linear_dim, args.hidden_size),
-                nn.ReLU(),
-                nn.Linear(args.hidden_size, output_size)
-            ]
+            ])
+        ffn.extend([
+            get_activation_function(args.activation),
+            nn.Dropout(args.ffn_dropout),
+            nn.Linear(args.ffn_hidden_dim, output_size),
+        ])
+    
+    # Classification
+    if args.dataset_type == 'classification':
+        ffn.append(nn.Sigmoid())
 
-        # Classification
-        if args.dataset_type == 'classification':
-            ffn.append(nn.Sigmoid())
+    # Combined model
+    ffn = nn.Sequential(*ffn)
+    model = MoleculeModel(encoder, ffn)
 
-        # Combined model
-        ffn = nn.Sequential(*ffn)
-        model = MoleculeModel(encoder, ffn)
+    if args.adversarial:
+        args.output_size = output_size
+        model = GAN(args, model)
 
-        if args.adversarial:
-            args.output_size = output_size
-            model = GAN(args, model)
-
-    # Initialize weights
-    for param in model.parameters():
-        if param.dim() == 1:
-            nn.init.constant_(param, 0)
-        else:
-            nn.init.xavier_normal_(param)
+    initialize_weights(model)
 
     return model
