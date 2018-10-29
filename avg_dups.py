@@ -1,6 +1,7 @@
 """Averages duplicate data points in a dataset."""
 
 from argparse import ArgumentParser
+from collections import defaultdict
 
 import numpy as np
 
@@ -14,9 +15,9 @@ def average_duplicates(args):
     print('Data size = {:,}'.format(len(data)))
 
     # Map SMILES string to lists of targets
-    smiles_to_targets = {}
+    smiles_to_targets = defaultdict(list)
     for smiles, targets in zip(data.smiles(), data.targets()):
-        smiles_to_targets.setdefault(smiles, []).append(targets)
+        smiles_to_targets[smiles].append(targets)
 
     # Find duplicates
     duplicate_count = 0
