@@ -32,10 +32,10 @@ def run_training(args: Namespace) -> List[float]:
 
     logger.debug('Loading data')
     args.task_names = get_task_names(args.data_path)
-    args.num_tasks = len(args.task_names)
-    logger.debug('Number of tasks = {}'.format(args.num_tasks))
     desired_labels = get_desired_labels(args, args.task_names)
     data = get_data(args.data_path, args)
+    args.num_tasks = data.num_tasks()
+    logger.debug('Number of tasks = {}'.format(args.num_tasks))
 
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
         data, bin_predictions, regression_data = data

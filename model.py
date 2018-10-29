@@ -45,7 +45,7 @@ def build_model(args: Namespace) -> nn.Module:
         first_linear_dim = args.features_dim
     else:
         first_linear_dim = args.hidden_size * (1 + args.jtnn)
-        if args.features:
+        if args.use_input_features:
             first_linear_dim += args.features_dim
     
     if args.moe:

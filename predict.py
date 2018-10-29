@@ -12,28 +12,26 @@ from utils import get_data, load_checkpoint
 
 def make_predictions(args: Namespace):
     """Makes predictions."""
+    print('Loading training args')
+    _, train_args = load_checkpoint(args.checkpoint_paths[0], get_args=True)
+
+    # Update current args from training args without overwriting any values
+    for key, value in vars(train_args).items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
     print('Loading data')
-    test_data = get_data(args.test_path, use_compound_names=args.compound_names)
+    test_data = get_data(args.test_path, args, use_compound_names=args.compound_names)
     if args.compound_names:
         compound_names = test_data.compound_names()
     print('Test size = {:,}'.format(len(test_data)))
 
-    # Predict on test set
-    sum_preds = None
-
-    # Predict with each model individually
+    # Predict with each model individually and sum predictions
+    sum_preds = np.zeros((len(test_data), args.num_tasks))
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
         model, scaler, train_args = load_checkpoint(checkpoint_path, cuda=args.cuda, get_scaler=True, get_args=True)
-
-        # Update args
-        args.dataset_type, args.num_tasks, args.task_names, args.features = \
-            train_args.dataset_type, train_args.num_tasks, train_args.task_names, train_args.features
-
-        if sum_preds is None:
-            sum_preds = np.zeros((len(test_data), args.num_tasks))
-
         model_preds = predict(
             model=model,
             data=test_data,
