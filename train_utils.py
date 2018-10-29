@@ -99,13 +99,14 @@ def train(model: nn.Module,
         for d in data:
             d.shuffle()
             train_smiles.append(d.smiles())
-        model.compute_domain_encs(train_smiles)
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
     else:
         num_iters = len(data)
 
     for i in trange(0, num_iters, args.batch_size):
         if args.moe:
+            if not args.batch_domain_encs:
+                model.compute_domain_encs(train_smiles) # want to recompute every batch
             batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
             train_batch, train_targets = [], []
             for b in batch:

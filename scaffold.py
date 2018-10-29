@@ -171,17 +171,19 @@ def scaffold_split_one(data: MoleculeDataset) -> Tuple[MoleculeDataset,
 
 def cluster_split(data: MoleculeDataset,
                   n_clusters: int,
+                  seed: int = 0,
                   logger: logging.Logger = None) -> List[MoleculeDataset]:
     """
     Split a dataset by K-means clustering on Morgan fingerprints. 
 
     :param data: A list of data points (smiles string, target values).
-    :param n_clusters: Number of clusters for KNN
-    :param logger: A logger. Currently unused.
-    :return: A list containing the KNN splits.
+    :param n_clusters: Number of clusters for K-means. 
+    :param seed: Random seed for K-means. 
+    :param logger: A logger for logging cluster split stats.
+    :return: A list containing the K-means splits.
     """
     fp = [morgan_fingerprint(s) for s in data.smiles()]
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters)
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=seed)
     cluster_labels = kmeans.fit_predict(fp)
 
     clusters = [[] for _ in range(n_clusters)]

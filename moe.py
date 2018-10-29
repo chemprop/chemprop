@@ -67,7 +67,7 @@ def maximum_mean_discrepancy(x, y, kernel=gaussian_kernel_matrix):
     cost = torch.clamp(cost, min=0)
     return cost
 
-class MMD(nn.Module):
+class MMD(nn.Module): #TODO(moe) can experiment with WGAN too - can try with both union of sources of with each individually
     def __init__(self, args):
         # The __init__() method is run automatically when a new instance of the MMD class is created
         # New instance created by writing new_instance = MMD(encoder, configs) -- when creating the new instance,
@@ -78,7 +78,7 @@ class MMD(nn.Module):
             1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
             1, 5, 10, 15, 20, 25, 30, 35, 100,
             1e3, 1e4, 1e5, 1e6
-            ]) #TODO ask what is this?
+            ])
         if args.cuda:
             self.sigmas = self.sigmas.cuda()
         self.gaussian_kernel = partial(gaussian_kernel_matrix, sigmas=self.sigmas)
@@ -109,7 +109,7 @@ class Classifier(nn.Module):
                     nn.ReLU(),
                     nn.Linear(args.hidden_size, args.num_tasks)]
         if args.dataset_type == 'classification':
-            modules.append(nn.Sigmoid()) #TODO(moe) should sigmoid here or after the whole moe model?
+            modules.append(nn.Sigmoid()) # Jiang said sigmoiding here is fine
         self.net = nn.Sequential(*modules)
 
     def forward(self, x):
@@ -141,7 +141,7 @@ class MOE(nn.Module):
     def mahalanobis_metric(self, p, mu, j):
         mahalanobis_distances_new = (p - mu).mm(self.Us[j].mm(self.Us[j].t())).mm((p - mu).t())
         mahalanobis_distances_new = mahalanobis_distances_new.diag().sqrt()
-        return mahalanobis_distances_new.detach()  # TODO check is this detach correct? and check dims
+        return mahalanobis_distances_new
     
     def forward(self, smiles, features=None):
         encodings = self.encoder(smiles)
@@ -157,7 +157,6 @@ class MOE(nn.Module):
         return output_moe
     
     def compute_domain_encs(self, all_train_smiles):
-        # domain_encoding in jiang's code, if i read it correctly. should be called at beginning of each epoch
         domain_encs = []
         for i in range(len(all_train_smiles)):
             train_smiles = all_train_smiles[i]
@@ -173,15 +172,26 @@ class MOE(nn.Module):
                 means_sum += torch.mean(batch_encs, dim=0)
             domain_encs.append(means_sum / len(train_batches))
         self.domain_encs = domain_encs
+    
+    def compute_minibatch_domain_encs(self, train_smiles):
+        domain_encs = []
+        for i in range(len(train_smiles)):
+            train_batch = train_smiles[i]
+            with torch.no_grad():
+                batch_encs = self.encoder(train_batch) #bs x hidden
+            domain_encs.append(torch.mean(batch_encs, dim=0))
+        self.domain_encs = domain_encs
 
-    def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO parallelize?
+    def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO(moe) parallelize?
         '''
         Computes and aggregates relevant losses for mixture of experts model. 
         :param train_smiles: n_sources x batch_size array of smiles
-        :param train_targets: n_sources x batch_size array of targets, as torch tensors
+        :param train_targets: n_sources array of torch tensors of labels, each of dimension = batch_size
         :param test_smiles: batch_size array of smiles
         :return: a scalar representing aggregated losses for moe model
         '''
+        if self.args.batch_domain_encs:
+            self.compute_minibatch_domain_encs(train_smiles)
         encodings = [self.encoder(source_batch) for source_batch in train_smiles] # each bs x hs
         all_encodings = torch.cat(encodings, dim=0) # nsource*bs x hs
         
@@ -216,12 +226,12 @@ class MOE(nn.Module):
         for i in source_ids:
             support_ids = [x for x in source_ids if x != i]
             support_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               self.domain_encs[j], j).unsqueeze(0)
+                               self.domain_encs[j].detach(), j).unsqueeze(0)
                                 for j in support_ids] # n_source-1 of 1 x bs
             support_alphas = F.softmax(torch.cat(support_alphas, dim=0), dim=0)
 
             source_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               self.domain_encs[j], j).unsqueeze(0)
+                               self.domain_encs[j].detach(), j).unsqueeze(0)
                                 for j in source_ids] # n_source of 1 x bs
             source_alphas = F.softmax(torch.cat(source_alphas, dim=0), dim=0) # n_source x bs
 
@@ -235,6 +245,7 @@ class MOE(nn.Module):
             moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
         
+        #TODO(moe) turn off critic and entropy, tune lambda_moe and m_rank
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
 
         return loss
