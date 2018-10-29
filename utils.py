@@ -91,6 +91,7 @@ def load_checkpoint(path: str,
                     get_scaler: bool = False,
                     get_args: bool = False,
                     num_tasks: int = None,
+                    dataset_type: str = None,
                     logger: logging.Logger = None) -> Union[nn.Module,
                                                             Tuple[nn.Module, StandardScaler],
                                                             Tuple[nn.Module, Namespace],
@@ -103,6 +104,8 @@ def load_checkpoint(path: str,
     :param get_scaler: Whether to also load the scaler the model was trained with.
     :param get_args: Whether to also load the args the model was trained with.
     :param num_tasks: The number of tasks. Only necessary if different now than when trained.
+    :param dataset_type: The type of the dataset ("classification" or "regression"). Only necessary
+    if different now than when trained.
     :param logger: A logger.
     :return: The loaded model and optionally the scaler.
     """
@@ -110,6 +113,7 @@ def load_checkpoint(path: str,
     args, loaded_state_dict = state['args'], state['state_dict']
     args.cuda = cuda
     args.num_tasks = num_tasks or args.num_tasks
+    args.dataset_type = dataset_type or args.dataset_type
 
     model = build_model(args)
     model_state_dict = model.state_dict()
