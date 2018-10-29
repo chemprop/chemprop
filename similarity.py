@@ -142,17 +142,12 @@ if __name__ == '__main__':
                         help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
     args = parser.parse_args()
 
-    smiles_1 = get_data(args.data_path_1, smiles_only=True, use_compound_names=args.compound_names_1)
-    smiles_2 = get_data(args.data_path_2, smiles_only=True, use_compound_names=args.compound_names_2)
-
-    if args.compound_names_1:
-        _, smiles_1 = smiles_1
-    if args.compound_names_2:
-        _, smiles_2 = smiles_2
+    data_1 = get_data(args.data_path_1, use_compound_names=args.compound_names_1)
+    data_2 = get_data(args.data_path_2, use_compound_names=args.compound_names_2)
 
     if args.similarity_measure == 'scaffold':
-        scaffold_similarity(smiles_1, smiles_2)
+        scaffold_similarity(data_1.smiles(), data_2.smiles())
     elif args.similarity_measure == 'morgan':
-        morgan_similarity(smiles_1, smiles_2, args.radius, args.sample_rate)
+        morgan_similarity(data_1.smiles(), data_2.smiles(), args.radius, args.sample_rate)
     else:
         raise ValueError('Similarity measure "{}" not supported.'.format(args.similarity_measure))

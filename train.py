@@ -4,7 +4,6 @@ import os
 import math
 from pprint import pformat
 from typing import List
-import random
 
 import numpy as np
 from tensorboardX import SummaryWriter
@@ -43,7 +42,7 @@ def run_training(args: Namespace) -> List[float]:
         args.bin_predictions = bin_predictions
         logger.debug('Splitting data with seed {}'.format(args.seed))
         train_data, _, _ = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
-        _, val_data, test_data = split_data(regression_data, args, seed=args.seed, logger=logger)
+        _, val_data, test_data = split_data(regression_data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
     else:
         logger.debug('Splitting data with seed {}'.format(args.seed))
         if args.separate_test_set:
@@ -51,10 +50,10 @@ def run_training(args: Namespace) -> List[float]:
             test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+    
     if args.adversarial or args.moe:
-        val_smiles, _ = zip(*val_data)
-        test_smiles, _ = zip(*test_data)
-        args.train_data_length = len(train_data) # kinda hacky, but less cluttered
+        val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
+        args.train_data_length = len(train_data)  # kinda hacky, but less cluttered
 
     logger.debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
@@ -68,12 +67,14 @@ def run_training(args: Namespace) -> List[float]:
         print('Truncating outliers in train set')
         train_data = truncate_outliers(train_data)
 
-    # Initialize scaler and scaler training labels by subtracting mean and dividing standard deviation (regression only)
+    # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         logger.debug('Fitting scaler')
-        train_smiles, train_labels = zip(*train_data)
-        scaler = StandardScaler().fit(train_labels)
-        train_data = list(zip(train_smiles, scaler.transform(train_labels).tolist()))
+        train_smiles, train_targets = train_data.smiles(), train_data.targets()
+        scaler = StandardScaler().fit(train_targets)
+        scaled_targets = scaler.transform(train_targets).tolist()
+        for i in range(len(train_data)):
+            train_data[i].targets = scaled_targets[i]
     else:
         scaler = None
 
@@ -99,7 +100,7 @@ def run_training(args: Namespace) -> List[float]:
     metric_func = get_metric_func(args.metric)
 
     # Set up test set evaluation
-    test_smiles, test_labels = zip(*test_data)
+    test_smiles, test_targets = test_data.smiles(), test_data.targets()
     sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     # Train ensemble of models
@@ -189,13 +190,13 @@ def run_training(args: Namespace) -> List[float]:
         model = load_checkpoint(os.path.join(args.save_dir, 'model_{}/model.pt'.format(model_idx)), cuda=args.cuda)
         test_preds = predict(
             model=model,
-            smiles=test_smiles,
+            data=test_data,
             args=args,
             scaler=scaler
         )
         test_scores = evaluate_predictions(
             preds=test_preds,
-            labels=test_labels,
+            targets=test_targets,
             metric_func=metric_func
         )
         sum_test_preds += np.array(test_preds)
@@ -216,7 +217,7 @@ def run_training(args: Namespace) -> List[float]:
     avg_test_preds = sum_test_preds / args.ensemble_size
     ensemble_scores = evaluate_predictions(
         preds=avg_test_preds.tolist(),
-        labels=test_labels,
+        targets=test_targets,
         metric_func=metric_func
     )
 
@@ -229,6 +230,7 @@ def run_training(args: Namespace) -> List[float]:
             logger.info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
 
     return ensemble_scores
+
 
 def cross_validate(args: Namespace):
     """k-fold cross validation"""

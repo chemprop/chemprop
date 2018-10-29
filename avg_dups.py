@@ -4,35 +4,36 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from utils import get_data
+from utils import get_data, get_header
 
 
 def average_duplicates(args):
     print('Loading data')
-    header, data = get_data(args.data_path, get_header=True)
+    header = get_header(args.data_path)
+    data = get_data(args.data_path)
     print('Data size = {:,}'.format(len(data)))
 
-    # Map SMILES string to lists of values
-    smiles_to_values = {}
-    for smiles, values in data:
-        smiles_to_values.setdefault(smiles, []).append(values)
+    # Map SMILES string to lists of targets
+    smiles_to_targets = {}
+    for smiles, targets in zip(data.smiles(), data.targets()):
+        smiles_to_targets.setdefault(smiles, []).append(targets)
 
     # Find duplicates
     duplicate_count = 0
     stds = []
     new_data = []
-    for smiles, all_values in smiles_to_values.items():
-        duplicate_count += len(all_values) - 1
-        num_tasks = len(all_values[0])
+    for smiles, all_targets in smiles_to_targets.items():
+        duplicate_count += len(all_targets) - 1
+        num_tasks = len(all_targets[0])
 
-        values_by_task = [[] for _ in range(num_tasks)]
+        targets_by_task = [[] for _ in range(num_tasks)]
         for task in range(num_tasks):
-            for values in all_values:
-                if values[task] is not None:
-                    values_by_task[task].append(values[task])
+            for targets in all_targets:
+                if targets[task] is not None:
+                    targets_by_task[task].append(targets[task])
 
-        stds.append([np.std(task_values) if len(task_values) > 0 else 0.0 for task_values in values_by_task])
-        means = [np.mean(task_values) if len(task_values) > 0 else None for task_values in values_by_task]
+        stds.append([np.std(task_targets) if len(task_targets) > 0 else 0.0 for task_targets in targets_by_task])
+        means = [np.mean(task_targets) if len(task_targets) > 0 else None for task_targets in targets_by_task]
         new_data.append((smiles, means))
 
     print('Number of duplicates = {:,}'.format(duplicate_count))
@@ -43,8 +44,8 @@ def average_duplicates(args):
     with open(args.save_path, 'w') as f:
         f.write(','.join(header) + '\n')
 
-        for smiles, avg_values in new_data:
-            f.write(smiles + ',' + ','.join(str(value) if value is not None else '' for value in avg_values) + '\n')
+        for smiles, avg_targets in new_data:
+            f.write(smiles + ',' + ','.join(str(value) if value is not None else '' for value in avg_targets) + '\n')
 
 
 if __name__ == '__main__':

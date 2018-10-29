@@ -3,7 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from utils import get_data
+from utils import get_data, get_task_names
 
 
 def plot_distribution(data_path: str, save_dir: str, bins: int):
@@ -15,13 +15,13 @@ def plot_distribution(data_path: str, save_dir: str, bins: int):
     :param bins: Number of bins in histogram.
     """
     # Get values
-    header, data = get_data(args.data_path, get_header=True)
-    task_names = header[1:]
-    _, values = zip(*data)
+    task_names = get_task_names(args.data_path)
+    data = get_data(args.data_path)
+    targets = data.targets()
 
     # Arrange values by task
-    data_size, num_tasks = len(values), len(task_names)
-    values = [[values[i][j] for i in range(data_size)] for j in range(num_tasks)]
+    data_size, num_tasks = len(targets), len(task_names)
+    values = [[targets[i][j] for i in range(data_size)] for j in range(num_tasks)]
 
     # Plot distributions for each task
     data_name = os.path.basename(data_path).replace('.csv', '')

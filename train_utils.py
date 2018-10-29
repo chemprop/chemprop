@@ -1,7 +1,7 @@
 from argparse import Namespace
 import logging
 import random
-from typing import Callable, List, Tuple
+from typing import Callable, List, Union
 import os
 
 from sklearn.preprocessing import StandardScaler
@@ -14,13 +14,14 @@ from tqdm import trange, tqdm
 import numpy as np
 import pickle
 
+from data import MoleculeDataset
 from nn_utils import NoamLR
 from utils import compute_gnorm, compute_pnorm
 import featurization
 
 
 def train(model: nn.Module,
-          data: List[Tuple[str, List[float]]],
+          data: Union[MoleculeDataset, List[MoleculeDataset]],
           loss_func: Callable,
           optimizer: Optimizer,
           scheduler: NoamLR,
@@ -35,7 +36,7 @@ def train(model: nn.Module,
     Trains a model for an epoch.
 
     :param model: Model.
-    :param data: Training data.
+    :param data: A MoleculeDataset (or a list of MoleculeDatasets if using moe).
     :param loss_func: Loss function.
     :param optimizer: Optimizer.
     :param scheduler: A NoamLR learning rate scheduler.
@@ -45,11 +46,14 @@ def train(model: nn.Module,
     :param writer: A tensorboardX SummaryWriter.
     :param chunk_names: Whether to train on the data in chunks. In this case,
     data must be a list of paths to the data chunks.
-    :param test_smiles: Test smiles strings without labels, used for adversarial setting.
+    :param val_smiles: Validation smiles strings without targets.
+    :param test_smiles: Test smiles strings without targets, used for adversarial setting.
     :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
-    random.shuffle(data)
+    
+    if not args.moe:
+        data.shuffle()
 
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
@@ -84,7 +88,7 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
     if args.adversarial:
-        train_smiles, _ = zip(*data)
+        train_smiles = data.smiles()
         train_val_smiles = train_smiles + val_smiles
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
 
@@ -93,9 +97,8 @@ def train(model: nn.Module,
         random.shuffle(test_smiles)
         train_smiles = []
         for d in data:
-            random.shuffle(d)
-            smiles, labels = zip(*d)
-            train_smiles.append(smiles)
+            d.shuffle()
+            train_smiles.append(d.smiles())
         model.compute_domain_encs(train_smiles)
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
     else:
@@ -103,42 +106,39 @@ def train(model: nn.Module,
 
     for i in trange(0, num_iters, args.batch_size):
         if args.moe:
-            batch = [d[i:i + args.batch_size] for d in data]
-            train_batch, train_labels = [], []
+            batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
+            train_batch, train_targets = [], []
             for b in batch:
-                tb, tl = zip(*b)
+                tb, tt = b.smiles(), b.targets()
                 train_batch.append(tb)
-                train_labels.append(tl)
+                train_targets.append(tt)
             test_batch = test_smiles[i:i + args.batch_size]
-            loss = model.compute_loss(train_batch, train_labels, test_batch)
+            loss = model.compute_loss(train_batch, train_targets, test_batch)
             if logger is not None:
                 loss_sum += loss.item()
                 iter_count += len(batch)
         else:
             # Prepare batch
-            batch = data[i:i + args.batch_size]
-            smiles_batch, label_batch = zip(*batch)
+            batch = MoleculeDataset(data[i:i + args.batch_size])
+            smiles_batch, features_batch, target_batch = batch.smiles(), batch.features(), batch.targets()
 
-            if args.features:
-                smiles_batch = zip(*smiles_batch)
-
-            mask = torch.Tensor([[x is not None for x in lb] for lb in label_batch])
-            labels = torch.Tensor([[0 if x is None else x for x in lb] for lb in label_batch])
+            mask = torch.Tensor([[x is not None for x in lb] for lb in target_batch])
+            targets = torch.Tensor([[0 if x is None else x for x in lb] for lb in target_batch])
 
             if next(model.parameters()).is_cuda:
-                mask, labels = mask.cuda(), labels.cuda()
+                mask, targets = mask.cuda(), targets.cuda()
 
             # Run model
             model.zero_grad()
-            preds = model(smiles_batch)
+            preds = model(smiles_batch, features_batch)
             if args.dataset_type == 'regression_with_binning':
-                preds = preds.view(labels.size(0), labels.size(1), -1)
-                labels = labels.long()
+                preds = preds.view(targets.size(0), targets.size(1), -1)
+                targets = targets.long()
                 loss = 0
-                for task in range(labels.size(1)):
-                    loss += loss_func(preds[:, task, :], labels[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
+                for task in range(targets.size(1)):
+                    loss += loss_func(preds[:, task, :], targets[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
             else:
-                loss = loss_func(preds, labels) * mask
+                loss = loss_func(preds, targets) * mask
             loss = loss.sum() / mask.sum()
 
             if logger is not None:
@@ -193,16 +193,16 @@ def train(model: nn.Module,
 
 
 def predict(model: nn.Module,
-            smiles: List[str],
+            data: MoleculeDataset,
             args: Namespace,
             scaler: StandardScaler = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
     :param model: A model.
-    :param smiles: A list of smiles strings.
+    :param data: A MoleculeDataset.
     :param args: Arguments.
-    :param scaler: A StandardScaler object fit on the training labels.
+    :param scaler: A StandardScaler object fit on the training targets.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """
@@ -210,14 +210,13 @@ def predict(model: nn.Module,
         model.eval()
 
         preds = []
-        for i in range(0, len(smiles), args.batch_size):
+        for i in range(0, len(data), args.batch_size):
             # Prepare batch
-            smiles_batch = smiles[i:i + args.batch_size]
-            if args.features:
-                smiles_batch = zip(*smiles_batch)
+            batch = MoleculeDataset(data[i:i + args.batch_size])
+            smiles_batch, features_batch = batch.smiles(), batch.features()
 
             # Run model
-            batch_preds = model(smiles_batch)
+            batch_preds = model(smiles_batch, features_batch)
             batch_preds = batch_preds.data.cpu().numpy()
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)
@@ -236,41 +235,41 @@ def predict(model: nn.Module,
 
 
 def evaluate_predictions(preds: List[List[float]],
-                         labels: List[List[float]],
+                         targets: List[List[float]],
                          metric_func: Callable) -> List[float]:
     """
-    Evaluates predictions using a metric function and filtering out invalid labels.
+    Evaluates predictions using a metric function and filtering out invalid targets.
 
     :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
-    :param labels: A list of lists of shape (data_size, num_tasks) with labels.
-    :param metric_func: Metric function which takes in a list of labels and a list of predictions.
+    :param targets: A list of lists of shape (data_size, num_tasks) with targets.
+    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :return: A list with the score for each task based on `metric_func`.
     """
     data_size, num_tasks = len(preds), len(preds[0])
 
-    # Filter out empty labels
-    # valid_preds and valid_labels have shape (num_tasks, data_size)
+    # Filter out empty targets
+    # valid_preds and valid_targets have shape (num_tasks, data_size)
     valid_preds = [[] for _ in range(num_tasks)]
-    valid_labels = [[] for _ in range(num_tasks)]
+    valid_targets = [[] for _ in range(num_tasks)]
     for i in range(num_tasks):
         for j in range(data_size):
-            if labels[j][i] is not None:  # Skip those without labels
+            if targets[j][i] is not None:  # Skip those without targets
                 valid_preds[i].append(preds[j][i])
-                valid_labels[i].append(labels[j][i])
+                valid_targets[i].append(targets[j][i])
 
     # Compute metric
     results = []
     for i in range(num_tasks):
-        # Skip if all labels are identical
-        if all(label == 0 for label in valid_labels[i]) or all(label == 1 for label in valid_labels[i]):
+        # Skip if all targets are identical
+        if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
             continue
-        results.append(metric_func(valid_labels[i], valid_preds[i]))
+        results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     return results
 
 
 def evaluate(model: nn.Module,
-             data: List[Tuple[str, List[float]]],
+             data: MoleculeDataset,
              metric_func: Callable,
              args: Namespace,
              scaler: StandardScaler = None) -> List[float]:
@@ -278,24 +277,24 @@ def evaluate(model: nn.Module,
     Evaluates an ensemble of models on a dataset.
 
     :param model: A model.
-    :param data: Dataset.
-    :param metric_func: Metric function which takes in a list of labels and a list of predictions.
+    :param data: A MoleculeDataset.
+    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param args: Arguments.
-    :param scaler: A StandardScaler object fit on the training labels.
+    :param scaler: A StandardScaler object fit on the training targets.
     :return: A list with the score for each task based on `metric_func`.
     """
-    smiles, labels = zip(*data)
+    smiles, targets = data.smiles(), data.targets()
 
     preds = predict(
         model=model,
-        smiles=smiles,
+        data=data,
         args=args,
         scaler=scaler
     )
 
     results = evaluate_predictions(
         preds=preds,
-        labels=labels,
+        targets=targets,
         metric_func=metric_func
     )
 

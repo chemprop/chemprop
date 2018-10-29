@@ -13,11 +13,10 @@ from utils import get_data, load_checkpoint
 def make_predictions(args: Namespace):
     """Makes predictions."""
     print('Loading data')
+    test_data = get_data(args.test_path, use_compound_names=args.compound_names)
     if args.compound_names:
-        compound_names, test_smiles = get_data(args.test_path, use_compound_names=True, smiles_only=True)
-    else:
-        test_smiles = get_data(args.test_path, smiles_only=True)
-    print('Test size = {:,}'.format(len(test_smiles)))
+        compound_names = test_data.compound_names()
+    print('Test size = {:,}'.format(len(test_data)))
 
     # Predict on test set
     sum_preds = None
@@ -33,11 +32,11 @@ def make_predictions(args: Namespace):
             train_args.dataset_type, train_args.num_tasks, train_args.task_names, train_args.features
 
         if sum_preds is None:
-            sum_preds = np.zeros((len(test_smiles), args.num_tasks))
+            sum_preds = np.zeros((len(test_data), args.num_tasks))
 
         model_preds = predict(
             model=model,
-            smiles=test_smiles,
+            data=test_data,
             args=args,
             scaler=scaler
         )
@@ -48,7 +47,7 @@ def make_predictions(args: Namespace):
     avg_preds = avg_preds.tolist()
 
     # Save predictions
-    assert len(test_smiles) == len(avg_preds)
+    assert len(test_data) == len(avg_preds)
     print('Saving predictions to {}'.format(args.preds_path))
 
     with open(args.preds_path, 'w') as f:

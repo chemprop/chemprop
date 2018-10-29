@@ -10,7 +10,8 @@ from utils import get_data, load_checkpoint
 def visualize_attention(args: Namespace):
     """Visualizes attention weights."""
     print('Loading data')
-    smiles = get_data(args.data_path, smiles_only=True)
+    data = get_data(args.data_path)
+    smiles = data.smiles()
     print('Data size = {:,}'.format(len(smiles)))
 
     print('Loading model from "{}"'.format(args.checkpoint_path))

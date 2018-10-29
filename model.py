@@ -6,6 +6,17 @@ from jtnn import JTNN
 from mpn import MPN, GAN
 from moe import MOE
 
+
+class MoleculeModel(nn.Module):
+    def __init__(self, encoder: nn.Module, ffn: nn.Sequential):
+        super(MoleculeModel, self).__init__()
+        self.encoder = encoder
+        self.ffn = ffn
+
+    def forward(self, *input):
+        return self.ffn(self.encoder(*input))
+
+
 def build_model(args: Namespace) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
@@ -41,8 +52,7 @@ def build_model(args: Namespace) -> nn.Module:
         model = MOE(args)
     else:
         if args.features_only or args.more_ffn_capacity:
-            modules = [
-                encoder,
+            ffn = [
                 nn.Dropout(args.ffn_input_dropout),
                 nn.Linear(first_linear_dim, args.ffn_hidden_dim),
                 nn.ReLU(),
@@ -56,8 +66,7 @@ def build_model(args: Namespace) -> nn.Module:
                 nn.Linear(args.ffn_hidden_dim, output_size)
             ]
         else:
-            modules = [
-                encoder,
+            ffn = [
                 nn.Linear(first_linear_dim, args.hidden_size),
                 nn.ReLU(),
                 nn.Linear(args.hidden_size, output_size)
@@ -65,10 +74,11 @@ def build_model(args: Namespace) -> nn.Module:
 
         # Classification
         if args.dataset_type == 'classification':
-            modules.append(nn.Sigmoid())
+            ffn.append(nn.Sigmoid())
 
         # Combined model
-        model = nn.Sequential(*modules)
+        ffn = nn.Sequential(*ffn)
+        model = MoleculeModel(encoder, ffn)
 
         if args.adversarial:
             args.output_size = output_size

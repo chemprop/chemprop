@@ -336,26 +336,30 @@ class MPN(nn.Module):
         self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
-    def forward(self, smiles_batch: List[str]) -> torch.Tensor:
+    def forward(self, smiles_batch: List[str], features_batch: List[np.ndarray] = None) -> torch.Tensor:
         """
         Encodes a batch of molecular SMILES strings.
 
         :param smiles_batch: A list of SMILES strings.
+        :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        output = self.encoder.forward(mol2graph(smiles_batch, self.args))
+        output = self.encoder.forward(mol2graph(smiles_batch, features_batch, self.args))
+
         if self.args.adversarial:
             self.saved_encoder_output = output
+
         return output
 
-    def viz_attention(self, smiles: List[str], viz_dir: str):
+    def viz_attention(self, viz_dir: str, smiles_batch: List[str], features_batch: List[np.ndarray] = None):
         """
         Visualizes attention weights for a batch of molecular SMILES strings
 
-        :param smiles: A list of SMILES strings.
         :param viz_dir: Directory in which to save visualized attention weights.
+        :param smiles_batch: A list of SMILES strings.
+        :param features_batch: A list of ndarrays containing additional features.
         """
-        self.encoder.forward(mol2graph(smiles, self.args), viz_dir=viz_dir)
+        self.encoder.forward(mol2graph(smiles_batch, features_batch, self.args), viz_dir=viz_dir)
 
 
 class GAN(nn.Module):
@@ -370,7 +374,7 @@ class GAN(nn.Module):
         self.act_func = self.encoder.encoder.act_func
 
         self.netD = nn.Sequential(
-            nn.Linear(self.disc_input_size, self.hidden_size), #doesn't support jtnn or additional features rn
+            nn.Linear(self.disc_input_size, self.hidden_size), # doesn't support jtnn or additional features rn
             self.act_func,
             nn.Linear(self.hidden_size, self.hidden_size),
             self.act_func,

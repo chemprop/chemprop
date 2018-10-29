@@ -22,11 +22,10 @@ def update_old_checkpoint(args: Namespace):
             train_data, _, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed)
         else:
             train_data, _, _ = split_data(data, args, sizes=args.split_sizes, seed=args.seed)
-    args.num_tasks = len(data[0][1])
+    args.num_tasks = data.num_tasks()
 
     if args.dataset_type == 'regression':
-        train_smiles, train_labels = zip(*train_data)
-        scaler = StandardScaler().fit(train_labels)
+        scaler = StandardScaler().fit(train_data.targets())
     else:
         scaler = None
 

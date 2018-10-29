@@ -10,6 +10,9 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 
+from data import MoleculeDataset
+
+
 class ScaffoldGenerator:
     """
     Generate molecular scaffolds.
@@ -65,16 +68,15 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
     return scaffolds
 
 
-def scaffold_split(data: List[Tuple[str, List[float]]],
-                   args: Namespace,
+def scaffold_split(data: MoleculeDataset,
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-                   logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
-                                                           List[Tuple[str, List[float]]],
-                                                           List[Tuple[str, List[float]]]]:
+                   logger: logging.Logger = None) -> Tuple[MoleculeDataset,
+                                                           MoleculeDataset,
+                                                           MoleculeDataset]:
     """
     Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
 
-    :param data: A list of data points (smiles string, target values).
+    :param data: A MoleculeDataset
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param logger: A logger.
@@ -83,10 +85,7 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
     assert sum(sizes) == 1
 
     # Get data
-    smiles, _ = zip(*data)
-    if args.features:
-        smiles, _ = zip(*smiles)
-    scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
+    scaffold_to_indices_map = scaffold_to_smiles(data.smiles(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
     index_sets = sorted(list(scaffold_to_indices_map.values()),
@@ -123,41 +122,40 @@ def scaffold_split(data: List[Tuple[str, List[float]]],
     val = [data[i] for i in val_indices]
     test = [data[i] for i in test_indices]
 
-    return train, val, test
+    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
 
-def log_scaffold_stats(data, index_sets, logger=None):
+def log_scaffold_stats(data: MoleculeDataset, index_sets, logger=None):
     # print some statistics about scaffolds
-    label_avgs = []
+    target_avgs = []
     counts = []
     for index_set in index_sets:
         data_set = [data[i] for i in index_set]
-        _, labels = zip(*data_set)
-        labels = np.array(labels, dtype=np.float)
-        label_avgs.append(np.nanmean(labels, axis=0))
-        counts.append(np.count_nonzero(~np.isnan(labels), axis=0))
-    stats = [(label_avgs[i][:20], counts[i][:20]) for i in range(min(10, len(label_avgs)))]
+        targets = [d.targets for d in data_set]
+        targets = np.array(targets, dtype=np.float)
+        target_avgs.append(np.nanmean(targets, axis=0))
+        counts.append(np.count_nonzero(~np.isnan(targets), axis=0))
+    stats = [(target_avgs[i][:20], counts[i][:20]) for i in range(min(10, len(target_avgs)))]
+
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency, capped at 10 scaffolds and 20 labels: {}'.format(stats))
+
     return stats
 
 
-def scaffold_split_one(data: List[Tuple[str, List[float]]], args: Namespace) -> Tuple[List[Tuple[str, List[float]]],
-                                                                                      List[Tuple[str, List[float]]],
-                                                                                      List[Tuple[str, List[float]]]]:
+def scaffold_split_one(data: MoleculeDataset) -> Tuple[MoleculeDataset,
+                                                       MoleculeDataset,
+                                                       MoleculeDataset]:
     """
     Split a dataset by scaffold such that train has all molecules from the largest scaffold
     (i.e. the scaffold with the most molecules), val has all molecules from the second largest
     scaffold, and test has all molecules from the third largest scaffold.
 
-    :param data: A list of data points (smiles string, target values).
+    :param data: A MoleculeDataset.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     # Get data
-    smiles, _ = zip(*data)
-    if args.features:
-        smiles, _ = zip(*smiles)
-    scaffold_to_indices_map = scaffold_to_smiles(smiles, use_indices=True)
+    scaffold_to_indices_map = scaffold_to_smiles(data.smiles(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
     scaffolds = sorted(list(scaffold_to_indices_map.keys()),
@@ -168,24 +166,21 @@ def scaffold_split_one(data: List[Tuple[str, List[float]]], args: Namespace) -> 
     val = [data[index] for index in scaffold_to_indices_map[scaffolds[1]]]
     test = [data[index] for index in scaffold_to_indices_map[scaffolds[2]]]
 
-    return train, val, test
+    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
-def cluster_split(data: List[Tuple[str, List[float]]],
-                   n_clusters: int,
-                   logger: logging.Logger = None) -> Tuple[List[Tuple[str, List[float]]],
-                                                           List[Tuple[str, List[float]]],
-                                                           List[Tuple[str, List[float]]]]:
+
+def cluster_split(data: MoleculeDataset,
+                  n_clusters: int,
+                  logger: logging.Logger = None) -> List[MoleculeDataset]:
     """
     Split a dataset by K-means clustering on Morgan fingerprints. 
 
     :param data: A list of data points (smiles string, target values).
     :param n_clusters: Number of clusters for KNN
     :param logger: A logger. Currently unused.
-    :return: A tuple containing the KNN splits. 
+    :return: A list containing the KNN splits.
     """
-
-    smiles, _ = zip(*data)
-    fp = [morgan_fingerprint(s) for s in smiles]
+    fp = [morgan_fingerprint(s) for s in data.smiles()]
     kmeans = MiniBatchKMeans(n_clusters=n_clusters)
     cluster_labels = kmeans.fit_predict(fp)
 
@@ -193,4 +188,4 @@ def cluster_split(data: List[Tuple[str, List[float]]],
     for i in range(len(data)):
         clusters[cluster_labels[i]].append(data[i])
     
-    return clusters
+    return [MoleculeDataset(cluster) for cluster in clusters]

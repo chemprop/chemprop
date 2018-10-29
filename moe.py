@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from mpn import MPN
 
+
 def compute_pairwise_distances(x, y):
     '''
     Computes the squared pairwise Euclidean distances between x and y.
@@ -136,7 +137,7 @@ class MOE(nn.Module):
     def mahalanobis_metric(self, p, mu, j):
         mahalanobis_distances_new = (p - mu).mm(self.Us[j].mm(self.Us[j].t())).mm((p - mu).t())
         mahalanobis_distances_new = mahalanobis_distances_new.diag().sqrt()
-        return mahalanobis_distances_new.detach() #TODO check is this detach correct? and check dims
+        return mahalanobis_distances_new.detach()  # TODO check is this detach correct? and check dims
     
     def forward(self, smiles):
         encodings = self.encoder(smiles)
@@ -164,11 +165,11 @@ class MOE(nn.Module):
             domain_encs.append(torch.mean(torch.cat(means, dim=0), dim=0))
         self.domain_encs = domain_encs
 
-    def compute_loss(self, train_smiles, train_labels, test_smiles): #TODO parallelize?
+    def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO parallelize?
         '''
         Computes and aggregates relevant losses for mixture of experts model. 
         :param train_smiles: n_sources x batch_size array of smiles
-        :param train_labels: n_sources x batch_size array of labels, as torch tensors
+        :param train_targets: n_sources x batch_size array of targets, as torch tensors
         :param test_smiles: batch_size array of smiles
         :return: a scalar representing aggregated losses for moe model
         '''
@@ -182,11 +183,11 @@ class MOE(nn.Module):
                 outputs.append(self.classifiers[j](encodings[i]))
             classifier_outputs.append(outputs)
         supervised_outputs = torch.cat([classifier_outputs[i][i] for i in range(len(encodings))], dim=0)
-        train_labels = [torch.Tensor(list(tl)) for tl in train_labels]
+        train_targets = [torch.Tensor(list(tl)) for tl in train_targets]
         if self.args.cuda:
-            train_labels = [tl.cuda() for tl in train_labels]
-        supervised_labels = torch.cat(train_labels, dim=0)
-        mtl_loss = self.mtl_criterion(supervised_outputs, supervised_labels)
+            train_targets = [tl.cuda() for tl in train_targets]
+        supervised_targets = torch.cat(train_targets, dim=0)
+        mtl_loss = self.mtl_criterion(supervised_outputs, supervised_targets)
         
         test_encodings = self.encoder(test_smiles)
         adv_loss = self.mmd(all_encodings, test_encodings)
@@ -209,7 +210,7 @@ class MOE(nn.Module):
             output_moe_i = sum([ support_alphas[idx].unsqueeze(1).repeat(1, 1) *
                                  classifier_outputs[i][j] for idx, j in enumerate(support_ids)])
             moe_loss += self.moe_criterion(output_moe_i,
-                                 train_labels[i])
+                                 train_targets[i])
             entropy_loss += self.entropy_criterion(source_alphas)
         
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
