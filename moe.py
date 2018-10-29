@@ -164,9 +164,14 @@ class MOE(nn.Module):
             train_batches = []
             for j in range(0, len(train_smiles), self.args.batch_size):
                 train_batches.append(train_smiles[j:j + self.args.batch_size])
-            batch_encs = [self.encoder(train_batch) for train_batch in train_batches]
-            means = [torch.mean(batch_encs[i], dim=0, keepdim=True) for i in range(len(batch_encs))]
-            domain_encs.append(torch.mean(torch.cat(means, dim=0), dim=0))
+            means_sum = torch.zeros(self.args.hidden_size)
+            if self.args.cuda:
+                means_sum = means_sum.cuda()
+            for train_batch in train_batches:
+                with torch.no_grad():
+                    batch_encs = self.encoder(train_batch) #bs x hidden
+                means_sum += torch.mean(batch_encs, dim=0)
+            domain_encs.append(means_sum / len(train_batches))
         self.domain_encs = domain_encs
 
     def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO parallelize?
