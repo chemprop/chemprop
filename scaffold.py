@@ -188,4 +188,8 @@ def cluster_split(data: MoleculeDataset,
     for i in range(len(data)):
         clusters[cluster_labels[i]].append(data[i])
     
+    if logger is not None:
+        logger.debug('Split into {} clusters'.format(n_clusters))
+        logger.debug('Cluster sizes: {}'.format([len(c) for c in clusters]))
+
     return [MoleculeDataset(cluster) for cluster in clusters]

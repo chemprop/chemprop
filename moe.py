@@ -99,7 +99,7 @@ class HLoss(nn.Module):
         b = -1.0 * b.sum()
         return b
 
-class Classifier(torch.nn.Module):
+class Classifier(nn.Module):
     def __init__(self, args):
         super(Classifier, self).__init__()
         modules = [ nn.Dropout(p=0.2),
@@ -125,8 +125,12 @@ class MOE(nn.Module):
         self.mmd = MMD(args)
         self.Us = nn.ParameterList([nn.Parameter(torch.zeros((args.hidden_size, args.m_rank)), requires_grad=True) for _ in range(args.num_sources)])
         #note zeros are replaced during initialization later
-        self.mtl_criterion = nn.L1Loss()
-        self.moe_criterion = nn.L1Loss()
+        if args.dataset_type == 'regression':
+            self.mtl_criterion = nn.MSELoss(reduction='none')
+            self.moe_criterion = nn.MSELoss(reduction='none')
+        elif args.dataset_type == 'classification': #this half untested
+            self.mtl_criterion = nn.BCELoss(reduction='none')
+            self.moe_criterion = nn.BCELoss(reduction='none')
         self.entropy_criterion = HLoss()
         self.lambda_moe = args.lambda_moe
         self.lambda_critic = args.lambda_critic
@@ -183,12 +187,21 @@ class MOE(nn.Module):
                 outputs.append(self.classifiers[j](encodings[i]))
             classifier_outputs.append(outputs)
         supervised_outputs = torch.cat([classifier_outputs[i][i] for i in range(len(encodings))], dim=0)
-        train_targets = [torch.Tensor(list(tl)) for tl in train_targets]
+
+        train_targets = [torch.Tensor(list(tt)) for tt in train_targets]
+        train_target_masks = []
+        for i in range(len(train_targets)):
+            train_target_masks.append(torch.Tensor([[x is not None for x in tb] for tb in train_targets[i]]))
+            train_targets[i] = torch.Tensor([[0 if x is None else x for x in tb] for tb in train_targets[i]])
         if self.args.cuda:
             train_targets = [tl.cuda() for tl in train_targets]
+            train_target_masks = [tlm.cuda() for tlm in train_target_masks]
         supervised_targets = torch.cat(train_targets, dim=0)
+        supervised_mask = torch.cat(train_target_masks, dim=0)
         mtl_loss = self.mtl_criterion(supervised_outputs, supervised_targets)
-        
+        mtl_loss = mtl_loss * supervised_mask
+        mtl_loss = mtl_loss.sum() / supervised_mask.sum()
+
         test_encodings = self.encoder(test_smiles)
         adv_loss = self.mmd(all_encodings, test_encodings)
 
@@ -209,9 +222,14 @@ class MOE(nn.Module):
 
             output_moe_i = sum([ support_alphas[idx].unsqueeze(1).repeat(1, 1) *
                                  classifier_outputs[i][j] for idx, j in enumerate(support_ids)])
-            moe_loss += self.moe_criterion(output_moe_i,
-                                 train_targets[i])
+
+            moe_loss_i = self.moe_criterion(output_moe_i,
+                                            train_targets[i])
+            moe_loss_i = moe_loss_i * train_target_masks[i]
+            moe_loss_i = moe_loss_i.sum() / train_target_masks[i].sum()
+            moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
         
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
+
         return loss

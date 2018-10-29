@@ -93,7 +93,7 @@ def run_training(args: Namespace) -> List[float]:
         train_data = train_paths
     
     if args.moe:
-        train_data = cluster_split(train_data, args.num_sources)
+        train_data = cluster_split(train_data, args.num_sources, logger)
 
     # Get loss and metric functions
     loss_func = get_loss_func(args.dataset_type)

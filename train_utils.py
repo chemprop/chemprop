@@ -114,6 +114,7 @@ def train(model: nn.Module,
                 train_targets.append(tt)
             test_batch = test_smiles[i:i + args.batch_size]
             loss = model.compute_loss(train_batch, train_targets, test_batch)
+            model.zero_grad()
             if logger is not None:
                 loss_sum += loss.item()
                 iter_count += len(batch)
@@ -122,8 +123,8 @@ def train(model: nn.Module,
             batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = batch.smiles(), batch.features(), batch.targets()
 
-            mask = torch.Tensor([[x is not None for x in lb] for lb in target_batch])
-            targets = torch.Tensor([[0 if x is None else x for x in lb] for lb in target_batch])
+            mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
+            targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
             if next(model.parameters()).is_cuda:
                 mask, targets = mask.cuda(), targets.cuda()
