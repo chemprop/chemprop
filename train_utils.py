@@ -105,7 +105,8 @@ def train(model: nn.Module,
 
     for i in trange(0, num_iters, args.batch_size):
         if args.moe:
-            model.compute_domain_encs(train_smiles) # want to recompute every batch TODO(moe) change this if slow
+            if not args.batch_domain_encs:
+                model.compute_domain_encs(train_smiles) # want to recompute every batch
             batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
             train_batch, train_targets = [], []
             for b in batch:

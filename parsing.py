@@ -191,6 +191,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Use noam scheduler for GAN optimizers')
     parser.add_argument('--moe', action='store_true', default=False,
                         help='Use mixture of experts model')
+    parser.add_argument('--batch_domain_encs', action='store_true', default=False,
+                        help='compute domain encoding means in batches, for speed')
     parser.add_argument('--lambda_moe', type=float, default=0.1,
                         help='Multiplier for moe vs mtl loss')
     parser.add_argument('--lambda_critic', type=float, default=1.0,

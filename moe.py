@@ -157,8 +157,6 @@ class MOE(nn.Module):
         return output_moe
     
     def compute_domain_encs(self, all_train_smiles):
-        # domain_encoding in jiang's code, if i read it correctly. should be called at beginning of each epoch
-        # TODO(moe) compute this every time you update params, use just the batch if you have to
         domain_encs = []
         for i in range(len(all_train_smiles)):
             train_smiles = all_train_smiles[i]
@@ -174,6 +172,15 @@ class MOE(nn.Module):
                 means_sum += torch.mean(batch_encs, dim=0)
             domain_encs.append(means_sum / len(train_batches))
         self.domain_encs = domain_encs
+    
+    def compute_minibatch_domain_encs(self, train_smiles):
+        domain_encs = []
+        for i in range(len(train_smiles)):
+            train_batch = train_smiles[i]
+            with torch.no_grad():
+                batch_encs = self.encoder(train_batch) #bs x hidden
+            domain_encs.append(torch.mean(batch_encs, dim=0))
+        self.domain_encs = domain_encs
 
     def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO(moe) parallelize?
         '''
@@ -183,6 +190,8 @@ class MOE(nn.Module):
         :param test_smiles: batch_size array of smiles
         :return: a scalar representing aggregated losses for moe model
         '''
+        if self.args.batch_domain_encs:
+            self.compute_minibatch_domain_encs(train_smiles)
         encodings = [self.encoder(source_batch) for source_batch in train_smiles] # each bs x hs
         all_encodings = torch.cat(encodings, dim=0) # nsource*bs x hs
         
