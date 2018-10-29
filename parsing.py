@@ -44,6 +44,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Method of generating additional features')
     parser.add_argument('--features_path', type=str,
                         help='Path to features to use in FNN (instead of features_generator)')
+    parser.add_argument('--predict_features', action='store_true', default=False,
+                        help='Pre-train by predicting the additional features rather than the task values')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--checkpoint_dir', type=str, default=None,
@@ -247,7 +249,11 @@ def modify_train_args(args: Namespace):
         elif not os.path.exists(args.vocab_path):
             raise ValueError('Vocab path "{}" does not exist'.format(args.vocab_path))
 
-    args.features = args.features_generator or args.features_path
+    args.use_input_features = args.features_generator or args.features_path
+
+    if args.predict_features:
+        assert args.features_generator or args.features_path
+        args.use_input_features = False
 
 
 def parse_hyper_opt_args() -> Namespace:

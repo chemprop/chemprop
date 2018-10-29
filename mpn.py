@@ -109,23 +109,23 @@ class MPNEncoder(nn.Module):
 
     def forward(self,
                 mol_graph: BatchMolGraph,
+                features_batch: List[np.ndarray] = None,
                 viz_dir: str = None) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
         :param mol_graph: A BatchMolGraph representing a batch of molecular graphs.
+        :param features_batch: A list of ndarrays containing additional features.
         :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if self.args.features:
-            mol_graph, features_batch = mol_graph
+        if self.args.use_input_features:
+            features_batch = torch.from_numpy(np.stack(features_batch)).float()
+
+            if self.args.cuda:
+                features_batch = features_batch.cuda()
 
             if self.args.features_only:
-                features_batch = torch.from_numpy(np.stack(features_batch)).float()
-
-                if self.args.cuda:  # can't use next(self.parameters()).is_cuda b/c no parameters
-                    features_batch = features_batch.cuda()
-
                 return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
@@ -134,12 +134,13 @@ class MPNEncoder(nn.Module):
             f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
 
         if self.learn_virtual_edges:
-            atom1_features, atom2_features = f_atoms[b2a], f_atoms[b2a[b2revb]] #each num_bonds x atom_fdim
+            atom1_features, atom2_features = f_atoms[b2a], f_atoms[b2a[b2revb]]  # each num_bonds x atom_fdim
             ve_score = torch.sum(self.lve(atom1_features) * atom2_features, dim=1) + torch.sum(self.lve(atom2_features) * atom1_features, dim=1)
-            is_ve_indicator_index = self.atom_fdim # in current featurization, the first bond feature is 1 or 0 for virtual or not virtual
+            is_ve_indicator_index = self.atom_fdim  # in current featurization, the first bond feature is 1 or 0 for virtual or not virtual
             num_virtual = f_bonds[:, is_ve_indicator_index].sum()
-            straight_through_mask = torch.ones(f_bonds.size(0)).cuda() + f_bonds[:, is_ve_indicator_index] * (ve_score - ve_score.detach()) / num_virtual #normalize for grad norm
-            straight_through_mask = straight_through_mask.unsqueeze(1).repeat((1, self.hidden_size)) # num_bonds x hidden_size
+            straight_through_mask = torch.ones(f_bonds.size(0)).cuda() + f_bonds[:, is_ve_indicator_index] * (ve_score - ve_score.detach()) / num_virtual  # normalize for grad norm
+            straight_through_mask = straight_through_mask.unsqueeze(1).repeat((1, self.hidden_size))  # num_bonds x hidden_size
+
         # Input
         b_input = self.W_i(f_bonds)  # num_bonds x hidden_size
         b_message = self.act_func(b_input)  # num_bonds x hidden_size
@@ -315,12 +316,7 @@ class MPNEncoder(nn.Module):
 
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
         
-        if self.args.features:
-            features_batch = torch.from_numpy(np.stack(features_batch)).float()
-
-            if next(self.parameters()).is_cuda:
-                features_batch = features_batch.cuda()
-
+        if self.args.use_input_features:
             return torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
 
         return mol_vecs  # num_molecules x hidden
@@ -344,7 +340,7 @@ class MPN(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        output = self.encoder.forward(mol2graph(smiles_batch, features_batch, self.args))
+        output = self.encoder.forward(mol2graph(smiles_batch, self.args), features_batch)
 
         if self.args.adversarial:
             self.saved_encoder_output = output
@@ -359,7 +355,7 @@ class MPN(nn.Module):
         :param smiles_batch: A list of SMILES strings.
         :param features_batch: A list of ndarrays containing additional features.
         """
-        self.encoder.forward(mol2graph(smiles_batch, features_batch, self.args), viz_dir=viz_dir)
+        self.encoder.forward(mol2graph(smiles_batch, self.args), features_batch, viz_dir=viz_dir)
 
 
 class GAN(nn.Module):

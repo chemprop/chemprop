@@ -271,19 +271,14 @@ class BatchMolGraph:
 
 
 def mol2graph(smiles_batch: List[str],
-              features_batch: List[np.ndarray],
-              args: Namespace) -> Union[BatchMolGraph, Tuple[BatchMolGraph, np.ndarray]]:
+              args: Namespace) -> BatchMolGraph:
     """
     Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
 
     :param smiles_batch: A list of SMILES strings.
-    :param features_batch: A list of ndarrays containing additional features.
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    if args.features_only:
-            return None, features_batch  # molgraph won't be used in this case, so save some time
-
     mol_graphs = []
     for smiles in smiles_batch:
         if smiles in SMILES_TO_GRAPH:
@@ -295,7 +290,4 @@ def mol2graph(smiles_batch: List[str],
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
     
-    if args.features:
-        return BatchMolGraph(mol_graphs, args), np.array(features_batch)
-
     return BatchMolGraph(mol_graphs, args)
