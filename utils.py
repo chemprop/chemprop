@@ -263,7 +263,7 @@ def get_data(path: str,
                 features=features_data[i] if features_data is not None else None,
                 features_generator=args.features_generator if args is not None else None,
                 use_compound_names=use_compound_names,
-                predict_features=args.predict_features
+                predict_features=args.predict_features if args is not None else False
             ) for i, line in enumerate(f)])
 
     if data.data[0].features is not None:

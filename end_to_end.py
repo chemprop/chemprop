@@ -49,6 +49,11 @@ def update_args_from_best_config(args: Namespace):
 
 if __name__ == '__main__':
     # Note: Just put junk for --data_path, it's required but it'll be overwritten
+    # Also need to specify:
+    # --dataset_type "classification" or "regression"
+    # --results_dir for hyperparam results
+    # --test_path for test csv file
+    # --preds_path where predictions will be savedd
     parser = ArgumentParser()
     add_train_args(parser)
     add_hyper_opt_args(parser)
@@ -65,8 +70,6 @@ if __name__ == '__main__':
                         help='frac of data to use for validation')
     parser.add_argument('--train_val_save', type=str, required=True,
                         help='Path to CSV file for combined train and val data')
-    parser.add_argument('--hyperopt_timeout', type=float, default=-1,
-                        help='seconds to wait for hyperopt script')
     args = parser.parse_args()
 
     modify_train_args(args)
