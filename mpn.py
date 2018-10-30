@@ -9,7 +9,7 @@ from torch.optim import Adam
 import numpy as np
 
 from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
-from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR
+from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR, get_activation_function
 
 
 class MPNEncoder(nn.Module):
@@ -92,16 +92,7 @@ class MPNEncoder(nn.Module):
         self.dropout_layer = nn.Dropout(p=self.dropout)
 
         # Activation
-        if args.activation == 'ReLU':
-            self.act_func = nn.ReLU()
-        elif args.activation == 'LeakyReLU':
-            self.act_func = nn.LeakyReLU(0.1)
-        elif args.activation == 'PReLU':
-            self.act_func = nn.PReLU()
-        elif args.activation == 'tanh':
-            self.act_func = nn.Tanh()
-        else:
-            raise ValueError('Activation "{}" not supported.'.format(args.activation))
+        self.act_func = get_activation_function(args.activation)
 
         self.cached_zero_vector = torch.zeros(self.hidden_size)
         if args.cuda:
