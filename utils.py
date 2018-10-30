@@ -82,7 +82,7 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
         } if scaler is not None else None
     }
     if args.moe:
-        state['domain_encs'] = model.domain_encs
+        state['domain_encs'] = model.get_domain_encs()
     torch.save(state, path)
 
 
@@ -143,9 +143,10 @@ def load_checkpoint(path: str,
     model.load_state_dict(model_state_dict)
 
     if args.moe:
-        model.domain_encs = state['domain_encs']
+        domain_encs = state['domain_encs']
         if args.cuda:
-            model.domain_encs = [encs.cuda() for encs in model.domain_encs]
+            domain_encs = [encs.cuda() for encs in domain_encs]
+        model.set_domain_encs(domain_encs)
 
     if cuda:
         print('Moving model to cuda')

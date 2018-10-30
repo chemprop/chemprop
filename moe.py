@@ -182,6 +182,12 @@ class MOE(nn.Module):
                 batch_encs = self.encoder(train_batch) #bs x hidden
             domain_encs.append(torch.mean(batch_encs, dim=0))
         self.domain_encs = domain_encs
+    
+    def set_domain_encs(self, domain_encs):
+        self.domain_encs = domain_encs
+    
+    def get_domain_encs(self):
+        return self.domain_encs
 
     def compute_loss(self, train_smiles, train_targets, test_smiles):  # TODO(moe) parallelize?
         '''
@@ -248,5 +254,4 @@ class MOE(nn.Module):
         
         #TODO(moe) turn off critic and entropy, tune lambda_moe and m_rank
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
-
         return loss

@@ -3,7 +3,8 @@ from argparse import Namespace
 import torch.nn as nn
 
 from jtnn import JTNN
-from mpn import MPN, GAN
+from mpn import MPN
+from gan import GAN
 from moe import MOE
 from nn_utils import get_activation_function, initialize_weights
 
@@ -43,6 +44,9 @@ def build_model(args: Namespace) -> nn.Module:
 
     if args.moe:
         model = MOE(args)
+        if args.adversarial:
+            args.output_size = output_size
+            model = GAN(args, prediction_model=model, encoder=model.encoder)
         initialize_weights(model)
 
         return model
@@ -88,7 +92,7 @@ def build_model(args: Namespace) -> nn.Module:
 
     if args.adversarial:
         args.output_size = output_size
-        model = GAN(args, model)
+        model = GAN(args, prediction_model=model, encoder=model[0])
 
     initialize_weights(model)
 

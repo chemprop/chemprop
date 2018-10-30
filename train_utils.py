@@ -88,7 +88,12 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
     if args.adversarial:
-        train_smiles = data.smiles()
+        if args.moe:
+            train_smiles = []
+            for d in data:
+                train_smiles += d.smiles()
+        else:
+            train_smiles = data.smiles()
         train_val_smiles = train_smiles + val_smiles
         d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
 
@@ -148,6 +153,9 @@ def train(model: nn.Module,
                 iter_count += len(batch)
 
         loss.backward()
+        import math
+        if math.isnan(compute_gnorm(model)):
+            import pdb; pdb.set_trace()
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
