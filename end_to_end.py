@@ -53,7 +53,8 @@ if __name__ == '__main__':
     # --dataset_type "classification" or "regression"
     # --results_dir for hyperparam results
     # --test_path for test csv file
-    # --preds_path where predictions will be savedd
+    # --preds_path where predictions will be saved
+    # --compound_names if necessary - might need to hard code so only during test
     parser = ArgumentParser()
     add_train_args(parser)
     add_hyper_opt_args(parser)
@@ -98,4 +99,5 @@ if __name__ == '__main__':
     # Predict on test data
     args.checkpoint_dir = args.save_dir
     update_args_from_checkpoint_dir(args)
+    args.compound_names = True  # only if test set has compound names
     make_predictions(args)
