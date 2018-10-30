@@ -96,6 +96,7 @@ class HLoss(nn.Module):
     def forward(self, x):
         #b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
         b = x * torch.log(x)
+        b[torch.isnan(b)] = 0 # defining 0 log 0 = 0
         b = -1.0 * b.sum()
         return b
 
