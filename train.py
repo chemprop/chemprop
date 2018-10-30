@@ -84,11 +84,12 @@ def run_training(args: Namespace) -> List[float]:
         chunk_len = math.ceil(len(train_data) / args.num_chunks)
         os.makedirs(args.chunk_temp_dir, exist_ok=True)
         train_paths = []
+        chunks = train_data.chunk(args.num_chunks)
         for i in range(args.num_chunks):
             chunk_path = os.path.join(args.chunk_temp_dir, str(i) + '.txt')
             memo_path = os.path.join(args.chunk_temp_dir, 'memo' + str(i) + '.txt')
             with open(chunk_path, 'wb') as f:
-                pickle.dump(train_data[i * chunk_len:(i + 1) * chunk_len], f)
+                pickle.dump(chunks[i], f)
             train_paths.append((chunk_path, memo_path))
         train_data = train_paths
     
