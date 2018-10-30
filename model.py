@@ -77,7 +77,7 @@ def build_model(args: Namespace) -> nn.Module:
             nn.Dropout(args.ffn_dropout),
             nn.Linear(args.ffn_hidden_dim, output_size),
         ])
-    
+
     # Classification
     if args.dataset_type == 'classification':
         ffn.append(nn.Sigmoid())

@@ -64,8 +64,8 @@ class MPNWorker(Worker):
         cs.add_hyperparameters([
             CSH.UniformIntegerHyperparameter('hidden_size', lower=150, upper=1800),
             CSH.UniformIntegerHyperparameter('depth', lower=2, upper=9),
-            CSH.CategoricalHyperparameter('master_node', choices=[True, False]),
-            CSH.UniformIntegerHyperparameter('master_dim', lower=150, upper=1800)
+            # TODO: allow virtual edges - currently breaks featurization b/c memoizes different feature vector sizes
+            # CSH.CategoricalHyperparameter('virtual_edges', choices=[True, False])
         ])
 
         return cs
