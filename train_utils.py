@@ -51,9 +51,6 @@ def train(model: nn.Module,
     :return: The total number of iterations (training examples) trained on so far.
     """
     model.train()
-    
-    if not args.moe:
-        data.shuffle()
 
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
@@ -85,6 +82,9 @@ def train(model: nn.Module,
                 with open(memo_path, 'wb') as f:
                     pickle.dump(featurization.SMILES_TO_GRAPH, f, protocol=pickle.HIGHEST_PROTOCOL)
         return n_iter
+    
+    if not args.moe:
+        data.shuffle()
 
     loss_sum, iter_count = 0, 0
     if args.adversarial:
