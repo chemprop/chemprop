@@ -267,7 +267,7 @@ def get_data(path: str,
             ) for i, line in enumerate(f)])
 
     if data.data[0].features is not None:
-        args.features_dim = len(data.data[0].features)
+        args.features_dim = len(data.data[0].features[0])
 
     if args is not None and args.dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, args.num_bins)

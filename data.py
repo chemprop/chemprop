@@ -1,4 +1,5 @@
 import random
+import math
 from typing import List
 
 import numpy as np
@@ -79,6 +80,14 @@ class MoleculeDataset(Dataset):
         if seed is not None:
             random.seed(seed)
         random.shuffle(self.data)
+    
+    def chunk(self, num_chunks: int, seed: int = None):
+        self.shuffle(seed)
+        datasets = []
+        chunk_len = math.ceil(len(self.data) / num_chunks)
+        for i in range(num_chunks):
+            datasets.append(MoleculeDataset(self.data[i * chunk_len:(i + 1) * chunk_len]))
+        return datasets
 
     def __len__(self):
         return len(self.data)
