@@ -310,3 +310,38 @@ class GraphGRU(nn.Module):
             h = h * mask
 
         return h
+
+
+class MayrDropout(nn.Module):
+    def __init__(self, p):
+        super(MayrDropout, self).__init__()
+        self.p = p
+    
+    def forward(self, inp):  # no scaling during training
+        if self.training:
+            mask = (torch.rand(inp.size()) > self.p).to(inp)
+            return inp * mask
+        else:
+            return inp
+
+
+class MayrLinear(nn.Module):
+    def __init__(self, input_dim, output_dim, p):
+        super(MayrLinear, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.p = p
+        self.linear = nn.Linear(input_dim, output_dim)
+    
+    def forward(self, inp):
+        return self.linear(inp)
+    
+    def train(self, mode):
+        self.linear.weight.data /= 1 - self.p
+        self.linear.bias.data /= 1 - self.p
+        return self
+    
+    def eval(self):
+        self.linear.weight.data *= 1 - self.p
+        self.linear.bias.data *= 1 - self.p
+        return self

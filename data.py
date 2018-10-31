@@ -35,6 +35,8 @@ class MoleculeDatapoint:
 
         self.smiles = line[0]  # str
         self.features = features  # np.ndarray
+        if self.features is not None and len(self.features.shape) > 2:
+            self.features = np.squeeze(self.features)
 
         # Generate additional features if given a generator
         if features_generator is not None:

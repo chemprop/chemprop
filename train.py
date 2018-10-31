@@ -149,7 +149,7 @@ def run_training(args: Namespace) -> List[float]:
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
             logger.debug('Epoch {}'.format(epoch))
-
+            
             n_iter = train(
                 model=model,
                 data=train_data,

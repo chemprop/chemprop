@@ -112,6 +112,7 @@ class MPNEncoder(nn.Module):
         """
         if self.args.use_input_features:
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
+            features_batch = features_batch.squeeze()
 
             if self.args.cuda:
                 features_batch = features_batch.cuda()

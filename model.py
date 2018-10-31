@@ -6,7 +6,7 @@ from jtnn import JTNN
 from mpn import MPN
 from gan import GAN
 from moe import MOE
-from nn_utils import get_activation_function, initialize_weights
+from nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
 class MoleculeModel(nn.Module):
@@ -58,28 +58,35 @@ def build_model(args: Namespace) -> nn.Module:
         first_linear_dim = args.hidden_size * (1 + args.jtnn)
         if args.use_input_features:
             first_linear_dim += args.features_dim
+    
+    if args.mayr_layers:
+        drop_layer = lambda p: MayrDropout(p)
+        linear_layer = lambda input_dim, output_dim, p: MayrLinear(input_dim, output_dim, p)
+    else:
+        drop_layer = lambda p: nn.Dropout(p)
+        linear_layer = lambda input_dim, output_dim, p: nn.Linear(input_dim, output_dim)
 
     # Create FFN layers
     if args.ffn_num_layers == 1:
         ffn = [
-            nn.Dropout(args.ffn_input_dropout),
-            nn.Linear(first_linear_dim, output_size)
+            drop_layer(args.ffn_input_dropout),
+            linear_layer(first_linear_dim, output_size, args.ffn_input_dropout)
         ]
     else:
         ffn = [
-            nn.Dropout(args.ffn_input_dropout),
-            nn.Linear(first_linear_dim, args.ffn_hidden_size)
+            drop_layer(args.ffn_input_dropout),
+            linear_layer(first_linear_dim, args.ffn_hidden_size, args.ffn_input_dropout)
         ]
         for _ in range(args.ffn_num_layers - 2):
             ffn.extend([
                 get_activation_function(args.activation),
-                nn.Dropout(args.ffn_dropout),
-                nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
+                drop_layer(args.ffn_dropout),
+                linear_layer(args.ffn_hidden_size, args.ffn_hidden_size, args.ffn_dropout),
             ])
         ffn.extend([
             get_activation_function(args.activation),
-            nn.Dropout(args.ffn_dropout),
-            nn.Linear(args.ffn_hidden_size, output_size),
+            drop_layer(args.ffn_dropout),
+            linear_layer(args.ffn_hidden_size, output_size, args.ffn_dropout),
         ])
 
     # Classification
