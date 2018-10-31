@@ -99,7 +99,7 @@ def build_model(args: Namespace) -> nn.Module:
 
     if args.adversarial:
         args.output_size = output_size
-        model = GAN(args, prediction_model=model, encoder=model[0])
+        model = GAN(args, prediction_model=model, encoder=model.encoder)
 
     initialize_weights(model)
 
