@@ -1,10 +1,11 @@
 from argparse import Namespace
+from collections import defaultdict
 from copy import deepcopy
-import csv
+import json
 import math
 import os
-import pickle
 from pprint import pprint
+from typing import Any, Dict, List
 
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
@@ -16,6 +17,42 @@ import numpy as np
 
 from parsing import parse_hyper_opt_args
 from train import run_training
+
+
+def load_sorted_results(results_dir: str) -> List[dict]:
+    """
+    Loads results and corresponding configs sorted from smallest to greatest loss.
+
+    :param results_dir: Directory containing configs.json and results.json.
+    :return: A list of configs/results in sorted order.
+    """
+    # Get results
+    id_to_results = defaultdict(list)
+    with open(os.path.join(results_dir, 'results.json'), 'r') as f:
+        for line in f:
+            result = json.loads(line.strip())
+            run_id = tuple(result[0])
+            id_to_results[run_id].append({
+                'loss': result[3]['loss'],
+                'epochs': result[1]
+            })
+
+    # Match results to config
+    with open(os.path.join(results_dir, 'configs.json'), 'r') as f:
+        for line in f:
+            config = json.loads(line.strip())
+            run_id = tuple(config[0])
+            if run_id not in id_to_results:
+                print('Id "{}" in configs but not in results, skipping.'.format(run_id))
+                continue
+            for result in id_to_results[run_id]:
+                result.update(**config[1])
+
+    # Convert to list sorted by loss
+    results = [result for result_list in id_to_results.values() for result in result_list]
+    results.sort(key=lambda result: result['loss'])
+
+    return results
 
 
 class MPNWorker(Worker):

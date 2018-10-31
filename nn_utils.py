@@ -317,7 +317,7 @@ class MayrDropout(nn.Module):
         super(MayrDropout, self).__init__()
         self.p = p
     
-    def forward(self, inp): # no scaling during training
+    def forward(self, inp):  # no scaling during training
         if self.training:
             mask = (torch.rand(inp.size()) > self.p).to(inp)
             return inp * mask
