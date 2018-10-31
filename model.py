@@ -68,18 +68,18 @@ def build_model(args: Namespace) -> nn.Module:
     else:
         ffn = [
             nn.Dropout(args.ffn_input_dropout),
-            nn.Linear(first_linear_dim, args.ffn_hidden_dim)
+            nn.Linear(first_linear_dim, args.ffn_hidden_size)
         ]
         for _ in range(args.ffn_num_layers - 2):
             ffn.extend([
                 get_activation_function(args.activation),
                 nn.Dropout(args.ffn_dropout),
-                nn.Linear(args.ffn_hidden_dim, args.ffn_hidden_dim),
+                nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
             ])
         ffn.extend([
             get_activation_function(args.activation),
             nn.Dropout(args.ffn_dropout),
-            nn.Linear(args.ffn_hidden_dim, output_size),
+            nn.Linear(args.ffn_hidden_size, output_size),
         ])
 
     # Classification

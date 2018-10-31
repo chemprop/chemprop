@@ -173,12 +173,12 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of set2set RNN iterations to perform')
     parser.add_argument('--jtnn', action='store_true', default=False,
                         help='Build junction tree and perform message passing over both original graph and tree')
-    parser.add_argument('--ffn_input_dropout', type=float, default=0.0,
-                        help='Input dropout for higher-capacity FFN')
-    parser.add_argument('--ffn_dropout', type=float, default=0.0,
-                        help='Dropout for higher-capacity FFN')
-    parser.add_argument('--ffn_hidden_dim', type=int, default=600,
-                        help='Hidden dim for higher-capacity FFN')
+    parser.add_argument('--ffn_input_dropout', type=float, default=None,
+                        help='Input dropout for higher-capacity FFN (defaults to dropout)')
+    parser.add_argument('--ffn_dropout', type=float, default=None,
+                        help='Dropout for higher-capacity FFN (defaults to dropout)')
+    parser.add_argument('--ffn_hidden_size', type=int, default=None,
+                        help='Hidden dim for higher-capacity FFN (defaults to hidden_size)')
     parser.add_argument('--ffn_num_layers', type=int, default=2,
                         help='Number of layers in FFN after MPN encoding')
     parser.add_argument('--adversarial', action='store_true', default=False,
@@ -270,6 +270,13 @@ def modify_train_args(args: Namespace):
     del args.lr_scaler
 
     assert args.ffn_num_layers >= 1
+
+    if args.ffn_hidden_size is None:
+        args.ffn_hidden_size = args.hidden_size
+    if args.ffn_input_dropout is None:
+        args.ffn_input_dropout = args.dropout
+    if args.ffn_dropout is None:
+        args.ffn_dropout = args.dropout
 
 
 def parse_hyper_opt_args() -> Namespace:

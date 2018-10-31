@@ -6,7 +6,7 @@ from pprint import pprint
 from parsing import add_hyper_opt_args, add_predict_args, add_train_args, modify_hyper_opt_args, modify_train_args,\
     update_args_from_checkpoint_dir
 from train import cross_validate
-from hyper_opt import optimize_hyperparameters
+from hyper_opt import load_sorted_results, optimize_hyperparameters
 from resplit_data import resplit
 from avg_dups import average_duplicates
 from predict import make_predictions
@@ -21,30 +21,6 @@ def merge_train_val(args: Namespace):
         vf.readline()  # skip header from validation file
         for line in vf:
             tvf.write(line.strip() + '\n')
-
-
-def update_args_from_best_config(args: Namespace):
-    # Find best config index from results.json
-    best_config_index = None
-    best_loss = float('inf')
-    with open(os.path.join(args.results_dir, 'results.json'), 'r') as f:
-        for line in f:
-            result = json.loads(line.strip())
-            config_index, loss = result[0], result[3]['loss']
-            if loss < best_loss:
-                best_config_index, best_loss = config_index, loss
-
-    # Use best config index to identify best config from configs.json
-    with open(os.path.join(args.results_dir, 'configs.json'), 'r') as f:
-        for line in f:
-            result = json.loads(line.strip())
-            config_index, config = result[0], result[1]
-            if config_index == best_config_index:
-                print('Best config')
-                pprint(config)
-                for key, value in config.items():
-                    setattr(args, key, value)
-                break
 
 
 if __name__ == '__main__':
@@ -89,15 +65,25 @@ if __name__ == '__main__':
     args.separate_test_set = args.val_save
     optimize_hyperparameters(args)
 
-    # Determine best hyperparameters and train
+    # Determine best hyperparameters, update args, and train
+    results = load_sorted_results(args.results_dir)
+    config = results[0]
+    config.pop('loss')
+    print('Best config')
+    pprint(config)
+    for key, value in config.items():
+        setattr(args, key, value)
+
     args.data_path = args.train_val_save
     args.separate_test_set = None
     args.split_sizes = [0.8, 0.2, 0.0]  # no need for a test set during training
-    update_args_from_best_config(args)
+
     cross_validate(args)
 
     # Predict on test data
     args.checkpoint_dir = args.save_dir
     update_args_from_checkpoint_dir(args)
     args.compound_names = True  # only if test set has compound names
+    args.ensemble_size = 5  # might want to make this an arg somehow (w/o affecting hyperparameter optimization)
+
     make_predictions(args)
