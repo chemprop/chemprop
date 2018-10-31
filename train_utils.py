@@ -153,9 +153,9 @@ def train(model: nn.Module,
                 iter_count += len(batch)
 
         loss.backward()
-        import math
-        if math.isnan(compute_gnorm(model)):
-            import pdb; pdb.set_trace()
+        # import math
+        # if math.isnan(compute_gnorm(model)):
+        #     import pdb; pdb.set_trace()
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
