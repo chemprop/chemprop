@@ -205,6 +205,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Mahalanobis matrix rank in moe model')
     parser.add_argument('--num_sources', type=int, default=10,
                         help='Number of source tasks for moe')
+    parser.add_argument('--mayr_layers', action='store_true', default=False,
+                        help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
 
 
 def modify_hyper_opt_args(args: Namespace):
