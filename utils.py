@@ -327,7 +327,7 @@ def split_data(data: MoleculeDataset,
         return scaffold_split_one(data)
 
     elif args.split_type == 'scaffold_overlap':
-        return scaffold_split_overlap(data, overlap=args.scaffold_overlap)
+        return scaffold_split_overlap(data, overlap=args.scaffold_overlap, seed=seed)
 
     elif args.split_type == 'random':
         data.shuffle(seed=seed)
