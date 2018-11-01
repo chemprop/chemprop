@@ -336,12 +336,15 @@ class MayrLinear(nn.Module):
     def forward(self, inp):
         return self.linear(inp)
     
-    def train(self, mode):
-        self.linear.weight.data /= 1 - self.p
-        self.linear.bias.data /= 1 - self.p
-        return self
-    
-    def eval(self):
-        self.linear.weight.data *= 1 - self.p
-        self.linear.bias.data *= 1 - self.p
+    def train(self, mode: bool = True):
+        if mode != self.training:
+            if mode:
+                self.linear.weight.data /= 1 - self.p
+                self.linear.bias.data /= 1 - self.p
+            else:
+                self.linear.weight.data *= 1 - self.p
+                self.linear.bias.data *= 1 - self.p
+
+        self.training = mode
+
         return self
