@@ -1,7 +1,8 @@
-from argparse import Namespace
 from collections import defaultdict
+from copy import deepcopy
 import logging
 from morgan_fingerprint import morgan_fingerprint
+import random
 from typing import Dict, List, Set, Tuple, Union
 
 from rdkit import Chem
@@ -76,7 +77,7 @@ def scaffold_split(data: MoleculeDataset,
     """
     Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
 
-    :param data: A MoleculeDataset
+    :param data: A MoleculeDataset.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param logger: A logger.
@@ -84,33 +85,33 @@ def scaffold_split(data: MoleculeDataset,
     """
     assert sum(sizes) == 1
 
-    # Get data
-    scaffold_to_indices_map = scaffold_to_smiles(data.smiles(), use_indices=True)
+    # Map from scaffold to index in the data
+    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
-    index_sets = sorted(list(scaffold_to_indices_map.values()),
+    index_sets = sorted(list(scaffold_to_indices.values()),
                         key=lambda index_set: len(index_set),
                         reverse=True)
 
     # Split
     train_size, val_size = sizes[0] * len(data), sizes[1] * len(data)
-    train_indices, val_indices, test_indices = [], [], []
+    train, val, test = [], [], []
     train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
 
     for index_set in index_sets:
-        if len(train_indices) + len(index_set) <= train_size:
-            train_indices += index_set
+        if len(train) + len(index_set) <= train_size:
+            train += index_set
             train_scaffold_count += 1
-        elif len(val_indices) + len(index_set) <= val_size:
-            val_indices += index_set
+        elif len(val) + len(index_set) <= val_size:
+            val += index_set
             val_scaffold_count += 1
         else:
-            test_indices += index_set
+            test += index_set
             test_scaffold_count += 1
 
     if logger is not None:
         logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
-            len(scaffold_to_indices_map),
+            len(scaffold_to_indices),
             train_scaffold_count,
             val_scaffold_count,
             test_scaffold_count
@@ -118,9 +119,10 @@ def scaffold_split(data: MoleculeDataset,
     
     log_scaffold_stats(data, index_sets, logger=logger)
 
-    train = [data[i] for i in train_indices]
-    val = [data[i] for i in val_indices]
-    test = [data[i] for i in test_indices]
+    # Map from indices to data
+    train = [data[i] for i in train]
+    val = [data[i] for i in val]
+    test = [data[i] for i in test]
 
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
@@ -171,17 +173,17 @@ def scaffold_split_one(data: MoleculeDataset) -> Tuple[MoleculeDataset,
     :param data: A MoleculeDataset.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
-    # Get data
-    scaffold_to_indices_map = scaffold_to_smiles(data.smiles(), use_indices=True)
+    # Map from scaffold to index in the data
+    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
-    scaffolds = sorted(list(scaffold_to_indices_map.keys()),
-                       key=lambda scaffold: len(scaffold_to_indices_map[scaffold]),
+    scaffolds = sorted(list(scaffold_to_indices.keys()),
+                       key=lambda scaffold: len(scaffold_to_indices[scaffold]),
                        reverse=True)
 
-    train = [data[index] for index in scaffold_to_indices_map[scaffolds[0]]]
-    val = [data[index] for index in scaffold_to_indices_map[scaffolds[1]]]
-    test = [data[index] for index in scaffold_to_indices_map[scaffolds[2]]]
+    train = [data[index] for index in scaffold_to_indices[scaffolds[0]]]
+    val = [data[index] for index in scaffold_to_indices[scaffolds[1]]]
+    test = [data[index] for index in scaffold_to_indices[scaffolds[2]]]
 
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
@@ -212,3 +214,122 @@ def cluster_split(data: MoleculeDataset,
         logger.debug('Cluster sizes: {}'.format([len(c) for c in clusters]))
 
     return [MoleculeDataset(cluster) for cluster in clusters]
+
+
+def scaffold_overlap(indices_1: Set[int],
+                     indices_2: Set[int],
+                     index_to_scaffold: Dict[int, str]) -> float:
+    """
+    Computes the proportion of indices in indices_2 which have a scaffold in indices_1.
+
+    :param indices_1: A set of indices (that originally map to smiles strings).
+    :param indices_2: A set of indices (that originally map to smiles strings).
+    :param index_to_scaffold: A dictionary mapping index to scaffold string.
+    :return: The proportion of indices in indices_2 which have a scaffold in indices_1.
+    """
+    scaffolds_1 = {index_to_scaffold[index] for index in indices_1}
+    indices_in_2_with_scaffold_in_1 = {index for index in indices_2 if index_to_scaffold[index] in scaffolds_1}
+    overlap = len(indices_in_2_with_scaffold_in_1) / len(indices_2)
+
+    return overlap
+
+
+def decrease_overlap(indices_1: Set[int],
+                     indices_2: Set[int],
+                     index_to_scaffold: Dict[int, str],
+                     scaffold_to_indices: Dict[str, Set[int]]) -> Tuple[Set[int], Set[int]]:
+    """
+    Decrease the scaffold overlap between two sets of indices.
+
+    :param indices_1: A set of indices (that originally map to smiles strings).
+    :param indices_2: A set of indices (that originally map to smiles strings).
+    :param index_to_scaffold: A dictionary mapping index to scaffold string.
+    :param scaffold_to_indices: A dictionary mapping scaffold string to a set of indices.
+    :return: The two sets of indices with decreased overlap.
+    """
+    # Make copies to prevent altering input set
+    indices_1 = deepcopy(indices_1)
+    indices_2 = deepcopy(indices_2)
+
+    # Determine scaffolds in each of the two sets
+    scaffolds_1 = {index_to_scaffold[index] for index in indices_1}
+    scaffolds_2 = {index_to_scaffold[index] for index in indices_2}
+
+    # Determine the smallest two scaffolds which appear in both
+    intersection = scaffolds_1 & scaffolds_2
+    sorted_intersection = sorted(list(intersection), key=lambda scaffold: len(scaffold_to_indices[scaffold]))
+    smallest_2_scaffolds = sorted_intersection[:2]
+
+    # Shuffle the two scaffolds so the direction of the swap is random
+    random.shuffle(smallest_2_scaffolds)
+    smallest_scaffold_indices_1 = scaffold_to_indices[smallest_2_scaffolds[0]]
+    smallest_scaffold_indices_2 = scaffold_to_indices[smallest_2_scaffolds[1]]
+
+    # Move molecules between the two sets so there is no overlap between these two scaffolds
+    indices_1.update(smallest_scaffold_indices_1)
+    indices_1 -= smallest_scaffold_indices_2
+    indices_2.update(smallest_scaffold_indices_2)
+    indices_2 -= smallest_scaffold_indices_1
+
+    return indices_1, indices_2
+
+
+def scaffold_split_overlap(data: MoleculeDataset,
+                           overlap: float,
+                           overlap_error: float = 0.05,
+                           max_attempts: int = 1000,
+                           sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+                           logger: logging.Logger = None) -> Tuple[MoleculeDataset,
+                                                                   MoleculeDataset,
+                                                                   MoleculeDataset]:
+    """
+    Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
+
+    :param data: A MoleculeDataset.
+    :param overlap: The proportion of test molecules which should share a molecular
+    scaffold with at least one train molecule.
+    :param overlap_error: The absolute amount by which the overlap proportion generated
+    is allowed to deviate from the overlap requested.
+    :param max_attempts: Maximum number of attempts to achieve an overlap within overlap_error
+    of the desired overlap before giving up and crashing.
+    :param sizes: A length-3 tuple with the proportions of data in the
+    train, validation, and test sets.
+    :param logger: A logger.
+    :return: A tuple containing the train, validation, and test splits of the data.
+    """
+    assert sum(sizes) == 1 and 0 <= overlap <= 1 and overlap_error >= 0
+
+    # Start with random split of the data
+    train_end, val_end, indices = int(sizes[0] * len(data)), int(sum(sizes[:2]) * len(data)), list(range(len(data)))
+    train, val, test = set(indices[:train_end]), set(indices[train_end:val_end]), set(indices[val_end:])
+
+    # Map from scaffold to index and index to scaffold
+    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
+    index_to_scaffold = {index: scaffold for scaffold, index_set in scaffold_to_indices.items() for index in index_set}
+
+    # Adjust train/val/test sets to achieve desired overlap
+    for attempt in range(max_attempts + 1):
+        print('val', scaffold_overlap(train, val, index_to_scaffold))
+        print('test', scaffold_overlap(train, test, index_to_scaffold))
+
+        # If overlap is within error bounds, break
+        if overlap - overlap_error <= scaffold_overlap(train, val, index_to_scaffold) <= overlap + overlap_error and \
+                overlap - overlap_error <= scaffold_overlap(train, test, index_to_scaffold) <= overlap + overlap_error:
+            break
+
+        # If reached max attempts unsuccessfully, raise error
+        if attempt == max_attempts:
+            raise Exception('Unable to achieve desired scaffold overlap after {} attempts :('.format(attempt))
+
+        # Adjust train/val balance
+        train, val = decrease_overlap(train, val, index_to_scaffold, scaffold_to_indices)
+
+        # Adjust train/test balance
+        train, test = decrease_overlap(train, test, index_to_scaffold, scaffold_to_indices)
+
+    # Map from indices to data
+    train = [data[i] for i in train]
+    val = [data[i] for i in val]
+    test = [data[i] for i in test]
+
+    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
