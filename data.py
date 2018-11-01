@@ -53,7 +53,6 @@ class MoleculeDatapoint:
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
             self.features = np.concatenate(self.features)
-        import pdb; pdb.set_trace()
         if predict_features:
             self.targets = self.features.tolist()  # List[float]
         else:
