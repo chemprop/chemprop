@@ -255,19 +255,48 @@ def decrease_overlap(indices_1: Set[int],
     # Determine scaffolds in each of the two sets
     scaffolds_1 = {index_to_scaffold[index] for index in indices_1}
     scaffolds_2 = {index_to_scaffold[index] for index in indices_2}
+    union = scaffolds_1 | scaffolds_2
 
-    # Select two random scaffolds to move
+    # If 0 or 1 scaffolds, can't decrease overlap so just return indices
+    if len(union) <= 1:
+        return indices_1, indices_2
+
+    # Determine intersection of scaffolds
     intersection = scaffolds_1 & scaffolds_2
-    random_scaffold_1, random_scaffold_2 = random.sample(intersection, 2)
-    random_indices_1, random_indices_2 = scaffold_to_indices[random_scaffold_1], scaffold_to_indices[random_scaffold_2]
 
-    # Move molecules between the two sets so there is no overlap between these two scaffolds
-    indices_1.update(random_indices_1)
-    indices_1 -= random_indices_2
-    indices_2.update(random_indices_2)
-    indices_2 -= random_indices_1
+    # Nothing to move so just return indices
+    if len(intersection) == 0:
+        return indices_1, indices_2
 
-    return indices_1, indices_2
+    # Only one scaffold to move so choose where to move it randomly
+    elif len(intersection) == 1:
+        # Get shared scaffold and corresponding indices
+        selected_scaffold = intersection.pop()
+        selected_indices = scaffold_to_indices[selected_scaffold]
+
+        # Move indices to one of the two sets randomly
+        if random.random() < 0.5:
+            indices_1.update(selected_indices)
+            indices_2 -= selected_indices
+        else:
+            indices_2.update(selected_indices)
+            indices_1 -= selected_indices
+
+        return indices_1, indices_2
+
+    # Move two scaffolds, one to each set
+    else:
+        # Select two shared scaffolds and get corresponding indices
+        selected_scaffold_1, selected_scaffold_2 = random.sample(intersection, 2)
+        selected_indices_1, selected_indices_2 = scaffold_to_indices[selected_scaffold_1], scaffold_to_indices[selected_scaffold_2]
+
+        # Move indices between the two sets so there is no overlap between these two scaffolds
+        indices_1.update(selected_indices_1)
+        indices_2 -= selected_indices_1
+        indices_2.update(selected_indices_2)
+        indices_1 -= selected_indices_2
+
+        return indices_1, indices_2
 
 
 def increase_overlap(indices_1: Set[int],
@@ -291,28 +320,38 @@ def increase_overlap(indices_1: Set[int],
     # Determine scaffolds in each of the two sets
     scaffolds_1 = {index_to_scaffold[index] for index in indices_1}
     scaffolds_2 = {index_to_scaffold[index] for index in indices_2}
+    union = scaffolds_1 | scaffolds_2
 
-    # Select two random scaffolds to share
-    difference = scaffolds_1 ^ scaffolds_2
-    random_scaffold_1, random_scaffold_2 = random.sample(difference, 2)
-    random_indices_1, random_indices_2 = scaffold_to_indices[random_scaffold_1], scaffold_to_indices[random_scaffold_2]
+    # If 0 or 1 scaffolds, can't increase overlap so just return indices
+    if len(union) <= 1:
+        return indices_1, indices_2
 
-    # Share molecules in these two scaffolds evenly
+    # Determine scaffolds which are only in one set or the other
+    scaffolds_1_only = scaffolds_1 - scaffolds_2
+    scaffolds_2_only = scaffolds_2 - scaffolds_1
 
-    # First remove indices from both scaffolds from both sets
-    indices_1 = indices_1 - random_indices_1 - random_indices_2
-    indices_2 = indices_2 - random_indices_1 - random_indices_2
+    # Select one scaffold from each set if possible
+    selected_scaffolds = []
 
-    # Shuffle the indices
-    random_indices_1, random_indices_2 = list(random_indices_1), list(random_indices_2)
-    random.shuffle(random_indices_1)
-    random.shuffle(random_indices_2)
+    if len(scaffolds_1_only) != 0:
+        selected_scaffolds.append(random.choice(list(scaffolds_1_only)))
+    if len(scaffolds_2_only) != 0:
+        selected_scaffolds.append(random.choice(list(scaffolds_2_only)))
 
-    # Add half the indices in each scaffold to each set
-    indices_1.update(random_indices_1[:len(random_indices_1) // 2])
-    indices_1.update(random_indices_1[:len(random_indices_2) // 2])
-    indices_2.update(random_indices_1[len(random_indices_1) // 2:])
-    indices_2.update(random_indices_1[len(random_indices_2) // 2:])
+    # Share indices from selected scaffolds
+    for scaffold in selected_scaffolds:
+        indices = scaffold_to_indices[scaffold]
+
+        indices_1 -= indices
+        indices_2 -= indices
+
+        indices = list(indices)
+        random.shuffle(indices)
+
+        # Divide up indices proportionally according to sizes of indices_1 and indices_2
+        size_1 = int(len(indices) * len(indices_1) / (len(indices_1) + len(indices_2)))
+        indices_1.update(indices[:size_1])
+        indices_2.update(indices[size_1:])
 
     return indices_1, indices_2
 
@@ -322,6 +361,7 @@ def scaffold_split_overlap(data: MoleculeDataset,
                            overlap_error: float = 0.05,
                            max_attempts: int = 1000,
                            sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+                           sizes_error: float = 0.05,
                            seed: int = 0,
                            logger: logging.Logger = None) -> Tuple[MoleculeDataset,
                                                                    MoleculeDataset,
@@ -332,12 +372,14 @@ def scaffold_split_overlap(data: MoleculeDataset,
     :param data: A MoleculeDataset.
     :param overlap: The proportion of test molecules which should share a molecular
     scaffold with at least one train molecule.
-    :param overlap_error: The absolute amount by which the overlap proportion generated
+    :param overlap_error: The  amount by which the overlap proportion generated
     is allowed to deviate from the overlap requested.
     :param max_attempts: Maximum number of attempts to achieve an overlap within overlap_error
     of the desired overlap before giving up and crashing.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
+    :param sizes_error: The  amount by which the split sizes are allowed to deviate
+    from the sizes requested.
     :param seed: Random seed.
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
@@ -364,14 +406,17 @@ def scaffold_split_overlap(data: MoleculeDataset,
         val_overlap = scaffold_overlap(train, val, index_to_scaffold)
         test_overlap = scaffold_overlap(train, test, index_to_scaffold)
 
+        print('train size', len(train) / len(data))
+        print('val size', len(val) / len(data))
+        print('test size', len(test) / len(data))
+        print()
         print('val', val_overlap)
         print('test', test_overlap)
         print()
 
-        import pdb; pdb.set_trace()
-
         # If overlap is within error bounds, break
         if min_overlap <= val_overlap <= max_overlap and min_overlap <= test_overlap <= max_overlap:
+            print(attempt)
             break
 
         # If reached max attempts unsuccessfully, raise error
@@ -389,6 +434,8 @@ def scaffold_split_overlap(data: MoleculeDataset,
             train, test = decrease_overlap(train, test, index_to_scaffold, scaffold_to_indices)
         else:
             train, test = increase_overlap(train, test, index_to_scaffold, scaffold_to_indices)
+
+    exit()
 
     # Map from indices to data
     train = [data[i] for i in train]
