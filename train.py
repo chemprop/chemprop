@@ -51,6 +51,10 @@ def run_training(args: Namespace) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
     
+    features_scaler = train_data.normalize_features()
+    val_data.normalize_features(features_scaler)
+    test_data.normalize_features(features_scaler)
+
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
         args.train_data_length = len(train_data)  # kinda hacky, but less cluttered
@@ -149,7 +153,7 @@ def run_training(args: Namespace) -> List[float]:
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
             logger.debug('Epoch {}'.format(epoch))
-            
+
             n_iter = train(
                 model=model,
                 data=train_data,
