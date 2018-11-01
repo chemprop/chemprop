@@ -116,7 +116,7 @@ def scaffold_split(data: MoleculeDataset,
             test_scaffold_count
         ))
     
-    log_scaffold_stats(data, index_sets, logger)
+    log_scaffold_stats(data, index_sets, logger=logger)
 
     train = [data[i] for i in train_indices]
     val = [data[i] for i in val_indices]
@@ -125,7 +125,23 @@ def scaffold_split(data: MoleculeDataset,
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
 
-def log_scaffold_stats(data: MoleculeDataset, index_sets, logger=None):
+def log_scaffold_stats(data: MoleculeDataset,
+                       index_sets: List[Set[int]],
+                       num_scaffolds: int = 10,
+                       num_labels: int = 20,
+                       logger: logging.Logger = None) -> List[Tuple[List[float], List[int]]]:
+    """
+    Logs and returns statistics about counts and average target values in molecular scaffolds.
+
+    :param data: A MoleculeDataset.
+    :param index_sets: A list of sets of indices representing splits of the data.
+    :param num_scaffolds: The number of scaffolds about which to display statistics.
+    :param num_labels: The number of labels about which to display statistics.
+    :param logger: A Logger.
+    :return: A list of tuples where each tuple contains a list of average target values
+    across the first num_labels labels and a list of the number of non-zero values for
+    the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
+    """
     # print some statistics about scaffolds
     target_avgs = []
     counts = []
@@ -135,10 +151,11 @@ def log_scaffold_stats(data: MoleculeDataset, index_sets, logger=None):
         targets = np.array(targets, dtype=np.float)
         target_avgs.append(np.nanmean(targets, axis=0))
         counts.append(np.count_nonzero(~np.isnan(targets), axis=0))
-    stats = [(target_avgs[i][:20], counts[i][:20]) for i in range(min(10, len(target_avgs)))]
+    stats = [(target_avgs[i][:num_labels], counts[i][:num_labels]) for i in range(min(num_scaffolds, len(target_avgs)))]
 
     if logger is not None:
-        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency, capped at 10 scaffolds and 20 labels: {}'.format(stats))
+        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
+                     'capped at {} scaffolds and {} labels: {}'.format(num_scaffolds, num_labels, stats))
 
     return stats
 

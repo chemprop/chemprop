@@ -7,8 +7,9 @@ from rdkit.Chem import AllChem
 import torch
 
 # Atom feature sizes
+MAX_ATOMIC_NUM = 100
 ATOM_FEATURES = {
-    'atomic_num': list(range(100)),
+    'atomic_num': list(range(MAX_ATOMIC_NUM)),
     'degree': [0, 1, 2, 3, 4, 5],
     'formal_charge': [-1, -2, 1, 2, 0],
     'chiral_tag': [0, 1, 2, 3],
@@ -94,7 +95,7 @@ def bond_features(bond: Chem.rdchem.Bond,
     :return: A PyTorch tensor containing the bond features.
     """
     if bond is None:
-        fbond = [1] + [0] * 13
+        fbond = [1] + [0] * (BOND_FDIM - 1)
     else:
         bt = bond.GetBondType()
         fbond = [
@@ -213,7 +214,7 @@ class BatchMolGraph:
         self.n_mols = len(self.smiles_batch)
 
         self.atom_fdim = get_atom_fdim(args)
-        self.bond_fdim = get_atom_fdim(args) + get_bond_fdim(args)
+        self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms
