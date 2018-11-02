@@ -301,7 +301,7 @@ def split_data(data: MoleculeDataset,
             all_fold_indices = pickle.load(f)
         assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
         
-        log_scaffold_stats(data, all_fold_indices, logger)
+        log_scaffold_stats(data, all_fold_indices, logger=logger)
 
         folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
 
