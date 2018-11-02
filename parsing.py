@@ -40,8 +40,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to .vocab file if using jtnn')
     parser.add_argument('--features_only', action='store_true', default=False,
                         help='Use only the additional features in an FFN, no graph network')
-    parser.add_argument('--features_generator', type=str, choices=['morgan'],
-                        help='Method of generating additional features')
+    parser.add_argument('--features_generator', type=str, nargs='*', choices=['morgan', 'morgan_count', 'rdkit_2d'],
+                        help='Method of generating additional features') #TODO allow multiple options
     parser.add_argument('--features_path', type=str,
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--predict_features', action='store_true', default=False,

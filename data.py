@@ -4,9 +4,11 @@ from typing import List
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
+from sklearn.preprocessing import StandardScaler
+from rdkit import Chem
 
 from morgan_fingerprint import morgan_fingerprint
-
+from rdkit_features import rdkit_2d_features
 
 class MoleculeDatapoint:
     def __init__(self,
@@ -35,16 +37,22 @@ class MoleculeDatapoint:
 
         self.smiles = line[0]  # str
         self.features = features  # np.ndarray
-        if self.features is not None and len(self.features.shape) > 2:
+        if self.features is not None and len(self.features.shape) > 1:
             self.features = np.squeeze(self.features)
 
         # Generate additional features if given a generator
         if features_generator is not None:
-            if features_generator == 'morgan':
-                self.features = morgan_fingerprint(self.smiles)  # np.ndarray
-            else:
-                raise ValueError('features_generator type "{}" not supported.'.format(features_generator))
-
+            self.features = []
+            for fg in features_generator:
+                if fg == 'morgan':
+                    self.features.append(morgan_fingerprint(self.smiles))  # np.ndarray
+                elif fg == 'morgan_count':
+                    self.features.append(morgan_fingerprint(self.smiles, use_counts=True))
+                elif fg == 'rdkit_2d':
+                    self.features.append(rdkit_2d_features(self.smiles))
+                else:
+                    raise ValueError('features_generator type "{}" not supported.'.format(fg))
+            self.features = np.concatenate(self.features)
         if predict_features:
             self.targets = self.features.tolist()  # List[float]
         else:
@@ -56,6 +64,7 @@ class MoleculeDatapoint:
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
+        self.scaler = None
 
     def compound_names(self):
         if self.data[0].compound_name is None:
@@ -90,6 +99,25 @@ class MoleculeDataset(Dataset):
         for i in range(num_chunks):
             datasets.append(MoleculeDataset(self.data[i * chunk_len:(i + 1) * chunk_len]))
         return datasets
+    
+    def normalize_features(self, scaler=None):
+        if self.data[0].features is None:
+            return None
+
+        if scaler is not None:
+            self.scaler = scaler
+        else:
+            if self.scaler is not None:
+                scaler = self.scaler
+            else:
+                features = np.vstack([d.features for d in self.data])
+                scaler = StandardScaler()
+                scaler.fit(features)
+                self.scaler = scaler
+
+        for d in self.data:
+            d.features = scaler.transform(d.features.reshape(1, -1))
+        return scaler
 
     def __len__(self):
         return len(self.data)

@@ -13,7 +13,6 @@ ATOM_FEATURES = {
     'degree': [0, 1, 2, 3, 4, 5],
     'formal_charge': [-1, -2, 1, 2, 0],
     'chiral_tag': [0, 1, 2, 3],
-    'implicit_valence': [0, 1, 2, 3, 4, 5, 6],
     'num_Hs': [0, 1, 2, 3, 4],
     'hybridization': [
         Chem.rdchem.HybridizationType.SP,
@@ -22,7 +21,6 @@ ATOM_FEATURES = {
         Chem.rdchem.HybridizationType.SP3D,
         Chem.rdchem.HybridizationType.SP3D2
     ],
-    'num_radical_electrons': [0, 1, 2]
 }
 
 # Distance feature sizes
@@ -31,8 +29,8 @@ THREE_D_DISTANCE_MAX = 20
 THREE_D_DISTANCE_STEP = 1
 THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE_STEP))
 
-# len(choices) + 1 to include room for uncommon values; + 1 at end for IsAromatic
-ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 1
+# len(choices) + 1 to include room for uncommon values; + 2 at end for IsAromatic and mass
+ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
 BOND_FDIM = 14
 
 # Memoization
@@ -75,14 +73,13 @@ def atom_features(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
     :return: A PyTorch tensor containing the atom features.
     """
     return onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
-           onek_encoding_unk(atom.GetDegree(), ATOM_FEATURES['degree']) + \
+           onek_encoding_unk(atom.GetTotalDegree(), ATOM_FEATURES['degree']) + \
            onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge']) + \
            onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag']) + \
-           onek_encoding_unk(int(atom.GetImplicitValence()), ATOM_FEATURES['implicit_valence']) + \
            onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) + \
            onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) + \
-           onek_encoding_unk(int(atom.GetNumRadicalElectrons()), ATOM_FEATURES['num_radical_electrons']) + \
-           [1 if atom.GetIsAromatic() else 0]
+           [1 if atom.GetIsAromatic() else 0] + \
+           [atom.GetMass() * 0.01] # scaled to about the same range as other features
 
 
 def bond_features(bond: Chem.rdchem.Bond,

@@ -252,6 +252,5 @@ class MOE(nn.Module):
             moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
         
-        #TODO(moe) turn off critic and entropy, tune lambda_moe and m_rank
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
         return loss
