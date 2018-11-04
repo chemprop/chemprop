@@ -25,7 +25,11 @@ def rdkit_2d_features(smiles: str):
     mol = Chem.MolFromSmiles(smiles)
     features = []
     for f in FEATURE_FUNCTIONS:
-        feature = f(mol)
+        try:
+            feature = f(mol)
+        except: # very very rarely, something like BalabanJ crashes
+            dummy_mol = Chem.MolFromSmiles('c1ccc2cc(CC3=NCCN3)ccc2c1')
+            feature = f(dummy_mol)
         if type(feature) == list:
             features.extend(feature)
         else:
