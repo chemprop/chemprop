@@ -68,28 +68,29 @@ def add_train_args(parser: ArgumentParser):
                         help='store memo dicts for mol2graph in chunk_temp_dir when chunking, at large disk space cost')
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
-    parser.add_argument('--scaffold_split', action='store_true', default=False,
-                        help='Whether to split train/val/test by molecular scaffold instead of randomly')
-    parser.add_argument('--scaffold_split_one', action='store_true', default=False,
-                        help='Whether to split train/val/test such that each has all molecules from'
-                             'exactly one scaffold (largest in train, second largest in val, third largest in test')
+    parser.add_argument('--split_type', type=str, default='random',
+                        choices=['random', 'scaffold', 'scaffold_one', 'scaffold_overlap', 'predetermined'],
+                        help='Method of splitting the data into train/val/test')
+    parser.add_argument('--scaffold_overlap', type=float, default=None,
+                        help='Proportion of molecules in val/test sets which should contain scaffolds in the train set'
+                             'For use when split_type == "scaffold_overlap"')
+    parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
+                        help='Split proportions for train/validation/test sets')
+    parser.add_argument('--num_folds', type=int, default=1,
+                        help='Number of folds when performing cross validation')
+    parser.add_argument('--folds_file', type=str, default=None,
+                        help='Optional file of fold labels')
+    parser.add_argument('--test_fold_index', type=int, default=None,
+                        help='Which fold to use as test for leave-one-out cross val')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='Random seed to use when splitting data into train/val/test sets.'
+                             'When `num_folds` > 1, the first fold uses this seed and all'
+                             'subsequent folds add 1 to the seed.')
     parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
                              'Note: Defaults to "auc" for classification and "rmse" for regression.')
-    parser.add_argument('--seed', type=int, default=0,
-                        help='Random seed to use when splitting data into train/val/test sets.'
-                             'When `num_folds` > 1, the first fold uses this seed and all'
-                             'subsequent folds add 1 to the seed.')
-    parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
-                        help='Split proportions for train/validation/test sets')
-    parser.add_argument('--num_folds', type=int, default=1,
-                        help='Number of folds when performing cross validation')
-    parser.add_argument('--folds_file', type=str, 
-                        help='Optional file of fold labels')
-    parser.add_argument('--test_fold_index', type=int,
-                        help='Which fold to use as test for leave-one-out cross val')
     parser.add_argument('--quiet', action='store_true', default=False,
                         help='Skip non-essential print statements')
     parser.add_argument('--log_frequency', type=int, default=10,
@@ -279,6 +280,9 @@ def modify_train_args(args: Namespace):
         args.ffn_input_dropout = args.dropout
     if args.ffn_dropout is None:
         args.ffn_dropout = args.dropout
+
+    assert (args.split_type == 'scaffold_overlap') == (args.scaffold_overlap is not None)
+    assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
 
 
 def parse_hyper_opt_args() -> Namespace:

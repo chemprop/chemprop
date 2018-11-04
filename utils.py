@@ -15,7 +15,7 @@ import torch.nn as nn
 
 from data import MoleculeDatapoint, MoleculeDataset
 from model import build_model
-from scaffold import scaffold_split, scaffold_split_one, log_scaffold_stats
+from scaffold import scaffold_split, scaffold_split_one, scaffold_split_overlap, log_scaffold_stats
 
 
 class StandardScaler:
@@ -295,7 +295,7 @@ def split_data(data: MoleculeDataset,
     """
     assert len(sizes) == 3, sum(sizes) == 1
 
-    if args.folds_file:
+    if args.split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately
         with open(args.folds_file, 'rb') as f:
             all_fold_indices = pickle.load(f)
@@ -320,13 +320,16 @@ def split_data(data: MoleculeDataset,
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
-    elif args.scaffold_split_one:
-        return scaffold_split_one(data)
-
-    elif args.scaffold_split:
+    elif args.split_type == 'scaffold':
         return scaffold_split(data, sizes=sizes, logger=logger)
 
-    else:
+    elif args.split_type == 'scaffold_one':
+        return scaffold_split_one(data)
+
+    elif args.split_type == 'scaffold_overlap':
+        return scaffold_split_overlap(data, overlap=args.scaffold_overlap, seed=seed)
+
+    elif args.split_type == 'random':
         data.shuffle(seed=seed)
 
         train_size, val_size = [int(size * len(data)) for size in sizes[:2]]
@@ -336,6 +339,9 @@ def split_data(data: MoleculeDataset,
         test = data[train_size + val_size:]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+
+    else:
+        raise ValueError('split_type "{}" not supported.'.format(args.split_type))
 
 
 def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
