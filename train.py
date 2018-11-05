@@ -85,7 +85,11 @@ def run_training(args: Namespace) -> List[float]:
     train_data_length = len(train_data)
 
     if args.moe:
-        train_data = cluster_split(train_data, args.num_sources, logger=logger)
+        train_data = cluster_split(train_data, 
+                                   args.num_sources, 
+                                   args.cluster_max_ratio, 
+                                   seed=args.cluster_split_seed, 
+                                   logger=logger)
 
     # Chunk training data if too large to load in memory all at once
     if args.num_chunks > 1:

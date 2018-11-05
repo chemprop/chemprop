@@ -190,6 +190,7 @@ def scaffold_split_one(data: MoleculeDataset) -> Tuple[MoleculeDataset,
 
 def cluster_split(data: MoleculeDataset,
                   n_clusters: int,
+                  ratio_tolerance: int,
                   seed: int = 0,
                   logger: logging.Logger = None) -> List[MoleculeDataset]:
     """
@@ -197,17 +198,25 @@ def cluster_split(data: MoleculeDataset,
 
     :param data: A list of data points (smiles string, target values).
     :param n_clusters: Number of clusters for K-means. 
+    :param ratio_tolerance: Max ratio of sizes between clusters.
     :param seed: Random seed for K-means. 
     :param logger: A logger for logging cluster split stats.
     :return: A list containing the K-means splits.
     """
+    worst_ratio = ratio_tolerance + 1
     fp = [morgan_fingerprint(s) for s in data.smiles()]
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=seed)
-    cluster_labels = kmeans.fit_predict(fp)
+    while worst_ratio > ratio_tolerance:
+        kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=seed)
+        cluster_labels = kmeans.fit_predict(fp)
 
-    clusters = [[] for _ in range(n_clusters)]
-    for i in range(len(data)):
-        clusters[cluster_labels[i]].append(data[i])
+        clusters = [[] for _ in range(n_clusters)]
+        for i in range(len(data)):
+            clusters[cluster_labels[i]].append(data[i])
+        
+        max_cluster_len = max([len(c) for c in clusters])
+        min_cluster_len = min([len(c) for c in clusters])
+        worst_ratio = max_cluster_len / min_cluster_len
+        seed += 1
     
     if logger is not None:
         logger.debug('Split into {} clusters'.format(n_clusters))

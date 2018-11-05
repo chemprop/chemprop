@@ -194,6 +194,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Use noam scheduler for GAN optimizers')
     parser.add_argument('--moe', action='store_true', default=False,
                         help='Use mixture of experts model')
+    parser.add_argument('--cluster_split_seed', type=int, default=0,
+                        help='Random seed for K means cluster split')
+    parser.add_argument('--cluster_max_ratio', type=float, default=4,
+                        help='Max ratio of sizes between two clusters for K means cluster split')
     parser.add_argument('--batch_domain_encs', action='store_true', default=False,
                         help='compute domain encoding means in batches, for speed')
     parser.add_argument('--lambda_moe', type=float, default=0.1,
