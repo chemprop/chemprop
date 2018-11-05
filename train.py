@@ -129,6 +129,7 @@ def run_training(args: Namespace) -> List[float]:
         if args.checkpoint_paths is not None:
             logger.debug('Loading model {} from {}'.format(model_idx, args.checkpoint_paths[model_idx]))
             model = load_checkpoint(args.checkpoint_paths[model_idx],
+                                    current_args=args,
                                     num_tasks=args.num_tasks,
                                     dataset_type=args.dataset_type,
                                     encoder_only=args.load_encoder_only,

@@ -469,8 +469,6 @@ def scaffold_split_overlap(data: MoleculeDataset,
         else:
             train, val_test = increase_overlap(train, val_test, index_to_scaffold, scaffold_to_indices, goal_train_size)
 
-    print('attempts', attempt)
-
     # Split val/test
     train_scaffolds = {index_to_scaffold[index] for index in train}
 
@@ -484,6 +482,15 @@ def scaffold_split_overlap(data: MoleculeDataset,
 
     val = val_test_overlap[:val_overlap_size] + val_test_non_overlap[:val_non_overlap_size]
     test = val_test_overlap[val_overlap_size:] + val_test_non_overlap[val_non_overlap_size:]
+
+    # Log scaffold sizes
+    if logger is not None:
+        logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
+            len(scaffold_to_indices),
+            len(set(index_to_scaffold[index] for index in train)),
+            len(set(index_to_scaffold[index] for index in val)),
+            len(set(index_to_scaffold[index] for index in test)),
+        ))
 
     # Map from indices to data
     train = [data[i] for i in train]

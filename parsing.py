@@ -234,6 +234,9 @@ def update_args_from_checkpoint_dir(args: Namespace):
 
     args.ensemble_size = len(args.checkpoint_paths)
 
+    if args.ensemble_size == 0:
+        raise ValueError('Failed to find any model checkpoints in directory "{}"'.format(args.checkpoint_dir))
+
 
 def modify_train_args(args: Namespace):
     """Modifies and validates training arguments."""

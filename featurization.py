@@ -79,7 +79,7 @@ def atom_features(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
            onek_encoding_unk(int(atom.GetTotalNumHs()), ATOM_FEATURES['num_Hs']) + \
            onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) + \
            [1 if atom.GetIsAromatic() else 0] + \
-           [atom.GetMass() * 0.01] # scaled to about the same range as other features
+           [atom.GetMass() * 0.01]  # scaled to about the same range as other features
 
 
 def bond_features(bond: Chem.rdchem.Bond,

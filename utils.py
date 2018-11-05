@@ -87,6 +87,7 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
 
 
 def load_checkpoint(path: str,
+                    current_args: Namespace = None,
                     cuda: bool = False,
                     get_scaler: bool = False,
                     get_args: bool = False,
@@ -101,6 +102,7 @@ def load_checkpoint(path: str,
     Loads a model checkpoint and optionally the scaler the model was trained with.
 
     :param path: Path where checkpoint is saved.
+    :param current_args: The current arguments.
     :param cuda: Whether to move model to cuda.
     :param get_scaler: Whether to also load the scaler the model was trained with.
     :param get_args: Whether to also load the args the model was trained with.
@@ -111,11 +113,17 @@ def load_checkpoint(path: str,
     :param logger: A logger.
     :return: The loaded model and optionally the scaler.
     """
+    # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
     args, loaded_state_dict = state['args'], state['state_dict']
+
+    # Update args with current args
     args.cuda = cuda
     args.num_tasks = num_tasks or args.num_tasks
     args.dataset_type = dataset_type or args.dataset_type
+    for key, value in vars(current_args).items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
 
     model = build_model(args)
     model_state_dict = model.state_dict()
@@ -327,7 +335,7 @@ def split_data(data: MoleculeDataset,
         return scaffold_split_one(data)
 
     elif args.split_type == 'scaffold_overlap':
-        return scaffold_split_overlap(data, overlap=args.scaffold_overlap, seed=seed)
+        return scaffold_split_overlap(data, overlap=args.scaffold_overlap, seed=seed, logger=logger)
 
     elif args.split_type == 'random':
         data.shuffle(seed=seed)
