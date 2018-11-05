@@ -248,8 +248,9 @@ class MOE(nn.Module):
             moe_loss_i = self.moe_criterion(output_moe_i,
                                             train_targets[i])
             moe_loss_i = moe_loss_i * train_target_masks[i]
-            moe_loss_i = moe_loss_i.sum() / train_target_masks[i].sum()
-            moe_loss += moe_loss_i
+            if train_target_masks[i].sum() > 0:
+                moe_loss_i = moe_loss_i.sum() / train_target_masks[i].sum()
+                moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
         
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
