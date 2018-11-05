@@ -210,7 +210,7 @@ class MOE(nn.Module):
             classifier_outputs.append(outputs)
         supervised_outputs = torch.cat([classifier_outputs[i][i] for i in range(len(encodings))], dim=0)
 
-        train_targets = [torch.Tensor(list(tt)) for tt in train_targets]
+        train_targets = [list(tt) for tt in train_targets]
         train_target_masks = []
         for i in range(len(train_targets)):
             train_target_masks.append(torch.Tensor([[x is not None for x in tb] for tb in train_targets[i]]))

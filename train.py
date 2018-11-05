@@ -82,17 +82,20 @@ def run_training(args: Namespace) -> List[float]:
     else:
         scaler = None
 
+    train_data_length = len(train_data)
+
     if args.moe:
         train_data = cluster_split(train_data, args.num_sources, logger=logger)
 
     # Chunk training data if too large to load in memory all at once
-    train_data_length = len(train_data)
     if args.num_chunks > 1:
-        chunk_len = math.ceil(len(train_data) / args.num_chunks)
         os.makedirs(args.chunk_temp_dir, exist_ok=True)
         train_paths = []
         if args.moe:
-            chunks = [td.chunk(args.num_chunks) for td in train_data]
+            chunked_sources = [td.chunk(args.num_chunks) for td in train_data]
+            chunks = []
+            for i in range(args.num_chunks):
+                chunks.append([source[i] for source in chunked_sources])
         else:
             chunks = train_data.chunk(args.num_chunks)
         for i in range(args.num_chunks):

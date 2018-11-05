@@ -63,7 +63,11 @@ def train(model: nn.Module,
                 found_memo = False
             with open(path, 'rb') as f:
                 chunk = pickle.load(f)
-            chunk.shuffle()
+            if args.moe:
+                for source in chunk:
+                    source.shuffle()
+            else:
+                chunk.shuffle()
             n_iter = train(
                 model=model,
                 data=chunk,
