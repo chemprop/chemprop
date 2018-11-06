@@ -19,6 +19,7 @@ class StandardScaler:
         X = np.array(X).astype(float)
         self.means = np.nanmean(X, axis=0)
         self.stds = np.nanstd(X, axis=0)
+        self.stds = np.where(self.stds == 0, self.stds, np.ones(self.stds.shape))
 
         return self
 
@@ -33,7 +34,7 @@ class StandardScaler:
         transformed_with_nan = (X - self.means) / self.stds
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
 
-        return transformed_with_none
+        return transformed_with_none.astype(float)
 
     def inverse_transform(self, X: List[List[float]]):
         """
@@ -46,4 +47,4 @@ class StandardScaler:
         transformed_with_nan = X * self.stds + self.means
         transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
 
-        return transformed_with_none
+        return transformed_with_none.astype(float)
