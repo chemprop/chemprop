@@ -8,7 +8,7 @@ from rdkit import DataStructs
 from rdkit.Chem import AllChem
 from tqdm import tqdm
 
-from chemprop.data import scaffold_to_smiles
+from .scaffold import scaffold_to_smiles
 
 
 def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):

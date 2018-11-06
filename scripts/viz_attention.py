@@ -4,7 +4,8 @@ import os
 import torch
 from tqdm import trange
 
-from chemprop.utils import get_data, load_checkpoint
+from chemprop.data.utils import get_data
+from chemprop.utils import load_checkpoint
 
 
 def visualize_attention(args: Namespace):

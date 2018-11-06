@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from chemprop.models import MPN
+from .mpn import MPN
 
 
 def compute_pairwise_distances(x, y):

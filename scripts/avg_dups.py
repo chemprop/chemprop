@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from chemprop.data import average_duplicates
+from chemprop.data_processing import average_duplicates
 
 if __name__ == '__main__':
     parser = ArgumentParser()

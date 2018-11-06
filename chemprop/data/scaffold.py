@@ -10,7 +10,7 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 
-from chemprop.data import MoleculeDataset
+from .data import MoleculeDataset
 from chemprop.features import morgan_fingerprint
 
 

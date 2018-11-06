@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from chemprop.utils import get_data
+from chemprop.data.utils import get_data
 from chemprop.data import morgan_similarity, scaffold_similarity
 
 

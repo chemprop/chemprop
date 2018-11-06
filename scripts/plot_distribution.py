@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os
 
-from chemprop.data import plot_distribution
+from chemprop.data_processing import plot_distribution
 
 
 if __name__ == '__main__':

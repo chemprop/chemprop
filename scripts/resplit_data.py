@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os
 
-from chemprop.data import resplit
+from chemprop.data_processing import resplit
 
 
 if __name__ == '__main__':

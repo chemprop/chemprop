@@ -2,17 +2,17 @@ from argparse import ArgumentParser, Namespace
 import logging
 from pprint import pprint
 
-from chemprop.data import average_duplicates, resplit
-from chemprop.hyper_opt import load_sorted_results, optimize_hyperparameters
+from chemprop.data_processing import average_duplicates, resplit
 from chemprop.parsing import add_hyper_opt_args, add_predict_args, add_train_args, modify_hyper_opt_args,\
     modify_train_args, update_args_from_checkpoint_dir
-from chemprop.predict import make_predictions
 from chemprop.train import cross_validate
 from chemprop.utils import set_logger
+from hyper_opt import load_sorted_results, optimize_hyperparameters
+from predict import make_predictions
 
 
 # Initialize logger
-logger = logging.getLogger('hyper_opt')
+logger = logging.getLogger('end_to_end')
 logger.setLevel(logging.DEBUG)
 
 

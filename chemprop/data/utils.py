@@ -7,8 +7,9 @@ from typing import List, Tuple
 
 import numpy as np
 
-from chemprop.data import log_scaffold_stats, MoleculeDatapoint, MoleculeDataset, scaffold_split, scaffold_split_one,\
-    scaffold_split_overlap
+from .data import MoleculeDatapoint, MoleculeDataset
+from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap
+from chemprop.features import get_features
 
 
 def convert_to_classes(data: MoleculeDataset, num_bins: int = 20) -> Tuple[MoleculeDataset,

@@ -7,7 +7,8 @@ from tqdm import tqdm
 
 from chemprop.parsing import add_predict_args, update_args_from_checkpoint_dir
 from chemprop.train import predict
-from chemprop.utils import get_data, load_checkpoint
+from chemprop.data.utils import get_data
+from chemprop.utils import load_checkpoint
 
 
 def make_predictions(args: Namespace):

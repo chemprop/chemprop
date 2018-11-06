@@ -47,6 +47,8 @@ def train(model: nn.Module,
     :param test_smiles: Test smiles strings without targets, used for adversarial setting.
     :return: The total number of iterations (training examples) trained on so far.
     """
+    debug = logger.debug if logger is not None else print
+    
     model.train()
 
     if chunk_names:
@@ -122,9 +124,9 @@ def train(model: nn.Module,
             test_batch = test_smiles[i:i + args.batch_size]
             loss = model.compute_loss(train_batch, train_targets, test_batch)
             model.zero_grad()
-            if logger is not None:
-                loss_sum += loss.item()
-                iter_count += len(batch)
+
+            loss_sum += loss.item()
+            iter_count += len(batch)
         else:
             # Prepare batch
             batch = MoleculeDataset(data[i:i + args.batch_size])
@@ -149,9 +151,8 @@ def train(model: nn.Module,
                 loss = loss_func(preds, targets) * mask
             loss = loss.sum() / mask.sum()
 
-            if logger is not None:
-                loss_sum += loss.item()
-                iter_count += len(batch)
+            loss_sum += loss.item()
+            iter_count += len(batch)
 
         loss.backward()
         # import math
@@ -170,16 +171,16 @@ def train(model: nn.Module,
             train_val_smiles_batch = random.sample(train_val_smiles, args.batch_size)
             test_smiles_batch = random.sample(test_smiles, args.batch_size)
             g_loss = model.train_G(train_val_smiles_batch, test_smiles_batch)
-            if logger is not None:
-                # we probably only care about the g_loss honestly
-                d_loss_sum += d_loss * args.batch_size
-                gp_norm_sum += gp_norm * args.batch_size
-                g_loss_sum += g_loss * args.batch_size
+
+            # we probably only care about the g_loss honestly
+            d_loss_sum += d_loss * args.batch_size
+            gp_norm_sum += gp_norm * args.batch_size
+            g_loss_sum += g_loss * args.batch_size
 
         n_iter += len(batch)
 
         # Log and/or add to tensorboard
-        if (n_iter // args.batch_size) % args.log_frequency == 0 and (logger is not None or writer is not None):
+        if (n_iter // args.batch_size) % args.log_frequency == 0:
             lr = scheduler.get_lr()[0]
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
@@ -189,10 +190,9 @@ def train(model: nn.Module,
                 d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
             loss_sum, iter_count = 0, 0
 
-            if logger is not None:
-                logger.debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
-                if args.adversarial:
-                    logger.debug("D Loss = {:.4e}, G Loss = {:.4e}, GP Norm = {:.4}".format(d_loss_avg, g_loss_avg, gp_norm_avg))
+            debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
+            if args.adversarial:
+                debug("D Loss = {:.4e}, G Loss = {:.4e}, GP Norm = {:.4}".format(d_loss_avg, g_loss_avg, gp_norm_avg))
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)

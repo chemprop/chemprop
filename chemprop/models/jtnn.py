@@ -10,7 +10,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 import torch
 import torch.nn as nn
 
-from chemprop.models import MPN, MPNEncoder
+from .mpn import MPNEncoder
 from chemprop.nn_utils import GraphGRU, index_select_ND
 
 MAX_NB = 20

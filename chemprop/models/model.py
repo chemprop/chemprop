@@ -2,7 +2,10 @@ from argparse import Namespace
 
 import torch.nn as nn
 
-from chemprop.models import GAN, JTNN, MOE, MPN
+from .gan import GAN
+from .jtnn import JTNN
+from .moe import MOE
+from .mpn import MPN
 from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
