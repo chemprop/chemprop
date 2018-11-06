@@ -2,7 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-from chemprop.utils.utils import get_data, get_task_names
+from chemprop.data.utils import get_data, get_task_names
 
 
 def plot_distribution(data_path: str, save_dir: str, bins: int):

@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 
 from chemprop.models import MPN, MPNEncoder
-from chemprop.utils.nn_utils import GraphGRU, index_select_ND
+from chemprop.nn_utils import GraphGRU, index_select_ND
 
 MAX_NB = 20
 MST_MAX_WEIGHT = 100

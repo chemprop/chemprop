@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.autograd as autograd
 from torch.optim import Adam
 
-from chemprop.utils.nn_utils import NoamLR
+from chemprop.nn_utils import NoamLR
 
 
 class GAN(nn.Module):

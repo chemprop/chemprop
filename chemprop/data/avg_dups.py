@@ -4,7 +4,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from chemprop.utils.utils import get_data, get_header
+from chemprop.data.utils import get_data, get_header
 
 
 def average_duplicates(args):

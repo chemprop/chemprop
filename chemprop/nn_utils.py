@@ -1,3 +1,4 @@
+import math
 import os
 from typing import List, Union
 
@@ -11,6 +12,16 @@ from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import trange
 
 from chemprop.features import BatchMolGraph
+
+
+def compute_pnorm(model: nn.Module) -> float:
+    """Computes the norm of the parameters of a model."""
+    return math.sqrt(sum([p.norm().item() ** 2 for p in model.parameters()]))
+
+
+def compute_gnorm(model: nn.Module) -> float:
+    """Computes the norm of the gradients of a model."""
+    return math.sqrt(sum([p.grad.norm().item() ** 2 for p in model.parameters() if p.grad is not None]))
 
 
 def param_count(model: nn.Module) -> int:

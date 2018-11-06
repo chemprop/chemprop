@@ -14,8 +14,7 @@ import pickle
 
 from chemprop.data import MoleculeDataset
 from chemprop.features import featurization
-from chemprop.utils.nn_utils import NoamLR
-from chemprop.utils.utils import compute_gnorm, compute_pnorm
+from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
 def train(model: nn.Module,

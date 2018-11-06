@@ -3,7 +3,7 @@ from argparse import Namespace
 import torch.nn as nn
 
 from chemprop.models import GAN, JTNN, MOE, MPN
-from chemprop.utils.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
+from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
 class MoleculeModel(nn.Module):

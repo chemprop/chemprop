@@ -10,12 +10,12 @@ from torch.optim import Adam
 from tqdm import trange
 import pickle
 
-from chemprop.data import cluster_split
+from chemprop.data import cluster_split, StandardScaler
+from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers
 from chemprop.models import build_model
 from chemprop.train import evaluate, evaluate_predictions, predict, train
-from chemprop.utils.nn_utils import NoamLR, param_count
-from chemprop.utils.utils import get_data, get_task_names, get_desired_labels, get_loss_func, get_metric_func,\
-    load_checkpoint, save_checkpoint, split_data, truncate_outliers, StandardScaler
+from chemprop.nn_utils import NoamLR, param_count
+from chemprop.utils import get_loss_func, get_metric_func, load_checkpoint, save_checkpoint
 
 
 def run_training(args: Namespace, logger: Logger) -> List[float]:

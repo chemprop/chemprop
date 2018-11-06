@@ -5,8 +5,8 @@ import os
 import numpy as np
 import shutil
 
+from chemprop.data.utils import get_task_names, get_desired_labels
 from chemprop.train import run_training
-from chemprop.utils.utils import get_task_names, get_desired_labels
 
 
 def cross_validate(args: Namespace, logger: Logger):
