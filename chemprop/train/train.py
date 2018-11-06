@@ -12,7 +12,7 @@ from tqdm import trange
 import pickle
 import shutil
 
-from model import build_model
+from chemprop.model import build_model
 from nn_utils import NoamLR, param_count
 from parsing import parse_train_args
 from train_utils import train, predict, evaluate, evaluate_predictions
