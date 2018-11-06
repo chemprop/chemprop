@@ -1,7 +1,6 @@
 import os
 from typing import List, Union
 
-import matplotlib
 import matplotlib.pyplot as plt
 from rdkit import Chem
 from rdkit.Chem.Draw import SimilarityMaps
@@ -9,9 +8,9 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
-from tqdm import trange, tqdm
+from tqdm import trange
 
-from featurization import BatchMolGraph
+from chemprop.features import BatchMolGraph
 
 
 def param_count(model: nn.Module) -> int:

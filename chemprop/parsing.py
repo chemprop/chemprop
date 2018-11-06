@@ -36,6 +36,8 @@ def add_train_args(parser: ArgumentParser):
     # General arguments
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV file')
+    parser.add_argument('--test', action='store_true', default=False,
+                        help='Whether to skip training and only test the model')
     parser.add_argument('--vocab_path', type=str,
                         help='Path to .vocab file if using jtnn')
     parser.add_argument('--features_only', action='store_true', default=False,
@@ -290,6 +292,9 @@ def modify_train_args(args: Namespace):
 
     assert (args.split_type == 'scaffold_overlap') == (args.scaffold_overlap is not None)
     assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
+
+    if args.test:
+        args.epochs = 0
 
 
 def parse_hyper_opt_args() -> Namespace:

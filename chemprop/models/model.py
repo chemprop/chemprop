@@ -2,11 +2,8 @@ from argparse import Namespace
 
 import torch.nn as nn
 
-from jtnn import JTNN
-from mpn import MPN
-from gan import GAN
-from moe import MOE
-from nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
+from chemprop.models import GAN, JTNN, MOE, MPN
+from chemprop.utils.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
 class MoleculeModel(nn.Module):

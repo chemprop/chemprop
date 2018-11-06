@@ -4,12 +4,11 @@ from typing import List
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import torch.autograd as autograd
-from torch.optim import Adam
 import numpy as np
 
-from featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
-from nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR, get_activation_function
+from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
+from chemprop.utils.nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, \
+    get_activation_function
 
 
 class MPNEncoder(nn.Module):

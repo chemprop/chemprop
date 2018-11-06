@@ -1,15 +1,19 @@
 from argparse import ArgumentParser, Namespace
-import json
-import os
+import logging
 from pprint import pprint
 
-from parsing import add_hyper_opt_args, add_predict_args, add_train_args, modify_hyper_opt_args, modify_train_args,\
-    update_args_from_checkpoint_dir
-from train import cross_validate
-from hyper_opt import load_sorted_results, optimize_hyperparameters
-from resplit_data import resplit
-from avg_dups import average_duplicates
-from predict import make_predictions
+from chemprop.data import average_duplicates, resplit
+from chemprop.hyper_opt import load_sorted_results, optimize_hyperparameters
+from chemprop.parsing import add_hyper_opt_args, add_predict_args, add_train_args, modify_hyper_opt_args,\
+    modify_train_args, update_args_from_checkpoint_dir
+from chemprop.predict import make_predictions
+from chemprop.train import cross_validate
+from chemprop.utils.utils import set_logger
+
+
+# Initialize logger
+logger = logging.getLogger('hyper_opt')
+logger.setLevel(logging.DEBUG)
 
 
 def merge_train_val(args: Namespace):
@@ -49,6 +53,7 @@ if __name__ == '__main__':
                         help='Path to CSV file for combined train and val data')
     args = parser.parse_args()
 
+    set_logger(logger, args.save_dir, args.quiet)
     modify_train_args(args)
     modify_hyper_opt_args(args)
 
@@ -78,7 +83,7 @@ if __name__ == '__main__':
     args.separate_test_set = None
     args.split_sizes = [0.8, 0.2, 0.0]  # no need for a test set during training
 
-    cross_validate(args)
+    cross_validate(args, logger)
 
     # Predict on test data
     args.checkpoint_dir = args.save_dir

@@ -1,11 +1,10 @@
 """Averages duplicate data points in a dataset."""
 
-from argparse import ArgumentParser
 from collections import defaultdict
 
 import numpy as np
 
-from utils import get_data, get_header
+from chemprop.utils.utils import get_data, get_header
 
 
 def average_duplicates(args):
@@ -47,14 +46,3 @@ def average_duplicates(args):
 
         for smiles, avg_targets in new_data:
             f.write(smiles + ',' + ','.join(str(value) if value is not None else '' for value in avg_targets) + '\n')
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str,
-                        help='Path to data CSV file')
-    parser.add_argument('--save_path', type=str,
-                        help='Path where average data CSV file will be saved')
-    args = parser.parse_args()
-
-    average_duplicates(args)

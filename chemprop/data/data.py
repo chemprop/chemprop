@@ -5,10 +5,9 @@ from typing import List
 import numpy as np
 from torch.utils.data.dataset import Dataset
 from sklearn.preprocessing import StandardScaler
-from rdkit import Chem
 
-from morgan_fingerprint import morgan_fingerprint
-from rdkit_features import rdkit_2d_features
+from chemprop.features import morgan_fingerprint, rdkit_2d_features
+
 
 class MoleculeDatapoint:
     def __init__(self,

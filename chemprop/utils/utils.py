@@ -13,9 +13,9 @@ from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precis
 import torch
 import torch.nn as nn
 
-from data import MoleculeDatapoint, MoleculeDataset
-from model import build_model
-from scaffold import scaffold_split, scaffold_split_one, scaffold_split_overlap, log_scaffold_stats
+from chemprop.data import log_scaffold_stats, MoleculeDatapoint, MoleculeDataset, scaffold_split, scaffold_split_one,\
+    scaffold_split_overlap
+from chemprop.models import build_model
 
 
 class StandardScaler:

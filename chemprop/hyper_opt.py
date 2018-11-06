@@ -5,7 +5,7 @@ import json
 import math
 import os
 from pprint import pprint
-from typing import Any, Dict, List
+from typing import List
 
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
@@ -15,8 +15,8 @@ from hpbandster.core.worker import Worker
 from hpbandster.optimizers import BOHB
 import numpy as np
 
-from parsing import parse_hyper_opt_args
-from train import run_training
+from chemprop.parsing import parse_hyper_opt_args
+from chemprop.train import run_training
 
 
 def load_sorted_results(results_dir: str) -> List[dict]:

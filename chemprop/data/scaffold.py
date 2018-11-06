@@ -1,7 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
 import logging
-from morgan_fingerprint import morgan_fingerprint
 import random
 from typing import Dict, List, Set, Tuple, Union
 
@@ -11,7 +10,8 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 
-from data import MoleculeDataset
+from chemprop.data import MoleculeDataset
+from chemprop.features import morgan_fingerprint
 
 
 class ScaffoldGenerator:

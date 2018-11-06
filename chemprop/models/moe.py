@@ -4,18 +4,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from mpn import MPN
+from chemprop.models import MPN
 
 
 def compute_pairwise_distances(x, y):
-    '''
+    """
     Computes the squared pairwise Euclidean distances between x and y.
+
     :param x: a tensor of shape [num_x_samples, num_features]
     :param y: a tensor of shape [num_y_samples, num_features]
     :return: a distance matrix of dimensions [num_x_samples, num_y_samples]
     Raise:
         ValueError if the inputs do not match the specified dimensions
-    '''
+    """
     # print('In compute_pairwise_distances  NOTE THAT THIS DOES NOT SEEM TO BE WORKING.')
     # print('x and y should have dimensions num_i_samples x num_features, it seems like the first dimension is number of atoms instead')
     # print('Uncomment print statements in utils/compute_pairwise_distances to observe this')
@@ -34,31 +35,35 @@ def compute_pairwise_distances(x, y):
     norm = lambda x:torch.sum(x * x, 1)
     return norm(x.unsqueeze(2) - y.t())
 
+
 def gaussian_kernel_matrix(x, y, sigmas):
-    '''
+    """
     Computes a gaussian RBK between the samples of x and y
     We create a sum of multiple gaussian kernels each having a width sigma_i
+
     :param x: a tensor of shape [num_samples, num_features]
     :param y: a tensor of shape [num_samples, num_features]
     :param sigmas: a tensor of floats which denote the widths of each of the gaussians in the kernel
     :return: a tensor of shape [num_samples{x}, num_samples{y}] with the RBF kernel
-    '''
+    """
     beta = 1. / (2. * (sigmas.unsqueeze(1)))
     dist = compute_pairwise_distances(x, y)
     s = torch.matmul(beta, dist.view(1, -1))
 
     return(torch.sum(torch.exp(-s), 0)).view_as(dist)
 
+
 def maximum_mean_discrepancy(x, y, kernel=gaussian_kernel_matrix):
-    '''
+    """
     Computes the Maximum Mean Discrepancy (MMD) of two samples: x and y
     Maximum Mean Discrepancy (MMD) is a distance-measure between the samples of the distributions of x and y. Here we
     kernel two sample estimate using the empirical mean of the two distributions
+
     :param x: a tensor of shape [num_samples, num_features]
     :param y: a tensor of shape [num_samples, num_features]
     :param kernel: a function which computes the kernel in MMD.  Defaults to the GaussianKernelMatrix.
     :return: a scalar denoting the squared maximum mean discrepancy loss
-    '''
+    """
 
     cost = torch.mean(kernel(x, x))
     cost += torch.mean(kernel(y, y))
@@ -67,7 +72,8 @@ def maximum_mean_discrepancy(x, y, kernel=gaussian_kernel_matrix):
     cost = torch.clamp(cost, min=0)
     return cost
 
-class MMD(nn.Module): #TODO(moe) can experiment with WGAN too - can try with both union of sources of with each individually
+
+class MMD(nn.Module):  # TODO(moe) can experiment with WGAN too - can try with both union of sources of with each individually
     def __init__(self, args):
         # The __init__() method is run automatically when a new instance of the MMD class is created
         # New instance created by writing new_instance = MMD(encoder, configs) -- when creating the new instance,
@@ -86,19 +92,21 @@ class MMD(nn.Module): #TODO(moe) can experiment with WGAN too - can try with bot
     def forward(self, hs, ht):
         loss_value = maximum_mean_discrepancy(hs, ht, kernel=self.gaussian_kernel)
         return torch.clamp(loss_value, min=1e-4)  # torch.clamp(input, min, max, out=None) --> Tensor
-                                                    # This clamps all elements in input into the range [min, max] and returns a resulting tensor
-                                                    # new_val = 1e-4 if old_val < 1e-4; in this case, otherwise, new_val = old_val
+                                                  # This clamps all elements in input into the range [min, max] and returns a resulting tensor
+                                                  # new_val = 1e-4 if old_val < 1e-4; in this case, otherwise, new_val = old_val
+
 
 class HLoss(nn.Module):
     def __init__(self):
         super(HLoss, self).__init__()
 
     def forward(self, x):
-        #b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
+        # b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
         b = x * torch.log(x)
         b[torch.isnan(b)] = 0 # defining 0 log 0 = 0
         b = -1.0 * b.sum()
         return b
+
 
 class Classifier(nn.Module):
     def __init__(self, args):
@@ -115,6 +123,7 @@ class Classifier(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
 
 class MOE(nn.Module):
     def __init__(self, args):
@@ -254,4 +263,5 @@ class MOE(nn.Module):
             entropy_loss += self.entropy_criterion(source_alphas)
         
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
+
         return loss
