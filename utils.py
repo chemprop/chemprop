@@ -121,9 +121,11 @@ def load_checkpoint(path: str,
     args.cuda = cuda
     args.num_tasks = num_tasks or args.num_tasks
     args.dataset_type = dataset_type or args.dataset_type
-    for key, value in vars(current_args).items():
-        if not hasattr(args, key):
-            setattr(args, key, value)
+
+    if current_args is not None:
+        for key, value in vars(current_args).items():
+            if not hasattr(args, key):
+                setattr(args, key, value)
 
     model = build_model(args)
     model_state_dict = model.state_dict()
