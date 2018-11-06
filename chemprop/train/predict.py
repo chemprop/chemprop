@@ -1,12 +1,11 @@
 from argparse import Namespace
 from typing import List
 
-from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 import numpy as np
 
-from chemprop.data import MoleculeDataset
+from chemprop.data import MoleculeDataset, StandardScaler
 
 
 def predict(model: nn.Module,

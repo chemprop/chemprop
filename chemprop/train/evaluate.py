@@ -1,11 +1,10 @@
 from argparse import Namespace
 from typing import Callable, List
 
-from sklearn.preprocessing import StandardScaler
 import torch.nn as nn
 
 from .predict import predict
-from chemprop.data import MoleculeDataset
+from chemprop.data import MoleculeDataset, StandardScaler
 
 
 def evaluate_predictions(preds: List[List[float]],

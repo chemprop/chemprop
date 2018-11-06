@@ -4,8 +4,8 @@ from typing import List
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
-from sklearn.preprocessing import StandardScaler
 
+from .scaler import StandardScaler
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
 
 
