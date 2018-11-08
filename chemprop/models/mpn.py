@@ -308,6 +308,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
         
         if self.args.use_input_features:
+            features_batch = features_batch.to(mol_vecs)
             return torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
 
         return mol_vecs  # num_molecules x hidden

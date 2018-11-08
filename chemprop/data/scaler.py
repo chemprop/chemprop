@@ -19,7 +19,7 @@ class StandardScaler:
         X = np.array(X).astype(float)
         self.means = np.nanmean(X, axis=0)
         self.stds = np.nanstd(X, axis=0)
-        self.stds = np.where(self.stds == 0, self.stds, np.ones(self.stds.shape))
+        self.stds = np.where(self.stds == 0, np.ones(self.stds.shape), self.stds)
 
         return self
 
