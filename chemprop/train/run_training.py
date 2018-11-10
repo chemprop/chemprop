@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from tqdm import trange
 import pickle
 
@@ -147,16 +147,30 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        scheduler = NoamLR(
-            optimizer,
-            warmup_epochs=args.warmup_epochs,
-            total_epochs=args.epochs,
-            steps_per_epoch=train_data_length // args.batch_size,
-            init_lr=args.init_lr,
-            max_lr=args.max_lr,
-            final_lr=args.final_lr
-        )
+        if args.optimizer == 'Adam':
+            optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+        elif args.optimizer == 'SGD':
+            optimizer = SGD(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+        if args.no_noam:
+            scheduler = NoamLR(
+                optimizer,
+                warmup_epochs=args.warmup_epochs,
+                total_epochs=args.epochs,
+                steps_per_epoch=train_data_length // args.batch_size,
+                init_lr=args.init_lr,
+                max_lr=args.init_lr,
+                final_lr=args.init_lr
+            )
+        else:
+            scheduler = NoamLR(
+                optimizer,
+                warmup_epochs=args.warmup_epochs,
+                total_epochs=args.epochs,
+                steps_per_epoch=train_data_length // args.batch_size,
+                init_lr=args.init_lr,
+                max_lr=args.max_lr,
+                final_lr=args.final_lr
+            )
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')

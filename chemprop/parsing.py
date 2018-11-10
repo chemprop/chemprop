@@ -116,6 +116,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')
+    parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'SGD'],
+                        help='learning rate scheduler')
+    parser.add_argument('--no_noam', action='store_true', default=False,
+                        help='turn off noam LR scheduler')
     parser.add_argument('--init_lr', type=float, default=1e-4,
                         help='Initial learning rate')
     parser.add_argument('--max_lr', type=float, default=1e-3,
