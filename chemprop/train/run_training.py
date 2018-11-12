@@ -151,17 +151,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         elif args.optimizer == 'SGD':
             optimizer = SGD(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        if args.no_noam:
-            scheduler = NoamLR(
-                optimizer,
-                warmup_epochs=args.warmup_epochs,
-                total_epochs=args.epochs,
-                steps_per_epoch=train_data_length // args.batch_size,
-                init_lr=args.init_lr,
-                max_lr=args.init_lr,
-                final_lr=args.init_lr
-            )
-        else:
+        if not args.no_noam:
             scheduler = NoamLR(
                 optimizer,
                 warmup_epochs=args.warmup_epochs,
