@@ -3,7 +3,6 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import List, Tuple
 
-import rdkit
 import rdkit.Chem as Chem
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree
@@ -441,20 +440,3 @@ def node_aggregate(nodes, h, embedding, W):
     node_vec = torch.cat([x_vec, sum_h_nei], dim=1)
     return nn.ReLU()(W(node_vec))
 """
-
-
-if __name__ == "__main__":
-    import sys
-
-    lg = rdkit.RDLogger.logger()
-    lg.setLevel(rdkit.RDLogger.CRITICAL)
-
-    cset = set()
-    sys.stdin.readline()
-    for line in sys.stdin:
-        smiles = line.split(',')[0]
-        mol = MolTree(smiles)
-        for c in mol.nodes:
-            cset.add(c.smiles)
-    for x in cset:
-        print(x)
