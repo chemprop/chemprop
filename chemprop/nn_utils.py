@@ -120,6 +120,19 @@ def initialize_weights(model: nn.Module):
             nn.init.xavier_normal_(param)
 
 
+class MockLR(_LRScheduler):
+    def __init__(self, optimizer: Optimizer, lr: float):
+        super(MockLR, self).__init__(optimizer)
+        self.lr = lr
+
+    def get_lr(self) -> List[float]:
+        """Gets a list of the current learning rates."""
+        return [self.lr]
+
+    def step(self, current_step: int = None):
+        pass
+
+
 class NoamLR(_LRScheduler):
     """
     Noam learning rate scheduler with piecewise linear increase and exponential decay.

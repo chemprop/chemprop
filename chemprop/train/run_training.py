@@ -16,7 +16,7 @@ from .train import train
 from chemprop.data import cluster_split, StandardScaler
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers
 from chemprop.models import build_model
-from chemprop.nn_utils import NoamLR, param_count
+from chemprop.nn_utils import MockLR, NoamLR, param_count
 from chemprop.utils import get_loss_func, get_metric_func, load_checkpoint, save_checkpoint
 
 
@@ -164,6 +164,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 max_lr=args.max_lr,
                 final_lr=args.final_lr
             )
+        else:
+            scheduler = MockLR(optimizer=optimizer, lr=args.init_lr)
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')

@@ -161,8 +161,7 @@ def train(model: nn.Module,
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
-        if not args.no_noam:
-            scheduler.step()
+        scheduler.step()
 
         if args.adversarial:
             for _ in range(args.gan_d_per_g):
