@@ -3,6 +3,7 @@ import math
 from typing import List
 
 import numpy as np
+from tqdm import tqdm
 from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler

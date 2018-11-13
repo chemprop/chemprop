@@ -6,6 +6,7 @@ import random
 from typing import List, Tuple
 
 import numpy as np
+from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap
@@ -95,6 +96,7 @@ def get_data(path: str,
 
     with open(path) as f:
         f.readline()  # skip header
+        lines = f.readlines()
         data = MoleculeDataset([
             MoleculeDatapoint(
                 line=line.strip().split(','),
@@ -102,7 +104,7 @@ def get_data(path: str,
                 features_generator=args.features_generator if args is not None else None,
                 use_compound_names=use_compound_names,
                 predict_features=args.predict_features if args is not None else False
-            ) for i, line in enumerate(f)])
+            ) for i, line in tqdm(enumerate(lines), total=len(lines))])
 
     if data.data[0].features is not None:
         args.features_dim = len(data.data[0].features)
