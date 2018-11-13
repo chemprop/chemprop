@@ -29,7 +29,7 @@ def generate_vocab(data_path: str, vocab_path: str):
             new_vocab = vocab - all_vocab
             for v in new_vocab:
                 f.write(v + '\n')
-            vocab |= new_vocab
+            all_vocab |= new_vocab
 
 
 if __name__ == "__main__":
