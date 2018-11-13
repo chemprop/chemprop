@@ -4,10 +4,11 @@ import numpy as np
 
 
 class StandardScaler:
-    def __init__(self, means: np.ndarray = None, stds: np.ndarray = None):
+    def __init__(self, means: np.ndarray = None, stds: np.ndarray = None, replace_nan_token=None):
         """Initialize StandardScaler, optionally with means and standard deviations precomputed."""
         self.means = means
         self.stds = stds
+        self.replace_nan_token = replace_nan_token
 
     def fit(self, X: List[List[float]]) -> 'StandardScaler':
         """
@@ -32,9 +33,9 @@ class StandardScaler:
         """
         X = np.array(X).astype(float)
         transformed_with_nan = (X - self.means) / self.stds
-        transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+        transformed_with_none = np.where(np.isnan(transformed_with_nan), self.replace_nan_token, transformed_with_nan)
 
-        return transformed_with_none.astype(float)
+        return transformed_with_none
 
     def inverse_transform(self, X: List[List[float]]):
         """
@@ -45,6 +46,6 @@ class StandardScaler:
         """
         X = np.array(X).astype(float)
         transformed_with_nan = X * self.stds + self.means
-        transformed_with_none = np.where(np.isnan(transformed_with_nan), None, transformed_with_nan)
+        transformed_with_none = np.where(np.isnan(transformed_with_nan), self.replace_nan_token, transformed_with_nan)
 
-        return transformed_with_none.astype(float)
+        return transformed_with_none

@@ -131,7 +131,7 @@ def train(model: nn.Module,
             # Prepare batch
             batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = batch.smiles(), batch.features(), batch.targets()
-
+            # import pdb; pdb.set_trace()
             mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
             targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 

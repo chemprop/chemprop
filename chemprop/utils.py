@@ -114,7 +114,7 @@ def load_checkpoint(path: str,
         model = model.cuda()
 
     scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
-    features_scaler = StandardScaler(state['features_scaler']['means'], state['features_scaler']['stds']) if state['features_scaler'] is not None else None
+    features_scaler = StandardScaler(state['features_scaler']['means'], state['features_scaler']['stds'], replace_nan_token=0) if state['features_scaler'] is not None else None
 
     return model, scaler, features_scaler, args
 
