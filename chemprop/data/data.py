@@ -72,16 +72,23 @@ class MoleculeDatapoint:
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
             self.features = np.concatenate(self.features)
-        if predict_features:
-            self.targets = self.features.tolist()  # List[float]
+        
+        if args is not None and args.dataset_type == 'unsupervised':
+            self.num_tasks = 1 #TODO could try doing "multitask" with multiple different clusters?
+            self.targets = [None]
         else:
-            self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
+            if predict_features:
+                self.targets = self.features.tolist()  # List[float]
+            else:
+                self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
 
-        self.num_tasks = len(self.targets)  # int
+            self.num_tasks = len(self.targets)  # int
 
-        if sparse:
-            self.targets = SparseNoneArray(self.targets)
+            if sparse:
+                self.targets = SparseNoneArray(self.targets)
 
+    def set_targets(self, targets): # for unsupervised pretraining only
+        self.targets = targets
 
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
@@ -141,6 +148,11 @@ class MoleculeDataset(Dataset):
             d.features = scaler.transform(d.features.reshape(1, -1))
 
         return scaler
+    
+    def set_targets(self, targets): # for unsupervised pretraining only
+        assert len(self.data) == len(targets) # assume user kept them aligned
+        for i in range(len(self.data)):
+            self.data[i].set_targets(targets[i])
 
     def __len__(self):
         return len(self.data)

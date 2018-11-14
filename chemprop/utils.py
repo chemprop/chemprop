@@ -134,6 +134,9 @@ def get_loss_func(dataset_type: str) -> nn.Module:
 
     if dataset_type == 'regression':
         return nn.MSELoss(reduction='none')
+    
+    if dataset_type == 'unsupervised':
+        return nn.CrossEntropyLoss(reduction='none')
 
     raise ValueError('Dataset type "{}" not supported.'.format(dataset_type))
 

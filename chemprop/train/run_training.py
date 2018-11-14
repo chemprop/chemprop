@@ -13,7 +13,7 @@ import pickle
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import cluster_split, StandardScaler
+from chemprop.data import cluster_split, StandardScaler, MoleculeDataset, generate_unsupervised_cluster_labels
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers
 from chemprop.models import build_model
 from chemprop.nn_utils import MockLR, NoamLR, param_count
@@ -173,6 +173,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         for epoch in trange(args.epochs):
             debug('Epoch {}'.format(epoch))
 
+            if args.dataset_type == 'unsupervised': # won't work with moe
+                full_data = MoleculeDataset(train_data.data + val_data.data + test_data.data)
+                generate_unsupervised_cluster_labels(model, full_data, args)
+                model.create_ffn(args)
+                if args.cuda:
+                    model.ffn.cuda()
+
             n_iter = train(
                 model=model,
                 data=train_data,
@@ -207,13 +214,17 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                         debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
                         writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
 
-            # Save model checkpoint if improved validation score
+            # Save model checkpoint if improved validation score, or always save it if unsupervised
             if args.minimize_score and avg_val_score < best_score or \
-                    not args.minimize_score and avg_val_score > best_score:
+                    not args.minimize_score and avg_val_score > best_score or \
+                    args.dataset_type == 'unsupervised':
                 best_score, best_epoch = avg_val_score, epoch
                 save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
-        # Evaluate on test set using model using model with best validation score
+        if args.dataset_type == 'unsupervised':
+            return [0] # rest of this is meaningless when unsupervised
+
+        # Evaluate on test set using model with best validation score
         info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
         model, _, _, _ = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
         test_preds = predict(
@@ -225,7 +236,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         test_scores = evaluate_predictions(
             preds=test_preds,
             targets=test_targets,
-            metric_func=metric_func
+            metric_func=metric_func,
+            args=args
         )
         sum_test_preds += np.array(test_preds)
 
@@ -246,7 +258,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     ensemble_scores = evaluate_predictions(
         preds=avg_test_preds.tolist(),
         targets=test_targets,
-        metric_func=metric_func
+        metric_func=metric_func, 
+        args=args
     )
 
     # Average ensemble score

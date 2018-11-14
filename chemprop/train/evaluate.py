@@ -9,16 +9,20 @@ from chemprop.data import MoleculeDataset, StandardScaler
 
 def evaluate_predictions(preds: List[List[float]],
                          targets: List[List[float]],
-                         metric_func: Callable) -> List[float]:
+                         metric_func: Callable,
+                         args: Namespace) -> List[float]:
     """
     Evaluates predictions using a metric function and filtering out invalid targets.
 
     :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
     :param targets: A list of lists of shape (data_size, num_tasks) with targets.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
+    :param args: Namespace
     :return: A list with the score for each task based on `metric_func`.
     """
     data_size, num_tasks = len(preds), len(preds[0])
+    if args.dataset_type == 'unsupervised':
+        num_tasks = 1
 
     # Filter out empty targets
     # valid_preds and valid_targets have shape (num_tasks, data_size)
@@ -68,7 +72,8 @@ def evaluate(model: nn.Module,
     results = evaluate_predictions(
         preds=preds,
         targets=targets,
-        metric_func=metric_func
+        metric_func=metric_func,
+        args=args
     )
 
     return results

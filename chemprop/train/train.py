@@ -148,6 +148,8 @@ def train(model: nn.Module,
                 for task in range(targets.size(1)):
                     loss += loss_func(preds[:, task, :], targets[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
             else:
+                if args.dataset_type == 'unsupervised':
+                    targets = targets.long().reshape(-1)
                 loss = loss_func(preds, targets) * mask
             loss = loss.sum() / mask.sum()
 

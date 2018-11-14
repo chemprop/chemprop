@@ -59,9 +59,12 @@ def add_train_args(parser: ArgumentParser):
                         help='If a checkpoint_dir is specified for training, only loads weights from encoder'
                              'and not from the final feed-forward network')
     parser.add_argument('--dataset_type', type=str, required=True,
-                        choices=['classification', 'regression', 'regression_with_binning'],
+                        choices=['classification', 'regression', 'regression_with_binning', 'unsupervised'],
                         help='Type of dataset, i.e. classification (cls) or regression (reg).'
-                             'This determines the loss function used during training.')
+                             'This determines the loss function used during training.'
+                             'Unsupervised means using Caron et al pretraining (from FAIR).')
+    parser.add_argument('--unsupervised_n_clusters', type=int, default=10000,
+                        help='Number of clusters to use for unsupervised learning labels')
     parser.add_argument('--num_bins', type=int, default=20,
                         help='Number of bins for regression with binning')
     parser.add_argument('--num_chunks', type=int, default=1,
@@ -277,8 +280,9 @@ def modify_train_args(args: Namespace):
     if args.metric is None:
         args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
 
-    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or
-            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']):
+    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or \
+            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']) \
+            and not args.dataset_type == 'unsupervised':
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
     args.minimize_score = args.metric in ['rmse', 'mae']
