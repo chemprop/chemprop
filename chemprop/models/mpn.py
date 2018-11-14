@@ -23,6 +23,7 @@ class MPNEncoder(nn.Module):
         self.bias = args.bias
         self.depth = args.depth
         self.diff_depth_weights = args.diff_depth_weights
+        self.layers_per_message = args.layers_per_message
         self.use_layer_norm = args.layer_norm
         self.dropout = args.dropout
         self.attention = args.attention
@@ -54,12 +55,13 @@ class MPNEncoder(nn.Module):
             w_h_input_size = self.hidden_size
 
         # Message passing
+
         if self.diff_depth_weights:
             # Different weight matrix for each depth
-            self.W_h = nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)])
+            self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)]) for _ in range(self.layers_per_message)])
         else:
             # Shared weight matrix across depths
-            self.W_h = nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1))
+            self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1)) for _ in range(self.layers_per_message)])
 
         if self.global_attention:
             self.W_ga1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
@@ -189,7 +191,10 @@ class MPNEncoder(nn.Module):
                 rev_b_message = b_message[b2revb]  # num_bonds x hidden
                 b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
 
-            b_message = self.W_h[depth](b_message)  # num_bonds x hidden
+            for lpm in range(self.layers_per_message-1):
+                b_message = self.W_h[lpm][depth](b_message)  # num_bonds x hidden
+                b_message = self.act_func(b_message)
+            b_message = self.W_h[self.layers_per_message-1][depth](b_message)
 
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
