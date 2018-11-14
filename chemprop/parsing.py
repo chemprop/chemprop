@@ -146,6 +146,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Whether to add bias to linear layers')
     parser.add_argument('--depth', type=int, default=3,
                         help='Number of message passing steps')
+    parser.add_argument('--diff_depth_weights', action='store_true', default=False,
+                        help='Whether to use a different weight matrix at each step of message passing')
     parser.add_argument('--layer_norm', action='store_true', default=False,
                         help='Add layer norm after each message passing step')
     parser.add_argument('--dropout', type=float, default=0.0,

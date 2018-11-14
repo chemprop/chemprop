@@ -22,6 +22,7 @@ class MPNEncoder(nn.Module):
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
+        self.diff_depth_weights = args.diff_depth_weights
         self.use_layer_norm = args.layer_norm
         self.dropout = args.dropout
         self.attention = args.attention
@@ -43,14 +44,22 @@ class MPNEncoder(nn.Module):
         # Input
         self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
 
-        # Message passing
+        # Message attention
         if self.message_attention:
             self.num_heads = self.message_attention_heads
-            self.W_h = nn.Linear(self.num_heads * self.hidden_size, self.hidden_size, bias=self.bias)
+            w_h_input_size = self.num_heads * self.hidden_size
             self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
                                        for _ in range(self.num_heads)])
         else:
-            self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            w_h_input_size = self.hidden_size
+
+        # Message passing
+        if self.diff_depth_weights:
+            # Different weight matrix for each depth
+            self.W_h = nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)])
+        else:
+            # Shared weight matrix across depths
+            self.W_h = nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1))
 
         if self.global_attention:
             self.W_ga1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
@@ -180,7 +189,7 @@ class MPNEncoder(nn.Module):
                 rev_b_message = b_message[b2revb]  # num_bonds x hidden
                 b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
 
-            b_message = self.W_h(b_message)  # num_bonds x hidden
+            b_message = self.W_h[depth](b_message)  # num_bonds x hidden
 
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
