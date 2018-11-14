@@ -21,6 +21,8 @@ class SparseNoneArray:
         return self.length
     
     def __getitem__(self, i):
+        if i >= self.length:
+            raise IndexError
         return self.targets[i]
 
 
