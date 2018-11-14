@@ -154,6 +154,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Num linear layers between message passing steps')
     parser.add_argument('--layer_norm', action='store_true', default=False,
                         help='Add layer norm after each message passing step')
+    parser.add_argument('--normalize_messages', action='store_true', default=False,
+                        help='Normalize bond messages at each message passing step')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout probability')
     parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],

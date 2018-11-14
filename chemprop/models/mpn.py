@@ -24,6 +24,7 @@ class MPNEncoder(nn.Module):
         self.depth = args.depth
         self.diff_depth_weights = args.diff_depth_weights
         self.layers_per_message = args.layers_per_message
+        self.normalize_messages = args.normalize_messages
         self.use_layer_norm = args.layer_norm
         self.dropout = args.dropout
         self.attention = args.attention
@@ -195,6 +196,8 @@ class MPNEncoder(nn.Module):
                 b_message = self.W_h[lpm][depth](b_message)  # num_bonds x hidden
                 b_message = self.act_func(b_message)
             b_message = self.W_h[self.layers_per_message-1][depth](b_message)
+            if self.normalize_messages:
+                b_message = b_message / b_message.norm(dim=1, keepdim=True)
 
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
