@@ -48,6 +48,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--predict_features', action='store_true', default=False,
                         help='Pre-train by predicting the additional features rather than the task values')
+    parser.add_argument('--sparse', action='store_true', default=False,
+                        help='Store features as sparse (can save memory for sparse features')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--checkpoint_dir', type=str, default=None,
@@ -224,7 +226,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of source tasks for moe')
     parser.add_argument('--mayr_layers', action='store_true', default=False,
                         help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
-
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""

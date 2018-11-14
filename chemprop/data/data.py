@@ -1,6 +1,8 @@
 import random
 import math
 from typing import List
+from argparse import Namespace
+from collections import defaultdict
 
 import numpy as np
 from tqdm import tqdm
@@ -10,13 +12,24 @@ from .scaler import StandardScaler
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
 
 
+class SparseNoneArray:
+    def __init__(self, targets: List[float]):
+        self.length = len(targets)
+        self.targets = defaultdict(lambda: None, {i: x for i, x in enumerate(targets) if x is not None})
+    
+    def __len__(self):
+        return self.length
+    
+    def __getitem__(self, i):
+        return self.targets[i]
+
+
 class MoleculeDatapoint:
     def __init__(self,
                  line: List[str],
+                 args: Namespace,
                  features: np.ndarray = None,
-                 features_generator: str = None,
-                 use_compound_names: bool = False,
-                 predict_features: bool = False):
+                 use_compound_names: bool = False):
         """
         Initializes a MoleculeDatapoint.
 
@@ -26,6 +39,10 @@ class MoleculeDatapoint:
         :param use_compound_names: Whether the data CSV includes the compound name on each line.
         :param predict_features: Whether the targets should be the features instead of the targets on the CSV line.
         """
+        features_generator = args.features_generator if args is not None else None
+        predict_features = args.predict_features if args is not None else False
+        sparse = args.sparse if args is not None else False
+
         if features is not None and features_generator is not None:
             raise ValueError('Currently cannot provide both loaded features and a features generator.')
 
@@ -59,6 +76,9 @@ class MoleculeDatapoint:
             self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
 
         self.num_tasks = len(self.targets)  # int
+
+        if sparse:
+            self.targets = SparseNoneArray(self.targets)
 
 
 class MoleculeDataset(Dataset):
