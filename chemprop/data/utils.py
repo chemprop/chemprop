@@ -4,6 +4,7 @@ import logging
 import pickle
 import random
 from typing import List, Tuple
+import os
 
 import numpy as np
 from tqdm import tqdm
@@ -207,3 +208,35 @@ def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
         data[i].targets = targets[i]
 
     return data
+
+def load_prespecified_chunks(args: Namespace):
+    """
+    Load some number of chunks into train and val datasets. 
+
+    :param args: Namespace of arguments
+    :return: A tuple containing the train and validation MoleculeDatasets
+    from loading a few random chunks. 
+    """
+    chunks = []
+    for root, _, names in os.walk(args.prespecified_chunk_dir):
+        random.shuffle(names)
+    data_len = 0
+    for name in names:
+        path = os.path.join(args.prespecified_chunk_dir, name)
+        chunks.append(get_data(path, args))
+        data_len += len(chunks[-1].data)
+        if data_len > args.prespecified_chunks_max_examples_per_epoch:
+            break
+    data = [c.data for c in chunks]
+    full_data = []
+    for d in data:
+        full_data += d
+    random.shuffle(full_data)
+    full_data = full_data[:args.prespecified_chunks_max_examples_per_epoch]
+    full_data = MoleculeDataset(full_data)
+    split_sizes = deepcopy(args.split_sizes)
+    split_sizes[2] = 0 # no test set
+    split_sizes = [i / sum(split_sizes) for i in split_sizes]
+    train, val, test = split_data(full_data, args, split_sizes)
+    return train, val
+

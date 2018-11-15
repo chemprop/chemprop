@@ -35,7 +35,7 @@ def add_train_args(parser: ArgumentParser):
     """Add training arguments to an ArgumentParser."""
     # General arguments
     parser.add_argument('--data_path', type=str, required=True,
-                        help='Path to data CSV file')
+                        help='Path to data CSV file, or to directory of files if pre-chunked')
     parser.add_argument('--test', action='store_true', default=False,
                         help='Whether to skip training and only test the model')
     parser.add_argument('--vocab_path', type=str,
@@ -65,6 +65,8 @@ def add_train_args(parser: ArgumentParser):
                              'Unsupervised means using Caron et al pretraining (from FAIR).')
     parser.add_argument('--unsupervised_n_clusters', type=int, default=10000,
                         help='Number of clusters to use for unsupervised learning labels')
+    parser.add_argument('--prespecified_chunks_max_examples_per_epoch', type=int, default=1000000,
+                        help='When using prespecified chunks, load up to this many examples per "epoch"')
     parser.add_argument('--num_bins', type=int, default=20,
                         help='Number of bins for regression with binning')
     parser.add_argument('--num_chunks', type=int, default=1,
@@ -321,6 +323,11 @@ def modify_train_args(args: Namespace):
     if args.test:
         args.epochs = 0
 
+    if os.path.isdir(args.data_path): # gave a directory of chunks instead of just one file; will load a few per epoch
+        args.prespecified_chunk_dir = args.data_path
+        for root, _, names in os.walk(args.data_path):
+            args.data_path = os.path.join(root, names[0]) # just pick any one for now, for preprocessing
+            break
 
 def parse_hyper_opt_args() -> Namespace:
     """Parses arguments for hyperparameter optimization (includes training arguments)."""

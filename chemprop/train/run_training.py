@@ -14,7 +14,7 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from chemprop.data import cluster_split, StandardScaler, MoleculeDataset, generate_unsupervised_cluster_labels
-from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers
+from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers, load_prespecified_chunks
 from chemprop.models import build_model
 from chemprop.nn_utils import MockLR, NoamLR, param_count
 from chemprop.utils import get_loss_func, get_metric_func, load_checkpoint, save_checkpoint
@@ -173,10 +173,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         for epoch in trange(args.epochs):
             debug('Epoch {}'.format(epoch))
 
+            if args.prespecified_chunk_dir is not None:
+                # load some different random chunks each epoch
+                train_data, val_data = load_prespecified_chunks(args)
+
             if args.dataset_type == 'unsupervised': # won't work with moe
-                full_data = MoleculeDataset(train_data.data + val_data.data + test_data.data)
-                generate_unsupervised_cluster_labels(model, full_data, args)
-                model.create_ffn(args)
+                full_data = MoleculeDataset(train_data.data + val_data.data)
+                generate_unsupervised_cluster_labels(build_model(args), full_data, args) #cluster with a new random init
+                model.create_ffn(args) #reset the ffn since we're changing targets-- we're just pretraining the encoder. 
                 if args.cuda:
                     model.ffn.cuda()
 
