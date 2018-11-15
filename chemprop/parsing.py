@@ -59,10 +59,12 @@ def add_train_args(parser: ArgumentParser):
                         help='If a checkpoint_dir is specified for training, only loads weights from encoder'
                              'and not from the final feed-forward network')
     parser.add_argument('--dataset_type', type=str, required=True,
-                        choices=['classification', 'regression', 'regression_with_binning', 'unsupervised'],
-                        help='Type of dataset, i.e. classification (cls) or regression (reg).'
+                        choices=['classification', 'regression', 'regression_with_binning',
+                                 'unsupervised', 'bert_pretraining'],
+                        help='Type of dataset, e.g. classification or regression.'
                              'This determines the loss function used during training.'
-                             'Unsupervised means using Caron et al pretraining (from FAIR).')
+                             'Unsupervised means using Caron et al pretraining (from FAIR).'
+                             'bert_pretraining means using BERT (Devlin et al) style pretraining (from Google)')
     parser.add_argument('--unsupervised_n_clusters', type=int, default=10000,
                         help='Number of clusters to use for unsupervised learning labels')
     parser.add_argument('--prespecified_chunks_max_examples_per_epoch', type=int, default=1000000,
@@ -284,7 +286,7 @@ def modify_train_args(args: Namespace):
 
     if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or \
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']) \
-            and not args.dataset_type == 'unsupervised':
+            and not args.dataset_type in ['unsupervised', 'bert_pretraining']:
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
     args.minimize_score = args.metric in ['rmse', 'mae']

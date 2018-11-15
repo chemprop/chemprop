@@ -5,7 +5,8 @@ import torch.nn as nn
 from .gan import GAN
 from .jtnn import JTNN
 from .moe import MOE
-from .mpn import MPN
+from .mpn import MPN, MPNEncoder
+from chemprop.features import get_atom_fdim, get_bond_fdim
 from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
@@ -14,15 +15,20 @@ class MoleculeModel(nn.Module):
         super(MoleculeModel, self).__init__()
     
     def create_encoder(self, args):
-        # JTNN
         if args.jtnn:
-            encoder = JTNN(args)
+            self.encoder = JTNN(args)
+        elif args.dataset_type == 'bert_pretraining':
+            atom_fdim = get_atom_fdim(args)
+            bond_fdim = atom_fdim + get_bond_fdim(args)
+            self.encoder = MPNEncoder(args, atom_fdim, bond_fdim)
         else:
-            encoder = MPN(args)
-        self.encoder = encoder
+            self.encoder = MPN(args)
 
     def create_ffn(self, args):
-        # Regression with binning
+        if args.dataset_type == 'bert_pretraining':
+            self.ffn = lambda x: x
+            return
+
         if args.dataset_type == 'regression_with_binning':
             output_size = args.num_bins * args.num_tasks
         elif args.dataset_type == 'unsupervised':

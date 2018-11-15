@@ -13,7 +13,8 @@ import pickle
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import cluster_split, StandardScaler, MoleculeDataset, generate_unsupervised_cluster_labels
+from chemprop.data import atom_features_vocab, cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset,\
+    parallel_vocab, StandardScaler
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers, load_prespecified_chunks
 from chemprop.models import build_model
 from chemprop.nn_utils import MockLR, NoamLR, param_count
@@ -29,6 +30,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     
     debug(pformat(vars(args)))
 
+    # Get data
     debug('Loading data')
     args.task_names = get_task_names(args.data_path)
     desired_labels = get_desired_labels(args, args.task_names)
@@ -36,6 +38,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     args.num_tasks = data.num_tasks()
     debug('Number of tasks = {}'.format(args.num_tasks))
 
+    if args.dataset_type == 'bert_pretraining':
+        debug('Determining vocab')
+        vocab = parallel_vocab(atom_features_vocab, data.smiles())
+        args.vocab_size = len(vocab)
+        args.vocab_mapping = {word: i for i, word in enumerate(vocab)}
+        debug('Vocab size = {:,}'.format(args.vocab_size))
+
+    # Split data
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
         data, bin_predictions, regression_data = data
         args.bin_predictions = bin_predictions

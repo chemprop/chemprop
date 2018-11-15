@@ -13,7 +13,7 @@ from tqdm import trange, tqdm
 import pickle
 
 from chemprop.data import MoleculeDataset
-from chemprop.features import featurization
+from chemprop.features import featurization, mol2graph
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
@@ -114,7 +114,7 @@ def train(model: nn.Module,
     for i in trange(0, num_iters, args.batch_size):
         if args.moe:
             if not args.batch_domain_encs:
-                model.compute_domain_encs(train_smiles) # want to recompute every batch
+                model.compute_domain_encs(train_smiles)  # want to recompute every batch
             batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
             train_batch, train_targets = [], []
             for b in batch:
@@ -129,18 +129,27 @@ def train(model: nn.Module,
             iter_count += len(batch)
         else:
             # Prepare batch
-            batch = MoleculeDataset(data[i:i + args.batch_size])
-            smiles_batch, features_batch, target_batch = batch.smiles(), batch.features(), batch.targets()
-            # import pdb; pdb.set_trace()
-            mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
-            targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+            mol_batch = MoleculeDataset(data[i:i + args.batch_size])
+            smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
+
+            if args.dataset_type == 'bert_pretraining':
+                batch = mol2graph(smiles_batch, args)
+                mask = mol_batch.mask()  # num_atoms
+                batch.f_atoms *= mask.unsqueeze(dim=1)  # num_atoms x atom_fdim
+
+                # TODO: figure this out
+
+            else:
+                batch = smiles_batch
+                mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
+                targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
             if next(model.parameters()).is_cuda:
                 mask, targets = mask.cuda(), targets.cuda()
 
             # Run model
             model.zero_grad()
-            preds = model(smiles_batch, features_batch)
+            preds = model(batch, features_batch)
             if args.dataset_type == 'regression_with_binning':
                 preds = preds.view(targets.size(0), targets.size(1), -1)
                 targets = targets.long()
@@ -154,12 +163,9 @@ def train(model: nn.Module,
             loss = loss.sum() / mask.sum()
 
             loss_sum += loss.item()
-            iter_count += len(batch)
+            iter_count += len(mol_batch)
 
         loss.backward()
-        # import math
-        # if math.isnan(compute_gnorm(model)):
-        #     import pdb; pdb.set_trace()
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
@@ -179,7 +185,7 @@ def train(model: nn.Module,
             gp_norm_sum += gp_norm * args.batch_size
             g_loss_sum += g_loss * args.batch_size
 
-        n_iter += len(batch)
+        n_iter += len(mol_batch)
 
         # Log and/or add to tensorboard
         if (n_iter // args.batch_size) % args.log_frequency == 0:

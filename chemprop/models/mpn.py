@@ -38,10 +38,27 @@ class MPNEncoder(nn.Module):
         self.set2set = args.set2set
         self.set2set_iters = args.set2set_iters
         self.learn_virtual_edges = args.learn_virtual_edges
+        self.bert_pretraining = args.dataset_type == 'bert_pretraining'
+        if self.bert_pretraining:
+            self.vocab_size = args.vocab_size
         self.args = args
 
         if args.features_only:
             return  # won't use any of the graph stuff in this case
+
+        # Layer norm
+        if self.use_layer_norm:
+            self.layer_norm = nn.LayerNorm(self.hidden_size)
+
+        # Dropout
+        self.dropout_layer = nn.Dropout(p=self.dropout)
+
+        # Activation
+        self.act_func = get_activation_function(args.activation)
+
+        self.cached_zero_vector = torch.zeros(self.hidden_size)
+        if args.cuda:
+            self.cached_zero_vector = self.cached_zero_vector.cuda()
 
         # Input
         self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
@@ -55,13 +72,15 @@ class MPNEncoder(nn.Module):
         else:
             w_h_input_size = self.hidden_size
 
-        # Message passing
+        if self.learn_virtual_edges:
+            self.lve = nn.Linear(self.atom_fdim, self.atom_fdim)
 
+        # Message passing
         if self.diff_depth_weights:
             # Different weight matrix for each depth
             self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)]) for _ in range(self.layers_per_message)])
         else:
-            # Shared weight matrix across depths
+            # Shared weight matrix across depths (default)
             self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1)) for _ in range(self.layers_per_message)])
 
         if self.global_attention:
@@ -75,6 +94,10 @@ class MPNEncoder(nn.Module):
         # Readout
         if not (self.master_node and self.use_master_as_output):
             self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+
+        if self.bert_pretraining:
+            self.W_v = nn.Linear(self.hidden_size, self.vocab_size)
+            return
 
         if self.deepset:
             self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
@@ -91,23 +114,6 @@ class MPNEncoder(nn.Module):
         if self.attention:
             self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
-        
-        if self.learn_virtual_edges:
-            self.lve = nn.Linear(self.atom_fdim, self.atom_fdim)
-
-        # Layer norm
-        if self.use_layer_norm:
-            self.layer_norm = nn.LayerNorm(self.hidden_size)
-
-        # Dropout
-        self.dropout_layer = nn.Dropout(p=self.dropout)
-
-        # Activation
-        self.act_func = get_activation_function(args.activation)
-
-        self.cached_zero_vector = torch.zeros(self.hidden_size)
-        if args.cuda:
-            self.cached_zero_vector = self.cached_zero_vector.cuda()
 
     def forward(self,
                 mol_graph: BatchMolGraph,
@@ -245,11 +251,16 @@ class MPNEncoder(nn.Module):
         # Get atom hidden states from message hidden states
         if self.learn_virtual_edges:
             b_message = b_message * straight_through_mask
+
         nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
         atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
         atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
+
+        if self.bert_pretraining:
+            vocab_prob = F.softmax(self.W_v(atom_hiddens), dim=-1)  # num_atoms x vocab_size
+            return vocab_prob
 
         # Readout
         if self.set2set:
