@@ -36,6 +36,10 @@ class MoleculeModel(nn.Module):
         else:
             output_size = args.num_tasks
 
+        # Learning virtual edges
+        if args.learn_virtual_edges:
+            args.lve_model = self.encoder  # to make this accessible during featurization, to select virtual edges
+
         # Additional features
         if args.features_only:
             first_linear_dim = args.features_dim
@@ -55,7 +59,7 @@ class MoleculeModel(nn.Module):
         if args.ffn_num_layers == 1:
             ffn = [
                 drop_layer(args.ffn_input_dropout),
-                linear_layer(first_linear_dim, output_size, args.ffn_input_dropout)
+                linear_layer(first_linear_dim, args.output_size, args.ffn_input_dropout)
             ]
         else:
             ffn = [
@@ -71,7 +75,7 @@ class MoleculeModel(nn.Module):
             ffn.extend([
                 get_activation_function(args.activation),
                 drop_layer(args.ffn_dropout),
-                linear_layer(args.ffn_hidden_size, output_size, args.ffn_dropout),
+                linear_layer(args.ffn_hidden_size, args.output_size, args.ffn_dropout),
             ])
 
         # Classification
@@ -94,14 +98,18 @@ def build_model(args: Namespace) -> nn.Module:
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
-    # Learning virtual edges
-    if args.learn_virtual_edges:
-        args.lve_model = encoder.encoder  # to make this accessible during featurization, to select virtual edges
+    # Regression with binning
+    if args.dataset_type == 'regression_with_binning':
+        output_size = args.num_bins * args.num_tasks
+    elif args.dataset_type == 'unsupervised':
+        output_size = args.unsupervised_n_clusters
+    else:
+        output_size = args.num_tasks
+    args.output_size = output_size
 
     if args.moe:
         model = MOE(args)
         if args.adversarial:
-            args.output_size = output_size
             model = GAN(args, prediction_model=model, encoder=model.encoder)
         initialize_weights(model)
 
@@ -112,7 +120,6 @@ def build_model(args: Namespace) -> nn.Module:
     model.create_ffn(args)
 
     if args.adversarial:
-        args.output_size = output_size
         model = GAN(args, prediction_model=model, encoder=model.encoder)
 
     initialize_weights(model)

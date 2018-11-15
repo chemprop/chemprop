@@ -330,6 +330,8 @@ def modify_train_args(args: Namespace):
         for root, _, names in os.walk(args.data_path):
             args.data_path = os.path.join(root, names[0]) # just pick any one for now, for preprocessing
             break
+    else:
+        args.prespecified_chunk_dir = None
 
 def parse_hyper_opt_args() -> Namespace:
     """Parses arguments for hyperparameter optimization (includes training arguments)."""
