@@ -167,7 +167,11 @@ def train(model: nn.Module,
         loss.backward()
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
-        optimizer.step()
+        if args.dataset_type == 'unsupervised':
+            for o in optimizer:
+                o.step()
+        else:
+            optimizer.step()
         scheduler.step()
 
         if args.adversarial:

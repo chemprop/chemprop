@@ -171,10 +171,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Optimizer and learning rate scheduler
+        optim_model = model if args.dataset_type != 'unsupervised' else model.encoder
         if args.optimizer == 'Adam':
-            optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+            optimizer = Adam(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         elif args.optimizer == 'SGD':
-            optimizer = SGD(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+            optimizer = SGD(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         if not args.no_noam:
             scheduler = NoamLR(
                 optimizer,
@@ -202,6 +203,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 full_data = MoleculeDataset(train_data.data + val_data.data)
                 generate_unsupervised_cluster_labels(build_model(args), full_data, args)  # cluster with a new random init
                 model.create_ffn(args)  # reset the ffn since we're changing targets-- we're just pretraining the encoder.
+                ffn_optim = SGD(model.ffn.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
                 if args.cuda:
                     model.ffn.cuda()
 
@@ -209,7 +211,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 model=model,
                 data=train_data,
                 loss_func=loss_func,
-                optimizer=optimizer,
+                optimizer=optimizer if args.dataset_type != 'unsupervised' else (optimizer, ffn_optim),
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,

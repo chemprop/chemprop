@@ -289,7 +289,7 @@ def modify_train_args(args: Namespace):
     if args.metric is None:
         if args.dataset_type == 'classification':
             args.metric = 'auc'
-        elif args.dataset_type == 'bert_pretraining':
+        elif args.dataset_type in ['bert_pretraining', 'unsupervised']:
             args.metric = 'log_loss'
         else:
             args.metric = 'rmse'

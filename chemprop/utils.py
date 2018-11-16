@@ -178,8 +178,10 @@ def get_metric_func(args: Namespace) -> Callable:
         return metric_func
     
     if metric == 'log_loss':
+        #only supported for unsupervised and bert_pretraining
+        num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab_size
         def metric_func(targets, preds):
-            return log_loss(targets, preds, labels=range(args.vocab_size))
+            return log_loss(targets, preds, labels=range(num_labels))
         return metric_func
 
     raise ValueError('Metric "{}" not supported.'.format(metric))

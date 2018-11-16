@@ -218,7 +218,7 @@ def load_prespecified_chunks(args: Namespace):
     from loading a few random chunks. 
     """
     chunks = []
-    for root, _, names in os.walk(args.prespecified_chunk_dir):
+    for _, _, names in os.walk(args.prespecified_chunk_dir):
         random.shuffle(names)
     data_len = 0
     for name in names:
@@ -237,6 +237,6 @@ def load_prespecified_chunks(args: Namespace):
     split_sizes = deepcopy(args.split_sizes)
     split_sizes[2] = 0 # no test set
     split_sizes = [i / sum(split_sizes) for i in split_sizes]
-    train, val, test = split_data(full_data, args, split_sizes)
+    train, val, _ = split_data(full_data, args, split_sizes)
     return train, val
 

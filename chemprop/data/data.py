@@ -113,7 +113,7 @@ class MoleculeDatapoint:
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
-        self.bert_pretraining = self.data[0].bert_pretraining
+        self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
         self.scaler = None
     
     def bert_init(self, args: Namespace):
