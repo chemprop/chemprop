@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple
 from argparse import Namespace
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\

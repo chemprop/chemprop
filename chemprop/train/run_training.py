@@ -44,7 +44,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         args.vocab_func = get_vocab_func(args)
         vocab = parallel_vocab(args.vocab_func, data.smiles())
         args.vocab_size = len(vocab)
-        args.vocab_mapping = {word: i for i, word in enumerate(vocab)}
+        args.vocab_mapping = {word: i for i, word in enumerate(sorted(vocab))}
         data.bert_init(args)
         debug('Vocab size = {:,}'.format(args.vocab_size))
 

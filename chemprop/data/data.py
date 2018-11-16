@@ -102,7 +102,9 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
-        self.mask = (torch.rand(len(self.targets)) > self.bert_mask_prob).numpy().tolist()  # len = num_atoms  (0s to mask atoms)
+        # 0s to mask atoms which should be predicted
+        # self.mask = [target not in [5, 7] or random.random() > .5 for target in self.targets]
+        self.mask = (torch.rand(len(self.targets)) > self.bert_mask_prob).numpy().tolist()  # len = num_atoms
 
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets

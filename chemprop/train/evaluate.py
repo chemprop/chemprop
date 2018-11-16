@@ -24,6 +24,7 @@ def evaluate_predictions(preds: List[List[float]],
 
     if args.dataset_type == 'unsupervised':
         num_tasks = 1
+
     if args.dataset_type == 'bert_pretraining':
         num_tasks = 1
         targets = [[t] for t in targets]
