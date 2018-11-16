@@ -97,7 +97,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
-    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
+    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy', 'log_loss'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
@@ -282,7 +282,12 @@ def modify_train_args(args: Namespace):
     del args.no_features_scaling
 
     if args.metric is None:
-        args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'
+        if args.dataset_type == 'classification':
+            args.metric = 'auc'
+        elif args.dataset_type == 'bert_pretraining':
+            args.metric = 'log_loss'
+        else:
+            args.metric = 'rmse'
 
     if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or \
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']) \

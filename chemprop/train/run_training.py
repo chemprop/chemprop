@@ -6,6 +6,7 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
+import torch
 from torch.optim import Adam, SGD
 from tqdm import trange
 import pickle
@@ -43,6 +44,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         vocab = parallel_vocab(atom_features_vocab, data.smiles())
         args.vocab_size = len(vocab)
         args.vocab_mapping = {word: i for i, word in enumerate(vocab)}
+        data.bert_init(args)
         debug('Vocab size = {:,}'.format(args.vocab_size))
 
     # Split data
@@ -124,7 +126,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Get loss and metric functions
     loss_func = get_loss_func(args.dataset_type)
-    metric_func = get_metric_func(args.metric)
+    metric_func = get_metric_func(args)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()

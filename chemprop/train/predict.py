@@ -6,6 +6,7 @@ import torch.nn as nn
 import numpy as np
 
 from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.features import mol2graph
 
 
 def predict(model: nn.Module,
@@ -32,7 +33,12 @@ def predict(model: nn.Module,
             smiles_batch, features_batch = batch.smiles(), batch.features()
 
             # Run model
-            batch_preds = model(smiles_batch, features_batch)
+            if args.dataset_type == 'bert_pretraining':
+                batch = mol2graph(smiles_batch, args)
+            else:
+                batch = smiles_batch
+
+            batch_preds = model(batch, features_batch)
             batch_preds = batch_preds.data.cpu().numpy()
 
             if scaler is not None:
@@ -42,6 +48,8 @@ def predict(model: nn.Module,
                 batch_preds = batch_preds.reshape((batch_preds.shape[0], args.num_tasks, args.num_bins))
                 indices = np.argmax(batch_preds, axis=2)
                 preds.extend(indices.tolist())
+            elif args.dataset_type == 'bert_pretraining':
+                preds.extend(batch_preds.tolist()[1:])  # get rid of the padding
             else:
                 preds.extend(batch_preds.tolist())
         

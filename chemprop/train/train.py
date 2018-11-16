@@ -137,7 +137,7 @@ def train(model: nn.Module,
                 mask = mol_batch.mask()  # num_atoms
                 batch.f_atoms *= mask.unsqueeze(dim=1)  # num_atoms x atom_fdim
 
-                # TODO: figure this out
+                targets = torch.cat([torch.zeros((1)).long()] + target_batch, dim=0)
 
             else:
                 batch = smiles_batch
@@ -159,6 +159,8 @@ def train(model: nn.Module,
             else:
                 if args.dataset_type == 'unsupervised':
                     targets = targets.long().reshape(-1)
+                if args.dataset_type == 'bert_pretraining':
+                    mask = 1 - mask  # since the ones that were masked out earlier are now being predicted
                 loss = loss_func(preds, targets) * mask
             loss = loss.sum() / mask.sum()
 

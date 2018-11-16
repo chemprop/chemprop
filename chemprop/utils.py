@@ -5,7 +5,7 @@ from typing import Callable, Tuple, Union
 from argparse import Namespace
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
-    roc_auc_score, accuracy_score
+    roc_auc_score, accuracy_score, log_loss
 import torch
 import torch.nn as nn
 
@@ -144,13 +144,15 @@ def get_loss_func(dataset_type: str) -> nn.Module:
     raise ValueError('Dataset type "{}" not supported.'.format(dataset_type))
 
 
-def get_metric_func(metric: str) -> Callable:
+def get_metric_func(args: Namespace) -> Callable:
     """
     Gets the metric function corresponding to a given metric name.
 
-    :param metric: The name of the metric.
+    :param args: Namespace containing args.metric
     :return: A metric function which takes as arguments a list of targets and a list of predictions.
     """
+    metric = args.metric
+
     if metric == 'auc':
         return roc_auc_score
 
@@ -173,6 +175,11 @@ def get_metric_func(metric: str) -> Callable:
         def metric_func(targets, preds):
             hard_preds = [1 if p > 0.5 else 0 for p in preds]
             return accuracy_score(targets, hard_preds)
+        return metric_func
+    
+    if metric == 'log_loss':
+        def metric_func(targets, preds):
+            return log_loss(targets, preds, labels=range(args.vocab_size))
         return metric_func
 
     raise ValueError('Metric "{}" not supported.'.format(metric))

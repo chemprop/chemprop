@@ -87,13 +87,15 @@ class MoleculeDatapoint:
 
             if sparse:
                 self.targets = SparseNoneArray(self.targets)
-
-        if self.bert_pretraining:
-            self.mask_prob = 0.15
-            atoms = Chem.MolFromSmiles(self.smiles).GetNumAtoms()
-            self.n_atoms = len(atoms)
-            self.targets = torch.LongTensor([args.vocab_mapping[str(atom_features(atom))] for atom in atoms])
-            self.recreate_mask()
+    
+    def bert_init(self, args: Namespace):
+        if not self.bert_pretraining:
+            raise Exception('Should not do this unless using bert_pretraining.')
+        self.mask_prob = 0.15
+        atoms = Chem.MolFromSmiles(self.smiles).GetAtoms()
+        self.n_atoms = len(atoms)
+        self.targets = torch.LongTensor([args.vocab_mapping[str(atom_features(atom))] for atom in atoms])
+        self.recreate_mask()
 
     def recreate_mask(self):
         if not self.bert_pretraining:
@@ -110,6 +112,10 @@ class MoleculeDataset(Dataset):
         self.data = data
         self.bert_pretraining = self.data[0].bert_pretraining
         self.scaler = None
+    
+    def bert_init(self, args: Namespace):
+        for d in self.data:
+            d.bert_init(args)
 
     def compound_names(self) -> List[str]:
         if self.data[0].compound_name is None:
@@ -136,7 +142,7 @@ class MoleculeDataset(Dataset):
         if not self.bert_pretraining:
             raise Exception('Mask is undefined without bert_pretraining on.')
 
-        return torch.cat([d.mask for d in self.data], dim=0)
+        return torch.cat([torch.zeros((1))] + [d.mask for d in self.data], dim=0)  # note the first entry is padding
 
     def shuffle(self, seed: int = None):
         if seed is not None:

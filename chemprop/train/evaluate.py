@@ -1,6 +1,7 @@
 from argparse import Namespace
 from typing import Callable, List
 
+import torch
 import torch.nn as nn
 
 from .predict import predict
@@ -21,9 +22,11 @@ def evaluate_predictions(preds: List[List[float]],
     :return: A list with the score for each task based on `metric_func`.
     """
     data_size, num_tasks = len(preds), len(preds[0])
-    if args.dataset_type == 'unsupervised':
+    if args.dataset_type in ['unsupervised', 'bert_pretraining']:
         num_tasks = 1
-
+        targets = [[t] for t in targets]
+        preds = [[p] for p in preds]
+    
     # Filter out empty targets
     # valid_preds and valid_targets have shape (num_tasks, data_size)
     valid_preds = [[] for _ in range(num_tasks)]
@@ -38,7 +41,8 @@ def evaluate_predictions(preds: List[List[float]],
     results = []
     for i in range(num_tasks):
         # Skip if all targets are identical
-        if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+        if args.dataset_type != 'bert_pretraining' and \
+                    (all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i])):
             continue
         results.append(metric_func(valid_targets[i], valid_preds[i]))
 
@@ -61,6 +65,13 @@ def evaluate(model: nn.Module,
     :return: A list with the score for each task based on `metric_func`.
     """
     smiles, targets = data.smiles(), data.targets()
+    # TODO do the same thing to the test targets in run_training, and maybe refactor
+    if args.dataset_type == 'bert_pretraining':
+        mask = data.mask()
+        targets = torch.cat(targets, dim=0).numpy().tolist()
+        for i in range(len(targets)):
+            if mask[i] == 1:  # only predict ones masked out
+                targets[i] = None
 
     preds = predict(
         model=model,
