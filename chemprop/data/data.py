@@ -5,7 +5,6 @@ import math
 from typing import List, Optional, Union
 
 import numpy as np
-import torch
 from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
@@ -104,7 +103,11 @@ class MoleculeDatapoint:
 
         # 0s to mask atoms which should be predicted
         # self.mask = [target not in [5, 7] or random.random() > .5 for target in self.targets]
-        self.mask = (torch.rand(len(self.targets)) > self.bert_mask_prob).numpy().tolist()  # len = num_atoms
+        self.mask = list(np.random.rand(len(self.targets)) > self.bert_mask_prob)  # len = num_atoms
+
+        # Ensure at least one 0 so at least one thing is predicted
+        if sum(self.mask) == len(self.mask):
+            self.mask[np.random.randint(0, len(self.mask))] = 0
 
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets

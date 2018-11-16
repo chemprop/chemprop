@@ -159,6 +159,7 @@ def train(model: nn.Module,
                 if args.dataset_type == 'unsupervised':
                     targets = targets.long().reshape(-1)
                 loss = loss_func(preds, targets) * mask
+
             loss = loss.sum() / mask.sum()
 
             loss_sum += loss.item()

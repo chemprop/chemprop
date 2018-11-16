@@ -299,7 +299,7 @@ def modify_train_args(args: Namespace):
             and not args.dataset_type in ['unsupervised', 'bert_pretraining']:
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 
-    args.minimize_score = args.metric in ['rmse', 'mae']
+    args.minimize_score = args.metric in ['rmse', 'mae', 'log_loss']
 
     update_args_from_checkpoint_dir(args)
 

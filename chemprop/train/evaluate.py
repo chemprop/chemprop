@@ -48,6 +48,7 @@ def evaluate_predictions(preds: List[List[float]],
         if args.dataset_type != 'bert_pretraining' and \
                     (all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i])):
             continue
+
         results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     return results
