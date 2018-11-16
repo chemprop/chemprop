@@ -6,7 +6,6 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
-import torch
 from torch.optim import Adam, SGD
 from tqdm import trange
 import pickle
@@ -16,7 +15,8 @@ from .predict import predict
 from .train import train
 from chemprop.data import atom_features_vocab, cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset,\
     parallel_vocab, StandardScaler
-from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers, load_prespecified_chunks
+from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers,\
+    load_prespecified_chunks
 from chemprop.models import build_model
 from chemprop.nn_utils import MockLR, NoamLR, param_count
 from chemprop.utils import get_loss_func, get_metric_func, load_checkpoint, save_checkpoint
@@ -131,6 +131,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
     sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
+
+    if args.dataset_type == 'bert_pretraining':
+        # Only predict targets that are masked out
+        test_targets = [target if mask == 0 else None for target, mask in zip(test_targets, test_data.mask())]
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):

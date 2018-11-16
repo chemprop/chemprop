@@ -260,7 +260,7 @@ class MPNEncoder(nn.Module):
 
         if self.bert_pretraining:
             vocab_prob = F.softmax(self.W_v(atom_hiddens), dim=-1)  # num_atoms x vocab_size
-            return vocab_prob
+            return vocab_prob[1:]  # leave out atom padding
 
         # Readout
         if self.set2set:

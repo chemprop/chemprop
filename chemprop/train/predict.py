@@ -29,12 +29,14 @@ def predict(model: nn.Module,
         preds = []
         for i in range(0, len(data), args.batch_size):
             # Prepare batch
-            batch = MoleculeDataset(data[i:i + args.batch_size])
-            smiles_batch, features_batch = batch.smiles(), batch.features()
+            mol_batch = MoleculeDataset(data[i:i + args.batch_size])
+            smiles_batch, features_batch = mol_batch.smiles(), mol_batch.features()
 
             # Run model
             if args.dataset_type == 'bert_pretraining':
                 batch = mol2graph(smiles_batch, args)
+                mask = torch.FloatTensor(mol_batch.mask())  # num_atoms
+                batch.f_atoms[1:] *= mask.unsqueeze(dim=1)  # num_atoms x atom_fdim (1 for padding)
             else:
                 batch = smiles_batch
 
@@ -48,8 +50,6 @@ def predict(model: nn.Module,
                 batch_preds = batch_preds.reshape((batch_preds.shape[0], args.num_tasks, args.num_bins))
                 indices = np.argmax(batch_preds, axis=2)
                 preds.extend(indices.tolist())
-            elif args.dataset_type == 'bert_pretraining':
-                preds.extend(batch_preds.tolist()[1:])  # get rid of the padding
             else:
                 preds.extend(batch_preds.tolist())
         

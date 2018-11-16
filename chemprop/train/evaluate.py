@@ -22,6 +22,7 @@ def evaluate_predictions(preds: List[List[float]],
     :return: A list with the score for each task based on `metric_func`.
     """
     data_size, num_tasks = len(preds), len(preds[0])
+
     if args.dataset_type in ['unsupervised', 'bert_pretraining']:
         num_tasks = 1
         targets = [[t] for t in targets]
@@ -65,13 +66,10 @@ def evaluate(model: nn.Module,
     :return: A list with the score for each task based on `metric_func`.
     """
     smiles, targets = data.smiles(), data.targets()
-    # TODO do the same thing to the test targets in run_training, and maybe refactor
+
     if args.dataset_type == 'bert_pretraining':
-        mask = data.mask()
-        targets = torch.cat(targets, dim=0).numpy().tolist()
-        for i in range(len(targets)):
-            if mask[i] == 1:  # only predict ones masked out
-                targets[i] = None
+        # Only predict targets that are masked out
+        targets = [target if mask == 0 else None for target, mask in zip(targets, data.mask())]
 
     preds = predict(
         model=model,

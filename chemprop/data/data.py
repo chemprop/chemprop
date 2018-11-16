@@ -2,7 +2,7 @@ from argparse import Namespace
 from collections import defaultdict
 import random
 import math
-from typing import List
+from typing import List, Optional, Union
 
 import numpy as np
 from rdkit import Chem
@@ -91,17 +91,18 @@ class MoleculeDatapoint:
     def bert_init(self, args: Namespace):
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
+
         self.mask_prob = 0.15
         atoms = Chem.MolFromSmiles(self.smiles).GetAtoms()
         self.n_atoms = len(atoms)
-        self.targets = torch.LongTensor([args.vocab_mapping[str(atom_features(atom))] for atom in atoms])
+        self.targets = [args.vocab_mapping[str(atom_features(atom))] for atom in atoms]
         self.recreate_mask()
 
     def recreate_mask(self):
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
-        self.mask = (torch.rand(self.n_atoms) > self.mask_prob).float()  # num_atoms  (0s to mask atoms)
+        self.mask = (torch.rand(self.n_atoms) > self.mask_prob).numpy().tolist()  # len = num_atoms  (0s to mask atoms)
 
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets
@@ -132,17 +133,20 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self.data]
 
-    def targets(self) -> List[float]:
+    def targets(self) -> Union[List[List[Optional[float]]], List[SparseNoneArray], List[int]]:
+        if self.bert_pretraining:
+            return [target for d in self.data for target in d.targets]  # targets are atom types
+
         return [d.targets for d in self.data]
 
     def num_tasks(self) -> int:
         return self.data[0].num_tasks
 
-    def mask(self) -> torch.FloatTensor:
+    def mask(self) -> List[int]:
         if not self.bert_pretraining:
             raise Exception('Mask is undefined without bert_pretraining on.')
 
-        return torch.cat([torch.zeros((1))] + [d.mask for d in self.data], dim=0)  # note the first entry is padding
+        return [m for d in self.data for m in d.mask]
 
     def shuffle(self, seed: int = None):
         if seed is not None:
