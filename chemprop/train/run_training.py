@@ -13,7 +13,7 @@ import pickle
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import atom_features_vocab, cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset,\
+from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, get_vocab_func, MoleculeDataset,\
     parallel_vocab, StandardScaler
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers,\
     load_prespecified_chunks
@@ -41,7 +41,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     if args.dataset_type == 'bert_pretraining':
         debug('Determining vocab')
-        vocab = parallel_vocab(atom_features_vocab, data.smiles())
+        args.vocab_func = get_vocab_func(args)
+        vocab = parallel_vocab(args.vocab_func, data.smiles())
         args.vocab_size = len(vocab)
         args.vocab_mapping = {word: i for i, word in enumerate(vocab)}
         data.bert_init(args)
@@ -132,7 +133,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = np.zeros((test_data.n_atoms(), args.vocab_size))
+        sum_test_preds = np.zeros((len(test_targets), args.vocab_size))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -199,7 +200,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             if args.dataset_type == 'unsupervised':  # won't work with moe
                 full_data = MoleculeDataset(train_data.data + val_data.data)
-                generate_unsupervised_cluster_labels(build_model(args), full_data, args) #cluster with a new random init
+                generate_unsupervised_cluster_labels(build_model(args), full_data, args)  # cluster with a new random init
                 model.create_ffn(args)  # reset the ffn since we're changing targets-- we're just pretraining the encoder.
                 if args.cuda:
                     model.ffn.cuda()

@@ -1,7 +1,6 @@
 from argparse import Namespace
 from typing import Callable, List
 
-import torch
 import torch.nn as nn
 
 from .predict import predict

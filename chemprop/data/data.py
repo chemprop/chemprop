@@ -5,12 +5,11 @@ import math
 from typing import List, Optional, Union
 
 import numpy as np
-from rdkit import Chem
 import torch
 from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
-from chemprop.features import atom_features, morgan_fingerprint, rdkit_2d_features
+from chemprop.features import morgan_fingerprint, rdkit_2d_features
 
 
 class SparseNoneArray:
@@ -41,10 +40,13 @@ class MoleculeDatapoint:
         :param features: A numpy array containing additional features (ex. Morgan fingerprint).
         :param use_compound_names: Whether the data CSV includes the compound name on each line.
         """
-        features_generator = args.features_generator if args is not None else None
-        predict_features = args.predict_features if args is not None else False
-        sparse = args.sparse if args is not None else False
-        self.bert_pretraining = args.dataset_type == 'bert_pretraining' if args is not None else False
+        if args is not None:
+            features_generator, predict_features, sparse = args.features_generator, args.predict_features, args.sparse
+            self.bert_pretraining = args.dataset_type == 'bert_pretraining'
+            self.bert_mask_prob = args.bert_mask_prob
+        else:
+            features_generator = None
+            predict_features = sparse = self.bert_pretraining = False
 
         if features is not None and features_generator is not None:
             raise ValueError('Currently cannot provide both loaded features and a features generator.')
@@ -92,17 +94,15 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
 
-        self.mask_prob = 0.15
-        atoms = Chem.MolFromSmiles(self.smiles).GetAtoms()
-        self.n_atoms = len(atoms)
-        self.targets = [args.vocab_mapping[str(atom_features(atom))] for atom in atoms]
+        self.vocab_func = args.vocab_func
+        self.targets = [args.vocab_mapping[word] for word in self.vocab_func(self.smiles)]
         self.recreate_mask()
 
     def recreate_mask(self):
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
-        self.mask = (torch.rand(self.n_atoms) > self.mask_prob).numpy().tolist()  # len = num_atoms  (0s to mask atoms)
+        self.mask = (torch.rand(len(self.targets)) > self.bert_mask_prob).numpy().tolist()  # len = num_atoms  (0s to mask atoms)
 
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets
@@ -147,12 +147,6 @@ class MoleculeDataset(Dataset):
             raise Exception('Mask is undefined without bert_pretraining on.')
 
         return [m for d in self.data for m in d.mask]
-
-    def n_atoms(self) -> int:
-        if not self.bert_pretraining:
-            raise Exception('Number of atoms is undefined without bert_pretraining on.')
-
-        return sum(d.n_atoms for d in self.data)
 
     def shuffle(self, seed: int = None):
         if seed is not None:
