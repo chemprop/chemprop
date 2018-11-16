@@ -148,6 +148,12 @@ class MoleculeDataset(Dataset):
 
         return [m for d in self.data for m in d.mask]
 
+    def n_atoms(self) -> int:
+        if not self.bert_pretraining:
+            raise Exception('Number of atoms is undefined without bert_pretraining on.')
+
+        return sum(d.n_atoms for d in self.data)
+
     def shuffle(self, seed: int = None):
         if seed is not None:
             random.seed(seed)

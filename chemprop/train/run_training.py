@@ -130,7 +130,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
-    sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
+
+    if args.dataset_type == 'bert_pretraining':
+        sum_test_preds = np.zeros((test_data.n_atoms(), args.vocab_size))
+    else:
+        sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out
@@ -193,10 +197,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 # load some different random chunks each epoch
                 train_data, val_data = load_prespecified_chunks(args)
 
-            if args.dataset_type == 'unsupervised': # won't work with moe
+            if args.dataset_type == 'unsupervised':  # won't work with moe
                 full_data = MoleculeDataset(train_data.data + val_data.data)
                 generate_unsupervised_cluster_labels(build_model(args), full_data, args) #cluster with a new random init
-                model.create_ffn(args) #reset the ffn since we're changing targets-- we're just pretraining the encoder. 
+                model.create_ffn(args)  # reset the ffn since we're changing targets-- we're just pretraining the encoder.
                 if args.cuda:
                     model.ffn.cuda()
 
