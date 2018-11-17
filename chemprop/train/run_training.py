@@ -127,7 +127,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = np.zeros((len(test_targets), args.vocab_size))
+        sum_test_preds = np.zeros((len(test_targets), args.vocab.vocab_size))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 

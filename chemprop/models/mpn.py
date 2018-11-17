@@ -40,7 +40,7 @@ class MPNEncoder(nn.Module):
         self.learn_virtual_edges = args.learn_virtual_edges
         self.bert_pretraining = args.dataset_type == 'bert_pretraining'
         if self.bert_pretraining:
-            self.vocab_size = args.vocab_size
+            self.vocab_size = args.vocab.vocab_size
         self.args = args
 
         if args.features_only:

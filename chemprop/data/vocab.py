@@ -4,7 +4,29 @@ from typing import Callable, List, Set, Tuple
 
 from rdkit import Chem
 
-from chemprop.features import atom_features
+from chemprop.features import atom_features, ATOM_FDIM
+
+class Vocab:
+    def __init__(self, args, smiles):
+        self.vocab_func = get_vocab_func(args)
+        if args.bert_vocab_func == 'atom':
+            self.unk = '-1'
+        if args.bert_vocab_func == 'atom_features':
+            self.unk = str([0 for _ in range(ATOM_FDIM)])
+        self.smiles = smiles
+        self.vocab = parallel_vocab(self.vocab_func, self.smiles)
+        self.vocab.add(self.unk)
+        self.vocab_size = len(self.vocab)
+        self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
+
+
+    def w2i(self, word):
+
+        return self.vocab_mapping[word] if word in self.vocab_mapping else self.vocab_mapping[self.unk]
+
+
+    def smiles2indices(self, smiles):
+        return [self.w2i(word) for word in self.vocab_func(smiles)]
 
 
 def atom_vocab(smiles: str) -> List[str]:

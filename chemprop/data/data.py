@@ -10,7 +10,7 @@ from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
-from .vocab import get_vocab_func, parallel_vocab
+from .vocab import get_vocab_func, parallel_vocab, Vocab
 
 
 class SparseNoneArray:
@@ -95,8 +95,7 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
 
-        self.vocab_func = args.vocab_func
-        self.targets = [args.vocab_mapping[word] for word in self.vocab_func(self.smiles)]
+        self.targets = args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
     def recreate_mask(self):
@@ -122,13 +121,11 @@ class MoleculeDataset(Dataset):
         self.scaler = None
     
     def bert_init(self, args: Namespace, logger: Logger=None):
-        debug = logger.debug if logger is not None else print
-        debug('Determining vocab')
-        args.vocab_func = get_vocab_func(args)  # TODO either update vocab, or use an unk, for ZINC
-        vocab = parallel_vocab(args.vocab_func, self.smiles())
-        args.vocab_size = len(vocab)
-        args.vocab_mapping = {word: i for i, word in enumerate(sorted(vocab))}
-        debug('Vocab size = {:,}'.format(args.vocab_size))
+        if not hasattr(args, 'vocab'):
+            debug = logger.debug if logger is not None else print
+            debug('Determining vocab')
+            args.vocab = Vocab(args, self.smiles())
+            debug('Vocab size = {:,}'.format(args.vocab.vocab_size))
         
         for d in self.data:
             d.bert_init(args)
