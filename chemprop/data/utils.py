@@ -234,6 +234,10 @@ def load_prespecified_chunks(args: Namespace):
     random.shuffle(full_data)
     full_data = full_data[:args.prespecified_chunks_max_examples_per_epoch]
     full_data = MoleculeDataset(full_data)
+
+    if args.dataset_type == 'bert_pretraining':
+        full_data.bert_init(args)
+
     split_sizes = deepcopy(args.split_sizes)
     split_sizes[2] = 0 # no test set
     split_sizes = [i / sum(split_sizes) for i in split_sizes]

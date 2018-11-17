@@ -1,5 +1,6 @@
 from argparse import Namespace
 from collections import defaultdict
+from logging import Logger
 import random
 import math
 from typing import List, Optional, Union
@@ -9,6 +10,7 @@ from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
+from .vocab import get_vocab_func, parallel_vocab
 
 
 class SparseNoneArray:
@@ -119,7 +121,15 @@ class MoleculeDataset(Dataset):
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
         self.scaler = None
     
-    def bert_init(self, args: Namespace):
+    def bert_init(self, args: Namespace, logger: Logger=None):
+        debug = logger.debug if logger is not None else print
+        debug('Determining vocab')
+        args.vocab_func = get_vocab_func(args)  # TODO either update vocab, or use an unk, for ZINC
+        vocab = parallel_vocab(args.vocab_func, self.smiles())
+        args.vocab_size = len(vocab)
+        args.vocab_mapping = {word: i for i, word in enumerate(sorted(vocab))}
+        debug('Vocab size = {:,}'.format(args.vocab_size))
+        
         for d in self.data:
             d.bert_init(args)
 

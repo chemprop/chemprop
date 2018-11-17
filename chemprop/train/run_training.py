@@ -40,13 +40,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     debug('Number of tasks = {}'.format(args.num_tasks))
 
     if args.dataset_type == 'bert_pretraining':
-        debug('Determining vocab')
-        args.vocab_func = get_vocab_func(args)
-        vocab = parallel_vocab(args.vocab_func, data.smiles())
-        args.vocab_size = len(vocab)
-        args.vocab_mapping = {word: i for i, word in enumerate(sorted(vocab))}
-        data.bert_init(args)
-        debug('Vocab size = {:,}'.format(args.vocab_size))
+        data.bert_init(args, logger)
 
     # Split data
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
