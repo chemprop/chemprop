@@ -191,7 +191,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             if args.prespecified_chunk_dir is not None:
                 # load some different random chunks each epoch
-                train_data, val_data = load_prespecified_chunks(args)
+                train_data, val_data = load_prespecified_chunks(args, logger)
                 debug('Loaded prespecified chunks for epoch')
 
             if args.dataset_type == 'unsupervised':  # won't work with moe

@@ -1,6 +1,6 @@
 from argparse import Namespace
 from copy import deepcopy
-import logging
+from logging import Logger
 import pickle
 import random
 from typing import List, Tuple
@@ -119,7 +119,7 @@ def split_data(data: MoleculeDataset,
                args: Namespace,
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
-               logger: logging.Logger = None) -> Tuple[MoleculeDataset,
+               logger: Logger = None) -> Tuple[MoleculeDataset,
                                                        MoleculeDataset,
                                                        MoleculeDataset]:
     """
@@ -209,7 +209,7 @@ def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
 
     return data
 
-def load_prespecified_chunks(args: Namespace):
+def load_prespecified_chunks(args: Namespace, logger: Logger=None):
     """
     Load some number of chunks into train and val datasets. 
 
@@ -236,7 +236,7 @@ def load_prespecified_chunks(args: Namespace):
     full_data = MoleculeDataset(full_data)
 
     if args.dataset_type == 'bert_pretraining':
-        full_data.bert_init(args)
+        full_data.bert_init(args, logger)
 
     split_sizes = deepcopy(args.split_sizes)
     split_sizes[2] = 0 # no test set
