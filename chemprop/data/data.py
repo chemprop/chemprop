@@ -1,9 +1,11 @@
 from argparse import Namespace
 from collections import defaultdict
+from multiprocessing import Pool
 from logging import Logger
 import random
 import math
 from typing import List, Optional, Union
+from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
@@ -121,14 +123,17 @@ class MoleculeDataset(Dataset):
         self.scaler = None
     
     def bert_init(self, args: Namespace, logger: Logger=None):
+        debug = logger.debug if logger is not None else print
+
         if not hasattr(args, 'vocab'):
-            debug = logger.debug if logger is not None else print
             debug('Determining vocab')
             args.vocab = Vocab(args, self.smiles())
             debug('Vocab size = {:,}'.format(args.vocab.vocab_size))
         
-        for d in self.data:
-            d.bert_init(args)
+        # reassign self.data since the pool seems to deepcopy the data before calling bert_init
+        self.data = Pool().map(parallel_bert_init, [(d, deepcopy(args)) for d in self.data])
+        debug('Finished initializing targets and masks for bert')
+
 
     def compound_names(self) -> List[str]:
         if self.data[0].compound_name is None:
@@ -208,3 +213,8 @@ class MoleculeDataset(Dataset):
 
     def __getitem__(self, item) -> MoleculeDatapoint:
         return self.data[item]
+
+def parallel_bert_init(pair):
+    d, args = pair
+    d.bert_init(args)
+    return d
