@@ -97,6 +97,7 @@ def load_checkpoint(path: str,
                                                                            loaded_state_dict[param_name].shape,
                                                                            model_state_dict[param_name].shape))
         else:
+            logger.info('Loading pretrained parameter "{}".'.format(param_name))
             pretrained_state_dict[param_name] = loaded_state_dict[param_name]
 
     # Load pretrained weights
