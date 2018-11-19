@@ -126,9 +126,9 @@ def add_train_args(parser: ArgumentParser):
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')
     parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'SGD'],
+                        help='learning rate optimizer')
+    parser.add_argument('--scheduler', type=str, default='noam', choices=['noam', 'none', 'decay'],
                         help='learning rate scheduler')
-    parser.add_argument('--no_noam', action='store_true', default=False,
-                        help='turn off noam LR scheduler')
     parser.add_argument('--init_lr', type=float, default=1e-4,
                         help='Initial learning rate')
     parser.add_argument('--max_lr', type=float, default=1e-3,
@@ -137,6 +137,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Final learning rate')
     parser.add_argument('--lr_scaler', type=float, default=1.0,
                         help='Amount by which to scale init_lr, max_lr, and final_lr (for convenience)')
+    parser.add_argument('--lr_decay_rate', type=float, default=0.9,
+                        help='lr decay per epoch, for decay scheduler')
     parser.add_argument('--max_grad_norm', type=float, default=None,
                         help='Maximum gradient norm when performing gradient clipping')
     parser.add_argument('--weight_decay', type=float, default=0.0,

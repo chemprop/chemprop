@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 from tensorboardX import SummaryWriter
 from torch.optim import Adam, SGD
+from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 import pickle
 
@@ -170,7 +171,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             optimizer = Adam(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         elif args.optimizer == 'SGD':
             optimizer = SGD(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        if not args.no_noam:
+        if args.scheduler == 'noam':
             scheduler = NoamLR(
                 optimizer,
                 warmup_epochs=args.warmup_epochs,
@@ -180,8 +181,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 max_lr=args.max_lr,
                 final_lr=args.final_lr
             )
-        else:
+        elif args.scheduler == 'none':
             scheduler = MockLR(optimizer=optimizer, lr=args.init_lr)
+        elif args.scheduler == 'decay':
+            scheduler = ExponentialLR(optimizer, args.lr_decay_rate)
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')

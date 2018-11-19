@@ -173,7 +173,9 @@ def train(model: nn.Module,
                 o.step()
         else:
             optimizer.step()
-        scheduler.step()
+        if args.scheduler in ['noam']: 
+            # for these schedulers, we step at each training step
+            scheduler.step()
 
         if args.adversarial:
             for _ in range(args.gan_d_per_g):
@@ -211,5 +213,8 @@ def train(model: nn.Module,
                 writer.add_scalar('param_norm', pnorm, n_iter)
                 writer.add_scalar('gradient_norm', gnorm, n_iter)
                 writer.add_scalar('learning_rate', lr, n_iter)
-
+    
+    if args.scheduler in ['decay']:
+        # for these schedulers, we step at each epoch
+        scheduler.step()
     return n_iter
