@@ -5,8 +5,7 @@ import torch.nn as nn
 from .gan import GAN
 from .jtnn import JTNN
 from .moe import MOE
-from .mpn import MPN, MPNEncoder
-from chemprop.features import get_atom_fdim, get_bond_fdim
+from .mpn import MPN
 from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
@@ -18,9 +17,7 @@ class MoleculeModel(nn.Module):
         if args.jtnn:
             self.encoder = JTNN(args)
         elif args.dataset_type == 'bert_pretraining':
-            atom_fdim = get_atom_fdim(args)
-            bond_fdim = atom_fdim + get_bond_fdim(args)
-            self.encoder = MPNEncoder(args, atom_fdim, bond_fdim)
+            self.encoder = MPN(args, graph_input=True)
         else:
             self.encoder = MPN(args)
 

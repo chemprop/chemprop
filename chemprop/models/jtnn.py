@@ -9,7 +9,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 import torch
 import torch.nn as nn
 
-from .mpn import MPNEncoder
+from .mpn import MPN
 from chemprop.nn_utils import GraphGRU, index_select_ND
 
 MAX_NB = 20
@@ -219,7 +219,7 @@ class JTNN(nn.Module):
         self.depth = args.depth
         self.args = args
 
-        self.jtnn = MPNEncoder(args, atom_fdim=self.hidden_size, bond_fdim=self.hidden_size)
+        self.jtnn = MPN(args, atom_fdim=self.hidden_size, bond_fdim=self.hidden_size, graph_input=True)
         self.embedding = nn.Embedding(self.vocab.size(), self.hidden_size)
         self.mpn = MPN(args)
 
