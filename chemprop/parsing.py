@@ -121,7 +121,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--truncate_outliers', action='store_true', default=False,
                         help='Truncates outliers in the training set to improve training stability'
                              '(All values outside mean ± 3 * std are truncated to equal mean ± 3 * std)')
-    parser.add_argument('--warmup_epochs', type=float, default=2.0,
+    parser.add_argument('--warmup_epochs', type=float, nargs='*', default=[2.0],
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
                              'from max_lr to final_lr.')
@@ -129,19 +129,22 @@ def add_train_args(parser: ArgumentParser):
                         help='learning rate optimizer')
     parser.add_argument('--scheduler', type=str, default='noam', choices=['noam', 'none', 'decay'],
                         help='learning rate scheduler')
-    parser.add_argument('--init_lr', type=float, default=1e-4,
+    parser.add_argument('--separate_ffn_lr', action='store_true', default=False,
+                        help='Whether to use a separate optimizer/lr scheduler for the ffn'
+                             'rather than sharing optimizer/scheduler with the message passing encoder')
+    parser.add_argument('--init_lr', type=float, nargs='*', default=[1e-4],
                         help='Initial learning rate')
-    parser.add_argument('--max_lr', type=float, default=1e-3,
+    parser.add_argument('--max_lr', type=float, nargs='*', default=[1e-3],
                         help='Maximum learning rate')
-    parser.add_argument('--final_lr', type=float, default=1e-4,
+    parser.add_argument('--final_lr', type=float, nargs='*', default=[1e-4],
                         help='Final learning rate')
-    parser.add_argument('--lr_scaler', type=float, default=1.0,
+    parser.add_argument('--lr_scaler', type=float, nargs='*', default=[1.0],
                         help='Amount by which to scale init_lr, max_lr, and final_lr (for convenience)')
     parser.add_argument('--lr_decay_rate', type=float, default=0.9,
                         help='lr decay per epoch, for decay scheduler')
     parser.add_argument('--max_grad_norm', type=float, default=None,
                         help='Maximum gradient norm when performing gradient clipping')
-    parser.add_argument('--weight_decay', type=float, default=0.0,
+    parser.add_argument('--weight_decay', type=float, nargs='*', default=[0.0],
                         help='L2 penalty on optimizer to keep parameter norms small')
     parser.add_argument('--no_target_scaling', action='store_true', default=False,
                         help='Turn off scaling of regression targets')
@@ -299,7 +302,7 @@ def modify_train_args(args: Namespace):
         else:
             args.metric = 'rmse'
 
-    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or \
+    if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']) \
             and not args.dataset_type in ['unsupervised', 'bert_pretraining']:
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
@@ -320,9 +323,19 @@ def modify_train_args(args: Namespace):
         assert args.features_generator or args.features_path
         args.use_input_features = False
 
-    args.init_lr *= args.lr_scaler
-    args.max_lr *= args.lr_scaler
-    args.final_lr *= args.lr_scaler
+    args.num_lrs = 1 + args.separate_ffn_lr
+    lr_params = [args.init_lr, args.max_lr, args.final_lr, args.lr_scaler, args.warmup_epochs, args.weight_decay]
+    for lr_param in lr_params:
+        assert 1 <= len(lr_param) <= args.num_lrs
+        if args.separate_ffn_lr:
+            if len(lr_param) == 1:
+                lr_param *= 2
+
+    for i in range(args.num_lrs):
+        args.init_lr[i] *= args.lr_scaler[i]
+        args.max_lr[i] *= args.lr_scaler[i]
+        args.final_lr[i] *= args.lr_scaler[i]
+
     del args.lr_scaler
 
     assert args.ffn_num_layers >= 1
@@ -347,6 +360,9 @@ def modify_train_args(args: Namespace):
             break
     else:
         args.prespecified_chunk_dir = None
+
+    if args.dataset_type == 'unsupervised':
+        args.separate_ffn_lr = True
 
 
 def parse_hyper_opt_args() -> Namespace:

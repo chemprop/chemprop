@@ -32,8 +32,8 @@ class GAN(nn.Module):
         self.beta = args.wgan_beta
 
         # the optimizers don't really belong here, but we put it here so that we don't clutter code for other opts
-        self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr * args.gan_lr_mult, betas=(0, 0.9))
-        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr * args.gan_lr_mult, betas=(0, 0.9))
+        self.optimizerG = Adam(self.encoder.parameters(), lr=args.init_lr[0] * args.gan_lr_mult, betas=(0, 0.9))
+        self.optimizerD = Adam(self.netD.parameters(), lr=args.init_lr[0] * args.gan_lr_mult, betas=(0, 0.9))
 
         self.use_scheduler = args.gan_use_scheduler
         if self.use_scheduler:
@@ -42,18 +42,18 @@ class GAN(nn.Module):
                 warmup_epochs=args.warmup_epochs,
                 total_epochs=args.epochs,
                 steps_per_epoch=args.train_data_length // args.batch_size,
-                init_lr=args.init_lr * args.gan_lr_mult,
-                max_lr=args.max_lr * args.gan_lr_mult,
-                final_lr=args.final_lr * args.gan_lr_mult
+                init_lr=args.init_lr[0] * args.gan_lr_mult,
+                max_lr=args.max_lr[0] * args.gan_lr_mult,
+                final_lr=args.final_lr[0] * args.gan_lr_mult
             )
             self.schedulerD = NoamLR(
                 self.optimizerD,
                 warmup_epochs=args.warmup_epochs,
                 total_epochs=args.epochs,
                 steps_per_epoch=(args.train_data_length // args.batch_size) * args.gan_d_per_g,
-                init_lr=args.init_lr * args.gan_lr_mult,
-                max_lr=args.max_lr * args.gan_lr_mult,
-                final_lr=args.final_lr * args.gan_lr_mult
+                init_lr=args.init_lr[0] * args.gan_lr_mult,
+                max_lr=args.max_lr[0] * args.gan_lr_mult,
+                final_lr=args.final_lr[0] * args.gan_lr_mult
             )
         
     def forward(self, smiles_batch: List[str], features=None) -> torch.Tensor:

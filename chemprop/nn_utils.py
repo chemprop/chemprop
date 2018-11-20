@@ -3,6 +3,7 @@ import os
 from typing import List, Union
 
 import matplotlib.pyplot as plt
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem.Draw import SimilarityMaps
 import torch
@@ -121,13 +122,13 @@ def initialize_weights(model: nn.Module):
 
 
 class MockLR(_LRScheduler):
-    def __init__(self, optimizer: Optimizer, lr: float):
+    def __init__(self, optimizer: Optimizer, *args, **kwargs):
         super(MockLR, self).__init__(optimizer)
-        self.lr = lr
+        self.optimizer = optimizer
 
     def get_lr(self) -> List[float]:
         """Gets a list of the current learning rates."""
-        return [self.lr]
+        return [param_group['lr'] for param_group in self.optimizer.param_groups]
 
     def step(self, current_step: int = None):
         pass
@@ -146,12 +147,12 @@ class NoamLR(_LRScheduler):
     """
     def __init__(self,
                  optimizer: Optimizer,
-                 warmup_epochs: Union[float, int],
-                 total_epochs: int,
+                 warmup_epochs: List[Union[float, int]],
+                 total_epochs: List[int],
                  steps_per_epoch: int,
-                 init_lr: float,
-                 max_lr: float,
-                 final_lr: float):
+                 init_lr: List[float],
+                 max_lr: List[float],
+                 final_lr: List[float]):
         """
         Initializes the learning rate scheduler.
 
@@ -163,27 +164,32 @@ class NoamLR(_LRScheduler):
         :param max_lr: The maximum learning rate (achieved after warmup_epochs).
         :param final_lr: The final learning rate (achieved after total_epochs).
         """
+        assert len(optimizer.param_groups) == len(warmup_epochs) == len(total_epochs) == len(init_lr) == \
+               len(max_lr) == len(final_lr)
+
+        self.num_lrs = len(optimizer.param_groups)
+
         self.optimizer = optimizer
-        self.warmup_epochs = warmup_epochs
-        self.total_epochs = total_epochs
+        self.warmup_epochs = np.array(warmup_epochs)
+        self.total_epochs = np.array(total_epochs)
         self.steps_per_epoch = steps_per_epoch
-        self.init_lr = init_lr
-        self.max_lr = max_lr
-        self.final_lr = final_lr
+        self.init_lr = np.array(init_lr)
+        self.max_lr = np.array(max_lr)
+        self.final_lr = np.array(final_lr)
 
         self.current_step = 0
         self.lr = init_lr
-        self.warmup_steps = int(self.warmup_epochs * self.steps_per_epoch)
+        self.warmup_steps = (self.warmup_epochs * self.steps_per_epoch).astype(int)
         self.total_steps = self.total_epochs * self.steps_per_epoch
         self.linear_increment = (self.max_lr - self.init_lr) / self.warmup_steps
-        if self.total_steps > self.warmup_steps:  # avoid division by 0
-            self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
+
+        self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
 
         super(NoamLR, self).__init__(optimizer)
 
     def get_lr(self) -> List[float]:
         """Gets a list of the current learning rates."""
-        return [self.lr]
+        return list(self.lr)
 
     def step(self, current_step: int = None):
         """
@@ -197,14 +203,15 @@ class NoamLR(_LRScheduler):
         else:
             self.current_step += 1
 
-        if self.current_step <= self.warmup_steps:
-            self.lr = self.init_lr + self.current_step * self.linear_increment
-        elif self.current_step <= self.total_steps:
-            self.lr = self.max_lr * (self.exponential_gamma ** (self.current_step - self.warmup_steps))
-        else:  # theoretically this case should never be reached since training should stop at total_steps
-            self.lr = self.final_lr
+        for i in range(self.num_lrs):
+            if self.current_step <= self.warmup_steps[i]:
+                self.lr[i] = self.init_lr[i] + self.current_step * self.linear_increment[i]
+            elif self.current_step <= self.total_steps[i]:
+                self.lr[i] = self.max_lr[i] * (self.exponential_gamma[i] ** (self.current_step - self.warmup_steps[i]))
+            else:  # theoretically this case should never be reached since training should stop at total_steps
+                self.lr[i] = self.final_lr[i]
 
-        self.optimizer.param_groups[0]['lr'] = self.lr
+            self.optimizer.param_groups[i]['lr'] = self.lr[i]
 
 
 def visualize_bond_attention(viz_dir: str,

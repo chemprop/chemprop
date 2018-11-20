@@ -7,20 +7,19 @@ from typing import List
 import numpy as np
 from tensorboardX import SummaryWriter
 from torch.optim import Adam, SGD
-from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import trange
 import pickle
 
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, get_vocab_func, MoleculeDataset,\
-    parallel_vocab, StandardScaler
+from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset, StandardScaler
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers,\
     load_prespecified_chunks
 from chemprop.models import build_model
-from chemprop.nn_utils import MockLR, NoamLR, param_count
-from chemprop.utils import get_loss_func, get_metric_func, load_checkpoint, save_checkpoint
+from chemprop.nn_utils import param_count
+from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
+    save_checkpoint
 
 
 def run_training(args: Namespace, logger: Logger = None) -> List[float]:
@@ -65,9 +64,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         features_scaler = None
 
+    args.train_data_size = len(train_data)  # kinda hacky, but less cluttered
+
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
-        args.train_data_length = len(train_data)  # kinda hacky, but less cluttered
 
     debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
@@ -91,8 +91,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             train_data[i].targets = scaled_targets[i]
     else:
         scaler = None
-
-    train_data_length = len(train_data)
 
     if args.moe:
         train_data = cluster_split(train_data, 
@@ -165,32 +163,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
-        # Optimizer
-        optim_model = model if args.dataset_type != 'unsupervised' else model.encoder
-        if args.optimizer == 'Adam':
-            optimizer = Adam(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        elif args.optimizer == 'SGD':
-            optimizer = SGD(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        else:
-            raise ValueError('Optimizer "{}" not supported.'.format(args.optimizer))
+        # Optimizers
+        optimizer = build_optimizer(model, args)
 
-        # Learning rate scheduler
-        if args.scheduler == 'noam':
-            scheduler = NoamLR(
-                optimizer=optimizer,
-                warmup_epochs=args.warmup_epochs,
-                total_epochs=args.epochs,
-                steps_per_epoch=train_data_length // args.batch_size,
-                init_lr=args.init_lr,
-                max_lr=args.max_lr,
-                final_lr=args.final_lr
-            )
-        elif args.scheduler == 'none':
-            scheduler = MockLR(optimizer=optimizer, lr=args.init_lr)
-        elif args.scheduler == 'decay':
-            scheduler = ExponentialLR(optimizer, args.lr_decay_rate)
-        else:
-            raise ValueError('Learning rate scheduler "{}" not supported.'.format(args.scheduler))
+        # Learning rate schedulers
+        scheduler = build_lr_scheduler(optimizer, args)
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
@@ -207,7 +184,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 full_data = MoleculeDataset(train_data.data + val_data.data)
                 generate_unsupervised_cluster_labels(build_model(args), full_data, args)  # cluster with a new random init
                 model.create_ffn(args)  # reset the ffn since we're changing targets-- we're just pretraining the encoder.
-                ffn_optim = SGD(model.ffn.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+                optimizer.param_groups.pop()  # remove ffn parameters
+                optimizer.add_param_group({'params': model.ffn.parameters(), 'lr': args.init_lr[1], 'weight_decay': args.weight_decay[1]})
                 if args.cuda:
                     model.ffn.cuda()
 
@@ -215,7 +193,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 model=model,
                 data=train_data,
                 loss_func=loss_func,
-                optimizers=[optimizer] if args.dataset_type != 'unsupervised' else [optimizer, ffn_optim],
+                optimizer=optimizer,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
@@ -253,7 +231,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         if args.dataset_type == 'unsupervised':
-            return [0] # rest of this is meaningless when unsupervised
+            return [0]  # rest of this is meaningless when unsupervised
 
         # Evaluate on test set using model with best validation score
         info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
@@ -287,7 +265,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Evaluate ensemble on test set
     avg_test_preds = sum_test_preds / args.ensemble_size
     ensemble_scores = evaluate_predictions(
-        preds=avg_test_preds.tolist(),
+        preds=list(avg_test_preds),
         targets=test_targets,
         metric_func=metric_func, 
         args=args

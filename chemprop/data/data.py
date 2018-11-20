@@ -12,7 +12,7 @@ from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
-from .vocab import get_vocab_func, parallel_vocab, Vocab
+from .vocab import Vocab
 
 
 class SparseNoneArray:

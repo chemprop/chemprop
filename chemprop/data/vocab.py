@@ -6,6 +6,7 @@ from rdkit import Chem
 
 from chemprop.features import atom_features, ATOM_FDIM
 
+
 class Vocab:
     def __init__(self, args, smiles):
         self.vocab_func = get_vocab_func(args)
@@ -19,11 +20,8 @@ class Vocab:
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
 
-
     def w2i(self, word):
-
         return self.vocab_mapping[word] if word in self.vocab_mapping else self.vocab_mapping[self.unk]
-
 
     def smiles2indices(self, smiles):
         return [self.w2i(word) for word in self.vocab_func(smiles)]

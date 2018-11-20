@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 from tqdm import trange, tqdm
 import pickle
 
@@ -20,8 +21,8 @@ from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 def train(model: nn.Module,
           data: Union[MoleculeDataset, List[MoleculeDataset]],
           loss_func: Callable,
-          optimizers: List[Optimizer],
-          scheduler: NoamLR,
+          optimizer: Optimizer,
+          scheduler: _LRScheduler,
           args: Namespace,
           n_iter: int = 0,
           logger: logging.Logger = None,
@@ -35,8 +36,8 @@ def train(model: nn.Module,
     :param model: Model.
     :param data: A MoleculeDataset (or a list of MoleculeDatasets if using moe).
     :param loss_func: Loss function.
-    :param optimizers: A list of Optimizers..
-    :param scheduler: A NoamLR learning rate scheduler.
+    :param optimizer: An Optimizer.
+    :param scheduler: A learning rate scheduler.
     :param args: Arguments.
     :param n_iter: The number of iterations (training examples) trained on so far.
     :param logger: A logger for printing intermediate results.
@@ -71,7 +72,7 @@ def train(model: nn.Module,
                 model=model,
                 data=chunk,
                 loss_func=loss_func,
-                optimizers=optimizers,
+                optimizer=optimizer,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
@@ -170,11 +171,9 @@ def train(model: nn.Module,
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
-        for optimizer in optimizers:
-            optimizer.step()
+        optimizer.step()
 
-        if args.scheduler in ['noam']:
-            # for these schedulers, we step at each training step
+        if isinstance(scheduler, NoamLR):
             scheduler.step()
 
         if args.adversarial:
@@ -195,7 +194,7 @@ def train(model: nn.Module,
 
         # Log and/or add to tensorboard
         if (n_iter // args.batch_size) % args.log_frequency == 0:
-            lr = scheduler.get_lr()[0]
+            lrs = scheduler.get_lr()
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
@@ -204,7 +203,8 @@ def train(model: nn.Module,
                 d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
             loss_sum, iter_count = 0, 0
 
-            debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, lr = {:.4e}".format(loss_avg, pnorm, gnorm, lr))
+            lrs_str = ', '.join('lr_{} = {:.4e}'.format(i, lr) for i, lr in enumerate(lrs))
+            debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, {}".format(loss_avg, pnorm, gnorm, lrs_str))
             if args.adversarial:
                 debug("D Loss = {:.4e}, G Loss = {:.4e}, GP Norm = {:.4}".format(d_loss_avg, g_loss_avg, gp_norm_avg))
 
@@ -212,9 +212,10 @@ def train(model: nn.Module,
                 writer.add_scalar('train_loss', loss_avg, n_iter)
                 writer.add_scalar('param_norm', pnorm, n_iter)
                 writer.add_scalar('gradient_norm', gnorm, n_iter)
-                writer.add_scalar('learning_rate', lr, n_iter)
-    
-    if args.scheduler in ['decay']:
-        # for these schedulers, we step at each epoch
+                for i, lr in enumerate(lrs):
+                    writer.add_scalar('learning_rate_{}'.format(i), lr, n_iter)
+
+    if isinstance(scheduler, ExponentialLR):
         scheduler.step()
+
     return n_iter

@@ -1,16 +1,19 @@
 import logging
 import math
 import os
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 from argparse import Namespace
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score, log_loss
 import torch
 import torch.nn as nn
+from torch.optim import Adam, Optimizer, SGD
+from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 
 from chemprop.data import StandardScaler
 from chemprop.models import build_model
+from chemprop.nn_utils import MockLR, NoamLR
 
 
 def save_checkpoint(model: nn.Module,
@@ -179,13 +182,69 @@ def get_metric_func(args: Namespace) -> Callable:
         return metric_func
     
     if metric == 'log_loss':
-        #only supported for unsupervised and bert_pretraining
+        # only supported for unsupervised and bert_pretraining
         num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab.vocab_size
+
         def metric_func(targets, preds):
             return log_loss(targets, preds, labels=range(num_labels))
+
         return metric_func
 
     raise ValueError('Metric "{}" not supported.'.format(metric))
+
+
+def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
+    """
+    Builds an Optimizer.
+
+    :param model: The model to optimize.
+    :param args: Arguments.
+    :return: An initialized Optimizer.
+    """
+    if args.separate_ffn_lr:
+        params = [
+            {'params': model.encoder.parameters(), 'lr': args.init_lr[0], 'weight_decay': args.weight_decay[0]},
+            {'params': model.ffn.parameters(), 'lr': args.init_lr[1], 'weight_decay': args.weight_decay[1]}
+        ]
+    else:
+        params = [{'params': model.parameters(), 'lr': args.init_lr[0], 'weight_decay': args.weight_decay[0]}]
+
+    if args.optimizer == 'Adam':
+        return Adam(params)
+
+    if args.optimizer == 'SGD':
+        return SGD(params)
+
+    raise ValueError('Optimizer "{}" not supported.'.format(args.optimizer))
+
+
+def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List[int] = None) -> _LRScheduler:
+    """
+    Builds a learning rate scheduler.
+
+    :param optimizer: The Optimizer whose learning rate will be scheduled.
+    :param args: Arguments.
+    :return: An initialized learning rate scheduler.
+    """
+    # Learning rate scheduler
+    if args.scheduler == 'noam':
+        return NoamLR(
+            optimizer=optimizer,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=total_epochs or [args.epochs] * args.num_lrs,
+            steps_per_epoch=args.train_data_size // args.batch_size,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr
+        )
+
+    if args.scheduler == 'none':
+        return MockLR(optimizer=optimizer, lr=args.init_lr)
+
+    if args.scheduler == 'decay':
+        return ExponentialLR(optimizer, args.lr_decay_rate)
+
+    raise ValueError('Learning rate scheduler "{}" not supported.'.format(args.scheduler))
 
 
 def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
