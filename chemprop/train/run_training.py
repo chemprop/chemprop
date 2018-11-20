@@ -63,7 +63,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         features_scaler = None
 
-    args.train_data_size = len(train_data) if args.prespecified_chunk_dir is not None else args.prespecified_chunks_max_examples_per_epoch
+    args.train_data_size = len(train_data) if args.prespecified_chunk_dir is None else args.prespecified_chunks_max_examples_per_epoch
 
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
