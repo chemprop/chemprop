@@ -13,7 +13,7 @@ class MoleculeModel(nn.Module):
     def __init__(self):
         super(MoleculeModel, self).__init__()
     
-    def create_encoder(self, args):
+    def create_encoder(self, args: Namespace):
         if args.jtnn:
             self.encoder = JTNN(args)
         elif args.dataset_type == 'bert_pretraining':
@@ -21,7 +21,15 @@ class MoleculeModel(nn.Module):
         else:
             self.encoder = MPN(args)
 
-    def create_ffn(self, args):
+        if args.freeze_encoder:
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+
+    def create_ffn(self, args: Namespace):
+        # Learning virtual edges
+        if args.learn_virtual_edges:
+            args.lve_model = self.encoder  # to make this accessible during featurization, to select virtual edges
+        
         if args.dataset_type == 'bert_pretraining':
             self.ffn = lambda x: x
             return
@@ -32,10 +40,6 @@ class MoleculeModel(nn.Module):
             output_size = args.unsupervised_n_clusters
         else:
             output_size = args.num_tasks
-
-        # Learning virtual edges
-        if args.learn_virtual_edges:
-            args.lve_model = self.encoder  # to make this accessible during featurization, to select virtual edges
 
         # Additional features
         if args.features_only:

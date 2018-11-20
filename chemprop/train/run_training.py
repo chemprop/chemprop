@@ -165,15 +165,19 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
-        # Optimizer and learning rate scheduler
+        # Optimizer
         optim_model = model if args.dataset_type != 'unsupervised' else model.encoder
         if args.optimizer == 'Adam':
             optimizer = Adam(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
         elif args.optimizer == 'SGD':
             optimizer = SGD(optim_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+        else:
+            raise ValueError('Optimizer "{}" not supported.'.format(args.optimizer))
+
+        # Learning rate scheduler
         if args.scheduler == 'noam':
             scheduler = NoamLR(
-                optimizer,
+                optimizer=optimizer,
                 warmup_epochs=args.warmup_epochs,
                 total_epochs=args.epochs,
                 steps_per_epoch=train_data_length // args.batch_size,
@@ -185,6 +189,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             scheduler = MockLR(optimizer=optimizer, lr=args.init_lr)
         elif args.scheduler == 'decay':
             scheduler = ExponentialLR(optimizer, args.lr_decay_rate)
+        else:
+            raise ValueError('Learning rate scheduler "{}" not supported.'.format(args.scheduler))
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
@@ -209,7 +215,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 model=model,
                 data=train_data,
                 loss_func=loss_func,
-                optimizer=optimizer if args.dataset_type != 'unsupervised' else (optimizer, ffn_optim),
+                optimizers=[optimizer] if args.dataset_type != 'unsupervised' else [optimizer, ffn_optim],
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,

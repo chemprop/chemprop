@@ -244,6 +244,9 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of source tasks for moe')
     parser.add_argument('--mayr_layers', action='store_true', default=False,
                         help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
+    parser.add_argument('--freeze_encoder', action='store_true', default=False,
+                        help='Whether to freeze the layers of the message passing encoder')
+
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""

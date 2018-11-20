@@ -20,7 +20,7 @@ from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 def train(model: nn.Module,
           data: Union[MoleculeDataset, List[MoleculeDataset]],
           loss_func: Callable,
-          optimizer: Optimizer,
+          optimizers: List[Optimizer],
           scheduler: NoamLR,
           args: Namespace,
           n_iter: int = 0,
@@ -35,7 +35,7 @@ def train(model: nn.Module,
     :param model: Model.
     :param data: A MoleculeDataset (or a list of MoleculeDatasets if using moe).
     :param loss_func: Loss function.
-    :param optimizer: Optimizer.
+    :param optimizers: A list of Optimizers..
     :param scheduler: A NoamLR learning rate scheduler.
     :param args: Arguments.
     :param n_iter: The number of iterations (training examples) trained on so far.
@@ -71,7 +71,7 @@ def train(model: nn.Module,
                 model=model,
                 data=chunk,
                 loss_func=loss_func,
-                optimizer=optimizer,
+                optimizers=optimizers,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
@@ -166,14 +166,14 @@ def train(model: nn.Module,
             iter_count += len(mol_batch)
 
         loss.backward()
+
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
-        if args.dataset_type == 'unsupervised':
-            for o in optimizer:
-                o.step()
-        else:
+
+        for optimizer in optimizers:
             optimizer.step()
-        if args.scheduler in ['noam']: 
+
+        if args.scheduler in ['noam']:
             # for these schedulers, we step at each training step
             scheduler.step()
 
