@@ -155,6 +155,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_vocab_func', type=str, default='atom_features',
                         choices=['atom', 'atom_features'],
                         help='Vocab function when dataset_type == "bert_pretraining"')
+    parser.add_argument('--bert_mask_correlation', action='store_true', default=False,
+                        help='Correlate neighboring atom masks')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,

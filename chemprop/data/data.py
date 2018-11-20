@@ -47,6 +47,7 @@ class MoleculeDatapoint:
             features_generator, predict_features, sparse = args.features_generator, args.predict_features, args.sparse
             self.bert_pretraining = args.dataset_type == 'bert_pretraining'
             self.bert_mask_prob = args.bert_mask_prob
+            self.bert_mask_correlation = args.bert_mask_correlation
         else:
             features_generator = None
             predict_features = sparse = self.bert_pretraining = False
@@ -97,7 +98,7 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
 
-        self.targets = args.vocab.smiles2indices(self.smiles)
+        self.targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
     def recreate_mask(self):
@@ -107,6 +108,14 @@ class MoleculeDatapoint:
         # 0s to mask atoms which should be predicted
         # self.mask = [target not in [5, 7] or random.random() > .5 for target in self.targets]
         self.mask = list(np.random.rand(len(self.targets)) > self.bert_mask_prob)  # len = num_atoms
+
+        if self.bert_mask_correlation:
+            # randomly change parts of mask to increase correlation between neighbors
+            for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
+                index_to_change = random.randint(0, len(self.mask)-1)
+                if len(self.nb_indices[index_to_change]) > 0:  # can be 0 for single heavy atom molecules
+                    nbr_index = random.randint(0, len(self.nb_indices[index_to_change])-1)
+                    self.mask[index_to_change] = self.mask[nbr_index]
 
         # Ensure at least one 0 so at least one thing is predicted
         if sum(self.mask) == len(self.mask):
