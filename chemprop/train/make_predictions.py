@@ -5,15 +5,16 @@ from tqdm import tqdm
 
 from .predict import predict
 from chemprop.data.utils import get_data
-from chemprop.utils import load_checkpoint
+from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
 def make_predictions(args: Namespace):
     """Makes predictions."""
     print('Loading training args')
-    _, scaler, features_scaler, train_args = load_checkpoint(args.checkpoint_paths[0])
+    scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
+    train_args = load_args(args.checkpoint_paths[0])
 
-    # Update current args from training args without overwriting any values
+    # Update args with training arguments
     for key, value in vars(train_args).items():
         if not hasattr(args, key):
             setattr(args, key, value)
@@ -32,7 +33,7 @@ def make_predictions(args: Namespace):
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
-        model, _, _, _ = load_checkpoint(checkpoint_path, cuda=args.cuda)
+        model = load_checkpoint(checkpoint_path, cuda=args.cuda)
         model_preds = predict(
             model=model,
             data=test_data,

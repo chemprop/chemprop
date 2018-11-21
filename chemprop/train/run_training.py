@@ -143,12 +143,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Load/build model
         if args.checkpoint_paths is not None:
             debug('Loading model {} from {}'.format(model_idx, args.checkpoint_paths[model_idx]))
-            model, _, _, _ = load_checkpoint(args.checkpoint_paths[model_idx],
-                                             current_args=args,
-                                             num_tasks=args.num_tasks,
-                                             dataset_type=args.dataset_type,
-                                             encoder_only=args.load_encoder_only,
-                                             logger=logger)
+            model = load_checkpoint(args.checkpoint_paths[model_idx], current_args=args, logger=logger)
         else:
             debug('Building model {}'.format(model_idx))
             model = build_model(args)
@@ -234,7 +229,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
         # Evaluate on test set using model with best validation score
         info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        model, _, _, _ = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
+        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
         test_preds = predict(
             model=model,
             data=test_data,

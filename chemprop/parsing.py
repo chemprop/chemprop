@@ -157,6 +157,9 @@ def add_train_args(parser: ArgumentParser):
                         help='Vocab function when dataset_type == "bert_pretraining"')
     parser.add_argument('--bert_mask_correlation', action='store_true', default=False,
                         help='Correlate neighboring atom masks')
+    parser.add_argument('--last_batch', action='store_true', default=False,
+                        help='Whether to include the last batch in each training epoch even if'
+                             'it\'s less than the batch size')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,

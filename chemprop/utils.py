@@ -33,7 +33,7 @@ def save_checkpoint(model: nn.Module,
     state = {
         'args': args,
         'state_dict': model.state_dict(),
-        'scaler': {
+        'data_scaler': {
             'means': scaler.means,
             'stds': scaler.stds
         } if scaler is not None else None,
@@ -50,57 +50,46 @@ def save_checkpoint(model: nn.Module,
 def load_checkpoint(path: str,
                     current_args: Namespace = None,
                     cuda: bool = False,
-                    num_tasks: int = None,
-                    dataset_type: str = None,
-                    encoder_only: bool = False,
-                    logger: logging.Logger = None) -> Tuple[nn.Module, StandardScaler, StandardScaler, Namespace]:
+                    logger: logging.Logger = None) -> nn.Module:
     """
-    Loads a model checkpoint and optionally the scaler the model was trained with.
+    Loads a model checkpoint.
 
     :param path: Path where checkpoint is saved.
-    :param current_args: The current arguments.
+    :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
     :param cuda: Whether to move model to cuda.
-    :param num_tasks: The number of tasks. Only necessary if different now than when trained.
-    :param dataset_type: The type of the dataset ("classification" or "regression"). Only necessary
-    if different now than when trained.
-    :param encoder_only: Whether to only load weights from encoder.
     :param logger: A logger.
-    :return: The loaded model, data scaler, features scaler, and loaded args.
+    :return: The loaded model.
     """
+    debug = logger.debug if logger is not None else print
+
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
     args, loaded_state_dict = state['args'], state['state_dict']
 
-    # Update args with current args
-    args.cuda = cuda
-    args.num_tasks = num_tasks or args.num_tasks
-    args.dataset_type = dataset_type or args.dataset_type
-
     if current_args is not None:
-        for key, value in vars(current_args).items():
-            if not hasattr(args, key):
-                setattr(args, key, value)
+        args = current_args
 
+    load_encoder_only = current_args.load_encoder_only if current_args is not None else False
+
+    # Build model
     model = build_model(args)
     model_state_dict = model.state_dict()
 
     # Skip missing parameters and parameters of mismatched size
     pretrained_state_dict = {}
     for param_name in loaded_state_dict.keys():
-        if encoder_only and 'encoder' not in param_name:
+        if load_encoder_only and 'encoder' not in param_name:
             continue
 
         if param_name not in model_state_dict:
-            if logger is not None:
-                logger.info('Pretrained parameter "{}" cannot be found in model parameters. Skipping.'.format(param_name))
+            debug('Pretrained parameter "{}" cannot be found in model parameters.'.format(param_name))
         elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
-            if logger is not None:
-                logger.info('Pretrained parameter "{}" of shape {} does not match corresponding '
-                            'model parameter of shape {}.Skipping.'.format(param_name,
-                                                                           loaded_state_dict[param_name].shape,
-                                                                           model_state_dict[param_name].shape))
+            debug('Pretrained parameter "{}" of shape {} does not match corresponding '
+                  'model parameter of shape {}.'.format(param_name,
+                                                        loaded_state_dict[param_name].shape,
+                                                        model_state_dict[param_name].shape))
         else:
-            logger.info('Loading pretrained parameter "{}".'.format(param_name))
+            debug('Loading pretrained parameter "{}".'.format(param_name))
             pretrained_state_dict[param_name] = loaded_state_dict[param_name]
 
     # Load pretrained weights
@@ -114,13 +103,38 @@ def load_checkpoint(path: str,
         model.set_domain_encs(domain_encs)
 
     if cuda:
-        print('Moving model to cuda')
+        debug('Moving model to cuda')
         model = model.cuda()
 
-    scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
-    features_scaler = StandardScaler(state['features_scaler']['means'], state['features_scaler']['stds'], replace_nan_token=0) if state['features_scaler'] is not None else None
+    return model
 
-    return model, scaler, features_scaler, args
+
+def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
+    """
+    Loads the scalers a model was trained with.
+
+    :param path: Path where model checkpoint is saved.
+    :return: A tuple with the data scaler and the features scaler.
+    """
+    state = torch.load(path, map_location=lambda storage, loc: storage)
+
+    data_scaler = StandardScaler(state['data_scaler']['means'],
+                                 state['data_scaler']['stds']) if state['data_scaler'] is not None else None
+    features_scaler = StandardScaler(state['features_scaler']['means'],
+                                     state['features_scaler']['stds'],
+                                     replace_nan_token=0) if state['features_scaler'] is not None else None
+
+    return data_scaler, features_scaler
+
+
+def load_args(path: str) -> Namespace:
+    """
+    Loads the arguments a model was trained with.
+
+    :param path: Path where model checkpoint is saved.
+    :return: The arguments Namespace that the model was trainedw with
+    """
+    return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
 
 def get_loss_func(dataset_type: str) -> nn.Module:

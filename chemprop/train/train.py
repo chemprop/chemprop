@@ -110,7 +110,7 @@ def train(model: nn.Module,
             train_smiles.append(d.smiles())
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
     else:
-        num_iters = len(data)
+        num_iters = len(data) if args.last_batch else len(data) // args.batch_size * args.batch_size
 
     for i in trange(0, num_iters, args.batch_size):
         if args.moe:
@@ -130,6 +130,8 @@ def train(model: nn.Module,
             iter_count += len(batch)
         else:
             # Prepare batch
+            if not args.last_batch and i + args.batch_size > len(data):
+                break
             mol_batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
 

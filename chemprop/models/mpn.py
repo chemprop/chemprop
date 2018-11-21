@@ -56,9 +56,8 @@ class MPNEncoder(nn.Module):
         # Activation
         self.act_func = get_activation_function(args.activation)
 
-        self.cached_zero_vector = torch.zeros(self.hidden_size)
-        if args.cuda:
-            self.cached_zero_vector = self.cached_zero_vector.cuda()
+        # Cached zeros
+        self.cached_zero_vector = nn.Parameter(torch.zeros(self.hidden_size), requires_grad=False)
 
         # Input
         self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
@@ -364,7 +363,7 @@ class MPN(nn.Module):
         """
         Encodes a batch of molecular SMILES strings.
 
-        :param batch: A list of SMILES strings or a BatchMolGraph (if self.use_graph).
+        :param batch: A list of SMILES strings or a BatchMolGraph (if self.graph_input).
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
@@ -386,7 +385,7 @@ class MPN(nn.Module):
         Visualizes attention weights for a batch of molecular SMILES strings
 
         :param viz_dir: Directory in which to save visualized attention weights.
-        :param batch: A list of SMILES strings or a BatchMolGraph (if self.use_graph).
+        :param batch: A list of SMILES strings or a BatchMolGraph (if self.graph_input).
         :param features_batch: A list of ndarrays containing additional features.
         """
         if not self.graph_input:
