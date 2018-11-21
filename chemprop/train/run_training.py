@@ -8,6 +8,7 @@ import numpy as np
 from tensorboardX import SummaryWriter
 from tqdm import trange
 import pickle
+from torch.optim.lr_scheduler import ExponentialLR
 
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
@@ -197,6 +198,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 val_smiles=val_smiles if args.adversarial else None,
                 test_smiles=test_smiles if args.adversarial or args.moe else None
             )
+            if isinstance(scheduler, ExponentialLR):
+                scheduler.step()
             val_scores = evaluate(
                 model=model,
                 data=val_data,

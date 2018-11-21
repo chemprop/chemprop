@@ -217,7 +217,4 @@ def train(model: nn.Module,
                 for i, lr in enumerate(lrs):
                     writer.add_scalar('learning_rate_{}'.format(i), lr, n_iter)
 
-    if isinstance(scheduler, ExponentialLR):
-        scheduler.step()
-
     return n_iter
