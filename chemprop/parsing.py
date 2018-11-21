@@ -97,7 +97,9 @@ def add_train_args(parser: ArgumentParser):
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
-    parser.add_argument('--metric', type=str, default=None, choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy', 'log_loss'],
+    parser.add_argument('--metric', type=str, default=None,
+                        choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy', 'argmax_accuracy', 'log_loss',
+                                 'majority_baseline_accuracy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'

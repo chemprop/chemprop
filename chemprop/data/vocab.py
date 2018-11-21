@@ -1,15 +1,16 @@
 from argparse import Namespace
 from multiprocessing import Pool
-from typing import Callable, List, Set, Tuple
+from typing import Callable, List, Set, Tuple, Union
 from functools import partial
 
 from rdkit import Chem
+import torch
 
 from chemprop.features import atom_features, ATOM_FDIM
 
 
 class Vocab:
-    def __init__(self, args, smiles):
+    def __init__(self, args: Namespace, smiles: List[str]):
         self.vocab_func = get_vocab_func(args)
         if args.bert_vocab_func == 'atom':
             self.unk = '-1'
@@ -21,28 +22,34 @@ class Vocab:
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
 
-    def w2i(self, word):
+    def w2i(self, word: str) -> int:
         return self.vocab_mapping[word] if word in self.vocab_mapping else self.vocab_mapping[self.unk]
 
-    def smiles2indices(self, smiles):
+    def smiles2indices(self, smiles: List[str]) -> Tuple[List[int], List[List[int]]]:
         features, nb_indices = self.vocab_func(smiles, nb_info=True)
         return [self.w2i(word) for word in features], nb_indices
 
 
-def atom_vocab(smiles: str, vocab_func: str, nb_info: bool=False) -> List[str]:
+def atom_vocab(smiles: str, vocab_func: str, nb_info: bool = False) -> Union[List[str],
+                                                                             Tuple[List[str], List[List[int]]]]:
     if vocab_func == 'atom':
         featurizer = lambda x: x.GetAtomicNum()
     elif vocab_func == 'atom_features':
         featurizer = atom_features
+    else:
+        raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
+
     all_atoms = Chem.MolFromSmiles(smiles).GetAtoms()
     features = [str(featurizer(atom)) for atom in all_atoms]
+
     if nb_info:
         nb_indices = []
         for atom in all_atoms:
-            nb_indices.append([nb.GetIdx() for nb in atom.GetNeighbors()]) # atoms are sorted by idx
+            nb_indices.append([nb.GetIdx() for nb in atom.GetNeighbors()])  # atoms are sorted by idx
+
         return features, nb_indices
-    else:
-        return features
+
+    return features
 
 
 def vocab(pair: Tuple[Callable, str]) -> Set[str]:
@@ -65,3 +72,13 @@ def get_vocab_func(args: Namespace) -> Callable:
         return partial(atom_vocab, vocab_func='atom_features')
 
     raise ValueError('Vocab function "{}" not supported.'.format(vocab_func))
+
+
+def load_vocab(path: str) -> Vocab:
+    """
+    Loads the Vocab a model was trained with.
+
+    :param path: Path where the model checkpoint is saved.
+    :return: The Vocab object that the model was trained with.
+    """
+    return torch.load(path, map_location=lambda storage, loc: storage)['args'].vocab

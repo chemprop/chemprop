@@ -1,9 +1,11 @@
+from collections import Counter
 import logging
 import math
 import os
 from typing import Callable, List, Tuple
 from argparse import Namespace
 
+import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score, log_loss
 import torch
@@ -132,7 +134,7 @@ def load_args(path: str) -> Namespace:
     Loads the arguments a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: The arguments Namespace that the model was trainedw with
+    :return: The arguments Namespace that the model was trained with.
     """
     return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
@@ -175,13 +177,15 @@ def get_metric_func(args: Namespace) -> Callable:
         return roc_auc_score
 
     if metric == 'prc-auc':
-        def metric_func(targets, preds):
+        def metric_func(targets: List[int], preds: List[float]) -> float:
             precision, recall, _ = precision_recall_curve(targets, preds)
             return auc(recall, precision)
         return metric_func
 
     if metric == 'rmse':
-        return lambda targets, preds: math.sqrt(mean_squared_error(targets, preds))
+        def metric_func(targets: List[float], preds: List[float]) -> float:
+            return math.sqrt(mean_squared_error(targets, preds))
+        return metric_func
 
     if metric == 'mae':
         return mean_absolute_error
@@ -190,8 +194,14 @@ def get_metric_func(args: Namespace) -> Callable:
         return r2_score
     
     if metric == 'accuracy':
-        def metric_func(targets, preds):
+        def metric_func(targets: List[int], preds: List[float]) -> float:
             hard_preds = [1 if p > 0.5 else 0 for p in preds]
+            return accuracy_score(targets, hard_preds)
+        return metric_func
+
+    if metric == 'argmax_accuracy':
+        def metric_func(targets: List[int], preds: List[List[float]]) -> float:
+            hard_preds = np.argmax(preds, axis=1)
             return accuracy_score(targets, hard_preds)
         return metric_func
     
@@ -199,9 +209,15 @@ def get_metric_func(args: Namespace) -> Callable:
         # only supported for unsupervised and bert_pretraining
         num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab.vocab_size
 
-        def metric_func(targets, preds):
+        def metric_func(targets: List[int], preds: List[List[float]]) -> float:
             return log_loss(targets, preds, labels=range(num_labels))
 
+        return metric_func
+
+    if metric == 'majority_baseline_accuracy':
+        def metric_func(targets: List[int], preds: List[List[float]]) -> float:
+            counter = Counter(targets)
+            return counter.most_common()[0][1] / len(targets)
         return metric_func
 
     raise ValueError('Metric "{}" not supported.'.format(metric))

@@ -4,15 +4,15 @@ from multiprocessing import Pool
 from logging import Logger
 import random
 import math
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
+from .vocab import load_vocab, Vocab
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
-from .vocab import Vocab
 
 
 class SparseNoneArray:
@@ -131,22 +131,21 @@ class MoleculeDataset(Dataset):
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
         self.scaler = None
     
-    def bert_init(self, args: Namespace, logger: Logger=None):
+    def bert_init(self, args: Namespace, logger: Logger = None):
         debug = logger.debug if logger is not None else print
 
         if not hasattr(args, 'vocab'):
             debug('Determining vocab')
-            args.vocab = Vocab(args, self.smiles())
+            args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
             debug('Vocab size = {:,}'.format(args.vocab.vocab_size))
         
         # reassign self.data since the pool seems to deepcopy the data before calling bert_init
         try:
             self.data = Pool().map(parallel_bert_init, [(d, deepcopy(args)) for d in self.data])
-        except:  # apparently it's possible to get an OSError about too many open files here...?
+        except OSError:  # apparently it's possible to get an OSError about too many open files here...?
             for d in self.data:
                 d.bert_init(args)
         debug('Finished initializing targets and masks for bert')
-
 
     def compound_names(self) -> List[str]:
         if self.data[0].compound_name is None:
@@ -188,12 +187,13 @@ class MoleculeDataset(Dataset):
             for d in self.data:
                 d.recreate_mask()
 
-    def chunk(self, num_chunks: int, seed: int = None):
+    def chunk(self, num_chunks: int, seed: int = None) -> List['MoleculeDataset']:
         self.shuffle(seed)
         datasets = []
         chunk_len = math.ceil(len(self.data) / num_chunks)
         for i in range(num_chunks):
             datasets.append(MoleculeDataset(self.data[i * chunk_len:(i + 1) * chunk_len]))
+
         return datasets
     
     def normalize_features(self, scaler: StandardScaler = None) -> StandardScaler:
@@ -227,7 +227,15 @@ class MoleculeDataset(Dataset):
     def __getitem__(self, item) -> MoleculeDatapoint:
         return self.data[item]
 
-def parallel_bert_init(pair):
+
+def parallel_bert_init(pair: Tuple[MoleculeDatapoint, Namespace]) -> MoleculeDatapoint:
+    """
+    Runs bert_init on a MoleculeDatapoint.
+
+    :param pair: A tuple of a molecule datapoint and arguments.
+    :return: The molecule datapoint after having run bert_init.
+    """
     d, args = pair
     d.bert_init(args)
+
     return d
