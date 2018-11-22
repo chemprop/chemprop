@@ -47,7 +47,7 @@ class MoleculeDatapoint:
             features_generator, predict_features, sparse = args.features_generator, args.predict_features, args.sparse
             self.bert_pretraining = args.dataset_type == 'bert_pretraining'
             self.bert_mask_prob = args.bert_mask_prob
-            self.bert_mask_correlation = args.bert_mask_correlation
+            self.bert_mask_type = args.bert_mask_type
         else:
             features_generator = None
             predict_features = sparse = self.bert_pretraining = False
@@ -105,21 +105,50 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
-        # 0s to mask atoms which should be predicted
-        # self.mask = [target not in [5, 7] or random.random() > .5 for target in self.targets]
-        self.mask = list(np.random.rand(len(self.targets)) > self.bert_mask_prob)  # len = num_atoms
+        if self.bert_mask_type == 'cluster':
+            self.mask = np.ones(len(self.targets))
+            atoms = set(range(len(self.targets)))
+            while len(atoms) != 0:
+                atom = atoms.pop()
+                neighbors = self.nb_indices[atom]
+                cluster = [atom] + neighbors
 
-        if self.bert_mask_correlation:
-            # randomly change parts of mask to increase correlation between neighbors
-            for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
-                index_to_change = random.randint(0, len(self.mask)-1)
-                if len(self.nb_indices[index_to_change]) > 0:  # can be 0 for single heavy atom molecules
-                    nbr_index = random.randint(0, len(self.nb_indices[index_to_change])-1)
-                    self.mask[index_to_change] = self.mask[nbr_index]
+                # note: divide by cluster size to preserve overall probability of masking each atom
+                if np.random.random() < self.bert_mask_prob / len(cluster):
+                    self.mask[cluster] = 0
+                    atoms -= set(neighbors)
 
-        # Ensure at least one 0 so at least one thing is predicted
-        if sum(self.mask) == len(self.mask):
-            self.mask[np.random.randint(0, len(self.mask))] = 0
+            # Ensure at least one cluster of 0s
+            if sum(self.mask) == len(self.mask):
+                atom = np.random.randint(len(self.mask))
+                neighbors = self.nb_indices[atom]
+                cluster = [atom] + neighbors
+                self.mask[cluster] = 0
+        else:
+            # 0s to mask atoms which should be predicted
+            self.mask = np.random.rand(len(self.targets)) > self.bert_mask_prob  # len = num_atoms
+
+            if self.bert_mask_type == 'correlation':
+                # randomly change parts of mask to increase correlation between neighbors
+                for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
+                    index_to_change = random.randint(0, len(self.mask) - 1)
+                    if len(self.nb_indices[index_to_change]) > 0:  # can be 0 for single heavy atom molecules
+                        nbr_index = random.randint(0, len(self.nb_indices[index_to_change]) - 1)
+                        self.mask[index_to_change] = self.mask[nbr_index]
+
+            # Measure correlation
+            # same = 0
+            # for atom, neighbors in enumerate(self.nb_indices):
+            #     same += np.sum(self.mask[atom] == self.mask[neighbors]) / len(neighbors)
+            # same /= len(self.nb_indices)
+            # print(same, len(self.nb_indices))
+
+            # Ensure at least one 0 so at least one thing is predicted
+            if sum(self.mask) == len(self.mask):
+                self.mask[np.random.randint(len(self.mask))] = 0
+
+        # np.ndarray --> list
+        self.mask = list(self.mask)
 
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets
