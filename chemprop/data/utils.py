@@ -90,14 +90,19 @@ def get_data(path: str,
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
-    if args is not None and args.features_path:
-        features_data = get_features(args.features_path)
+    if args is not None:
+        max_data_size = args.max_data_size
+
+        if args.features_path:
+            features_data = get_features(args.features_path)
+        else:
+            features_data = None
     else:
-        features_data = None
+        features_data = max_data_size = None
 
     with open(path) as f:
         f.readline()  # skip header
-        lines = f.readlines()[:args.max_data_size]
+        lines = f.readlines()[:max_data_size]
         data = MoleculeDataset([
             MoleculeDatapoint(
                 line=line.strip().split(','),
