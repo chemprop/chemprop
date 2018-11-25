@@ -114,6 +114,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Show all scores for individual targets, not just average, at the end')
     parser.add_argument('--labels_to_show', type=str, nargs='+',
                         help='List of targets to show individual scores for, if specified')
+    parser.add_argument('--max_data_size', type=int, default=None,
+                        help='Maximum number of data points to load')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,

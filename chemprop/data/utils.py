@@ -97,7 +97,7 @@ def get_data(path: str,
 
     with open(path) as f:
         f.readline()  # skip header
-        lines = f.readlines()
+        lines = f.readlines()[:args.max_data_size]
         data = MoleculeDataset([
             MoleculeDatapoint(
                 line=line.strip().split(','),
