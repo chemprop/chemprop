@@ -257,6 +257,11 @@ class MPNEncoder(nn.Module):
         atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
         atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
 
+        if self.deepset:
+            atom_hiddens = self.W_s2s_a(atom_hiddens)
+            atom_hiddens = self.act_func(atom_hiddens)
+            atom_hiddens = self.W_s2s_b(atom_hiddens)
+
         if self.bert_pretraining:
             return self.W_v(atom_hiddens)[1:]  # num_atoms x vocab_size (leave out atom padding)
 
@@ -322,11 +327,6 @@ class MPNEncoder(nn.Module):
                             visualize_atom_attention(viz_dir, mol_graph.smiles_batch[i], a_size, att_w)
                     else:
                         mol_vec = cur_hiddens  # (num_atoms, hidden_size)
-
-                    if self.deepset:
-                        mol_vec = self.W_s2s_a(mol_vec)
-                        mol_vec = self.act_func(mol_vec)
-                        mol_vec = self.W_s2s_b(mol_vec)
 
                     mol_vec = mol_vec.sum(dim=0) / a_size
                     mol_vecs.append(mol_vec)

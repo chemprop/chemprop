@@ -136,13 +136,6 @@ class MoleculeDatapoint:
                         nbr_index = random.randint(0, len(self.nb_indices[index_to_change]) - 1)
                         self.mask[index_to_change] = self.mask[nbr_index]
 
-            # Measure correlation
-            # same = 0
-            # for atom, neighbors in enumerate(self.nb_indices):
-            #     same += np.sum(self.mask[atom] == self.mask[neighbors]) / len(neighbors)
-            # same /= len(self.nb_indices)
-            # print(same, len(self.nb_indices))
-
             # Ensure at least one 0 so at least one thing is predicted
             if sum(self.mask) == len(self.mask):
                 self.mask[np.random.randint(len(self.mask))] = 0
