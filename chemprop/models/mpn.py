@@ -94,13 +94,13 @@ class MPNEncoder(nn.Module):
         if not (self.master_node and self.use_master_as_output):
             self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
-        if self.bert_pretraining:
-            self.W_v = nn.Linear(self.hidden_size, self.vocab_size)
-            return
-
         if self.deepset:
             self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+
+        if self.bert_pretraining:
+            self.W_v = nn.Linear(self.hidden_size, self.vocab_size)
+            return
 
         if self.set2set:
             self.set2set_rnn = nn.LSTM(
