@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, Namespace
 import os
+import sys
+sys.path.append('../')
 
 import torch
 from tqdm import trange

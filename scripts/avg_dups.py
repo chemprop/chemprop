@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+import sys
+sys.path.append('../')
 
 from chemprop.data_processing import average_duplicates
 

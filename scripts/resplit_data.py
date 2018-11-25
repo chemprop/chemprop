@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 import os
+import sys
+sys.path.append('../')
 
 from chemprop.data_processing import resplit
 

@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+import sys
+sys.path.append('../')
 
 from chemprop.data.utils import get_data
 from chemprop.data import morgan_similarity, scaffold_similarity
