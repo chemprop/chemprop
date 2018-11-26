@@ -40,7 +40,7 @@ class MPNEncoder(nn.Module):
         self.learn_virtual_edges = args.learn_virtual_edges
         self.bert_pretraining = args.dataset_type == 'bert_pretraining'
         if self.bert_pretraining:
-            self.vocab_size = args.vocab.vocab_size
+            self.output_size = args.vocab.output_size
         self.args = args
 
         if args.features_only:
@@ -99,7 +99,11 @@ class MPNEncoder(nn.Module):
             self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
         if self.bert_pretraining:
-            self.W_v = nn.Linear(self.hidden_size, self.vocab_size)
+            if args.bert_vocab_func == 'feature_vector':
+                # TODO change atom_fdim to correct output size later, when we implement separate input/output
+                self.W_v = nn.Linear(self.hidden_size, self.atom_fdim)
+            else:
+                self.W_v = nn.Linear(self.hidden_size, self.output_size)
             return
 
         if self.set2set:
@@ -263,7 +267,7 @@ class MPNEncoder(nn.Module):
             atom_hiddens = self.W_s2s_b(atom_hiddens)
 
         if self.bert_pretraining:
-            return self.W_v(atom_hiddens)[1:]  # num_atoms x vocab_size (leave out atom padding)
+            return self.W_v(atom_hiddens)[1:]  # num_atoms x vocab/output size (leave out atom padding)
 
         # Readout
         if self.set2set:

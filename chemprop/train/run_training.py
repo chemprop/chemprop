@@ -119,14 +119,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         train_data = train_paths
 
     # Get loss and metric functions
-    loss_func = get_loss_func(args.dataset_type)
+    loss_func = get_loss_func(args)
     metric_func = get_metric_func(args)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = np.zeros((len(test_targets), args.vocab.vocab_size))
+        sum_test_preds = np.zeros((len(test_targets), args.vocab.output_size))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 

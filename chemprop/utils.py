@@ -139,29 +139,33 @@ def load_args(path: str) -> Namespace:
     return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
 
-def get_loss_func(dataset_type: str) -> nn.Module:
+def get_loss_func(args: Namespace) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
-    :param dataset_type: The dataset type ("classification" or "regression" or "regression_with_binning").
+    :param args: Namespace containing the dataset type ("classification" or "regression" or "regression_with_binning").
     :return: A PyTorch loss function.
     """
-    if dataset_type == 'classification':
+    if args.dataset_type == 'classification':
         return nn.BCELoss(reduction='none')
     
-    if dataset_type == 'regression_with_binning':
+    if args.dataset_type == 'regression_with_binning':
         return nn.CrossEntropyLoss(reduction='none')
 
-    if dataset_type == 'regression':
+    if args.dataset_type == 'regression':
         return nn.MSELoss(reduction='none')
     
-    if dataset_type == 'unsupervised':
+    if args.dataset_type == 'unsupervised':
         return nn.CrossEntropyLoss(reduction='none')
 
-    if dataset_type == 'bert_pretraining':
-        return nn.CrossEntropyLoss(reduction='none')
+    if args.dataset_type == 'bert_pretraining':
+        if args.bert_vocab_func == 'feature_vector':
+            # TODO a lot of the targets are actually classification targets, though...?
+            return nn.MSELoss(reduction='none')
+        else:
+            return nn.CrossEntropyLoss(reduction='none')
 
-    raise ValueError('Dataset type "{}" not supported.'.format(dataset_type))
+    raise ValueError('Dataset type "{}" not supported.'.format(args.dataset_type))
 
 
 def get_metric_func(args: Namespace) -> Callable:
@@ -207,7 +211,7 @@ def get_metric_func(args: Namespace) -> Callable:
     
     if metric == 'log_loss':
         # only supported for unsupervised and bert_pretraining
-        num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab.vocab_size
+        num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab.output_size
 
         def metric_func(targets: List[int], preds: List[List[float]]) -> float:
             return log_loss(targets, preds, labels=range(num_labels))

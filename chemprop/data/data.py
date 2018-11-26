@@ -170,7 +170,7 @@ class MoleculeDataset(Dataset):
         if not hasattr(args, 'vocab'):
             debug('Determining vocab')
             args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
-            debug('Vocab size = {:,}'.format(args.vocab.vocab_size))
+            debug('Vocab/Output size = {:,}'.format(args.vocab.output_size))
         
         # reassign self.data since the pool seems to deepcopy the data before calling bert_init
         try:

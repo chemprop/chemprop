@@ -140,7 +140,11 @@ def train(model: nn.Module,
                 mask = mol_batch.mask()
                 batch.bert_mask(mask)
                 mask = 1 - torch.FloatTensor(mask)  # num_atoms
-                targets = torch.LongTensor(target_batch)  # num_atoms
+                targets = torch.Tensor(target_batch)  # num_atoms
+                if args.bert_vocab_func == 'feature_vector':
+                    mask = mask.reshape(-1, 1)
+                else:
+                    targets = targets.long()                    
             else:
                 batch = smiles_batch
                 mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])

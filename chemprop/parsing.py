@@ -157,7 +157,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_mask_prob', type=float, default=0.15,
                         help='Probability of masking when dataset_type == "bert_pretraining"')
     parser.add_argument('--bert_vocab_func', type=str, default='atom_features',
-                        choices=['atom', 'atom_features'],
+                        choices=['atom', 'atom_features', 'feature_vector'],
                         help='Vocab function when dataset_type == "bert_pretraining"')
     parser.add_argument('--bert_mask_type', type=str, default='cluster',
                         choices=['random', 'correlation', 'cluster'],
@@ -307,8 +307,13 @@ def modify_train_args(args: Namespace):
     if args.metric is None:
         if args.dataset_type == 'classification':
             args.metric = 'auc'
-        elif args.dataset_type in ['bert_pretraining', 'unsupervised']:
+        elif args.dataset_type == 'unsupervised':
             args.metric = 'log_loss'
+        elif args.dataset_type == 'bert_pretraining':
+            if args.bert_vocab_func == 'feature_vector':
+                args.metric = 'rmse'
+            else:
+                args.metric = 'log_loss'
         else:
             args.metric = 'rmse'
 

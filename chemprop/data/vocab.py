@@ -16,13 +16,20 @@ class Vocab:
             self.unk = '-1'
         if args.bert_vocab_func == 'atom_features':
             self.unk = str([0 for _ in range(ATOM_FDIM)])
+        if args.bert_vocab_func == 'feature_vector':
+            self.unk = None
+            self.output_size = ATOM_FDIM
+            return  # don't need a real vocab list here
         self.smiles = smiles
         self.vocab = parallel_vocab(self.vocab_func, self.smiles)
         self.vocab.add(self.unk)
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
+        self.output_size = self.vocab_size
 
     def w2i(self, word: str) -> int:
+        if self.unk is None:
+            return word  # in this case, we didn't map to a vocab at all; we're just predicting the original features
         return self.vocab_mapping[word] if word in self.vocab_mapping else self.vocab_mapping[self.unk]
 
     def smiles2indices(self, smiles: List[str]) -> Tuple[List[int], List[List[int]]]:
@@ -36,11 +43,16 @@ def atom_vocab(smiles: str, vocab_func: str, nb_info: bool = False) -> Union[Lis
         featurizer = lambda x: x.GetAtomicNum()
     elif vocab_func == 'atom_features':
         featurizer = atom_features
+    elif vocab_func == 'feature_vector':
+        featurizer = atom_features
     else:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
     all_atoms = Chem.MolFromSmiles(smiles).GetAtoms()
-    features = [str(featurizer(atom)) for atom in all_atoms]
+    if vocab_func == 'feature_vector':
+        features = [featurizer(atom) for atom in all_atoms]
+    else:
+        features = [str(featurizer(atom)) for atom in all_atoms]
 
     if nb_info:
         nb_indices = []
@@ -65,11 +77,8 @@ def parallel_vocab(vocab_func: Callable, smiles: List[str]) -> Set[str]:
 def get_vocab_func(args: Namespace) -> Callable:
     vocab_func = args.bert_vocab_func
 
-    if vocab_func == 'atom':
-        return partial(atom_vocab, vocab_func='atom')
-
-    if vocab_func == 'atom_features':
-        return partial(atom_vocab, vocab_func='atom_features')
+    if vocab_func in ['atom', 'atom_features', 'feature_vector']:
+        return partial(atom_vocab, vocab_func=vocab_func)
 
     raise ValueError('Vocab function "{}" not supported.'.format(vocab_func))
 
