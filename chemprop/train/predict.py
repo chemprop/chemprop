@@ -35,8 +35,7 @@ def predict(model: nn.Module,
             # Run model
             if args.dataset_type == 'bert_pretraining':
                 batch = mol2graph(smiles_batch, args)
-                mask = torch.FloatTensor(mol_batch.mask())  # num_atoms
-                batch.f_atoms[1:] *= mask.unsqueeze(dim=1)  # num_atoms x atom_fdim (1 for padding)
+                batch.bert_mask(mol_batch.mask())
             else:
                 batch = smiles_batch
 

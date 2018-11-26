@@ -102,6 +102,8 @@ class MoleculeDatapoint:
         self.recreate_mask()
 
     def recreate_mask(self):
+        # Note: 0s to mask atoms which should be predicted
+
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
@@ -124,21 +126,30 @@ class MoleculeDatapoint:
                 neighbors = self.nb_indices[atom]
                 cluster = [atom] + neighbors
                 self.mask[cluster] = 0
-        else:
-            # 0s to mask atoms which should be predicted
+
+        elif self.bert_mask_type == 'correlation':
             self.mask = np.random.rand(len(self.targets)) > self.bert_mask_prob  # len = num_atoms
 
-            if self.bert_mask_type == 'correlation':
-                # randomly change parts of mask to increase correlation between neighbors
-                for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
-                    index_to_change = random.randint(0, len(self.mask) - 1)
-                    if len(self.nb_indices[index_to_change]) > 0:  # can be 0 for single heavy atom molecules
-                        nbr_index = random.randint(0, len(self.nb_indices[index_to_change]) - 1)
-                        self.mask[index_to_change] = self.mask[nbr_index]
+            # randomly change parts of mask to increase correlation between neighbors
+            for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
+                index_to_change = random.randint(0, len(self.mask) - 1)
+                if len(self.nb_indices[index_to_change]) > 0:  # can be 0 for single heavy atom molecules
+                    nbr_index = random.randint(0, len(self.nb_indices[index_to_change]) - 1)
+                    self.mask[index_to_change] = self.mask[nbr_index]
 
             # Ensure at least one 0 so at least one thing is predicted
             if sum(self.mask) == len(self.mask):
                 self.mask[np.random.randint(len(self.mask))] = 0
+
+        elif self.bert_mask_type == 'random':
+            self.mask = np.random.rand(len(self.targets)) > self.bert_mask_prob  # len = num_atoms
+
+            # Ensure at least one 0 so at least one thing is predicted
+            if sum(self.mask) == len(self.mask):
+                self.mask[np.random.randint(len(self.mask))] = 0
+
+        else:
+            raise ValueError('bert_mask_type "{}" not supported.'.format(self.bert_mask_type))
 
         # np.ndarray --> list
         self.mask = list(self.mask)

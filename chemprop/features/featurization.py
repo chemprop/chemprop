@@ -267,6 +267,34 @@ class BatchMolGraph:
 
         return self.b2b
 
+    def bert_mask(self,
+                  mask: List[int],
+                  zero_prob: float = 0.8,
+                  diff_prob: float = 0.1,
+                  same_prob: float = 0.1):
+        """
+        Masks the atom features for bert pretraining.
+
+        :param mask: A list of 0s and 1s where 0s indicate which atoms to mask out.
+        :param zero_prob: The probability of replacing a masked atom with 0s.
+        :param diff_prob: The probability of replacing a masked atom with a different atom feature vector.
+        :param same_prob: The probability of keeping a masked atom's feature vector.
+        """
+        f_atoms = self.f_atoms[1:]  # 1 for padding
+
+        assert zero_prob + diff_prob + same_prob == 1
+        assert len(mask) == len(f_atoms)
+
+        mask_indices = np.where(np.array(mask) == 0)[0]
+        rands = np.random.random(len(mask_indices))
+
+        for i, rand in zip(mask_indices, rands):
+            if rand < zero_prob:
+                f_atoms[i] = 0  # mask with zeros
+            elif rand < zero_prob + diff_prob:
+                f_atoms[i] = f_atoms[np.random.randint(len(f_atoms))]  # mask with different atom feature vector
+            # mask with same atom feature vector (i.e. do nothing)
+
 
 def mol2graph(smiles_batch: List[str],
               args: Namespace) -> BatchMolGraph:

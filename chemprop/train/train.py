@@ -137,9 +137,9 @@ def train(model: nn.Module,
 
             if args.dataset_type == 'bert_pretraining':
                 batch = mol2graph(smiles_batch, args)
-                mask = torch.FloatTensor(mol_batch.mask())  # num_atoms
-                batch.f_atoms[1:] *= mask.unsqueeze(dim=1)  # num_atoms x atom_fdim (1 for padding)
-                mask = 1 - mask  # since the ones that were masked out earlier are now being predicted
+                mask = mol_batch.mask()
+                batch.bert_mask(mask)
+                mask = 1 - torch.FloatTensor(mask)  # num_atoms
                 targets = torch.LongTensor(target_batch)  # num_atoms
             else:
                 batch = smiles_batch
