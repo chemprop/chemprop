@@ -159,7 +159,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_vocab_func', type=str, default='atom_features',
                         choices=['atom', 'atom_features'],
                         help='Vocab function when dataset_type == "bert_pretraining"')
-    parser.add_argument('--bert_mask_type', type=str, default='random',
+    parser.add_argument('--bert_mask_type', type=str, default='cluster',
                         choices=['random', 'correlation', 'cluster'],
                         help='How to mask atoms in bert_pretraining')
     parser.add_argument('--last_batch', action='store_true', default=False,
