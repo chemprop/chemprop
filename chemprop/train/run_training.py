@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from tqdm import trange
 import pickle
 
@@ -127,12 +127,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Load/build model
         if args.checkpoint_paths is not None:
             debug('Loading model {} from {}'.format(model_idx, args.checkpoint_paths[model_idx]))
-            model = load_checkpoint(args.checkpoint_paths[model_idx],
-                                    current_args=args,
-                                    num_tasks=args.num_tasks,
-                                    dataset_type=args.dataset_type,
-                                    encoder_only=args.load_encoder_only,
-                                    logger=logger)
+            model, _, _, _ = load_checkpoint(args.checkpoint_paths[model_idx],
+                                             current_args=args,
+                                             num_tasks=args.num_tasks,
+                                             dataset_type=args.dataset_type,
+                                             encoder_only=args.load_encoder_only,
+                                             logger=logger)
         else:
             debug('Building model {}'.format(model_idx))
             model = build_model(args)
@@ -144,19 +144,23 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model = model.cuda()
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(model, scaler, args, os.path.join(save_dir, 'model.pt'))
+        save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Optimizer and learning rate scheduler
-        optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-        scheduler = NoamLR(
-            optimizer,
-            warmup_epochs=args.warmup_epochs,
-            total_epochs=args.epochs,
-            steps_per_epoch=train_data_length // args.batch_size,
-            init_lr=args.init_lr,
-            max_lr=args.max_lr,
-            final_lr=args.final_lr
-        )
+        if args.optimizer == 'Adam':
+            optimizer = Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+        elif args.optimizer == 'SGD':
+            optimizer = SGD(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+        if not args.no_noam:
+            scheduler = NoamLR(
+                optimizer,
+                warmup_epochs=args.warmup_epochs,
+                total_epochs=args.epochs,
+                steps_per_epoch=train_data_length // args.batch_size,
+                init_lr=args.init_lr,
+                max_lr=args.max_lr,
+                final_lr=args.final_lr
+            )
 
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
@@ -202,11 +206,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(model, scaler, args, os.path.join(save_dir, 'model.pt'))
+                save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         # Evaluate on test set using model using model with best validation score
         info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
-        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
+        model, _, _, _ = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
         test_preds = predict(
             model=model,
             data=test_data,

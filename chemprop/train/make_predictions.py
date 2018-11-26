@@ -11,7 +11,7 @@ from chemprop.utils import load_checkpoint
 def make_predictions(args: Namespace):
     """Makes predictions."""
     print('Loading training args')
-    _, train_args = load_checkpoint(args.checkpoint_paths[0], get_args=True)
+    _, scaler, features_scaler, train_args = load_checkpoint(args.checkpoint_paths[0])
 
     # Update current args from training args without overwriting any values
     for key, value in vars(train_args).items():
@@ -24,12 +24,15 @@ def make_predictions(args: Namespace):
         compound_names = test_data.compound_names()
     print('Test size = {:,}'.format(len(test_data)))
 
+    # Normalize features
+    test_data.normalize_features(features_scaler)
+
     # Predict with each model individually and sum predictions
     sum_preds = np.zeros((len(test_data), args.num_tasks))
     print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
-        model, scaler, train_args = load_checkpoint(checkpoint_path, cuda=args.cuda, get_scaler=True, get_args=True)
+        model, _, _, _ = load_checkpoint(checkpoint_path, cuda=args.cuda)
         model_preds = predict(
             model=model,
             data=test_data,

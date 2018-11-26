@@ -131,7 +131,7 @@ def train(model: nn.Module,
             # Prepare batch
             batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = batch.smiles(), batch.features(), batch.targets()
-
+            # import pdb; pdb.set_trace()
             mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
             targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
@@ -161,7 +161,8 @@ def train(model: nn.Module,
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
         optimizer.step()
-        scheduler.step()
+        if not args.no_noam:
+            scheduler.step()
 
         if args.adversarial:
             for _ in range(args.gan_d_per_g):

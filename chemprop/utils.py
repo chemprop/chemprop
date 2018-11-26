@@ -13,12 +13,17 @@ from chemprop.data import StandardScaler
 from chemprop.models import build_model
 
 
-def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, path: str):
+def save_checkpoint(model: nn.Module,
+                    scaler: StandardScaler,
+                    features_scaler: StandardScaler,
+                    args: Namespace,
+                    path: str):
     """
     Saves a model checkpoint.
 
     :param model: A PyTorch model.
-    :param scaler: A fitted StandardScaler.
+    :param scaler: A StandardScaler fitted on the data.
+    :param features_scaler: A StandardScaler fitted on the features.
     :param args: Arguments namespace.
     :param path: Path where checkpoint will be saved.
     """
@@ -28,7 +33,11 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
         'scaler': {
             'means': scaler.means,
             'stds': scaler.stds
-        } if scaler is not None else None
+        } if scaler is not None else None,
+        'features_scaler': {
+            'means': features_scaler.means,
+            'stds': features_scaler.stds
+        } if features_scaler is not None else None
     }
     if args.moe:
         state['domain_encs'] = model.get_domain_encs()
@@ -38,29 +47,22 @@ def save_checkpoint(model: nn.Module, scaler: StandardScaler, args: Namespace, p
 def load_checkpoint(path: str,
                     current_args: Namespace = None,
                     cuda: bool = False,
-                    get_scaler: bool = False,
-                    get_args: bool = False,
                     num_tasks: int = None,
                     dataset_type: str = None,
                     encoder_only: bool = False,
-                    logger: logging.Logger = None) -> Union[nn.Module,
-                                                            Tuple[nn.Module, StandardScaler],
-                                                            Tuple[nn.Module, Namespace],
-                                                            Tuple[nn.Module, StandardScaler, Namespace]]:
+                    logger: logging.Logger = None) -> Tuple[nn.Module, StandardScaler, StandardScaler, Namespace]:
     """
     Loads a model checkpoint and optionally the scaler the model was trained with.
 
     :param path: Path where checkpoint is saved.
     :param current_args: The current arguments.
     :param cuda: Whether to move model to cuda.
-    :param get_scaler: Whether to also load the scaler the model was trained with.
-    :param get_args: Whether to also load the args the model was trained with.
     :param num_tasks: The number of tasks. Only necessary if different now than when trained.
     :param dataset_type: The type of the dataset ("classification" or "regression"). Only necessary
     if different now than when trained.
     :param encoder_only: Whether to only load weights from encoder.
     :param logger: A logger.
-    :return: The loaded model and optionally the scaler.
+    :return: The loaded model, data scaler, features scaler, and loaded args.
     """
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
@@ -111,18 +113,10 @@ def load_checkpoint(path: str,
         print('Moving model to cuda')
         model = model.cuda()
 
-    if get_scaler:
-        scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
+    scaler = StandardScaler(state['scaler']['means'], state['scaler']['stds']) if state['scaler'] is not None else None
+    features_scaler = StandardScaler(state['features_scaler']['means'], state['features_scaler']['stds'], replace_nan_token=0) if state['features_scaler'] is not None else None
 
-        if get_args:
-            return model, scaler, args
-
-        return model, scaler
-
-    if get_args:
-        return model, args
-
-    return model
+    return model, scaler, features_scaler, args
 
 
 def get_loss_func(dataset_type: str) -> nn.Module:
