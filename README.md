@@ -137,7 +137,7 @@ Results on classification datasets (AUC score, the higher the better)
 Results on regression datasets (score, the lower the better)
 
 Dataset | Size | Ours | GraphConv/MPNN (deepchem) |
-| :---: | :---: | :---: | :---: |
+| :---: |:---:| :---:| :---: |
 delaney	| 1,128 | 0.687 ± 0.037 | 	0.58 ± 0.03 |
 Freesolv | 642 |	0.915 ± 0.154	| 1.15 ± 0.12 |
 Lipo | 4,200 |	0.565 ± 0.052 |	0.655 ± 0.036 |
