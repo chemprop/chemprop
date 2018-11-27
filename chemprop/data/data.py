@@ -173,7 +173,7 @@ class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
-        self.features_size = len(self.data[0].features) if self.data[0].features is not None else None
+        self.features_size = len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
         self.scaler = None
     
     def bert_init(self, args: Namespace, logger: Logger = None):
@@ -184,7 +184,8 @@ class MoleculeDataset(Dataset):
             args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
             debug('Vocab/Output size = {:,}'.format(args.vocab.output_size))
 
-        args.features_size = self.features_size
+        if not hasattr(args, 'features_size') or args.features_size is None:
+            args.features_size = self.features_size
 
         if args.sequential:
             for d in self.data:
@@ -200,7 +201,7 @@ class MoleculeDataset(Dataset):
         debug('Finished initializing targets and masks for bert')
 
     def compound_names(self) -> List[str]:
-        if self.data[0].compound_name is None:
+        if len(self.data) == 0 or self.data[0].compound_name is None:
             return None
 
         return [d.compound_name for d in self.data]
@@ -209,7 +210,7 @@ class MoleculeDataset(Dataset):
         return [d.smiles for d in self.data]
 
     def features(self) -> List[np.ndarray]:
-        if self.data[0].features is None:
+        if len(self.data) == 0 or self.data[0].features is None:
             return None
 
         return [d.features for d in self.data]
@@ -231,7 +232,7 @@ class MoleculeDataset(Dataset):
         return [d.targets for d in self.data]
 
     def num_tasks(self) -> int:
-        return self.data[0].num_tasks
+        return self.data[0].num_tasks if len(self.data) > 0 else None
 
     def mask(self) -> List[int]:
         if not self.bert_pretraining:
@@ -259,7 +260,7 @@ class MoleculeDataset(Dataset):
         return datasets
     
     def normalize_features(self, scaler: StandardScaler = None) -> StandardScaler:
-        if self.data[0].features is None:
+        if len(self.data) == 0 or self.data[0].features is None:
             return None
 
         if scaler is not None:

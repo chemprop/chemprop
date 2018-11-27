@@ -80,18 +80,20 @@ def get_header(path: str) -> List[str]:
 
 def get_data(path: str,
              args: Namespace = None,
+             max_data_size: int = None,
              use_compound_names: bool = False) -> MoleculeDataset:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
     :param path: Path to a CSV file.
     :param args: Arguments.
+    :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
     if args is not None:
-        max_data_size = args.max_data_size
+        max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
 
         if args.features_path:
             features_data = get_features(args.features_path)
@@ -102,7 +104,11 @@ def get_data(path: str,
 
     with open(path) as f:
         f.readline()  # skip header
-        lines = f.readlines()[:max_data_size]
+        lines = []
+        for line in f:
+            lines.append(line)
+            if len(lines) >= max_data_size:
+                break
         data = MoleculeDataset([
             MoleculeDatapoint(
                 line=line.strip().split(','),
@@ -215,38 +221,42 @@ def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
     return data
 
 
-def load_prespecified_chunks(args: Namespace, logger: Logger=None):
+def load_prespecified_chunks(args: Namespace, logger: Logger = None):
     """
     Load some number of chunks into train and val datasets. 
 
-    :param args: Namespace of arguments
+    :param args: Namespace of arguments.
+    :param logger: An optional logger.
     :return: A tuple containing the train and validation MoleculeDatasets
     from loading a few random chunks. 
     """
-    chunks = []
-    for _, _, names in os.walk(args.prespecified_chunk_dir):
-        random.shuffle(names)
+    fnames = []
+    for _, _, files in os.walk(args.prespecified_chunk_dir):
+        fnames.extend(files)
+    random.shuffle(fnames)
+
     data_len = 0
-    for name in names:
-        path = os.path.join(args.prespecified_chunk_dir, name)
-        chunks.append(get_data(path, args))
-        data_len += len(chunks[-1].data)
-        if data_len > args.prespecified_chunks_max_examples_per_epoch:
+    chunks = []
+    for fname in fnames:
+        remaining_data_len = args.prespecified_chunks_max_examples_per_epoch - data_len
+        path = os.path.join(args.prespecified_chunk_dir, fname)
+        data = get_data(path, args, max_data_size=remaining_data_len)
+        chunks.append(data)
+        data_len += len(data)
+        if data_len >= args.prespecified_chunks_max_examples_per_epoch:
             break
-    data = [c.data for c in chunks]
-    full_data = []
-    for d in data:
-        full_data += d
-    random.shuffle(full_data)
-    full_data = full_data[:args.prespecified_chunks_max_examples_per_epoch]
-    full_data = MoleculeDataset(full_data)
+
+    data = [d for chunk in chunks for d in chunk.data]
+    random.shuffle(data)
+    data = MoleculeDataset(data)
 
     if args.dataset_type == 'bert_pretraining':
-        full_data.bert_init(args, logger)
+        data.bert_init(args, logger)
 
     split_sizes = deepcopy(args.split_sizes)
-    split_sizes[2] = 0 # no test set
+    split_sizes[2] = 0  # no test set
     split_sizes = [i / sum(split_sizes) for i in split_sizes]
-    train, val, _ = split_data(full_data, args, split_sizes)
+    train, val, _ = split_data(data, args, split_sizes)
+
     return train, val
 

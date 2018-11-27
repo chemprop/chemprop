@@ -2,7 +2,6 @@ from argparse import Namespace
 from collections import defaultdict
 from copy import deepcopy
 import json
-import logging
 import math
 import os
 from pprint import pprint
@@ -60,7 +59,7 @@ class MPNWorker(Worker):
     def __init__(self, args: Namespace, **kwargs):
         super(MPNWorker, self).__init__(**kwargs)
         self.args = args
-        self.sign = -1 if args.metric in ['auc', 'pr-auc', 'r2'] else 1
+        self.sign = -1 if args.metric in ['auc', 'prc-auc', 'r2'] else 1
 
     def compute(self,
                 config: dict,
