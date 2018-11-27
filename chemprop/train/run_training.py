@@ -212,8 +212,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             )
 
             if args.dataset_type == 'bert_pretraining':
-                debug('Validation features rmse = {:.3f}'.format(val_scores[0]))
-                val_scores = val_scores[1:2]
+                debug('Validation features rmse = {:.3f}'.format(val_scores['features']))
+                val_scores = [val_scores['vocab']]
 
             # Average validation score
             avg_val_score = np.mean(val_scores)
@@ -260,8 +260,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             sum_test_preds += np.array(test_preds)
 
         if args.dataset_type == 'bert_pretraining':
-            debug('Model {} test features rmse = {:.3f}'.format(model_idx, test_scores[0]))
-            test_scores = test_scores[1:2]
+            debug('Model {} test features rmse = {:.3f}'.format(model_idx, test_scores['features']))
+            test_scores = [test_scores['vocab']]
 
         # Average test score
         avg_test_score = np.mean(test_scores)
@@ -293,8 +293,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Average ensemble score
     if args.dataset_type == 'bert_pretraining':
-        info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores[0]))
-        ensemble_scores = ensemble_scores[1:2]
+        info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores['features']))
+        ensemble_scores = [ensemble_scores['vocab']]
 
     info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
 

@@ -11,7 +11,7 @@ from chemprop.utils import rmse
 def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[float]]]],
                          targets: Union[List[List[float]], Dict[str, List[List[float]]]],
                          metric_func: Callable,
-                         args: Namespace) -> List[float]:
+                         args: Namespace) -> Union[List[float], Dict[str, float]]:
     """
     Evaluates predictions using a metric function and filtering out invalid targets.
 
@@ -49,17 +49,18 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
                 valid_targets[i].append(targets[j][i])
 
     # Compute metric
-    results = []
-    for i in range(num_tasks):
-        # Skip if all targets are identical
-        if args.dataset_type != 'bert_pretraining' and \
-                    (all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i])):
-            continue
-
-        results.append(metric_func(valid_targets[i], valid_preds[i]))
-
     if args.dataset_type == 'bert_pretraining':
-        results.append(rmse(features_targets, features_preds))
+        results = {
+            'features': rmse(features_targets, features_preds),
+            'vocab': metric_func(valid_targets[0], valid_preds[0])
+        }
+    else:
+        results = []
+        for i in range(num_tasks):
+            # Skip if all targets are identical
+            if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+                continue
+            results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     return results
 

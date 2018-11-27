@@ -1,6 +1,7 @@
 from rdkit import Chem
 import numpy as np
 
+
 class FunctionalGroupFeaturizer:
     """
     Class for extracting feature vector of indicators for atoms being parts of functional groups. 
@@ -28,7 +29,7 @@ class FunctionalGroupFeaturizer:
                     features[idx][i] = 1
         return features
 
+
 if __name__ == '__main__':
     featurizer = FunctionalGroupFeaturizer()
     features = featurizer.featurize('C(#N)C(=O)C#N')
-    import pdb; pdb.set_trace()
