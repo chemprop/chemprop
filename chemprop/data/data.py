@@ -162,7 +162,7 @@ class MoleculeDatapoint:
         self.targets = targets
 
     def bert_targets(self) -> Dict[str, Union[np.ndarray, List[int]]]:
-        """Returns a dictioinary with the molecule features and with the vocab targets."""
+        """Returns a dictionary with the molecule features and with the vocab targets."""
         return {
             'features': self.features,
             'vocab': self.vocab_targets

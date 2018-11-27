@@ -213,6 +213,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             if args.dataset_type == 'bert_pretraining':
                 debug('Validation features rmse = {:.3f}'.format(val_scores['features']))
+                writer.add_scalar('validation_features_rmse', val_scores['features'], n_iter)
                 val_scores = [val_scores['vocab']]
 
             # Average validation score
@@ -261,12 +262,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
         if args.dataset_type == 'bert_pretraining':
             debug('Model {} test features rmse = {:.3f}'.format(model_idx, test_scores['features']))
+            writer.add_scalar('test_features_rmse', test_scores['features'], 0)
             test_scores = [test_scores['vocab']]
 
         # Average test score
         avg_test_score = np.mean(test_scores)
         info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, avg_test_score))
-        writer.add_scalar('test_{}'.format(args.metric), avg_test_score, n_iter)
+        writer.add_scalar('test_{}'.format(args.metric), avg_test_score, 0)
 
         if args.show_individual_scores:
             # Individual test scores
@@ -294,9 +296,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Average ensemble score
     if args.dataset_type == 'bert_pretraining':
         info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores['features']))
+        writer.add_scalar('ensemble_test_features_rmse', ensemble_scores['features'], 0)
         ensemble_scores = [ensemble_scores['vocab']]
 
-    info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
+    avg_ensemble_test_score = np.mean(ensemble_scores)
+    info('Ensemble test {} = {:.3f}'.format(args.metric, avg_ensemble_test_score))
+    writer.add_scalar('ensemble_test_{}'.format(args.metric), avg_ensemble_test_score, 0)
 
     # Individual ensemble scores
     if args.show_individual_scores:
