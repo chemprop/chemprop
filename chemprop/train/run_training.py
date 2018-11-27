@@ -295,7 +295,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.dataset_type == 'bert_pretraining':
         info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores[0]))
         ensemble_scores = ensemble_scores[1:2]
-    
+
     info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
 
     # Individual ensemble scores

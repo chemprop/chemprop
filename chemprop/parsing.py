@@ -316,7 +316,7 @@ def modify_train_args(args: Namespace):
             if args.bert_vocab_func == 'feature_vector':
                 args.metric = 'rmse'
             else:
-                args.metric = 'log_loss'
+                assert args.metric in ['log_loss', 'argmax_accuracy', 'majority_baseline_accuracy']
         else:
             args.metric = 'rmse'
 
