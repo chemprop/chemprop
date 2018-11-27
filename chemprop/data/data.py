@@ -77,7 +77,7 @@ class MoleculeDatapoint:
                 elif fg == 'morgan_count':
                     self.features.extend(morgan_fingerprint(self.smiles, use_counts=True))
                 elif fg == 'rdkit_2d':
-                    self.features.extend(rdkit_2d_features(self.smiles))
+                    self.features.extend(rdkit_2d_features(self.smiles, args))
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
             self.features = np.array(self.features)

@@ -1,3 +1,4 @@
+from argparse import Namespace
 import numpy as np
 
 from rdkit import Chem
@@ -17,6 +18,8 @@ from rdkit.Chem.EState.EState_VSA import EState_VSA1, EState_VSA2, EState_VSA3, 
     EState_VSA7, EState_VSA8, EState_VSA9, EState_VSA10, EState_VSA11, VSA_EState1, VSA_EState2, VSA_EState3, \
     VSA_EState4, VSA_EState5, VSA_EState6, VSA_EState7, VSA_EState8, VSA_EState9, VSA_EState10
 
+from chemprop.features.functional_groups import FunctionalGroupFeaturizer
+
 FEATURE_FUNCTIONS = [
     # ComputeGasteigerCharges,
     BalabanJ, BertzCT, Ipc, Chi0, Chi0n, Chi0v, Chi1, Chi1n, Chi1v, Chi2n, Chi2v, Chi3n, Chi3v, Chi4n, Chi4v,
@@ -35,7 +38,7 @@ FEATURE_FUNCTIONS = [
 ]
 
 
-def rdkit_2d_features(smiles: str):
+def rdkit_2d_features(smiles: str, args: Namespace):
     mol = Chem.MolFromSmiles(smiles)
     features = []
     for f in FEATURE_FUNCTIONS:
@@ -48,4 +51,7 @@ def rdkit_2d_features(smiles: str):
             features.extend(feature)
         else:
             features.append(feature)
+    fg_featurizer = FunctionalGroupFeaturizer(args)
+    fg_features = fg_featurizer.featurize(mol)
+    features += fg_features.sum(axis=0).tolist()
     return np.clip(np.nan_to_num(np.array(features)), -1e2, 1e2)
