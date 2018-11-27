@@ -40,6 +40,10 @@ def predict(model: nn.Module,
                 batch = smiles_batch
 
             batch_preds = model(batch, features_batch)
+
+            if args.dataset_type == 'bert_pretraining':
+                batch_preds = batch_preds['vocab']
+
             batch_preds = batch_preds.data.cpu().numpy()
 
             if scaler is not None:

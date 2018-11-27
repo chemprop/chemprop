@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import List, Union
+from typing import Dict, List, Union
 
 import torch
 import torch.nn.functional as F
@@ -41,6 +41,7 @@ class MPNEncoder(nn.Module):
         self.bert_pretraining = args.dataset_type == 'bert_pretraining'
         if self.bert_pretraining:
             self.output_size = args.vocab.output_size
+            self.features_size = args.features_size
         self.args = args
 
         if args.features_only:
@@ -98,14 +99,6 @@ class MPNEncoder(nn.Module):
             self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
-        if self.bert_pretraining:
-            if args.bert_vocab_func == 'feature_vector':
-                # TODO change atom_fdim to correct output size later, when we implement separate input/output
-                self.W_v = nn.Linear(self.hidden_size, self.atom_fdim)
-            else:
-                self.W_v = nn.Linear(self.hidden_size, self.output_size)
-            return
-
         if self.set2set:
             self.set2set_rnn = nn.LSTM(
                 input_size=self.hidden_size,
@@ -118,10 +111,19 @@ class MPNEncoder(nn.Module):
             self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
             self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
 
+        if self.bert_pretraining:
+            if args.bert_vocab_func == 'feature_vector':
+                # TODO change atom_fdim to correct output size later, when we implement separate input/output
+                self.W_v = nn.Linear(self.hidden_size, self.atom_fdim)
+            else:
+                self.W_v = nn.Linear(self.hidden_size, self.output_size)
+
+            self.W_f = nn.Linear(self.hidden_size, self.features_size)
+
     def forward(self,
                 mol_graph: BatchMolGraph,
                 features_batch: List[np.ndarray] = None,
-                viz_dir: str = None) -> torch.Tensor:
+                viz_dir: str = None) -> Union[torch.FloatTensor, Dict[str, torch.FloatTensor]]:
         """
         Encodes a batch of molecular graphs.
 
@@ -179,6 +181,7 @@ class MPNEncoder(nn.Module):
         for depth in range(self.depth - 1):
             if self.learn_virtual_edges:
                 b_message = b_message * straight_through_mask
+
             if self.message_attention:
                 # TODO: Parallelize attention heads
                 nei_b_message = index_select_ND(b_message, b2b)
@@ -201,10 +204,11 @@ class MPNEncoder(nn.Module):
                 rev_b_message = b_message[b2revb]  # num_bonds x hidden
                 b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
 
-            for lpm in range(self.layers_per_message-1):
+            for lpm in range(self.layers_per_message - 1):
                 b_message = self.W_h[lpm][depth](b_message)  # num_bonds x hidden
                 b_message = self.act_func(b_message)
-            b_message = self.W_h[self.layers_per_message-1][depth](b_message)
+            b_message = self.W_h[self.layers_per_message - 1][depth](b_message)
+
             if self.normalize_messages:
                 b_message = b_message / b_message.norm(dim=1, keepdim=True)
 
@@ -267,7 +271,7 @@ class MPNEncoder(nn.Module):
             atom_hiddens = self.W_s2s_b(atom_hiddens)
 
         if self.bert_pretraining:
-            return self.W_v(atom_hiddens)[1:]  # num_atoms x vocab/output size (leave out atom padding)
+            atom_preds = self.W_v(atom_hiddens)[1:]  # num_atoms x vocab/output size (leave out atom padding)
 
         # Readout
         if self.set2set:
@@ -341,8 +345,15 @@ class MPNEncoder(nn.Module):
             features_batch = features_batch.to(mol_vecs)
             if len(features_batch.shape) == 1:
                 features_batch = features_batch.view([1,features_batch.shape[0]])
-            return torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
-            
+            mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
+
+        if self.bert_pretraining:
+            features_preds = self.W_f(mol_vecs)
+            return {
+                'features': features_preds,
+                'vocab': atom_preds
+            }
+
         return mol_vecs  # num_molecules x hidden
 
 

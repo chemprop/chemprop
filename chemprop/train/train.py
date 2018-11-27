@@ -52,6 +52,9 @@ def train(model: nn.Module,
     
     model.train()
 
+    if args.dataset_type == 'bert_pretraining':
+        features_loss = nn.MSELoss()
+
     if chunk_names:
         for path, memo_path in tqdm(data, total=len(data)):
             featurization.SMILES_TO_FEATURES = dict()
@@ -140,11 +143,12 @@ def train(model: nn.Module,
                 mask = mol_batch.mask()
                 batch.bert_mask(mask)
                 mask = 1 - torch.FloatTensor(mask)  # num_atoms
-                targets = torch.Tensor(target_batch)  # num_atoms
+                features_targets = torch.FloatTensor(target_batch['features'])  # num_molecules x features_size
+                targets = torch.FloatTensor(target_batch['vocab'])  # num_atoms
                 if args.bert_vocab_func == 'feature_vector':
                     mask = mask.reshape(-1, 1)
                 else:
-                    targets = targets.long()                    
+                    targets = targets.long()
             else:
                 batch = smiles_batch
                 mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
@@ -152,6 +156,9 @@ def train(model: nn.Module,
 
             if next(model.parameters()).is_cuda:
                 mask, targets = mask.cuda(), targets.cuda()
+
+                if args.dataset_type == 'bert_pretraining':
+                    features_targets = features_targets.cuda()
 
             # Run model
             model.zero_grad()
@@ -162,12 +169,19 @@ def train(model: nn.Module,
                 loss = 0
                 for task in range(targets.size(1)):
                     loss += loss_func(preds[:, task, :], targets[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
+                loss = loss.sum() / mask.sum()
             else:
                 if args.dataset_type == 'unsupervised':
                     targets = targets.long().reshape(-1)
-                loss = loss_func(preds, targets) * mask
 
-            loss = loss.sum() / mask.sum()
+                if args.dataset_type == 'bert_pretraining':
+                    features_preds, preds = preds['features'], preds['vocab']
+
+                loss = loss_func(preds, targets) * mask
+                loss = loss.sum() / mask.sum()
+
+                if args.dataset_type == 'bert_pretraining':
+                    loss += features_loss(features_preds, features_targets)
 
             loss_sum += loss.item()
             iter_count += len(mol_batch)

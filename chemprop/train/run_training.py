@@ -126,13 +126,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = np.zeros((len(test_targets), args.vocab.output_size))
+        sum_test_preds = np.zeros((len(test_targets['vocab']), args.vocab.output_size))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out
-        test_targets = [target if mask == 0 else None for target, mask in zip(test_targets, test_data.mask())]
+        test_targets['vocab'] = [target if mask == 0 else None for target, mask in zip(test_targets['vocab'], test_data.mask())]
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):

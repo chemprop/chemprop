@@ -28,7 +28,8 @@ def evaluate_predictions(preds: List[List[float]],
 
     if args.dataset_type == 'bert_pretraining':
         num_tasks = 1
-        targets = [[t] for t in targets]
+        # TODO: also evaluate performance on predicting features
+        targets = [[t] for t in targets['vocab']]
         preds = [[p] for p in preds]
     
     # Filter out empty targets
@@ -73,7 +74,7 @@ def evaluate(model: nn.Module,
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out
-        targets = [target if mask == 0 else None for target, mask in zip(targets, data.mask())]
+        targets['vocab'] = [target if mask == 0 else None for target, mask in zip(targets['vocab'], data.mask())]
 
     preds = predict(
         model=model,

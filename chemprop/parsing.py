@@ -116,6 +116,9 @@ def add_train_args(parser: ArgumentParser):
                         help='List of targets to show individual scores for, if specified')
     parser.add_argument('--max_data_size', type=int, default=None,
                         help='Maximum number of data points to load')
+    parser.add_argument('--sequential', action='store_true', default=False,
+                        help='Whether to run processes sequentially instead of in parallel'
+                             '(currently only effects vocabulary for bert_pretraining)')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,
@@ -338,6 +341,13 @@ def modify_train_args(args: Namespace):
         assert args.features_generator or args.features_path
         args.use_input_features = False
 
+    if args.dataset_type == 'bert_pretraining':
+        assert not args.use_input_features
+        assert args.features_generator is None
+        assert not args.features_only
+        assert args.features_path is None
+        args.features_generator = ['rdkit_2d']
+
     args.num_lrs = 1 + args.separate_ffn_lr
     lr_params = [args.init_lr, args.max_lr, args.final_lr, args.lr_scaler, args.warmup_epochs, args.weight_decay]
     for lr_param in lr_params:
@@ -368,10 +378,10 @@ def modify_train_args(args: Namespace):
     if args.test:
         args.epochs = 0
 
-    if os.path.isdir(args.data_path): # gave a directory of chunks instead of just one file; will load a few per epoch
+    if os.path.isdir(args.data_path):  # gave a directory of chunks instead of just one file; will load a few per epoch
         args.prespecified_chunk_dir = args.data_path
         for root, _, names in os.walk(args.data_path):
-            args.data_path = os.path.join(root, names[0]) # just pick any one for now, for preprocessing
+            args.data_path = os.path.join(root, names[0])  # just pick any one for now, for preprocessing
             break
     else:
         args.prespecified_chunk_dir = None

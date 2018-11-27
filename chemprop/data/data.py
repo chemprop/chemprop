@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from logging import Logger
 import random
 import math
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 from copy import deepcopy
 
 import numpy as np
@@ -62,30 +62,32 @@ class MoleculeDatapoint:
             self.compound_name = None
 
         self.smiles = line[0]  # str
-        self.features = features  # np.ndarray
-        if self.features is not None and len(self.features.shape) > 1:
-            self.features = np.squeeze(self.features)
+
+        if features is not None:
+            if len(features.shape) > 1:
+                features = np.squeeze(features)
+        self.features = features
 
         # Generate additional features if given a generator
         if features_generator is not None:
             self.features = []
             for fg in features_generator:
                 if fg == 'morgan':
-                    self.features.append(morgan_fingerprint(self.smiles))  # np.ndarray
+                    self.features.extend(morgan_fingerprint(self.smiles))  # np.ndarray
                 elif fg == 'morgan_count':
-                    self.features.append(morgan_fingerprint(self.smiles, use_counts=True))
+                    self.features.extend(morgan_fingerprint(self.smiles, use_counts=True))
                 elif fg == 'rdkit_2d':
-                    self.features.append(rdkit_2d_features(self.smiles))
+                    self.features.extend(rdkit_2d_features(self.smiles))
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
-            self.features = np.concatenate(self.features)
-        
-        if args is not None and args.dataset_type == 'unsupervised':
+            self.features = np.array(self.features)
+
+        if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
             self.targets = [None]
         else:
             if predict_features:
-                self.targets = self.features.tolist()  # List[float]
+                self.targets = self.features  # List[float]
             else:
                 self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
 
@@ -98,7 +100,7 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
 
-        self.targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
+        self.vocab_targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
     def recreate_mask(self):
@@ -107,9 +109,11 @@ class MoleculeDatapoint:
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
 
+        num_targets = len(self.vocab_targets)
+
         if self.bert_mask_type == 'cluster':
-            self.mask = np.ones(len(self.targets))
-            atoms = set(range(len(self.targets)))
+            self.mask = np.ones(num_targets)
+            atoms = set(range(num_targets))
             while len(atoms) != 0:
                 atom = atoms.pop()
                 neighbors = self.nb_indices[atom]
@@ -128,7 +132,7 @@ class MoleculeDatapoint:
                 self.mask[cluster] = 0
 
         elif self.bert_mask_type == 'correlation':
-            self.mask = np.random.rand(len(self.targets)) > self.bert_mask_prob  # len = num_atoms
+            self.mask = np.random.rand(num_targets) > self.bert_mask_prob  # len = num_atoms
 
             # randomly change parts of mask to increase correlation between neighbors
             for _ in range(len(self.mask)):  # arbitrary num iterations; could set in parsing if we want
@@ -142,7 +146,7 @@ class MoleculeDatapoint:
                 self.mask[np.random.randint(len(self.mask))] = 0
 
         elif self.bert_mask_type == 'random':
-            self.mask = np.random.rand(len(self.targets)) > self.bert_mask_prob  # len = num_atoms
+            self.mask = np.random.rand(num_targets) > self.bert_mask_prob  # len = num_atoms
 
             # Ensure at least one 0 so at least one thing is predicted
             if sum(self.mask) == len(self.mask):
@@ -157,11 +161,19 @@ class MoleculeDatapoint:
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets
 
+    def bert_targets(self) -> Dict[str, Union[np.ndarray, List[int]]]:
+        """Returns a dictioinary with the molecule features and with the vocab targets."""
+        return {
+            'features': self.features,
+            'vocab': self.vocab_targets
+        }
+
 
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
+        self.features_size = len(self.data[0].features) if self.data[0].features is not None else None
         self.scaler = None
     
     def bert_init(self, args: Namespace, logger: Logger = None):
@@ -171,13 +183,20 @@ class MoleculeDataset(Dataset):
             debug('Determining vocab')
             args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
             debug('Vocab/Output size = {:,}'.format(args.vocab.output_size))
-        
-        # reassign self.data since the pool seems to deepcopy the data before calling bert_init
-        try:
-            self.data = Pool().map(parallel_bert_init, [(d, deepcopy(args)) for d in self.data])
-        except OSError:  # apparently it's possible to get an OSError about too many open files here...?
+
+        args.features_size = self.features_size
+
+        if args.sequential:
             for d in self.data:
                 d.bert_init(args)
+        else:
+            try:
+                # reassign self.data since the pool seems to deepcopy the data before calling bert_init
+                self.data = Pool().map(parallel_bert_init, [(d, deepcopy(args)) for d in self.data])
+            except OSError:  # apparently it's possible to get an OSError about too many open files here...?
+                for d in self.data:
+                    d.bert_init(args)
+
         debug('Finished initializing targets and masks for bert')
 
     def compound_names(self) -> List[str]:
@@ -195,9 +214,19 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self.data]
 
-    def targets(self) -> Union[List[List[Optional[float]]], List[SparseNoneArray], List[int]]:
+    def targets(self) -> Union[List[List[float]],
+                               List[SparseNoneArray],
+                               List[int],
+                               Dict[str, Union[List[np.ndarray], List[int]]]]:
         if self.bert_pretraining:
-            return [target for d in self.data for target in d.targets]  # targets are atom types
+            bert_targets = [d.bert_targets() for d in self.data]
+            features_targets = [targets['features'] for targets in bert_targets]
+            vocab_targets = [word for targets in bert_targets for word in targets['vocab']]
+
+            return {
+                'features': features_targets,
+                'vocab': vocab_targets
+            }
 
         return [d.targets for d in self.data]
 
@@ -245,7 +274,7 @@ class MoleculeDataset(Dataset):
                 self.scaler = scaler
 
         for d in self.data:
-            d.features = scaler.transform(d.features.reshape(1, -1))
+            d.features = scaler.transform(d.features.reshape(1, -1))[0]
 
         return scaler
     

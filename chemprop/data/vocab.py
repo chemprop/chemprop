@@ -21,7 +21,7 @@ class Vocab:
             self.output_size = ATOM_FDIM
             return  # don't need a real vocab list here
         self.smiles = smiles
-        self.vocab = parallel_vocab(self.vocab_func, self.smiles)
+        self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential)
         self.vocab.add(self.unk)
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
@@ -69,8 +69,12 @@ def vocab(pair: Tuple[Callable, str]) -> Set[str]:
     return set(vocab_func(smiles, nb_info=False))
 
 
-def parallel_vocab(vocab_func: Callable, smiles: List[str]) -> Set[str]:
+def get_vocab(vocab_func: Callable, smiles: List[str], sequential: bool = False) -> Set[str]:
     pairs = [(vocab_func, smile) for smile in smiles]
+
+    if sequential:
+        return set.union(*map(vocab, pairs))
+
     return set.union(*Pool().map(vocab, pairs))
 
 
