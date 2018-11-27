@@ -27,6 +27,9 @@ def predict(model: nn.Module,
         model.eval()
 
         preds = []
+        if args.dataset_type == 'bert_pretraining':
+            features_preds = []
+
         for i in range(0, len(data), args.batch_size):
             # Prepare batch
             mol_batch = MoleculeDataset(data[i:i + args.batch_size])
@@ -42,6 +45,7 @@ def predict(model: nn.Module,
             batch_preds = model(batch, features_batch)
 
             if args.dataset_type == 'bert_pretraining':
+                features_preds.extend(batch_preds['features'].data.cpu().numpy())
                 batch_preds = batch_preds['vocab']
 
             batch_preds = batch_preds.data.cpu().numpy()
@@ -58,5 +62,11 @@ def predict(model: nn.Module,
         
         if args.dataset_type == 'regression_with_binning':
             preds = args.bin_predictions[np.array(preds)].tolist()
+
+        if args.dataset_type == 'bert_pretraining':
+            preds = {
+                'features': features_preds,
+                'vocab': preds
+            }
 
         return preds

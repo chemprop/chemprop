@@ -1,14 +1,15 @@
 from argparse import Namespace
-from typing import Callable, List
+from typing import Callable, Dict, List, Union
 
 import torch.nn as nn
 
 from .predict import predict
 from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.utils import rmse
 
 
-def evaluate_predictions(preds: List[List[float]],
-                         targets: List[List[float]],
+def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[float]]]],
+                         targets: Union[List[List[float]], Dict[str, List[List[float]]]],
                          metric_func: Callable,
                          args: Namespace) -> List[float]:
     """
@@ -20,17 +21,22 @@ def evaluate_predictions(preds: List[List[float]],
     :param args: Namespace
     :return: A list with the score for each task based on `metric_func`.
     """
-    data_size, num_tasks = len(preds), len(preds[0])
 
     if args.dataset_type == 'unsupervised':
         num_tasks = 1
+        data_size = len(preds)
         preds = [[p] for p in preds]
 
-    if args.dataset_type == 'bert_pretraining':
+    elif args.dataset_type == 'bert_pretraining':
         num_tasks = 1
-        # TODO: also evaluate performance on predicting features
+        data_size = len(preds['vocab'])
+        features_targets = targets['features']
         targets = [[t] for t in targets['vocab']]
-        preds = [[p] for p in preds]
+        features_preds = preds['features']
+        preds = [[p] for p in preds['vocab']]
+
+    else:
+        data_size, num_tasks = len(preds), len(preds[0])
     
     # Filter out empty targets
     # valid_preds and valid_targets have shape (num_tasks, data_size)
@@ -51,6 +57,9 @@ def evaluate_predictions(preds: List[List[float]],
             continue
 
         results.append(metric_func(valid_targets[i], valid_preds[i]))
+
+    if args.dataset_type == 'bert_pretraining':
+        results.append(rmse(features_targets, features_preds))
 
     return results
 

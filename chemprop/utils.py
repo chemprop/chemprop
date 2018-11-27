@@ -168,6 +168,30 @@ def get_loss_func(args: Namespace) -> nn.Module:
     raise ValueError('Dataset type "{}" not supported.'.format(args.dataset_type))
 
 
+def prc_auc(targets: List[int], preds: List[float]) -> float:
+    precision, recall, _ = precision_recall_curve(targets, preds)
+    return auc(recall, precision)
+
+
+def rmse(targets: List[float], preds: List[float]) -> float:
+    return math.sqrt(mean_squared_error(targets, preds))
+
+
+def accuracy(targets: List[int], preds: List[float]) -> float:
+    hard_preds = [1 if p > 0.5 else 0 for p in preds]
+    return accuracy_score(targets, hard_preds)
+
+
+def argmax_accuracy(targets: List[int], preds: List[List[float]]) -> float:
+    hard_preds = np.argmax(preds, axis=1)
+    return accuracy_score(targets, hard_preds)
+
+
+def majority_baseline_accuracy(targets: List[int], *args) -> float:
+    counter = Counter(targets)
+    return counter.most_common()[0][1] / len(targets)
+
+
 def get_metric_func(args: Namespace) -> Callable:
     """
     Gets the metric function corresponding to a given metric name.
@@ -181,15 +205,10 @@ def get_metric_func(args: Namespace) -> Callable:
         return roc_auc_score
 
     if metric == 'prc-auc':
-        def metric_func(targets: List[int], preds: List[float]) -> float:
-            precision, recall, _ = precision_recall_curve(targets, preds)
-            return auc(recall, precision)
-        return metric_func
+        return prc_auc
 
     if metric == 'rmse':
-        def metric_func(targets: List[float], preds: List[float]) -> float:
-            return math.sqrt(mean_squared_error(targets, preds))
-        return metric_func
+        return rmse
 
     if metric == 'mae':
         return mean_absolute_error
@@ -198,16 +217,10 @@ def get_metric_func(args: Namespace) -> Callable:
         return r2_score
     
     if metric == 'accuracy':
-        def metric_func(targets: List[int], preds: List[float]) -> float:
-            hard_preds = [1 if p > 0.5 else 0 for p in preds]
-            return accuracy_score(targets, hard_preds)
-        return metric_func
+        return accuracy
 
     if metric == 'argmax_accuracy':
-        def metric_func(targets: List[int], preds: List[List[float]]) -> float:
-            hard_preds = np.argmax(preds, axis=1)
-            return accuracy_score(targets, hard_preds)
-        return metric_func
+        return argmax_accuracy
     
     if metric == 'log_loss':
         # only supported for unsupervised and bert_pretraining
@@ -219,10 +232,7 @@ def get_metric_func(args: Namespace) -> Callable:
         return metric_func
 
     if metric == 'majority_baseline_accuracy':
-        def metric_func(targets: List[int], preds: List[List[float]]) -> float:
-            counter = Counter(targets)
-            return counter.most_common()[0][1] / len(targets)
-        return metric_func
+        return majority_baseline_accuracy
 
     raise ValueError('Metric "{}" not supported.'.format(metric))
 

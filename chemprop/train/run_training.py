@@ -126,7 +126,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = np.zeros((len(test_targets['vocab']), args.vocab.output_size))
+        sum_test_preds = {
+            'features': np.zeros((len(test_smiles), args.features_size)),
+            'vocab': np.zeros((len(test_targets['vocab']), args.vocab.output_size))
+        }
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -208,6 +211,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 scaler=scaler
             )
 
+            if args.dataset_type == 'bert_pretraining':
+                debug('Validation features rmse = {:.3f}'.format(val_scores[0]))
+                val_scores = val_scores[1:2]
+
             # Average validation score
             avg_val_score = np.mean(val_scores)
             debug('Validation {} = {:.3f}'.format(args.metric, avg_val_score))
@@ -245,7 +252,16 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             metric_func=metric_func,
             args=args
         )
-        sum_test_preds += np.array(test_preds)
+
+        if args.dataset_type == 'bert_pretraining':
+            sum_test_preds['features'] += np.array(test_preds['features'])
+            sum_test_preds['vocab'] += np.array(test_preds['vocab'])
+        else:
+            sum_test_preds += np.array(test_preds)
+
+        if args.dataset_type == 'bert_pretraining':
+            debug('Model {} test features rmse = {:.3f}'.format(model_idx, test_scores[0]))
+            test_scores = test_scores[1:2]
 
         # Average test score
         avg_test_score = np.mean(test_scores)
@@ -260,15 +276,26 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
 
     # Evaluate ensemble on test set
-    avg_test_preds = sum_test_preds / args.ensemble_size
+    if args.dataset_type == 'bert_pretraining':
+        avg_test_preds = {
+            'features': (sum_test_preds['features'] / args.ensemble_size).tolist(),
+            'vocab': (sum_test_preds['vocab'] / args.ensemble_size).tolist()
+        }
+    else:
+        avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
+
     ensemble_scores = evaluate_predictions(
-        preds=list(avg_test_preds),
+        preds=avg_test_preds,
         targets=test_targets,
         metric_func=metric_func, 
         args=args
     )
 
     # Average ensemble score
+    if args.dataset_type == 'bert_pretraining':
+        info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores[0]))
+        ensemble_scores = ensemble_scores[1:2]
+    
     info('Ensemble test {} = {:.3f}'.format(args.metric, np.mean(ensemble_scores)))
 
     # Individual ensemble scores
