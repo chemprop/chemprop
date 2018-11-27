@@ -1,6 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from collections import Counter
 from multiprocessing import Pool
+from functools import partial
 import os
 import sys
 sys.path.append('../')
@@ -12,6 +13,7 @@ from tqdm import tqdm
 
 from chemprop.data.utils import get_data
 from chemprop.features.featurization import atom_features, bond_features
+from chemprop.features.functional_groups import FunctionalGroupFeaturizer
 from chemprop.models.jtnn import MolTree
 
 
@@ -47,7 +49,7 @@ def bond_counts(smiles: str) -> Counter:
     return counter
 
 
-def bond_features_counts(smiles: str) -> Counter:
+def bond_features_counts(smiles: str, args: Namespace) -> Counter:
     """
     Given a molecule smiles string, returns a Counter counting occurrences of bond strings where each bond string
     is the features of the two atoms "(atom_1_features_tuple)-(bond_features_tuple)-(atom_2_features_tuple)".
@@ -57,10 +59,17 @@ def bond_features_counts(smiles: str) -> Counter:
     """
     mol = Chem.MolFromSmiles(smiles)
 
+    if args.functional_group_features:
+        fg_featurizer = FunctionalGroupFeaturizer(args)
+        fg_features = fg_featurizer.featurize(mol)
+
     counter = Counter()
     for bond in mol.GetBonds():
         a1, a2 = bond.GetBeginAtom(), bond.GetEndAtom()
-        a1_f, b_f, a2_f = atom_features(a1), bond_features(bond), atom_features(a2)
+        if args.functional_group_features:
+            a1_f, b_f, a2_f = atom_features(a1, fg_features[a1.GetIdx()].tolist()), bond_features(bond), atom_features(a2, fg_features[a2.GetIdx()].tolist())
+        else:
+            a1_f, b_f, a2_f = atom_features(a1), bond_features(bond), atom_features(a2)
         a1_f, b_f, a2_f = tuple(a1_f), tuple(b_f), tuple(a2_f)
         counter['{}-{}-{}'.format(a1_f, b_f, a2_f)] += 1
         counter['{}-{}-{}'.format(a2_f, b_f, a1_f)] += 1
@@ -79,7 +88,7 @@ def generate_vocab(args: Namespace):
     elif args.vocab_type == 'bond':
         counter_func = bond_counts
     elif args.vocab_type == 'bond_features':
-        counter_func = bond_features_counts
+        counter_func = partial(bond_features_counts, args=args)
     else:
         raise ValueError('Vocab type "{}" not supported.'.format(args.vocab_type))
 

@@ -6,6 +6,8 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import torch
 
+from chemprop.features.functional_groups import get_num_functional_groups, FunctionalGroupFeaturizer
+
 # Atom feature sizes
 MAX_ATOMIC_NUM = 100
 ATOM_FEATURES = {
@@ -39,6 +41,8 @@ SMILES_TO_GRAPH = {}
 
 def get_atom_fdim(args: Namespace) -> int:
     """Gets the dimensionality of atom features."""
+    if args.functional_group_features:
+        return ATOM_FDIM + get_num_functional_groups(args)
     return ATOM_FDIM
 
 
@@ -65,14 +69,14 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
+def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
     :return: A PyTorch tensor containing the atom features.
     """
-    return onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
+    features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
            onek_encoding_unk(atom.GetTotalDegree(), ATOM_FEATURES['degree']) + \
            onek_encoding_unk(atom.GetFormalCharge(), ATOM_FEATURES['formal_charge']) + \
            onek_encoding_unk(int(atom.GetChiralTag()), ATOM_FEATURES['chiral_tag']) + \
@@ -80,6 +84,9 @@ def atom_features(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
            onek_encoding_unk(int(atom.GetHybridization()), ATOM_FEATURES['hybridization']) + \
            [1 if atom.GetIsAromatic() else 0] + \
            [atom.GetMass() * 0.01]  # scaled to about the same range as other features
+    if functional_groups is not None:
+        features += functional_groups
+    return features
 
 
 def bond_features(bond: Chem.rdchem.Bond,
@@ -155,8 +162,14 @@ class MolGraph:
         self.n_atoms = mol.GetNumAtoms()
         
         # Get atom features
-        for atom in mol.GetAtoms():
-            self.f_atoms.append(atom_features(atom))
+        if args.functional_group_features:
+            fg_featurizer = FunctionalGroupFeaturizer(args)
+            fg_features = fg_featurizer.featurize(mol)
+        for i, atom in enumerate(mol.GetAtoms()):
+            if args.functional_group_features:
+                self.f_atoms.append(atom_features(atom, fg_features[i].tolist()))
+            else:
+                self.f_atoms.append(atom_features(atom))
             self.a2b.append([])
 
         if args.learn_virtual_edges:

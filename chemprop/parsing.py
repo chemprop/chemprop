@@ -48,6 +48,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--predict_features', action='store_true', default=False,
                         help='Pre-train by predicting the additional features rather than the task values')
+    parser.add_argument('--functional_group_features', action='store_true', default=False,
+                        help='Use functional group features')
+    parser.add_argument('--functional_group_smarts', type=str, default='chemprop/features/smarts.txt',
+                        help='Path to txt file of smarts for functional groups, if functional_group_features is on')
     parser.add_argument('--sparse', action='store_true', default=False,
                         help='Store features as sparse (can save memory for sparse features')
     parser.add_argument('--save_dir', type=str, default=None,
@@ -159,7 +163,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Turn off scaling of features')
     parser.add_argument('--bert_mask_prob', type=float, default=0.15,
                         help='Probability of masking when dataset_type == "bert_pretraining"')
-    parser.add_argument('--bert_vocab_func', type=str, default='atom_features',
+    parser.add_argument('--bert_vocab_func', type=str, default='feature_vector',
                         choices=['atom', 'atom_features', 'feature_vector'],
                         help='Vocab function when dataset_type == "bert_pretraining"')
     parser.add_argument('--bert_mask_type', type=str, default='cluster',

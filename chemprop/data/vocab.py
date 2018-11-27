@@ -6,7 +6,7 @@ from functools import partial
 from rdkit import Chem
 import torch
 
-from chemprop.features import atom_features, ATOM_FDIM
+from chemprop.features import atom_features, get_atom_fdim, FunctionalGroupFeaturizer
 
 
 class Vocab:
@@ -15,10 +15,10 @@ class Vocab:
         if args.bert_vocab_func == 'atom':
             self.unk = '-1'
         if args.bert_vocab_func == 'atom_features':
-            self.unk = str([0 for _ in range(ATOM_FDIM)])
+            self.unk = str([0 for _ in range(get_atom_fdim(args))])
         if args.bert_vocab_func == 'feature_vector':
             self.unk = None
-            self.output_size = ATOM_FDIM
+            self.output_size = get_atom_fdim(args)
             return  # don't need a real vocab list here
         self.smiles = smiles
         self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential)
@@ -37,22 +37,25 @@ class Vocab:
         return [self.w2i(word) for word in features], nb_indices
 
 
-def atom_vocab(smiles: str, vocab_func: str, nb_info: bool = False) -> Union[List[str],
+def atom_vocab(smiles: str, vocab_func: str, args: Namespace, nb_info: bool = False) -> Union[List[str],
                                                                              Tuple[List[str], List[List[int]]]]:
-    if vocab_func == 'atom':
-        featurizer = lambda x: x.GetAtomicNum()
-    elif vocab_func == 'atom_features':
-        featurizer = atom_features
-    elif vocab_func == 'feature_vector':
-        featurizer = atom_features
-    else:
+    if vocab_func not in ['atom', 'atom_features', 'feature_vector']:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
-    all_atoms = Chem.MolFromSmiles(smiles).GetAtoms()
+    mol = Chem.MolFromSmiles(smiles)
+    if args.functional_group_features:
+        fg_featurizer = FunctionalGroupFeaturizer(args)
+        fg_features = fg_featurizer.featurize(mol)
+    all_atoms = mol.GetAtoms()
     if vocab_func == 'feature_vector':
-        features = [featurizer(atom) for atom in all_atoms]
+        features = [atom_features(atom, fg_features[i].tolist()) if args.functional_group_features else atom_features(atom)
+                        for i, atom in enumerate(all_atoms)]
+    elif vocab_func == 'atom_features':
+        features = [str(atom_features(atom, fg_features[i].tolist())) if args.functional_group_features else str(atom_features(atom))
+                        for i, atom in enumerate(all_atoms)]
     else:
-        features = [str(featurizer(atom)) for atom in all_atoms]
+        #vocab_func = atom
+        features = [atom.GetAtomicNum() for atom in all_atoms]
 
     if nb_info:
         nb_indices = []
@@ -82,7 +85,7 @@ def get_vocab_func(args: Namespace) -> Callable:
     vocab_func = args.bert_vocab_func
 
     if vocab_func in ['atom', 'atom_features', 'feature_vector']:
-        return partial(atom_vocab, vocab_func=vocab_func)
+        return partial(atom_vocab, vocab_func=vocab_func, args=args)
 
     raise ValueError('Vocab function "{}" not supported.'.format(vocab_func))
 
