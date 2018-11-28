@@ -259,6 +259,7 @@ class BatchMolGraph:
             self.n_bonds += mol_graph.n_bonds
 
         self.max_num_bonds = max(len(in_bonds) for in_bonds in a2b)
+        self.bert_mask_bonds = args.bert_mask_bonds
 
         self.f_atoms = torch.FloatTensor(f_atoms)
         self.f_bonds = torch.FloatTensor(f_bonds)
@@ -308,7 +309,13 @@ class BatchMolGraph:
             elif rand < zero_prob + diff_prob:
                 f_atoms[i] = f_atoms[np.random.randint(len(f_atoms))]  # mask with different atom feature vector
             # mask with same atom feature vector (i.e. do nothing)
-
+        
+        if self.bert_mask_bonds:
+            for i in range(len(self.f_bonds)):
+                if self.f_atoms[self.b2a[i]].sum() == 0 and self.f_atoms[self.b2a[self.b2revb[i]]].sum() == 0:
+                    # mask with zeros if both adjacent atoms are masked out; TODO could do something different too
+                    self.f_bonds[i] = 0
+        
 
 def mol2graph(smiles_batch: List[str],
               args: Namespace) -> BatchMolGraph:

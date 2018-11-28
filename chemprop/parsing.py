@@ -169,6 +169,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_mask_type', type=str, default='cluster',
                         choices=['random', 'correlation', 'cluster'],
                         help='How to mask atoms in bert_pretraining')
+    parser.add_argument('--bert_mask_bonds', action='store_true', default=False,
+                        help='mask bonds in bert pretraining when both adjacent atoms are zeroed out')
     parser.add_argument('--additional_output_features', type=str, nargs='*', choices=['functional_group'], default=[],
                         help='Use additional features in bert output features to predict,'
                              'but not in original input atom features. Only supported for bert_vocab_func = feature_vector.')
