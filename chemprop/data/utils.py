@@ -124,7 +124,6 @@ def get_data(path: str,
         if args.save_features_path is not None: # collect and save features so we don't need to recompute next time
             all_features = np.stack([d.features for d in data.data])
             sparse_features = sparse.csr_matrix(all_features)
-            import pdb; pdb.set_trace()
             with open(args.save_features_path, 'wb') as f:
                 pickle.dump(sparse_features, f)
 
