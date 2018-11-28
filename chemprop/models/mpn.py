@@ -113,8 +113,7 @@ class MPNEncoder(nn.Module):
 
         if self.bert_pretraining:
             if args.bert_vocab_func == 'feature_vector':
-                # TODO change atom_fdim to correct output size later, when we implement separate input/output
-                self.W_v = nn.Linear(self.hidden_size, self.atom_fdim)
+                self.W_v = nn.Linear(self.hidden_size, args.vocab.output_size)
             else:
                 self.W_v = nn.Linear(self.hidden_size, self.output_size)
 

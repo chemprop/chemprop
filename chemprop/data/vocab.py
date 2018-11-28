@@ -18,7 +18,7 @@ class Vocab:
             self.unk = str([0 for _ in range(get_atom_fdim(args))])
         if args.bert_vocab_func == 'feature_vector':
             self.unk = None
-            self.output_size = get_atom_fdim(args)
+            self.output_size = get_atom_fdim(args, is_output=True)
             return  # don't need a real vocab list here
         self.smiles = smiles
         self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential)
@@ -43,19 +43,22 @@ def atom_vocab(smiles: str, vocab_func: str, args: Namespace, nb_info: bool = Fa
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
     mol = Chem.MolFromSmiles(smiles)
-    if 'functional_group' in args.additional_atom_features:
+    if 'functional_group' in args.additional_atom_features or 'functional_group' in args.additional_output_features:
+        use_functional_group = True
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
+    else:
+        use_functional_group = False
     all_atoms = mol.GetAtoms()
     if vocab_func == 'feature_vector':
-        features = [atom_features(atom, fg_features[i].tolist()) if 'functional_group' in args.additional_atom_features else atom_features(atom)
+        features = [atom_features(atom, fg_features[i].tolist()) if use_functional_group else atom_features(atom)
                         for i, atom in enumerate(all_atoms)]
     elif vocab_func == 'atom_features':
-        features = [str(atom_features(atom, fg_features[i].tolist())) if 'functional_group' in args.additional_atom_features else str(atom_features(atom))
+        features = [str(atom_features(atom, fg_features[i].tolist())) if use_functional_group else str(atom_features(atom))
                         for i, atom in enumerate(all_atoms)]
     else:
         #vocab_func = atom
-        features = [atom.GetAtomicNum() for atom in all_atoms]
+        features = [str(atom.GetAtomicNum()) for atom in all_atoms]
 
     if nb_info:
         nb_indices = []

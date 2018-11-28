@@ -39,9 +39,10 @@ BOND_FDIM = 14
 SMILES_TO_GRAPH = {}
 
 
-def get_atom_fdim(args: Namespace) -> int:
+def get_atom_fdim(args: Namespace, is_output: bool=False) -> int:
     """Gets the dimensionality of atom features."""
-    if 'functional_group' in args.additional_atom_features:
+    if 'functional_group' in args.additional_atom_features \
+                or (is_output and 'functional_group' in args.additional_output_features):
         return ATOM_FDIM + get_num_functional_groups(args)
     return ATOM_FDIM
 
