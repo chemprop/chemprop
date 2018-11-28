@@ -43,15 +43,15 @@ def atom_vocab(smiles: str, vocab_func: str, args: Namespace, nb_info: bool = Fa
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
     mol = Chem.MolFromSmiles(smiles)
-    if args.functional_group_features:
+    if 'functional_group' in args.additional_atom_features:
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
     all_atoms = mol.GetAtoms()
     if vocab_func == 'feature_vector':
-        features = [atom_features(atom, fg_features[i].tolist()) if args.functional_group_features else atom_features(atom)
+        features = [atom_features(atom, fg_features[i].tolist()) if 'functional_group' in args.additional_atom_features else atom_features(atom)
                         for i, atom in enumerate(all_atoms)]
     elif vocab_func == 'atom_features':
-        features = [str(atom_features(atom, fg_features[i].tolist())) if args.functional_group_features else str(atom_features(atom))
+        features = [str(atom_features(atom, fg_features[i].tolist())) if 'functional_group' in args.additional_atom_features else str(atom_features(atom))
                         for i, atom in enumerate(all_atoms)]
     else:
         #vocab_func = atom

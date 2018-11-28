@@ -59,14 +59,14 @@ def bond_features_counts(smiles: str, args: Namespace) -> Counter:
     """
     mol = Chem.MolFromSmiles(smiles)
 
-    if args.functional_group_features:
+    if 'functional_group' in args.additional_atom_features:
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
 
     counter = Counter()
     for bond in mol.GetBonds():
         a1, a2 = bond.GetBeginAtom(), bond.GetEndAtom()
-        if args.functional_group_features:
+        if 'functional_group' in args.additional_atom_features:
             a1_f, b_f, a2_f = atom_features(a1, fg_features[a1.GetIdx()].tolist()), bond_features(bond), atom_features(a2, fg_features[a2.GetIdx()].tolist())
         else:
             a1_f, b_f, a2_f = atom_features(a1), bond_features(bond), atom_features(a2)

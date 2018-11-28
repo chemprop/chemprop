@@ -41,7 +41,7 @@ SMILES_TO_GRAPH = {}
 
 def get_atom_fdim(args: Namespace) -> int:
     """Gets the dimensionality of atom features."""
-    if args.functional_group_features:
+    if 'functional_group' in args.additional_atom_features:
         return ATOM_FDIM + get_num_functional_groups(args)
     return ATOM_FDIM
 
@@ -162,11 +162,11 @@ class MolGraph:
         self.n_atoms = mol.GetNumAtoms()
         
         # Get atom features
-        if args.functional_group_features:
+        if 'functional_group' in args.additional_atom_features:
             fg_featurizer = FunctionalGroupFeaturizer(args)
             fg_features = fg_featurizer.featurize(mol)
         for i, atom in enumerate(mol.GetAtoms()):
-            if args.functional_group_features:
+            if 'functional_group' in args.additional_atom_features:
                 self.f_atoms.append(atom_features(atom, fg_features[i].tolist()))
             else:
                 self.f_atoms.append(atom_features(atom))

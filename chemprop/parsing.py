@@ -48,10 +48,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--predict_features', action='store_true', default=False,
                         help='Pre-train by predicting the additional features rather than the task values')
-    parser.add_argument('--functional_group_features', action='store_true', default=False,
-                        help='Use functional group features')
+    parser.add_argument('--additional_atom_features', type=str, nargs='*', choices=['functional_group'],
+                        help='Use additional features in atom featurization')
     parser.add_argument('--functional_group_smarts', type=str, default='chemprop/features/smarts.txt',
-                        help='Path to txt file of smarts for functional groups, if functional_group_features is on')
+                        help='Path to txt file of smarts for functional groups, if functional_group features are on')
     parser.add_argument('--sparse', action='store_true', default=False,
                         help='Store features as sparse (can save memory for sparse features')
     parser.add_argument('--save_dir', type=str, default=None,
@@ -169,6 +169,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_mask_type', type=str, default='cluster',
                         choices=['random', 'correlation', 'cluster'],
                         help='How to mask atoms in bert_pretraining')
+    parser.add_argument('--additional_output_features', type=str, nargs='*', choices=['functional_group'],
+                        help='Use additional features in bert output features to predict,'
+                             'but not in original input atom features')
     parser.add_argument('--last_batch', action='store_true', default=False,
                         help='Whether to include the last batch in each training epoch even if'
                              'it\'s less than the batch size')
