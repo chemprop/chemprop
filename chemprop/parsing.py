@@ -46,6 +46,9 @@ def add_train_args(parser: ArgumentParser):
                         help='Method of generating additional features')  # TODO allow multiple options
     parser.add_argument('--features_path', type=str,
                         help='Path to features to use in FNN (instead of features_generator)')
+    parser.add_argument('--save_features_path', type=str,
+                        help='Optional path to save computed features, to save time on future runs.'
+                             'Does not support all possible training configurations, though.')
     parser.add_argument('--predict_features', action='store_true', default=False,
                         help='Pre-train by predicting the additional features rather than the task values')
     parser.add_argument('--additional_atom_features', type=str, nargs='*', choices=['functional_group'], default=[],
