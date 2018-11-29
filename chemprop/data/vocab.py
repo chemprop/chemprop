@@ -1,7 +1,9 @@
 from argparse import Namespace
-from multiprocessing import Pool
-from typing import Callable, List, Set, Tuple, Union
+from copy import deepcopy
 from functools import partial
+from multiprocessing import Pool
+import random
+from typing import Callable, List, FrozenSet, Set, Tuple, Union
 
 from rdkit import Chem
 import torch
@@ -11,15 +13,21 @@ from chemprop.features import atom_features, get_atom_fdim, FunctionalGroupFeatu
 
 class Vocab:
     def __init__(self, args: Namespace, smiles: List[str]):
-        self.vocab_func = get_vocab_func(args)
-        if args.bert_vocab_func == 'atom':
-            self.unk = '-1'
-        if args.bert_vocab_func == 'atom_features':
-            self.unk = str([0 for _ in range(get_atom_fdim(args))])
+        self.substructure_sizes = args.bert_substructure_sizes
+        self.vocab_func = partial(
+            atom_vocab,
+            vocab_func=args.bert_vocab_func,
+            substructure_sizes=self.substructure_sizes,
+            to_set=True,
+            args=args
+        )
+
         if args.bert_vocab_func == 'feature_vector':
             self.unk = None
             self.output_size = get_atom_fdim(args, is_output=True)
             return  # don't need a real vocab list here
+
+        self.unk = 'unk'
         self.smiles = smiles
         self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential)
         self.vocab.add(self.unk)
@@ -37,28 +45,126 @@ class Vocab:
         return [self.w2i(word) for word in features], nb_indices
 
 
-def atom_vocab(smiles: str, vocab_func: str, args: Namespace, nb_info: bool = False) -> Union[List[str],
-                                                                             Tuple[List[str], List[List[int]]]]:
-    if vocab_func not in ['atom', 'atom_features', 'feature_vector']:
+def get_substructures_from_atom(atom: Chem.Atom,
+                                max_size: int,
+                                substructure: Set[int] = None) -> Set[FrozenSet[int]]:
+    """
+    Recursively gets all substructures up to a maximum size starting from an atom in a substructure.
+
+    :param atom: The atom to start at.
+    :param max_size: The maximum size of the substructure to fine.
+    :param substructure: The current substructure that atom is in.
+    :return: A set of substructures starting at atom where each substructure is a frozenset of indices.
+    """
+    assert max_size >= 1
+
+    if substructure is None:
+        substructure = {atom.GetIdx()}
+
+    substructures = {frozenset(substructure)}
+
+    if len(substructure) == max_size:
+        return substructures
+
+    # Get neighbors which are not already in the substructure
+    new_neighbors = [neighbor for neighbor in atom.GetNeighbors() if neighbor.GetIdx() not in substructure]
+
+    for neighbor in new_neighbors:
+        # Define new substructure with neighbor
+        new_substructure = deepcopy(substructure)
+        new_substructure.add(neighbor)
+
+        # Skip if new substructure has already been considered
+        if frozenset(new_substructure) in substructures:
+            continue
+
+        # Recursively get substructures including this substructure plus neighbor
+        new_substructures = get_substructures_from_atom(neighbor, max_size, new_substructure)
+
+        # Add those substructures to current set of substructures
+        substructures |= new_substructures
+
+    return substructures
+
+
+def get_substructures(atoms: List[Chem.Atom],
+                      sizes: List[int],
+                      max_count: int = None,
+                      seed: int = None) -> Set[FrozenSet[int]]:
+    """
+    Gets up to max_count substructures (frozenset of atom indices) from a molecule.
+
+    Note: Uses randomness to guarantee that the first max_count substructures
+    found are a random sample of the substructures in the molecule.
+
+    :param atoms: A list of atoms in the molecule.
+    :param sizes: The sizes of substructures to find.
+    :param max_count: The maximum number of substructures to find.
+    :param seed: Random seed.
+    :return: A set of substructures where each substructure is a frozenset of indices.
+    """
+    max_count = max_count or float('inf')
+
+    if seed is not None:
+        random.seed(seed)
+    random.shuffle(atoms)
+
+    substructures = set()
+    for atom in atoms:
+        # Get all substructures up to max size starting from atom
+        new_substructures = get_substructures_from_atom(atom, max(sizes))
+
+        # Filter substructures to those which are one of the desired sizes
+        new_substructures = [substructure for substructure in new_substructures if len(substructure) in sizes]
+
+        for new_substructure in new_substructures:
+            if len(substructures) >= max_count:
+                break
+
+            substructures.add(new_substructure)
+
+    return substructures
+
+
+def atom_vocab(smiles: str,
+               vocab_func: str,
+               args: Namespace,
+               substructure_sizes: List[int] = None,
+               to_set: bool = False,
+               nb_info: bool = False) -> Union[List[str],
+                                               Set[str],
+                                               Tuple[List[str], List[List[int]]],
+                                               Tuple[Set[str], List[List[int]]]]:
+    if vocab_func not in ['atom', 'atom_features', 'feature_vector', 'substructure']:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
     mol = Chem.MolFromSmiles(smiles)
+
     if 'functional_group' in args.additional_atom_features or 'functional_group' in args.additional_output_features:
         use_functional_group = True
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
     else:
         use_functional_group = False
+
     all_atoms = mol.GetAtoms()
+
     if vocab_func == 'feature_vector':
         features = [atom_features(atom, fg_features[i].tolist()) if use_functional_group else atom_features(atom)
-                        for i, atom in enumerate(all_atoms)]
+                    for i, atom in enumerate(all_atoms)]
     elif vocab_func == 'atom_features':
         features = [str(atom_features(atom, fg_features[i].tolist())) if use_functional_group else str(atom_features(atom))
-                        for i, atom in enumerate(all_atoms)]
-    else:
-        #vocab_func = atom
+                    for i, atom in enumerate(all_atoms)]
+    elif vocab_func == 'atom':
         features = [str(atom.GetAtomicNum()) for atom in all_atoms]
+    elif vocab_func == 'substructure':
+        features = get_substructures(all_atoms, substructure_sizes)
+        # TODO: convert substructure sets to features
+    else:
+        raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
+
+    if to_set:
+        features = set(features)
 
     if nb_info:
         nb_indices = []
@@ -82,15 +188,6 @@ def get_vocab(vocab_func: Callable, smiles: List[str], sequential: bool = False)
         return set.union(*map(vocab, pairs))
 
     return set.union(*Pool().map(vocab, pairs))
-
-
-def get_vocab_func(args: Namespace) -> Callable:
-    vocab_func = args.bert_vocab_func
-
-    if vocab_func in ['atom', 'atom_features', 'feature_vector']:
-        return partial(atom_vocab, vocab_func=vocab_func, args=args)
-
-    raise ValueError('Vocab function "{}" not supported.'.format(vocab_func))
 
 
 def load_vocab(path: str) -> Vocab:
