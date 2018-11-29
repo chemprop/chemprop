@@ -75,6 +75,7 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
     Builds a feature vector for an atom.
 
     :param atom: An RDKit atom.
+    :param functional_groups: A k-hot vector indicating the functional groups the atom belongs to.
     :return: A PyTorch tensor containing the atom features.
     """
     features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
@@ -169,7 +170,7 @@ class MolGraph:
             fg_features = fg_featurizer.featurize(mol)
         for i, atom in enumerate(mol.GetAtoms()):
             if 'functional_group' in args.additional_atom_features:
-                self.f_atoms.append(atom_features(atom, fg_features[i].tolist()))
+                self.f_atoms.append(atom_features(atom, fg_features[i]))
             else:
                 self.f_atoms.append(atom_features(atom))
             self.a2b.append([])

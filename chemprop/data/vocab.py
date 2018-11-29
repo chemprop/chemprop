@@ -122,15 +122,21 @@ def get_substructures(atoms: List[Chem.Atom],
     return substructures
 
 
-def substructure_to_feature(mol: Chem.Mol, substructure: FrozenSet[int]) -> str:
+def substructure_to_feature(mol: Chem.Mol,
+                            substructure: FrozenSet[int],
+                            fg_features: List[List[int]] = None) -> str:
     """
     Converts a substructure (set of atom indices) to a feature string
     by sorting and concatenating atom and bond feature vectors.
 
     :param mol: A molecule.
     :param substructure: A set of atom indices representing a substructure.
+    :param fg_features: A list of k-hot vector indicating the functional groups the atom belongs to.
     :return: A string representing the featurization of the substructure.
     """
+    if fg_features is None:
+        fg_features = [None] * mol.GetNumAtoms()
+
     substructure = list(substructure)
     atoms = [Chem.Mol.GetAtomWithIdx(mol, idx) for idx in substructure]
     bonds = []
@@ -141,7 +147,8 @@ def substructure_to_feature(mol: Chem.Mol, substructure: FrozenSet[int]) -> str:
             if bond is not None:
                 bonds.append(bond)
 
-    features = [str(atom_features(atom)) for atom in atoms] + [str(bond_features(bond)) for bond in bonds]
+    features = [str(atom_features(atom, fg_features[atom.GetIdx()])) for atom in atoms] + \
+               [str(bond_features(bond)) for bond in bonds]
     features.sort()  # ensure identical feature string for different atom/bond ordering
     features = str(features)
 
@@ -161,36 +168,33 @@ def atom_vocab(smiles: str,
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
     mol = Chem.MolFromSmiles(smiles)
+    atoms = mol.GetAtoms()
 
     if 'functional_group' in args.additional_atom_features or 'functional_group' in args.additional_output_features:
-        use_functional_group = True
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
     else:
-        use_functional_group = False
-
-    all_atoms = mol.GetAtoms()
+        fg_features = [None] * len(atoms)
 
     if vocab_func == 'feature_vector':
-        features = [atom_features(atom, fg_features[i].tolist()) if use_functional_group else atom_features(atom)
-                    for i, atom in enumerate(all_atoms)]
+        features = [atom_features(atom, fg) for atom, fg in zip(atoms, fg_features)]
     elif vocab_func == 'atom_features':
-        features = [str(atom_features(atom, fg_features[i].tolist())) if use_functional_group else str(atom_features(atom))
-                    for i, atom in enumerate(all_atoms)]
+        features = [str(atom_features(atom, fg)) for atom, fg in zip(atoms, fg_features)]
     elif vocab_func == 'atom':
-        features = [str(atom.GetAtomicNum()) for atom in all_atoms]
+        features = [str(atom.GetAtomicNum()) for atom in atoms]
     elif vocab_func == 'substructure':
-        substructures = get_substructures(list(all_atoms), substructure_sizes)
-        features = [substructure_to_feature(mol, substructure) for substructure in substructures]
+        substructures = get_substructures(list(atoms), substructure_sizes)
+        features = [substructure_to_feature(mol, substructure, fg_features) for substructure in substructures]
+        import pdb; pdb.set_trace()
     else:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
-    if to_set:
+    if to_set and not vocab_func == 'feature_vector':
         features = set(features)
 
     if nb_info:
         nb_indices = []
-        for atom in all_atoms:
+        for atom in atoms:
             nb_indices.append([nb.GetIdx() for nb in atom.GetNeighbors()])  # atoms are sorted by idx
 
         return features, nb_indices

@@ -54,5 +54,5 @@ def rdkit_2d_features(smiles: str, args: Namespace):
     # TODO these following ones take about half of the computation time, can we make it more efficient somehow? not sure tho
     fg_featurizer = FunctionalGroupFeaturizer(args)
     fg_features = fg_featurizer.featurize(mol)
-    features += fg_features.sum(axis=0).tolist()
+    features += np.array(fg_features).sum(axis=0).tolist()
     return np.clip(np.nan_to_num(np.array(features)), -1e2, 1e2)

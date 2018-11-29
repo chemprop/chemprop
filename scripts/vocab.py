@@ -67,7 +67,7 @@ def bond_features_counts(smiles: str, args: Namespace) -> Counter:
     for bond in mol.GetBonds():
         a1, a2 = bond.GetBeginAtom(), bond.GetEndAtom()
         if 'functional_group' in args.additional_atom_features:
-            a1_f, b_f, a2_f = atom_features(a1, fg_features[a1.GetIdx()].tolist()), bond_features(bond), atom_features(a2, fg_features[a2.GetIdx()].tolist())
+            a1_f, b_f, a2_f = atom_features(a1, fg_features[a1.GetIdx()]), bond_features(bond), atom_features(a2, fg_features[a2.GetIdx()])
         else:
             a1_f, b_f, a2_f = atom_features(a1), bond_features(bond), atom_features(a2)
         a1_f, b_f, a2_f = tuple(a1_f), tuple(b_f), tuple(a2_f)

@@ -1,12 +1,15 @@
-from rdkit import Chem
-import numpy as np
 from argparse import Namespace
-from typing import Union
+import numpy as np
+from typing import List, Union
+
+from rdkit import Chem
+
 
 def get_num_functional_groups(args):
     with open(args.functional_group_smarts, 'r') as f:
         count = len(f.readlines())
     return count
+
 
 class FunctionalGroupFeaturizer:
     """
@@ -18,7 +21,7 @@ class FunctionalGroupFeaturizer:
             for line in f:
                 self.smarts.append(Chem.MolFromSmarts(line.strip()))
     
-    def featurize(self, smiles: Union[Chem.Mol, str]):
+    def featurize(self, smiles: Union[Chem.Mol, str]) -> List[List[int]]:
         """
         Given a molecule in SMILES form, return a feature vector of indicators for each atom,
         indicating whether the atom is part of each functional group. 
@@ -37,7 +40,8 @@ class FunctionalGroupFeaturizer:
             for group in mol.GetSubstructMatches(smarts):
                 for idx in group:
                     features[idx][i] = 1
-        return features
+
+        return features.tolist()
 
 
 if __name__ == '__main__':
