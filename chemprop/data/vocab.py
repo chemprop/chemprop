@@ -8,7 +8,7 @@ from typing import Callable, List, FrozenSet, Set, Tuple, Union
 from rdkit import Chem
 import torch
 
-from chemprop.features import atom_features, get_atom_fdim, FunctionalGroupFeaturizer
+from chemprop.features import atom_features, bond_features, get_atom_fdim, FunctionalGroupFeaturizer
 
 
 class Vocab:
@@ -72,7 +72,7 @@ def get_substructures_from_atom(atom: Chem.Atom,
     for neighbor in new_neighbors:
         # Define new substructure with neighbor
         new_substructure = deepcopy(substructure)
-        new_substructure.add(neighbor)
+        new_substructure.add(neighbor.GetIdx())
 
         # Skip if new substructure has already been considered
         if frozenset(new_substructure) in substructures:
@@ -89,8 +89,7 @@ def get_substructures_from_atom(atom: Chem.Atom,
 
 def get_substructures(atoms: List[Chem.Atom],
                       sizes: List[int],
-                      max_count: int = None,
-                      seed: int = None) -> Set[FrozenSet[int]]:
+                      max_count: int = None) -> Set[FrozenSet[int]]:
     """
     Gets up to max_count substructures (frozenset of atom indices) from a molecule.
 
@@ -100,13 +99,10 @@ def get_substructures(atoms: List[Chem.Atom],
     :param atoms: A list of atoms in the molecule.
     :param sizes: The sizes of substructures to find.
     :param max_count: The maximum number of substructures to find.
-    :param seed: Random seed.
     :return: A set of substructures where each substructure is a frozenset of indices.
     """
     max_count = max_count or float('inf')
 
-    if seed is not None:
-        random.seed(seed)
     random.shuffle(atoms)
 
     substructures = set()
@@ -124,6 +120,32 @@ def get_substructures(atoms: List[Chem.Atom],
             substructures.add(new_substructure)
 
     return substructures
+
+
+def substructure_to_feature(mol: Chem.Mol, substructure: FrozenSet[int]) -> str:
+    """
+    Converts a substructure (set of atom indices) to a feature string
+    by sorting and concatenating atom and bond feature vectors.
+
+    :param mol: A molecule.
+    :param substructure: A set of atom indices representing a substructure.
+    :return: A string representing the featurization of the substructure.
+    """
+    substructure = list(substructure)
+    atoms = [Chem.Mol.GetAtomWithIdx(mol, idx) for idx in substructure]
+    bonds = []
+    for i in range(len(substructure)):
+        for j in range(i + 1, len(substructure)):
+            a1, a2 = substructure[i], substructure[j]
+            bond = mol.GetBondBetweenAtoms(a1, a2)
+            if bond is not None:
+                bonds.append(bond)
+
+    features = [str(atom_features(atom)) for atom in atoms] + [str(bond_features(bond)) for bond in bonds]
+    features.sort()  # ensure identical feature string for different atom/bond ordering
+    features = str(features)
+
+    return features
 
 
 def atom_vocab(smiles: str,
@@ -158,8 +180,8 @@ def atom_vocab(smiles: str,
     elif vocab_func == 'atom':
         features = [str(atom.GetAtomicNum()) for atom in all_atoms]
     elif vocab_func == 'substructure':
-        features = get_substructures(all_atoms, substructure_sizes)
-        # TODO: convert substructure sets to features
+        substructures = get_substructures(list(all_atoms), substructure_sizes)
+        features = [substructure_to_feature(mol, substructure) for substructure in substructures]
     else:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
