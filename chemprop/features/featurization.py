@@ -311,6 +311,8 @@ class BatchMolGraph:
             elif rand < zero_prob + diff_prob:
                 f_atoms[i] = f_atoms[np.random.randint(len(f_atoms))]  # mask with different atom feature vector
             # mask with same atom feature vector (i.e. do nothing)
+            for bond_idx in self.a2b[i+1]:
+                self.f_bonds[self.b2revb[bond_idx]][:f_atoms[i].size(0)] = f_atoms[i]
         
         if self.bert_mask_bonds:
             for i in range(len(self.f_bonds)):
