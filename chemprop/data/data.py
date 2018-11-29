@@ -103,6 +103,9 @@ class MoleculeDatapoint:
         self.vocab_targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
+    #TODO(mask) pick a random piece(s) to mask using the method for finding a substructure
+    # then figure out indexing of atoms after that gets collapsed, and regenerate mask + vocab_targets.
+    # should have a method for figuring out indexing when given the tuple(s).
     def recreate_mask(self):
         # Note: 0s to mask atoms which should be predicted
 
@@ -168,6 +171,7 @@ class MoleculeDataset(Dataset):
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
         self.features_size = len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
         self.scaler = None
+        #TODO(mask) store whether you're doing substructure masking
     
     def bert_init(self, args: Namespace, logger: Logger = None):
         debug = logger.debug if logger is not None else print
@@ -199,7 +203,7 @@ class MoleculeDataset(Dataset):
 
         return [d.compound_name for d in self.data]
 
-    def smiles(self) -> List[str]:
+    def smiles(self) -> List[str]: #TODO(mask) if substructure masking, return (d.smiles, list of tuples of collapsed indices)
         return [d.smiles for d in self.data]
 
     def features(self) -> List[np.ndarray]:

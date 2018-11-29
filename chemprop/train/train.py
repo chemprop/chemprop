@@ -138,10 +138,12 @@ def train(model: nn.Module,
             mol_batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
 
+            #TODO(mask) make sure this mask is correct for substructure masking, and that the target here is correct.
+            # may need to go into data mask creation and pick a canonical ordering-- maybe collapsed atoms go at end? ordered by min idx in collapsed
             if args.dataset_type == 'bert_pretraining':
                 batch = mol2graph(smiles_batch, args)
                 mask = mol_batch.mask()
-                batch.bert_mask(mask)
+                batch.bert_mask(mask) #TODO(mask) probably just want to skip this for substructure masking?
                 mask = 1 - torch.FloatTensor(mask)  # num_atoms
                 features_targets = torch.FloatTensor(target_batch['features']) if target_batch['features'] is not None else None  # num_molecules x features_size
                 targets = torch.FloatTensor(target_batch['vocab'])  # num_atoms
