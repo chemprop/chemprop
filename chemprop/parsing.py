@@ -356,10 +356,9 @@ def modify_train_args(args: Namespace):
 
     if args.dataset_type == 'bert_pretraining':
         assert not args.use_input_features
-        assert args.features_generator is None
         assert not args.features_only
         assert args.features_path is None
-        args.features_generator = ['rdkit_2d']
+        assert args.features_generator is None or args.features_generator == ['rdkit_2d']
 
     args.num_lrs = 1 + args.separate_ffn_lr
     lr_params = [args.init_lr, args.max_lr, args.final_lr, args.lr_scaler, args.warmup_epochs, args.weight_decay]

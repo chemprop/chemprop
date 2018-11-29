@@ -117,7 +117,8 @@ class MPNEncoder(nn.Module):
             else:
                 self.W_v = nn.Linear(self.hidden_size, self.output_size)
 
-            self.W_f = nn.Linear(self.hidden_size, self.features_size)
+            if self.features_size is not None:
+                self.W_f = nn.Linear(self.hidden_size, self.features_size)
 
     def forward(self,
                 mol_graph: BatchMolGraph,
@@ -347,7 +348,7 @@ class MPNEncoder(nn.Module):
             mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
 
         if self.bert_pretraining:
-            features_preds = self.W_f(mol_vecs)
+            features_preds = self.W_f(mol_vecs) if hasattr(self, 'W_f') else None
             return {
                 'features': features_preds,
                 'vocab': atom_preds

@@ -45,7 +45,8 @@ def predict(model: nn.Module,
             batch_preds = model(batch, features_batch)
 
             if args.dataset_type == 'bert_pretraining':
-                features_preds.extend(batch_preds['features'].data.cpu().numpy())
+                if batch_preds['features'] is not None:
+                    features_preds.extend(batch_preds['features'].data.cpu().numpy())
                 batch_preds = batch_preds['vocab']
 
             batch_preds = batch_preds.data.cpu().numpy()
@@ -65,7 +66,7 @@ def predict(model: nn.Module,
 
         if args.dataset_type == 'bert_pretraining':
             preds = {
-                'features': features_preds,
+                'features': features_preds if len(features_preds) > 0 else None,
                 'vocab': preds
             }
 

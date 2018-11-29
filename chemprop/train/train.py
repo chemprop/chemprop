@@ -143,7 +143,7 @@ def train(model: nn.Module,
                 mask = mol_batch.mask()
                 batch.bert_mask(mask)
                 mask = 1 - torch.FloatTensor(mask)  # num_atoms
-                features_targets = torch.FloatTensor(target_batch['features'])  # num_molecules x features_size
+                features_targets = torch.FloatTensor(target_batch['features']) if target_batch['features'] is not None else None  # num_molecules x features_size
                 targets = torch.FloatTensor(target_batch['vocab'])  # num_atoms
                 if args.bert_vocab_func == 'feature_vector':
                     mask = mask.reshape(-1, 1)
@@ -157,7 +157,7 @@ def train(model: nn.Module,
             if next(model.parameters()).is_cuda:
                 mask, targets = mask.cuda(), targets.cuda()
 
-                if args.dataset_type == 'bert_pretraining':
+                if args.dataset_type == 'bert_pretraining' and features_targets is not None:
                     features_targets = features_targets.cuda()
 
             # Run model
@@ -180,7 +180,7 @@ def train(model: nn.Module,
                 loss = loss_func(preds, targets) * mask
                 loss = loss.sum() / mask.sum()
 
-                if args.dataset_type == 'bert_pretraining':
+                if args.dataset_type == 'bert_pretraining' and features_targets is not None:
                     loss += features_loss(features_preds, features_targets)
 
             loss_sum += loss.item()

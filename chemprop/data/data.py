@@ -84,7 +84,7 @@ class MoleculeDatapoint:
 
         if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
-            self.targets = [None]
+            self.targets = None
         else:
             if predict_features:
                 self.targets = self.features  # List[float]
@@ -161,13 +161,6 @@ class MoleculeDatapoint:
     def set_targets(self, targets):  # for unsupervised pretraining only
         self.targets = targets
 
-    def bert_targets(self) -> Dict[str, Union[np.ndarray, List[int]]]:
-        """Returns a dictionary with the molecule features and with the vocab targets."""
-        return {
-            'features': self.features,
-            'vocab': self.vocab_targets
-        }
-
 
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
@@ -220,13 +213,9 @@ class MoleculeDataset(Dataset):
                                List[int],
                                Dict[str, Union[List[np.ndarray], List[int]]]]:
         if self.bert_pretraining:
-            bert_targets = [d.bert_targets() for d in self.data]
-            features_targets = [targets['features'] for targets in bert_targets]
-            vocab_targets = [word for targets in bert_targets for word in targets['vocab']]
-
             return {
-                'features': features_targets,
-                'vocab': vocab_targets
+                'features': self.features(),
+                'vocab': [word for d in self.data for word in d.vocab_targets]
             }
 
         return [d.targets for d in self.data]

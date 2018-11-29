@@ -51,7 +51,7 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     # Compute metric
     if args.dataset_type == 'bert_pretraining':
         results = {
-            'features': rmse(features_targets, features_preds),
+            'features': rmse(features_targets, features_preds) if features_targets is not None else None,
             'vocab': metric_func(valid_targets[0], valid_preds[0])
         }
     else:
