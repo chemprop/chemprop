@@ -119,7 +119,7 @@ class MoleculeDatapoint:
                                                    sizes=self.substructure_sizes, 
                                                    max_count=1)  # TODO could change max_count
             self.substructure_index_map = substructure_index_mapping(self.smiles, self.substructures)
-            self.mask = np.ones(max(self.substructure_index_map)+1)
+            self.mask = np.ones(max(self.substructure_index_map) + 1)
             self.mask[-len(self.substructures):] = 0  # the last entries correspond to the substructures
             self.mask = list(self.mask)
 
@@ -324,10 +324,12 @@ def parallel_bert_init(pair: Tuple[MoleculeDatapoint, Namespace]) -> MoleculeDat
 
     return d
 
-def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]):
+
+def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]) -> List[int]:
     """
     Return a deterministic mapping of indices from the original molecule atoms to the
     molecule with some substructures collapsed.
+
     :param smiles: smiles string
     :param substructures: indices of atoms in substructures
     """
