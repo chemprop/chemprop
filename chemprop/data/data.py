@@ -1,11 +1,10 @@
 from argparse import Namespace
 from collections import defaultdict
-from multiprocessing import Pool
 from logging import Logger
-import random
 import math
+from multiprocessing import Pool
+import random
 from typing import Dict, List, Tuple, Union, Set, FrozenSet
-from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
@@ -100,11 +99,11 @@ class MoleculeDatapoint:
             if sparse:
                 self.targets = SparseNoneArray(self.targets)
     
-    def bert_init(self, args: Namespace):
+    def bert_init(self):
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
 
-        self.vocab_targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
+        self.vocab_targets, self.nb_indices = self.args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
     def recreate_mask(self):
@@ -191,6 +190,11 @@ class MoleculeDatapoint:
         self.targets = targets
 
 
+def bert_init(d: MoleculeDatapoint) -> MoleculeDatapoint:
+    d.bert_init()
+    return d
+
+
 class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
@@ -212,11 +216,11 @@ class MoleculeDataset(Dataset):
 
         if args.sequential:
             for d in self.data:
-                d.bert_init(args)
+                d.bert_init()
         else:
             try:
                 # reassign self.data since the pool seems to deepcopy the data before calling bert_init
-                self.data = Pool().map(parallel_bert_init, [(d, deepcopy(args)) for d in self.data])
+                self.data = Pool().map(bert_init, self.data)
             except OSError:  # apparently it's possible to get an OSError about too many open files here...?
                 for d in self.data:
                     d.bert_init(args)
