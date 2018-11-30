@@ -126,10 +126,18 @@ def bond_features(bond: Chem.rdchem.Bond,
 
     return fbond
 
-#TODO(mask): take an additional argument with tuples of indices corresponding to the collapsed atoms,
-# and give those collapsed atoms a feature vector of 0? or possibly something random on occasion?
 class MolGraph:
-    def __init__(self, smiles: str, args: Namespace):
+    def __init__(self, smiles: Union[str, Tuple[str, List[int]]], args: Namespace):
+        if type(smiles) == tuple:
+            smiles, index_map, substructures = smiles
+            self.index_map = index_map  # map from real atom idx to idx after collapsing substructures
+            # the following map gives an arbitrary index for each substructure, but that'll be masked to 0 anyway
+            self.reverse_index_map = [index_map.index(i) for i in range(max(index_map)+1)]
+            self.substructures = substructures
+            self.substructure_atoms = set().union(*substructures)
+            self.collapsing_substructures = True
+        else:
+            self.collapsing_substructures = False
         self.smiles = smiles
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
@@ -141,6 +149,11 @@ class MolGraph:
 
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smiles)
+        if not self.collapsing_substructures:
+            self.index_map = range(mol.GetNumAtoms())
+            self.reverse_index_map = self.index_map
+            self.substructures = set()
+            self.substructure_atoms = set()
 
         # Add hydrogens
         if args.addHs:
@@ -162,7 +175,9 @@ class MolGraph:
 
         # Get topological (i.e. path-length) distance matrix and number of atoms
         distances_path = Chem.GetDistanceMatrix(mol)
-        self.n_atoms = mol.GetNumAtoms()
+
+        # fake the number of "atoms" if we are collapsing substructures
+        self.n_atoms = mol.GetNumAtoms() if self.index_map is None else max(self.index_map) + 1
         
         # Get atom features
         if 'functional_group' in args.additional_atom_features:
@@ -173,6 +188,13 @@ class MolGraph:
                 self.f_atoms.append(atom_features(atom, fg_features[i]))
             else:
                 self.f_atoms.append(atom_features(atom))
+        for atom_idx in self.substructure_atoms:
+            # mask all of these features to 0 since they'll end up collapsed in substructures
+            self.f_atoms[atom_idx] = [0 for _ in range(len(self.f_atoms[atom_idx]))]
+        self.f_atoms = [self.f_atoms[self.reverse_index_map[i]] for i in range(self.n_atoms)]
+
+        
+        for _ in range(self.n_atoms):
             self.a2b.append([])
 
         if args.learn_virtual_edges:
@@ -185,7 +207,25 @@ class MolGraph:
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
-                bond = mol.GetBondBetweenAtoms(a1, a2)
+                bond = mol.GetBondBetweenAtoms(self.reverse_index_map[a1], self.reverse_index_map[a2])
+                zero_bond = self.reverse_index_map[a1] in self.substructure_atoms or self.reverse_index_map[a2] in self.substructure_atoms
+                
+                # need to check all possible atoms in the substructure to see if there's a bond
+                if zero_bond:
+                    candidate_endpoints = []
+                    for atom_idx in [a1, a2]:
+                        reverse_idx = self.reverse_index_map[atom_idx]
+                        if reverse_idx in self.substructure_atoms:
+                            for substructure in self.substructures:
+                                if reverse_idx in substructure:
+                                    candidate_endpoints.append(substructure)
+                                    break
+                        else:
+                            candidate_endpoints.append([atom_idx])
+                    for alternate_a1 in candidate_endpoints[0]:
+                        for alternate_a2 in candidate_endpoints[1]:
+                            if mol.GetBondBetweenAtoms(alternate_a1, alternate_a2) is not None:
+                                bond = mol.GetBondBetweenAtoms(alternate_a1, alternate_a2)
 
                 # Randomly drop O(n_atoms) virtual edges so a total of O(n_atoms) edges instead of O(n_atoms^2)
                 if bond is None:
@@ -209,6 +249,8 @@ class MolGraph:
                 distance_path = distances_path[a1, a2] if args.virtual_edges else None
 
                 f_bond = bond_features(bond, distance_path=distance_path, distance_3d=distance_3d)
+                if zero_bond:
+                    f_bond = [0 for _ in range(len(f_bond))]
                 self.f_bonds.append(self.f_atoms[a1] + f_bond)
                 self.f_bonds.append(self.f_atoms[a2] + f_bond)
 
@@ -263,6 +305,7 @@ class BatchMolGraph:
 
         self.max_num_bonds = max(len(in_bonds) for in_bonds in a2b)
         self.bert_mask_bonds = args.bert_mask_bonds
+        self.bert_vocab_func = args.bert_vocab_func
 
         self.f_atoms = torch.FloatTensor(f_atoms)
         self.f_bonds = torch.FloatTensor(f_bonds)
@@ -303,6 +346,9 @@ class BatchMolGraph:
         assert zero_prob + diff_prob + same_prob == 1
         assert len(mask) == len(f_atoms)
 
+        if self.bert_vocab_func == 'substructure':
+            zero_prob, diff_prob, same_prob = 1, 0, 0
+
         mask_indices = np.where(np.array(mask) == 0)[0]
         rands = np.random.random(len(mask_indices))
 
@@ -321,7 +367,6 @@ class BatchMolGraph:
                     # mask with zeros if both adjacent atoms are masked out; TODO could do something different too
                     self.f_bonds[i] = 0
         
-#TODO(mask) needs to take an optional list of lists of atom idx tuples to collapse, or maybe this is part of smiles_batch
 def mol2graph(smiles_batch: List[str],
               args: Namespace) -> BatchMolGraph:
     """
@@ -333,12 +378,12 @@ def mol2graph(smiles_batch: List[str],
     """
     mol_graphs = []
     for smiles in smiles_batch:
-        if smiles in SMILES_TO_GRAPH:
+        if type(smiles) == str and smiles in SMILES_TO_GRAPH:  # bert substructures passes a tuple
             mol_graph = SMILES_TO_GRAPH[smiles]
         else:
             mol_graph = MolGraph(smiles, args)
             # Memoize if we're not chunking or learning virtual edges, to save memory
-            if ((args.num_chunks == 1 and args.prespecified_chunk_dir is None) or args.memoize_chunks) and not args.learn_virtual_edges:
+            if type(smiles) == str and ((args.num_chunks == 1 and args.prespecified_chunk_dir is None) or args.memoize_chunks) and not args.learn_virtual_edges:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
     

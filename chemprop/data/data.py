@@ -4,14 +4,15 @@ from multiprocessing import Pool
 from logging import Logger
 import random
 import math
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Set, FrozenSet
 from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
+from rdkit import Chem
 
 from .scaler import StandardScaler
-from .vocab import load_vocab, Vocab
+from .vocab import load_vocab, Vocab, get_substructures, substructure_to_feature
 from chemprop.features import morgan_fingerprint, rdkit_2d_features
 
 
@@ -48,6 +49,9 @@ class MoleculeDatapoint:
             self.bert_pretraining = args.dataset_type == 'bert_pretraining'
             self.bert_mask_prob = args.bert_mask_prob
             self.bert_mask_type = args.bert_mask_type
+            self.bert_vocab_func = args.bert_vocab_func
+            self.substructure_sizes = args.bert_substructure_sizes
+            self.args = args
         else:
             features_generator = None
             predict_features = sparse = self.bert_pretraining = False
@@ -103,14 +107,29 @@ class MoleculeDatapoint:
         self.vocab_targets, self.nb_indices = args.vocab.smiles2indices(self.smiles)
         self.recreate_mask()
 
-    #TODO(mask) pick a random piece(s) to mask using the method for finding a substructure
-    # then figure out indexing of atoms after that gets collapsed, and regenerate mask + vocab_targets.
-    # should have a method for figuring out indexing when given the tuple(s).
     def recreate_mask(self):
         # Note: 0s to mask atoms which should be predicted
 
         if not self.bert_pretraining:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
+        
+        if self.bert_vocab_func == 'substructure':
+            mol = Chem.MolFromSmiles(self.smiles)
+            self.substructures = get_substructures(list(mol.GetAtoms()), 
+                                                   sizes=self.substructure_sizes, 
+                                                   max_count=1)  # TODO could change max_count
+            self.substructure_index_map = substructure_index_mapping(self.smiles, self.substructures)
+            self.mask = np.ones(max(self.substructure_index_map)+1)
+            self.mask[-len(self.substructures):] = 0  # the last entries correspond to the substructures
+            self.mask = list(self.mask)
+
+            sorted_substructures = sorted(list(self.substructures), key=lambda x: self.substructure_index_map[list(x)[0]])
+            substructure_index_labels = \
+                    [self.args.vocab.w2i(substructure_to_feature(mol, substruct)) for substruct in sorted_substructures]
+            self.vocab_targets = np.zeros(len(self.mask))  # these should never get used
+            if len(substructure_index_labels) > 0:  # it's possible to find none at all in e.g. a 2-atom molecule
+                self.vocab_targets[-len(self.substructures):] = np.array(substructure_index_labels)
+            return
 
         num_targets = len(self.vocab_targets)
 
@@ -169,9 +188,9 @@ class MoleculeDataset(Dataset):
     def __init__(self, data: List[MoleculeDatapoint]):
         self.data = data
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
+        self.bert_vocab_func = self.data[0].bert_vocab_func if len(self.data) > 0 else None
         self.features_size = len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
         self.scaler = None
-        #TODO(mask) store whether you're doing substructure masking
     
     def bert_init(self, args: Namespace, logger: Logger = None):
         debug = logger.debug if logger is not None else print
@@ -203,7 +222,9 @@ class MoleculeDataset(Dataset):
 
         return [d.compound_name for d in self.data]
 
-    def smiles(self) -> List[str]: #TODO(mask) if substructure masking, return (d.smiles, list of tuples of collapsed indices)
+    def smiles(self) -> List[str]:
+        if hasattr(self.data[0], 'substructures'):
+            return [(d.smiles, d.substructure_index_map, d.substructures) for d in self.data]
         return [d.smiles for d in self.data]
 
     def features(self) -> List[np.ndarray]:
@@ -295,3 +316,31 @@ def parallel_bert_init(pair: Tuple[MoleculeDatapoint, Namespace]) -> MoleculeDat
     d.bert_init(args)
 
     return d
+
+def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]):
+    """
+    Return a deterministic mapping of indices from the original molecule atoms to the
+    molecule with some substructures collapsed.
+    :param smiles: smiles string
+    :param substructures: indices of atoms in substructures
+    """
+    num_atoms = Chem.MolFromSmiles(smiles).GetNumAtoms()
+    atoms_in_substructures = set().union(*substructures)  # set of all indices of atoms in a substructure
+    remaining_atoms = set(range(num_atoms)).difference(atoms_in_substructures)
+
+    # collapsed substructures shouldn't share atoms
+    assert sum([len(s) for s in substructures]) == len(atoms_in_substructures)
+
+    substructures = list(substructures)
+    substructures = [sorted(list(substruct)) for substruct in substructures]
+    substructures = sorted(substructures, key=lambda x: x[0])  # should give unique ordering
+
+    index_map = [None for _ in range(num_atoms)]
+    remaining_atom_ordering = sorted(list(remaining_atoms))
+    for i in range(len(remaining_atom_ordering)):
+        index_map[remaining_atom_ordering[i]] = i
+    for i in range(len(substructures)):
+        for atom in substructures[i]:
+            index_map[atom] = len(remaining_atom_ordering) + i
+    
+    return index_map

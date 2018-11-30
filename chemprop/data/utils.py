@@ -3,12 +3,13 @@ from copy import deepcopy
 from logging import Logger
 import pickle
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Set, FrozenSet
 import os
 
 import numpy as np
 from tqdm import tqdm
 from scipy import sparse
+from rdkit import Chem
 
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap

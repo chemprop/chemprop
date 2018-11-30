@@ -40,7 +40,7 @@ class Vocab:
             return word  # in this case, we didn't map to a vocab at all; we're just predicting the original features
         return self.vocab_mapping[word] if word in self.vocab_mapping else self.vocab_mapping[self.unk]
 
-    def smiles2indices(self, smiles: List[str]) -> Tuple[List[int], List[List[int]]]:
+    def smiles2indices(self, smiles: str) -> Tuple[List[int], List[List[int]]]:
         features, nb_indices = self.vocab_func(smiles, nb_info=True)
         return [self.w2i(word) for word in features], nb_indices
 
@@ -185,7 +185,6 @@ def atom_vocab(smiles: str,
     elif vocab_func == 'substructure':
         substructures = get_substructures(list(atoms), substructure_sizes)
         features = [substructure_to_feature(mol, substructure, fg_features) for substructure in substructures]
-        import pdb; pdb.set_trace()
     else:
         raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
 
