@@ -177,7 +177,7 @@ class MolGraph:
         distances_path = Chem.GetDistanceMatrix(mol)
 
         # fake the number of "atoms" if we are collapsing substructures
-        self.n_atoms = mol.GetNumAtoms() if self.index_map is None else max(self.index_map) + 1
+        self.n_atoms = mol.GetNumAtoms() if not self.collapsing_substructures else max(self.index_map) + 1
         
         # Get atom features
         if 'functional_group' in args.additional_atom_features:
