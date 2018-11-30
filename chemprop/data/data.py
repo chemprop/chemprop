@@ -223,7 +223,7 @@ class MoleculeDataset(Dataset):
                 self.data = Pool().map(bert_init, self.data)
             except OSError:  # apparently it's possible to get an OSError about too many open files here...?
                 for d in self.data:
-                    d.bert_init(args)
+                    d.bert_init()
 
         debug('Finished initializing targets and masks for bert')
 
