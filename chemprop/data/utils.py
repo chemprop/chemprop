@@ -108,6 +108,8 @@ def get_data(path: str,
         f.readline()  # skip header
         lines = []
         for line in f:
+            if line.strip().split(',')[0] == '':
+                line = 'C' + line  # bandage for if your dataset has an empty line on rare occasions
             lines.append(line)
             if len(lines) >= max_data_size:
                 break

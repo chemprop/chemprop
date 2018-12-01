@@ -131,13 +131,6 @@ class MoleculeDatapoint:
             return
 
         num_targets = len(self.vocab_targets)
-        if num_targets == 0:
-            # Somehow this happens on very rare occasions, where smiles = ''; just do this to avoid a crash.
-            # In theory we would just omit this data point, but I don't want to risk
-            # screwing up the alignment with any of the files containing pre-saved features,
-            # which could be a very nasty bug to catch later on. 
-            self.mask = []
-            return
 
         if self.bert_mask_type == 'cluster':
             self.mask = np.ones(num_targets)

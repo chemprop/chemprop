@@ -366,7 +366,8 @@ class BatchMolGraph:
                 if self.f_atoms[self.b2a[i]].sum() == 0 and self.f_atoms[self.b2a[self.b2revb[i]]].sum() == 0:
                     # mask with zeros if both adjacent atoms are masked out; TODO could do something different too
                     self.f_bonds[i] = 0
-        
+
+
 def mol2graph(smiles_batch: List[str],
               args: Namespace) -> BatchMolGraph:
     """
