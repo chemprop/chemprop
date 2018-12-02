@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple, Union, Set, FrozenSet
 import numpy as np
 from torch.utils.data.dataset import Dataset
 from rdkit import Chem
+from tqdm import tqdm
 
 from .scaler import StandardScaler
 from .vocab import load_vocab, Vocab, get_substructures, substructure_to_feature
@@ -208,7 +209,7 @@ class MoleculeDataset(Dataset):
             args.features_size = self.features_size
 
         if args.sequential:
-            for d in self.data:
+            for d in tqdm(self.data, total=len(self.data)):
                 d.bert_init()
         else:
             try:
