@@ -90,7 +90,8 @@ def evaluate(model: nn.Module,
         model=model,
         data=data,
         args=args,
-        scaler=scaler
+        scaler=scaler,
+        bert_save_memory=True
     )
 
     results = evaluate_predictions(

@@ -12,7 +12,8 @@ from chemprop.features import mol2graph
 def predict(model: nn.Module,
             data: MoleculeDataset,
             args: Namespace,
-            scaler: StandardScaler = None) -> List[List[float]]:
+            scaler: StandardScaler = None,
+            bert_save_memory: bool = False) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
@@ -20,6 +21,7 @@ def predict(model: nn.Module,
     :param data: A MoleculeDataset.
     :param args: Arguments.
     :param scaler: A StandardScaler object fit on the training targets.
+    :param bert_save_memory: Store unused predictions as None to avoid unnecessary memory use.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """
@@ -59,7 +61,12 @@ def predict(model: nn.Module,
                 indices = np.argmax(batch_preds, axis=2)
                 preds.extend(indices.tolist())
             else:
-                preds.extend(batch_preds.tolist())
+                batch_preds = batch_preds.tolist()
+                if args.dataset_type == 'bert_pretraining' and bert_save_memory:
+                    for atom_idx, mask_val in enumerate(mol_batch.mask()):
+                        if mask_val != 0:
+                            batch_preds[atom_idx] = None  # not going to predict, so save some memory when passing around
+                preds.extend(batch_preds)
         
         if args.dataset_type == 'regression_with_binning':
             preds = args.bin_predictions[np.array(preds)].tolist()
