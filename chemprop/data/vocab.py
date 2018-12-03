@@ -94,6 +94,8 @@ def get_substructures(atoms: List[Chem.Atom],
 
     Note: Uses randomness to guarantee that the first max_count substructures
     found are a random sample of the substructures in the molecule.
+    (It's not perfectly random, depending on the graph structure, but probably good enough
+    for our purposes. There's a bit of bias toward substructures on the periphery.)
 
     :param atoms: A list of atoms in the molecule.
     :param sizes: The sizes of substructures to find.
@@ -114,7 +116,7 @@ def get_substructures(atoms: List[Chem.Atom],
 
         for new_substructure in new_substructures:
             if len(substructures) >= max_count:
-                break
+                return substructures
 
             substructures.add(new_substructure)
 
