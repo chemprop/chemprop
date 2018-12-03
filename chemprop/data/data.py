@@ -4,7 +4,7 @@ from logging import Logger
 import math
 from multiprocessing import Pool
 import random
-from typing import Dict, List, Tuple, Union, Set, FrozenSet
+from typing import Callable, Dict, List, Tuple, Union, Set, FrozenSet
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
@@ -53,7 +53,7 @@ class MoleculeDatapoint:
             self.substructure_sizes = args.bert_substructure_sizes
             self.args = args
         else:
-            features_generator = None
+            features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = None
             predict_features = sparse = self.bert_pretraining = False
 
         if features is not None and features_generator is not None:
@@ -303,24 +303,14 @@ class MoleculeDataset(Dataset):
         for i in range(len(self.data)):
             self.data[i].set_targets(targets[i])
 
+    def sort(self, key: Callable):
+        self.data.sort(key=key)
+
     def __len__(self) -> int:
         return len(self.data)
 
     def __getitem__(self, item) -> MoleculeDatapoint:
         return self.data[item]
-
-
-def parallel_bert_init(pair: Tuple[MoleculeDatapoint, Namespace]) -> MoleculeDatapoint:
-    """
-    Runs bert_init on a MoleculeDatapoint.
-
-    :param pair: A tuple of a molecule datapoint and arguments.
-    :return: The molecule datapoint after having run bert_init.
-    """
-    d, args = pair
-    d.bert_init(args)
-
-    return d
 
 
 def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]) -> List[int]:
@@ -333,14 +323,13 @@ def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]) 
     """
     num_atoms = Chem.MolFromSmiles(smiles).GetNumAtoms()
     atoms_in_substructures = set().union(*substructures)  # set of all indices of atoms in a substructure
-    remaining_atoms = set(range(num_atoms)).difference(atoms_in_substructures)
+    remaining_atoms = set(range(num_atoms)) - atoms_in_substructures
 
     # collapsed substructures shouldn't share atoms
-    assert sum([len(s) for s in substructures]) == len(atoms_in_substructures)
+    assert sum(len(s) for s in substructures) == len(atoms_in_substructures)
 
-    substructures = list(substructures)
     substructures = [sorted(list(substruct)) for substruct in substructures]
-    substructures = sorted(substructures, key=lambda x: x[0])  # should give unique ordering
+    substructures = sorted(substructures, key=lambda substruct: substruct[0])  # should give unique ordering b/c no shared atoms
 
     index_map = [None for _ in range(num_atoms)]
     remaining_atom_ordering = sorted(list(remaining_atoms))

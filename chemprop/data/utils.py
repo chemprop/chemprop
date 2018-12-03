@@ -102,7 +102,8 @@ def get_data(path: str,
         else:
             features_data = None
     else:
-        features_data = max_data_size = None
+        features_data = None
+        max_data_size = float('inf')
 
     with open(path) as f:
         f.readline()  # skip header

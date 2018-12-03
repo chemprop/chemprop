@@ -11,6 +11,8 @@ def add_predict_args(parser: ArgumentParser):
                         help='Path to CSV file containing testing data for which predictions will be made')
     parser.add_argument('--compound_names', action='store_true', default=False,
                         help='Use when test data file contains compound names in addition to SMILES strings')
+    parser.add_argument('--write_smiles', action='store_true', default=False,
+                        help='Whether to write smiles in addition to writing predicted values')
     parser.add_argument('--preds_path', type=str, required=True,
                         help='Path to CSV file where predictions will be saved')
 

@@ -1,6 +1,7 @@
 hpbandster
 matplotlib
 numpy
+python-ternary
 scikit-learn
 scipy
 tensorboardX

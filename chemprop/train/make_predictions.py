@@ -21,6 +21,7 @@ def make_predictions(args: Namespace):
 
     print('Loading data')
     test_data = get_data(args.test_path, args, use_compound_names=args.compound_names)
+    test_smiles = test_data.smiles()
     if args.compound_names:
         compound_names = test_data.compound_names()
     print('Test size = {:,}'.format(len(test_data)))
@@ -51,11 +52,15 @@ def make_predictions(args: Namespace):
     print('Saving predictions to {}'.format(args.preds_path))
 
     with open(args.preds_path, 'w') as f:
+        if args.write_smiles:
+            f.write('smiles,')
         if args.compound_names:
             f.write('compound_name,')
         f.write(','.join(args.task_names) + '\n')
 
         for i in range(len(avg_preds)):
+            if args.write_smiles:
+                f.write(test_smiles[i] + ',')
             if args.compound_names:
                 f.write(compound_names[i] + ',')
             f.write(','.join(str(p) for p in avg_preds[i]) + '\n')
