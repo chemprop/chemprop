@@ -171,6 +171,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--bert_vocab_func', type=str, default='feature_vector',
                         choices=['atom', 'atom_features', 'feature_vector', 'substructure'],
                         help='Vocab function when dataset_type == "bert_pretraining"')
+    parser.add_argument('--bert_max_vocab_size', type=int, default=0,
+                        help='Set to > 0 to limit vocab size, replacing others with unk token')
     parser.add_argument('--bert_substructure_sizes', type=int, nargs='+', default=[3],
                         help='Size of substructures to mask when bert_vocab_func == "substructure"')
     parser.add_argument('--bert_mask_type', type=str, default='cluster',

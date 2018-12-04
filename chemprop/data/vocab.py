@@ -4,6 +4,7 @@ from functools import partial
 from multiprocessing import Pool
 import random
 from typing import Callable, List, FrozenSet, Set, Tuple, Union
+from collections import Counter
 
 from rdkit import Chem
 import torch
@@ -28,7 +29,7 @@ class Vocab:
 
         self.unk = 'unk'
         self.smiles = smiles
-        self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential)
+        self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential, max_vocab_size=args.bert_max_vocab_size)
         self.vocab.add(self.unk)
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
@@ -196,18 +197,24 @@ def atom_vocab(smiles: str,
     return features
 
 
-def vocab(pair: Tuple[Callable, str]) -> Set[str]:
-    vocab_func, smiles = pair
-    return set(vocab_func(smiles, nb_info=False))
+def vocab(pair: Tuple[Callable, str, bool]) -> Set[str]:
+    vocab_func, smiles, as_set = pair
+    return set(vocab_func(smiles, nb_info=False)) if as_set else vocab_func(smiles, nb_info=False)
 
 
-def get_vocab(vocab_func: Callable, smiles: List[str], sequential: bool = False) -> Set[str]:
-    pairs = [(vocab_func, smile) for smile in smiles]
+def get_vocab(vocab_func: Callable, smiles: List[str], sequential: bool = False, max_vocab_size: int = 0) -> Set[str]:
+    pairs = [(vocab_func, smile, max_vocab_size == 0) for smile in smiles]
 
-    if sequential:
-        return set.union(*map(vocab, pairs))
-
-    return set.union(*Pool().map(vocab, pairs))
+    if max_vocab_size == 0:
+        if sequential:
+            return set.union(*map(vocab, pairs))
+        return set.union(*Pool().map(vocab, pairs))
+    else:
+        vocab_lists = map(vocab, pairs) if sequential else Pool().map(vocab, pairs)
+        counter = Counter()
+        for elt_list in vocab_lists:
+            counter.update(elt_list)
+        return set([elt for elt, count in counter.most_common(max_vocab_size)])
 
 
 def load_vocab(path: str) -> Vocab:
