@@ -66,6 +66,7 @@ class MoleculeDatapoint:
             self.compound_name = None
 
         self.smiles = line[0]  # str
+        self.mol = Chem.MolFromSmiles(self.smiles)
 
         if features is not None:
             if len(features.shape) > 1:
@@ -77,11 +78,11 @@ class MoleculeDatapoint:
             self.features = []
             for fg in features_generator:
                 if fg == 'morgan':
-                    self.features.extend(morgan_fingerprint(self.smiles))  # np.ndarray
+                    self.features.extend(morgan_fingerprint(self.mol))  # np.ndarray
                 elif fg == 'morgan_count':
-                    self.features.extend(morgan_fingerprint(self.smiles, use_counts=True))
+                    self.features.extend(morgan_fingerprint(self.mol, use_counts=True))
                 elif fg == 'rdkit_2d':
-                    self.features.extend(rdkit_2d_features(self.smiles, args))
+                    self.features.extend(rdkit_2d_features(self.mol, args))
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
             self.features = np.array(self.features)
@@ -114,18 +115,17 @@ class MoleculeDatapoint:
             raise Exception('Cannot recreate mask without bert_pretraining on.')
         
         if self.bert_vocab_func == 'substructure':
-            mol = Chem.MolFromSmiles(self.smiles)
-            self.substructures = get_substructures(list(mol.GetAtoms()), 
+            self.substructures = get_substructures(list(self.mol.GetAtoms()), 
                                                    sizes=self.substructure_sizes, 
                                                    max_count=1)  # TODO could change max_count
-            self.substructure_index_map = substructure_index_mapping(self.smiles, self.substructures)
+            self.substructure_index_map = substructure_index_mapping(self.mol, self.substructures)
             self.mask = np.ones(max(self.substructure_index_map) + 1)
             self.mask[-len(self.substructures):] = 0  # the last entries correspond to the substructures
             self.mask = list(self.mask)
 
             sorted_substructures = sorted(list(self.substructures), key=lambda x: self.substructure_index_map[list(x)[0]])
             substructure_index_labels = \
-                    [self.args.vocab.w2i(substructure_to_feature(mol, substruct)) for substruct in sorted_substructures]
+                    [self.args.vocab.w2i(substructure_to_feature(self.mol, substruct)) for substruct in sorted_substructures]
             self.vocab_targets = np.zeros(len(self.mask))  # these should never get used
             if len(substructure_index_labels) > 0:  # it's possible to find none at all in e.g. a 2-atom molecule
                 self.vocab_targets[-len(self.substructures):] = np.array(substructure_index_labels)
@@ -231,6 +231,11 @@ class MoleculeDataset(Dataset):
         if hasattr(self.data[0], 'substructures'):
             return [(d.smiles, d.substructure_index_map, d.substructures) for d in self.data]
         return [d.smiles for d in self.data]
+    
+    def mols(self) -> List[str]:
+        if hasattr(self.data[0], 'substructures'):
+            return [(d.mol, d.substructure_index_map, d.substructures) for d in self.data]
+        return [d.mol for d in self.data]
 
     def features(self) -> List[np.ndarray]:
         if len(self.data) == 0 or self.data[0].features is None:
@@ -321,7 +326,11 @@ def substructure_index_mapping(smiles: str, substructures: Set[FrozenSet[int]]) 
     :param smiles: smiles string
     :param substructures: indices of atoms in substructures
     """
-    num_atoms = Chem.MolFromSmiles(smiles).GetNumAtoms()
+    if type(smiles) == str:
+        mol = Chem.MolFromSmiles(smiles)
+    else:
+        mol = smiles
+    num_atoms = mol.GetNumAtoms()
     atoms_in_substructures = set().union(*substructures)  # set of all indices of atoms in a substructure
     remaining_atoms = set(range(num_atoms)) - atoms_in_substructures
 

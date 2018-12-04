@@ -42,7 +42,10 @@ class ScaffoldGenerator:
 
 def generate_scaffold(smiles: str, include_chirality: bool = False) -> str:
     """Compute the Bemis-Murcko scaffold for a SMILES string."""
-    mol = Chem.MolFromSmiles(smiles)
+    if type(smiles) == str:
+        mol = Chem.MolFromSmiles(smiles)
+    else:
+        mol = smiles
     engine = ScaffoldGenerator(include_chirality=include_chirality)
     scaffold = engine.get_scaffold(mol)
 
@@ -86,7 +89,7 @@ def scaffold_split(data: MoleculeDataset,
     assert sum(sizes) == 1
 
     # Map from scaffold to index in the data
-    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
+    scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
     index_sets = sorted(list(scaffold_to_indices.values()),
@@ -174,7 +177,7 @@ def scaffold_split_one(data: MoleculeDataset) -> Tuple[MoleculeDataset,
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     # Map from scaffold to index in the data
-    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
+    scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
 
     # Sort from largest to smallest scaffold sets
     scaffolds = sorted(list(scaffold_to_indices.keys()),
@@ -204,7 +207,7 @@ def cluster_split(data: MoleculeDataset,
     :return: A list containing the K-means splits.
     """
     worst_ratio = ratio_tolerance + 1
-    fp = [morgan_fingerprint(s) for s in data.smiles()]
+    fp = [morgan_fingerprint(s) for s in data.mols()]
     while worst_ratio > ratio_tolerance:
         kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=seed)
         cluster_labels = kmeans.fit_predict(fp)
@@ -429,7 +432,7 @@ def scaffold_split_overlap(data: MoleculeDataset,
     train, val_test = set(indices[:split_index]), set(indices[split_index:])
 
     # Map from scaffold to index and index to scaffold
-    scaffold_to_indices = scaffold_to_smiles(data.smiles(), use_indices=True)
+    scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
     index_to_scaffold = {index: scaffold for scaffold, index_set in scaffold_to_indices.items() for index in index_set}
 
     # Adjust train/val/test sets to achieve desired overlap

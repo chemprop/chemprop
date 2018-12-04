@@ -39,7 +39,10 @@ FEATURE_FUNCTIONS = [
 
 
 def rdkit_2d_features(smiles: str, args: Namespace):
-    mol = Chem.MolFromSmiles(smiles)
+    if type(smiles) == str:
+        mol = Chem.MolFromSmiles(smiles)
+    else:
+        mol = smiles
     features = []
     for f in FEATURE_FUNCTIONS:
         try:

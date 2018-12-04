@@ -13,7 +13,10 @@ def morgan_fingerprint(smiles: str, radius: int = 3, num_bits: int = 2048, use_c
     :param use_counts: Whether to use counts or just a bit vector for the fingerprint
     :return: A 1-D numpy array containing the morgan fingerprint.
     """
-    mol = Chem.MolFromSmiles(smiles)
+    if type(smiles) == str:
+        mol = Chem.MolFromSmiles(smiles)
+    else:
+        mol = smiles
     if use_counts:
         fp_vect = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
     else:
