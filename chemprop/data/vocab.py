@@ -29,7 +29,7 @@ class Vocab:
 
         self.unk = 'unk'
         self.smiles = smiles
-        self.vocab = get_vocab(self.vocab_func, self.smiles, sequential=args.sequential, max_vocab_size=args.bert_max_vocab_size)
+        self.vocab = get_vocab(args, self.vocab_func, self.smiles)
         self.vocab.add(self.unk)
         self.vocab_size = len(self.vocab)
         self.vocab_mapping = {word: i for i, word in enumerate(sorted(self.vocab))}
@@ -202,7 +202,12 @@ def vocab(pair: Tuple[Callable, str, bool]) -> Set[str]:
     return set(vocab_func(smiles, nb_info=False)) if as_set else vocab_func(smiles, nb_info=False)
 
 
-def get_vocab(vocab_func: Callable, smiles: List[str], sequential: bool = False, max_vocab_size: int = 0) -> Set[str]:
+def get_vocab(args: Namespace, vocab_func: Callable, smiles: List[str]) -> Set[str]:
+    sequential, max_vocab_size, smiles_to_sample = args.sequential, args.bert_max_vocab_size, args.bert_smiles_to_sample
+    if smiles_to_sample > 0 and smiles_to_sample < len(smiles):
+        random.shuffle(smiles)
+        smiles = smiles[:smiles_to_sample]
+
     pairs = [(vocab_func, smile, max_vocab_size == 0) for smile in smiles]
 
     if max_vocab_size == 0:
