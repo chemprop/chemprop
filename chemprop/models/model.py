@@ -99,6 +99,7 @@ def build_model(args: Namespace) -> nn.Module:
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
+    #TODO(kernel) output_size = hidden_size
     # Regression with binning
     if args.dataset_type == 'regression_with_binning':
         output_size = args.num_bins * args.num_tasks

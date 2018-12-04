@@ -138,7 +138,7 @@ def load_args(path: str) -> Namespace:
     """
     return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
-
+#TODO(kernel) figure out proper loss function for kernel, based on kernel_func
 def get_loss_func(args: Namespace) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.

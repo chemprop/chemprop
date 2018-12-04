@@ -252,7 +252,7 @@ class MoleculeDataset(Dataset):
                 'features': self.features(),
                 'vocab': [word for d in self.data for word in d.vocab_targets]
             }
-
+        #TODO(kernel) pair up data points and compute kernel
         return [d.targets for d in self.data]
 
     def num_tasks(self) -> int:

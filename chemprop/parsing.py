@@ -282,7 +282,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
     parser.add_argument('--freeze_encoder', action='store_true', default=False,
                         help='Whether to freeze the layers of the message passing encoder')
-
+#TODO(kernel) add dataset_type kernel and kernel_func options = morgan, rdkit2d, set loss function
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""

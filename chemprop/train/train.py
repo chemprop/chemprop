@@ -163,6 +163,8 @@ def train(model: nn.Module,
             # Run model
             model.zero_grad()
             preds = model(batch, features_batch)
+            #TODO(kernel) pair up the preds, feed them through a LearnedKernel class that's a bilinear norm,
+            # pair up the smiles in the same way and feed them through the kernel func, then use loss fn
             if args.dataset_type == 'regression_with_binning':
                 preds = preds.view(targets.size(0), targets.size(1), -1)
                 targets = targets.long()
