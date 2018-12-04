@@ -25,6 +25,8 @@ def plot_counts(counter: Counter, args: Namespace):
     total_count = sum(counter.values())
 
     for num_to_plot in args.nums_to_plot:
+        plt.clf()
+        
         _, values = zip(*counter.most_common(num_to_plot))
         indexes = np.arange(len(values))
 
