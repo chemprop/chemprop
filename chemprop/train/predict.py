@@ -50,6 +50,10 @@ def predict(model: nn.Module,
                 if batch_preds['features'] is not None:
                     features_preds.extend(batch_preds['features'].data.cpu().numpy())
                 batch_preds = batch_preds['vocab']
+            
+            if args.dataset_type == 'kernel':
+                batch_preds = batch_preds.view(int(batch_preds.size(0)/2), 2, batch_preds.size(1))
+                batch_preds = model.kernel_output_layer(batch_preds)
 
             batch_preds = batch_preds.data.cpu().numpy()
 
@@ -76,5 +80,5 @@ def predict(model: nn.Module,
                 'features': features_preds if len(features_preds) > 0 else None,
                 'vocab': preds
             }
-        #TODO(kernel) make sure to pair up the preds in a consistent manner and feed them through kernel, same as in train()
+
         return preds

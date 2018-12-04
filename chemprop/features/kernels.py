@@ -12,7 +12,7 @@ def get_kernel_func(kernel_func_name):
 
     raise ValueError('kernel function "{}" not supported.'.format(kernel_func_name))
 
-def morgan(smiles1, smiles2, args, use_counts=False):
-    fp1 = morgan_fingerprint(smiles1, use_counts)
-    fp2 = morgan_fingerprint(smiles2, use_counts)
-    return fp1 * fp2
+def morgan(datapoint1, datapoint2, args, use_counts=False):
+    fp1 = morgan_fingerprint(datapoint1.mol, use_counts=use_counts)
+    fp2 = morgan_fingerprint(datapoint2.mol, use_counts=use_counts)
+    return [(fp1 * fp2).sum()]

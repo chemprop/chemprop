@@ -94,6 +94,12 @@ class MoleculeDatapoint:
         if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
             self.targets = None
+        elif args is not None and args.dataset_type == 'kernel':
+            if self.kernel_func in ['morgan', 'morgan_count']:
+                self.num_tasks = 1
+            else:
+                raise ValueError('kernel func "{}" not supported.'.format(self.kernel_func))
+            self.targets = None
         else:
             if predict_features:
                 self.targets = self.features  # List[float]
@@ -250,7 +256,7 @@ class MoleculeDataset(Dataset):
 
     def pairs(self) -> List[Tuple[MoleculeDatapoint, MoleculeDatapoint]]:
         paired_data = []
-        for i in range(0, self.data, 2):
+        for i in range(0, len(self.data), 2):
             paired_data.append((self.data[i], self.data[i+1]))
         return paired_data
 
@@ -270,7 +276,7 @@ class MoleculeDataset(Dataset):
                 'vocab': [word for d in self.data for word in d.vocab_targets]
             }
 
-        if self.kernel:  # TODO(kernel) might need to fix the types at some point down the line?
+        if self.kernel:
             return [self.kernel_func(*pair, self.args) for pair in self.pairs()]
 
         return [d.targets for d in self.data]

@@ -348,7 +348,8 @@ def modify_train_args(args: Namespace):
             args.metric = 'rmse'
 
     if not (args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy'] or
-            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2']) \
+            (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2'] \
+            or args.dataset_type == 'kernel' and args.metric in ['rmse']) \
             and not args.dataset_type in ['unsupervised', 'bert_pretraining']:
         raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
 

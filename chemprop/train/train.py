@@ -178,8 +178,7 @@ def train(model: nn.Module,
                     features_preds, preds = preds['features'], preds['vocab']
                 
                 if args.dataset_type == 'kernel':
-                    # TODO(kernel) important!! check that this line reshapes into pairs in the same way that we paired targets
-                    preds = preds.view(preds.size(0)/2, 2, preds.size(1))
+                    preds = preds.view(int(preds.size(0)/2), 2, preds.size(1))
                     preds = model.kernel_output_layer(preds)
 
                 loss = loss_func(preds, targets) * mask

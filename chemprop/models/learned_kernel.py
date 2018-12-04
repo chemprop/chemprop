@@ -8,5 +8,6 @@ class LearnedKernel(nn.Module):
         super(LearnedKernel, self).__init__()
         self.A = nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size)
     
-    def forward(self, encoding1: torch.Tensor, encoding2: torch.Tensor):
-        return (self.A(encoding2) * encoding1).sum()
+    def forward(self, encodings: torch.Tensor):
+        # encodings is num_pairs x 2 x ffn hidden size
+        return (self.A(encodings[:, 1, :].squeeze(1)) * encodings[:, 0, :].squeeze(1)).sum(dim=1, keepdim=True)

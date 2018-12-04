@@ -130,6 +130,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             'features': np.zeros((len(test_smiles), args.features_size)) if args.features_size is not None else None,
             'vocab': np.zeros((len(test_targets['vocab']), args.vocab.output_size))
         }
+    elif args.dataset_type == 'kernel':
+        sum_test_preds = np.zeros((len(test_targets), args.num_tasks))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
