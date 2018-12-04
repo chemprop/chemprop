@@ -69,11 +69,12 @@ def add_train_args(parser: ArgumentParser):
                              'and not from the final feed-forward network')
     parser.add_argument('--dataset_type', type=str, required=True,
                         choices=['classification', 'regression', 'regression_with_binning',
-                                 'unsupervised', 'bert_pretraining'],
+                                 'unsupervised', 'bert_pretraining', 'kernel'],
                         help='Type of dataset, e.g. classification or regression.'
                              'This determines the loss function used during training.'
                              'Unsupervised means using Caron et al pretraining (from FAIR).'
-                             'bert_pretraining means using BERT (Devlin et al) style pretraining (from Google)')
+                             'bert_pretraining means using BERT (Devlin et al) style pretraining (from Google)'
+                             'kernel means using some kind of kernel pretraining')
     parser.add_argument('--unsupervised_n_clusters', type=int, default=10000,
                         help='Number of clusters to use for unsupervised learning labels')
     parser.add_argument('--prespecified_chunks_max_examples_per_epoch', type=int, default=1000000,
@@ -185,6 +186,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--additional_output_features', type=str, nargs='*', choices=['functional_group'], default=[],
                         help='Use additional features in bert output features to predict,'
                              'but not in original input atom features. Only supported for bert_vocab_func = feature_vector.')
+    parser.add_argument('--kernel_func', type=str, default='morgan',
+                        choices=['morgan', 'morgan_count'],
+                        help='Kernel function for kernel pretraining')
     parser.add_argument('--last_batch', action='store_true', default=False,
                         help='Whether to include the last batch in each training epoch even if'
                              'it\'s less than the batch size')
@@ -282,7 +286,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
     parser.add_argument('--freeze_encoder', action='store_true', default=False,
                         help='Whether to freeze the layers of the message passing encoder')
-#TODO(kernel) add dataset_type kernel and kernel_func options = morgan, rdkit2d, set loss function
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
@@ -338,6 +341,9 @@ def modify_train_args(args: Namespace):
             else:
                 if args.metric not in ['log_loss', 'argmax_accuracy', 'majority_baseline_accuracy']:
                     args.metric = 'log_loss'
+        elif args.dataset_type == 'kernel':
+            if args.kernel_func in ['morgan', 'morgan_count']:  # could have other kernel_funcs with different metrics
+                args.metric = 'rmse'
         else:
             args.metric = 'rmse'
 

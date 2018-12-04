@@ -80,7 +80,7 @@ def evaluate(model: nn.Module,
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list with the score for each task based on `metric_func`.
     """
-    smiles, targets = data.smiles(), data.targets() #TODO(kernel) change these targets
+    smiles, targets = data.smiles(), data.targets()
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out
@@ -93,7 +93,7 @@ def evaluate(model: nn.Module,
         scaler=scaler,
         bert_save_memory=True
     )
-    #TODO(kernel) generate paired targets to go with the paired preds
+
     results = evaluate_predictions(
         preds=preds,
         targets=targets,

@@ -163,8 +163,6 @@ def train(model: nn.Module,
             # Run model
             model.zero_grad()
             preds = model(batch, features_batch)
-            #TODO(kernel) pair up the preds, feed them through a LearnedKernel class that's a bilinear norm,
-            # pair up the smiles in the same way and feed them through the kernel func, then use loss fn
             if args.dataset_type == 'regression_with_binning':
                 preds = preds.view(targets.size(0), targets.size(1), -1)
                 targets = targets.long()
@@ -178,6 +176,11 @@ def train(model: nn.Module,
 
                 if args.dataset_type == 'bert_pretraining':
                     features_preds, preds = preds['features'], preds['vocab']
+                
+                if args.dataset_type == 'kernel':
+                    # TODO(kernel) important!! check that this line reshapes into pairs in the same way that we paired targets
+                    preds = preds.view(preds.size(0)/2, 2, preds.size(1))
+                    preds = model.kernel_output_layer(preds)
 
                 loss = loss_func(preds, targets) * mask
                 loss = loss.sum() / mask.sum()

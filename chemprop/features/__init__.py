@@ -3,3 +3,4 @@ from .morgan_fingerprint import morgan_fingerprint
 from .rdkit_features import rdkit_2d_features
 from .utils import get_features
 from .functional_groups import FunctionalGroupFeaturizer
+from .kernels import get_kernel_func

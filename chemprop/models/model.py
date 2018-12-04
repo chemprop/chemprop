@@ -6,6 +6,7 @@ from .gan import GAN
 from .jtnn import JTNN
 from .moe import MOE
 from .mpn import MPN
+from .learned_kernel import LearnedKernel
 from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
 
 
@@ -20,7 +21,7 @@ class MoleculeModel(nn.Module):
             self.encoder = MPN(args, graph_input=True)
         else:
             self.encoder = MPN(args)
-
+        
         if args.freeze_encoder:
             for param in self.encoder.parameters():
                 param.requires_grad = False
@@ -88,6 +89,9 @@ class MoleculeModel(nn.Module):
 
         self.ffn = ffn
 
+        if args.dataset_type == 'kernel':
+            self.kernel_output_layer = LearnedKernel(args)
+
     def forward(self, *input):
         return self.ffn(self.encoder(*input))
 
@@ -99,12 +103,13 @@ def build_model(args: Namespace) -> nn.Module:
     :param args: Arguments.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
-    #TODO(kernel) output_size = hidden_size
     # Regression with binning
     if args.dataset_type == 'regression_with_binning':
         output_size = args.num_bins * args.num_tasks
     elif args.dataset_type == 'unsupervised':
         output_size = args.unsupervised_n_clusters
+    elif args.dataset_type == 'kernel':
+        output_size = args.ffn_hidden_size  # there will be another output layer later, for the pair of encodings
     else:
         output_size = args.num_tasks
     args.output_size = output_size

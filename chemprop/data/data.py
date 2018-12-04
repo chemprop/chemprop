@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from .scaler import StandardScaler
 from .vocab import load_vocab, Vocab, get_substructures, substructure_to_feature
-from chemprop.features import morgan_fingerprint, rdkit_2d_features
+from chemprop.features import morgan_fingerprint, rdkit_2d_features, get_kernel_func
 
 
 class SparseNoneArray:
@@ -51,6 +51,10 @@ class MoleculeDatapoint:
             self.bert_mask_type = args.bert_mask_type
             self.bert_vocab_func = args.bert_vocab_func
             self.substructure_sizes = args.bert_substructure_sizes
+
+            self.kernel = args.dataset_type == 'kernel'
+            self.kernel_func = args.kernel_func
+
             self.args = args
         else:
             features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = None
@@ -194,7 +198,14 @@ class MoleculeDataset(Dataset):
         self.data = data
         self.bert_pretraining = self.data[0].bert_pretraining if len(self.data) > 0 else False
         self.bert_vocab_func = self.data[0].bert_vocab_func if len(self.data) > 0 else None
+        self.kernel = self.data[0].kernel if len(self.data) > 0 else False
+        if self.kernel:
+            # want an even number of data points
+            if len(self.data) % 2 == 1:
+                self.data = self.data[:-1]
+        self.kernel_func = get_kernel_func(self.data[0].kernel_func) if len(self.data) > 0 else None
         self.features_size = len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
+        self.args = self.data[0].args if len(self.data) > 0 else None
         self.scaler = None
     
     def bert_init(self, args: Namespace, logger: Logger = None):
@@ -237,6 +248,12 @@ class MoleculeDataset(Dataset):
             return [(d.mol, d.substructure_index_map, d.substructures) for d in self.data]
         return [d.mol for d in self.data]
 
+    def pairs(self) -> List[Tuple[MoleculeDatapoint, MoleculeDatapoint]]:
+        paired_data = []
+        for i in range(0, self.data, 2):
+            paired_data.append((self.data[i], self.data[i+1]))
+        return paired_data
+
     def features(self) -> List[np.ndarray]:
         if len(self.data) == 0 or self.data[0].features is None:
             return None
@@ -252,7 +269,10 @@ class MoleculeDataset(Dataset):
                 'features': self.features(),
                 'vocab': [word for d in self.data for word in d.vocab_targets]
             }
-        #TODO(kernel) pair up data points and compute kernel
+
+        if self.kernel:  # TODO(kernel) might need to fix the types at some point down the line?
+            return [self.kernel_func(*pair, self.args) for pair in self.pairs()]
+
         return [d.targets for d in self.data]
 
     def num_tasks(self) -> int:
