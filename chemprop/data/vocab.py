@@ -159,7 +159,7 @@ def substructure_to_feature(mol: Chem.Mol,
 
 def atom_vocab(smiles: str,
                vocab_func: str,
-               args: Namespace,
+               args: Namespace = None,
                substructure_sizes: List[int] = None,
                nb_info: bool = False) -> Union[List[str],
                                                Tuple[List[str], List[List[int]]]]:
@@ -169,7 +169,9 @@ def atom_vocab(smiles: str,
     mol = Chem.MolFromSmiles(smiles)
     atoms = mol.GetAtoms()
 
-    if 'functional_group' in args.additional_atom_features or 'functional_group' in args.additional_output_features:
+    if args is not None and \
+            ('functional_group' in args.additional_atom_features or
+             'functional_group' in args.additional_output_features):
         fg_featurizer = FunctionalGroupFeaturizer(args)
         fg_features = fg_featurizer.featurize(mol)
     else:
