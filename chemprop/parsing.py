@@ -183,8 +183,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--additional_output_features', type=str, nargs='*', choices=['functional_group'], default=[],
                         help='Use additional features in bert output features to predict,'
                              'but not in original input atom features. Only supported for bert_vocab_func = feature_vector.')
-    parser.add_argument('--kernel_func', type=str, default='features',
-                        choices=['features', 'WL'],
+    parser.add_argument('--kernel_func', type=str,
+                        choices=['features', 'features_dot', 'WL'],
                         help='Kernel function for kernel pretraining')
     parser.add_argument('--last_batch', action='store_true', default=False,
                         help='Whether to include the last batch in each training epoch even if'
@@ -339,7 +339,7 @@ def modify_train_args(args: Namespace):
                 if args.metric not in ['log_loss', 'argmax_accuracy', 'majority_baseline_accuracy']:
                     args.metric = 'log_loss'
         elif args.dataset_type == 'kernel':
-            if args.kernel_func in ['features', 'WL']:  # could have other kernel_funcs with different metrics
+            if args.kernel_func in ['features', 'features_dot', 'WL']:  # could have other kernel_funcs with different metrics
                 args.metric = 'rmse'
             else:
                 raise ValueError('metric not implemented for kernel function "{}".'.format(args.kernel_func))
@@ -364,7 +364,7 @@ def modify_train_args(args: Namespace):
 
     args.use_input_features = args.features_generator or args.features_path
 
-    if args.predict_features or args.kernel_func == 'features':
+    if args.predict_features or args.kernel_func in ['features', 'features_dot']:
         assert args.features_generator or args.features_path
         args.use_input_features = False
 

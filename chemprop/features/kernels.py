@@ -1,12 +1,17 @@
 import copy
+from functools import partial
 
 import networkx as nx
 import numpy as np
+from scipy.spatial.distance import cosine
 
 
 def get_kernel_func(kernel_func_name: str):
     if kernel_func_name == 'features':
-        return features_kernel
+        return partial(features_kernel, measure='cos')
+
+    if kernel_func_name == 'features_dot':
+        return partial(features_kernel, measure='dot')
 
     if kernel_func_name == 'WL':
         return WL_kernel
@@ -14,8 +19,14 @@ def get_kernel_func(kernel_func_name: str):
     raise ValueError('kernel function "{}" not supported.'.format(kernel_func_name))
 
 
-def features_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint') -> float:
-    return np.dot(datapoint1.features, datapoint2.features)
+def features_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint', measure: str) -> float:
+    if measure == 'dot':
+        return np.dot(datapoint1.features, datapoint2.features)
+
+    if measure == 'cos':
+        return 1 - cosine(datapoint1.features, datapoint2.features)
+
+    raise ValueError('measure "{}" not supported.'.format(measure))
 
 
 def WL_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint') -> float:
