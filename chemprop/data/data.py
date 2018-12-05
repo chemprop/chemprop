@@ -95,7 +95,7 @@ class MoleculeDatapoint:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
             self.targets = None
         elif args is not None and args.dataset_type == 'kernel':
-            if self.kernel_func in ['morgan', 'morgan_count']:
+            if self.kernel_func in ['morgan', 'morgan_count', 'WL']:
                 self.num_tasks = 1
             else:
                 raise ValueError('kernel func "{}" not supported.'.format(self.kernel_func))

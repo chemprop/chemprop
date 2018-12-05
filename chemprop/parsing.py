@@ -187,7 +187,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Use additional features in bert output features to predict,'
                              'but not in original input atom features. Only supported for bert_vocab_func = feature_vector.')
     parser.add_argument('--kernel_func', type=str, default='morgan',
-                        choices=['morgan', 'morgan_count'],
+                        choices=['morgan', 'morgan_count', 'WL'],
                         help='Kernel function for kernel pretraining')
     parser.add_argument('--last_batch', action='store_true', default=False,
                         help='Whether to include the last batch in each training epoch even if'
@@ -342,7 +342,7 @@ def modify_train_args(args: Namespace):
                 if args.metric not in ['log_loss', 'argmax_accuracy', 'majority_baseline_accuracy']:
                     args.metric = 'log_loss'
         elif args.dataset_type == 'kernel':
-            if args.kernel_func in ['morgan', 'morgan_count']:  # could have other kernel_funcs with different metrics
+            if args.kernel_func in ['morgan', 'morgan_count', 'WL']:  # could have other kernel_funcs with different metrics
                 args.metric = 'rmse'
         else:
             args.metric = 'rmse'
