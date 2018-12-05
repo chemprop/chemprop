@@ -135,8 +135,8 @@ def split_data(data: MoleculeDataset,
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
                logger: Logger = None) -> Tuple[MoleculeDataset,
-                                                       MoleculeDataset,
-                                                       MoleculeDataset]:
+                                               MoleculeDataset,
+                                               MoleculeDataset]:
     """
     Splits data into training, validation, and test splits.
 

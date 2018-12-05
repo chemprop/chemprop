@@ -15,7 +15,6 @@ def save_features(args: Namespace):
     data = get_data(args.data_path)
     features_func = get_features_func(args.features_generator)
     features = np.stack([features_func(d.mol, args) for d in tqdm(data, total=len(data))])
-    import pdb; pdb.set_trace()
     sparse_features = sparse.csr_matrix(features)
 
     with open(args.save_path, 'wb') as f:
