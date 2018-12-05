@@ -251,7 +251,7 @@ class MoleculeDataset(Dataset):
         return [d.compound_name for d in self.data]
 
     def smiles(self) -> List[str]:
-        if hasattr(self.data[0], 'substructures'):
+        if self.args is not None and hasattr(self.data[0], 'substructures'):
             return [(d.smiles, d.substructure_index_map, d.substructures) for d in self.data]
         return [d.smiles for d in self.data]
     
