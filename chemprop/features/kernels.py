@@ -102,7 +102,10 @@ class GK_WL():
         # Compute adjacency lists and n_nodes, the total number of
         # nodes in the dataset.
         for i in range(n):
-            lists[i] = graph_list[i].adjacency_list()
+            adjacency = graph_list[i].adjacency()
+            lists[i] = []
+            for _, entry in adjacency:
+                lists[i].append(list(entry.keys()))
             n_nodes = n_nodes + graph_list[i].number_of_nodes()
 
             # Computing the maximum number of nodes in the graphs. It
