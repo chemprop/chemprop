@@ -1,5 +1,7 @@
 hpbandster
 matplotlib
+mordred
+networkx
 numpy
 python-ternary
 scikit-learn

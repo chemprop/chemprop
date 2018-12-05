@@ -6,6 +6,7 @@ from multiprocessing import Pool
 import random
 from typing import Callable, Dict, List, Tuple, Union, Set, FrozenSet
 
+from mordred import Calculator, descriptors
 import numpy as np
 from torch.utils.data.dataset import Dataset
 from rdkit import Chem
@@ -14,6 +15,9 @@ from tqdm import tqdm
 from .scaler import StandardScaler
 from .vocab import load_vocab, Vocab, get_substructures, substructure_to_feature
 from chemprop.features import morgan_fingerprint, rdkit_2d_features, get_kernel_func
+
+
+mordred_calc = Calculator(descriptors, ignore_3D=True)  # can't do 3D without sdf or mol file
 
 
 class SparseNoneArray:
@@ -87,6 +91,8 @@ class MoleculeDatapoint:
                     self.features.extend(morgan_fingerprint(self.mol, use_counts=True))
                 elif fg == 'rdkit_2d':
                     self.features.extend(rdkit_2d_features(self.mol, args))
+                elif fg == 'mordred':
+                    self.features.extend(mordred_calc(self.mol))
                 else:
                     raise ValueError('features_generator type "{}" not supported.'.format(fg))
             self.features = np.array(self.features)
