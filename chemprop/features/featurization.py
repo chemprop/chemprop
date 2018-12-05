@@ -126,6 +126,7 @@ def bond_features(bond: Chem.rdchem.Bond,
 
     return fbond
 
+
 class MolGraph:
     def __init__(self, smiles: Union[str, Tuple[str, List[int]]], args: Namespace):
         if type(smiles) == tuple:

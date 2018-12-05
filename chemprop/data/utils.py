@@ -3,17 +3,16 @@ from copy import deepcopy
 from logging import Logger
 import pickle
 import random
-from typing import List, Tuple, Set, FrozenSet
+from typing import List, Tuple
 import os
 
 import numpy as np
 from tqdm import tqdm
 from scipy import sparse
-from rdkit import Chem
 
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap
-from chemprop.features import get_features
+from chemprop.features import load_features
 
 
 def convert_to_classes(data: MoleculeDataset, num_bins: int = 20) -> Tuple[MoleculeDataset,
@@ -98,7 +97,7 @@ def get_data(path: str,
         max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
 
         if args.features_path:
-            features_data = get_features(args.features_path)
+            features_data = load_features(args.features_path)
         else:
             features_data = None
     else:
@@ -124,12 +123,6 @@ def get_data(path: str,
 
     if data.data[0].features is not None:
         args.features_dim = len(data.data[0].features)
-
-        if args.save_features_path is not None: # collect and save features so we don't need to recompute next time
-            all_features = np.stack([d.features for d in data.data])
-            sparse_features = sparse.csr_matrix(all_features)
-            with open(args.save_features_path, 'wb') as f:
-                pickle.dump(sparse_features, f)
 
     if args is not None and args.dataset_type == 'regression_with_binning':
         data = convert_to_classes(data, args.num_bins)

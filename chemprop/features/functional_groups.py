@@ -5,7 +5,7 @@ from typing import List, Union
 from rdkit import Chem
 
 
-def get_num_functional_groups(args):
+def get_num_functional_groups(args: Namespace):
     with open(args.functional_group_smarts, 'r') as f:
         count = len(f.readlines())
     return count

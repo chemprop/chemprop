@@ -4,9 +4,14 @@ import numpy as np
 import networkx as nx
 import copy
 
+from chemprop.data import MoleculeDatapoint
+
 #TODO(kernel) implement more kernel functions, e.g. rdkit?
 
-def get_kernel_func(kernel_func_name):
+def get_kernel_func(kernel_func_name: str):
+    if kernel_func_name is None:
+        return lambda x: None
+
     if kernel_func_name == 'morgan':
         return partial(morgan, use_counts=False)
     
@@ -30,7 +35,8 @@ def WL(datapoint1, datapoint2, args):
     # could fiddle with h (depth) later
     return [GK_WL().compare(datapoint1.networkx_graph, datapoint2.networkx_graph, h=3, node_label=True)]
 
-def networkx_graph(d):
+
+def networkx_graph(d: MoleculeDatapoint) -> nx.Graph:
     G = nx.Graph()
     for atom in d.mol.GetAtoms():
         G.add_node(atom.GetIdx(), node_label=str(atom.GetAtomicNum()))
