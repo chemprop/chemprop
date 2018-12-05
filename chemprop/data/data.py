@@ -46,6 +46,7 @@ class MoleculeDatapoint:
         """
         if args is not None:
             features_generator, predict_features, sparse = args.features_generator, args.predict_features, args.sparse
+            predict_features_and_task = args.predict_features_and_task
             self.bert_pretraining = args.dataset_type == 'bert_pretraining'
             self.bert_mask_prob = args.bert_mask_prob
             self.bert_mask_type = args.bert_mask_type
@@ -58,7 +59,7 @@ class MoleculeDatapoint:
             self.args = args
         else:
             features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = self.kernel = self.kernel_func = None
-            predict_features = sparse = self.bert_pretraining = False
+            predict_features_and_task = predict_features = sparse = self.bert_pretraining = False
 
         if features is not None and features_generator is not None:
             raise ValueError('Currently cannot provide both loaded features and a features generator.')
@@ -88,6 +89,8 @@ class MoleculeDatapoint:
         if self.features is not None:
             replace_token = None if predict_features else 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
+            if not hasattr(args, 'features_size'):
+                args.features_size = len(self.features)
 
         if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
@@ -96,7 +99,9 @@ class MoleculeDatapoint:
             self.num_tasks = 1
             self.targets = None
         else:
-            if predict_features:
+            if predict_features_and_task:
+                self.targets = np.concatenate([np.array([float(x) if x != '' else None for x in line[1:]]), self.features])
+            elif predict_features:
                 self.targets = self.features
             else:
                 self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
@@ -216,9 +221,6 @@ class MoleculeDataset(Dataset):
             debug('Determining vocab')
             args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
             debug('Vocab/Output size = {:,}'.format(args.vocab.output_size))
-
-        if not hasattr(args, 'features_size') or args.features_size is None:
-            args.features_size = self.features_size
 
         if args.sequential:
             for d in tqdm(self.data, total=len(self.data)):

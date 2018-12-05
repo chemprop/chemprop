@@ -2,6 +2,7 @@ from argparse import Namespace
 from typing import Callable, Dict, List, Union
 
 import torch.nn as nn
+import numpy as  np
 
 from .predict import predict
 from chemprop.data import MoleculeDataset, StandardScaler
@@ -57,10 +58,13 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     else:
         results = []
         for i in range(num_tasks):
-            # Skip if all targets are identical
-            if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
-                continue
+            # # Skip if all targets are identical
+            # if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+            #     continue
             results.append(metric_func(valid_targets[i], valid_preds[i]))
+
+    if args.predict_features_and_task:
+        results = results[:-args.features_size] + [np.mean(results[args.features_size:])]
 
     return results
 

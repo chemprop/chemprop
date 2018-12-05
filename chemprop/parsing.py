@@ -50,6 +50,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--predict_features', action='store_true', default=False,
                         help='Pre-train by predicting the additional features rather than the task values')
+    parser.add_argument('--predict_features_and_task', action='store_true', default=False,
+                        help='Pre-train by predicting the additional features in addition to the task values')
+    parser.add_argument('--task_weight', type=float, default=1.0,
+                        help='Weighting for the real tasks when also predicting features in multitask setting')                    
     parser.add_argument('--additional_atom_features', type=str, nargs='*', choices=['functional_group'], default=[],
                         help='Use additional features in atom featurization')
     parser.add_argument('--functional_group_smarts', type=str, default='chemprop/features/smarts.txt',
@@ -364,6 +368,10 @@ def modify_train_args(args: Namespace):
 
     args.use_input_features = args.features_generator or args.features_path
 
+    if args.predict_features_and_task:
+        assert args.dataset_type == 'regression'
+        args.predict_features = True
+        
     if args.predict_features or args.kernel_func in ['features', 'features_dot']:
         assert args.features_generator or args.features_path
         args.use_input_features = False

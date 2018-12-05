@@ -182,7 +182,11 @@ def train(model: nn.Module,
                     preds = model.kernel_output_layer(preds)
 
                 loss = loss_func(preds, targets) * mask
-                loss = loss.sum() / mask.sum()
+                if args.predict_features_and_task:
+                    loss = (loss.sum() + loss[:, :-args.features_size].sum() * (args.task_weight-1)) \
+                                / (mask.sum() + mask[:, :-args.features_size].sum() * (args.task_weight-1))
+                else:
+                    loss = loss.sum() / mask.sum()
 
                 if args.dataset_type == 'bert_pretraining' and features_targets is not None:
                     loss += features_loss(features_preds, features_targets)
