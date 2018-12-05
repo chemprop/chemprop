@@ -1,42 +1,32 @@
-from .morgan_fingerprint import morgan_fingerprint
-from functools import partial
-import numpy as np
-import networkx as nx
 import copy
 
-from chemprop.data import MoleculeDatapoint
+import networkx as nx
+import numpy as np
 
-#TODO(kernel) implement more kernel functions, e.g. rdkit?
 
 def get_kernel_func(kernel_func_name: str):
-    if kernel_func_name is None:
-        return lambda x: None
+    if kernel_func_name == 'features':
+        return features_kernel
 
-    if kernel_func_name == 'morgan':
-        return partial(morgan, use_counts=False)
-    
-    if kernel_func_name == 'morgan_count':
-        return partial(morgan, use_counts=True)
-    
     if kernel_func_name == 'WL':
-        return WL
+        return WL_kernel
 
     raise ValueError('kernel function "{}" not supported.'.format(kernel_func_name))
 
-def morgan(datapoint1, datapoint2, args, use_counts=False):
-    fp1 = morgan_fingerprint(datapoint1.mol, use_counts=use_counts)
-    fp2 = morgan_fingerprint(datapoint2.mol, use_counts=use_counts)
-    return [(fp1 * fp2).sum()]
 
-def WL(datapoint1, datapoint2, args):
+def features_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint') -> float:
+    return np.dot(datapoint1.features, datapoint2.features)
+
+
+def WL_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint') -> float:
     for d in [datapoint1, datapoint2]:
         if not hasattr(d, 'networkx_graph'):
             d.networkx_graph = networkx_graph(d)
     # could fiddle with h (depth) later
-    return [GK_WL().compare(datapoint1.networkx_graph, datapoint2.networkx_graph, h=3, node_label=True)]
+    return GK_WL().compare(datapoint1.networkx_graph, datapoint2.networkx_graph, h=3, node_label=True)
 
 
-def networkx_graph(d: MoleculeDatapoint) -> nx.Graph:
+def networkx_graph(d: 'MoleculeDatapoint') -> nx.Graph:
     G = nx.Graph()
     for atom in d.mol.GetAtoms():
         G.add_node(atom.GetIdx(), node_label=str(atom.GetAtomicNum()))
@@ -47,7 +37,9 @@ def networkx_graph(d: MoleculeDatapoint) -> nx.Graph:
             G.add_edge(a1, a2)
     return G
 
+
 # following is from https://github.com/emanuele/jstsp2015/blob/master/gk_weisfeiler_lehman.py
+
 
 """Weisfeiler_Lehman graph kernel.
 
@@ -58,6 +50,7 @@ http://jmlr.csail.mit.edu/papers/v12/shervashidze11a.html
 
 Author : Sandro Vega-Pons, Emanuele Olivetti
 """
+
 
 class GK_WL():
     """
