@@ -26,7 +26,7 @@ def plot_counts(counter: Counter, args: Namespace):
 
     for num_to_plot in args.nums_to_plot:
         plt.clf()
-        
+
         _, values = zip(*counter.most_common(num_to_plot))
         indexes = np.arange(len(values))
 
@@ -39,6 +39,8 @@ def plot_counts(counter: Counter, args: Namespace):
             plt.savefig(os.path.join(args.plot_dir, '{}_frequency.png'.format(num_to_plot)))
         else:
             plt.show()
+
+        plt.clf()
 
         # Plot cumulative frequency distribution
         cumulative_counts = np.cumsum(values)
