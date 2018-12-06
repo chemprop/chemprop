@@ -14,6 +14,8 @@ if __name__ == '__main__':
                         help='Whether data_path_1 has compound names in addition to smiles')
     parser.add_argument('--compound_names_2', action='store_true', default=False,
                         help='Whether data_path_2 has compound names in addition to smiles')
+    parser.add_argument('--save_intersection_path', type=str, default=None,
+                        help='Path to save intersection at; labeled with data_path 1 header')
     args = parser.parse_args()
 
     data_1 = get_data(args.data_path_1, use_compound_names=args.compound_names_1)
@@ -29,3 +31,11 @@ if __name__ == '__main__':
     print('Size of intersection: {}'.format(size_intersect))
     print('Size of intersection as frac of dataset 1: {}'.format(size_intersect/size_1))
     print('Size of intersection as frac of dataset 2: {}'.format(size_intersect/size_2))
+
+    if args.save_intersection_path is not None:
+        with open(args.data_path_1, 'r') as rf, open(args.save_intersection_path, 'w') as wf:
+            header = rf.readline()
+            wf.write(header.strip() + '\n')
+            for line in rf:
+                if line.strip().split(',')[0] in intersection:
+                    wf.write(line.strip() + '\n')
