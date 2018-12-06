@@ -58,8 +58,7 @@ def predict(model: nn.Module,
             batch_preds = batch_preds.data.cpu().numpy()
 
             if scaler is not None:
-                skip_indices = list(range(args.real_num_tasks, args.num_tasks)) if args.predict_features else None
-                batch_preds = scaler.inverse_transform(batch_preds, skip_indices=skip_indices)
+                batch_preds = scaler.inverse_transform(batch_preds)
             
             if args.dataset_type == 'regression_with_binning':
                 batch_preds = batch_preds.reshape((batch_preds.shape[0], args.num_tasks, args.num_bins))

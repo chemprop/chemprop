@@ -45,8 +45,8 @@ class MoleculeDatapoint:
         :param use_compound_names: Whether the data CSV includes the compound name on each line.
         """
         if args is not None:
-            features_generator, predict_features, sparse = args.features_generator, args.predict_features, args.sparse
-            predict_features_and_task = args.predict_features_and_task
+            self.features_generator, self.predict_features, self.sparse = args.features_generator, args.predict_features, args.sparse
+            self.predict_features_and_task = args.predict_features_and_task
             self.bert_pretraining = args.dataset_type == 'bert_pretraining'
             self.bert_mask_prob = args.bert_mask_prob
             self.bert_mask_type = args.bert_mask_type
@@ -58,10 +58,10 @@ class MoleculeDatapoint:
 
             self.args = args
         else:
-            features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = self.kernel = self.kernel_func = None
-            predict_features_and_task = predict_features = sparse = self.bert_pretraining = False
+            self.features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = self.kernel = self.kernel_func = None
+            self.predict_features_and_task = self.predict_features = self.sparse = self.bert_pretraining = False
 
-        if features is not None and features_generator is not None:
+        if features is not None and self.features_generator is not None:
             raise ValueError('Currently cannot provide both loaded features and a features generator.')
 
         self.features = features
@@ -76,10 +76,10 @@ class MoleculeDatapoint:
         self.mol = Chem.MolFromSmiles(self.smiles)
 
         # Generate additional features if given a generator
-        if features_generator is not None:
+        if self.features_generator is not None:
             self.features = []
 
-            for fg in features_generator:
+            for fg in self.features_generator:
                 features_func = get_features_func(fg, args)
                 self.features.extend(features_func(self.mol))
 
@@ -87,28 +87,33 @@ class MoleculeDatapoint:
 
         # Fix nans in features
         if self.features is not None:
-            replace_token = None if predict_features else 0
+            replace_token = None if self.predict_features else 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
-        if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
+        # Create targets
+        self.task_targets = [float(x) if x != '' else None for x in line[1:]]
+        self.recreate_targets()
+
+    def set_features(self, features: np.ndarray):
+        self.features = features
+        self.recreate_targets()
+
+    def recreate_targets(self):
+        if self.args is not None and self.args.dataset_type in ['unsupervised', 'bert_pretraining', 'kernel']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
             self.targets = None
-        elif args is not None and args.dataset_type == 'kernel':
-            self.num_tasks = 1
-            self.targets = None
+        elif self.predict_features_and_task:
+            self.targets = np.concatenate([np.array(self.task_targets), self.features])
+        elif self.predict_features:
+            self.targets = self.features
         else:
-            if predict_features_and_task:
-                self.targets = np.concatenate([np.array([float(x) if x != '' else None for x in line[1:]]), self.features])
-            elif predict_features:
-                self.targets = self.features
-            else:
-                self.targets = [float(x) if x != '' else None for x in line[1:]]  # List[Optional[float]]
+            self.targets = self.task_targets
 
-            self.num_tasks = len(self.targets)  # int
+        self.num_tasks = len(self.targets)
 
-            if sparse:
-                self.targets = SparseNoneArray(self.targets)
-    
+        if self.sparse:
+            self.targets = SparseNoneArray(self.targets)
+
     def bert_init(self):
         if not self.bert_pretraining:
             raise Exception('Should not do this unless using bert_pretraining.')
@@ -188,7 +193,7 @@ class MoleculeDatapoint:
         # np.ndarray --> list
         self.mask = list(self.mask)
 
-    def set_targets(self, targets):  # for unsupervised pretraining only
+    def set_targets(self, targets: List[float]):  # for unsupervised pretraining only
         self.targets = targets
 
 
@@ -319,11 +324,11 @@ class MoleculeDataset(Dataset):
             self.scaler.fit(features)
 
         for d in self.data:
-            d.features = self.scaler.transform(d.features.reshape(1, -1))[0]
+            d.set_features(self.scaler.transform(d.features.reshape(1, -1))[0])
 
         return self.scaler
     
-    def set_targets(self, targets: List[float]):  # for unsupervised pretraining only
+    def set_targets(self, targets: List[List[float]]):  # for unsupervised pretraining only
         assert len(self.data) == len(targets) # assume user kept them aligned
         for i in range(len(self.data)):
             self.data[i].set_targets(targets[i])

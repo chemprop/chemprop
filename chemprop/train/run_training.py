@@ -89,8 +89,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         train_smiles, train_targets = train_data.smiles(), train_data.targets()
         scaler = StandardScaler().fit(train_targets)
         scaled_targets = scaler.transform(train_targets).tolist()
-        for i in range(len(train_data)):
-            train_data[i].targets = scaled_targets[i]
+        train_data.set_targets(scaled_targets)
     else:
         scaler = None
 

@@ -39,23 +39,15 @@ class StandardScaler:
 
         return transformed_with_none
 
-    def inverse_transform(self, X: List[List[float]], skip_indices: List[int] = None):
+    def inverse_transform(self, X: List[List[float]]):
         """
         Performs the inverse transformation by multiplying by the standard deviations and adding the means.
 
         :param X: A list of lists of floats.
-        :param skip_indices: A list of indexes in X to NOT do an inverse transform on.
         :return: The inverse transformed data.
         """
         X = np.array(X).astype(float)
-
-        if skip_indices is not None:
-            means, stds = self.means.copy(), self.stds.copy()
-            means[skip_indices], stds[skip_indices] = 0, 1
-        else:
-            means, stds = self.means, self.stds
-
-        transformed_with_nan = X * stds + means
+        transformed_with_nan = X * self.stds + self.means
         transformed_with_none = np.where(np.isnan(transformed_with_nan), self.replace_nan_token, transformed_with_nan)
 
         return transformed_with_none

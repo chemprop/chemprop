@@ -66,10 +66,6 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
             if len(valid_targets[i]) == 0:
                 continue
 
-            metric = metric_func(valid_targets[i], valid_preds[i])
-            if metric > 1000:
-                import pdb; pdb.set_trace()
-
             results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     if args.predict_features_and_task:
