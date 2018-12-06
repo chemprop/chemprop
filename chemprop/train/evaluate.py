@@ -58,9 +58,15 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     else:
         results = []
         for i in range(num_tasks):
+            # TODO: maybe delete the commented code here if not needed?
             # # Skip if all targets are identical
             # if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
             #     continue
+
+            # TODO: handle this case better??? (this currently only happens when a feature is None for all molecules)
+            if len(valid_targets[i]) == 0:
+                continue
+            
             results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     if args.predict_features_and_task:
