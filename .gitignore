@@ -1,7 +1,10 @@
 *.pyc
 deepchem-test/jtnn
-.ipynb_checkpoints/*
-.idea/*
-results/*
-retrain_jobs/*
-jobs/*
+deepchem-test/data
+*.idea
+*.DS_Store
+*.vscode
+.vs/*
+examples/data/qm8crop.csv
+environment.yml
+bin/qsubgen.py
