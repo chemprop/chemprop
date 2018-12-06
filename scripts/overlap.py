@@ -16,6 +16,8 @@ if __name__ == '__main__':
                         help='Whether data_path_2 has compound names in addition to smiles')
     parser.add_argument('--save_intersection_path', type=str, default=None,
                         help='Path to save intersection at; labeled with data_path 1 header')
+    parser.add_argument('--save_difference_path', type=str, default=None,
+                        help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
     args = parser.parse_args()
 
     data_1 = get_data(args.data_path_1, use_compound_names=args.compound_names_1)
@@ -38,4 +40,12 @@ if __name__ == '__main__':
             wf.write(header.strip() + '\n')
             for line in rf:
                 if line.strip().split(',')[0] in intersection:
+                    wf.write(line.strip() + '\n')
+    
+    if args.save_difference_path is not None:
+        with open(args.data_path_1, 'r') as rf, open(args.save_difference_path, 'w') as wf:
+            header = rf.readline()
+            wf.write(header.strip() + '\n')
+            for line in rf:
+                if line.strip().split(',')[0] not in intersection:
                     wf.write(line.strip() + '\n')
