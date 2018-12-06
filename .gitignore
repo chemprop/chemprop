@@ -4,3 +4,7 @@ deepchem-test/data
 *.idea
 *.DS_Store
 *.vscode
+.vs/*
+examples/data/qm8crop.csv
+environment.yml
+bin/qsubgen.py
