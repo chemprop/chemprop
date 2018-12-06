@@ -13,6 +13,13 @@ def add_predict_args(parser: ArgumentParser):
                         help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--preds_path', type=str, required=True,
                         help='Path to CSV file where predictions will be saved')
+    parser.add_argument('--checkpoint_dir', type=str, required=True,
+                        help='Directory from which to load model checkpoints'
+                             '(walks directory and ensembles all models that are found)')
+    parser.add_argument('--batch_size', type=int, default=50,
+                        help='Batch size')
+    parser.add_argument('--no_cuda', action='store_true', default=False,
+                        help='Turn off cuda')
 
 
 def add_hyper_opt_args(parser: ArgumentParser):
@@ -36,6 +43,8 @@ def add_train_args(parser: ArgumentParser):
     # General arguments
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV file')
+    parser.add_argument('--compound_names', action='store_true', default=False,
+                        help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--vocab_path', type=str,
                         help='Path to .vocab file if using jtnn')
     parser.add_argument('--features_only', action='store_true', default=False,
@@ -300,4 +309,16 @@ def parse_train_args() -> Namespace:
     args = parser.parse_args()
     modify_train_args(args)
 
+    return args
+
+def parse_predict_args() -> Namespace:
+    """Parses arguments for prediction"""
+    parser = ArgumentParser()
+    add_predict_args(parser)
+    args = parser.parse_args()
+    # Get checkpoint paths
+    update_args_from_checkpoint_dir(args)
+    # Cuda
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    del args.no_cuda
     return args
