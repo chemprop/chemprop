@@ -21,7 +21,7 @@ def save_features(args: Namespace):
     if args.sequential:
         features = [features_func(d.mol) for d in tqdm(data, total=len(data))]
     else:
-        features = Pool().map(features_func, (d.mol for d in data))
+        features = Pool().map(features_func, tqdm((d.mol for d in data), total=len(data)))
 
     features = np.stack(features)
     sparse_features = sparse.csr_matrix(features)
