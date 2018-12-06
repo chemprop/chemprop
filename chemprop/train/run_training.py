@@ -239,11 +239,38 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
 
         if args.dataset_type == 'unsupervised':
-            return [0]  # rest of this is meaningless when unsupervised
+            return [0]  # rest of this is meaningless when unsupervised            
 
         # Evaluate on test set using model with best validation score
         info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
+
+        if args.split_test_by_overlap_dataset is not None:
+            overlap_data = get_data(args.split_test_by_overlap_dataset)
+            overlap_smiles = set(overlap_data.smiles())
+            test_data_intersect, test_data_nonintersect = [], []
+            for d in test_data.data:
+                if d.smiles in overlap_smiles:
+                    test_data_intersect.append(d)
+                else:
+                    test_data_nonintersect.append(d)
+            test_data_intersect, test_data_nonintersect = MoleculeDataset(test_data_intersect), MoleculeDataset(test_data_nonintersect)
+            for name, td in [('Intersect', test_data_intersect), ('Nonintersect', test_data_nonintersect)]:
+                test_preds = predict(
+                    model=model,
+                    data=td,
+                    args=args,
+                    scaler=scaler
+                )
+                test_scores = evaluate_predictions(
+                    preds=test_preds,
+                    targets=td.targets(),
+                    metric_func=metric_func,
+                    args=args
+                )
+                avg_test_score = np.mean(test_scores)
+                info('Model {} test {} for {} = {:.3f}'.format(model_idx, args.metric, name, avg_test_score))
+
         test_preds = predict(
             model=model,
             data=test_data,

@@ -93,6 +93,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold', 'scaffold_one', 'scaffold_overlap', 'predetermined'],
                         help='Method of splitting the data into train/val/test')
+    parser.add_argument('--split_test_by_overlap_dataset', type=str,
+                        help='Dataset to use to split test set by overlap')
     parser.add_argument('--scaffold_overlap', type=float, default=None,
                         help='Proportion of molecules in val/test sets which should contain scaffolds in the train set'
                              'For use when split_type == "scaffold_overlap"')
