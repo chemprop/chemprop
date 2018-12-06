@@ -1,4 +1,6 @@
 from argparse import ArgumentParser, Namespace
+from functools import partial
+from multiprocessing import Pool
 import os
 import pickle
 import sys
@@ -14,8 +16,14 @@ from chemprop.features import get_features_func
 
 def save_features(args: Namespace):
     data = get_data(args.data_path, max_data_size=args.max_data_size)
-    features_func = get_features_func(args.features_generator)
-    features = np.stack([features_func(d.mol, args) for d in tqdm(data, total=len(data))])
+    features_func = get_features_func(args.features_generator, args)
+
+    if args.sequential:
+        features = [features_func(d.mol) for d in tqdm(data, total=len(data))]
+    else:
+        features = Pool().map(features_func, (d.mol for d in data))
+
+    features = np.stack(features)
     sparse_features = sparse.csr_matrix(features)
 
     with open(args.save_path, 'wb') as f:
@@ -35,8 +43,12 @@ if __name__ == '__main__':
                         help='Path to txt file of smarts for functional groups, if functional_group features are on.')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
+    parser.add_argument('--sequential', action='store_true', default=False,
+                        help='Whether to run sequential rather than in parallel')
     args = parser.parse_args()
 
-    os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+    dirname = os.path.dirname(args.save_path)
+    if dirname != '':
+        os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
 
     save_features(args)

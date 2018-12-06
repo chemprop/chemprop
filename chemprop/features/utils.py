@@ -1,16 +1,14 @@
 from argparse import Namespace
+from functools import partial
 import pickle
-from typing import Callable, List, Optional
+from typing import Callable, List, Union
 
-from mordred import Calculator, descriptors
 import numpy as np
 from rdkit import Chem
 
+from .descriptors import mordred_features
 from .morgan_fingerprint import morgan_fingerprint
 from .rdkit_features import rdkit_2d_features
-
-
-mordred_calc = Calculator(descriptors, ignore_3D=True)  # can't do 3D without sdf or mol file
 
 
 def load_features(path: str) -> List[np.ndarray]:
@@ -21,20 +19,21 @@ def load_features(path: str) -> List[np.ndarray]:
     return features
 
 
-def get_features_func(features_generator: str) -> Callable[[Chem.Mol, Optional[Namespace]], np.ndarray]:
+def get_features_func(features_generator: str,
+                      args: Namespace = None) -> Union[Callable[[Chem.Mol], np.ndarray],
+                                                       partial]:
     if features_generator == 'morgan':
-        def features_func(mol: Chem.Mol, args: Namespace = None):
-            return morgan_fingerprint(mol, use_counts=False)
-    elif features_generator == 'morgan_count':
-        def features_func(mol: Chem.Mol, args: Namespace = None):
-            return morgan_fingerprint(mol, use_counts=True)
-    elif features_generator == 'rdkit_2d':
-        def features_func(mol: Chem.Mol, args: Namespace = None):
-            return rdkit_2d_features(mol, args)
-    elif features_generator == 'mordred':
-        def features_func(mol: Chem.Mol, args: Namespace = None):
-            return [float(f) for f in mordred_calc(mol)]
-    else:
-        raise ValueError('features_generator type "{}" not supported.'.format(features_generator))
+        return partial(morgan_fingerprint, use_counts=False)
 
-    return features_func
+    if features_generator == 'morgan_count':
+        return partial(morgan_fingerprint, use_counts=True)
+
+    if features_generator == 'rdkit_2d':
+        assert args is not None
+        assert hasattr(args, 'functional_group_smarts')  # TODO: handle this in a better way
+        return partial(rdkit_2d_features, args=args)
+
+    if features_generator == 'mordred':
+        return mordred_features
+
+    raise ValueError('features_generator type "{}" not supported.'.format(features_generator))

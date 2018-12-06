@@ -80,8 +80,8 @@ class MoleculeDatapoint:
             self.features = []
 
             for fg in features_generator:
-                features_func = get_features_func(fg)
-                self.features.extend(features_func(self.mol, args))
+                features_func = get_features_func(fg, args)
+                self.features.extend(features_func(self.mol))
 
             self.features = np.array(self.features)
 
