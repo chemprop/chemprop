@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import os
 import pickle
 import sys
 sys.path.append('../')
@@ -35,5 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_data_size', type=int, default=None,
                         help='Maximum number of data points to load')
     args = parser.parse_args()
+
+    os.makedirs(os.path.dirname(args.save_path))
 
     save_features(args)
