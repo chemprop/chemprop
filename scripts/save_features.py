@@ -33,10 +33,10 @@ if __name__ == '__main__':
                         help='Path to .pckl file where features will be saved as a Python pickle file')
     parser.add_argument('--functional_group_smarts', type=str, default='../chemprop/features/smarts.txt',
                         help='Path to txt file of smarts for functional groups, if functional_group features are on.')
-    parser.add_argument('--max_data_size', type=int, default=None,
+    parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
     args = parser.parse_args()
 
-    os.makedirs(os.path.dirname(args.save_path))
+    os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
 
     save_features(args)
