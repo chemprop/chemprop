@@ -22,7 +22,6 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     :param args: Namespace
     :return: A list with the score for each task based on `metric_func`.
     """
-
     if args.dataset_type == 'unsupervised':
         num_tasks = 1
         data_size = len(preds)
@@ -66,11 +65,16 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
             # TODO: handle this case better??? (this currently only happens when a feature is None for all molecules)
             if len(valid_targets[i]) == 0:
                 continue
-            
+
+            metric = metric_func(valid_targets[i], valid_preds[i])
+            if metric > 1000:
+                import pdb; pdb.set_trace()
+
             results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     if args.predict_features_and_task:
-        results = results[:-args.features_size] + [np.mean(results[args.features_size:])]
+        # TODO: is this what we want results to be or do we want to split out the features somehow?
+        results = results[:args.real_num_tasks] + [np.mean(results[args.real_num_tasks:])]
 
     return results
 

@@ -89,8 +89,6 @@ class MoleculeDatapoint:
         if self.features is not None:
             replace_token = None if predict_features else 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
-            if not hasattr(args, 'features_size'):
-                args.features_size = len(self.features)
 
         if args is not None and args.dataset_type in ['unsupervised', 'bert_pretraining']:
             self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
@@ -210,7 +208,6 @@ class MoleculeDataset(Dataset):
             if len(self.data) % 2 == 1:
                 self.data = self.data[:-1]
         self.kernel_func = get_kernel_func(self.data[0].kernel_func) if len(self.data) > 0 and self.data[0].kernel_func is not None else None
-        self.features_size = len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
         self.args = self.data[0].args if len(self.data) > 0 else None
         self.scaler = None
     
@@ -281,6 +278,9 @@ class MoleculeDataset(Dataset):
     def num_tasks(self) -> int:
         return self.data[0].num_tasks if len(self.data) > 0 else None
 
+    def features_size(self) -> int:
+        return len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
+
     def mask(self) -> List[int]:
         if not self.bert_pretraining:
             raise Exception('Mask is undefined without bert_pretraining on.')
@@ -306,25 +306,22 @@ class MoleculeDataset(Dataset):
 
         return datasets
     
-    def normalize_features(self, scaler: StandardScaler = None) -> StandardScaler:
+    def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         if len(self.data) == 0 or self.data[0].features is None:
             return None
 
         if scaler is not None:
             self.scaler = scaler
-        else:
-            if self.scaler is not None:
-                scaler = self.scaler
-            else:
-                features = np.vstack([d.features for d in self.data])
-                scaler = StandardScaler(replace_nan_token=0)
-                scaler.fit(features)
-                self.scaler = scaler
+
+        elif self.scaler is None:
+            features = np.vstack([d.features for d in self.data])
+            self.scaler = StandardScaler(replace_nan_token=replace_nan_token)
+            self.scaler.fit(features)
 
         for d in self.data:
-            d.features = scaler.transform(d.features.reshape(1, -1))[0]
+            d.features = self.scaler.transform(d.features.reshape(1, -1))[0]
 
-        return scaler
+        return self.scaler
     
     def set_targets(self, targets: List[float]):  # for unsupervised pretraining only
         assert len(self.data) == len(targets) # assume user kept them aligned

@@ -37,6 +37,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     desired_labels = get_desired_labels(args, args.task_names)
     data = get_data(args.data_path, args)
     args.num_tasks = data.num_tasks()
+    args.features_size = data.features_size()
+    args.real_num_tasks = args.num_tasks - args.features_size if args.predict_features else args.num_tasks
     debug('Number of tasks = {}'.format(args.num_tasks))
 
     if args.dataset_type == 'bert_pretraining':
@@ -58,7 +60,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
     if args.features_scaling:
-        features_scaler = train_data.normalize_features()
+        features_scaler = train_data.normalize_features(replace_nan_token=None if args.predict_features else 0)
         val_data.normalize_features(features_scaler)
         test_data.normalize_features(features_scaler)
     else:
