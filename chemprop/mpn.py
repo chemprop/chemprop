@@ -1,187 +1,350 @@
+from argparse import Namespace
+from typing import List
+
 import torch
-import torch.nn as nn
-import rdkit.Chem as Chem
 import torch.nn.functional as F
+import torch.nn as nn
+import torch.autograd as autograd
+from torch.optim import Adam
+import numpy as np
 
-from nnutils import *
+from chemprop.featurization import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
+from chemprop.nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, NoamLR, get_activation_function
 
-ELEM_LIST = range(100)
-HYBRID_LIST = [
-    Chem.rdchem.HybridizationType.SP, Chem.rdchem.HybridizationType.SP2,
-    Chem.rdchem.HybridizationType.SP3, Chem.rdchem.HybridizationType.SP3D,
-    Chem.rdchem.HybridizationType.SP3D2
-]
-ATOM_FDIM = 100 + len(HYBRID_LIST) + 6 + 5 + 4 + 7 + 5 + 3 + 1
-BOND_FDIM = 6 + 6
-MAX_NB = 12
 
-def onek_encoding_unk(x, allowable_set):
-    if x not in allowable_set:
-        x = allowable_set[-1]
-    return map(lambda s: x == s, allowable_set)
+class MPNEncoder(nn.Module):
+    """A message passing neural network for encoding a molecule."""
 
-def atom_features(atom):
-    return torch.Tensor(onek_encoding_unk(atom.GetAtomicNum() - 1, ELEM_LIST) 
-            + onek_encoding_unk(atom.GetDegree(), [0,1,2,3,4,5]) 
-            + onek_encoding_unk(atom.GetFormalCharge(), [-1,-2,1,2,0])
-            + onek_encoding_unk(int(atom.GetChiralTag()), [0,1,2,3])
-            + onek_encoding_unk(int(atom.GetImplicitValence()), [0,1,2,3,4,5,6])
-            + onek_encoding_unk(int(atom.GetTotalNumHs()), [0,1,2,3,4])
-            + onek_encoding_unk(int(atom.GetHybridization()), HYBRID_LIST)
-            + onek_encoding_unk(int(atom.GetNumRadicalElectrons()), [0,1,2])
-            + [atom.GetIsAromatic()])
+    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int):
+        """Initializes the MPN."""
+        super(MPNEncoder, self).__init__()
+        self.atom_fdim = atom_fdim
+        self.bond_fdim = bond_fdim
+        self.hidden_size = args.hidden_size
+        self.bias = args.bias
+        self.depth = args.depth
+        self.use_layer_norm = args.layer_norm
+        self.dropout = args.dropout
+        self.attention = args.attention
+        self.message_attention = args.message_attention
+        self.global_attention = args.global_attention
+        self.message_attention_heads = args.message_attention_heads
+        self.master_node = args.master_node
+        self.master_dim = args.master_dim
+        self.use_master_as_output = args.use_master_as_output
+        self.deepset = args.deepset
+        self.set2set = args.set2set
+        self.set2set_iters = args.set2set_iters
+        self.learn_virtual_edges = args.learn_virtual_edges
+        self.args = args
 
-def bond_features(bond):
-    bt = bond.GetBondType()
-    stereo = int(bond.GetStereo())
-    fbond = [bt == Chem.rdchem.BondType.SINGLE, bt == Chem.rdchem.BondType.DOUBLE, bt == Chem.rdchem.BondType.TRIPLE, bt == Chem.rdchem.BondType.AROMATIC, bond.GetIsConjugated(), bond.IsInRing()]
-    fstereo = onek_encoding_unk(stereo, [0,1,2,3,4,5])
-    return torch.Tensor(fbond + fstereo)
+        if args.features_only:
+            return  # won't use any of the graph stuff in this case
 
-def mol2graph(mol_batch, addHs=False):
-    padding = torch.zeros(ATOM_FDIM + BOND_FDIM)
-    fatoms,fbonds = [],[padding] #Ensure bond is 1-indexed
-    in_bonds,all_bonds = [],[(-1,-1)] #Ensure bond is 1-indexed
-    scope = []
-    total_atoms = 0
+        # Input
+        self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
 
-    for smiles in mol_batch:
-        mol = Chem.MolFromSmiles(smiles)
-        if addHs:
-            mol = Chem.AddHs(mol)
-        n_atoms = mol.GetNumAtoms()
-        for atom in mol.GetAtoms():
-            fatoms.append( atom_features(atom) )
-            in_bonds.append([])
+        # Message passing
+        if self.message_attention:
+            self.num_heads = self.message_attention_heads
+            self.W_h = nn.Linear(self.num_heads * self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+                                       for _ in range(self.num_heads)])
+        else:
+            self.W_h = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
 
-        for bond in mol.GetBonds():
-            a1 = bond.GetBeginAtom()
-            a2 = bond.GetEndAtom()
-            x = a1.GetIdx() + total_atoms
-            y = a2.GetIdx() + total_atoms
+        if self.global_attention:
+            self.W_ga1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+            self.W_ga2 = nn.Linear(self.hidden_size, self.hidden_size)
 
-            b = len(all_bonds) 
-            all_bonds.append((x,y))
-            fbonds.append( torch.cat([fatoms[x], bond_features(bond)], 0) )
-            in_bonds[y].append(b)
+        if self.master_node:
+            self.W_master_in = nn.Linear(self.hidden_size, self.master_dim)
+            self.W_master_out = nn.Linear(self.master_dim, self.hidden_size)
 
-            b = len(all_bonds)
-            all_bonds.append((y,x))
-            fbonds.append( torch.cat([fatoms[y], bond_features(bond)], 0) )
-            in_bonds[x].append(b)
+        # Readout
+        if not (self.master_node and self.use_master_as_output):
+            self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+
+        if self.deepset:
+            self.W_s2s_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_s2s_b = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+
+        if self.set2set:
+            self.set2set_rnn = nn.LSTM(
+                input_size=self.hidden_size,
+                hidden_size=self.hidden_size,
+                dropout=self.dropout,
+                bias=False  # no bias so that an input of all zeros stays all zero
+            )
+
+        if self.attention:
+            self.W_a = nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
+            self.W_b = nn.Linear(self.hidden_size, self.hidden_size)
         
-        scope.append((total_atoms,n_atoms))
-        total_atoms += n_atoms
+        if self.learn_virtual_edges:
+            self.lve = nn.Linear(self.atom_fdim, self.atom_fdim)
 
-    total_bonds = len(all_bonds)
-    fatoms = torch.stack(fatoms, 0)
-    fbonds = torch.stack(fbonds, 0)
-    agraph = torch.zeros(total_atoms,MAX_NB).long()
-    bgraph = torch.zeros(total_bonds,MAX_NB).long()
+        # Layer norm
+        if self.use_layer_norm:
+            self.layer_norm = nn.LayerNorm(self.hidden_size)
 
-    for a in xrange(total_atoms):
-        for i,b in enumerate(in_bonds[a]):
-            agraph[a,i] = b
+        # Dropout
+        self.dropout_layer = nn.Dropout(p=self.dropout)
 
-    for b1 in xrange(1, total_bonds):
-        x,y = all_bonds[b1]
-        for i,b2 in enumerate(in_bonds[x]):
-            if all_bonds[b2][0] != y:
-                bgraph[b1,i] = b2
+        # Activation
+        self.act_func = get_activation_function(args.activation)
 
-    return fatoms, fbonds, agraph, bgraph, scope
+        self.cached_zero_vector = torch.zeros(self.hidden_size)
+        if args.cuda:
+            self.cached_zero_vector = self.cached_zero_vector.cuda()
+
+    def forward(self,
+                mol_graph: BatchMolGraph,
+                features_batch: List[np.ndarray] = None,
+                viz_dir: str = None) -> torch.Tensor:
+        """
+        Encodes a batch of molecular graphs.
+
+        :param mol_graph: A BatchMolGraph representing a batch of molecular graphs.
+        :param features_batch: A list of ndarrays containing additional features.
+        :param viz_dir: Directory in which to save visualized attention weights.
+        :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
+        """
+        if self.args.use_input_features:
+            features_batch = torch.from_numpy(np.stack(features_batch)).float()
+            features_batch = features_batch.squeeze()
+
+            if self.args.cuda:
+                features_batch = features_batch.cuda()
+
+            if self.args.features_only:
+                return features_batch
+
+        f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
+
+        if next(self.parameters()).is_cuda:
+            f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
+
+        if self.learn_virtual_edges:
+            atom1_features, atom2_features = f_atoms[b2a], f_atoms[b2a[b2revb]]  # each num_bonds x atom_fdim
+            ve_score = torch.sum(self.lve(atom1_features) * atom2_features, dim=1) + torch.sum(self.lve(atom2_features) * atom1_features, dim=1)
+            is_ve_indicator_index = self.atom_fdim  # in current featurization, the first bond feature is 1 or 0 for virtual or not virtual
+            num_virtual = f_bonds[:, is_ve_indicator_index].sum()
+            straight_through_mask = torch.ones(f_bonds.size(0)).cuda() + f_bonds[:, is_ve_indicator_index] * (ve_score - ve_score.detach()) / num_virtual  # normalize for grad norm
+            straight_through_mask = straight_through_mask.unsqueeze(1).repeat((1, self.hidden_size))  # num_bonds x hidden_size
+
+        # Input
+        b_input = self.W_i(f_bonds)  # num_bonds x hidden_size
+        b_message = self.act_func(b_input)  # num_bonds x hidden_size
+
+        if self.message_attention:
+            b2b = mol_graph.get_b2b()  # Warning: this is O(n_atoms^3) when using virtual edges
+
+            if next(self.parameters()).is_cuda:
+                b2b = b2b.cuda()
+
+            message_attention_mask = (b2b != 0).float()  # num_bonds x max_num_bonds
+
+        if self.global_attention:
+            global_attention_mask = torch.zeros(mol_graph.n_bonds, mol_graph.n_bonds)  # num_bonds x num_bonds
+
+            for start, length in b_scope:
+                for i in range(start, start + length):
+                    global_attention_mask[i, start:start + length] = 1
+
+            if next(self.parameters()).is_cuda:
+                global_attention_mask = global_attention_mask.cuda()
+
+        # Message passing
+        for depth in range(self.depth - 1):
+            if self.learn_virtual_edges:
+                b_message = b_message * straight_through_mask
+            if self.message_attention:
+                # TODO: Parallelize attention heads
+                nei_b_message = index_select_ND(b_message, b2b)
+                b_message = b_message.unsqueeze(1).repeat((1, nei_b_message.size(1), 1))  # num_bonds x maxnb x hidden
+                attention_scores = [(self.W_ma[i](nei_b_message) * b_message).sum(dim=2)
+                                    for i in range(self.num_heads)]  # num_bonds x maxnb
+                attention_scores = [attention_scores[i] * message_attention_mask + (1 - message_attention_mask) * (-1e+20)
+                                    for i in range(self.num_heads)]  # num_bonds x maxnb
+                attention_weights = [F.softmax(attention_scores[i], dim=1)
+                                     for i in range(self.num_heads)]  # num_bonds x maxnb
+                message_components = [nei_b_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
+                                      for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
+                message_components = [component.sum(dim=1) for component in message_components]  # num_bonds x hidden
+                b_message = torch.cat(message_components, dim=1)  # num_bonds x num_heads * hidden
+            else:
+                # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
+                # b_message      a_message = sum(nei_a_message)      rev_b_message
+                nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+                a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+                rev_b_message = b_message[b2revb]  # num_bonds x hidden
+                b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
+
+            b_message = self.W_h(b_message)  # num_bonds x hidden
+
+            if self.master_node:
+                # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
+                # master_state = self.GRU_master(nei_message.unsqueeze(1))
+                # master_state = master_state[-1].squeeze(0) #this actually doesn't preserve order invariance anymore
+                mol_vecs = [self.cached_zero_vector]
+                for start, size in b_scope:
+                    if size == 0:
+                        continue
+                    mol_vec = b_message.narrow(0, start, size)
+                    mol_vec = mol_vec.sum(dim=0) / size
+                    mol_vecs += [mol_vec for _ in range(size)]
+                master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # num_bonds x hidden_size
+                b_message = self.act_func(b_input + b_message + self.W_master_out(master_state))  # num_bonds x hidden_size
+            else:
+                b_message = self.act_func(b_input + b_message)  # num_bonds x hidden_size
+
+            if self.global_attention:
+                attention_scores = torch.matmul(self.W_ga1(b_message), b_message.t())  # num_bonds x num_bonds
+                attention_scores = attention_scores * global_attention_mask + (1 - global_attention_mask) * (-1e+20)  # num_bonds x num_bonds
+                attention_weights = F.softmax(attention_scores, dim=1)  # num_bonds x num_bonds
+                attention_hiddens = torch.matmul(attention_weights, b_message)  # num_bonds x hidden_size
+                attention_hiddens = self.act_func(self.W_ga2(attention_hiddens))  # num_bonds x hidden_size
+                attention_hiddens = self.dropout_layer(attention_hiddens)  # num_bonds x hidden_size
+                b_message = b_message + attention_hiddens  # num_bonds x hidden_size
+
+                if viz_dir is not None:
+                    visualize_bond_attention(viz_dir, mol_graph, attention_weights, depth)
+
+            if self.use_layer_norm:
+                b_message = self.layer_norm(b_message)
+
+            b_message = self.dropout_layer(b_message)  # num_bonds x hidden
+
+        if self.master_node and self.use_master_as_output:
+            assert self.hidden_size == self.master_dim
+            mol_vecs = []
+            for start, size in b_scope:
+                if size == 0:
+                    mol_vecs.append(self.cached_zero_vector)
+                else:
+                    mol_vecs.append(master_state[start])
+            return torch.stack(mol_vecs, dim=0)
+
+        # Get atom hidden states from message hidden states
+        if self.learn_virtual_edges:
+            b_message = b_message * straight_through_mask
+        nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+        a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+        a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
+        atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
+        atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
+
+        # Readout
+        if self.set2set:
+            # Set up sizes
+            batch_size = len(a_scope)
+            lengths = [length for _, length in a_scope]
+            max_num_atoms = max(lengths)
+
+            # Set up memory from atom features
+            memory = torch.zeros(batch_size, max_num_atoms, self.hidden_size)  # (batch_size, max_num_atoms, hidden_size)
+            for i, (start, size) in enumerate(a_scope):
+                memory[i, :size] = atom_hiddens.narrow(0, start, size)
+            memory_transposed = memory.transpose(2, 1)  # (batch_size, hidden_size, max_num_atoms)
+
+            # Create mask (1s for atoms, 0s for not atoms)
+            mask = create_mask(lengths, cuda=next(self.parameters()).is_cuda)  # (max_num_atoms, batch_size)
+            mask = mask.t().unsqueeze(2)  # (batch_size, max_num_atoms, 1)
+
+            # Set up query
+            query = torch.ones(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
+
+            # Move to cuda
+            if next(self.parameters()).is_cuda:
+                memory, memory_transposed, query = memory.cuda(), memory_transposed.cuda(), query.cuda()
+
+            # Run RNN
+            for _ in range(self.set2set_iters):
+                # Compute attention weights over atoms in each molecule
+                query = query.squeeze(0).unsqueeze(2)  # (batch_size,  hidden_size, 1)
+                dot = torch.bmm(memory, query)  # (batch_size, max_num_atoms, 1)
+                dot = dot * mask + (1 - mask) * (-1e+20)  # (batch_size, max_num_atoms, 1)
+                attention = F.softmax(dot, dim=1)  # (batch_size, max_num_atoms, 1)
+
+                # Construct next input as attention over memory
+                attended = torch.bmm(memory_transposed, attention)  # (batch_size, hidden_size, 1)
+                attended = attended.view(1, batch_size, self.hidden_size)  # (1, batch_size, hidden_size)
+
+                # Run RNN for one step
+                query, _ = self.set2set_rnn(attended)  # (1, batch_size, hidden_size)
+
+            # Final RNN output is the molecule encodings
+            mol_vecs = query.squeeze(0)  # (batch_size, hidden_size)
+        else:
+            mol_vecs = []
+            # TODO: Maybe do this in parallel with masking rather than looping
+            for i, (a_start, a_size) in enumerate(a_scope):
+                if a_size == 0:
+                    mol_vecs.append(self.cached_zero_vector)
+                else:
+                    cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
+
+                    if self.attention:
+                        att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
+                        att_w = F.softmax(att_w, dim=1)
+                        att_hiddens = torch.matmul(att_w, cur_hiddens)
+                        att_hiddens = self.act_func(self.W_b(att_hiddens))
+                        att_hiddens = self.dropout_layer(att_hiddens)
+                        mol_vec = (cur_hiddens + att_hiddens)
+
+                        if viz_dir is not None:
+                            visualize_atom_attention(viz_dir, mol_graph.smiles_batch[i], a_size, att_w)
+                    else:
+                        mol_vec = cur_hiddens  # (num_atoms, hidden_size)
+
+                    if self.deepset:
+                        mol_vec = self.W_s2s_a(mol_vec)
+                        mol_vec = self.act_func(mol_vec)
+                        mol_vec = self.W_s2s_b(mol_vec)
+
+                    mol_vec = mol_vec.sum(dim=0) / a_size
+                    mol_vecs.append(mol_vec)
+
+            mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
+        
+        if self.args.use_input_features:
+            return torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
+
+        return mol_vecs  # num_molecules x hidden
+
 
 class MPN(nn.Module):
+    """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, hidden_size, depth, dropout=0):
+    def __init__(self, args: Namespace):
         super(MPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
+        self.args = args
+        self.atom_fdim = get_atom_fdim(args)
+        self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+    def forward(self, smiles_batch: List[str], features_batch: List[np.ndarray] = None) -> torch.Tensor:
+        """
+        Encodes a batch of molecular SMILES strings.
 
-    def forward(self, mol_graph):
-        fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
+        :param smiles_batch: A list of SMILES strings.
+        :param features_batch: A list of ndarrays containing additional features.
+        :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
+        """
+        output = self.encoder.forward(mol2graph(smiles_batch, self.args), features_batch)
 
-        binput = self.W_i(fbonds)
-        message = F.relu(binput)
+        if self.args.adversarial:
+            self.saved_encoder_output = output
 
-        for i in xrange(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
-            nei_message = self.W_h(nei_message)
-            message = F.relu(binput + nei_message)
-            if self.dropout > 0:
-                message = F.dropout(message, self.dropout, self.training)
+        return output
 
-        nei_message = index_select_ND(message, 0, agraph)
-        nei_message = nei_message.sum(dim=1)
-        ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = F.relu(self.W_o(ainput))
-        if self.dropout > 0:
-            atom_hiddens = F.dropout(atom_hiddens, self.dropout, self.training)
-        
-        mol_vecs = []
-        for st,le in scope:
-            mol_vec = atom_hiddens.narrow(0, st, le).sum(dim=0) / le
-            mol_vecs.append(mol_vec)
+    def viz_attention(self, viz_dir: str, smiles_batch: List[str], features_batch: List[np.ndarray] = None):
+        """
+        Visualizes attention weights for a batch of molecular SMILES strings
 
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
-
-class AttMPN(nn.Module):
-
-    def __init__(self, hidden_size, depth, dropout=0):
-        super(AttMPN, self).__init__()
-        self.hidden_size = hidden_size
-        self.depth = depth
-        self.dropout = dropout
-
-        self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
-        self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
-        self.W_a = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.W_b = nn.Linear(hidden_size, hidden_size)
-
-    def forward(self, mol_graph):
-        fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
-
-        binput = self.W_i(fbonds)
-        message = nn.ReLU()(binput)
-
-        for i in xrange(self.depth - 1):
-            nei_message = index_select_ND(message, 0, bgraph)
-            nei_message = nei_message.sum(dim=1)
-            nei_message = self.W_h(nei_message)
-            message = nn.ReLU()(binput + nei_message)
-            
-        nei_message = index_select_ND(message, 0, agraph)
-        nei_message = nei_message.sum(dim=1)
-        ainput = torch.cat([fatoms, nei_message], dim=1)
-        atom_hiddens = nn.ReLU()(self.W_o(ainput))
-
-        mol_vecs = []
-        for st,le in scope:
-            cur_hiddens = atom_hiddens.narrow(0, st, le)
-            att_w = torch.matmul(self.W_a(cur_hiddens), cur_hiddens.t())
-            att_w = F.softmax(att_w, dim=1)
-            att_hiddens = torch.matmul(att_w, cur_hiddens)
-            att_hiddens = F.relu(self.W_b(att_hiddens))
-            att_hiddens = F.dropout(att_hiddens, self.dropout, training=self.training)
-            mol_vec = (cur_hiddens + att_hiddens).sum(dim=0) / le
-            mol_vecs.append(mol_vec)
-        
-        mol_vecs = torch.stack(mol_vecs, dim=0)
-        return mol_vecs
-
+        :param viz_dir: Directory in which to save visualized attention weights.
+        :param smiles_batch: A list of SMILES strings.
+        :param features_batch: A list of ndarrays containing additional features.
+        """
+        self.encoder.forward(mol2graph(smiles_batch, self.args), features_batch, viz_dir=viz_dir)
