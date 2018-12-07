@@ -14,6 +14,30 @@ from chemprop.data.utils import get_data
 from chemprop.features import get_features_func
 
 
+def get_temp_file_names(data_size: int, save_frequency: int) -> List[str]:
+    width = len(str(data_size))
+
+    temp_file_names = []
+    end = save_frequency - 1
+    for start in range(0, data_size, save_frequency):
+        temp_file_names.append('{}-{}.pckl'.format(start, end).zfill(width))
+        end = min(end + save_frequency, data_size)
+
+    return temp_file_names
+
+
+def load_temp(save_dir: str, data_size: int, save_frequency: int) -> List[List[float]]:
+    assert os.path.isdir(save_dir)
+
+    features = []
+    temp_file_names = get_temp_file_names(data_size, save_frequency)
+    for fname in temp_file_names:
+        with open(os.path.join(save_dir, fname), 'rb') as f:
+            features.extend(pickle.load(f).todense().tolist())
+
+    return features
+
+
 def save(save_path: str, features: List[List[int]]):
     features = np.stack(features)
     sparse_features = sparse.csr_matrix(features)
@@ -32,24 +56,27 @@ def save_features(args: Namespace):
     # Get data and features function
     data = get_data(args.data_path, max_data_size=args.max_data_size)
     features_func = get_features_func(args.features_generator, args)
+    temp_file_names = get_temp_file_names(len(data), args.save_frequency)
+    temp_save_dir = args.save_path + '_temp'
 
     # Load partially complete data
-    features = []
-    if os.path.exists(args.save_path):
-        with open(args.save_path, 'rb') as f:
-            features = pickle.load(f).todense().tolist()
+    if args.restart and os.path.exists(temp_save_dir):
+        features = load_temp(temp_save_dir, len(data), args.save_frequency)
+    else:
+        features = []
 
     # Build features map function
     data = data[len(features):]  # restrict to data for which features have not been computed yet
     mols = (d.mol for d in data)
-    features_map = map(features_func, mols) if args.sequential else Pool().imap(features_func, mols)
-    features_map = tqdm(features_map, total=len(data))
+    map_func = map if args.sequential else Pool().imap
+    features_map = tqdm(map_func(features_func, mols), total=len(data))
 
     # Get features
     for i, feats in enumerate(features_map):
         features.append(feats)
 
         if i > 0 and i % args.save_frequency == 0:
+            save_path =
             save(args.save_path, features)
 
     save(args.save_path, features)
