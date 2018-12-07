@@ -109,7 +109,7 @@ class MoleculeDatapoint:
         else:
             self.targets = self.task_targets
 
-        self.num_tasks = len(self.targets)
+        self.num_tasks = len(self.targets) if self.targets is not None else 1
 
         if self.sparse:
             self.targets = SparseNoneArray(self.targets)

@@ -380,6 +380,7 @@ def modify_train_args(args: Namespace):
 
     if args.dataset_type == 'bert_pretraining':
         assert not args.features_only
+        args.use_input_features = False
 
     if args.dataset_type == 'unsupervised':
         args.separate_ffn_lr = True
