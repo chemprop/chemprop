@@ -2,9 +2,10 @@ from argparse import ArgumentParser, Namespace
 from multiprocessing import Pool
 import os
 import pickle
+import shutil
 import sys
 sys.path.append('../')
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from scipy import sparse
@@ -14,56 +15,67 @@ from chemprop.data.utils import get_data
 from chemprop.features import get_features_func
 
 
-def get_temp_file_names(data_size: int, save_frequency: int) -> List[str]:
-    width = len(str(data_size))
+def load_temp(temp_dir: str) -> Tuple[List[List[float]], int]:
+    """
+    Loads all features saved as .pckl files in load_dir.
 
-    temp_file_names = []
-    end = save_frequency - 1
-    for start in range(0, data_size, save_frequency):
-        temp_file_names.append('{}-{}.pckl'.format(start, end).zfill(width))
-        end = min(end + save_frequency, data_size)
+    Assumes temporary files are named in order 0.pckl, 1.pckl, ...
 
-    return temp_file_names
-
-
-def load_temp(save_dir: str, data_size: int, save_frequency: int) -> List[List[float]]:
-    assert os.path.isdir(save_dir)
-
+    :param temp_dir: Directory in which temporary .pckl files containing features are stored.
+    :return: A tuple with a list of molecule features, where each molecule's features is a list of floats,
+    and the number of temporary files.
+    """
     features = []
-    temp_file_names = get_temp_file_names(data_size, save_frequency)
-    for fname in temp_file_names:
-        with open(os.path.join(save_dir, fname), 'rb') as f:
+    temp_num = 0
+    temp_path = os.path.join(temp_dir, '{}.pckl'.format(temp_num))
+
+    while os.path.exists(temp_path):
+        with open(temp_path, 'rb') as f:
             features.extend(pickle.load(f).todense().tolist())
 
-    return features
+            temp_num += 1
+        temp_path = os.path.join(temp_dir, '{}.pckl'.format(temp_num))
+
+    return features, temp_num
 
 
 def save(save_path: str, features: List[List[int]]):
+    """
+    Saves features as a sparse 2D array in a .pckl file.
+
+    Assumes temporary files are named in order 0.pckl, 1.pckl, ...
+
+    :param save_path: Path to .pckl file where features will be saved.
+    :param features: A list of molecule features, where each molecule's features is a list of floats.
+    """
     features = np.stack(features)
     sparse_features = sparse.csr_matrix(features)
 
-    # Write to temporary file first rather than overwriting save_path
-    # in case there's a crash during writing
-    temp_save_path = save_path + '_temp'
-
-    with open(temp_save_path, 'wb') as f:
+    with open(save_path, 'wb') as f:
         pickle.dump(sparse_features, f)
-
-    os.rename(temp_save_path, save_path)
 
 
 def save_features(args: Namespace):
+    """Computes and saves features for a dataset of molecules as a sparse 2D array in a .pckl file."""
     # Get data and features function
     data = get_data(args.data_path, max_data_size=args.max_data_size)
     features_func = get_features_func(args.features_generator, args)
-    temp_file_names = get_temp_file_names(len(data), args.save_frequency)
     temp_save_dir = args.save_path + '_temp'
 
     # Load partially complete data
-    if args.restart and os.path.exists(temp_save_dir):
-        features = load_temp(temp_save_dir, len(data), args.save_frequency)
+    if args.restart:
+        os.remove(args.save_path)
+        shutil.rmtree(temp_save_dir)
     else:
-        features = []
+        if os.path.exists(args.save_path):
+            raise ValueError('"{}" already exists and args.restart is False.'.format(args.save_path))
+
+        if os.path.exists(temp_save_dir):
+            features, temp_num = load_temp(temp_save_dir)
+
+    if not os.path.exists(temp_save_dir):
+        os.makedirs(temp_save_dir)
+        features, temp_num = [], 0
 
     # Build features map function
     data = data[len(features):]  # restrict to data for which features have not been computed yet
@@ -72,14 +84,22 @@ def save_features(args: Namespace):
     features_map = tqdm(map_func(features_func, mols), total=len(data))
 
     # Get features
+    temp_features = []
     for i, feats in enumerate(features_map):
-        features.append(feats)
+        temp_features.append(feats)
 
-        if i > 0 and i % args.save_frequency == 0:
-            save_path =
-            save(args.save_path, features)
+        # Save temporary features every save_frequency
+        if (i > 0 and (i + 1) % args.save_frequency == 0) or i == len(data) - 1:
+            save(os.path.join(temp_save_dir, '{}.pckl'.format(temp_num)), temp_features)
+            features.extend(temp_features)
+            temp_features = []
+            temp_num += 1
 
+    # Save all features
     save(args.save_path, features)
+
+    # Remove temporary features
+    shutil.rmtree(temp_save_dir)
 
 
 if __name__ == '__main__':
