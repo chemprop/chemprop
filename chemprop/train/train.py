@@ -201,6 +201,15 @@ def train(model: nn.Module,
 
         optimizer.step()
 
+        if args.adjust_weight_decay:
+            current_pnorm = compute_pnorm(model)
+            if current_pnorm < args.pnorm_target:
+                for i in range(len(optimizer.param_groups)):
+                    optimizer.param_groups[i]['weight_decay'] = max(0, optimizer.param_groups[i]['weight_decay'] - args.adjust_weight_decay_step)
+            else:
+                for i in range(len(optimizer.param_groups)):
+                    optimizer.param_groups[i]['weight_decay'] += args.adjust_weight_decay_step
+
         if isinstance(scheduler, NoamLR):
             scheduler.step()
 

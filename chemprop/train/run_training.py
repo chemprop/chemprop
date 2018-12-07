@@ -17,7 +17,7 @@ from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, M
 from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers,\
     load_prespecified_chunks
 from chemprop.models import build_model
-from chemprop.nn_utils import param_count
+from chemprop.nn_utils import param_count, compute_pnorm
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
     save_checkpoint
 
@@ -163,6 +163,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
+
+        if args.adjust_weight_decay:
+            args.pnorm_target = compute_pnorm(model)
 
         # Optimizers
         optimizer = build_optimizer(model, args)

@@ -170,6 +170,11 @@ def add_train_args(parser: ArgumentParser):
                         help='Turn off scaling of regression targets')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
+    parser.add_argument('--adjust_weight_decay', action='store_true', default=False,
+                        help='Adjust weight decay dynamically, with init = args.weight_decay'
+                             'to try to preserve pnorm around initialization level')
+    parser.add_argument('--adjust_weight_decay_step', type=float, default=1e-5,
+                        help='How much to add/subtract from weight decay at a time, when adjusting')
     parser.add_argument('--bert_mask_prob', type=float, default=0.15,
                         help='Probability of masking when dataset_type == "bert_pretraining"')
     parser.add_argument('--bert_vocab_func', type=str, default='feature_vector',
