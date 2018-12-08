@@ -59,6 +59,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
+    if args.save_smiles_splits:
+        for dataset, name in [(train_data, 'train_smiles.csv'), (val_data, 'val_smiles.csv'), (test_data, 'test_smiles.csv')]:
+            with open(os.path.join(args.save_dir, name), 'w') as f:
+                f.write('smiles\n')
+                for smiles in dataset.smiles():
+                    f.write(smiles.strip() + '\n')
+
     if args.features_scaling:
         features_scaler = train_data.normalize_features(replace_nan_token=None if args.predict_features else 0)
         val_data.normalize_features(features_scaler)

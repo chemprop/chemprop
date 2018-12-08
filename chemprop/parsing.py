@@ -62,6 +62,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Store features as sparse (can save memory for sparse features')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
+    parser.add_argument('--save_smiles_splits', action='store_true', default=False,
+                        help='Save smiles for each train/val/test splits for prediction convenience later')
     parser.add_argument('--checkpoint_dir', type=str, default=None,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
