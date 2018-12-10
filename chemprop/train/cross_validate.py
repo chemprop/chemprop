@@ -44,7 +44,7 @@ def cross_validate(args: Namespace, logger: Logger = None):
 
     # Report scores across models
     avg_scores = np.mean(all_scores, axis=1)  # average score for each model across tasks
-    info('Overall test {} = {:.3f} ± {:.3f}'.format(args.metric, np.mean(avg_scores), np.std(avg_scores)))
+    info('Overall test {} = {:.3f} +/- {:.3f}'.format(args.metric, np.mean(avg_scores), np.std(avg_scores)))
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):

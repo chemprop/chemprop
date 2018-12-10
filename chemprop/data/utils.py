@@ -8,7 +8,6 @@ import os
 
 import numpy as np
 from tqdm import tqdm
-from scipy import sparse
 
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap
@@ -202,7 +201,7 @@ def split_data(data: MoleculeDataset,
 def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
     """Truncates outlier values in a regression dataset.
 
-    Every value which is outside mean ± 3 * std are truncated to equal mean ± 3 * std.
+    Every value which is outside mean +/- 3 * std are truncated to equal mean +/- 3 * std.
 
     :param data: A MoleculeDataset.
     :return: The same data but with outliers truncated.
