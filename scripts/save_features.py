@@ -95,11 +95,14 @@ def save_features(args: Namespace):
             temp_features = []
             temp_num += 1
 
-    # Save all features
-    save(args.save_path, features)
+    try:
+        # Save all features
+        save(args.save_path, features)
 
-    # Remove temporary features
-    shutil.rmtree(temp_save_dir)
+        # Remove temporary features
+        shutil.rmtree(temp_save_dir)
+    except OverflowError:
+        print('Features array is too large to save as a single file. Instead keeping features as a directory of files.')
 
 
 if __name__ == '__main__':
