@@ -296,6 +296,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Use Mayr et al versions of dropout and linear layers (diff is bias unit scaling)')
     parser.add_argument('--freeze_encoder', action='store_true', default=False,
                         help='Whether to freeze the layers of the message passing encoder')
+    parser.add_argument('--gradual_unfreezing', action='store_true', default=False,
+                        help='Unfreeze layers one at a time starting from the end, when using pretrained init')
+    parser.add_argument('--epochs_per_unfreeze', type=int, default=1,
+                        help='Number of epochs between unfreezing layers when doing gradual unfreezing')
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""

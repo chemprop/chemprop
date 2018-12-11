@@ -199,6 +199,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 optimizer.add_param_group({'params': model.ffn.parameters(), 'lr': args.init_lr[1], 'weight_decay': args.weight_decay[1]})
                 if args.cuda:
                     model.ffn.cuda()
+            
+            if args.gradual_unfreezing:
+                if epoch % args.epochs_per_unfreeze == 0:
+                    model.unfreeze_next()  # consider just stopping early after we have nothing left to unfreeze?
 
             n_iter = train(
                 model=model,
