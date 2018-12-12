@@ -98,15 +98,16 @@ class MoleculeModel(nn.Module):
         if args.gradual_unfreezing:
             self.create_unfreeze_queue()
 
-    def create_unfreeze_queue(self):
+    def create_unfreeze_queue(self, freeze=True):
         if hasattr(self, 'encoder') and hasattr(self, 'ffn'):  # do this once encoder and ffn both initialized
             self.unfreeze_queue = [self.encoder]
             for ffn_component in self.ffn:
                 if isinstance(ffn_component, nn.Linear):
                     self.unfreeze_queue.append(ffn_component)
-            for param_group in self.unfreeze_queue:
-                for param in param_group.parameters():
-                    param.requires_grad = False
+            if freeze:
+                for param_group in self.unfreeze_queue:
+                    for param in param_group.parameters():
+                        param.requires_grad = False
     
     def unfreeze_next(self):
         if len(self.unfreeze_queue) == 0:
