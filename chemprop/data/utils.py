@@ -175,7 +175,10 @@ def split_data(data: MoleculeDataset,
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif args.split_type == 'scaffold':
-        return scaffold_split(data, sizes=sizes, logger=logger)
+        return scaffold_split(data, sizes=sizes, balanced=False, logger=logger)
+    
+    elif args.split_type == 'scaffold_balanced':
+        return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
     elif args.split_type == 'scaffold_one':
         return scaffold_split_one(data)

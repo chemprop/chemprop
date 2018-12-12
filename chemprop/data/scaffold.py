@@ -74,6 +74,8 @@ def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict
 
 def scaffold_split(data: MoleculeDataset,
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+                   balanced: bool = False,
+                   seed: int = 0,
                    logger: logging.Logger = None) -> Tuple[MoleculeDataset,
                                                            MoleculeDataset,
                                                            MoleculeDataset]:
@@ -83,23 +85,38 @@ def scaffold_split(data: MoleculeDataset,
     :param data: A MoleculeDataset.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
+    :param balanced: Try to balance sizes of scaffolds in each set, rather than just putting smallest in test set.
+    :param seed: Seed for shuffling when doing balanced splitting.
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert sum(sizes) == 1
 
+    # Split
+    train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
+    train, val, test = [], [], []
+    train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
+
     # Map from scaffold to index in the data
     scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
 
-    # Sort from largest to smallest scaffold sets
-    index_sets = sorted(list(scaffold_to_indices.values()),
-                        key=lambda index_set: len(index_set),
-                        reverse=True)
-
-    # Split
-    train_size, val_size = sizes[0] * len(data), sizes[1] * len(data)
-    train, val, test = [], [], []
-    train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
+    if balanced:  # Put stuff that's bigger than half the val/test size into train, rest just order randomly
+        index_sets = list(scaffold_to_indices.values())
+        big_index_sets = []
+        small_index_sets = []
+        for index_set in index_sets:
+            if len(index_set) > val_size / 2 or len(index_set) > test_size / 2:
+                big_index_sets.append(index_set)
+            else:
+                small_index_sets.append(index_set)
+        random.seed(0)
+        random.shuffle(big_index_sets)
+        random.shuffle(small_index_sets)
+        index_sets = big_index_sets + small_index_sets
+    else:  # Sort from largest to smallest scaffold sets
+        index_sets = sorted(list(scaffold_to_indices.values()),
+                            key=lambda index_set: len(index_set),
+                            reverse=True)
 
     for index_set in index_sets:
         if len(train) + len(index_set) <= train_size:
