@@ -202,7 +202,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             
             if args.gradual_unfreezing:
                 if epoch % args.epochs_per_unfreeze == 0:
-                    model.unfreeze_next()  # consider just stopping early after we have nothing left to unfreeze?
+                    unfroze_layer = model.unfreeze_next()  # consider just stopping early after we have nothing left to unfreeze?
+                    if unfroze_layer:
+                        debug('Unfroze last frozen layer')
 
             n_iter = train(
                 model=model,

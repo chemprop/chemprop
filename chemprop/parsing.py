@@ -300,6 +300,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Unfreeze layers one at a time starting from the end, when using pretrained init')
     parser.add_argument('--epochs_per_unfreeze', type=int, default=1,
                         help='Number of epochs between unfreezing layers when doing gradual unfreezing')
+    parser.add_argument('--discriminative_finetune', action='store_true', default=False,
+                        help='Smaller LR for earlier layers during finetuning')
+    parser.add_argument('--discriminative_finetune_decay', type=float, default=0.4,
+                        help='Decay per param group when doing discriminative finetuning')
 
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
