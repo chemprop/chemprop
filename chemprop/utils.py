@@ -260,12 +260,12 @@ def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
         warmup_epochs, total_epochs, init_lr, max_lr, final_lr = [], [], [], [], []
         for i, param_group in enumerate(model.unfreeze_queue):
             lr_multiplier = args.discriminative_finetune_decay ** (len(model.unfreeze_queue) - 1 - i)  # earlier layers with smaller lr
-            params.append({'params': param_group.parameters(), 'lr': args.init_lr[0] * lr_multiplier, 'weight_decay': args.weight_decay[0]})
-            warmup_epochs.append(args.warmup_epochs[0])
+            params.append({'params': param_group.parameters(), 'lr': args.init_lr[-1] * lr_multiplier, 'weight_decay': args.weight_decay[-1]})
+            warmup_epochs.append(args.warmup_epochs[-1])
             total_epochs.append(args.epochs)
-            init_lr.append(args.init_lr[0] * lr_multiplier)
-            max_lr.append(args.max_lr[0] * lr_multiplier)
-            final_lr.append(args.final_lr[0] * lr_multiplier)
+            init_lr.append(args.init_lr[-1] * lr_multiplier)
+            max_lr.append(args.max_lr[-1] * lr_multiplier)
+            final_lr.append(args.final_lr[-1] * lr_multiplier)
         args.num_lrs = len(params)
         args.warmup_epochs, args.total_epochs, args.init_lr, args.max_lr, args.final_lr = \
                         warmup_epochs, total_epochs, init_lr, max_lr, final_lr
