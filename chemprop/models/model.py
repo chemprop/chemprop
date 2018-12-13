@@ -27,7 +27,7 @@ class MoleculeModel(nn.Module):
                 param.requires_grad = False
         
         if args.gradual_unfreezing:
-            self.create_unfreeze_queue()
+            self.create_unfreeze_queue(args)
 
     def create_ffn(self, args: Namespace):
         # Learning virtual edges
@@ -96,11 +96,17 @@ class MoleculeModel(nn.Module):
             self.kernel_output_layer = LearnedKernel(args)
         
         if args.gradual_unfreezing:
-            self.create_unfreeze_queue()
+            self.create_unfreeze_queue(args)
 
-    def create_unfreeze_queue(self, freeze=True):
+    def create_unfreeze_queue(self, args, freeze=True):
         if hasattr(self, 'encoder') and hasattr(self, 'ffn'):  # do this once encoder and ffn both initialized
-            self.unfreeze_queue = [self.encoder]
+            if args.diff_depth_weights:
+                self.unfreeze_queue = []
+                for depth in range(len(self.encoder.encoder.W_h[0])):
+                    for layer_per_depth in range(len(self.encoder.encoder.W_h)):
+                        self.unfreeze_queue.append(self.encoder.encoder.W_h[layer_per_depth][depth])
+            else:
+                self.unfreeze_queue = [self.encoder]
             for ffn_component in self.ffn:
                 if isinstance(ffn_component, nn.Linear):
                     self.unfreeze_queue.append(ffn_component)

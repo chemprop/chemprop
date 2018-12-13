@@ -258,7 +258,7 @@ def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
         ]
     elif args.discriminative_finetune:
         if not hasattr(model, 'unfreeze_queue'):
-            model.create_unfreeze_queue(freeze=False)
+            model.create_unfreeze_queue(args, freeze=False)
         params = []
         warmup_epochs, total_epochs, init_lr, max_lr, final_lr = [], [], [], [], []
         for i, param_group in enumerate(model.unfreeze_queue):
