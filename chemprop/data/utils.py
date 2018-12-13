@@ -201,6 +201,34 @@ def split_data(data: MoleculeDataset,
         raise ValueError('split_type "{}" not supported.'.format(args.split_type))
 
 
+def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
+    """
+    Determines the proportions of the different classes in the classification dataset.
+
+    :param data: A classification dataset
+    :return: A list of lists of class proportions. Each inner list contains the class proportions
+    for a task.
+    """
+    targets = data.targets()
+
+    # Filter out Nones
+    valid_targets = [[] for _ in range(data.num_tasks())]
+    for i in range(len(targets)):
+        for task_num in range(len(targets[i])):
+            if targets[i][task_num] is not None:
+                valid_targets[task_num].append(targets[i][task_num])
+
+    class_sizes = []
+    for task_targets in valid_targets:
+        # Make sure we're dealing with a binary classification task
+        assert list(np.unique(task_targets)) == [0, 1]
+
+        ones = np.count_nonzero(task_targets) / len(task_targets)
+        class_sizes.append([1 - ones, ones])
+
+    return class_sizes
+
+
 def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
     """Truncates outlier values in a regression dataset.
 

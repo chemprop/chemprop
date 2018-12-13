@@ -6,6 +6,7 @@ from typing import List
 
 import numpy as np
 from tensorboardX import SummaryWriter
+import torch
 from tqdm import trange
 import pickle
 from torch.optim.lr_scheduler import ExponentialLR
@@ -14,8 +15,8 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset, StandardScaler
-from chemprop.data.utils import get_data, get_desired_labels, get_task_names, split_data, truncate_outliers,\
-    load_prespecified_chunks
+from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data, \
+    truncate_outliers, load_prespecified_chunks
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count, compute_pnorm
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
@@ -58,6 +59,16 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+
+    if args.class_balance:
+        args.class_sizes = get_class_sizes(train_data)
+        debug('Class sizes')
+        for i, task_class_sizes in enumerate(args.class_sizes):
+            debug('{}: '.format(args.task_names[i]) +
+                  ', '.join('{}: {:.2f}%'.format(cls, size * 100) for cls, size in enumerate(task_class_sizes)))
+
+        class_batch_counts = torch.Tensor(args.class_sizes) * args.batch_size
+        args.class_weights = 1 / torch.Tensor(class_batch_counts)
 
     if args.save_smiles_splits:
         for dataset, name in [(train_data, 'train_smiles.csv'), (val_data, 'val_smiles.csv'), (test_data, 'test_smiles.csv')]:

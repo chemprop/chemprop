@@ -28,7 +28,7 @@ def get_data(path: str) -> List[Datapoint]:
             data.append(Datapoint(smiles=smiles, line=line))
 
     return data
-    
+
 
 def filter_by_scaffold(args: Namespace):
     print('Loading data')

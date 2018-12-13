@@ -202,6 +202,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--last_batch', action='store_true', default=False,
                         help='Whether to include the last batch in each training epoch even if'
                              'it\'s less than the batch size')
+    parser.add_argument('--class_balance', action='store_true', default=False,
+                        help='Whether to enforce class balance by reweighting the loss based on class size'
+                             '(for classification datasets only)')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -415,7 +418,8 @@ def modify_train_args(args: Namespace):
 
     del args.lr_scaler
 
-    assert args.ffn_num_layers >= 1
+    if args.dataset_type != 'kernel':
+        assert args.ffn_num_layers >= 1
 
     if args.ffn_hidden_size is None:
         args.ffn_hidden_size = args.hidden_size
@@ -437,6 +441,9 @@ def modify_train_args(args: Namespace):
             break
     else:
         args.prespecified_chunk_dir = None
+
+    if args.class_balance:
+        assert args.dataset_type == 'classification'
 
 
 def parse_hyper_opt_args() -> Namespace:

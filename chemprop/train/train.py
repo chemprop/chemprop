@@ -160,6 +160,17 @@ def train(model: nn.Module,
                 if args.dataset_type == 'bert_pretraining' and features_targets is not None:
                     features_targets = features_targets.cuda()
 
+            if args.class_balance:
+                class_weights = []
+                for task_num in range(data.num_tasks()):
+                    class_weights.append(args.class_weights[task_num][targets[:, task_num].long()])
+                class_weights = torch.stack(class_weights).t()  # num_molecules x num_tasks
+            else:
+                class_weights = torch.ones(targets.shape)
+
+            if args.cuda:
+                class_weights = class_weights.cuda()
+
             # Run model
             model.zero_grad()
             preds = model(batch, features_batch)
@@ -168,7 +179,7 @@ def train(model: nn.Module,
                 targets = targets.long()
                 loss = 0
                 for task in range(targets.size(1)):
-                    loss += loss_func(preds[:, task, :], targets[:, task]) * mask[:, task]  # for some reason cross entropy doesn't support multi target
+                    loss += loss_func(preds[:, task, :], targets[:, task]) * class_weights[:, task] * mask[:, task]  # for some reason cross entropy doesn't support multi target
                 loss = loss.sum() / mask.sum()
             else:
                 if args.dataset_type == 'unsupervised':
@@ -181,7 +192,7 @@ def train(model: nn.Module,
                     preds = preds.view(int(preds.size(0)/2), 2, preds.size(1))
                     preds = model.kernel_output_layer(preds)
 
-                loss = loss_func(preds, targets) * mask
+                loss = loss_func(preds, targets) * class_weights * mask
                 if args.predict_features_and_task:
                     loss = (loss.sum() + loss[:, :-args.features_size].sum() * (args.task_weight-1)) \
                                 / (mask.sum() + mask[:, :-args.features_size].sum() * (args.task_weight-1))

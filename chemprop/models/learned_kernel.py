@@ -3,6 +3,7 @@ from argparse import Namespace
 import torch
 import torch.nn as nn
 
+
 class LearnedKernel(nn.Module):
     def __init__(self, args: Namespace):
         super(LearnedKernel, self).__init__()
