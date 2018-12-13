@@ -32,7 +32,7 @@ def compute_pairwise_distances(x, y):
 
     # By making the 'inner' dimensions of the two matrices equal to 1 using broadcasting then we are essentially
     # subtracting every pair of rows of x and y
-    norm = lambda x:torch.sum(x * x, 1)
+    norm = lambda x: torch.sum(x * x, 1)
     return norm(x.unsqueeze(2) - y.t())
 
 
@@ -50,7 +50,7 @@ def gaussian_kernel_matrix(x, y, sigmas):
     dist = compute_pairwise_distances(x, y)
     s = torch.matmul(beta, dist.view(1, -1))
 
-    return(torch.sum(torch.exp(-s), 0)).view_as(dist)
+    return (torch.sum(torch.exp(-s), 0)).view_as(dist)
 
 
 def maximum_mean_discrepancy(x, y, kernel=gaussian_kernel_matrix):
@@ -84,7 +84,7 @@ class MMD(nn.Module):  # TODO(moe) can experiment with WGAN too - can try with b
             1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
             1, 5, 10, 15, 20, 25, 30, 35, 100,
             1e3, 1e4, 1e5, 1e6
-            ])
+        ])
         if args.cuda:
             self.sigmas = self.sigmas.cuda()
         self.gaussian_kernel = partial(gaussian_kernel_matrix, sigmas=self.sigmas)
@@ -92,8 +92,8 @@ class MMD(nn.Module):  # TODO(moe) can experiment with WGAN too - can try with b
     def forward(self, hs, ht):
         loss_value = maximum_mean_discrepancy(hs, ht, kernel=self.gaussian_kernel)
         return torch.clamp(loss_value, min=1e-4)  # torch.clamp(input, min, max, out=None) --> Tensor
-                                                  # This clamps all elements in input into the range [min, max] and returns a resulting tensor
-                                                  # new_val = 1e-4 if old_val < 1e-4; in this case, otherwise, new_val = old_val
+        # This clamps all elements in input into the range [min, max] and returns a resulting tensor
+        # new_val = 1e-4 if old_val < 1e-4; in this case, otherwise, new_val = old_val
 
 
 class HLoss(nn.Module):
@@ -103,7 +103,7 @@ class HLoss(nn.Module):
     def forward(self, x):
         # b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
         b = x * torch.log(x)
-        b[torch.isnan(b)] = 0 # defining 0 log 0 = 0
+        b[torch.isnan(b)] = 0  # defining 0 log 0 = 0
         b = -1.0 * b.sum()
         return b
 
@@ -111,14 +111,14 @@ class HLoss(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, args):
         super(Classifier, self).__init__()
-        modules = [ nn.Dropout(p=0.2),
-                    nn.ReLU(),
-                    nn.Linear(args.hidden_size, args.hidden_size),
-                    nn.Dropout(p=0.2),
-                    nn.ReLU(),
-                    nn.Linear(args.hidden_size, args.num_tasks)]
+        modules = [nn.Dropout(p=0.2),
+                   nn.ReLU(),
+                   nn.Linear(args.hidden_size, args.hidden_size),
+                   nn.Dropout(p=0.2),
+                   nn.ReLU(),
+                   nn.Linear(args.hidden_size, args.num_tasks)]
         if args.dataset_type == 'classification':
-            modules.append(nn.Sigmoid()) # Jiang said sigmoiding here is fine
+            modules.append(nn.Sigmoid())  # Jiang said sigmoiding here is fine
         self.net = nn.Sequential(*modules)
 
     def forward(self, x):
@@ -133,12 +133,14 @@ class MOE(nn.Module):
         self.classifiers = nn.ModuleList([Classifier(args) for _ in range(args.num_sources)])
         self.encoder = MPN(args)
         self.mmd = MMD(args)
-        self.Us = nn.ParameterList([nn.Parameter(torch.zeros((args.hidden_size, args.m_rank)), requires_grad=True) for _ in range(args.num_sources)])
-        #note zeros are replaced during initialization later
+        self.Us = nn.ParameterList(
+            [nn.Parameter(torch.zeros((args.hidden_size, args.m_rank)), requires_grad=True) for _ in
+             range(args.num_sources)])
+        # note zeros are replaced during initialization later
         if args.dataset_type == 'regression':
             self.mtl_criterion = nn.MSELoss(reduction='none')
             self.moe_criterion = nn.MSELoss(reduction='none')
-        elif args.dataset_type == 'classification': #this half untested
+        elif args.dataset_type == 'classification':  # this half untested
             self.mtl_criterion = nn.BCELoss(reduction='none')
             self.moe_criterion = nn.BCELoss(reduction='none')
         self.entropy_criterion = HLoss()
@@ -147,25 +149,25 @@ class MOE(nn.Module):
         self.lambda_entropy = args.lambda_entropy
 
         self.domain_encs = None
-    
+
     def mahalanobis_metric(self, p, mu, j):
         mahalanobis_distances_new = (p - mu).mm(self.Us[j].mm(self.Us[j].t())).mm((p - mu).t())
         mahalanobis_distances_new = mahalanobis_distances_new.diag().sqrt()
         return mahalanobis_distances_new
-    
+
     def forward(self, smiles, features=None):
         encodings = self.encoder(smiles)
         classifier_outputs = [self.classifiers[i](encodings) for i in range(self.num_sources)]
 
         source_ids = range(self.num_sources)
-        source_alphas = [-self.mahalanobis_metric(encodings, 
-                            self.domain_encs[i], i).unsqueeze(0)
-                            for i in source_ids]
-        source_alphas = F.softmax(torch.cat(source_alphas, dim=0), dim=0) # n_source x bs
-        output_moe = sum([ source_alphas[j].unsqueeze(1).repeat(1, 1) *
-                            classifier_outputs[j] for j in source_ids])
+        source_alphas = [-self.mahalanobis_metric(encodings,
+                                                  self.domain_encs[i], i).unsqueeze(0)
+                         for i in source_ids]
+        source_alphas = F.softmax(torch.cat(source_alphas, dim=0), dim=0)  # n_source x bs
+        output_moe = sum([source_alphas[j].unsqueeze(1).repeat(1, 1) *
+                          classifier_outputs[j] for j in source_ids])
         return output_moe
-    
+
     def compute_domain_encs(self, all_train_smiles):
         domain_encs = []
         for i in range(len(all_train_smiles)):
@@ -178,23 +180,23 @@ class MOE(nn.Module):
                 means_sum = means_sum.cuda()
             for train_batch in train_batches:
                 with torch.no_grad():
-                    batch_encs = self.encoder(train_batch) #bs x hidden
+                    batch_encs = self.encoder(train_batch)  # bs x hidden
                 means_sum += torch.mean(batch_encs, dim=0)
             domain_encs.append(means_sum / len(train_batches))
         self.domain_encs = domain_encs
-    
+
     def compute_minibatch_domain_encs(self, train_smiles):
         domain_encs = []
         for i in range(len(train_smiles)):
             train_batch = train_smiles[i]
             with torch.no_grad():
-                batch_encs = self.encoder(train_batch) #bs x hidden
+                batch_encs = self.encoder(train_batch)  # bs x hidden
             domain_encs.append(torch.mean(batch_encs, dim=0))
         self.domain_encs = domain_encs
-    
+
     def set_domain_encs(self, domain_encs):
         self.domain_encs = domain_encs
-    
+
     def get_domain_encs(self):
         return self.domain_encs
 
@@ -208,10 +210,10 @@ class MOE(nn.Module):
         '''
         if self.args.batch_domain_encs:
             self.compute_minibatch_domain_encs(train_smiles)
-        encodings = [self.encoder(source_batch) for source_batch in train_smiles] # each bs x hs
-        all_encodings = torch.cat(encodings, dim=0) # nsource*bs x hs
-        
-        classifier_outputs = [] # will be nsource x nsource of bs x hs
+        encodings = [self.encoder(source_batch) for source_batch in train_smiles]  # each bs x hs
+        all_encodings = torch.cat(encodings, dim=0)  # nsource*bs x hs
+
+        classifier_outputs = []  # will be nsource x nsource of bs x hs
         for i in range(len(encodings)):
             outputs = []
             for j in range(len(self.classifiers)):
@@ -241,18 +243,18 @@ class MOE(nn.Module):
         source_ids = range(len(encodings))
         for i in source_ids:
             support_ids = [x for x in source_ids if x != i]
-            support_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               self.domain_encs[j].detach(), j).unsqueeze(0)
-                                for j in support_ids] # n_source-1 of 1 x bs
+            support_alphas = [-self.mahalanobis_metric(encodings[i],
+                                                       self.domain_encs[j].detach(), j).unsqueeze(0)
+                              for j in support_ids]  # n_source-1 of 1 x bs
             support_alphas = F.softmax(torch.cat(support_alphas, dim=0), dim=0)
 
-            source_alphas = [-self.mahalanobis_metric(encodings[i], 
-                               self.domain_encs[j].detach(), j).unsqueeze(0)
-                                for j in source_ids] # n_source of 1 x bs
-            source_alphas = F.softmax(torch.cat(source_alphas, dim=0), dim=0) # n_source x bs
+            source_alphas = [-self.mahalanobis_metric(encodings[i],
+                                                      self.domain_encs[j].detach(), j).unsqueeze(0)
+                             for j in source_ids]  # n_source of 1 x bs
+            source_alphas = F.softmax(torch.cat(source_alphas, dim=0), dim=0)  # n_source x bs
 
-            output_moe_i = sum([ support_alphas[idx].unsqueeze(1).repeat(1, 1) *
-                                 classifier_outputs[i][j] for idx, j in enumerate(support_ids)])
+            output_moe_i = sum([support_alphas[idx].unsqueeze(1).repeat(1, 1) *
+                                classifier_outputs[i][j] for idx, j in enumerate(support_ids)])
 
             moe_loss_i = self.moe_criterion(output_moe_i,
                                             train_targets[i])
@@ -261,7 +263,7 @@ class MOE(nn.Module):
                 moe_loss_i = moe_loss_i.sum() / train_target_masks[i].sum()
                 moe_loss += moe_loss_i
             entropy_loss += self.entropy_criterion(source_alphas)
-        
+
         loss = (1.0 - self.lambda_moe) * mtl_loss + self.lambda_moe * moe_loss + self.lambda_critic * adv_loss + self.lambda_entropy * entropy_loss
 
         return loss
