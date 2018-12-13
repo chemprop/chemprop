@@ -1,4 +1,6 @@
 from argparse import Namespace
+from collections import defaultdict
+from functools import partial
 from typing import Dict, List, Union
 
 import torch
@@ -14,8 +16,20 @@ from chemprop.nn_utils import create_mask, index_select_ND, visualize_atom_atten
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int):
-        """Initializes the MPN."""
+    def __init__(self,
+                 args: Namespace,
+                 atom_fdim: int,
+                 bond_fdim: int,
+                 params: Dict[str, nn.Parameter] = None,
+                 param_prefix: str = 'encoder.encoder.'):
+        """Initializes the MPN.
+
+        :param args: Arguments.
+        :param atom_fdim: Atom feature dimension.
+        :param bond_fdim: Bond feature dimension.
+        :param params: Parameters to use instead of creating parameters.
+        :param param_prefix: Prefix of parameter names.
+        """
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
@@ -43,6 +57,7 @@ class MPNEncoder(nn.Module):
             self.output_size = args.vocab.output_size
             self.features_size = args.features_size
         self.args = args
+        self.param_prefix = param_prefix
 
         if args.features_only:
             return  # won't use any of the graph stuff in this case
@@ -56,6 +71,70 @@ class MPNEncoder(nn.Module):
 
         # Activation
         self.act_func = get_activation_function(args.activation)
+
+        # Using pre-specified parameters (for meta learning)
+        if params is not None:
+            params = defaultdict(lambda: None, params)  # nonexistent parameters default to None
+
+            self.cached_zero_vector = params[self.param_prefix + 'cached_zero_vector']
+            self.W_i = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_i.weight'],
+                               bias=params[self.param_prefix + 'W_i.bias'])
+            self.W_ma = [partial(F.linear,
+                                 weight=params[self.param_prefix + 'W_ma.{}.weight'.format(i)],
+                                 bias=params[self.param_prefix + 'W_ma.{}.bias'.format(i)])
+                         for i in range(self.num_heads)]
+            self.lve = partial(F.linear,
+                               weight=params[self.param_prefix + 'lve.weight'],
+                               bias=params[self.param_prefix + 'lve.bias'])
+            if self.diff_depth_weights:
+                self.W_h = [[partial(F.linear,
+                                     weight=params[self.param_prefix + 'W_h.{}.{}.weight'.format(i, j)],
+                                     bias=params[self.param_prefix + 'W_h.{}.{}.bias'.format(i, j)])
+                             for j in range(self.depth - 1)]
+                            for i in range(self.layers_per_message)]
+            else:
+                self.W_h = [partial(F.linear,
+                                    weight=params[self.param_prefix + 'W_h.{}.weight'.format(i)],
+                                    bias=params[self.param_prefix + 'W_h.{}.weight'.format(i)])
+                            for i in range(self.layers_per_message)]
+            self.W_ga1 = partial(F.linear,
+                                 weight=params[self.param_prefix + 'W_ga1.weight'],
+                                 bias=params[self.param_prefix + 'W_ga1.bias'])
+            self.W_ga2 = partial(F.linear,
+                                 weight=params[self.param_prefix + 'W_ga2.weight'],
+                                 bias=params[self.param_prefix + 'W_ga2.bias'])
+            self.W_master_in = partial(F.linear,
+                                       weight=params[self.param_prefix + 'W_master_in.weight'],
+                                       bias=params[self.param_prefix + 'W_master_in.bias'])
+            self.W_master_out = partial(F.linear,
+                                        weight=params[self.param_prefix + 'W_master_out.weight'],
+                                        bias=params[self.param_prefix + 'W_master_out.bias'])
+            self.W_o = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_o.weight'],
+                               bias=params[self.param_prefix + 'W_o.bias'])
+            self.W_s2s_a = partial(F.linear,
+                                   weight=params[self.param_prefix + 'W_s2s_a.weight'],
+                                   bias=params[self.param_prefix + 'W_s2s_a.bias'])
+            self.W_s2s_b = partial(F.linear,
+                                   weight=params[self.param_prefix + 'W_s2s_b.weight'],
+                                   bias=params[self.param_prefix + 'W_s2s_b.bias'])
+            if self.set2set:
+                raise ValueError('Setting params of LSTM not supported yet.')
+            self.W_a = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_a.weight'],
+                               bias=params[self.param_prefix + 'W_a.bias'])
+            self.W_b = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_b.weight'],
+                               bias=params[self.param_prefix + 'W_b.bias'])
+            self.W_v = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_v.weight'],
+                               bias=params[self.param_prefix + 'W_v.bias'])
+            self.W_f = partial(F.linear,
+                               weight=params[self.param_prefix + 'W_f.weight'],
+                               bias=params[self.param_prefix + 'W_f.bias'])
+
+            return
 
         # Cached zeros
         self.cached_zero_vector = nn.Parameter(torch.zeros(self.hidden_size), requires_grad=False)
@@ -78,10 +157,17 @@ class MPNEncoder(nn.Module):
         # Message passing
         if self.diff_depth_weights:
             # Different weight matrix for each depth
-            self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)]) for _ in range(self.layers_per_message)])
+            self.W_h = nn.ModuleList([
+                nn.ModuleList([
+                    nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias) for _ in range(self.depth - 1)
+                ]) for _ in range(self.layers_per_message)
+            ])
         else:
             # Shared weight matrix across depths (default)
-            self.W_h = nn.ModuleList([nn.ModuleList([nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1)) for _ in range(self.layers_per_message)])
+            self.W_h = nn.ModuleList([nn.ModuleList([
+                nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)] * (self.depth - 1))
+                for _ in range(self.layers_per_message)
+            ])
 
         if self.global_attention:
             self.W_ga1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
@@ -364,13 +450,14 @@ class MPN(nn.Module):
                  args: Namespace,
                  atom_fdim: int = None,
                  bond_fdim: int = None,
-                 graph_input: bool = False):
+                 graph_input: bool = False,
+                 params: Dict[str, nn.Parameter] = None):
         super(MPN, self).__init__()
         self.args = args
         self.atom_fdim = atom_fdim or get_atom_fdim(args)
         self.bond_fdim = bond_fdim or self.atom_fdim + get_bond_fdim(args)
         self.graph_input = graph_input
-        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim, params=params)
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],

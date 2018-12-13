@@ -1,6 +1,9 @@
 from argparse import Namespace
+from functools import partial
+from typing import Dict
 
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .gan import GAN
 from .jtnn import JTNN
@@ -14,13 +17,15 @@ class MoleculeModel(nn.Module):
     def __init__(self):
         super(MoleculeModel, self).__init__()
     
-    def create_encoder(self, args: Namespace):
+    def create_encoder(self, args: Namespace, params: Dict[str, nn.Parameter] = None):
         if args.jtnn:
+            if params is not None:
+                raise ValueError('Setting parameters not yeet supported for JTNN')
             self.encoder = JTNN(args)
         elif args.dataset_type == 'bert_pretraining':
-            self.encoder = MPN(args, graph_input=True)
+            self.encoder = MPN(args, graph_input=True, params=params)
         else:
-            self.encoder = MPN(args)
+            self.encoder = MPN(args, params=params)
         
         if args.freeze_encoder:
             for param in self.encoder.parameters():
@@ -29,7 +34,7 @@ class MoleculeModel(nn.Module):
         if args.gradual_unfreezing:
             self.create_unfreeze_queue(args)
 
-    def create_ffn(self, args: Namespace):
+    def create_ffn(self, args: Namespace, params: Dict[str, nn.Parameter] = None):
         # Learning virtual edges
         if args.learn_virtual_edges:
             args.lve_model = self.encoder  # to make this accessible during featurization, to select virtual edges
@@ -54,33 +59,45 @@ class MoleculeModel(nn.Module):
                 first_linear_dim += args.features_dim
         
         if args.mayr_layers:
+            if params is not None:
+                raise ValueError('Setting parameters not yet supported for mayer_layers')
+
             drop_layer = lambda p: MayrDropout(p)
             linear_layer = lambda input_dim, output_dim, p: MayrLinear(input_dim, output_dim, p)
         else:
             drop_layer = lambda p: nn.Dropout(p)
-            linear_layer = lambda input_dim, output_dim, p: nn.Linear(input_dim, output_dim)
+
+            def linear_layer(input_dim: int, output_dim: int, p: float, idx: int):
+                if params is not None:
+                    return partial(F.linear,
+                                   weight=params['ffn.{}.weight'.format(idx)],
+                                   bias=params['ffn.{}.bias'.format(idx)])
+                return nn.Linear(input_dim, output_dim)
 
         # Create FFN layers
+        idx = 1
         if args.ffn_num_layers == 1:
             ffn = [
                 drop_layer(args.ffn_input_dropout),
-                linear_layer(first_linear_dim, args.output_size, args.ffn_input_dropout)
+                linear_layer(first_linear_dim, args.output_size, args.ffn_input_dropout, idx)
             ]
         else:
             ffn = [
                 drop_layer(args.ffn_input_dropout),
-                linear_layer(first_linear_dim, args.ffn_hidden_size, args.ffn_input_dropout)
+                linear_layer(first_linear_dim, args.ffn_hidden_size, args.ffn_input_dropout, idx)
             ]
             for _ in range(args.ffn_num_layers - 2):
+                idx += 3
                 ffn.extend([
                     get_activation_function(args.activation),
                     drop_layer(args.ffn_dropout),
-                    linear_layer(args.ffn_hidden_size, args.ffn_hidden_size, args.ffn_dropout),
+                    linear_layer(args.ffn_hidden_size, args.ffn_hidden_size, args.ffn_dropout, idx),
                 ])
+            idx += 3
             ffn.extend([
                 get_activation_function(args.activation),
                 drop_layer(args.ffn_dropout),
-                linear_layer(args.ffn_hidden_size, args.output_size, args.ffn_dropout),
+                linear_layer(args.ffn_hidden_size, args.output_size, args.ffn_dropout, idx),
             ])
 
         # Classification
@@ -88,9 +105,7 @@ class MoleculeModel(nn.Module):
             ffn.append(nn.Sigmoid())
 
         # Combined model
-        ffn = nn.Sequential(*ffn)
-
-        self.ffn = ffn
+        self.ffn = nn.Sequential(*ffn)
 
         if args.dataset_type == 'kernel':
             self.kernel_output_layer = LearnedKernel(args)
@@ -127,11 +142,12 @@ class MoleculeModel(nn.Module):
         return self.ffn(self.encoder(*input))
 
 
-def build_model(args: Namespace) -> nn.Module:
+def build_model(args: Namespace, params: Dict[str, nn.Parameter] = None) -> nn.Module:
     """
     Builds a message passing neural network including final linear layers and initializes parameters.
 
     :param args: Arguments.
+    :param params: Parameters to use instead of creating parameters.
     :return: An nn.Module containing the MPN encoder along with final linear layers with parameters initialized.
     """
     # Regression with binning
@@ -146,6 +162,9 @@ def build_model(args: Namespace) -> nn.Module:
     args.output_size = output_size
 
     if args.moe:
+        if params is not None:
+            raise ValueError('Setting parameters not yet supported for MOE or GAN')
+
         model = MOE(args)
         if args.adversarial:
             model = GAN(args, prediction_model=model, encoder=model.encoder)
@@ -154,10 +173,13 @@ def build_model(args: Namespace) -> nn.Module:
         return model
 
     model = MoleculeModel()
-    model.create_encoder(args)
-    model.create_ffn(args)
+    model.create_encoder(args, params=params)
+    model.create_ffn(args, params=params)
 
     if args.adversarial:
+        if params is not None:
+            raise ValueError('Setting parameters not yet supported for GAN')
+
         model = GAN(args, prediction_model=model, encoder=model.encoder)
 
     initialize_weights(model)
