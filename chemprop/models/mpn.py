@@ -99,9 +99,9 @@ class MPNEncoder(nn.Module):
             else:
                 # TODO this option is currently broken; the params are None
                 self.W_h = [[partial(F.linear,
-                                    weight=params[self.param_prefix + 'W_h.{}.weight'.format(i)],
-                                    bias=params[self.param_prefix + 'W_h.{}.bias'.format(i)])
-                             for _ in range(self.depth - 1)]
+                                     weight=params[self.param_prefix + 'W_h.{}.{}.weight'.format(i, j)],
+                                     bias=params[self.param_prefix + 'W_h.{}.{}.bias'.format(i, j)])
+                             for j in range(self.depth - 1)]
                             for i in range(self.layers_per_message)]
             self.W_ga1 = partial(F.linear,
                                  weight=params[self.param_prefix + 'W_ga1.weight'],

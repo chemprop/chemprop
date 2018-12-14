@@ -237,26 +237,46 @@ class MoleculeDataset(Dataset):
                     d.bert_init()
 
         debug('Finished initializing targets and masks for bert')
-    
-    def maml_init(self):
+
+    def maml_init(self, task_indices: List[int]):
+        """Limits targets to those tasks which are specified and determines which tasks are known for which moleecules."""
+        # Eliminate targets that are not in task_indices because they belong to a different meta split
+        task_indices = set(task_indices)
+        for d in self.data:
+            d.targets = [t for i, t in enumerate(d.targets) if i in task_indices]
+
+        # Determine which tasks are known for which molecules and place in self.has_target_indices
         targets = self.targets()
         if len(targets) > 0 and targets[0] is not None:
-            self.has_target_indices = [[] for _ in range(len(targets[0]))]
+            self.has_target_indices = [[] for _ in range(self.num_tasks())]
             for i, t in enumerate(targets):
                 for j, label in enumerate(t):
                     if label is not None:
                         self.has_target_indices[j].append(i)
-        self.maml_initialized = True
-    
-    def sample_maml_task(self, args, task_idx, seed=None):
+
+    def sample_maml_task(self, args: Namespace, seed: int = None) -> Tuple['MoleculeDataset', 'MoleculeDataset', int]:
+        """
+        Samples a task for maml depending on the split. Returns train and test data for that task.
+
+        :param args: Arguments.
+        :param seed: Random seed for shuffling train and test data.
+        :return: A train MoleculeDataset and a test MoleculeDataset for a sampled task and the task index.
+        """
+        task_idx = random.randint(0, self.num_tasks() - 1)
+
         data_idx_with_label = self.has_target_indices[task_idx]
-        num_labels = len(data_idx_with_label)
+        half = len(data_idx_with_label) // 2
+        task_train_data, task_test_data = data_idx_with_label[:half], data_idx_with_label[half:]
+
         if seed is not None:
             random.seed(seed)
-        random.shuffle(deepcopy(data_idx_with_label))
-        task_train_data = [self.data[i] for i in data_idx_with_label[:int(min(num_labels/2, args.batch_size/2))]]
-        task_test_data = [self.data[i] for i in data_idx_with_label[int(min(num_labels/2, args.batch_size/2)):int(min(num_labels, args.batch_size))]]
-        return task_train_data, task_test_data
+        random.shuffle(task_train_data)
+        random.shuffle(task_test_data)
+
+        size = args.batch_size // 2
+        task_train_data, task_test_data = MoleculeDataset(task_train_data[:size]), MoleculeDataset(task_test_data[:size])
+
+        return task_train_data, task_test_data, task_idx
 
     def compound_names(self) -> List[str]:
         if len(self.data) == 0 or self.data[0].compound_name is None:
@@ -286,7 +306,7 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self.data]
 
-    def targets(self) -> Union[List[List[float]],
+    def targets(self, task_idx: int = None) -> Union[List[List[float]],
                                List[SparseNoneArray],
                                List[int],
                                Dict[str, Union[List[np.ndarray], List[int]]]]:
@@ -299,7 +319,12 @@ class MoleculeDataset(Dataset):
         if self.kernel:
             return [[self.kernel_func(*pair)] for pair in self.pairs()]
 
-        return [d.targets for d in self.data]
+        targets = [d.targets for d in self.data]
+
+        if task_idx is not None:
+            targets = [t[task_idx] for t in targets]
+
+        return targets
 
     def num_tasks(self) -> int:
         return self.data[0].num_tasks if len(self.data) > 0 else None
@@ -314,9 +339,8 @@ class MoleculeDataset(Dataset):
         return [m for d in self.data for m in d.mask]
 
     def shuffle(self, seed: int = None):
-        if hasattr(self, 'maml_initialized') and self.maml_initialized:
-            self.has_target_indices = None
-            self.maml_initialized = False
+        if self.args.maml:
+            return  # shuffling is done in sample_maml_task
 
         if seed is not None:
             random.seed(seed)

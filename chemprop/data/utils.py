@@ -149,6 +149,26 @@ def split_data(data: MoleculeDataset,
     """
     assert len(sizes) == 3 and sum(sizes) == 1
 
+    if args.maml:
+        train_data, val_data, test_data = deepcopy(data), deepcopy(data), deepcopy(data)
+
+        task_idxs = list(range(data.num_tasks()))
+        random.seed(seed)
+        random.shuffle(task_idxs)
+
+        train_size = int(sizes[0] * len(data))
+        train_val_size = int((sizes[0] + sizes[1]) * len(data))
+
+        train_task_idxs = task_idxs[:train_size]
+        val_task_idxs = task_idxs[train_size:train_val_size]
+        test_task_idxs = task_idxs[train_val_size:]
+
+        train_data.maml_init(train_task_idxs)
+        val_data.maml_init(val_task_idxs)
+        test_data.maml_init(test_task_idxs)
+
+        return train_data, val_data, test_data
+
     if args.split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately
         with open(args.folds_file, 'rb') as f:

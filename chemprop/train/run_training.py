@@ -60,15 +60,16 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
-    if args.class_balance:
-        args.class_sizes = get_class_sizes(train_data)
+    if args.dataset_type == 'classification':
+        class_sizes = get_class_sizes(train_data)
         debug('Class sizes')
-        for i, task_class_sizes in enumerate(args.class_sizes):
+        for i, task_class_sizes in enumerate(class_sizes):
             debug('{}: '.format(args.task_names[i]) +
                   ', '.join('{}: {:.2f}%'.format(cls, size * 100) for cls, size in enumerate(task_class_sizes)))
 
-        class_batch_counts = torch.Tensor(args.class_sizes) * args.batch_size
-        args.class_weights = 1 / torch.Tensor(class_batch_counts)
+        if args.class_balance:
+            class_batch_counts = torch.Tensor(class_sizes) * args.batch_size
+            args.class_weights = 1 / torch.Tensor(class_batch_counts)
 
     if args.save_smiles_splits:
         for dataset, name in [(train_data, 'train_smiles.csv'), (val_data, 'val_smiles.csv'), (test_data, 'test_smiles.csv')]:
@@ -89,10 +90,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
     
-    if args.maml:
-        val_data.maml_init()
-        test_data.maml_init()
-
     debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
         len(train_data),
@@ -150,8 +147,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.maml:  # TODO refactor
         test_targets = []
         for task_idx in range(len(data.data[0].targets)):
-            _, task_test_data = test_data.sample_maml_task(args, task_idx, seed=0)
-            task_test_data = MoleculeDataset(task_test_data)
+            _, task_test_data, _ = test_data.sample_maml_task(args, seed=0)
             test_targets += task_test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
@@ -163,6 +159,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         sum_test_preds = np.zeros((len(test_targets), args.num_tasks))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
+
     if args.maml:
         sum_test_preds = None  # annoying to determine exact size; will initialize later
 

@@ -281,6 +281,11 @@ def add_train_args(parser: ArgumentParser):
                         help='Use model agnostic meta learning')
     parser.add_argument('--maml_lr', type=float, default=0.01,
                         help='MAML SGD lr')
+    parser.add_argument('--maml_batches_per_epoch', type=int, default=5,
+                        help='Number of batches of maml to perform during each training epoch')
+    parser.add_argument('--maml_batch_size', type=int, default=5,
+                        help='maml batch size, i.e. number of tasks to sample, train, and compute test loss on'
+                             'before summing test losses to update meta weights')
     parser.add_argument('--moe', action='store_true', default=False,
                         help='Use mixture of experts model')
     parser.add_argument('--cluster_split_seed', type=int, default=0,
