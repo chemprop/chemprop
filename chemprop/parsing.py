@@ -277,6 +277,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Multiplier for GAN generator learning rate')
     parser.add_argument('--gan_use_scheduler', action='store_true', default=False,
                         help='Use noam scheduler for GAN optimizers')
+    parser.add_argument('--maml', action='store_true', default=False,
+                        help='Use model agnostic meta learning')
+    parser.add_argument('--maml_lr', type=float, default=0.01,
+                        help='MAML SGD lr')
     parser.add_argument('--moe', action='store_true', default=False,
                         help='Use mixture of experts model')
     parser.add_argument('--cluster_split_seed', type=int, default=0,

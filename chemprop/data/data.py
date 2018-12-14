@@ -236,6 +236,24 @@ class MoleculeDataset(Dataset):
                     d.bert_init()
 
         debug('Finished initializing targets and masks for bert')
+    
+    def maml_init(self):
+        targets = self.targets()
+        if len(targets) > 0 and targets[0] is not None:
+            self.has_target_indices = [[] for _ in range(len(targets[0]))]
+            for i, t in enumerate(targets):
+                for j, label in enumerate(t):
+                    if label is not None:
+                        self.has_target_indices[j].append(i)
+        self.maml_initialized = True
+    
+    def sample_maml_task(self, args, task_idx):
+        data_idx_with_label = self.has_target_indices[task_idx]
+        num_labels = len(data_idx_with_label)
+        random.shuffle(data_idx_with_label)  # this shuffle is ok
+        task_train_data = [self.data[i] for i in data_idx_with_label[:int(min(num_labels/2, args.batch_size/2))]]
+        task_test_data = [self.data[i] for i in data_idx_with_label[int(min(num_labels/2, args.batch_size/2)):int(min(num_labels, args.batch_size))]]
+        return task_train_data, task_test_data
 
     def compound_names(self) -> List[str]:
         if len(self.data) == 0 or self.data[0].compound_name is None:
@@ -293,6 +311,10 @@ class MoleculeDataset(Dataset):
         return [m for d in self.data for m in d.mask]
 
     def shuffle(self, seed: int = None):
+        if hasattr(self, 'maml_initialized') and self.maml_initialized:
+            self.has_target_indices = None
+            self.maml_initialized = False
+
         if seed is not None:
             random.seed(seed)
 

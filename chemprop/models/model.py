@@ -10,7 +10,7 @@ from .jtnn import JTNN
 from .moe import MOE
 from .mpn import MPN
 from .learned_kernel import LearnedKernel
-from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear
+from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear, MAMLLinear
 
 
 class MoleculeModel(nn.Module):
@@ -69,7 +69,7 @@ class MoleculeModel(nn.Module):
 
             def linear_layer(input_dim: int, output_dim: int, p: float, idx: int):
                 if params is not None:
-                    return partial(F.linear,
+                    return MAMLLinear(
                                    weight=params['ffn.{}.weight'.format(idx)],
                                    bias=params['ffn.{}.bias'.format(idx)])
                 return nn.Linear(input_dim, output_dim)
@@ -159,6 +159,8 @@ def build_model(args: Namespace, params: Dict[str, nn.Parameter] = None) -> nn.M
         output_size = args.ffn_hidden_size  # there will be another output layer later, for the pair of encodings
     else:
         output_size = args.num_tasks
+    if args.maml:
+        output_size = 1
     args.output_size = output_size
 
     if args.moe:

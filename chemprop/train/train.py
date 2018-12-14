@@ -12,10 +12,12 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 from tqdm import trange, tqdm
 import pickle
+from copy import deepcopy
 
 from chemprop.data import MoleculeDataset
 from chemprop.features import featurization, mol2graph
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
+from chemprop.models import build_model
 
 
 def train(model: nn.Module,
@@ -112,6 +114,11 @@ def train(model: nn.Module,
             d.shuffle()
             train_smiles.append(d.smiles())
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
+    elif args.maml:
+        num_iters = len(data.data[0].targets)  # num distinct tasks
+        data.maml_init()  # get indices of data points with labels for each task. should not shuffle after.
+        task_idxs = range(num_iters)
+        random.shuffle(task_idxs)  # shuffle order of tasks
     else:
         num_iters = len(data) if args.last_batch else len(data) // args.batch_size * args.batch_size
 
@@ -131,6 +138,20 @@ def train(model: nn.Module,
 
             loss_sum += loss.item()
             iter_count += len(batch)
+        elif args.maml:
+            task_idx = task_idxs[i]
+            task_train_data, task_test_data = data.sample_maml_task(args, task_idx)
+            task_train_data, task_test_data = MoleculeDataset(task_train_data), MoleculeDataset(task_test_data)
+            mol_batch = task_test_data
+            smiles_batch, features_batch, target_batch = task_train_data.smiles(), task_train_data.features(), [t[task_idx] for t in task_train_data.targets()]
+            # no mask since we only picked data points that have the desired target
+            targets = torch.Tensor([[t] for t in target_batch])
+            if next(model.parameters()).is_cuda:
+                targets = targets.cuda()
+            model.zero_grad()
+            preds = model(smiles_batch, features_batch)
+            loss = loss_func(preds, targets)
+            loss = loss.sum() / len(smiles_batch)
         else:
             # Prepare batch
             if not args.last_batch and i + args.batch_size > len(data):
@@ -210,6 +231,28 @@ def train(model: nn.Module,
         if args.max_grad_norm is not None:
             clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
+        if args.maml:
+            params = {name: param for name, param in model.named_parameters()}
+            for name in params.keys():
+                if params[name].grad is None:
+                    params[name] = params[name] + torch.zeros(params[name].size()).to(params[name])
+                else:
+                    params[name] = params[name] - args.maml_lr * params[name].grad.data
+            model.zero_grad()
+            model_prime = build_model(args=args, params=params)
+            smiles_batch, features_batch, target_batch = task_test_data.smiles(), task_test_data.features(), [t[task_idx] for t in task_test_data.targets()]
+            # no mask since we only picked data points that have the desired target
+            targets = torch.Tensor([[t] for t in target_batch])
+            if next(model_prime.parameters()).is_cuda:
+                targets = targets.cuda()
+            model_prime.zero_grad()
+            preds = model_prime(smiles_batch, features_batch)
+            loss = loss_func(preds, targets)
+            loss = loss.sum() / len(smiles_batch)
+            loss_sum += loss.item()
+            iter_count += len(smiles_batch)  # TODO check that this makes sense, but it's just for display
+            loss.backward()
+        
         optimizer.step()
 
         if args.adjust_weight_decay:

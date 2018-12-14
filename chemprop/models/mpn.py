@@ -80,13 +80,16 @@ class MPNEncoder(nn.Module):
             self.W_i = partial(F.linear,
                                weight=params[self.param_prefix + 'W_i.weight'],
                                bias=params[self.param_prefix + 'W_i.bias'])
-            self.W_ma = [partial(F.linear,
-                                 weight=params[self.param_prefix + 'W_ma.{}.weight'.format(i)],
-                                 bias=params[self.param_prefix + 'W_ma.{}.bias'.format(i)])
-                         for i in range(self.num_heads)]
-            self.lve = partial(F.linear,
-                               weight=params[self.param_prefix + 'lve.weight'],
-                               bias=params[self.param_prefix + 'lve.bias'])
+            if self.message_attention:
+                self.num_heads = self.message_attention_heads
+                self.W_ma = [partial(F.linear,
+                                    weight=params[self.param_prefix + 'W_ma.{}.weight'.format(i)],
+                                    bias=params[self.param_prefix + 'W_ma.{}.bias'.format(i)])
+                            for i in range(self.num_heads)]
+            if args.learn_virtual_edges:
+                self.lve = partial(F.linear,
+                                weight=params[self.param_prefix + 'lve.weight'],
+                                bias=params[self.param_prefix + 'lve.bias'])
             if self.diff_depth_weights:
                 self.W_h = [[partial(F.linear,
                                      weight=params[self.param_prefix + 'W_h.{}.{}.weight'.format(i, j)],
@@ -94,9 +97,11 @@ class MPNEncoder(nn.Module):
                              for j in range(self.depth - 1)]
                             for i in range(self.layers_per_message)]
             else:
-                self.W_h = [partial(F.linear,
+                # TODO this option is currently broken; the params are None
+                self.W_h = [[partial(F.linear,
                                     weight=params[self.param_prefix + 'W_h.{}.weight'.format(i)],
-                                    bias=params[self.param_prefix + 'W_h.{}.weight'.format(i)])
+                                    bias=params[self.param_prefix + 'W_h.{}.bias'.format(i)])
+                             for _ in range(self.depth - 1)]
                             for i in range(self.layers_per_message)]
             self.W_ga1 = partial(F.linear,
                                  weight=params[self.param_prefix + 'W_ga1.weight'],
@@ -230,7 +235,7 @@ class MPNEncoder(nn.Module):
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
-        if next(self.parameters()).is_cuda:
+        if self.args.cuda or next(self.parameters()).is_cuda:
             f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
 
         if self.learn_virtual_edges:

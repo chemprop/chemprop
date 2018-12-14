@@ -8,6 +8,7 @@ from rdkit import Chem
 from rdkit.Chem.Draw import SimilarityMaps
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import trange
@@ -340,6 +341,16 @@ class GraphGRU(nn.Module):
             h = h * mask
 
         return h
+
+
+class MAMLLinear(nn.Module):
+    def __init__(self, weight, bias):
+        super(MAMLLinear, self).__init__()
+        self.weight = nn.Parameter(weight)
+        self.bias = nn.Parameter(bias)
+
+    def forward(self, inp):
+        return F.linear(inp, weight=self.weight, bias=self.bias)
 
 
 class MayrDropout(nn.Module):
