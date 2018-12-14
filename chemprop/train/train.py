@@ -116,6 +116,8 @@ def train(model: nn.Module,
         num_iters = min(len(test_smiles), min([len(d) for d in data]))
     elif args.maml:
         num_iters = args.maml_batches_per_epoch * args.maml_batch_size
+        model.zero_grad()
+        maml_sum_loss = 0
     else:
         num_iters = len(data) if args.last_batch else len(data) // args.batch_size * args.batch_size
 
@@ -145,10 +147,14 @@ def train(model: nn.Module,
             targets = torch.Tensor(target_batch).unsqueeze(1)
             if next(model.parameters()).is_cuda:
                 targets = targets.cuda()
-            model.zero_grad()
             preds = model(smiles_batch, features_batch)
             loss = loss_func(preds, targets)
             loss = loss.sum() / len(smiles_batch)
+            grad = torch.autograd.grad(loss, [p for p in model.parameters() if p.requires_grad])
+            theta = [p for p in model.named_parameters() if p[1].requires_grad]  # comes in same order as grad
+            theta_prime = {p[0]: p[1] - args.maml_lr * grad[i] for i, p in enumerate(theta)}
+            for name, nongrad_param in [p for p in model.named_parameters() if not p[1].requires_grad]:
+                theta_prime[name] = nongrad_param + torch.zeros(nongrad_param.size()).to(nongrad_param)
         else:
             # Prepare batch
             if not args.last_batch and i + args.batch_size > len(data):
@@ -223,20 +229,8 @@ def train(model: nn.Module,
             loss_sum += loss.item()
             iter_count += len(mol_batch)
 
-        loss.backward()
-
-        if args.max_grad_norm is not None:
-            clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
         if args.maml:
-            params = {name: param for name, param in model.named_parameters()}
-            for name in params.keys():
-                if params[name].grad is None:
-                    params[name] = params[name] + torch.zeros(params[name].size()).to(params[name])
-                else:
-                    params[name] = params[name] - args.maml_lr * params[name].grad.data
-            model.zero_grad()
-            model_prime = build_model(args=args, params=params)
+            model_prime = build_model(args=args, params=theta_prime)
             smiles_batch, features_batch, target_batch = task_test_data.smiles(), task_test_data.features(), [t[task_idx] for t in task_test_data.targets()]
             # no mask since we only picked data points that have the desired target
             targets = torch.Tensor([[t] for t in target_batch])
@@ -248,13 +242,17 @@ def train(model: nn.Module,
             loss = loss.sum() / len(smiles_batch)
             loss_sum += loss.item()
             iter_count += len(smiles_batch)  # TODO check that this makes sense, but it's just for display
-            loss.backward()
-
-        if not args.maml or i % args.maml_batch_size == args.maml_batch_size - 1:
-            optimizer.step()
-            # TODO: clear gradients
+            maml_sum_loss += loss
+            if i % args.maml_batch_size == args.maml_batch_size - 1:
+                maml_sum_loss.backward()
+                optimizer.step()
+                model.zero_grad()
+                maml_sum_loss = 0
         else:
-            pass  # TODO: accumulate gradients
+            loss.backward()
+            if args.max_grad_norm is not None:
+                clip_grad_norm_(model.parameters(), args.max_grad_norm)
+            optimizer.step()
 
         if args.adjust_weight_decay:
             current_pnorm = compute_pnorm(model)

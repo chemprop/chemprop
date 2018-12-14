@@ -63,18 +63,16 @@ def predict(model: nn.Module,
             intermediate_preds = model(batch, features_batch)
             loss = get_loss_func(args)(intermediate_preds, targets)
             loss = loss.sum() / len(batch)
-            loss.backward()
-            params = {name: param for name, param in model.named_parameters()}
-            for name in params.keys():
-                if params[name].grad is None:
-                    params[name] = params[name] + torch.zeros(params[name].size()).to(params[name])
-                else:
-                    params[name] = params[name] - args.maml_lr * params[name].grad.data
-            model_prime = build_model(args=args, params=params)
+            grad = torch.autograd.grad(loss, [p for p in model.parameters() if p.requires_grad])
+            theta = [p for p in model.named_parameters() if p[1].requires_grad]  # comes in same order as grad
+            theta_prime = {p[0]: p[1] - args.maml_lr * grad[i] for i, p in enumerate(theta)}
+            for name, nongrad_param in [p for p in model.named_parameters() if not p[1].requires_grad]:
+                theta_prime[name] = nongrad_param + torch.zeros(nongrad_param.size()).to(nongrad_param)
+            model_prime = build_model(args=args, params=theta_prime)
             smiles_batch, features_batch, targets_batch = task_test_data.smiles(), task_test_data.features(), task_test_data.targets(task_idx)
             # no mask since we only picked data points that have the desired target
-            model_prime.zero_grad()
-            batch_preds = model_prime(smiles_batch, features_batch)
+            with torch.no_grad():
+                batch_preds = model_prime(smiles_batch, features_batch)
             full_targets.extend([[t] for t in targets_batch])
         else:
             with torch.no_grad():
