@@ -142,7 +142,7 @@ def train(model: nn.Module,
             mol_batch = task_test_data
             smiles_batch, features_batch, target_batch = task_train_data.smiles(), task_train_data.features(), task_train_data.targets(task_idx)
             # no mask since we only picked data points that have the desired target
-            targets = torch.Tensor(target_batch)
+            targets = torch.Tensor(target_batch).unsqueeze(1)
             if next(model.parameters()).is_cuda:
                 targets = targets.cuda()
             model.zero_grad()

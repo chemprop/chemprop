@@ -156,8 +156,8 @@ def split_data(data: MoleculeDataset,
         random.seed(seed)
         random.shuffle(task_idxs)
 
-        train_size = int(sizes[0] * len(data))
-        train_val_size = int((sizes[0] + sizes[1]) * len(data))
+        train_size = int(sizes[0] * data.num_tasks())
+        train_val_size = int((sizes[0] + sizes[1]) * data.num_tasks())
 
         train_task_idxs = task_idxs[:train_size]
         val_task_idxs = task_idxs[train_size:train_val_size]

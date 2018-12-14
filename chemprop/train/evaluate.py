@@ -91,20 +91,6 @@ def evaluate(model: nn.Module,
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list with the score for each task based on `metric_func`.
     """
-    if args.maml:
-        smiles, targets = [], []
-        for task_idx in range(len(data.data[0].targets)):
-            _, task_test_data = data.sample_maml_task(args, task_idx, seed=0)
-            task_test_data = MoleculeDataset(task_test_data)
-            smiles += task_test_data.smiles()
-            targets += task_test_data.targets()
-    else:
-        smiles, targets = data.smiles(), data.targets()
-
-    if args.dataset_type == 'bert_pretraining':
-        # Only predict targets that are masked out
-        targets['vocab'] = [target if mask == 0 else None for target, mask in zip(targets['vocab'], data.mask())]
-
     preds = predict(
         model=model,
         data=data,
@@ -112,6 +98,14 @@ def evaluate(model: nn.Module,
         scaler=scaler,
         bert_save_memory=True
     )
+
+    if args.maml:
+        preds, targets = preds  # in this case the targets are determined by the tasks sampled during prediction
+    else:
+        targets = data.targets()
+        if args.dataset_type == 'bert_pretraining':
+            # Only predict targets that are masked out
+            targets['vocab'] = [target if mask == 0 else None for target, mask in zip(targets['vocab'], data.mask())]
 
     results = evaluate_predictions(
         preds=preds,

@@ -34,17 +34,16 @@ def predict(model: nn.Module,
         features_preds = []
 
     if args.maml:
-        num_iters, iter_step = len(data.data[0].targets), 1
+        num_iters, iter_step = data.num_tasks() * args.maml_batches_per_epoch, 1
+        full_targets = []
     else:
         num_iters, iter_step = len(data), args.batch_size
     for i in range(0, num_iters, iter_step):
         if args.maml:
-            task_idx = i  # no need to shuffle since order doesn't matter for eval
-            task_train_data, task_test_data = data.sample_maml_task(args, task_idx, seed=0)
-            task_train_data, task_test_data = MoleculeDataset(task_train_data), MoleculeDataset(task_test_data)
+            task_train_data, task_test_data, task_idx = data.sample_maml_task(args, seed=0)
             mol_batch = task_test_data
-            smiles_batch, features_batch, targets_batch = task_train_data.smiles(), task_train_data.features(), task_train_data.targets()
-            targets = torch.Tensor([[t[task_idx]] for t in targets_batch])
+            smiles_batch, features_batch, targets_batch = task_train_data.smiles(), task_train_data.features(), task_train_data.targets(task_idx)
+            targets = torch.Tensor(targets_batch).unsqueeze(1)
             if args.cuda:
                 targets = targets.cuda()
         else:
@@ -72,10 +71,11 @@ def predict(model: nn.Module,
                 else:
                     params[name] = params[name] - args.maml_lr * params[name].grad.data
             model_prime = build_model(args=args, params=params)
-            smiles_batch, features_batch = task_test_data.smiles(), task_test_data.features()
+            smiles_batch, features_batch, targets_batch = task_test_data.smiles(), task_test_data.features(), task_test_data.targets(task_idx)
             # no mask since we only picked data points that have the desired target
             model_prime.zero_grad()
             batch_preds = model_prime(smiles_batch, features_batch)
+            full_targets.extend([[t] for t in targets_batch])
         else:
             with torch.no_grad():
                 batch_preds = model(batch, features_batch)
@@ -115,4 +115,8 @@ def predict(model: nn.Module,
             'vocab': preds
         }
 
+    if args.maml:
+        # return the task targets here to guarantee alignment;
+        # there's probably no reasonable scenario where we'd use MAML directly to predict something that's actually unknown
+        return preds, full_targets
     return preds

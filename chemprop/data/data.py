@@ -98,10 +98,15 @@ class MoleculeDatapoint:
     def set_features(self, features: np.ndarray):
         self.features = features
         self.recreate_targets()
+    
+    def num_tasks(self):
+        if self.args is not None and self.args.dataset_type in ['unsupervised', 'bert_pretraining', 'kernel']:
+            return 1  # TODO could try doing "multitask" with multiple different clusters?
+        else:
+            return len(self.targets) if self.targets is not None else 1
 
     def recreate_targets(self):
         if self.args is not None and self.args.dataset_type in ['unsupervised', 'bert_pretraining', 'kernel']:
-            self.num_tasks = 1  # TODO could try doing "multitask" with multiple different clusters?
             self.targets = None
         elif self.predict_features_and_task:
             self.targets = np.concatenate([np.array(self.task_targets), self.features])
@@ -109,8 +114,6 @@ class MoleculeDatapoint:
             self.targets = self.features
         else:
             self.targets = self.task_targets
-
-        self.num_tasks = len(self.targets) if self.targets is not None else 1
 
         if self.sparse:
             self.targets = SparseNoneArray(self.targets)
@@ -274,7 +277,9 @@ class MoleculeDataset(Dataset):
         random.shuffle(task_test_data)
 
         size = args.batch_size // 2
-        task_train_data, task_test_data = MoleculeDataset(task_train_data[:size]), MoleculeDataset(task_test_data[:size])
+        task_train_data, task_test_data = \
+                    MoleculeDataset([self.data[i] for i in task_train_data[:size]]), \
+                    MoleculeDataset([self.data[i] for i in task_test_data[:size]])
 
         return task_train_data, task_test_data, task_idx
 
@@ -327,7 +332,7 @@ class MoleculeDataset(Dataset):
         return targets
 
     def num_tasks(self) -> int:
-        return self.data[0].num_tasks if len(self.data) > 0 else None
+        return self.data[0].num_tasks() if len(self.data) > 0 else None
 
     def features_size(self) -> int:
         return len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
