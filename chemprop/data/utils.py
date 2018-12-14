@@ -147,7 +147,7 @@ def split_data(data: MoleculeDataset,
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
-    assert len(sizes) == 3, sum(sizes) == 1
+    assert len(sizes) == 3 and sum(sizes) == 1
 
     if args.split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately
@@ -189,11 +189,12 @@ def split_data(data: MoleculeDataset,
     elif args.split_type == 'random':
         data.shuffle(seed=seed)
 
-        train_size, val_size = [int(size * len(data)) for size in sizes[:2]]
+        train_size = int(sizes[0] * len(data))
+        train_val_size = int((sizes[0] + sizes[1]) * len(data))
 
         train = data[:train_size]
-        val = data[train_size:train_size + val_size]
-        test = data[train_size + val_size:]
+        val = data[train_size:train_val_size]
+        test = data[train_val_size:]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 

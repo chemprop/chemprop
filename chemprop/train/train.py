@@ -126,9 +126,9 @@ def train(model: nn.Module,
         if args.moe:
             if not args.batch_domain_encs:
                 model.compute_domain_encs(train_smiles)  # want to recompute every batch
-            batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
+            mol_batch = [MoleculeDataset(d[i:i + args.batch_size]) for d in data]
             train_batch, train_targets = [], []
-            for b in batch:
+            for b in mol_batch:
                 tb, tt = b.smiles(), b.targets()
                 train_batch.append(tb)
                 train_targets.append(tt)
@@ -137,7 +137,7 @@ def train(model: nn.Module,
             model.zero_grad()
 
             loss_sum += loss.item()
-            iter_count += len(batch)
+            iter_count += len(mol_batch)
         elif args.maml:
             task_idx = task_idxs[i]
             task_train_data, task_test_data = data.sample_maml_task(args, task_idx)
