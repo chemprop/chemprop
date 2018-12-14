@@ -124,7 +124,7 @@ def get_data(path: str,
 
             if smiles in skip_smiles:
                 continue
-            
+
             lines.append(line)
 
             if len(lines) >= max_data_size:
@@ -260,7 +260,7 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
     class_sizes = []
     for task_targets in valid_targets:
         # Make sure we're dealing with a binary classification task
-        assert list(np.unique(task_targets)) == [0, 1]
+        assert set(np.unique(task_targets)) <= {0, 1}
 
         ones = np.count_nonzero(task_targets) / len(task_targets)
         class_sizes.append([1 - ones, ones])
