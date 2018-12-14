@@ -117,7 +117,7 @@ def train(model: nn.Module,
     elif args.maml:
         num_iters = len(data.data[0].targets)  # num distinct tasks
         data.maml_init()  # get indices of data points with labels for each task. should not shuffle after.
-        task_idxs = range(num_iters)
+        task_idxs = list(range(num_iters))
         random.shuffle(task_idxs)  # shuffle order of tasks
     else:
         num_iters = len(data) if args.last_batch else len(data) // args.batch_size * args.batch_size
