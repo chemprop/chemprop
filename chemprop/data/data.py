@@ -5,6 +5,7 @@ import math
 from multiprocessing import Pool
 import random
 from typing import Callable, Dict, List, Tuple, Union, Set, FrozenSet
+from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
@@ -247,10 +248,12 @@ class MoleculeDataset(Dataset):
                         self.has_target_indices[j].append(i)
         self.maml_initialized = True
     
-    def sample_maml_task(self, args, task_idx):
+    def sample_maml_task(self, args, task_idx, seed=None):
         data_idx_with_label = self.has_target_indices[task_idx]
         num_labels = len(data_idx_with_label)
-        random.shuffle(data_idx_with_label)  # this shuffle is ok
+        if seed is not None:
+            random.seed(seed)
+        random.shuffle(deepcopy(data_idx_with_label))
         task_train_data = [self.data[i] for i in data_idx_with_label[:int(min(num_labels/2, args.batch_size/2))]]
         task_test_data = [self.data[i] for i in data_idx_with_label[int(min(num_labels/2, args.batch_size/2)):int(min(num_labels, args.batch_size))]]
         return task_train_data, task_test_data

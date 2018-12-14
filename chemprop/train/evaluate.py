@@ -90,7 +90,15 @@ def evaluate(model: nn.Module,
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list with the score for each task based on `metric_func`.
     """
-    smiles, targets = data.smiles(), data.targets()
+    if args.maml:
+        smiles, targets = [], []
+        for task_idx in range(len(data.data[0].targets)):
+            _, task_test_data = data.sample_maml_task(args, task_idx, seed=0)
+            task_test_data = MoleculeDataset(task_test_data)
+            smiles += task_test_data.smiles()
+            targets += task_test_data.targets()
+    else:
+        smiles, targets = data.smiles(), data.targets()
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out

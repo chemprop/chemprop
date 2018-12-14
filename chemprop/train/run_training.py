@@ -88,6 +88,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
+    
+    if args.maml:
+        val_data.maml_init()
+        test_data.maml_init()
 
     debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
         len(data),
@@ -153,6 +157,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         sum_test_preds = np.zeros((len(test_targets), args.num_tasks))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
+    if args.maml:
+        sum_test_preds = None  # annoying to determine exact size; will initialize later
 
     if args.dataset_type == 'bert_pretraining':
         # Only predict targets that are masked out
@@ -314,6 +320,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 metric_func=metric_func,
                 args=args
             )
+
+        if args.maml:
+            if sum_test_preds is None:
+                sum_test_preds = np.zeros(np.array(test_preds).shape)
 
         if args.dataset_type == 'bert_pretraining':
             if test_preds['features'] is not None:
