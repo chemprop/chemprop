@@ -134,6 +134,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--sequential', action='store_true', default=False,
                         help='Whether to run processes sequentially instead of in parallel'
                              '(currently only effects vocabulary for bert_pretraining)')
+    parser.add_argument('--skip_smiles_path', type=str,
+                        help='Path to a data .csv containing smiles that should NOT be trained on')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,

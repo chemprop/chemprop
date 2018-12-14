@@ -94,24 +94,42 @@ def get_data(path: str,
     """
     if args is not None:
         max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
+        skip_smiles_path = args.skip_smiles_path
 
         if args.features_path:
             features_data = load_features(args.features_path)
         else:
             features_data = None
     else:
-        features_data = None
+        features_data = skip_smiles_path = None
         max_data_size = max_data_size or float('inf')
 
+    # Load smiles to skip
+    if skip_smiles_path is not None:
+        with open(skip_smiles_path) as f:
+            f.readline()  # skip header
+            skip_smiles = {line.split(',')[0] for line in f}
+    else:
+        skip_smiles = set()
+
+    # Load data
     with open(path) as f:
         f.readline()  # skip header
         lines = []
         for line in f:
-            if line.strip().split(',')[0] == '':
+            smiles = line.split(',')[0]
+
+            if smiles == '':
                 line = 'C' + line  # bandage for if your dataset has an empty line on rare occasions
+
+            if smiles in skip_smiles:
+                continue
+            
             lines.append(line)
+
             if len(lines) >= max_data_size:
                 break
+
         data = MoleculeDataset([
             MoleculeDatapoint(
                 line=line.strip().split(','),
