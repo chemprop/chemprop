@@ -147,6 +147,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
+    if args.maml:  # TODO refactor
+        test_targets = []
+        for task_idx in range(len(data.data[0].targets)):
+            _, task_test_data = test_data.sample_maml_task(args, task_idx, seed=0)
+            task_test_data = MoleculeDataset(task_test_data)
+            test_targets += task_test_data.targets()
 
     if args.dataset_type == 'bert_pretraining':
         sum_test_preds = {
