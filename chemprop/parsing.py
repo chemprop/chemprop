@@ -247,6 +247,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Explicitly adds hydrogens to the molecular graph')
     parser.add_argument('--three_d', action='store_true', default=False,
                         help='Adds 3D coordinates to atom and bond features')
+    parser.add_argument('--undirected', action='store_true', default=False,
+                        help='Undirected edges (always sum the two relevant bond vectors)')                     
     parser.add_argument('--virtual_edges', action='store_true', default=False,
                         help='Adds virtual edges between non-bonded atoms')
     parser.add_argument('--drop_virtual_edges', action='store_true', default=False,

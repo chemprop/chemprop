@@ -270,6 +270,9 @@ class MPNEncoder(nn.Module):
 
         # Message passing
         for depth in range(self.depth - 1):
+            if self.args.undirected:
+                b_message = (b_message + b_message[b2revb]) / 2
+
             if self.learn_virtual_edges:
                 b_message = b_message * straight_through_mask
 
