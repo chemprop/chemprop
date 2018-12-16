@@ -35,10 +35,11 @@ gslogger = logging.getLogger('grid_search')
 gslogger.setLevel(logging.DEBUG)
 
 
-def run_all_datasets(experiment_args: Namespace,
-                     gslogger: logging.Logger) -> Tuple[str, np.ndarray]:
-    scores = []
+def run_all_datasets(experiment_args: Namespace, gslogger: logging.Logger):
     for dataset_name, dataset_type, dataset_path, num_folds, metric in DATASETS:
+        gslogger.info(dataset_name)
+
+        # Set up args
         args = deepcopy(experiment_args)
         args.data_path = dataset_path
         args.dataset_type = dataset_type
@@ -46,17 +47,16 @@ def run_all_datasets(experiment_args: Namespace,
         args.num_folds = num_folds
         args.metric = metric
         modify_train_args(args)
+
         # Initialize logger
         logger = logging.getLogger('train')
         logger.setLevel(logging.DEBUG)
         set_logger(logger, args.save_dir, args.quiet)
-        avg_score = cross_validate(args, logger)
-        gslogger.info(str((dataset_name, avg_score)))
-        scores.append((dataset_name, avg_score))
+        mean_score, std_score = cross_validate(args, logger)
+
+        gslogger.info('{} +/- {} {}'.format(mean_score, std_score, metric))
         temp_model = build_model(args)
         gslogger.info('num params: {:,}'.format(param_count(temp_model)))
-
-    return scores
 
 
 if __name__ == '__main__':
@@ -64,6 +64,8 @@ if __name__ == '__main__':
     add_train_args(parser)
     parser.add_argument('--log_name', type=str, default='gs.log',
                         help='Name of file where grid search results will be saved')
+    parser.add_argument('--experiments', type=str, nargs='*', default=['all'],
+                        help='Which experiments to run')
     args = parser.parse_args()
 
     ch = logging.StreamHandler()
@@ -78,72 +80,83 @@ if __name__ == '__main__':
 
     # TODO add atom experiment
 
-    gslogger.info('base')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'base')
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'base' in args.experiments:
+        gslogger.info('base')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'base')
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('virtual_edges')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
-    experiment_args.virtual_edges = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'virtual_edges' in args.experiments:
+        gslogger.info('virtual edges')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
+        experiment_args.virtual_edges = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('master_node')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'master_node')
-    experiment_args.master_node = True
-    experiment_args.master_dim = experiment_args.hidden_size
-    experiment_args.use_master_as_output = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'master_node' in args.experiments:
+        gslogger.info('master node')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'master_node')
+        experiment_args.master_node = True
+        experiment_args.master_dim = experiment_args.hidden_size
+        experiment_args.use_master_as_output = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('deepset')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'deepset')
-    experiment_args.deepset = True
-    experiment_args.ffn_num_layers = 1
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'deepset' in args.experiments:
+        gslogger.info('deepset')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'deepset')
+        experiment_args.deepset = True
+        experiment_args.ffn_num_layers = 1
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('attention')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'attention')
-    experiment_args.attention = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'attention' in args.experiments:
+        gslogger.info('attention')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'attention')
+        experiment_args.attention = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('message attention')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'message_attention')
-    experiment_args.message_attention = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'message_attention' in args.experiments:
+        gslogger.info('message attention')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'message_attention')
+        experiment_args.message_attention = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('global attention')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'global_attention')
-    experiment_args.global_attention = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'global_attention' in args.experiments:
+        gslogger.info('global attention')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'global_attention')
+        experiment_args.global_attention = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('diff depth weights')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'diff depth weights')
-    experiment_args.diff_depth_weights = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'diff_depth_weights' in args.experiments:
+        gslogger.info('diff depth weights')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'diff_depth_weights')
+        experiment_args.diff_depth_weights = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('layers per message')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layers per message')
-    experiment_args.layers_per_message = 2
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'layers_per_message' in args.experiments:
+        gslogger.info('layers per message')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layers_per_message')
+        experiment_args.layers_per_message = 2
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('layer norm')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layer norm')
-    experiment_args.layer_norm = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'layer_norm' in args.experiments:
+        gslogger.info('layer norm')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layer_norm')
+        experiment_args.layer_norm = True
+        run_all_datasets(experiment_args, gslogger)
 
-    gslogger.info('undirected')
-    experiment_args = deepcopy(args)
-    experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'undirected')
-    experiment_args.undirected = True
-    run_all_datasets(experiment_args, gslogger)
+    if 'all' in args.experiments or 'undirected' in args.experiments:
+        gslogger.info('undirected')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'undirected')
+        experiment_args.undirected = True
+        run_all_datasets(experiment_args, gslogger)
 
     # python grid_search.py --data_path anything --dataset_type anything --save_dir logging dir --quiet

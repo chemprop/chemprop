@@ -1,6 +1,7 @@
 from argparse import Namespace
 from logging import Logger
 import os
+from typing import Tuple
 
 import numpy as np
 import shutil
@@ -9,7 +10,7 @@ from chemprop.data.utils import get_task_names, get_desired_labels
 from .run_training import run_training
 
 
-def cross_validate(args: Namespace, logger: Logger = None) -> np.ndarray:
+def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float]:
     """k-fold cross validation"""
     info = logger.info if logger is not None else print
 
@@ -44,7 +45,8 @@ def cross_validate(args: Namespace, logger: Logger = None) -> np.ndarray:
 
     # Report scores across models
     avg_scores = np.mean(all_scores, axis=1)  # average score for each model across tasks
-    info('Overall test {} = {:.3f} +/- {:.3f}'.format(args.metric, np.mean(avg_scores), np.std(avg_scores)))
+    mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+    info('Overall test {} = {:.3f} +/- {:.3f}'.format(args.metric, mean_score, std_score))
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):
@@ -59,4 +61,4 @@ def cross_validate(args: Namespace, logger: Logger = None) -> np.ndarray:
     if args.num_chunks > 1:
         shutil.rmtree(args.chunk_temp_dir)
     
-    return avg_scores
+    return mean_score, std_score
