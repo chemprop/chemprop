@@ -9,7 +9,7 @@ from chemprop.data.utils import get_task_names, get_desired_labels
 from .run_training import run_training
 
 
-def cross_validate(args: Namespace, logger: Logger = None):
+def cross_validate(args: Namespace, logger: Logger = None) -> np.ndarray:
     """k-fold cross validation"""
     info = logger.info if logger is not None else print
 

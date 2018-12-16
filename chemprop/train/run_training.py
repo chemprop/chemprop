@@ -62,7 +62,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(train_data)
-        debug('Class sizes')
+        debug('Class sizes on train split')
         for i, task_class_sizes in enumerate(class_sizes):
             debug('{}: '.format(args.task_names[i]) +
                   ', '.join('{}: {:.2f}%'.format(cls, size * 100) for cls, size in enumerate(task_class_sizes)))

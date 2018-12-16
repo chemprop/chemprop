@@ -1,13 +1,16 @@
-import logging
-from argparse import ArgumentParser
-import os
+from argparse import ArgumentParser, Namespace
 from copy import deepcopy
+import logging
+import os
+from typing import Tuple
 
+import numpy as np
+
+from chemprop.models import build_model
+from chemprop.nn_utils import param_count
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
 from chemprop.utils import set_logger
-from chemprop.models import build_model
-from chemprop.nn_utils import param_count
 
 
 DATASETS = [('freesolv', 'regression', '/data/rsg/chemistry/yangk/chemprop/data/freesolv.csv', 10, 'rmse'), 
@@ -31,7 +34,9 @@ DATASETS = [('freesolv', 'regression', '/data/rsg/chemistry/yangk/chemprop/data/
 gslogger = logging.getLogger('grid_search')
 gslogger.setLevel(logging.DEBUG)
 
-def run_all_datasets(experiment_args, gslogger):
+
+def run_all_datasets(experiment_args: Namespace,
+                     gslogger: logging.Logger) -> Tuple[str, np.ndarray]:
     scores = []
     for dataset_name, dataset_type, dataset_path, num_folds, metric in DATASETS:
         args = deepcopy(experiment_args)
@@ -50,24 +55,28 @@ def run_all_datasets(experiment_args, gslogger):
         scores.append((dataset_name, avg_score))
         temp_model = build_model(args)
         gslogger.info('num params: {:,}'.format(param_count(temp_model)))
+
     return scores
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     add_train_args(parser)
+    parser.add_argument('--log_name', type=str, default='gs.log',
+                        help='Name of file where grid search results will be saved')
     args = parser.parse_args()
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
     os.makedirs(args.save_dir, exist_ok=True)
-    fh_v = logging.FileHandler(os.path.join(args.save_dir, 'gs.log'))
-    fh_v.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(os.path.join(args.save_dir, 'gs.log'))
+    fh.setLevel(logging.DEBUG)
 
     gslogger.addHandler(ch)
-    gslogger.addHandler(fh_v)
+    gslogger.addHandler(fh)
 
-    # TODO add atom and undirected experiments
+    # TODO add atom experiment
 
     gslogger.info('base')
     experiment_args = deepcopy(args)

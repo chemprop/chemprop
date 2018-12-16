@@ -321,6 +321,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--discriminative_finetune_decay', type=float, default=0.4,
                         help='Decay per param group when doing discriminative finetuning')
 
+
 def modify_hyper_opt_args(args: Namespace):
     """Modifies and validates hyperparameter optimization arguments."""
     os.makedirs(args.results_dir, exist_ok=True)
