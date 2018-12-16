@@ -58,3 +58,5 @@ def cross_validate(args: Namespace, logger: Logger = None):
 
     if args.num_chunks > 1:
         shutil.rmtree(args.chunk_temp_dir)
+    
+    return avg_scores
