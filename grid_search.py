@@ -41,8 +41,6 @@ def run_all_datasets(experiment_args, gslogger):
         args.num_folds = num_folds
         args.metric = metric
         modify_train_args(args)
-        temp_model = build_model(args)
-        gslogger.info('num params: {:,}'.format(param_count(temp_model)))
         # Initialize logger
         logger = logging.getLogger('train')
         logger.setLevel(logging.DEBUG)
@@ -50,6 +48,8 @@ def run_all_datasets(experiment_args, gslogger):
         avg_score = cross_validate(args, logger)
         gslogger.info(str((dataset_name, avg_score)))
         scores.append((dataset_name, avg_score))
+        temp_model = build_model(args)
+        gslogger.info('num params: {:,}'.format(param_count(temp_model)))
     return scores
 
 if __name__ == '__main__':
@@ -60,6 +60,7 @@ if __name__ == '__main__':
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
+    os.makedirs(args.save_dir, exist_ok=True)
     fh_v = logging.FileHandler(os.path.join(args.save_dir, 'gs.log'))
     fh_v.setLevel(logging.DEBUG)
 
