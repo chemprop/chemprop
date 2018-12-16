@@ -70,7 +70,7 @@ if __name__ == '__main__':
     ch.setLevel(logging.DEBUG)
 
     os.makedirs(args.save_dir, exist_ok=True)
-    fh = logging.FileHandler(os.path.join(args.save_dir, 'gs.log'))
+    fh = logging.FileHandler(os.path.join(args.save_dir, args.log_name))
     fh.setLevel(logging.DEBUG)
 
     gslogger.addHandler(ch)
