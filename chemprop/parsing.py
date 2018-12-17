@@ -132,6 +132,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Maximum gradient norm when performing gradient clipping')
     parser.add_argument('--weight_decay', type=float, default=0.0,
                         help='L2 penalty on optimizer to keep parameter norms small')
+    parser.add_argument('--no_target_scaling', action='store_true', default=False,
+                        help='Turn off scaling of regression targets')
+    parser.add_argument('--no_features_scaling', action='store_true', default=False,
+                        help='Turn off scaling of features')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -256,6 +260,12 @@ def modify_train_args(args: Namespace):
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     del args.no_cuda
+
+    args.target_scaling = not args.no_target_scaling
+    del args.no_target_scaling
+
+    args.features_scaling = not args.no_features_scaling
+    del args.no_features_scaling
 
     if args.metric is None:
         args.metric = 'auc' if args.dataset_type == 'classification' else 'rmse'

@@ -99,7 +99,7 @@ class MoleculeDataset(Dataset):
             datasets.append(MoleculeDataset(self.data[i * chunk_len:(i + 1) * chunk_len]))
         return datasets
     
-    def normalize_features(self, scaler=None):
+    def normalize_features(self, scaler: StandardScaler = None):
         if self.data[0].features is None:
             return None
 
@@ -116,6 +116,7 @@ class MoleculeDataset(Dataset):
 
         for d in self.data:
             d.features = scaler.transform(d.features.reshape(1, -1))
+
         return scaler
 
     def __len__(self):

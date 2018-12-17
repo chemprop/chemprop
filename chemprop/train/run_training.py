@@ -49,10 +49,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             test_data = get_data(args.separate_test_set, args) 
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
-    
-    features_scaler = train_data.normalize_features()
-    val_data.normalize_features(features_scaler)
-    test_data.normalize_features(features_scaler)
+
+    if args.features_scaling:
+        features_scaler = train_data.normalize_features()
+        val_data.normalize_features(features_scaler)
+        test_data.normalize_features(features_scaler)
+    else:
+        features_scaler = None
 
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
@@ -71,7 +74,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         train_data = truncate_outliers(train_data)
 
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
-    if args.dataset_type == 'regression':
+    if args.dataset_type == 'regression' and args.target_scaling:
         debug('Fitting scaler')
         train_smiles, train_targets = train_data.smiles(), train_data.targets()
         scaler = StandardScaler().fit(train_targets)

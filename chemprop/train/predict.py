@@ -34,6 +34,7 @@ def predict(model: nn.Module,
             # Run model
             batch_preds = model(smiles_batch, features_batch)
             batch_preds = batch_preds.data.cpu().numpy()
+
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)
             
