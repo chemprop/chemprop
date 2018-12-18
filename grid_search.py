@@ -37,7 +37,7 @@ gslogger.setLevel(logging.DEBUG)
 logger = logging.getLogger('train')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
 
