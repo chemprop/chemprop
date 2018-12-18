@@ -34,6 +34,12 @@ DATASETS = [('freesolv', 'regression', '/data/rsg/chemistry/yangk/chemprop/data/
 gslogger = logging.getLogger('grid_search')
 gslogger.setLevel(logging.DEBUG)
 
+logger = logging.getLogger('train')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+logger.addHandler(ch)
+
 
 def run_all_datasets(experiment_args: Namespace, gslogger: logging.Logger):
     for dataset_name, dataset_type, dataset_path, num_folds, metric in DATASETS:
@@ -48,11 +54,13 @@ def run_all_datasets(experiment_args: Namespace, gslogger: logging.Logger):
         args.metric = metric
         modify_train_args(args)
 
-        # Initialize logger
-        logger = logging.getLogger('train')
-        logger.setLevel(logging.DEBUG)
-        set_logger(logger, args.save_dir, args.quiet)
+        os.makedirs(args.save_dir, exist_ok=True)
+        fh = logging.FileHandler(os.path.join(args.save_dir, args.log_name))
+        fh.setLevel(logging.DEBUG)
+
+        logger.addHandler(fh)
         mean_score, std_score = cross_validate(args, logger)
+        logger.removeHandler(fh)
 
         gslogger.info('{} +/- {} {}'.format(mean_score, std_score, metric))
         temp_model = build_model(args)
