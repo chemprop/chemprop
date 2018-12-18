@@ -166,5 +166,13 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'undirected')
         experiment_args.undirected = True
         run_all_datasets(experiment_args, gslogger)
+    
+    if 'all' in args.experiments or 'scheduler_decay' in args.experiments:
+        gslogger.info('scheduler_decay')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'scheduler_decay')
+        experiment_args.scheduler = 'decay'
+        experiment_args.init_lr = 1e-3
+        run_all_datasets(experiment_args, gslogger)
 
     # python grid_search.py --data_path anything --dataset_type anything --save_dir logging dir --quiet
