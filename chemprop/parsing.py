@@ -136,6 +136,9 @@ def add_train_args(parser: ArgumentParser):
                              '(currently only effects vocabulary for bert_pretraining)')
     parser.add_argument('--skip_smiles_path', type=str,
                         help='Path to a data .csv containing smiles that should NOT be trained on')
+    parser.add_argument('--keep_nan_metrics', action='store_true', default=False,
+                        help='AUC metrics can return nan when the test set for a target is all 0 or all 1.'
+                             'Turning this on defaults the value to 0.5 rather than skipping that target')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,
