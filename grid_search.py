@@ -2,15 +2,11 @@ from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 import logging
 import os
-from typing import Tuple
-
-import numpy as np
 
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
-from chemprop.utils import set_logger
 
 
 DATASETS = [('freesolv', 'regression', '/data/rsg/chemistry/yangk/chemprop/data/freesolv.csv', 10, 'rmse'), 
@@ -85,8 +81,6 @@ if __name__ == '__main__':
 
     gslogger.addHandler(ch)
     gslogger.addHandler(fh)
-
-    # TODO add atom experiment
 
     if 'all' in args.experiments or 'base' in args.experiments:
         gslogger.info('base')
@@ -168,11 +162,18 @@ if __name__ == '__main__':
         run_all_datasets(experiment_args, gslogger)
     
     if 'all' in args.experiments or 'scheduler_decay' in args.experiments:
-        gslogger.info('scheduler_decay')
+        gslogger.info('scheduler decay')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'scheduler_decay')
         experiment_args.scheduler = 'decay'
         experiment_args.init_lr = [1e-3]
         run_all_datasets(experiment_args, gslogger)
 
-    # python grid_search.py --data_path anything --dataset_type anything --save_dir logging dir --quiet
+    if 'all' in args.experiments or 'atom_messages' in args.experiments:
+        gslogger.info('atom messages')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'atom_messages')
+        experiment_args.atom_messages = True
+        run_all_datasets(experiment_args, gslogger)
+
+    # python grid_search.py --data_path blah --dataset_type regression --save_dir logging_dir --log_name gs.log --experiments all --quiet
