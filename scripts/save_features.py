@@ -80,8 +80,11 @@ def save_features(args: Namespace):
     # Build features map function
     data = data[len(features):]  # restrict to data for which features have not been computed yet
     mols = (d.mol for d in data)
-    map_func = map if args.sequential else Pool().imap
-    features_map = tqdm(map_func(features_func, mols), total=len(data))
+    if args.sequential:
+        features_map = tqdm(map(features_func, mols), total=len(data))
+    else:
+        with Pool() as pool:
+            features_map = tqdm(pool.imap(features_func, mols), total=len(data))
 
     # Get features
     temp_features = []
