@@ -427,7 +427,7 @@ def modify_train_args(args: Namespace):
         assert args.features_generator or args.features_path
         args.use_input_features = False
 
-    if 'rdkit_2d_normalized' in args.features_generator:
+    if args.features_generator is not None and 'rdkit_2d_normalized' in args.features_generator:
         assert not args.features_scaling
 
     if args.dataset_type == 'bert_pretraining':
