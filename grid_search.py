@@ -43,7 +43,7 @@ def grid_search(args: Namespace):
         dataset_args = deepcopy(args)
         dataset_args.data_path = dataset_path
         dataset_args.dataset_type = dataset_type
-        dataset_args.save_dir = os.path.join(args.save_dir, dataset_name)
+        dataset_args.save_dir = None
         dataset_args.num_folds = num_folds
         dataset_args.metric = metric
         modify_train_args(dataset_args)
