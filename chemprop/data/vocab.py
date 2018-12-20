@@ -215,9 +215,14 @@ def get_vocab(args: Namespace, vocab_func: Callable, smiles: List[str]) -> Set[s
     if max_vocab_size == 0:
         if sequential:
             return set.union(*map(vocab, pairs))
-        return set.union(*Pool().map(vocab, pairs))
+        with Pool() as pool:
+            return set.union(*pool.map(vocab, pairs))
     else:
-        vocab_lists = map(vocab, pairs) if sequential else Pool().map(vocab, pairs)
+        if sequential:
+            vocab_lists = map(vocab, pairs)
+        else:
+            with Pool() as pool:
+                vocab_lists = pool.map(vocab, pairs)
         counter = Counter()
         for elt_list in vocab_lists:
             counter.update(elt_list)

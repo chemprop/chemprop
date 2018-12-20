@@ -63,7 +63,7 @@ def predict(model: nn.Module,
             if args.parallel_featurization:
                 if len(currently_loaded_batches) == 0:
                     currently_loaded_batches = batch_queue.get()
-                mol_batch, featurized_mol_batch = currently_loaded_batches.pop()
+                mol_batch, featurized_mol_batch = currently_loaded_batches.pop(0)
             else:
                 mol_batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch = mol_batch.smiles(), mol_batch.features()

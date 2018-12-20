@@ -234,7 +234,9 @@ class MoleculeDataset(Dataset):
         else:
             try:
                 # reassign self.data since the pool seems to deepcopy the data before calling bert_init
-                self.data = Pool().map(bert_init, self.data)
+                with Pool() as pool:
+                    self.data = pool.map(bert_init, self.data)
+
             except OSError:  # apparently it's possible to get an OSError about too many open files here...?
                 for d in self.data:
                     d.bert_init()

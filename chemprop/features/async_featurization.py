@@ -30,10 +30,12 @@ def async_mol2graph(q: Queue,
         batch = MoleculeDataset(data[i:i + args.batch_size])
         batches.append(batch)
         if len(batches) == args.batches_per_queue_group:  # many at a time, since synchronization is expensive
-            processed_batches = Pool().map(mol2graph_helper, [(batch, args) for batch in batches])
+            with Pool() as pool:
+                processed_batches = pool.map(mol2graph_helper, [(batch, args) for batch in batches])
             q.put(processed_batches)
             batches = []
     if len(batches) > 0:
-        processed_batches = Pool().map(mol2graph_helper, [(batch, args) for batch in batches])
+        with Pool() as pool:
+            processed_batches = pool.map(mol2graph_helper, [(batch, args) for batch in batches])
         q.put(processed_batches)
     exit_q.get()  # prevent from exiting until main process tells it to; otherwise we apparently can't read the end of the queue and crash
