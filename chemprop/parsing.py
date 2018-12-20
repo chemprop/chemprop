@@ -332,6 +332,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Smaller LR for earlier layers during finetuning')
     parser.add_argument('--discriminative_finetune_decay', type=float, default=0.4,
                         help='Decay per param group when doing discriminative finetuning')
+    parser.add_argument('--atom_messages', action='store_true', default=False,
+                        help='Use messages on atoms instead of messages on bonds')
+    parser.add_argument('--no_bond_features', action='store_true', default=False,
+                        help='Don\'t use bond features (only atom features)')
 
 
 def modify_hyper_opt_args(args: Namespace):

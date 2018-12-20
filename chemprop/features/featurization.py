@@ -252,8 +252,13 @@ class MolGraph:
                 f_bond = bond_features(bond, distance_path=distance_path, distance_3d=distance_3d)
                 if zero_bond:
                     f_bond = [0 for _ in range(len(f_bond))]
-                self.f_bonds.append(self.f_atoms[a1] + f_bond)
-                self.f_bonds.append(self.f_atoms[a2] + f_bond)
+
+                if args.atom_messages:
+                    self.f_bonds.append(f_bond)
+                    self.f_bonds.append(f_bond)
+                else:
+                    self.f_bonds.append(self.f_atoms[a1] + f_bond)
+                    self.f_bonds.append(self.f_atoms[a2] + f_bond)
 
                 # Update index mappings
                 b1 = self.n_bonds
@@ -274,7 +279,7 @@ class BatchMolGraph:
         self.n_mols = len(self.smiles_batch)
 
         self.atom_fdim = get_atom_fdim(args)
-        self.bond_fdim = self.atom_fdim + get_bond_fdim(args)
+        self.bond_fdim = get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms
@@ -314,13 +319,14 @@ class BatchMolGraph:
         self.b2a = torch.LongTensor(b2a)
         self.b2revb = torch.LongTensor(b2revb)
         self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
+        self.a2a = None  # only needed if using atom messages
 
     def get_components(self) -> Tuple[torch.FloatTensor, torch.FloatTensor,
                                       torch.LongTensor, torch.LongTensor, torch.LongTensor,
                                       List[Tuple[int, int]], List[Tuple[int, int]]]:
         return self.f_atoms, self.f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
-    def get_b2b(self):
+    def get_b2b(self) -> torch.LongTensor:
         if self.b2b is None:
             b2b = self.a2b[self.b2a]  # num_bonds x max_num_bonds
             # b2b includes reverse edge for each bond so need to mask out
@@ -328,6 +334,16 @@ class BatchMolGraph:
             self.b2b = b2b * revmask
 
         return self.b2b
+
+    def get_a2a(self) -> torch.LongTensor:
+        if self.a2a is None:
+            # b = a1 --> a2
+            # a2b maps a2 to all incoming bonds b
+            # b2a maps each bond b to the atom it comes from a1
+            # thus b2a[a2b] maps atom a2 to neighboring atoms a1
+            self.a2a = self.b2a[self.a2b]  # num_atoms x max_num_bonds
+
+        return self.a2a
 
     def bert_mask(self,
                   mask: List[int],

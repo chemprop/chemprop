@@ -73,7 +73,8 @@ def generate_vocab(args: Namespace):
     if args.sequential:
         counter = sum([count_vocab(pair) for pair in tqdm(pairs, total=len(pairs))], Counter())
     else:
-        counter = sum(Pool().map(count_vocab, pairs), Counter())
+        with Pool() as pool:
+            counter = sum(pool.map(count_vocab, pairs), Counter())
 
     print('Vocab size = {:,}'.format(len(counter)))
 

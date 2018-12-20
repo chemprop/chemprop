@@ -33,6 +33,7 @@ class MPNEncoder(nn.Module):
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
+        self.param_prefix = param_prefix
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
@@ -56,11 +57,18 @@ class MPNEncoder(nn.Module):
         if self.bert_pretraining:
             self.output_size = args.vocab.output_size
             self.features_size = args.features_size
+        self.undirected = args.undirected
+        self.atom_messages = args.atom_messages
         self.args = args
-        self.param_prefix = param_prefix
 
         if args.features_only:
             return  # won't use any of the graph stuff in this case
+
+        if self.atom_messages:
+            # Not supported with atom messages
+            assert not (self.message_attention or self.global_attention or self.learn_virtual_edges or
+                        self.master_node or self.bert_pretraining or self.undirected)
+            assert self.layers_per_message == 1
 
         # Layer norm
         if self.use_layer_norm:
@@ -145,7 +153,8 @@ class MPNEncoder(nn.Module):
         self.cached_zero_vector = nn.Parameter(torch.zeros(self.hidden_size), requires_grad=False)
 
         # Input
-        self.W_i = nn.Linear(self.bond_fdim, self.hidden_size, bias=self.bias)
+        input_dim = self.atom_fdim if self.atom_messages else self.bond_fdim
+        self.W_i = nn.Linear(input_dim, self.hidden_size, bias=self.bias)
 
         # Message attention
         if self.message_attention:
@@ -153,6 +162,8 @@ class MPNEncoder(nn.Module):
             w_h_input_size = self.num_heads * self.hidden_size
             self.W_ma = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=self.bias)
                                        for _ in range(self.num_heads)])
+        elif self.atom_messages:
+            w_h_input_size = self.hidden_size + self.bond_fdim
         else:
             w_h_input_size = self.hidden_size
 
@@ -235,8 +246,14 @@ class MPNEncoder(nn.Module):
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
+        if self.atom_messages:
+            a2a = mol_graph.get_a2a()
+
         if self.args.cuda or next(self.parameters()).is_cuda:
             f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
+
+            if self.atom_messages:
+                a2a = a2a.cuda()
 
         if self.learn_virtual_edges:
             atom1_features, atom2_features = f_atoms[b2a], f_atoms[b2a[b2revb]]  # each num_bonds x atom_fdim
@@ -247,8 +264,11 @@ class MPNEncoder(nn.Module):
             straight_through_mask = straight_through_mask.unsqueeze(1).repeat((1, self.hidden_size))  # num_bonds x hidden_size
 
         # Input
-        b_input = self.W_i(f_bonds)  # num_bonds x hidden_size
-        b_message = self.act_func(b_input)  # num_bonds x hidden_size
+        if self.atom_messages:
+            input = self.W_i(f_atoms)  # num_atoms x hidden_size
+        else:
+            input = self.W_i(f_bonds)  # num_bonds x hidden_size
+        message = self.act_func(input)  # num_bonds x hidden_size
 
         if self.message_attention:
             b2b = mol_graph.get_b2b()  # Warning: this is O(n_atoms^3) when using virtual edges
@@ -270,41 +290,46 @@ class MPNEncoder(nn.Module):
 
         # Message passing
         for depth in range(self.depth - 1):
-            if self.args.undirected:
-                b_message = (b_message + b_message[b2revb]) / 2
+            if self.undirected:
+                message = (message + message[b2revb]) / 2
 
             if self.learn_virtual_edges:
-                b_message = b_message * straight_through_mask
+                message = message * straight_through_mask
 
             if self.message_attention:
                 # TODO: Parallelize attention heads
-                nei_b_message = index_select_ND(b_message, b2b)
-                b_message = b_message.unsqueeze(1).repeat((1, nei_b_message.size(1), 1))  # num_bonds x maxnb x hidden
-                attention_scores = [(self.W_ma[i](nei_b_message) * b_message).sum(dim=2)
+                nei_message = index_select_ND(message, b2b)
+                message = message.unsqueeze(1).repeat((1, nei_message.size(1), 1))  # num_bonds x maxnb x hidden
+                attention_scores = [(self.W_ma[i](nei_message) * message).sum(dim=2)
                                     for i in range(self.num_heads)]  # num_bonds x maxnb
                 attention_scores = [attention_scores[i] * message_attention_mask + (1 - message_attention_mask) * (-1e+20)
                                     for i in range(self.num_heads)]  # num_bonds x maxnb
                 attention_weights = [F.softmax(attention_scores[i], dim=1)
                                      for i in range(self.num_heads)]  # num_bonds x maxnb
-                message_components = [nei_b_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
+                message_components = [nei_message * attention_weights[i].unsqueeze(2).repeat((1, 1, self.hidden_size))
                                       for i in range(self.num_heads)]  # num_bonds x maxnb x hidden
                 message_components = [component.sum(dim=1) for component in message_components]  # num_bonds x hidden
-                b_message = torch.cat(message_components, dim=1)  # num_bonds x num_heads * hidden
+                message = torch.cat(message_components, dim=1)  # num_bonds x num_heads * hidden
+            elif self.atom_messages:
+                nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
+                nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
+                nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
+                message = nei_message.sum(dim=1)  # num_atoms x hidden + bond_fdim
             else:
                 # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
-                # b_message      a_message = sum(nei_a_message)      rev_b_message
-                nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+                # message      a_message = sum(nei_a_message)      rev_message
+                nei_a_message = index_select_ND(message, a2b)  # num_atoms x max_num_bonds x hidden
                 a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
-                rev_b_message = b_message[b2revb]  # num_bonds x hidden
-                b_message = a_message[b2a] - rev_b_message  # num_bonds x hidden
+                rev_message = message[b2revb]  # num_bonds x hidden
+                message = a_message[b2a] - rev_message  # num_bonds x hidden
 
             for lpm in range(self.layers_per_message - 1):
-                b_message = self.W_h[lpm][depth](b_message)  # num_bonds x hidden
-                b_message = self.act_func(b_message)
-            b_message = self.W_h[self.layers_per_message - 1][depth](b_message)
+                message = self.W_h[lpm][depth](message)  # num_bonds x hidden
+                message = self.act_func(message)
+            message = self.W_h[self.layers_per_message - 1][depth](message)
 
             if self.normalize_messages:
-                b_message = b_message / b_message.norm(dim=1, keepdim=True)
+                message = message / message.norm(dim=1, keepdim=True)
 
             if self.master_node:
                 # master_state = self.W_master_in(self.act_func(nei_message.sum(dim=0))) #try something like this to preserve invariance for master node
@@ -314,30 +339,30 @@ class MPNEncoder(nn.Module):
                 for start, size in b_scope:
                     if size == 0:
                         continue
-                    mol_vec = b_message.narrow(0, start, size)
+                    mol_vec = message.narrow(0, start, size)
                     mol_vec = mol_vec.sum(dim=0) / size
                     mol_vecs += [mol_vec for _ in range(size)]
                 master_state = self.act_func(self.W_master_in(torch.stack(mol_vecs, dim=0)))  # num_bonds x hidden_size
-                b_message = self.act_func(b_input + b_message + self.W_master_out(master_state))  # num_bonds x hidden_size
+                message = self.act_func(input + message + self.W_master_out(master_state))  # num_bonds x hidden_size
             else:
-                b_message = self.act_func(b_input + b_message)  # num_bonds x hidden_size
+                message = self.act_func(input + message)  # num_bonds x hidden_size
 
             if self.global_attention:
-                attention_scores = torch.matmul(self.W_ga1(b_message), b_message.t())  # num_bonds x num_bonds
+                attention_scores = torch.matmul(self.W_ga1(message), message.t())  # num_bonds x num_bonds
                 attention_scores = attention_scores * global_attention_mask + (1 - global_attention_mask) * (-1e+20)  # num_bonds x num_bonds
                 attention_weights = F.softmax(attention_scores, dim=1)  # num_bonds x num_bonds
-                attention_hiddens = torch.matmul(attention_weights, b_message)  # num_bonds x hidden_size
+                attention_hiddens = torch.matmul(attention_weights, message)  # num_bonds x hidden_size
                 attention_hiddens = self.act_func(self.W_ga2(attention_hiddens))  # num_bonds x hidden_size
                 attention_hiddens = self.dropout_layer(attention_hiddens)  # num_bonds x hidden_size
-                b_message = b_message + attention_hiddens  # num_bonds x hidden_size
+                message = message + attention_hiddens  # num_bonds x hidden_size
 
                 if viz_dir is not None:
                     visualize_bond_attention(viz_dir, mol_graph, attention_weights, depth)
 
             if self.use_layer_norm:
-                b_message = self.layer_norm(b_message)
+                message = self.layer_norm(message)
 
-            b_message = self.dropout_layer(b_message)  # num_bonds x hidden
+            message = self.dropout_layer(message)  # num_bonds x hidden
 
         if self.master_node and self.use_master_as_output:
             assert self.hidden_size == self.master_dim
@@ -351,9 +376,10 @@ class MPNEncoder(nn.Module):
 
         # Get atom hidden states from message hidden states
         if self.learn_virtual_edges:
-            b_message = b_message * straight_through_mask
+            message = message * straight_through_mask
 
-        nei_a_message = index_select_ND(b_message, a2b)  # num_atoms x max_num_bonds x hidden
+        a2x = a2a if self.atom_messages else a2b
+        nei_a_message = index_select_ND(message, a2x)  # num_atoms x max_num_bonds x hidden
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
         atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
@@ -463,7 +489,7 @@ class MPN(nn.Module):
         super(MPN, self).__init__()
         self.args = args
         self.atom_fdim = atom_fdim or get_atom_fdim(args)
-        self.bond_fdim = bond_fdim or self.atom_fdim + get_bond_fdim(args)
+        self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
         self.graph_input = graph_input
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim, params=params)
 
