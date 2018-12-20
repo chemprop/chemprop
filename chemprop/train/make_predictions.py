@@ -27,7 +27,8 @@ def make_predictions(args: Namespace):
     print('Test size = {:,}'.format(len(test_data)))
 
     # Normalize features
-    test_data.normalize_features(features_scaler)
+    if train_args.features_scaling:
+        test_data.normalize_features(features_scaler)
 
     # Predict with each model individually and sum predictions
     sum_preds = np.zeros((len(test_data), args.num_tasks))
