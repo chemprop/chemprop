@@ -73,14 +73,15 @@ def run_all_datasets(experiment_args: Namespace, logger: logging.Logger):
         logger.info('num params: {:,}'.format(param_count(temp_model)))
 
 
-def create_logger(name: str, save_path: str) -> logging.Logger:
+def create_logger(name: str, save_dir: str, save_name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
-    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, save_name)
     fh = logging.FileHandler(save_path)
     fh.setLevel(logging.DEBUG)
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
                         help='Which experiments to run')
     args = parser.parse_args()
 
-    logger = create_logger(name='model_comparison', save_path=os.path.join(args.save_dir, args.log_name))
+    logger = create_logger(name='model_comparison', save_dir=args.save_dir, save_name=args.log_name)
 
     if 'all' in args.experiments or 'base' in args.experiments:
         logger.info('base')
