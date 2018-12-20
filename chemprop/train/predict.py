@@ -2,11 +2,15 @@ from argparse import Namespace
 from typing import List
 
 import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.nn as nn
+from torch.multiprocessing import Process, Queue
 import numpy as np
+from tqdm import trange
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.features import mol2graph
+from chemprop.features.async_featurization import async_mol2graph
 from chemprop.models import build_model
 from chemprop.utils import get_loss_func
 
@@ -38,7 +42,15 @@ def predict(model: nn.Module,
         full_targets = []
     else:
         num_iters, iter_step = len(data), args.batch_size
-    for i in range(0, num_iters, iter_step):
+    
+    if args.parallel_featurization:
+        batch_queue = Queue(args.batch_queue_max_size)
+        exit_queue = Queue(1)
+        batch_process = Process(target=async_mol2graph, args=(batch_queue, data, args, num_iters, iter_step, exit_queue, True))
+        batch_process.start()
+        currently_loaded_batches = []
+
+    for i in trange(0, num_iters, iter_step):
         if args.maml:
             task_train_data, task_test_data, task_idx = data.sample_maml_task(args, seed=0)
             mol_batch = task_test_data
@@ -48,7 +60,12 @@ def predict(model: nn.Module,
                 targets = targets.cuda()
         else:
             # Prepare batch
-            mol_batch = MoleculeDataset(data[i:i + args.batch_size])
+            if args.parallel_featurization:
+                if len(currently_loaded_batches) == 0:
+                    currently_loaded_batches = batch_queue.get()
+                mol_batch, featurized_mol_batch = currently_loaded_batches.pop()
+            else:
+                mol_batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch = mol_batch.smiles(), mol_batch.features()
 
         # Run model
@@ -76,7 +93,13 @@ def predict(model: nn.Module,
             full_targets.extend([[t] for t in targets_batch])
         else:
             with torch.no_grad():
-                batch_preds = model(batch, features_batch)
+                if args.parallel_featurization:
+                    previous_graph_input_mode = model.encoder.graph_input
+                    model.encoder.graph_input = True  # force model to accept already processed input
+                    batch_preds = model(featurized_mol_batch, features_batch)
+                    model.encoder.graph_input = previous_graph_input_mode
+                else:
+                    batch_preds = model(batch, features_batch)
 
                 if args.dataset_type == 'bert_pretraining':
                     if batch_preds['features'] is not None:
@@ -112,6 +135,10 @@ def predict(model: nn.Module,
             'features': features_preds if len(features_preds) > 0 else None,
             'vocab': preds
         }
+
+    if args.parallel_featurization:
+        exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
+        batch_process.join()
 
     if args.maml:
         # return the task targets here to guarantee alignment;

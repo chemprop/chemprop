@@ -6,6 +6,7 @@ import os
 
 from tensorboardX import SummaryWriter
 import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.nn as nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
@@ -13,9 +14,11 @@ from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 from tqdm import trange, tqdm
 import pickle
 from copy import deepcopy
+from torch.multiprocessing import Process, Queue
 
 from chemprop.data import MoleculeDataset
 from chemprop.features import featurization, mol2graph
+from chemprop.features.async_featurization import async_mol2graph
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 from chemprop.models import build_model
 
@@ -121,6 +124,13 @@ def train(model: nn.Module,
     else:
         num_iters = len(data) if args.last_batch else len(data) // args.batch_size * args.batch_size
 
+    if args.parallel_featurization:
+        batch_queue = Queue(args.batch_queue_max_size)
+        exit_queue = Queue(1)
+        batch_process = Process(target=async_mol2graph, args=(batch_queue, data, args, num_iters, args.batch_size, exit_queue, args.last_batch))
+        batch_process.start()
+        currently_loaded_batches = []
+
     iter_size = 1 if args.maml else args.batch_size
 
     for i in trange(0, num_iters, iter_size):
@@ -157,9 +167,14 @@ def train(model: nn.Module,
                 theta_prime[name] = nongrad_param + torch.zeros(nongrad_param.size()).to(nongrad_param)
         else:
             # Prepare batch
-            if not args.last_batch and i + args.batch_size > len(data):
-                break
-            mol_batch = MoleculeDataset(data[i:i + args.batch_size])
+            if args.parallel_featurization:
+                if len(currently_loaded_batches) == 0:
+                    currently_loaded_batches = batch_queue.get()
+                mol_batch, featurized_mol_batch = currently_loaded_batches.pop()
+            else:
+                if not args.last_batch and i + args.batch_size > len(data):
+                    break
+                mol_batch = MoleculeDataset(data[i:i + args.batch_size])
             smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
 
             if args.dataset_type == 'bert_pretraining':
@@ -197,7 +212,13 @@ def train(model: nn.Module,
 
             # Run model
             model.zero_grad()
-            preds = model(batch, features_batch)
+            if args.parallel_featurization:
+                previous_graph_input_mode = model.encoder.graph_input
+                model.encoder.graph_input = True  # force model to accept already processed input
+                preds = model(featurized_mol_batch, features_batch)
+                model.encoder.graph_input = previous_graph_input_mode
+            else:
+                preds = model(batch, features_batch)
             if args.dataset_type == 'regression_with_binning':
                 preds = preds.view(targets.size(0), targets.size(1), -1)
                 targets = targets.long()
@@ -305,4 +326,7 @@ def train(model: nn.Module,
                 for i, lr in enumerate(lrs):
                     writer.add_scalar('learning_rate_{}'.format(i), lr, n_iter)
 
+    if args.parallel_featurization:
+        exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
+        batch_process.join()
     return n_iter

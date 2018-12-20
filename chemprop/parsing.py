@@ -133,7 +133,16 @@ def add_train_args(parser: ArgumentParser):
                         help='Maximum number of data points to load')
     parser.add_argument('--sequential', action='store_true', default=False,
                         help='Whether to run processes sequentially instead of in parallel'
-                             '(currently only effects vocabulary for bert_pretraining)')
+                             '(currently only effects vocabulary for bert_pretraining,'
+                             'and soon will affect featurization in main training loop)')
+    parser.add_argument('--parallel_featurization', action='store_true', default=False,
+                        help='asychronous featurization for significant speedup; will become default in future')
+    parser.add_argument('--batch_queue_max_size', type=int, default=1,
+                        help='Maximum size of queue of batches for asynchronous featurization')
+    parser.add_argument('--batches_per_queue_group', type=int, default=200,
+                        help='Number of batches to get at a time from the asynchronous featurizer')
+    parser.add_argument('--no_cache', action='store_true', default=False,
+                        help='Turn off caching mol2graph computation')
     parser.add_argument('--skip_smiles_path', type=str,
                         help='Path to a data .csv containing smiles that should NOT be trained on')
     parser.add_argument('--keep_nan_metrics', action='store_true', default=False,
@@ -461,6 +470,9 @@ def modify_train_args(args: Namespace):
 
     if args.class_balance:
         assert args.dataset_type == 'classification'
+    
+    # TODO uncomment when this becomes the default, and remove the parallel_featurization option
+    # args.parallel_featurization = (not args.maml and not args.moe and not args.sequential)
 
 
 def parse_hyper_opt_args() -> Namespace:

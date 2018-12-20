@@ -385,7 +385,7 @@ def mol2graph(smiles_batch: List[str],
         else:
             mol_graph = MolGraph(smiles, args)
             # Memoize if we're not chunking or learning virtual edges, to save memory
-            if type(smiles) == str and ((args.num_chunks == 1 and args.prespecified_chunk_dir is None) or args.memoize_chunks) and not args.learn_virtual_edges:
+            if not args.no_cache and (type(smiles) == str and ((args.num_chunks == 1 and args.prespecified_chunk_dir is None) or args.memoize_chunks) and not args.learn_virtual_edges):
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
     
