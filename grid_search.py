@@ -37,6 +37,7 @@ ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
 
+# TODO: change to write results as a CSV for easier processing
 def run_all_datasets(experiment_args: Namespace, gslogger: logging.Logger):
     for dataset_name, dataset_type, dataset_path, num_folds, metric in DATASETS:
         gslogger.info(dataset_name)
