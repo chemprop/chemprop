@@ -44,7 +44,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Path to .vocab file if using jtnn')
     parser.add_argument('--features_only', action='store_true', default=False,
                         help='Use only the additional features in an FFN, no graph network')
-    parser.add_argument('--features_generator', type=str, nargs='*', choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
+    parser.add_argument('--features_generator', type=str, nargs='*',
+                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
                         help='Method of generating additional features')  # TODO allow multiple options
     parser.add_argument('--features_path', type=str,
                         help='Path to features to use in FNN (instead of features_generator)')
@@ -425,6 +426,9 @@ def modify_train_args(args: Namespace):
     if args.predict_features or args.kernel_func in ['features', 'features_dot']:
         assert args.features_generator or args.features_path
         args.use_input_features = False
+
+    if args.features_generator == 'rdkit_2d_normalized':
+        assert not args.features_scaling
 
     if args.dataset_type == 'bert_pretraining':
         assert not args.features_only
