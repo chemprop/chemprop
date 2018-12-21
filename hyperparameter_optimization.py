@@ -14,7 +14,7 @@ from model_comparison import create_logger, create_train_logger, DATASETS
 SPACE = {
     'hidden_size': hp.quniform('hidden_size', low=300, high=2400, q=100),
     'depth': hp.quniform('depth', low=2, high=6, q=1),
-    'dropout': hp.uniform('dropout', 0.0, 0.4),
+    'dropout': hp.quniform('dropout', low=0.0, high=0.4, q=0.05),
     'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
 }
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
@@ -93,4 +93,4 @@ if __name__ == '__main__':
 
     grid_search(args)
 
-    # python hyperparameter_optimization.py --data_path blah --dataset_type regression --save_dir dir --datasets delaney --num_runs_per_dataset 20 --num_folds 1 --split_type scaffold --quiet
+    # python hyperparameter_optimization.py --data_path blah --dataset_type regression --save_dir ../chemprop_grid_search --datasets delaney --num_runs_per_dataset 20 --num_folds 1 --split_type scaffold --quiet
