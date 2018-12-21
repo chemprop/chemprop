@@ -113,7 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV')
     parser.add_argument('--features_generator', type=str, required=True,
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'mordred'],
+                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
                         help='Type of features to generate')
     parser.add_argument('--save_path', type=str, required=True,
                         help='Path to .pckl file where features will be saved as a Python pickle file')
