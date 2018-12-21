@@ -23,14 +23,6 @@ GRID = {
 TRAIN_LOGGER = create_train_logger()
 
 
-def sample_hyperparams(grid: Dict[str, Union[List[int], List[float]]]) -> Dict[str, Union[int, float]]:
-    hyperparams = {}
-    for param, options in grid.items():
-        hyperparams[param] = random.choice(options)
-
-    return hyperparams
-
-
 def grid_search(args: Namespace):
     for dataset_name in args.datasets:
         # Get dataset
@@ -50,11 +42,13 @@ def grid_search(args: Namespace):
 
         # Run grid search
         results = []
-        for _ in range(args.num_runs_per_dataset):
-            # Set up args for hyperparameter choices
+        for i in range(args.num_runs_per_dataset):
+            # Copy args
             gs_args = deepcopy(dataset_args)
 
-            hyperparams = sample_hyperparams(GRID)
+            # Sample and set hyperparameters
+            random.seed(i)  # need to seed here because cross_validate reseeds with the same seed every time
+            hyperparams = {param: random.choice(options) for param, options in GRID.items()}
             for key, value in hyperparams.items():
                 setattr(gs_args, key, value)
 
