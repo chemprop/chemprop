@@ -1,4 +1,5 @@
 hpbandster
+hyperopt
 matplotlib
 mordred
 networkx
