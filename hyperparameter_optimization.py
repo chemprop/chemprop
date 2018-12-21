@@ -12,11 +12,12 @@ from model_comparison import create_logger, create_train_logger, DATASETS
 
 
 SPACE = {
-    'hidden_size': hp.choice('hidden_size', [300, 600, 1200, 2400]),
-    'depth': hp.choice('depth', [3, 4, 5, 6]),
-    'dropout': hp.choice('dropout', [0.0, 0.2, 0.4]),
-    'ffn_num_layers': hp.choice('ffn_num_layers', [1, 2, 3])
+    'hidden_size': hp.quniform('hidden_size', low=300, high=2400, q=100),
+    'depth': hp.quniform('depth', low=2, high=6, q=1),
+    'dropout': hp.uniform('dropout', 0.0, 0.4),
+    'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
 }
+INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
 
 TRAIN_LOGGER = create_train_logger()
 
@@ -42,6 +43,10 @@ def grid_search(args: Namespace):
 
         # Define hyperparameter optimization
         def objective(hyperparams: Dict[str, Union[int, float]]) -> float:
+            # Convert hyperparms from float to int when necessary
+            for key in INT_KEYS:
+                hyperparams[key] = int(hyperparams[key])
+
             # Copy args
             gs_args = deepcopy(dataset_args)
 
