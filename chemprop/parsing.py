@@ -91,6 +91,8 @@ def add_train_args(parser: ArgumentParser):
                         help='temp dir to store chunks in')
     parser.add_argument('--memoize_chunks', action='store_true', default=False,
                         help='store memo dicts for mol2graph in chunk_temp_dir when chunking, at large disk space cost')
+    parser.add_argument('--separate_val_set', type=str,
+                        help='Path to separate val set, optional')
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
     parser.add_argument('--split_type', type=str, default='random',

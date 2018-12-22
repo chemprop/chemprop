@@ -55,8 +55,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         debug('Splitting data with seed {}'.format(args.seed))
         if args.separate_test_set:
-            train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed, logger=logger)
-            test_data = get_data(args.separate_test_set, args) 
+            test_data = get_data(args.separate_test_set, args)
+            if args.separate_val_set:
+                val_data = get_data(args.separate_val_set, args)
+                train_data = data  # nothing to split; we already got our test and val sets
+            else:
+                train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed, logger=logger)
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
