@@ -29,6 +29,7 @@ DATASETS['sider'] = ('classification', '/data/rsg/chemistry/yangk/chemprop/data/
 DATASETS['clintox'] = ('classification', '/data/rsg/chemistry/yangk/chemprop/data/clintox.csv', 10, 'auc')
 DATASETS['chembl'] = ('classification', '/data/rsg/chemistry/yangk/chembl/chembl_full.csv', 3, 'auc')
 
+RDKIT_NORMALIZED_FEATURES_DIR = '/data/rsg/chemistry/yangk/saved_features'
 
 def create_train_logger() -> logging.Logger:
     train_logger = logging.getLogger('train')
@@ -44,7 +45,9 @@ TRAIN_LOGGER = create_train_logger()
 
 
 # TODO: change to write results as a CSV for easier processing
-def run_all_datasets(experiment_args: Namespace, logger: logging.Logger):
+def run_all_datasets(experiment_args: Namespace,
+                     logger: logging.Logger,
+                     features_dir: str = None):
     for dataset_name, (dataset_type, dataset_path, num_folds, metric) in DATASETS.items():
         logger.info(dataset_name)
 
@@ -55,6 +58,8 @@ def run_all_datasets(experiment_args: Namespace, logger: logging.Logger):
         args.save_dir = os.path.join(args.save_dir, dataset_name)
         args.num_folds = num_folds
         args.metric = metric
+        if features_dir is not None:
+            args.features_path = os.path.join(features_dir, dataset_name + '.pckl')
         modify_train_args(args)
 
         # Set up logging for training
@@ -195,5 +200,12 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'atom_messages')
         experiment_args.atom_messages = True
         run_all_datasets(experiment_args, logger)
+    
+    if 'all' in args.experiments or 'rdkit_normalized_features' in args.experiments:
+        logger.info('rdkit_normalized_features')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'rdkit_normalized_features')
+        experiment_args.no_features_scaling = True
+        run_all_datasets(experiment_args, logger, features_dir=RDKIT_NORMALIZED_FEATURES_DIR)
 
     # python model_comparison.py --data_path blah --dataset_type regression --save_dir logging_dir --log_name gs.log --experiments all --quiet
