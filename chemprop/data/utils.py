@@ -198,17 +198,22 @@ def split_data(data: MoleculeDataset,
         folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
 
         test = folds[args.test_fold_index]
+        if args.val_fold_index is not None:
+            val = folds[args.val_fold_index]
 
         train_val = []
         for i in range(len(folds)):
-            if i != args.test_fold_index:
+            if i != args.test_fold_index and (args.val_fold_index is None or i != args.val_fold_index):
                 train_val.extend(folds[i])
 
-        random.seed(seed)
-        random.shuffle(train_val)
-        train_size = int(sizes[0] * len(train_val))
-        train = train_val[:train_size]
-        val = train_val[train_size:]
+        if args.val_fold_index is not None:
+            train = train_val
+        else:
+            random.seed(seed)
+            random.shuffle(train_val)
+            train_size = int(sizes[0] * len(train_val))
+            train = train_val[:train_size]
+            val = train_val[train_size:]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 

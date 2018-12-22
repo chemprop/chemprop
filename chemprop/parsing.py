@@ -109,6 +109,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of folds when performing cross validation')
     parser.add_argument('--folds_file', type=str, default=None,
                         help='Optional file of fold labels')
+    parser.add_argument('--val_fold_index', type=int, default=None,
+                        help='Which fold to use as val for leave-one-out cross val')
     parser.add_argument('--test_fold_index', type=int, default=None,
                         help='Which fold to use as test for leave-one-out cross val')
     parser.add_argument('--seed', type=int, default=0,
