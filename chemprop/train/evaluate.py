@@ -63,6 +63,8 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
                 print('Warning: Found a task with all 0s or all 1s')
                 if args.keep_nan_metrics:
                     results.append(0.5)  # just assume a baseline AUC of 0.5, which is just random guessing
+                else:
+                    results.append(float('nan'))
                 continue
 
             # TODO: handle this case better??? (this currently only happens when a feature is None for all molecules)

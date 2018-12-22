@@ -257,7 +257,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 val_scores = [val_scores['vocab']]
 
             # Average validation score
-            avg_val_score = np.mean(val_scores)
+            avg_val_score = np.nanmean(val_scores)
             debug('Validation {} = {:.3f}'.format(args.metric, avg_val_score))
             writer.add_scalar('validation_{}'.format(args.metric), avg_val_score, n_iter)
 
@@ -305,7 +305,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     metric_func=metric_func,
                     args=args
                 )
-                avg_test_score = np.mean(test_scores)
+                avg_test_score = np.nanmean(test_scores)
                 info('Model {} test {} for {} = {:.3f}'.format(model_idx, args.metric, name, avg_test_score))
         
         if len(test_data) == 0:  # just get some garbage results without crashing; in this case we didn't care anyway
@@ -342,7 +342,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             test_scores = [test_scores['vocab']]
 
         # Average test score
-        avg_test_score = np.mean(test_scores)
+        avg_test_score = np.nanmean(test_scores)
         info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, avg_test_score))
         writer.add_scalar('test_{}'.format(args.metric), avg_test_score, 0)
 
@@ -379,7 +379,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             writer.add_scalar('ensemble_test_features_rmse', ensemble_scores['features'], 0)
         ensemble_scores = [ensemble_scores['vocab']]
 
-    avg_ensemble_test_score = np.mean(ensemble_scores)
+    avg_ensemble_test_score = np.nanmean(ensemble_scores)
     info('Ensemble test {} = {:.3f}'.format(args.metric, avg_ensemble_test_score))
     writer.add_scalar('ensemble_test_{}'.format(args.metric), avg_ensemble_test_score, 0)
 

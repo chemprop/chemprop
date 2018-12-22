@@ -36,7 +36,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
 
     # Report scores for each model
     for fold_num, scores in enumerate(all_scores):
-        info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, np.mean(scores)))
+        info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, np.nanmean(scores)))
 
         if args.show_individual_scores:
             for task_name, score in zip(task_names, scores):
@@ -44,8 +44,8 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
                     info('Seed {} ==> test {} {} = {:.3f}'.format(init_seed + fold_num, task_name, args.metric, score))
 
     # Report scores across models
-    avg_scores = np.mean(all_scores, axis=1)  # average score for each model across tasks
-    mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+    avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
+    mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
     info('Overall test {} = {:.3f} +/- {:.3f}'.format(args.metric, mean_score, std_score))
 
     if args.show_individual_scores:
@@ -54,8 +54,8 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
                 info('Overall test {} {} = {:.3f} +/- {:.3f}'.format(
                     task_name,
                     args.metric,
-                    np.mean(all_scores[:, task_num]),
-                    np.std(all_scores[:, task_num]))
+                    np.nanmean(all_scores[:, task_num]),
+                    np.nanstd(all_scores[:, task_num]))
                 )
 
     if args.num_chunks > 1:
