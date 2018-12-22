@@ -14,6 +14,7 @@ from predict import make_predictions
 # Initialize logger
 logger = logging.getLogger('end_to_end')
 logger.setLevel(logging.DEBUG)
+logger.propagate = False
 
 
 def merge_train_val(args: Namespace):
