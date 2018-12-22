@@ -34,6 +34,7 @@ RDKIT_NORMALIZED_FEATURES_DIR = '/data/rsg/chemistry/yangk/saved_features'
 def create_train_logger() -> logging.Logger:
     train_logger = logging.getLogger('train')
     train_logger.setLevel(logging.DEBUG)
+    train_logger.propagate = False
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     train_logger.addHandler(ch)
@@ -81,6 +82,7 @@ def run_all_datasets(experiment_args: Namespace,
 def create_logger(name: str, save_dir: str, save_name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

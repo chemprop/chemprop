@@ -8,7 +8,7 @@ from chemprop.utils import set_logger
 # Initialize logger
 logger = logging.getLogger('train')
 logger.setLevel(logging.DEBUG)
-
+logger.propagate = False
 
 if __name__ == '__main__':
     args = parse_train_args()
