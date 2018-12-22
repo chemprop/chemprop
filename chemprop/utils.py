@@ -329,8 +329,10 @@ def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
     ch = logging.StreamHandler()
     if quiet:
         ch.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
     else:
         ch.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
     fh_v.setLevel(logging.DEBUG)
