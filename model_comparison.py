@@ -107,7 +107,7 @@ if __name__ == '__main__':
                         help='Name of file where model comparison results will be saved')
     parser.add_argument('--experiments', type=str, nargs='*', default=['all'],
                         help='Which experiments to run')
-    parser.add_argument('--datasets', type=str, nargs='+', default=DATASETS.keys(), choices=DATASETS.keys(),
+    parser.add_argument('--datasets', type=str, nargs='+', default=list(DATASETS.keys()), choices=list(DATASETS.keys()),
                         help='Which datasets to perform a grid search on')
     args = parser.parse_args()
 
