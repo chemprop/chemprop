@@ -85,7 +85,7 @@ def grid_search(args: Namespace):
 if __name__ == '__main__':
     parser = ArgumentParser()
     add_train_args(parser)
-    parser.add_argument('--datasets', type=str, nargs='+', default=['all'], choices=DATASETS.keys(),
+    parser.add_argument('--datasets', type=str, nargs='+', default=DATASETS.keys(), choices=DATASETS.keys(),
                         help='Which datasets to perform a grid search on')
     parser.add_argument('--num_runs_per_dataset', type=int, default=20,
                         help='Number of hyperparameter choices to try for each datasets')

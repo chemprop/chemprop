@@ -31,6 +31,7 @@ DATASETS['chembl'] = ('classification', '/data/rsg/chemistry/yangk/chembl/chembl
 
 RDKIT_NORMALIZED_FEATURES_DIR = '/data/rsg/chemistry/yangk/saved_features'
 
+
 def create_train_logger() -> logging.Logger:
     train_logger = logging.getLogger('train')
     train_logger.setLevel(logging.DEBUG)
@@ -46,10 +47,11 @@ TRAIN_LOGGER = create_train_logger()
 
 
 # TODO: change to write results as a CSV for easier processing
-def run_all_datasets(experiment_args: Namespace,
-                     logger: logging.Logger,
-                     features_dir: str = None):
-    for dataset_name, (dataset_type, dataset_path, num_folds, metric) in DATASETS.items():
+def run_comparison(experiment_args: Namespace,
+                   logger: logging.Logger,
+                   features_dir: str = None):
+    for dataset_name in experiment_args.datasets:
+        dataset_type, dataset_path, num_folds, metric = DATASETS[dataset_name]
         logger.info(dataset_name)
 
         # Set up args
@@ -105,6 +107,8 @@ if __name__ == '__main__':
                         help='Name of file where model comparison results will be saved')
     parser.add_argument('--experiments', type=str, nargs='*', default=['all'],
                         help='Which experiments to run')
+    parser.add_argument('--datasets', type=str, nargs='+', default=DATASETS.keys(), choices=DATASETS.keys(),
+                        help='Which datasets to perform a grid search on')
     args = parser.parse_args()
 
     logger = create_logger(name='model_comparison', save_dir=args.save_dir, save_name=args.log_name)
@@ -113,14 +117,14 @@ if __name__ == '__main__':
         logger.info('base')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'base')
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'virtual_edges' in args.experiments:
         logger.info('virtual edges')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
         experiment_args.virtual_edges = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'master_node' in args.experiments:
         logger.info('master node')
@@ -129,7 +133,7 @@ if __name__ == '__main__':
         experiment_args.master_node = True
         experiment_args.master_dim = experiment_args.hidden_size
         experiment_args.use_master_as_output = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'deepset' in args.experiments:
         logger.info('deepset')
@@ -137,56 +141,56 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'deepset')
         experiment_args.deepset = True
         experiment_args.ffn_num_layers = 1
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'attention' in args.experiments:
         logger.info('attention')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'attention')
         experiment_args.attention = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'message_attention' in args.experiments:
         logger.info('message attention')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'message_attention')
         experiment_args.message_attention = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'global_attention' in args.experiments:
         logger.info('global attention')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'global_attention')
         experiment_args.global_attention = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'diff_depth_weights' in args.experiments:
         logger.info('diff depth weights')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'diff_depth_weights')
         experiment_args.diff_depth_weights = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'layers_per_message' in args.experiments:
         logger.info('layers per message')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layers_per_message')
         experiment_args.layers_per_message = 2
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'layer_norm' in args.experiments:
         logger.info('layer norm')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'layer_norm')
         experiment_args.layer_norm = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'undirected' in args.experiments:
         logger.info('undirected')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'undirected')
         experiment_args.undirected = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
     
     if 'all' in args.experiments or 'scheduler_decay' in args.experiments:
         logger.info('scheduler decay')
@@ -194,20 +198,20 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'scheduler_decay')
         experiment_args.scheduler = 'decay'
         experiment_args.init_lr = [1e-3]
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'atom_messages' in args.experiments:
         logger.info('atom messages')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'atom_messages')
         experiment_args.atom_messages = True
-        run_all_datasets(experiment_args, logger)
+        run_comparison(experiment_args, logger)
     
     if 'all' in args.experiments or 'rdkit_normalized_features' in args.experiments:
         logger.info('rdkit_normalized_features')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'rdkit_normalized_features')
         experiment_args.no_features_scaling = True
-        run_all_datasets(experiment_args, logger, features_dir=RDKIT_NORMALIZED_FEATURES_DIR)
+        run_comparison(experiment_args, logger, features_dir=RDKIT_NORMALIZED_FEATURES_DIR)
 
-    # python model_comparison.py --data_path blah --dataset_type regression --save_dir logging_dir --log_name gs.log --experiments all --quiet
+    # python model_comparison.py --data_path blah --dataset_type regression --save_dir logging_dir --log_name gs.log --experiments base --datasets delaney --quiet
