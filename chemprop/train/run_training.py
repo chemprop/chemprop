@@ -76,11 +76,22 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             args.class_weights = 1 / torch.Tensor(class_batch_counts)
 
     if args.save_smiles_splits:
-        for dataset, name in [(train_data, 'train_smiles.csv'), (val_data, 'val_smiles.csv'), (test_data, 'test_smiles.csv')]:
-            with open(os.path.join(args.save_dir, name), 'w') as f:
+        with open(args.data_path, 'r') as f:
+            header = f.readline().strip()
+            lines_by_smiles = {}
+            for line in f:
+                line = line.strip()
+                smiles = line.split(',')[0]
+                lines_by_smiles[smiles] = line
+        for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
+            with open(os.path.join(args.save_dir, name + '_smiles.csv'), 'w') as f:
                 f.write('smiles\n')
                 for smiles in dataset.smiles():
                     f.write(smiles.strip() + '\n')
+            with open(os.path.join(args.save_dir, name + '_full.csv'), 'w') as f:
+                f.write(header + '\n')
+                for smiles in dataset.smiles():
+                    f.write(lines_by_smiles[smiles] + '\n')
 
     if args.features_scaling:
         features_scaler = train_data.normalize_features(replace_nan_token=None if args.predict_features else 0)
