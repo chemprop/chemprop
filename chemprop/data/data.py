@@ -34,7 +34,7 @@ class SparseNoneArray:
 class MoleculeDatapoint:
     def __init__(self,
                  line: List[str],
-                 args: Namespace,
+                 args: Namespace = None,
                  features: np.ndarray = None,
                  use_compound_names: bool = False):
         """
