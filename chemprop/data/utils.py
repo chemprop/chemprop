@@ -190,7 +190,10 @@ def split_data(data: MoleculeDataset,
     if args.split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately
         with open(args.folds_file, 'rb') as f:
-            all_fold_indices = pickle.load(f)
+            try:
+                all_fold_indices = pickle.load(f)
+            except UnicodeDecodeError:
+                all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
         assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
 
         log_scaffold_stats(data, all_fold_indices, logger=logger)
