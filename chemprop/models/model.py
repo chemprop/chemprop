@@ -63,7 +63,7 @@ class MoleculeModel(nn.Module):
                 raise ValueError('Setting parameters not yet supported for mayer_layers')
 
             drop_layer = lambda p: MayrDropout(p)
-            linear_layer = lambda input_dim, output_dim, p: MayrLinear(input_dim, output_dim, p)
+            linear_layer = lambda input_dim, output_dim, p, idx: MayrLinear(input_dim, output_dim, p)
         else:
             drop_layer = lambda p: nn.Dropout(p)
 
