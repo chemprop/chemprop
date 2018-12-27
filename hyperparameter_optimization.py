@@ -28,7 +28,9 @@ def grid_search(args: Namespace):
         dataset_type, dataset_path, _, metric = DATASETS[dataset_name]
 
         # Create logger for dataset
-        logger = create_logger(name=dataset_name, save_dir=args.save_dir, save_name='{}.log'.format(dataset_name))
+        logger = create_logger(name=dataset_name,
+                               save_dir=args.save_dir,
+                               save_name='{}_{}.log'.format(dataset_name, args.split_type))
 
         # Set up args for dataset
         dataset_args = deepcopy(args)
