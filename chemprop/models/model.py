@@ -170,7 +170,7 @@ def build_model(args: Namespace, params: Dict[str, nn.Parameter] = None) -> nn.M
         model = MOE(args)
         if args.adversarial:
             model = GAN(args, prediction_model=model, encoder=model.encoder)
-        initialize_weights(model)
+        initialize_weights(model, args)
 
         return model
 
@@ -184,6 +184,6 @@ def build_model(args: Namespace, params: Dict[str, nn.Parameter] = None) -> nn.M
 
         model = GAN(args, prediction_model=model, encoder=model.encoder)
 
-    initialize_weights(model)
+    initialize_weights(model, args)
 
     return model

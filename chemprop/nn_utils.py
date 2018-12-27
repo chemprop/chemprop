@@ -1,6 +1,7 @@
 import math
 import os
 from typing import List, Union
+from argparse import Namespace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -109,7 +110,7 @@ def get_activation_function(activation: str) -> nn.Module:
         raise ValueError('Activation "{}" not supported.'.format(args.activation))
 
 
-def initialize_weights(model: nn.Module):
+def initialize_weights(model: nn.Module, args: Namespace):
     """
     Initializes the weights of a model in place.
 
@@ -119,7 +120,10 @@ def initialize_weights(model: nn.Module):
         if param.dim() == 1:
             nn.init.constant_(param, 0)
         else:
-            nn.init.xavier_normal_(param)
+            if args.uniform_init:  # for relu, to match chembl paper
+                nn.init.xavier_uniform_(param, gain=nn.init.calculate_gain('relu'))
+            else:
+                nn.init.xavier_normal_(param)
 
 
 class MockLR(_LRScheduler):

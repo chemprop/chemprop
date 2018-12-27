@@ -176,6 +176,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--separate_ffn_lr', action='store_true', default=False,
                         help='Whether to use a separate optimizer/lr scheduler for the ffn'
                              'rather than sharing optimizer/scheduler with the message passing encoder')
+    parser.add_argument('--uniform_init', action='store_true', default=False,
+                        help='Initialize with xavier_uniform instead of xavier_normal, with proper scaling for relu')
     parser.add_argument('--init_lr', type=float, nargs='*', default=[1e-4],
                         help='Initial learning rate')
     parser.add_argument('--max_lr', type=float, nargs='*', default=[1e-3],
