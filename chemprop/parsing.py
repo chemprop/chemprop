@@ -153,6 +153,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--keep_nan_metrics', action='store_true', default=False,
                         help='AUC metrics can return nan when the test set for a target is all 0 or all 1.'
                              'Turning this on defaults the value to 0.5 rather than skipping that target')
+    parser.add_argument('--test_split', type=str, default='test',
+                        choices=['train', 'val', 'test'],
+                        help='Which split (train/val/test) to use as the test set in run_training.py')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,

@@ -64,6 +64,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
 
+    # Optionally replace test data with train or val data
+    if args.test_split == 'train':
+        test_data = train_data
+    elif args.test_split == 'val':
+        test_data = val_data
+
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(train_data)
         debug('Class sizes on train split')

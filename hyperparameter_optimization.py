@@ -93,4 +93,4 @@ if __name__ == '__main__':
 
     grid_search(args)
 
-    # python hyperparameter_optimization.py --data_path blah --dataset_type regression --save_dir ../chemprop_grid_search --datasets delaney --num_runs_per_dataset 20 --num_folds 1 --split_type scaffold --quiet
+    # python hyperparameter_optimization.py --data_path blah --dataset_type regression --save_dir ../chemprop_grid_search --datasets delaney --num_runs_per_dataset 50 --num_folds 3 --quiet
