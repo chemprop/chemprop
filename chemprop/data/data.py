@@ -395,7 +395,7 @@ class MoleculeDataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, item) -> MoleculeDatapoint:
+    def __getitem__(self, item) -> Union[MoleculeDatapoint, List[MoleculeDatapoint]]:
         return self.data[item]
 
 
