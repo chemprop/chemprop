@@ -85,10 +85,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         with open(args.data_path, 'r') as f:
             header = f.readline().strip()
             lines_by_smiles = {}
-            for line in f:
+            indices_by_smiles = {}
+            for i, line in enumerate(f):
                 line = line.strip()
                 smiles = line.split(',')[0]
                 lines_by_smiles[smiles] = line
+                indices_by_smiles[smiles] = i
+
+        all_split_indices = []
         for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
             with open(os.path.join(args.save_dir, name + '_smiles.csv'), 'w') as f:
                 f.write('smiles\n')
@@ -98,6 +102,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 f.write(header + '\n')
                 for smiles in dataset.smiles():
                     f.write(lines_by_smiles[smiles] + '\n')
+            split_indices = []
+            for smiles in dataset.smiles():
+                split_indices.append(indices_by_smiles[smiles])
+                split_indices = sorted(split_indices)
+            all_split_indices.append(split_indices)
+        with open(os.path.join(args.save_dir, 'split_indices.pckl'), 'wb') as f:
+            pickle.dump(all_split_indices, f)
 
     if args.features_scaling:
         features_scaler = train_data.normalize_features(replace_nan_token=None if args.predict_features else 0)
