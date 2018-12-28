@@ -132,7 +132,7 @@ Results on classification datasets (AUC score, the higher the better)
 | clintox | 1,478 | 0.882 ± 0.022	| 0.807 ± 0.047 |
 | MUV | 93,087 | 0.067 ± 0.03* | 0.046 ± 0.031 |
 | HIV | 41,127 |	0.821 ± 0.034† |	0.763 ± 0.016 |
-| PCBA | 437,929 | 0.218 ± 0.001* | 	0.136 ± 0.003 | 
+| PCBA | 437,928 | 0.218 ± 0.001* | 	0.136 ± 0.003 | 
 
 Results on regression datasets (score, the lower the better)
 
@@ -142,7 +142,7 @@ delaney	| 1,128 | 0.687 ± 0.037 | 	0.58 ± 0.03 |
 Freesolv | 642 |	0.915 ± 0.154	| 1.15 ± 0.12 |
 Lipo | 4,200 |	0.565 ± 0.052 |	0.655 ± 0.036 |
 qm8 | 21,786 |	0.008 ± 0.000 | 0.0143 ± 0.0011 |
-qm9 | 133,885 |	2.47 ± 0.036	| 3.2 ± 1.5 |
+qm9 | 133,884 |	2.47 ± 0.036	| 3.2 ± 1.5 |
 
 †HIV was trained with hidden size 1800 and depth 6 but without the master node.
 *MUV and PCBA are using a much older version of the model.
