@@ -109,7 +109,7 @@ def scaffold_split(data: MoleculeDataset,
                 big_index_sets.append(index_set)
             else:
                 small_index_sets.append(index_set)
-        random.seed(0)
+        random.seed(seed)
         random.shuffle(big_index_sets)
         random.shuffle(small_index_sets)
         index_sets = big_index_sets + small_index_sets

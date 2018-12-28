@@ -208,10 +208,17 @@ if __name__ == '__main__':
         run_comparison(experiment_args, logger)
     
     if 'all' in args.experiments or 'rdkit_normalized_features' in args.experiments:
-        logger.info('rdkit_normalized_features')
+        logger.info('rdkit normalized features')
         experiment_args = deepcopy(args)
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'rdkit_normalized_features')
         experiment_args.no_features_scaling = True
         run_comparison(experiment_args, logger, features_dir=RDKIT_NORMALIZED_FEATURES_DIR)
+
+    if 'all' in args.experiments or 'nonscaled_targets' in args.experiments:
+        logger.info('nonscaled targets')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'nonscaled_targets')
+        experiment_args.no_target_scaling = True
+        run_comparison(experiment_args, logger)
 
     # python model_comparison.py --data_path blah --dataset_type regression --save_dir logging_dir --log_name gs.log --experiments base --datasets delaney --quiet
