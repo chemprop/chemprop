@@ -97,7 +97,10 @@ def get_data(path: str,
         skip_smiles_path = args.skip_smiles_path
 
         if args.features_path:
-            features_data = load_features(args.features_path)
+            features_data = []
+            for features_path in args.features_path:
+                features_data.append(load_features(features_path))  # each is num_data x num_features
+            features_data = np.concatenate(features_data, axis=1)
         else:
             features_data = None
     else:
