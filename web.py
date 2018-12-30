@@ -44,28 +44,38 @@ def get_task_names(checkpoint_path: str) -> List[str]:
     return args.task_names
 
 
-@app.route("/")
+@app.route('/')
 def home():
     return render_template('home.html')
 
 
-@app.route('/', methods=['POST'])
+@app.route('/train')
+def train():
+    return render_template('train.html')
+
+
+@app.route('/predict')
 def predict():
-    checkpoint, smiles = request.form['checkpoint'], request.form['smiles']
-    smiles = smiles.split()
+    return render_template('predict.html')
 
-    if not os.path.exists(checkpoint):
-        return render_template('home.html', error='Error: checkpoint not found.')
-
-    task_names = get_task_names(checkpoint)
-    preds = make_predictions(checkpoint, smiles)
-
-    return render_template('home.html',
-                           smiles=smiles,
-                           num_smiles=len(smiles),
-                           task_names=task_names,
-                           num_tasks=len(task_names),
-                           preds=preds)
+#
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     checkpoint, smiles = request.form['checkpoint'], request.form['smiles']
+#     smiles = smiles.split()
+#
+#     if not os.path.exists(checkpoint):
+#         return render_template('predict.html', error='Error: checkpoint not found.')
+#
+#     task_names = get_task_names(checkpoint)
+#     preds = make_predictions(checkpoint, smiles)
+#
+#     return render_template('predict.html',
+#                            smiles=smiles,
+#                            num_smiles=len(smiles),
+#                            task_names=task_names,
+#                            num_tasks=len(task_names),
+#                            preds=preds)
 
 
 if __name__ == "__main__":

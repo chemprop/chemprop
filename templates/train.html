@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    <h1>Train</h1>
+{% endblock %}
+
+{% block content %}
+    <form method="POST">
+        <input name="checkpoint" size="50" placeholder="Path to model checkpoint" required>
+        <br>
+        <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
+        <br>
+        <input type="submit">
+    </form>
+
+    {% if error %}
+        <h3>ERROR: {{ error }}</h3>
+    {% endif %}
+
+    {% if smiles %}
+        {% for i in range(num_smiles) %}
+            <p>SMILES: {{ smiles[i] }}</p>
+
+            {% for j in range(num_tasks) %}
+                <p>{{ task_names[j] }}: {{ preds[i][j] }}</p>
+            {% endfor %}
+
+            <hr>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
