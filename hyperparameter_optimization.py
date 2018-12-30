@@ -55,16 +55,16 @@ def grid_search(args: Namespace):
             for key, value in hyperparams.items():
                 setattr(gs_args, key, value)
 
-            # Record hyperparameters and params
-            temp_model = build_model(gs_args)
-            num_params = param_count(temp_model)
+            # Record hyperparameters
             logger.info(hyperparams)
-            logger.info('num params: {:,}'.format(num_params))
 
             # Cross validate
             mean_score, std_score = cross_validate(gs_args, TRAIN_LOGGER)
 
             # Record results
+            temp_model = build_model(gs_args)
+            num_params = param_count(temp_model)
+            logger.info('num params: {:,}'.format(num_params))
             logger.info('{} +/- {} {}'.format(mean_score, std_score, metric))
 
             results.append({
