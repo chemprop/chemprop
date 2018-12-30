@@ -279,7 +279,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 data=val_data,
                 metric_func=metric_func,
                 args=args,
-                scaler=scaler
+                scaler=scaler,
+                logger=logger
             )
 
             if args.dataset_type == 'bert_pretraining':
@@ -335,7 +336,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     preds=test_preds,
                     targets=td.targets(),
                     metric_func=metric_func,
-                    args=args
+                    args=args,
+                    logger=logger
                 )
                 avg_test_score = np.nanmean(test_scores)
                 info('Model {} test {} for {} = {:.3f}'.format(model_idx, args.metric, name, avg_test_score))
@@ -353,7 +355,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 preds=test_preds,
                 targets=test_targets,
                 metric_func=metric_func,
-                args=args
+                args=args,
+                logger=logger
             )
 
         if args.maml:
@@ -401,7 +404,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             preds=avg_test_preds,
             targets=test_targets,
             metric_func=metric_func, 
-            args=args
+            args=args,
+            logger=logger
         )
 
     # Average ensemble score

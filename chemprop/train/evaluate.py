@@ -1,4 +1,5 @@
 from argparse import Namespace
+import logging
 from typing import Callable, Dict, List, Union
 
 import torch.nn as nn
@@ -12,7 +13,8 @@ from chemprop.utils import rmse
 def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[float]]]],
                          targets: Union[List[List[float]], Dict[str, List[List[float]]]],
                          metric_func: Callable,
-                         args: Namespace) -> Union[List[float], Dict[str, float]]:
+                         args: Namespace,
+                         logger: logging.Logger = None) -> Union[List[float], Dict[str, float]]:
     """
     Evaluates predictions using a metric function and filtering out invalid targets.
 
@@ -20,8 +22,11 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     :param targets: A list of lists of shape (data_size, num_tasks) with targets.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param args: Namespace
+    :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
+    debug = logger.debug if logger is not None else print
+
     if args.dataset_type == 'unsupervised':
         num_tasks = 1
         data_size = len(preds)
@@ -60,7 +65,7 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
             # # Skip if all targets are identical, otherwise we'll crash during classification
             if args.dataset_type == 'classification' and \
                     (all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i])):
-                print('Warning: Found a task with all 0s or all 1s')
+                debug('Warning: Found a task with all 0s or all 1s')
                 if args.keep_nan_metrics:
                     if args.metric == 'auc':
                         results.append(0.5)  # just assume a baseline AUC-ROC of 0.5, which is just random guessing
@@ -86,7 +91,8 @@ def evaluate(model: nn.Module,
              data: MoleculeDataset,
              metric_func: Callable,
              args: Namespace,
-             scaler: StandardScaler = None) -> List[float]:
+             scaler: StandardScaler = None,
+             logger: logging.Logger = None) -> List[float]:
     """
     Evaluates an ensemble of models on a dataset.
 
@@ -95,6 +101,7 @@ def evaluate(model: nn.Module,
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param args: Arguments.
     :param scaler: A StandardScaler object fit on the training targets.
+    :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
     preds = predict(
@@ -117,7 +124,8 @@ def evaluate(model: nn.Module,
         preds=preds,
         targets=targets,
         metric_func=metric_func,
-        args=args
+        args=args,
+        logger=logger
     )
 
     return results

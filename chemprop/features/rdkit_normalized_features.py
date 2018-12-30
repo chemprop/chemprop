@@ -1,10 +1,10 @@
-import numpy as np
 import logging
 from rdkit import Chem
 
 try:
     from descriptastorus.descriptors import rdNormalizedDescriptors
     generator = rdNormalizedDescriptors.RDKit2DNormalized()
+
     def rdkit_2d_normalized_features(smiles: str):
         # the first element is true/false if the mol was properly computed
         if type(smiles) == str:

@@ -13,6 +13,7 @@ from .morgan_fingerprint import morgan_fingerprint
 from .rdkit_features import rdkit_2d_features
 from .rdkit_normalized_features import rdkit_2d_normalized_features
 
+
 def load_features(path: str) -> List[np.ndarray]:
     """
     Loads features saved as a .pckl file or as a directory of .pckl files.
