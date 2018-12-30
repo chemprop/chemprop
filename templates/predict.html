@@ -5,8 +5,8 @@
 {% endblock %}
 
 {% block content %}
-    <form method="POST">
-        <input name="checkpoint" size="50" placeholder="Path to model checkpoint" required>
+    <form enctype="multipart/form-data" method="POST">
+        <input type="file" name="checkpoint" accept=".pt" required>
         <br>
         <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
         <br>
