@@ -2,7 +2,7 @@ import os
 from tempfile import TemporaryDirectory
 from typing import List
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import torch
 from werkzeug.utils import secure_filename
 
@@ -10,11 +10,15 @@ from chemprop.data import MoleculeDataset, MoleculeDatapoint
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
-UPLOAD_DIR = TemporaryDirectory()
+UPLOAD_FOLDER = TemporaryDirectory()
+DOWNLOAD_FOLDER = TemporaryDirectory()
+PREDICTIONS_FILENAME = 'predictions.csv'
 
 
 app = Flask(__name__)
-app.config['UPLOAD_DIR'] = UPLOAD_DIR.name
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER.name
+app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER.name
+app.config['PREDICTIONS_FILENAME'] = PREDICTIONS_FILENAME
 
 
 def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float]]:
@@ -45,6 +49,16 @@ def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float
     return preds
 
 
+def save_predictions(save_path: str,
+                     task_names: List[str],
+                     smiles: List[str],
+                     preds: List[List[float]]):
+    with open(save_path, 'w') as f:
+        f.write('smiles,' + ','.join(task_names) + '\n')
+        for smile, pred in zip(smiles, preds):
+            f.write(smile + ',' + ','.join(str(p) for p in pred) + '\n')
+
+
 def get_task_names(checkpoint_path: str) -> List[str]:
     args = load_args(checkpoint_path)
 
@@ -73,12 +87,16 @@ def predict():
     # Upload model checkpoint
     checkpoint = request.files['checkpoint']
     checkpoint_name = secure_filename(checkpoint.filename)
-    checkpoint_path = os.path.join(app.config['UPLOAD_DIR'], checkpoint_name)
+    checkpoint_path = os.path.join(app.config['UPLOAD_FOLDER'], checkpoint_name)
     checkpoint.save(checkpoint_path)
 
     # Run prediction
     task_names = get_task_names(checkpoint_path)
     preds = make_predictions(checkpoint_path, smiles)
+
+    # Save preds
+    preds_path = os.path.join(app.config['DOWNLOAD_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+    save_predictions(preds_path, task_names, smiles, preds)
 
     return render_template('predict.html',
                            smiles=smiles,
@@ -86,6 +104,13 @@ def predict():
                            task_names=task_names,
                            num_tasks=len(task_names),
                            preds=preds)
+
+
+@app.route('/download_predictions')
+def download_predictions():
+    preds_path = os.path.join(app.config['DOWNLOAD_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+
+    return send_file(preds_path, attachment_filename=app.config['PREDICTIONS_FILENAME'])
 
 
 if __name__ == "__main__":

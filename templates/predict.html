@@ -6,8 +6,10 @@
 
 {% block content %}
     <form enctype="multipart/form-data" method="POST">
+        <h5>Model checkpoint (.pt file)</h5>
         <input type="file" name="checkpoint" accept=".pt" required>
         <br>
+        <h5>SMILES (one per line)</h5>
         <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
         <br>
         <input type="submit">
@@ -18,6 +20,15 @@
     {% endif %}
 
     {% if smiles %}
+        <hr>
+
+        <a href="{{ url_for('download_predictions') }}">
+            <button class="btn btn-default btn-md">Download</button>
+        </a>
+
+        <br>
+        <br>
+
         {% for i in range(num_smiles) %}
             <p>SMILES: {{ smiles[i] }}</p>
 

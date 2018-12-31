@@ -20,15 +20,28 @@
             <a class="navbar-brand" href="{{ url_for('home') }}">Chemprop</a>
         </div>
         <ul class="nav navbar-nav">
-            <li class="active"><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
             <li><a href="{{ url_for('train') }}">Train</a></li>
             <li><a href="{{ url_for('predict') }}">Predict</a></li>
         </ul>
     </div>
 </nav>
 
-{% block title %}{% endblock %}
+<div class="container">
+    {% block title %}{% endblock %}
+</div>
 
-{% block content %}{% endblock %}
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<div class="navbar navbar-inverse navbar-fixed-bottom">
+    <div class="container">
+      <p class="navbar-text pull-left">Chemprop v0.1 © 2019</p>
+
+      <a href="https://github.com/wengong-jin/chemprop" class="navbar-btn btn-info btn pull-right">Source code</a>
+    </div>
+</div>
+
 </body>
 </html>
