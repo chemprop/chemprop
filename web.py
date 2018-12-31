@@ -3,7 +3,7 @@ import os
 from tempfile import TemporaryDirectory
 from typing import List
 
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_from_directory
 import torch
 from werkzeug.utils import secure_filename
 
@@ -23,6 +23,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER.name
 app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER.name
 app.config['PREDICTIONS_FILENAME'] = PREDICTIONS_FILENAME
+app.config['MODEL_FOLDER'] = os.path.join(app.config['DOWNLOAD_FOLDER'], 'model_0')
 app.config['MODEL_FILENAME'] = MODEL_FILENAME
 
 
@@ -80,8 +81,8 @@ def train():
     if request.method == 'GET':
         return render_template('train.html')
 
-    # Get dataset type
-    dataset_type = request.form['datasetType']
+    # Get dataset type and epochs
+    dataset_type, epochs = request.form['datasetType'], int(request.form['epochs'])
 
     # Upload data file
     data = request.files['data']
@@ -89,13 +90,16 @@ def train():
     data_path = os.path.join(app.config['UPLOAD_FOLDER'], data_name)
     data.save(data_path)
 
-    # Create args and add data path and dataset type
-    parser = ArgumentParser(conflict_handler='resolve')
+    # Create and modify args
+    parser = ArgumentParser()
     add_train_args(parser)
-    parser.add_argument('--data_path', default=data_path)
-    parser.add_argument('--dataset_type', default=dataset_type)
-    parser.add_argument('--save_dir', default=app.config['DOWNLOAD_FOLDER'])
     args = parser.parse_args()
+
+    args.data_path = data_path
+    args.dataset_type = dataset_type
+    args.save_dir = app.config['DOWNLOAD_FOLDER']
+    args.epochs = epochs
+
     modify_train_args(args)
 
     # Run training
@@ -106,9 +110,7 @@ def train():
 
 @app.route('/download_model')
 def download_model():
-    model_path = os.path.join(app.config['DOWNLOAD_FOLDER'], 'model_0/model.pt')
-
-    return send_file(model_path, attachment_filename=app.config['MODEL_FILENAME'])
+    return send_from_directory(app.config['MODEL_FOLDER'], app.config['MODEL_FILENAME'], as_attachment=True)
 
 
 @app.route('/predict', methods=['GET', 'POST'])
@@ -145,9 +147,7 @@ def predict():
 
 @app.route('/download_predictions')
 def download_predictions():
-    preds_path = os.path.join(app.config['DOWNLOAD_FOLDER'], app.config['PREDICTIONS_FILENAME'])
-
-    return send_file(preds_path, attachment_filename=app.config['PREDICTIONS_FILENAME'])
+    return send_from_directory(app.config['DOWNLOAD_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
 if __name__ == "__main__":

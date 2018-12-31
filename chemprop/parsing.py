@@ -36,7 +36,7 @@ def add_hyper_opt_args(parser: ArgumentParser):
 def add_train_args(parser: ArgumentParser):
     """Add training arguments to an ArgumentParser."""
     # General arguments
-    parser.add_argument('--data_path', type=str, required=True,
+    parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file, or to directory of files if pre-chunked')
     parser.add_argument('--test', action='store_true', default=False,
                         help='Whether to skip training and only test the model')
@@ -71,7 +71,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--load_encoder_only', action='store_true', default=False,
                         help='If a checkpoint_dir is specified for training, only loads weights from encoder'
                              'and not from the final feed-forward network')
-    parser.add_argument('--dataset_type', type=str, required=True,
+    parser.add_argument('--dataset_type', type=str,
                         choices=['classification', 'regression', 'regression_with_binning',
                                  'unsupervised', 'bert_pretraining', 'kernel'],
                         help='Type of dataset, e.g. classification or regression.'
@@ -375,6 +375,9 @@ def update_args_from_checkpoint_dir(args: Namespace):
 def modify_train_args(args: Namespace):
     """Modifies and validates training arguments."""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
+
+    assert args.data_path is not None
+    assert args.dataset_type is not None
 
     if args.save_dir is not None:
         os.makedirs(args.save_dir, exist_ok=True)
