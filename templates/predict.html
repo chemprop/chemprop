@@ -12,18 +12,18 @@
         <h5>SMILES (one per line)</h5>
         <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
         <br>
-        <input type="submit">
+        <input type="submit" value="Predict">
     </form>
 
     {% if error %}
         <h3>ERROR: {{ error }}</h3>
     {% endif %}
 
-    {% if smiles %}
+    {% if predicted %}
         <hr>
 
         <a href="{{ url_for('download_predictions') }}">
-            <button class="btn btn-default btn-md">Download</button>
+            <button class="btn btn-default btn-md">Download Predictions</button>
         </a>
 
         <br>

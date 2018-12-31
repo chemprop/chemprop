@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import os
 from tempfile import TemporaryDirectory
 from typing import List
@@ -7,18 +8,22 @@ import torch
 from werkzeug.utils import secure_filename
 
 from chemprop.data import MoleculeDataset, MoleculeDatapoint
+from chemprop.parsing import add_train_args, modify_train_args
+from chemprop.train.run_training import run_training
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
 UPLOAD_FOLDER = TemporaryDirectory()
 DOWNLOAD_FOLDER = TemporaryDirectory()
 PREDICTIONS_FILENAME = 'predictions.csv'
+MODEL_FILENAME = 'model.pt'
 
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER.name
 app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER.name
 app.config['PREDICTIONS_FILENAME'] = PREDICTIONS_FILENAME
+app.config['MODEL_FILENAME'] = MODEL_FILENAME
 
 
 def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float]]:
@@ -70,9 +75,40 @@ def home():
     return render_template('home.html')
 
 
-@app.route('/train')
+@app.route('/train', methods=['GET', 'POST'])
 def train():
-    return render_template('train.html')
+    if request.method == 'GET':
+        return render_template('train.html')
+
+    # Get dataset type
+    dataset_type = request.form['datasetType']
+
+    # Upload data file
+    data = request.files['data']
+    data_name = secure_filename(data.filename)
+    data_path = os.path.join(app.config['UPLOAD_FOLDER'], data_name)
+    data.save(data_path)
+
+    # Create args and add data path and dataset type
+    parser = ArgumentParser(conflict_handler='resolve')
+    add_train_args(parser)
+    parser.add_argument('--data_path', default=data_path)
+    parser.add_argument('--dataset_type', default=dataset_type)
+    parser.add_argument('--save_dir', default=app.config['DOWNLOAD_FOLDER'])
+    args = parser.parse_args()
+    modify_train_args(args)
+
+    # Run training
+    run_training(args)
+
+    return render_template('train.html', trained=True)
+
+
+@app.route('/download_model')
+def download_model():
+    model_path = os.path.join(app.config['DOWNLOAD_FOLDER'], 'model_0/model.pt')
+
+    return send_file(model_path, attachment_filename=app.config['MODEL_FILENAME'])
 
 
 @app.route('/predict', methods=['GET', 'POST'])
@@ -99,6 +135,7 @@ def predict():
     save_predictions(preds_path, task_names, smiles, preds)
 
     return render_template('predict.html',
+                           predicted=True,
                            smiles=smiles,
                            num_smiles=len(smiles),
                            task_names=task_names,

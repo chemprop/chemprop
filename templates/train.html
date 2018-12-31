@@ -5,27 +5,33 @@
 {% endblock %}
 
 {% block content %}
-    <form method="POST">
-        <input name="checkpoint" size="50" placeholder="Path to model checkpoint" required>
+    <form enctype="multipart/form-data" method="POST">
+        <h5>Data (.csv file)</h5>
+        <input type="file" name="data" accept=".csv" required>
         <br>
-        <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
+        <h5>Datset type</h5>
+        <div class="btn-group" data-toggle="buttons">
+          <label class="btn btn-primary">
+            <input type="radio" name="datasetType" id="regression" value="regression" autocomplete="off" required> Regression
+          </label>
+          <label class="btn btn-primary">
+            <input type="radio" name="datasetType" id="classification" value="classification" autocomplete="off" required> Classification
+          </label>
+        </div>
         <br>
-        <input type="submit">
+        <br>
+        <input type="submit" value="Train">
     </form>
 
     {% if error %}
         <h3>ERROR: {{ error }}</h3>
     {% endif %}
 
-    {% if smiles %}
-        {% for i in range(num_smiles) %}
-            <p>SMILES: {{ smiles[i] }}</p>
+    {% if trained %}
+        <hr>
 
-            {% for j in range(num_tasks) %}
-                <p>{{ task_names[j] }}: {{ preds[i][j] }}</p>
-            {% endfor %}
-
-            <hr>
-        {% endfor %}
+        <a href="{{ url_for('download_model') }}">
+            <button class="btn btn-default btn-md">Download Model</button>
+        </a>
     {% endif %}
 {% endblock %}
