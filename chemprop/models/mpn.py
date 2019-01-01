@@ -503,7 +503,7 @@ class MPN(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if not self.graph_input:
+        if not self.graph_input and not self.args.features_only:  # if features only, batch won't even be used
             batch = mol2graph(batch, self.args)
 
         output = self.encoder.forward(batch, features_batch)
