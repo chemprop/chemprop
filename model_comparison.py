@@ -221,4 +221,11 @@ if __name__ == '__main__':
         experiment_args.no_target_scaling = True
         run_comparison(experiment_args, logger)
 
+    if 'all' in args.experiments or 'class_balance' in args.experiments:
+        logger.info('class_balance')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'class_balance')
+        experiment_args.class_balance = True
+        run_comparison(experiment_args, logger)
+
     # python model_comparison.py --save_dir logging_dir --log_name gs.log --experiments base --datasets delaney --quiet

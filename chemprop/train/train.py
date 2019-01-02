@@ -329,4 +329,5 @@ def train(model: nn.Module,
     if args.parallel_featurization:
         exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
         batch_process.join()
+
     return n_iter

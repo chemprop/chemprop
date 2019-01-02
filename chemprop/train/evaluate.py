@@ -70,7 +70,7 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
                     if args.metric == 'auc':
                         results.append(0.5)  # just assume a baseline AUC-ROC of 0.5, which is just random guessing
                     else:
-                        results.append(0) # for prc-auc and accuracy
+                        results.append(0)  # for prc-auc and accuracy
                 else:
                     results.append(float('nan'))
                 continue
