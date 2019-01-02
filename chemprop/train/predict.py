@@ -1,4 +1,5 @@
 from argparse import Namespace
+import logging
 from typing import List
 
 import torch
@@ -19,7 +20,8 @@ def predict(model: nn.Module,
             data: MoleculeDataset,
             args: Namespace,
             scaler: StandardScaler = None,
-            bert_save_memory: bool = False) -> List[List[float]]:
+            bert_save_memory: bool = False,
+            logger: logging.Logger = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
@@ -28,9 +30,12 @@ def predict(model: nn.Module,
     :param args: Arguments.
     :param scaler: A StandardScaler object fit on the training targets.
     :param bert_save_memory: Store unused predictions as None to avoid unnecessary memory use.
+    :param logger: Logger.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """
+    info = logger.info if logger is not None else print
+
     model.eval()
 
     preds = []
@@ -140,8 +145,12 @@ def predict(model: nn.Module,
         exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
         batch_process.join()
 
+    if any(all(p == 0 for p in task_preds) or all(p == 1 for p in task_preds) for task_preds in preds):
+        info('Warning: Found task where all predictions are 0 or 1.')
+
     if args.maml:
         # return the task targets here to guarantee alignment;
         # there's probably no reasonable scenario where we'd use MAML directly to predict something that's actually unknown
         return preds, full_targets
+
     return preds

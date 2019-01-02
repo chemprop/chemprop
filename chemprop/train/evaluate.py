@@ -109,7 +109,8 @@ def evaluate(model: nn.Module,
         data=data,
         args=args,
         scaler=scaler,
-        bert_save_memory=True
+        bert_save_memory=True,
+        logger=logger
     )
 
     if args.maml:

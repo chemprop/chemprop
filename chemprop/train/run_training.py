@@ -330,7 +330,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     model=model,
                     data=td,
                     args=args,
-                    scaler=scaler
+                    scaler=scaler,
+                    logger=logger
                 )
                 test_scores = evaluate_predictions(
                     preds=test_preds,
@@ -349,7 +350,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 model=model,
                 data=test_data,
                 args=args,
-                scaler=scaler
+                scaler=scaler,
+                logger=logger
             )
             test_scores = evaluate_predictions(
                 preds=test_preds,
