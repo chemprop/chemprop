@@ -71,14 +71,15 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         test_data = val_data
 
     if args.dataset_type == 'classification':
-        class_sizes = get_class_sizes(train_data)
-        debug('Class sizes on train split')
+        class_sizes = get_class_sizes(data)
+        debug('Class sizes')
         for i, task_class_sizes in enumerate(class_sizes):
-            debug('{}: '.format(args.task_names[i]) +
+            debug('{} '.format(args.task_names[i]) +
                   ', '.join('{}: {:.2f}%'.format(cls, size * 100) for cls, size in enumerate(task_class_sizes)))
 
         if args.class_balance:
-            class_batch_counts = torch.Tensor(class_sizes) * args.batch_size
+            train_class_sizes = get_class_sizes(train_data)
+            class_batch_counts = torch.Tensor(train_class_sizes) * args.batch_size
             args.class_weights = 1 / torch.Tensor(class_batch_counts)
 
     if args.save_smiles_splits:
