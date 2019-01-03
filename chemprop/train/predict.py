@@ -145,7 +145,9 @@ def predict(model: nn.Module,
         exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
         batch_process.join()
 
-    if any(all(p == 0 for p in task_preds) or all(p == 1 for p in task_preds) for task_preds in preds):
+    # Check if any tasks where all predictions are 0s or 1s
+    zeros, ones = np.zeros(len(data)), np.ones(len(data))
+    if any(np.array_equal(task_preds, zeros) or np.array_equal(task_preds, ones) for task_preds in np.array(preds).T):
         info('Warning: Found task where all predictions are 0 or 1.')
 
     if args.maml:
