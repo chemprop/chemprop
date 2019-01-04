@@ -127,7 +127,7 @@ if __name__ == '__main__':
     #     experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
     #     experiment_args.virtual_edges = True
     #     run_comparison(experiment_args, logger)
-    # 
+    #
     # if 'all' in args.experiments or 'master_node' in args.experiments:
     #     logger.info('master node')
     #     experiment_args = deepcopy(args)
@@ -201,13 +201,6 @@ if __name__ == '__main__':
         experiment_args.scheduler = 'decay'
         experiment_args.init_lr = [1e-3]
         run_comparison(experiment_args, logger)
-
-    if 'all' in args.experiments or 'atom_messages' in args.experiments:
-        logger.info('atom messages')
-        experiment_args = deepcopy(args)
-        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'atom_messages')
-        experiment_args.atom_messages = True
-        run_comparison(experiment_args, logger)
     
     if 'all' in args.experiments or 'rdkit_normalized_features' in args.experiments:
         logger.info('rdkit normalized features')
@@ -229,5 +222,15 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'class_balance')
         experiment_args.class_balance = True
         run_comparison(experiment_args, logger)
+
+    if 'all' in args.experiments or 'atom_messages' in args.experiments:
+        logger.info('atom messages')
+        experiment_args = deepcopy(args)
+        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'atom_messages')
+        experiment_args.atom_messages = True
+        from chemprop.features.featurization import clear_cache  # needed b/c cache is different for atom messages
+        clear_cache()
+        run_comparison(experiment_args, logger)
+        clear_cache()
 
     # python model_comparison.py --save_dir logging_dir --log_name gs.log --experiments base --datasets delaney --quiet

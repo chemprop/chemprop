@@ -39,6 +39,12 @@ BOND_FDIM = 14
 SMILES_TO_GRAPH = {}
 
 
+def clear_cache():
+    """Clears featurization cache."""
+    global SMILES_TO_GRAPH
+    SMILES_TO_GRAPH = {}
+
+
 def get_atom_fdim(args: Namespace, is_output: bool=False) -> int:
     """Gets the dimensionality of atom features."""
     if 'functional_group' in args.additional_atom_features \
