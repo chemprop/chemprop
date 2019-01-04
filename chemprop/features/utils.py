@@ -23,7 +23,6 @@ def load_features(path: str) -> List[np.ndarray]:
     :param path: Path to a .pckl file or a directory of .pckl files named as above.
     :return: A list of numpy arrays containing the features.
     """
-
     if os.path.isfile(path):
         with open(path, 'rb') as f:
             features = pickle.load(f)

@@ -64,7 +64,7 @@ def run_comparison(experiment_args: Namespace,
         args.num_folds = num_folds
         args.metric = metric
         if features_dir is not None:
-            args.features_path = os.path.join(features_dir, dataset_name + '.pckl')
+            args.features_path = [os.path.join(features_dir, dataset_name + '.pckl')]
         modify_train_args(args)
 
         # Set up logging for training
