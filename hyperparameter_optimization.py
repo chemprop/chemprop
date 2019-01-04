@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Dict, Union
 
 from hyperopt import fmin, hp, tpe
+import numpy as np
 
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
@@ -74,11 +75,19 @@ def grid_search(args: Namespace):
                 'num_params': num_params
             })
 
+            # Deal with nan
+            if np.isnan(mean_score):
+                if gs_args.dataset_type == 'classification':
+                    mean_score = 0
+                else:
+                    raise ValueError('Can\'t handle nan score for non-classification dataset.')
+
             return (1 if gs_args.minimize_score else -1) * mean_score
 
         fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_runs_per_dataset)
 
         # Report best result
+        results = [result for result in results if not np.isnan(result['mean_score'])]
         best_result = min(results, key=lambda result: (1 if dataset_args.minimize_score else -1) * result['mean_score'])
         logger.info('best')
         logger.info(best_result['hyperparams'])
