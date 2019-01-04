@@ -25,7 +25,7 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
-    debug = logger.debug if logger is not None else print
+    info = logger.info if logger is not None else print
 
     if args.dataset_type == 'unsupervised':
         num_tasks = 1
@@ -62,18 +62,27 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     else:
         results = []
         for i in range(num_tasks):
-            # # Skip if all targets are identical, otherwise we'll crash during classification
-            if args.dataset_type == 'classification' and \
-                    (all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i])):
-                debug('Warning: Found a task with all 0s or all 1s')
-                if args.keep_nan_metrics:
-                    if args.metric == 'auc':
-                        results.append(0.5)  # just assume a baseline AUC-ROC of 0.5, which is just random guessing
+            # # Skip if all targets or preds are identical, otherwise we'll crash during classification
+            if args.dataset_type == 'classification':
+                nan = False
+                if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+                    nan = True
+                    info('Warning: Found a task with targets all 0s or all 1s')
+                if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
+                    nan = True
+                    info('Warning: Found a task with predictions all 0s or all 1s')
+
+                if nan:
+                    if args.keep_nan_metrics:
+                        if args.metric == 'auc':
+                            results.append(0.5)
+                        elif args.metric in ['prc-auc', 'accuracy']:
+                            results.append(0)
+                        else:
+                            raise ValueError('Metric "{}" not supported for keep_nan_metrics'.format(args.metric))
                     else:
-                        results.append(0)  # for prc-auc and accuracy
-                else:
-                    results.append(float('nan'))
-                continue
+                        results.append(float('nan'))
+                    continue
 
             # TODO: handle this case better??? (this currently only happens when a feature is None for all molecules)
             if len(valid_targets[i]) == 0:

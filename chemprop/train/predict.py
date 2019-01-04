@@ -34,8 +34,6 @@ def predict(model: nn.Module,
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """
-    info = logger.info if logger is not None else print
-
     model.eval()
 
     preds = []
@@ -144,11 +142,6 @@ def predict(model: nn.Module,
     if args.parallel_featurization:
         exit_queue.put(0)  # dummy var to get the subprocess to know that we're done
         batch_process.join()
-
-    # Check if any tasks where all predictions are 0s or 1s
-    zeros, ones = np.zeros(len(data)), np.ones(len(data))
-    if any(np.array_equal(task_preds, zeros) or np.array_equal(task_preds, ones) for task_preds in np.array(preds).T):
-        info('Warning: Found task where all predictions are 0 or 1.')
 
     if args.maml:
         # return the task targets here to guarantee alignment;
