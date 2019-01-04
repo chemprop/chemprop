@@ -67,11 +67,11 @@ def visualize_encoding_property_space(args: Namespace):
         figure, tax = ternary.figure(scale=scale)
         tax.heatmapf(predict_property, boundary=True, style="hexagonal")
         tax.set_title("Property Prediction")
-        tax.right_axis_label('{} ({:.3f}) -->'.format(molecules[0].smiles, molecules[0].targets[args.task_index]),
+        tax.right_axis_label('{} ({:.6f}) -->'.format(molecules[0].smiles, molecules[0].targets[args.task_index]),
                              fontsize=fontsize)
-        tax.left_axis_label('{} ({:.3f}) -->'.format(molecules[1].smiles, molecules[1].targets[args.task_index]),
+        tax.left_axis_label('{} ({:.6f}) -->'.format(molecules[1].smiles, molecules[1].targets[args.task_index]),
                             fontsize=fontsize)
-        tax.bottom_axis_label('<-- {} ({:.3f})'.format(molecules[2].smiles, molecules[2].targets[args.task_index]),
+        tax.bottom_axis_label('<-- {} ({:.6f})'.format(molecules[2].smiles, molecules[2].targets[args.task_index]),
                               fontsize=fontsize)
 
         tax.savefig(os.path.join(args.save_dir, '{}.png'.format(i)))

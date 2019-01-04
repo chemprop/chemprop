@@ -286,20 +286,20 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             if args.dataset_type == 'bert_pretraining':
                 if val_scores['features'] is not None:
-                    debug('Validation features rmse = {:.3f}'.format(val_scores['features']))
+                    debug('Validation features rmse = {:.6f}'.format(val_scores['features']))
                     writer.add_scalar('validation_features_rmse', val_scores['features'], n_iter)
                 val_scores = [val_scores['vocab']]
 
             # Average validation score
             avg_val_score = np.nanmean(val_scores)
-            debug('Validation {} = {:.3f}'.format(args.metric, avg_val_score))
+            debug('Validation {} = {:.6f}'.format(args.metric, avg_val_score))
             writer.add_scalar('validation_{}'.format(args.metric), avg_val_score, n_iter)
 
             if args.show_individual_scores:
                 # Individual validation scores
                 for task_name, val_score in zip(args.task_names, val_scores):
                     if task_name in desired_labels:
-                        debug('Validation {} {} = {:.3f}'.format(task_name, args.metric, val_score))
+                        debug('Validation {} {} = {:.6f}'.format(task_name, args.metric, val_score))
                         writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
 
             # Save model checkpoint if improved validation score, or always save it if unsupervised
@@ -313,7 +313,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             return [0]  # rest of this is meaningless when unsupervised            
 
         # Evaluate on test set using model with best validation score
-        info('Model {} best validation {} = {:.3f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
+        info('Model {} best validation {} = {:.6f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
 
         if args.split_test_by_overlap_dataset is not None:
@@ -342,7 +342,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     logger=logger
                 )
                 avg_test_score = np.nanmean(test_scores)
-                info('Model {} test {} for {} = {:.3f}'.format(model_idx, args.metric, name, avg_test_score))
+                info('Model {} test {} for {} = {:.6f}'.format(model_idx, args.metric, name, avg_test_score))
         
         if len(test_data) == 0:  # just get some garbage results without crashing; in this case we didn't care anyway
             test_preds, test_scores = sum_test_preds, [0 for _ in range(len(args.task_names))]
@@ -375,20 +375,20 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
         if args.dataset_type == 'bert_pretraining':
             if test_preds['features'] is not None:
-                debug('Model {} test features rmse = {:.3f}'.format(model_idx, test_scores['features']))
+                debug('Model {} test features rmse = {:.6f}'.format(model_idx, test_scores['features']))
                 writer.add_scalar('test_features_rmse', test_scores['features'], 0)
             test_scores = [test_scores['vocab']]
 
         # Average test score
         avg_test_score = np.nanmean(test_scores)
-        info('Model {} test {} = {:.3f}'.format(model_idx, args.metric, avg_test_score))
+        info('Model {} test {} = {:.6f}'.format(model_idx, args.metric, avg_test_score))
         writer.add_scalar('test_{}'.format(args.metric), avg_test_score, 0)
 
         if args.show_individual_scores:
             # Individual test scores
             for task_name, test_score in zip(args.task_names, test_scores):
                 if task_name in desired_labels:
-                    info('Model {} test {} {} = {:.3f}'.format(model_idx, task_name, args.metric, test_score))
+                    info('Model {} test {} {} = {:.6f}'.format(model_idx, task_name, args.metric, test_score))
                     writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
 
     # Evaluate ensemble on test set
@@ -414,17 +414,17 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Average ensemble score
     if args.dataset_type == 'bert_pretraining':
         if ensemble_scores['features'] is not None:
-            info('Ensemble test features rmse = {:.3f}'.format(ensemble_scores['features']))
+            info('Ensemble test features rmse = {:.6f}'.format(ensemble_scores['features']))
             writer.add_scalar('ensemble_test_features_rmse', ensemble_scores['features'], 0)
         ensemble_scores = [ensemble_scores['vocab']]
 
     avg_ensemble_test_score = np.nanmean(ensemble_scores)
-    info('Ensemble test {} = {:.3f}'.format(args.metric, avg_ensemble_test_score))
+    info('Ensemble test {} = {:.6f}'.format(args.metric, avg_ensemble_test_score))
     writer.add_scalar('ensemble_test_{}'.format(args.metric), avg_ensemble_test_score, 0)
 
     # Individual ensemble scores
     if args.show_individual_scores:
         for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
-            info('Ensemble test {} {} = {:.3f}'.format(task_name, args.metric, ensemble_score))
+            info('Ensemble test {} {} = {:.6f}'.format(task_name, args.metric, ensemble_score))
 
     return ensemble_scores

@@ -36,22 +36,22 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
 
     # Report scores for each model
     for fold_num, scores in enumerate(all_scores):
-        info('Seed {} ==> test {} = {:.3f}'.format(init_seed + fold_num, args.metric, np.nanmean(scores)))
+        info('Seed {} ==> test {} = {:.6f}'.format(init_seed + fold_num, args.metric, np.nanmean(scores)))
 
         if args.show_individual_scores:
             for task_name, score in zip(task_names, scores):
                 if task_name in desired_labels:
-                    info('Seed {} ==> test {} {} = {:.3f}'.format(init_seed + fold_num, task_name, args.metric, score))
+                    info('Seed {} ==> test {} {} = {:.6f}'.format(init_seed + fold_num, task_name, args.metric, score))
 
     # Report scores across models
     avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
     mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
-    info('Overall test {} = {:.3f} +/- {:.3f}'.format(args.metric, mean_score, std_score))
+    info('Overall test {} = {:.6f} +/- {:.6f}'.format(args.metric, mean_score, std_score))
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):
             if task_name in desired_labels:
-                info('Overall test {} {} = {:.3f} +/- {:.3f}'.format(
+                info('Overall test {} {} = {:.6f} +/- {:.6f}'.format(
                     task_name,
                     args.metric,
                     np.nanmean(all_scores[:, task_num]),
