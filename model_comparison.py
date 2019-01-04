@@ -14,7 +14,9 @@ DATASETS = OrderedDict()
 DATASETS['freesolv'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/freesolv.csv', 10, 'rmse')
 DATASETS['delaney'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/delaney.csv', 10, 'rmse')
 DATASETS['lipo'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/lipo.csv', 10, 'rmse')
-DATASETS['pdbbind'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/pdbbind.csv', 10, 'rmse')
+DATASETS['pdbbind_full'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/pdbbind_full.csv', 10, 'rmse')
+DATASETS['pdbbind_core'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/pdbbind_core.csv', 10, 'rmse')
+DATASETS['pdbbind_refined'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/pdbbind_refined.csv', 10, 'rmse')
 DATASETS['qm7'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/qm7.csv', 10, 'mae')
 DATASETS['qm8'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/qm8.csv', 10, 'mae')
 DATASETS['qm9'] = ('regression', '/data/rsg/chemistry/yangk/chemprop/data/qm9.csv', 3, 'mae')
@@ -119,21 +121,21 @@ if __name__ == '__main__':
         experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'base')
         run_comparison(experiment_args, logger)
 
-    if 'all' in args.experiments or 'virtual_edges' in args.experiments:
-        logger.info('virtual edges')
-        experiment_args = deepcopy(args)
-        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
-        experiment_args.virtual_edges = True
-        run_comparison(experiment_args, logger)
-
-    if 'all' in args.experiments or 'master_node' in args.experiments:
-        logger.info('master node')
-        experiment_args = deepcopy(args)
-        experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'master_node')
-        experiment_args.master_node = True
-        experiment_args.master_dim = experiment_args.hidden_size
-        experiment_args.use_master_as_output = True
-        run_comparison(experiment_args, logger)
+    # if 'all' in args.experiments or 'virtual_edges' in args.experiments:
+    #     logger.info('virtual edges')
+    #     experiment_args = deepcopy(args)
+    #     experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'virtual_edges')
+    #     experiment_args.virtual_edges = True
+    #     run_comparison(experiment_args, logger)
+    # 
+    # if 'all' in args.experiments or 'master_node' in args.experiments:
+    #     logger.info('master node')
+    #     experiment_args = deepcopy(args)
+    #     experiment_args.save_dir = os.path.join(experiment_args.save_dir, 'master_node')
+    #     experiment_args.master_node = True
+    #     experiment_args.master_dim = experiment_args.hidden_size
+    #     experiment_args.use_master_as_output = True
+    #     run_comparison(experiment_args, logger)
 
     if 'all' in args.experiments or 'deepset' in args.experiments:
         logger.info('deepset')
