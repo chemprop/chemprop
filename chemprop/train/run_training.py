@@ -30,8 +30,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         debug = info = print
 
-    # Set GPUs
-    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(gpu) for gpu in args.gpus)
+    # Set GPU
+    torch.cuda.set_device(args.gpu)
 
     # Print args
     debug(pformat(vars(args)))
