@@ -6,23 +6,34 @@
 
 {% block content %}
     <form enctype="multipart/form-data" method="POST">
-        <h5>Data (.csv file)</h5>
-        <input type="file" name="data" accept=".csv" required>
+        <h5>Data</h5>
+        <select name="dataName">
+            {% for dataset in datasets %}
+                <option value="{{dataset}}">{{dataset}}</option>
+            {% endfor %}
+        </select>
         <br>
+
         <h5>Datset type</h5>
         <div class="btn-group" data-toggle="buttons">
-          <label class="btn btn-primary">
-            <input type="radio" name="datasetType" id="regression" value="regression" autocomplete="off" required> Regression
-          </label>
-          <label class="btn btn-primary">
-            <input type="radio" name="datasetType" id="classification" value="classification" autocomplete="off" required> Classification
-          </label>
+            <label class="btn btn-primary">
+                <input type="radio" name="datasetType" id="regression" value="regression" autocomplete="off" required> Regression
+             </label>
+             <label class="btn btn-primary">
+                 <input type="radio" name="datasetType" id="classification" value="classification" autocomplete="off" required> Classification
+            </label>
         </div>
         <br>
+
         <h5>Epochs</h5>
-         <input type="number" name="epochs" min="1" step="1" value="30" required>
+        <input type="number" name="epochs" min="1" step="1" value="30" required>
         <br>
         <br>
+
+        <h5>Checkpoint Name</h5>
+        <!--TODO: Verify that name isn't already in use-->
+        <input type="text" name="checkpointName" placeholder="Checkpoint Name" required>
+
         <input type="submit" value="Train">
     </form>
 
@@ -31,10 +42,6 @@
     {% endif %}
 
     {% if trained %}
-        <hr>
-
-        <a href="{{ url_for('download_model') }}">
-            <button class="btn btn-default btn-md">Download Model</button>
-        </a>
+        <h3>Training complete!</h3>
     {% endif %}
 {% endblock %}

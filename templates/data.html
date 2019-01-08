@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    <h1>Data</h1>
+{% endblock %}
+
+{% block content %}
+    <h5>Add New</h5>
+    <form enctype="multipart/form-data" method="POST">
+        <input type="file" name="data" accept=".csv" required>
+        <br>
+        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+    </form>
+
+    <h3>Datasets</h3>
+    {% for dataset in datasets %}
+        <!--TODO: Make inline-->
+        <div>
+            <p>{{dataset}}</p>
+            <a href="{{ url_for('download_data', dataset=dataset) }}">
+                <button class="btn btn-default btn-sm">Download</button>
+            </a>
+            <a href="{{ url_for('delete_data', dataset=dataset) }}">
+                <button class="btn btn-danger btn-sm">Delete</button>
+            </a>
+        </div>
+        <br>
+    {% endfor %}
+{% endblock %}

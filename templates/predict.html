@@ -7,12 +7,18 @@
 {% block content %}
     <form enctype="multipart/form-data" method="POST">
         <h5>Model checkpoint (.pt file)</h5>
-        <input type="file" name="checkpoint" accept=".pt" required>
+        <select name="checkpointName">
+            {% for checkpoint in checkpoints %}
+                <option value="{{checkpoint}}">{{checkpoint}}</option>
+            {% endfor %}
+        </select>
         <br>
+
         <h5>SMILES (one per line)</h5>
         <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
         <br>
-        <input type="submit" value="Predict">
+
+        <button type="submit" class="btn btn-primary btn-md">Predict</button>
     </form>
 
     {% if error %}
