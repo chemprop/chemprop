@@ -32,6 +32,7 @@ app.config['GPUS'] = list(range(torch.cuda.device_count()))
 started = 0
 progress = mp.Value('d', 0.0)
 
+
 def progress_bar(args: Namespace, progress: mp.Value):
     # no code to handle crashes in model training yet, though
     current_epoch = -1
@@ -46,6 +47,7 @@ def progress_bar(args: Namespace, progress: mp.Value):
             pass
         time.sleep(0)
 
+
 def get_datasets() -> List[str]:
     return os.listdir(app.config['DATA_FOLDER'])
 
@@ -53,13 +55,16 @@ def get_datasets() -> List[str]:
 def get_checkpoints() -> List[str]:
     return os.listdir(app.config['CHECKPOINT_FOLDER'])
 
+
 @app.route('/receiver', methods= ['POST'])
 def receiver():
     return jsonify(progress=progress.value, started=started)
 
+
 @app.route('/')
 def home():
     return render_template('home.html')
+
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
@@ -139,22 +144,23 @@ def predict():
     # Get arguments
     checkpoint_name = request.form['checkpointName']
 
-    try:
-        smiles = request.form('smiles')
-        smiles = smiles.split()
-    except:
-        # Upload data file
+    if 'data' in request.files:
+        # Upload data file with SMILES
         data = request.files['data']
         data_name = secure_filename(data.filename)
         data_path = os.path.join(app.config['TEMP_FOLDER'], data_name)
         data.save(data_path)
+
         smiles = []
         with open(data_path, 'r') as f:
             header = f.readline()
             if 'smiles' not in header:  # in which case there's no header, and first line is actually just the first smiles
-                smiles.append(header.strip())
+                smiles.append(header.strip().split(',')[0])
             for line in f:
-                smiles.append(line.strip())
+                smiles.append(line.strip().split(',')[0])
+    else:
+        smiles = request.form['smiles']
+        smiles = smiles.split()
 
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     task_names = load_task_names(checkpoint_path)

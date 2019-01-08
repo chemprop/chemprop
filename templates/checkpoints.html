@@ -13,17 +13,15 @@
     </form>
 
     <h3>Model Checkpoints</h3>
-    {% for checkpoint in checkpoints %}
-        <!--TODO: Make inline-->
-        <div>
-            <p>{{checkpoint}}</p>
-            <a href="{{ url_for('download_checkpoint', checkpoint=checkpoint) }}">
-                <button class="btn btn-default btn-sm">Download</button>
-            </a>
-            <a href="{{ url_for('delete_checkpoint', checkpoint=checkpoint) }}">
-                <button class="btn btn-danger btn-sm">Delete</button>
-            </a>
-        </div>
-        <br>
-    {% endfor %}
+    <table class="table table-hover" style="width:auto">
+        {% for checkpoint in checkpoints %}
+            <tr>
+                <th>{{checkpoint}}</th>
+                <th>
+                    <a href="{{ url_for('download_checkpoint', checkpoint=checkpoint) }}"><button class="btn btn-default btn-sm">Download</button></a>
+                    <a href="{{ url_for('delete_checkpoint', checkpoint=checkpoint) }}"><button class="btn btn-danger btn-sm">Delete</button></a>
+                </th>
+            </tr>
+        {% endfor %}
+    </table>
 {% endblock %}

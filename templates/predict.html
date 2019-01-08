@@ -13,15 +13,18 @@
             {% endfor %}
         </select>
         <br>
+        <br>
+
         <div class="btn-group" id="inputSelect" data-toggle="buttons">
-            <label class="btn btn-primary active">
-              <input type="radio" name="inputType" id="textButton" value="text" autocomplete="off"> Text Input
+            <label class="btn btn-primary active" id="textButton">
+              <input type="radio" name="inputType" value="text" autocomplete="off"> Text Input
             </label>
-            <label class="btn btn-primary">
-              <input type="radio" name="inputType" id="fileButton" value="file" autocomplete="off"> Upload File
+            <label class="btn btn-primary" id="fileButton">
+              <input type="radio" name="inputType" value="file" autocomplete="off"> Upload File
             </label>
         </div>
         <br>
+
         <div id="textInputForm">
             <h5>SMILES (one per line)</h5>
             <textarea name="smiles" cols="100" rows="10" placeholder="smiles"></textarea>
@@ -47,22 +50,17 @@
         <button type="submit" class="btn btn-primary btn-md">Predict</button>
     </form>
     <script>
-        var header = document.getElementById("inputSelect");
-        var btns = header.getElementsByClassName("btn");
-        for (var i = 0; i < btns.length; i++) {
-            btns[i].addEventListener("click", function() {
-                var current = document.getElementsByClassName("active");
-                current[0].className = current[0].className.replace(" active", "");
-                this.className += " active";
+        $(document).ready(function() {
+            $("#textButton").click(function() {
+                $("#textInputForm").show();
+                $("#fileInputForm").hide();
+                console.log('text');
             });
-        }
-        document.getElementById("textButton").addEventListener("click", function() {
-            document.getElementById("textInputForm").style.display = ""
-            document.getElementById("fileInputForm").style.display = "none";
-        });
-        document.getElementById("fileButton").addEventListener("click", function() {
-            document.getElementById("textInputForm").style.display = "none";
-            document.getElementById("fileInputForm").style.display = "";
+            $("#fileButton").click(function() {
+                $("#textInputForm").hide();
+                $("#fileInputForm").show();
+                console.log('file');
+            });
         });
     </script>
 
