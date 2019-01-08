@@ -10,30 +10,21 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--gpu', type=int,
                         choices=list(range(torch.cuda.device_count())),
                         help='Which GPU to use')
-    parser.add_argument('--test_path', type=str, required=True,
+    parser.add_argument('--test_path', type=str,
                         help='Path to CSV file containing testing data for which predictions will be made')
     parser.add_argument('--compound_names', action='store_true', default=False,
                         help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--write_smiles', action='store_true', default=False,
                         help='Whether to write smiles in addition to writing predicted values')
-    parser.add_argument('--preds_path', type=str, required=True,
+    parser.add_argument('--preds_path', type=str,
                         help='Path to CSV file where predictions will be saved')
-
-
-def add_hyper_opt_args(parser: ArgumentParser):
-    """Add hyperparameter optimization arguments to an ArgumentParser."""
-    parser.add_argument('--results_dir', type=str, required=True,
-                        help='Path to directory where results will be saved')
-    parser.add_argument('--port', type=int, default=9090,
-                        help='Port for HpBandSter to use')
-    parser.add_argument('--min_budget', type=int, default=5,
-                        help='Minimum budget (number of iterations during training) to use')
-    parser.add_argument('--max_budget', type=int, default=45,
-                        help='Maximum budget (number of iterations during training) to use')
-    parser.add_argument('--eta', type=int, default=2,
-                        help='Factor by which to cut number of trials (1/eta trials remain)')
-    parser.add_argument('--n_iterations', type=int, default=16,
-                        help='Number of iterations of BOHB algorithm')
+    parser.add_argument('--checkpoint_dir', type=str,
+                        help='Directory from which to load model checkpoints'
+                             '(walks directory and ensembles all models that are found)')
+    parser.add_argument('--batch_size', type=int, default=50,
+                        help='Batch size')
+    parser.add_argument('--no_cuda', action='store_true', default=False,
+                        help='Turn off cuda')
 
 
 def add_train_args(parser: ArgumentParser):
@@ -354,11 +345,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Don\'t use bond features (only atom features)')
 
 
-def modify_hyper_opt_args(args: Namespace):
-    """Modifies and validates hyperparameter optimization arguments."""
-    os.makedirs(args.results_dir, exist_ok=True)
-
-
 def update_args_from_checkpoint_dir(args: Namespace):
     """Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size."""
     if args.checkpoint_dir is None:
@@ -376,6 +362,30 @@ def update_args_from_checkpoint_dir(args: Namespace):
 
     if args.ensemble_size == 0:
         raise ValueError('Failed to find any model checkpoints in directory "{}"'.format(args.checkpoint_dir))
+
+
+def modify_predict_args(args: Namespace):
+    assert args.test_path
+    assert args.preds_path
+    assert args.checkpoint_dir is not None
+    update_args_from_checkpoint_dir(args)
+
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    del args.no_cuda
+
+    # Create directory for preds path
+    preds_dir = os.path.dirname(args.preds_path)
+    if preds_dir != '':
+        os.makedirs(preds_dir, exist_ok=True)
+
+
+def parse_predict_args() -> Namespace:
+    parser = ArgumentParser()
+    add_predict_args(parser)
+    args = parser.parse_args()
+    modify_predict_args(args)
+
+    return args
 
 
 def modify_train_args(args: Namespace):
@@ -499,18 +509,6 @@ def modify_train_args(args: Namespace):
     
     # TODO uncomment when this becomes the default, and remove the parallel_featurization option
     # args.parallel_featurization = (not args.maml and not args.moe and not args.sequential)
-
-
-def parse_hyper_opt_args() -> Namespace:
-    """Parses arguments for hyperparameter optimization (includes training arguments)."""
-    parser = ArgumentParser()
-    add_train_args(parser)
-    add_hyper_opt_args(parser)
-    args = parser.parse_args()
-    modify_train_args(args)
-    modify_hyper_opt_args(args)
-
-    return args
 
 
 def parse_train_args() -> Namespace:

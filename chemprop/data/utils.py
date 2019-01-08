@@ -150,6 +150,10 @@ def get_data(path: str,
     return data
 
 
+def get_data_from_smiles(smiles: List[str]) -> MoleculeDataset:
+    return MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
+
+
 def split_data(data: MoleculeDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),

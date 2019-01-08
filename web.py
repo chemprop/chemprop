@@ -4,67 +4,24 @@ from tempfile import TemporaryDirectory
 from typing import List
 
 from flask import Flask, redirect, render_template, request, send_from_directory, url_for
-import torch
 from werkzeug.utils import secure_filename
 
-from chemprop.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.parsing import add_train_args, modify_train_args
+from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
+from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
-from chemprop.utils import load_args, load_checkpoint, load_scalers
+from chemprop.utils import load_task_names
 
+
+TEMP_FOLDER = TemporaryDirectory()
 
 app = Flask(__name__)
 app.config['DATA_FOLDER'] = 'web_data'
 os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
 app.config['CHECKPOINT_FOLDER'] = 'web_checkpoints'
 os.makedirs(app.config['CHECKPOINT_FOLDER'], exist_ok=True)
-app.config['PREDICTIONS_FOLDER'] = 'web_predictions'
-os.makedirs(app.config['PREDICTIONS_FOLDER'], exist_ok=True)
+app.config['TEMP_FOLDER'] = TEMP_FOLDER.name
+app.config['SMILES_FILENAME'] = 'smiles.csv'
 app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
-
-
-def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float]]:
-    """Makes predictions for a SMILES string."""
-    # Load scalers and training args
-    scaler, features_scaler = load_scalers(checkpoint_path)
-    train_args = load_args(checkpoint_path)
-
-    # Conver smiles to data
-    data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
-
-    # Normalize features
-    if train_args.features_scaling:
-        data.normalize_features(features_scaler)
-
-    # Load model
-    model = load_checkpoint(checkpoint_path)
-    model.eval()
-
-    # Make predictions
-    with torch.no_grad():
-        preds = model(data.smiles(), data.features())
-        preds = preds.data.cpu().numpy()
-        if scaler is not None:
-            preds = scaler.inverse_transform(preds)
-            preds = preds.tolist()
-
-    return preds
-
-
-def save_predictions(save_path: str,
-                     task_names: List[str],
-                     smiles: List[str],
-                     preds: List[List[float]]):
-    with open(save_path, 'w') as f:
-        f.write('smiles,' + ','.join(task_names) + '\n')
-        for smile, pred in zip(smiles, preds):
-            f.write(smile + ',' + ','.join(str(p) for p in pred) + '\n')
-
-
-def get_task_names(checkpoint_path: str) -> List[str]:
-    args = load_args(checkpoint_path)
-
-    return args.task_names
 
 
 def get_datasets() -> List[str]:
@@ -120,18 +77,24 @@ def predict():
     if request.method == 'GET':
         return render_template('predict.html', checkpoints=get_checkpoints())
 
-    # Get smiles and checkpoint path
+    # Get arguments
     smiles, checkpoint_name = request.form['smiles'], request.form['checkpointName']
     smiles = smiles.split()
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+    task_names = load_task_names(checkpoint_path)
+
+    # Create and modify args
+    parser = ArgumentParser()
+    add_predict_args(parser)
+    args = parser.parse_args()
+
+    preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+    args.preds_path = preds_path
+    args.checkpoint_paths = [checkpoint_path]
+    # args.gpu = TODO
 
     # Run prediction
-    task_names = get_task_names(checkpoint_path)
-    preds = make_predictions(checkpoint_path, smiles)
-
-    # Save preds
-    preds_path = os.path.join(app.config['PREDICTIONS_FOLDER'], app.config['PREDICTIONS_FILENAME'])
-    save_predictions(preds_path, task_names, smiles, preds)
+    preds = make_predictions(args, smiles=smiles)
 
     return render_template('predict.html',
                            checkpoints=get_checkpoints(),
@@ -145,7 +108,7 @@ def predict():
 
 @app.route('/download_predictions')
 def download_predictions():
-    return send_from_directory(app.config['PREDICTIONS_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
+    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
 @app.route('/data', methods=['GET', 'POST'])
