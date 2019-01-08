@@ -1,16 +1,19 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import os
 from tempfile import TemporaryDirectory
 from typing import List
+import time
+import multiprocessing as mp
+import logging
 
-from flask import Flask, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, redirect, render_template, request, send_from_directory, url_for, jsonify
 import torch
 from werkzeug.utils import secure_filename
 
 from chemprop.data import MoleculeDataset, MoleculeDatapoint
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train.run_training import run_training
-from chemprop.utils import load_args, load_checkpoint, load_scalers
+from chemprop.utils import load_args, load_checkpoint, load_scalers, set_logger
 
 
 app = Flask(__name__)
@@ -22,6 +25,8 @@ app.config['PREDICTIONS_FOLDER'] = 'web_predictions'
 os.makedirs(app.config['PREDICTIONS_FOLDER'], exist_ok=True)
 app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
 
+started = 0
+progress = mp.Value('d', 0.0)
 
 def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float]]:
     """Makes predictions for a SMILES string."""
@@ -66,6 +71,19 @@ def get_task_names(checkpoint_path: str) -> List[str]:
 
     return args.task_names
 
+def progress_bar(args: Namespace, progress: mp.Value):
+    # no code to handle crashes in model training yet, though
+    current_epoch = -1
+    while current_epoch < args.epochs - 1:
+        if os.path.exists(os.path.join(args.save_dir, 'verbose.log')):
+            with open(os.path.join(args.save_dir, 'verbose.log'), 'r') as f:
+                content = f.read()
+                if 'Epoch ' + str(current_epoch + 1) in content:
+                    current_epoch += 1
+                    progress.value = (current_epoch+1)*100/args.epochs # TODO communicate with other process
+        else:
+            pass
+        time.sleep(0)
 
 def get_datasets() -> List[str]:
     return os.listdir(app.config['DATA_FOLDER'])
@@ -74,20 +92,26 @@ def get_datasets() -> List[str]:
 def get_checkpoints() -> List[str]:
     return os.listdir(app.config['CHECKPOINT_FOLDER'])
 
+@app.route('/receiver', methods= ['POST'])
+def receiver():
+    return jsonify(progress=progress.value, started=started)
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
-
 @app.route('/train', methods=['GET', 'POST'])
 def train():
     if request.method == 'GET':
-        return render_template('train.html', datasets=get_datasets())
+        return render_template('train.html', datasets=get_datasets(), started=False)
 
     # Get arguments
-    data_name, dataset_type, epochs, checkpoint_name = \
-        request.form['dataName'], request.form['datasetType'], int(request.form['epochs']), request.form['checkpointName']
+    data_name, epochs, checkpoint_name = \
+        request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
+    try:
+        dataset_type = request.form['datasetType']
+    except:
+        dataset_type = 'regression' # default
 
     if not checkpoint_name.endswith('.pt'):
         checkpoint_name += '.pt'
@@ -104,13 +128,27 @@ def train():
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
         modify_train_args(args)
+        logger = logging.getLogger('train')
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+        set_logger(logger, args.save_dir, args.quiet)
 
+        global progress
+        process = mp.Process(target=progress_bar, args=(args, progress))
+        process.start()
+        global started
+        started = 1
         # Run training
-        run_training(args)
+        run_training(args, logger)
+        process.join()
 
         # Move checkpoint
         os.rename(os.path.join(args.save_dir, 'model_0', 'model.pt'),
                   os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
+        
+        # reset globals
+        started = 0
+        progress = mp.Value('d', 0.0)
 
     return render_template('train.html', datasets=get_datasets(), trained=True)
 

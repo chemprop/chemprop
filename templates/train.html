@@ -13,15 +13,14 @@
             {% endfor %}
         </select>
         <br>
-
-        <h5>Datset type</h5>
-        <div class="btn-group" data-toggle="buttons">
-            <label class="btn btn-primary">
-                <input type="radio" name="datasetType" id="regression" value="regression" autocomplete="off" required> Regression
-             </label>
-             <label class="btn btn-primary">
-                 <input type="radio" name="datasetType" id="classification" value="classification" autocomplete="off" required> Classification
-            </label>
+        <h5>Dataset type</h5>
+        <div class="btn-group" id="datasetTypeSelect" data-toggle="buttons">
+          <label class="btn btn-primary active">
+            <input type="radio" name="datasetType" id="regression" value="regression" autocomplete="off"> Regression
+          </label>
+          <label class="btn btn-primary">
+            <input type="radio" name="datasetType" id="classification" value="classification" autocomplete="off"> Classification
+          </label>
         </div>
         <br>
 
@@ -36,6 +35,47 @@
 
         <input type="submit" value="Train">
     </form>
+
+    <script>
+        var header = document.getElementById("datasetTypeSelect");
+        var btns = header.getElementsByClassName("btn");
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener("click", function() {
+            var current = document.getElementsByClassName("active");
+            current[0].className = current[0].className.replace(" active", "");
+            this.className += " active";
+            });
+        }
+    </script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script type=text/javascript>
+        function refresh() {
+            $.post("receiver", function(data){
+                if (data.started == 1) {
+                    document.getElementById("myProgress").style.visibility = "visible"
+                    document.getElementById("myBar").style.width = data.progress + "%"
+                }
+            });
+        }
+        setInterval(refresh, 500);
+    </script>
+    <style>
+        #myProgress {
+        width: 100%;
+        background-color: #ddd;
+        }
+        
+        #myBar {
+        width: "{{ progress }} %";
+        height: 30px;
+        background-color: #4CAF50;
+        }
+    </style>
+    <br>
+    <div id="myProgress" style="visibility:hidden">
+        <div id="myBar"></div>
+    </div>
 
     {% if error %}
         <h3>ERROR: {{ error }}</h3>
