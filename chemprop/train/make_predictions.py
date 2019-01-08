@@ -1,4 +1,5 @@
 from argparse import Namespace
+import os
 
 import numpy as np
 from tqdm import tqdm
@@ -10,6 +11,8 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 def make_predictions(args: Namespace):
     """Makes predictions."""
+    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(gpu) for gpu in args.gpus)
+
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])

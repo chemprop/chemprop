@@ -7,6 +7,9 @@ import torch
 
 def add_predict_args(parser: ArgumentParser):
     """Add predict arguments to an ArgumentParser."""
+    parser.add_argument('--gpus', type=int, nargs='*', default=[],
+                        choices=list(range(torch.cuda.device_count())),
+                        help='Which GPUs to use (sets CUDA_VISIBLE_DEVICES)')
     parser.add_argument('--test_path', type=str, required=True,
                         help='Path to CSV file containing testing data for which predictions will be made')
     parser.add_argument('--compound_names', action='store_true', default=False,
@@ -36,6 +39,9 @@ def add_hyper_opt_args(parser: ArgumentParser):
 def add_train_args(parser: ArgumentParser):
     """Add training arguments to an ArgumentParser."""
     # General arguments
+    parser.add_argument('--gpus', type=int, nargs='*', default=[],
+                        choices=list(range(torch.cuda.device_count())),
+                        help='Which GPUs to use (sets CUDA_VISIBLE_DEVICES)')
     parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file, or to directory of files if pre-chunked')
     parser.add_argument('--test', action='store_true', default=False,

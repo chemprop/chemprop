@@ -29,7 +29,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
-    
+
+    # Set GPUs
+    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(gpu) for gpu in args.gpus)
+
+    # Print args
     debug(pformat(vars(args)))
 
     # Get data
