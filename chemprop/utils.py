@@ -139,6 +139,16 @@ def load_args(path: str) -> Namespace:
     return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
 
+def load_task_names(path: str) -> List[str]:
+    """
+    Loads the task names a model was trained with.
+
+    :param path: Path where model checkpoint is saved.
+    :return: The task names that the model was trained with.
+    """
+    return load_args(path).task_names
+
+
 def get_loss_func(args: Namespace) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.

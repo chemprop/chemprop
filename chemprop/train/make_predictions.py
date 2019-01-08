@@ -1,15 +1,20 @@
 from argparse import Namespace
+from typing import List
 
 import numpy as np
+import torch
 from tqdm import tqdm
 
 from .predict import predict
-from chemprop.data.utils import get_data
+from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
-def make_predictions(args: Namespace):
+def make_predictions(args: Namespace, smiles: List[str] = None) -> List[List[float]]:
     """Makes predictions."""
+    if args.gpu is not None:
+        torch.cuda.set_device(args.gpu)
+
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
@@ -20,7 +25,10 @@ def make_predictions(args: Namespace):
             setattr(args, key, value)
 
     print('Loading data')
-    test_data = get_data(args.test_path, args, use_compound_names=args.compound_names)
+    if smiles is not None:
+        test_data = get_data_from_smiles(smiles)
+    else:
+        test_data = get_data(args.test_path, args, use_compound_names=args.compound_names)
     test_smiles = test_data.smiles()
     if args.compound_names:
         compound_names = test_data.compound_names()
@@ -65,3 +73,5 @@ def make_predictions(args: Namespace):
             if args.compound_names:
                 f.write(compound_names[i] + ',')
             f.write(','.join(str(p) for p in avg_preds[i]) + '\n')
+
+    return avg_preds

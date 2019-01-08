@@ -15,16 +15,34 @@
         <br>
         <div class="btn-group" id="inputSelect" data-toggle="buttons">
             <label class="btn btn-primary active">
-              <input type="radio" name="inputType" id="text" value="text" autocomplete="off"> Text Input
+              <input type="radio" name="inputType" id="textButton" value="text" autocomplete="off"> Text Input
             </label>
             <label class="btn btn-primary">
-              <input type="radio" name="inputType" id="file" value="file" autocomplete="off"> Upload File
+              <input type="radio" name="inputType" id="fileButton" value="file" autocomplete="off"> Upload File
             </label>
         </div>
         <br>
-        <h5>SMILES (one per line)</h5>
-        <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
+        <div id="textInputForm">
+            <h5>SMILES (one per line)</h5>
+            <textarea name="smiles" cols="100" rows="10" placeholder="smiles"></textarea>
+        </div>
+        <div id="fileInputForm" style="display:none">
+            <h5>File containing SMILES (one per line)</h5>
+            <input type="file" name="data" accept=".csv">
+        </div>
         <br>
+
+        {% if cuda %}
+            <h5>GPU</h5>
+            <select name="gpu">
+                <option value="None">None</option>
+                {% for gpu in gpus %}
+                    <option value="{{gpu}}">{{gpu}}</option>
+                {% endfor %}
+            </select>
+            <br>
+            <br>
+        {% endif %}
 
         <button type="submit" class="btn btn-primary btn-md">Predict</button>
     </form>
@@ -33,12 +51,19 @@
         var btns = header.getElementsByClassName("btn");
         for (var i = 0; i < btns.length; i++) {
             btns[i].addEventListener("click", function() {
-            var current = document.getElementsByClassName("active");
-            current[0].className = current[0].className.replace(" active", "");
-            this.className += " active";
-            // TODO set/hide the input forms based on what's active
+                var current = document.getElementsByClassName("active");
+                current[0].className = current[0].className.replace(" active", "");
+                this.className += " active";
             });
         }
+        document.getElementById("textButton").addEventListener("click", function() {
+            document.getElementById("textInputForm").style.display = ""
+            document.getElementById("fileInputForm").style.display = "none";
+        });
+        document.getElementById("fileButton").addEventListener("click", function() {
+            document.getElementById("textInputForm").style.display = "none";
+            document.getElementById("fileInputForm").style.display = "";
+        });
     </script>
 
     {% if error %}
@@ -55,7 +80,7 @@
         <br>
         <br>
 
-        {% for i in range(min(10, num_smiles)) %}
+        {% for i in range(num_smiles) %}
             <p>SMILES: {{ smiles[i] }}</p>
 
             {% for j in range(num_tasks) %}

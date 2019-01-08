@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, Namespace
 import os
+import shutil
 from tempfile import TemporaryDirectory
 from typing import List
 import time
@@ -10,66 +11,26 @@ from flask import Flask, redirect, render_template, request, send_from_directory
 import torch
 from werkzeug.utils import secure_filename
 
-from chemprop.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.parsing import add_train_args, modify_train_args
+from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
+from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
-from chemprop.utils import load_args, load_checkpoint, load_scalers, set_logger
+from chemprop.utils import load_task_names, set_logger
 
+TEMP_FOLDER = TemporaryDirectory()
 
 app = Flask(__name__)
 app.config['DATA_FOLDER'] = 'web_data'
 os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
 app.config['CHECKPOINT_FOLDER'] = 'web_checkpoints'
 os.makedirs(app.config['CHECKPOINT_FOLDER'], exist_ok=True)
-app.config['PREDICTIONS_FOLDER'] = 'web_predictions'
-os.makedirs(app.config['PREDICTIONS_FOLDER'], exist_ok=True)
+app.config['TEMP_FOLDER'] = TEMP_FOLDER.name
+app.config['SMILES_FILENAME'] = 'smiles.csv'
 app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
+app.config['CUDA'] = torch.cuda.is_available()
+app.config['GPUS'] = list(range(torch.cuda.device_count()))
 
 started = 0
 progress = mp.Value('d', 0.0)
-
-def make_predictions(checkpoint_path: str, smiles: List[str]) -> List[List[float]]:
-    """Makes predictions for a SMILES string."""
-    # Load scalers and training args
-    scaler, features_scaler = load_scalers(checkpoint_path)
-    train_args = load_args(checkpoint_path)
-
-    # Conver smiles to data
-    data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
-
-    # Normalize features
-    if train_args.features_scaling:
-        data.normalize_features(features_scaler)
-
-    # Load model
-    model = load_checkpoint(checkpoint_path)
-    model.eval()
-
-    # Make predictions
-    with torch.no_grad():
-        preds = model(data.smiles(), data.features())
-        preds = preds.data.cpu().numpy()
-        if scaler is not None:
-            preds = scaler.inverse_transform(preds)
-            preds = preds.tolist()
-
-    return preds
-
-
-def save_predictions(save_path: str,
-                     task_names: List[str],
-                     smiles: List[str],
-                     preds: List[List[float]]):
-    with open(save_path, 'w') as f:
-        f.write('smiles,' + ','.join(task_names) + '\n')
-        for smile, pred in zip(smiles, preds):
-            f.write(smile + ',' + ','.join(str(p) for p in pred) + '\n')
-
-
-def get_task_names(checkpoint_path: str) -> List[str]:
-    args = load_args(checkpoint_path)
-
-    return args.task_names
 
 def progress_bar(args: Namespace, progress: mp.Value):
     # no code to handle crashes in model training yet, though
@@ -103,11 +64,16 @@ def home():
 @app.route('/train', methods=['GET', 'POST'])
 def train():
     if request.method == 'GET':
-        return render_template('train.html', datasets=get_datasets(), started=False)
+        return render_template('train.html', 
+                               datasets=get_datasets(), 
+                               started=False,
+                               cuda=app.config['CUDA'],
+                               gpus=app.config['GPUS'])
 
     # Get arguments
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
+    gpu = request.form.get('gpu', None)
     try:
         dataset_type = request.form['datasetType']
     except:
@@ -124,6 +90,11 @@ def train():
     args.data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     args.dataset_type = dataset_type
     args.epochs = epochs
+    if gpu is not None:
+        if gpu == 'None':
+            args.no_cuda = True
+        else:
+            args.gpu = int(gpu)
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
@@ -142,40 +113,77 @@ def train():
         run_training(args, logger)
         process.join()
 
-        # Move checkpoint
-        os.rename(os.path.join(args.save_dir, 'model_0', 'model.pt'),
-                  os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
-        
         # reset globals
         started = 0
         progress = mp.Value('d', 0.0)
 
-    return render_template('train.html', datasets=get_datasets(), trained=True)
+        # Move checkpoint
+        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'),
+                    os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
+
+    return render_template('train.html',
+                           datasets=get_datasets(),
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           trained=True)
 
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
     if request.method == 'GET':
-        return render_template('predict.html', checkpoints=get_checkpoints())
+        return render_template('predict.html',
+                               checkpoints=get_checkpoints(),
+                               cuda=app.config['CUDA'],
+                               gpus=app.config['GPUS'])
 
-    # Get smiles and checkpoint path
-    smiles, checkpoint_name = request.form['smiles'], request.form['checkpointName']
-    smiles = smiles.split()
+    # Get arguments
+    checkpoint_name = request.form['checkpointName']
+
+    try:
+        smiles = request.form('smiles')
+        smiles = smiles.split()
+    except:
+        # Upload data file
+        data = request.files['data']
+        data_name = secure_filename(data.filename)
+        data_path = os.path.join(app.config['TEMP_FOLDER'], data_name)
+        data.save(data_path)
+        smiles = []
+        with open(data_path, 'r') as f:
+            header = f.readline()
+            if 'smiles' not in header:  # in which case there's no header, and first line is actually just the first smiles
+                smiles.append(header.strip())
+            for line in f:
+                smiles.append(line.strip())
+
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+    task_names = load_task_names(checkpoint_path)
+    gpu = request.form.get('gpu', None)
+
+    # Create and modify args
+    parser = ArgumentParser()
+    add_predict_args(parser)
+    args = parser.parse_args()
+
+    preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+    args.preds_path = preds_path
+    args.checkpoint_paths = [checkpoint_path]
+    if gpu is not None:
+        if gpu == 'None':
+            args.no_cuda = True
+        else:
+            args.gpu = int(gpu)
 
     # Run prediction
-    task_names = get_task_names(checkpoint_path)
-    preds = make_predictions(checkpoint_path, smiles)
-
-    # Save preds
-    preds_path = os.path.join(app.config['PREDICTIONS_FOLDER'], app.config['PREDICTIONS_FILENAME'])
-    save_predictions(preds_path, task_names, smiles, preds)
+    preds = make_predictions(args, smiles=smiles)
 
     return render_template('predict.html',
                            checkpoints=get_checkpoints(),
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
                            predicted=True,
-                           smiles=smiles,
-                           num_smiles=len(smiles),
+                           smiles=smiles[:10],
+                           num_smiles=min(10, len(smiles)),
                            task_names=task_names,
                            num_tasks=len(task_names),
                            preds=preds)
@@ -183,7 +191,7 @@ def predict():
 
 @app.route('/download_predictions')
 def download_predictions():
-    return send_from_directory(app.config['PREDICTIONS_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
+    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
 @app.route('/data', methods=['GET', 'POST'])
