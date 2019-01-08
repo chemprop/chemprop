@@ -22,6 +22,11 @@ if __name__ == '__main__':
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold_balanced'],
                         help='Split type')
+    parser.add_argument('--class_weight', type=str,
+                        choices=['balanced'],
+                        help='How to weight classes (None means no class balance)')
+    parser.add_argument('--single_task', action='store_true', default=False,
+                        help='Whether to run each task separately (needed when dataset has null entries)')
     parser.add_argument('--num_folds', type=int, default=1,
                         help='Number of folds of cross validation')
     parser.add_argument('--seed', type=int, default=0,
