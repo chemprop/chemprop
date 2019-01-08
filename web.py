@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import os
+import shutil
 from tempfile import TemporaryDirectory
 from typing import List
 
@@ -78,8 +79,8 @@ def train():
         run_training(args)
 
         # Move checkpoint
-        os.rename(os.path.join(args.save_dir, 'model_0', 'model.pt'),
-                  os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
+        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'),
+                    os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
 
     return render_template('train.html',
                            datasets=get_datasets(),
