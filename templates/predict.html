@@ -89,5 +89,8 @@
 
             <hr>
         {% endfor %}
+        {% if show_more > 0 %}
+            <p>... and {{ show_more }} more. Download file for full predictions.</p>
+        {% endif %}
     {% endif %}
 {% endblock %}

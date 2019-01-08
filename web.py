@@ -182,8 +182,9 @@ def predict():
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
                            predicted=True,
-                           smiles=smiles[:10],
+                           smiles=smiles,
                            num_smiles=min(10, len(smiles)),
+                           show_more=max(0, len(smiles)-10),
                            task_names=task_names,
                            num_tasks=len(task_names),
                            preds=preds)
