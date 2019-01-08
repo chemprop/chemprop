@@ -59,9 +59,11 @@ class MPNEncoder(nn.Module):
             self.features_size = args.features_size
         self.undirected = args.undirected
         self.atom_messages = args.atom_messages
+        self.features_only = args.features_only
+        self.use_input_features = args.use_input_features
         self.args = args
 
-        if args.features_only:
+        if self.features_only:
             return  # won't use any of the graph stuff in this case
 
         if self.atom_messages:
@@ -234,14 +236,13 @@ class MPNEncoder(nn.Module):
         :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if self.args.use_input_features:
+        if self.use_input_features:
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
-            features_batch = features_batch.squeeze()
 
             if self.args.cuda:
                 features_batch = features_batch.cuda()
 
-            if self.args.features_only:
+            if self.features_only:
                 return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
@@ -461,7 +462,7 @@ class MPNEncoder(nn.Module):
 
             mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
         
-        if self.args.use_input_features:
+        if self.use_input_features:
             features_batch = features_batch.to(mol_vecs)
             if len(features_batch.shape) == 1:
                 features_batch = features_batch.view([1,features_batch.shape[0]])
@@ -503,7 +504,7 @@ class MPN(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if not self.graph_input and not self.args.features_only:  # if features only, batch won't even be used
+        if not self.graph_input and not self.features_only:  # if features only, batch won't even be used
             batch = mol2graph(batch, self.args)
 
         output = self.encoder.forward(batch, features_batch)
