@@ -11,7 +11,8 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 def make_predictions(args: Namespace):
     """Makes predictions."""
-    torch.cuda.set_device(args.gpu)
+    if args.gpu is not None:
+        torch.cuda.set_device(args.gpu)
 
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
