@@ -18,6 +18,16 @@
         <textarea name="smiles" cols="100" rows="10" placeholder="smiles" required></textarea>
         <br>
 
+        {% if cuda %}
+            <h5>GPU</h5>
+            <select name="gpu">
+                <option value="None">None</option>
+                {% for gpu in gpus %}
+                    <option value="{{gpu}}">{{gpu}}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
         <button type="submit" class="btn btn-primary btn-md">Predict</button>
     </form>
 
