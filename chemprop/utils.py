@@ -198,15 +198,14 @@ def majority_baseline_accuracy(targets: List[int], *args) -> float:
     return counter.most_common()[0][1] / len(targets)
 
 
-def get_metric_func(args: Namespace) -> Callable:
+def get_metric_func(metric: str, args: Namespace = None) -> Callable:
     """
     Gets the metric function corresponding to a given metric name.
 
-    :param args: Namespace containing args.metric
+    :param metric: Metric name.
+    :param args: Namespace.
     :return: A metric function which takes as arguments a list of targets and a list of predictions.
     """
-    metric = args.metric
-
     if metric == 'auc':
         return roc_auc_score
 
@@ -229,6 +228,7 @@ def get_metric_func(args: Namespace) -> Callable:
         return argmax_accuracy
     
     if metric == 'log_loss':
+        assert args is not None
         # only supported for unsupervised and bert_pretraining
         num_labels = args.unsupervised_n_clusters if args.dataset_type == 'unsupervised' else args.vocab.output_size
 
@@ -314,7 +314,7 @@ def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List
     raise ValueError('Learning rate scheduler "{}" not supported.'.format(args.scheduler))
 
 
-def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
+def set_logger(logger: logging.Logger, save_dir: str = None, quiet: bool = False):
     """
     Sets up a logger with a stream handler and two file handlers.
 
@@ -331,13 +331,14 @@ def set_logger(logger: logging.Logger, save_dir: str, quiet: bool):
         ch.setLevel(logging.INFO)
     else:
         ch.setLevel(logging.DEBUG)
-
-    fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
-    fh_v.setLevel(logging.DEBUG)
-    fh_q = logging.FileHandler(os.path.join(save_dir, 'quiet.log'))
-    fh_q.setLevel(logging.INFO)
-
     logger.addHandler(ch)
-    logger.addHandler(fh_v)
-    logger.addHandler(fh_q)
+
+    if save_dir is not None:
+        fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
+        fh_v.setLevel(logging.DEBUG)
+        fh_q = logging.FileHandler(os.path.join(save_dir, 'quiet.log'))
+        fh_q.setLevel(logging.INFO)
+
+        logger.addHandler(fh_v)
+        logger.addHandler(fh_q)
 

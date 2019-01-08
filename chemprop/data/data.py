@@ -57,10 +57,12 @@ class MoleculeDatapoint:
             self.kernel = args.dataset_type == 'kernel'
             self.kernel_func = args.kernel_func
 
+            self.maml = args.maml
+
             self.args = args
         else:
             self.features_generator = self.bert_mask_prob = self.bert_mask_type = self.bert_vocab_func = self.substructure_sizes = self.args = self.kernel = self.kernel_func = None
-            self.predict_features_and_task = self.predict_features = self.sparse = self.bert_pretraining = False
+            self.predict_features_and_task = self.predict_features = self.sparse = self.bert_pretraining = self.maml = False
 
         if features is not None and self.features_generator is not None:
             raise ValueError('Currently cannot provide both loaded features and a features generator.')
@@ -217,6 +219,7 @@ class MoleculeDataset(Dataset):
             if len(self.data) % 2 == 1:
                 self.data = self.data[:-1]
         self.kernel_func = get_kernel_func(self.data[0].kernel_func) if len(self.data) > 0 and self.data[0].kernel_func is not None else None
+        self.maml = self.data[0].maml if len(self.data) > 0 else False
         self.args = self.data[0].args if len(self.data) > 0 else None
         self.scaler = None
     
@@ -346,7 +349,7 @@ class MoleculeDataset(Dataset):
         return [m for d in self.data for m in d.mask]
 
     def shuffle(self, seed: int = None):
-        if self.args.maml:
+        if self.maml:
             return  # shuffling is done in sample_maml_task
 
         if seed is not None:

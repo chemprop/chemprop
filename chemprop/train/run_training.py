@@ -50,8 +50,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         data, bin_predictions, regression_data = data
         args.bin_predictions = bin_predictions
         debug('Splitting data with seed {}'.format(args.seed))
-        train_data, _, _ = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
-        _, val_data, test_data = split_data(regression_data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+        train_data, _, _ = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
+        _, val_data, test_data = split_data(regression_data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
     else:
         debug('Splitting data with seed {}'.format(args.seed))
         if args.separate_test_set:
@@ -60,9 +60,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 val_data = get_data(args.separate_val_set, args)
                 train_data = data  # nothing to split; we already got our test and val sets
             else:
-                train_data, val_data, _ = split_data(data, args, sizes=(0.8, 0.2, 0.0), seed=args.seed, logger=logger)
+                train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
         else:
-            train_data, val_data, test_data = split_data(data, args, sizes=args.split_sizes, seed=args.seed, logger=logger)
+            train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
 
     # Optionally replace test data with train or val data
     if args.test_split == 'train':
@@ -124,11 +124,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
     
     debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
-        len(data),
-        len(train_data),
-        len(val_data),
-        len(test_data))
-    )
+        len(data), len(train_data), len(val_data), len(test_data)))
 
     # Optionally truncate outlier values
     if args.truncate_outliers:
@@ -173,7 +169,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Get loss and metric functions
     loss_func = get_loss_func(args)
-    metric_func = get_metric_func(args)
+    metric_func = get_metric_func(metric=args.metric, args=args)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
@@ -338,6 +334,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     preds=test_preds,
                     targets=td.targets(),
                     metric_func=metric_func,
+                    dataset_type=args.dataset_type,
                     args=args,
                     logger=logger
                 )
@@ -358,6 +355,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 preds=test_preds,
                 targets=test_targets,
                 metric_func=metric_func,
+                dataset_type=args.dataset_type,
                 args=args,
                 logger=logger
             )
@@ -406,7 +404,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         ensemble_scores = evaluate_predictions(
             preds=avg_test_preds,
             targets=test_targets,
-            metric_func=metric_func, 
+            metric_func=metric_func,
+            dataset_type=args.dataset_type,
             args=args,
             logger=logger
         )

@@ -3,7 +3,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 
-def morgan_fingerprint(smiles: str, radius: int = 3, num_bits: int = 2048, use_counts: bool = False) -> np.ndarray:
+def morgan_fingerprint(smiles: str, radius: int = 2, num_bits: int = 2048, use_counts: bool = False) -> np.ndarray:
     """
     Generates a morgan fingerprint for a smiles string.
 

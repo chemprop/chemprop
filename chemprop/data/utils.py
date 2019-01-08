@@ -151,9 +151,10 @@ def get_data(path: str,
 
 
 def split_data(data: MoleculeDataset,
-               args: Namespace,
+               split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
+               args: Namespace = None,
                logger: Logger = None) -> Tuple[MoleculeDataset,
                                                MoleculeDataset,
                                                MoleculeDataset]:
@@ -161,16 +162,24 @@ def split_data(data: MoleculeDataset,
     Splits data into training, validation, and test splits.
 
     :param data: A MoleculeDataset.
-    :param args: Namespace of arguments
+    :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
+    :param args: Namespace of arguments.
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert len(sizes) == 3 and sum(sizes) == 1
 
-    if args.maml:
+    if args is not None:
+        maml, folds_file, val_fold_index, test_fold_index, scaffold_overlap = \
+            args.maml, args.folds_file, args.val_fold_index, args.test_fold_index, args.scaffold_overlap
+    else:
+        folds_file = val_fold_index = test_fold_index = scaffold_overlap = None
+        maml = False
+
+    if maml:
         train_data, val_data, test_data = deepcopy(data), deepcopy(data), deepcopy(data)
 
         task_idxs = list(range(data.num_tasks()))
@@ -190,9 +199,12 @@ def split_data(data: MoleculeDataset,
 
         return train_data, val_data, test_data
 
-    if args.split_type == 'predetermined':
+    if split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately
-        with open(args.folds_file, 'rb') as f:
+        assert folds_file is not None
+        assert test_fold_index is not None
+
+        with open(folds_file, 'rb') as f:
             try:
                 all_fold_indices = pickle.load(f)
             except UnicodeDecodeError:
@@ -203,16 +215,16 @@ def split_data(data: MoleculeDataset,
 
         folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
 
-        test = folds[args.test_fold_index]
-        if args.val_fold_index is not None:
-            val = folds[args.val_fold_index]
+        test = folds[test_fold_index]
+        if val_fold_index is not None:
+            val = folds[val_fold_index]
 
         train_val = []
         for i in range(len(folds)):
-            if i != args.test_fold_index and (args.val_fold_index is None or i != args.val_fold_index):
+            if i != test_fold_index and (val_fold_index is None or i != val_fold_index):
                 train_val.extend(folds[i])
 
-        if args.val_fold_index is not None:
+        if val_fold_index is not None:
             train = train_val
         else:
             random.seed(seed)
@@ -223,19 +235,20 @@ def split_data(data: MoleculeDataset,
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
-    elif args.split_type == 'scaffold':
+    elif split_type == 'scaffold':
         return scaffold_split(data, sizes=sizes, balanced=False, logger=logger)
     
-    elif args.split_type == 'scaffold_balanced':
+    elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
-    elif args.split_type == 'scaffold_one':
+    elif split_type == 'scaffold_one':
         return scaffold_split_one(data)
 
-    elif args.split_type == 'scaffold_overlap':
-        return scaffold_split_overlap(data, overlap=args.scaffold_overlap, seed=seed, logger=logger)
+    elif split_type == 'scaffold_overlap':
+        assert scaffold_overlap is not None
+        return scaffold_split_overlap(data, overlap=scaffold_overlap, seed=seed, logger=logger)
 
-    elif args.split_type == 'random':
+    elif split_type == 'random':
         data.shuffle(seed=seed)
 
         train_size = int(sizes[0] * len(data))
@@ -248,7 +261,7 @@ def split_data(data: MoleculeDataset,
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     else:
-        raise ValueError('split_type "{}" not supported.'.format(args.split_type))
+        raise ValueError('split_type "{}" not supported.'.format(split_type))
 
 
 def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
@@ -340,7 +353,7 @@ def load_prespecified_chunks(args: Namespace, logger: Logger = None):
     split_sizes = deepcopy(args.split_sizes)
     split_sizes[2] = 0  # no test set
     split_sizes = [i / sum(split_sizes) for i in split_sizes]
-    train, val, _ = split_data(data, args, split_sizes)
+    train, val, _ = split_data(data=data, split_type=args.split_type, sizes=split_sizes, args=args)
 
     return train, val
 
