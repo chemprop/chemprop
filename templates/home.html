@@ -1,8 +1,24 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    <h1>Chemprop</h1>
-    <h3>Machine Learning for Molecular Property Prediction</h3>
+    <h1>Chemprop &mdash; Machine Learning for Molecular Property Prediction</h1>
 
-    <!--TODO: explain ssh port forwarding: `ssh -N -L 5000:localhost:5000 swansonk@rosetta3.csail.mit.edu`-->
+    <h3>Introduction</h3>
+    <p>This website can be used to predict molecular properties using a Message Passing Neural Network (MPNN). In order to make predictions, an MPNN first needs to be trained on a dataset containing molecules along with known property values for each molecule. Once the MPNN is trained, it can be used to predict those same properties on any new molecules.</p>
+
+    <h3>Training</h3>
+    <p>To train an MPNN, first upload a dataset of molecules with known properties on the <a href="{{url_for('data')}}">Data</a> page. Then go to the <a href="{{url_for('train')}}">Train</a> page and start training your model. Once training is complete, a model checkpoint will be saved. You can view, download, and delete model checkpoints on the <a href="{{url_for('checkpoints')}}">Checkpoints</a> page.</p>
+
+    <h3>Predicting</h3>
+    <p>To make property predictions using, go to the <a href="{{url_for('predict')}}">Predict</a> page, select the trained model checkpoint you want to use, and then upload or paste the molecules you would like to make predictions on.</p>
+    <br>
+
+    <h4>Working Remotely</h4>
+    <p>If you wish to train or predict on a remote server &mdash; for instance, if a remote server has GPUs you would like to use &mdash; you can use SSH port-forwarding to run training/predicting on the remote server while viewing the website it locally. To do so, follow these instructions:</p>
+    <ol>
+        <li>Connect to the remote server: <code>ssh &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
+        <li>On the remote server, start the website: <code>python web.py</code></li>
+        <li>On your local machine, set up port-forwarding: <code>ssh -N -L 5000:localhost:5000 &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
+        <li>On your local machine, open a web browser and navigate to <a href="localhost:5000">localhost:5000</a></li>
+    </ol>
 {% endblock %}

@@ -5,7 +5,8 @@
 {% endblock %}
 
 {% block content %}
-    <h5>Add New</h5>
+    <!--TODO: Better explanation of data format (maybe on another page)-->
+    <h5>Add New <span class="glyphicon glyphicon-question-sign" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h5>
     <form enctype="multipart/form-data" method="POST">
         <input type="file" name="data" accept=".csv" required>
         <br>
