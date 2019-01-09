@@ -232,7 +232,7 @@ def checkpoints():
         return render_template('checkpoints.html', checkpoints=get_checkpoints())
 
     # Upload checkpoint file
-    checkpoint = request.files['data']
+    checkpoint = request.files['checkpoint']
     checkpoint_name = secure_filename(checkpoint.filename)
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     checkpoint.save(checkpoint_path)

@@ -21,6 +21,8 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--checkpoint_dir', type=str,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
+    parser.add_argument('--checkpoint_path', type=str, default=None,
+                        help='Path to model checkpoint (.pt file)')
     parser.add_argument('--batch_size', type=int, default=50,
                         help='Batch size')
     parser.add_argument('--no_cuda', action='store_true', default=False,
@@ -65,6 +67,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--checkpoint_dir', type=str, default=None,
                         help='Directory from which to load model checkpoints'
                              '(walks directory and ensembles all models that are found)')
+    parser.add_argument('--checkpoint_path', type=str, default=None,
+                        help='Path to model checkpoint (.pt file)')
     parser.add_argument('--load_encoder_only', action='store_true', default=False,
                         help='If a checkpoint_dir is specified for training, only loads weights from encoder'
                              'and not from the final feed-forward network')
@@ -345,10 +349,13 @@ def add_train_args(parser: ArgumentParser):
                         help='Don\'t use bond features (only atom features)')
 
 
-def update_args_from_checkpoint_dir(args: Namespace):
+def update_checkpoint_args(args: Namespace):
     """Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size."""
+    if args.checkpoint_dir is not None and args.checkpoint_path is not None:
+        raise ValueError('Only one of checkpoint_dir and checkpoint_path can be specified.')
+
     if args.checkpoint_dir is None:
-        args.checkpoint_paths = None
+        args.checkpoint_paths = [args.checkpoint_path] if args.checkpoint_path is not None else None
         return
 
     args.checkpoint_paths = []
@@ -367,8 +374,9 @@ def update_args_from_checkpoint_dir(args: Namespace):
 def modify_predict_args(args: Namespace):
     assert args.test_path
     assert args.preds_path
-    assert args.checkpoint_dir is not None
-    update_args_from_checkpoint_dir(args)
+    assert args.checkpoint_dir is not None or args.checkpoint_path is not None
+
+    update_checkpoint_args(args)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     del args.no_cuda
@@ -437,7 +445,7 @@ def modify_train_args(args: Namespace):
 
     args.minimize_score = args.metric in ['rmse', 'mae', 'log_loss']
 
-    update_args_from_checkpoint_dir(args)
+    update_checkpoint_args(args)
 
     if args.jtnn:
         if not hasattr(args, 'vocab_path'):

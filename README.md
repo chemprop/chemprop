@@ -96,12 +96,18 @@ The base message passing architecture can be modified in a range of ways that ca
 
 To load a trained model and make predictions, run `predict.py` and specify:
 * `--test_path` Path to the data to predict on.
-* `--checkpoint_dir` Directory where the checkpoints were saved (i.e. `--save_dir` during training).
+* A checkpoint by using either:
+  * `--checkpoint_dir` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
+  * `--checkpoint_path` Path to a model checkpoint file (`.pt` file).
 * `--preds_path` Path where a CSV file containing the predictions will be saved.
 
 For example:
 ```
 python predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_preds.csv
+```
+or
+```
+python predict.py --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
 
 ## TensorBoard
