@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from 'macros.html' import add_data %}
+{% from 'macros.html' import add_data, error_message, warning_message %}
 
 {% block title %}
     <h1>Train</h1>
@@ -58,6 +58,12 @@
         <button type="submit" class="btn btn-primary btn-md">Train</button>
     </form>
 
+    <br>
+
+    {{ warning_message(warning) }}
+
+    {{ error_message(error) }}
+
     <script type=text/javascript>
         function refresh() {
             $.post("receiver", function(data){
@@ -85,10 +91,6 @@
     <div id="myProgress" style="visibility:hidden">
         <div id="myBar"></div>
     </div>
-
-    {% if error %}
-        <h3>ERROR: {{ error }}</h3>
-    {% endif %}
 
     {% if trained %}
         <h3>Training complete!</h3>

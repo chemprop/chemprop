@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from 'macros.html' import add_checkpoint %}
+{% from 'macros.html' import add_checkpoint, error_message, warning_message %}
 
 {% block title %}
     <h1>Predict</h1>
@@ -56,6 +56,13 @@
 
         <button type="submit" class="btn btn-primary btn-md">Predict</button>
     </form>
+
+    <br>
+
+    {{ warning_message(warning) }}
+
+    {{ error_message(error) }}
+
     <script>
         $(document).ready(function() {
             $("#textButton").click(function() {
@@ -70,10 +77,6 @@
             });
         });
     </script>
-
-    {% if error %}
-        <h3>ERROR: {{ error }}</h3>
-    {% endif %}
 
     {% if predicted %}
         <hr>

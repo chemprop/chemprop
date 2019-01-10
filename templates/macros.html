@@ -17,3 +17,19 @@
         <button type="submit" class="btn btn-primary btn-sm">Upload</button>
     </form>
 {% endmacro %}
+
+{% macro warning_message(message) %}
+    {% if message %}
+        <div class="alert alert-warning" role="alert">
+            Warning: {{ message }}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro error_message(message) %}
+    {% if message %}
+        <div class="alert alert-danger" role="alert">
+            Error: {{ message }}
+        </div>
+    {% endif %}
+{% endmacro %}
