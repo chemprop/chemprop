@@ -1,22 +1,20 @@
 {% extends "layout.html" %}
+{% from 'macros.html' import add_checkpoint %}
 
 {% block title %}
     <h1>Checkpoints</h1>
 {% endblock %}
 
 {% block content %}
-    <h5>Add New <span class="glyphicon glyphicon-question-sign" data-toggle="tooltip" data-placement="right" title="The model file must be a PyTorch model checkpoint (.pt) created by our code."></span></h5>
-    <form enctype="multipart/form-data" method="POST">
-        <input type="file" name="checkpoint" accept=".pt" required>
-        <br>
-        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
-    </form>
+    {{ add_checkpoint('checkpoints') }}
+
+    <hr>
 
     <h3>Model Checkpoints</h3>
     <table class="table table-hover" style="width:auto">
         {% for checkpoint in checkpoints %}
             <tr>
-                <th>{{checkpoint}}</th>
+                <th style="vertical-align: middle;">{{checkpoint}}</th>
                 <th>
                     <a href="{{ url_for('download_checkpoint', checkpoint=checkpoint) }}"><button class="btn btn-default btn-sm">Download</button></a>
                     <a href="{{ url_for('delete_checkpoint', checkpoint=checkpoint) }}"><button class="btn btn-danger btn-sm">Delete</button></a>

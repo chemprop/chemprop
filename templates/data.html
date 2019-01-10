@@ -1,23 +1,20 @@
 {% extends "layout.html" %}
+{% from 'macros.html' import add_data %}
 
 {% block title %}
     <h1>Data</h1>
 {% endblock %}
 
 {% block content %}
-    <!--TODO: Better explanation of data format (maybe on another page)-->
-    <h5>Add New <span class="glyphicon glyphicon-question-sign" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h5>
-    <form enctype="multipart/form-data" method="POST">
-        <input type="file" name="data" accept=".csv" required>
-        <br>
-        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
-    </form>
+    {{ add_data('data') }}
+
+    <hr>
 
     <h3>Datasets</h3>
     <table class="table table-hover" style="width:auto">
         {% for dataset in datasets %}
             <tr>
-                <th>{{dataset}}</th>
+                <th style="vertical-align: middle;">{{dataset}}</th>
                 <th>
                     <a href="{{ url_for('download_data', dataset=dataset) }}"><button class="btn btn-default btn-sm">Download</button></a>
                     <a href="{{ url_for('delete_data', dataset=dataset) }}"><button class="btn btn-danger btn-sm">Delete</button></a>

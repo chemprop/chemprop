@@ -1,0 +1,19 @@
+<!--TODO: Better explanation of data format (maybe on another page)-->
+{% macro add_data(return_page) %}
+    <h4>Add New Dataset <span class="glyphicon glyphicon-question-sign" style="font-size:15px" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h4>
+    <form enctype="multipart/form-data" action="{{url_for('upload_data', return_page=return_page)}}" method="POST">
+        <input type="file" name="data" accept=".csv" required>
+        <br>
+        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+    </form>
+{% endmacro %}
+
+{% macro add_checkpoint(return_page) %}
+    <h4>Add New Checkpoint <span class="glyphicon glyphicon-question-sign" style="font-size:15px" data-toggle="tooltip" data-placement="right" title="The model file must be a PyTorch model checkpoint (.pt) created by our code."></span></h4>
+
+    <form enctype="multipart/form-data" action="{{url_for('upload_checkpoint', return_page=return_page)}}" method="POST">
+        <input type="file" name="checkpoint" accept=".pt" required>
+        <br>
+        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+    </form>
+{% endmacro %}

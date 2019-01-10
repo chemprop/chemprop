@@ -42,7 +42,7 @@ def progress_bar(args: Namespace, progress: mp.Value):
                 content = f.read()
                 if 'Epoch ' + str(current_epoch + 1) in content:
                     current_epoch += 1
-                    progress.value = (current_epoch+1)*100/args.epochs # TODO communicate with other process
+                    progress.value = (current_epoch + 1) * 100 / args.epochs  # TODO communicate with other process
         else:
             pass
         time.sleep(0)
@@ -79,10 +79,7 @@ def train():
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
     gpu = request.form.get('gpu', None)
-    try:
-        dataset_type = request.form['datasetType']
-    except:
-        dataset_type = 'regression' # default
+    dataset_type = request.form.get('datasetType', 'regression')
 
     if not checkpoint_name.endswith('.pt'):
         checkpoint_name += '.pt'
@@ -201,18 +198,19 @@ def download_predictions():
     return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
-@app.route('/data', methods=['GET', 'POST'])
+@app.route('/data')
 def data():
-    if request.method == 'GET':
-        return render_template('data.html', datasets=get_datasets())
+    return render_template('data.html', datasets=get_datasets())
 
-    # Upload data file
+
+@app.route('/data/upload/<string:return_page>', methods=['POST'])
+def upload_data(return_page: str):
     data = request.files['data']
     data_name = secure_filename(data.filename)
     data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     data.save(data_path)
 
-    return render_template('data.html', datasets=get_datasets())
+    return redirect(url_for(return_page))
 
 
 @app.route('/data/download/<string:dataset>')
@@ -226,18 +224,19 @@ def delete_data(dataset: str):
     return redirect(url_for('data'))
 
 
-@app.route('/checkpoints', methods=['GET', 'POST'])
+@app.route('/checkpoints')
 def checkpoints():
-    if request.method == 'GET':
-        return render_template('checkpoints.html', checkpoints=get_checkpoints())
+    return render_template('checkpoints.html', checkpoints=get_checkpoints())
 
-    # Upload checkpoint file
+
+@app.route('/checkpoints/upload/<string:return_page>', methods=['POST'])
+def upload_checkpoint(return_page: str):
     checkpoint = request.files['checkpoint']
     checkpoint_name = secure_filename(checkpoint.filename)
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     checkpoint.save(checkpoint_path)
 
-    return render_template('checkpoints.html', checkpoints=get_checkpoints())
+    return redirect(url_for(return_page))
 
 
 @app.route('/checkpoints/download/<string:checkpoint>')

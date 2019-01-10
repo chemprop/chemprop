@@ -1,13 +1,20 @@
 {% extends "layout.html" %}
+{% from 'macros.html' import add_data %}
 
 {% block title %}
     <h1>Train</h1>
 {% endblock %}
 
 {% block content %}
-    <form enctype="multipart/form-data" method="POST">
+    {{ add_data('train') }}
+
+    <hr>
+
+    <h3>Train</h3>
+
+    <form method="POST">
         <h5>Data</h5>
-        <select name="dataName">
+        <select name="dataName" required>
             {% for dataset in datasets %}
                 <option value="{{dataset}}">{{dataset}}</option>
             {% endfor %}
@@ -29,9 +36,9 @@
         <br>
         <br>
 
-        <h5>Checkpoint Name</h5>
+        <h5>Checkpoint name</h5>
         <!--TODO: Verify that name isn't already in use-->
-        <input type="text" name="checkpointName" placeholder="Checkpoint Name" required>
+        <input type="text" name="checkpointName" placeholder="name" required>
 
         {% if cuda %}
             <h5>GPU</h5>
@@ -45,7 +52,10 @@
             <br>
         {% endif %}
 
-        <input type="submit" value="Train">
+        <br>
+        <br>
+
+        <button type="submit" class="btn btn-primary btn-md">Train</button>
     </form>
 
     <script type=text/javascript>
