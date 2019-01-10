@@ -61,10 +61,23 @@ def get_checkpoints() -> List[str]:
 def get_target_set(path: str) -> Set[float]:
     targets = set()
     with open(path, 'r') as f:
-        _ = f.readline()
+        header = f.readline()
+        num_tasks = len(header.strip().split(',')[1:])
+        target_has_labels = [False for _ in range(num_tasks)]
         for line in f:
-            targets.update([float(t) for t in line.strip().split(',')[1:]])
-    return targets
+            targets.update([t for t in line.strip().split(',')[1:] if len(t) > 0])
+            if all(target_has_labels):
+                continue
+            for i, t in enumerate(line.strip().split(',')[1:]):
+                if len(t) > 0: 
+                    target_has_labels[i] = True
+    try:
+        float_targets = set([float(t) for t in targets])
+        has_invalid_targets = False
+    except:
+        float_targets = targets
+        has_invalid_targets = True
+    return float_targets, all(target_has_labels), has_invalid_targets
 
 @app.route('/receiver', methods= ['POST'])
 def receiver():
@@ -103,7 +116,21 @@ def train():
     args.dataset_type = dataset_type
     args.epochs = epochs
 
-    target_set = get_target_set(args.data_path)
+    target_set, all_targets_have_labels, has_invalid_targets = get_target_set(args.data_path)
+    if len(target_set) == 0:
+        return render_template('train.html',
+                           datasets=get_datasets(),
+                           started=False,
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           error="No training labels provided")
+    if has_invalid_targets:
+        return render_template('train.html',
+                           datasets=get_datasets(),
+                           started=False,
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           error="Training data contains invalid labels")
     classification_on_regression_dataset = ((not target_set <= set([0, 1])) and args.dataset_type == 'classification')
     if classification_on_regression_dataset:
         return render_template('train.html',
@@ -114,8 +141,10 @@ def train():
                            error='Selected classification dataset, but not all labels are 0 or 1')
     regression_on_classification_dataset = (target_set <= set([0, 1]) and args.dataset_type == 'regression')
     global training_message
+    if not all_targets_have_labels:
+        training_message += 'One or more targets have no labels. \n'  # TODO could have separate warning messages for each?
     if regression_on_classification_dataset:
-        training_message = 'All labels are 0 or 1; did you mean to train classification instead of regression?'
+        training_message += 'All labels are 0 or 1; did you mean to train classification instead of regression?\n'
 
     if gpu is not None:
         if gpu == 'None':
@@ -148,13 +177,14 @@ def train():
         shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'),
                     os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
 
+    warning = training_message if len(training_message) > 0 else None
     training_message = ""
     return render_template('train.html',
                            datasets=get_datasets(),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
                            trained=True,
-                           warning='All labels are 0 or 1; did you mean to train classification instead of regression?' if regression_on_classification_dataset else None)
+                           warning=warning)
 
 
 @app.route('/predict', methods=['GET', 'POST'])
