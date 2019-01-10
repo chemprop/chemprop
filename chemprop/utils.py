@@ -35,7 +35,7 @@ def save_checkpoint(path: str,
     state = {
         'args': args,
         'state_dict': model.state_dict(),
-        'scaler': {
+        'data_scaler': {
             'means': scaler.means,
             'stds': scaler.stds
         } if scaler is not None else None,
@@ -120,8 +120,8 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
 
-    scaler = StandardScaler(state['scaler']['means'],
-                            state['scaler']['stds']) if state['scaler'] is not None else None
+    scaler = StandardScaler(state['data_scaler']['means'],
+                            state['data_scaler']['stds']) if state['data_scaler'] is not None else None
     features_scaler = StandardScaler(state['features_scaler']['means'],
                                      state['features_scaler']['stds'],
                                      replace_nan_token=0) if state['features_scaler'] is not None else None
