@@ -85,7 +85,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, invalid_smiles_w
             f.write(','.join(str(p) for p in avg_preds[i]) + '\n')
 
     if invalid_smiles_warning is not None:
-        full_preds = [invalid_smiles_warning for _ in range(len(full_smiles))]
+        full_preds = [[invalid_smiles_warning] for _ in range(len(full_smiles))]
         for i, si in enumerate(success_indices):
             full_preds[si] = avg_preds[i]
         return full_preds

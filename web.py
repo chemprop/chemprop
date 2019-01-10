@@ -182,9 +182,12 @@ def predict():
         else:
             args.gpu = int(gpu)
 
-    # Run prediction
     invalid_smiles_warning="Invalid SMILES String"
-    preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
+    if len(smiles) > 0:
+        # Run prediction
+        preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
+    else:
+        preds = []
 
     return render_template('predict.html',
                            checkpoints=get_checkpoints(),
@@ -197,7 +200,8 @@ def predict():
                            task_names=task_names,
                            num_tasks=len(task_names),
                            preds=preds,
-                           warning="List contains invalid SMILES strings" if invalid_smiles_warning in preds else None)
+                           warning="List contains invalid SMILES strings" if invalid_smiles_warning in preds else None,
+                           error="No SMILES strings given" if len(preds) == 0 else None)
 
 
 @app.route('/download_predictions')
