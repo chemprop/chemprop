@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 import os
 import shutil
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Set
 import time
 import multiprocessing as mp
 import logging
@@ -32,6 +32,7 @@ app.config['GPUS'] = list(range(torch.cuda.device_count()))
 
 started = 0
 progress = mp.Value('d', 0.0)
+training_message = ""
 
 
 def progress_bar(args: Namespace, progress: mp.Value):
@@ -57,9 +58,17 @@ def get_checkpoints() -> List[str]:
     return os.listdir(app.config['CHECKPOINT_FOLDER'])
 
 
+def get_target_set(path: str) -> Set[float]:
+    targets = set()
+    with open(path, 'r') as f:
+        _ = f.readline()
+        for line in f:
+            targets.update([float(t) for t in line.strip().split(',')[1:]])
+    return targets
+
 @app.route('/receiver', methods= ['POST'])
 def receiver():
-    return jsonify(progress=progress.value, started=started)
+    return jsonify(progress=progress.value, started=started, message=training_message)
 
 
 @app.route('/')
@@ -93,6 +102,21 @@ def train():
     args.data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     args.dataset_type = dataset_type
     args.epochs = epochs
+
+    target_set = get_target_set(args.data_path)
+    classification_on_regression_dataset = ((not target_set <= set([0, 1])) and args.dataset_type == 'classification')
+    if classification_on_regression_dataset:
+        return render_template('train.html',
+                           datasets=get_datasets(),
+                           started=False,
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           error='Selected classification dataset, but not all labels are 0 or 1')
+    regression_on_classification_dataset = (target_set <= set([0, 1]) and args.dataset_type == 'regression')
+    global training_message
+    if regression_on_classification_dataset:
+        training_message = 'All labels are 0 or 1; did you mean to train classification instead of regression?'
+
     if gpu is not None:
         if gpu == 'None':
             args.no_cuda = True
@@ -124,11 +148,13 @@ def train():
         shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'),
                     os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
 
+    training_message = ""
     return render_template('train.html',
                            datasets=get_datasets(),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
-                           trained=True)
+                           trained=True,
+                           warning='All labels are 0 or 1; did you mean to train classification instead of regression?' if regression_on_classification_dataset else None)
 
 
 @app.route('/predict', methods=['GET', 'POST'])

@@ -60,6 +60,8 @@
 
     <br>
 
+    <div id="training_message" class="alert alert-warning" role="alert" style="display:none"></div>
+
     {{ warning_message(warning) }}
 
     {{ error_message(error) }}
@@ -70,6 +72,10 @@
                 if (data.started == 1) {
                     document.getElementById("myProgress").style.visibility = "visible";
                     document.getElementById("myBar").style.width = data.progress + "%";
+                }
+                if (data.message != "") {
+                    document.getElementById("training_message").style.display = ""
+                    document.getElementById("training_message").innerHTML = "Warning: " + data.message
                 }
             });
         }
