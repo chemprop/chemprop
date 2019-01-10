@@ -223,7 +223,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model = model.cuda()
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
+        save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
 
         if args.adjust_weight_decay:
             args.pnorm_target = compute_pnorm(model)
@@ -308,7 +308,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     not args.minimize_score and avg_val_score > best_score or \
                     args.dataset_type == 'unsupervised':
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(model, scaler, features_scaler, args, os.path.join(save_dir, 'model.pt'))
+                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
 
         if args.dataset_type == 'unsupervised':
             return [0]  # rest of this is meaningless when unsupervised            

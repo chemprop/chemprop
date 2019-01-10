@@ -18,11 +18,11 @@ from chemprop.models import build_model
 from chemprop.nn_utils import MockLR, NoamLR
 
 
-def save_checkpoint(model: nn.Module,
-                    scaler: StandardScaler,
-                    features_scaler: StandardScaler,
-                    args: Namespace,
-                    path: str):
+def save_checkpoint(path: str,
+                    model: nn.Module,
+                    scaler: StandardScaler = None,
+                    features_scaler: StandardScaler = None,
+                    args: Namespace = None):
     """
     Saves a model checkpoint.
 
@@ -35,7 +35,7 @@ def save_checkpoint(model: nn.Module,
     state = {
         'args': args,
         'state_dict': model.state_dict(),
-        'data_scaler': {
+        'scaler': {
             'means': scaler.means,
             'stds': scaler.stds
         } if scaler is not None else None,
@@ -120,13 +120,13 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
 
-    data_scaler = StandardScaler(state['data_scaler']['means'],
-                                 state['data_scaler']['stds']) if state['data_scaler'] is not None else None
+    scaler = StandardScaler(state['scaler']['means'],
+                            state['scaler']['stds']) if state['scaler'] is not None else None
     features_scaler = StandardScaler(state['features_scaler']['means'],
                                      state['features_scaler']['stds'],
                                      replace_nan_token=0) if state['features_scaler'] is not None else None
 
-    return data_scaler, features_scaler
+    return scaler, features_scaler
 
 
 def load_args(path: str) -> Namespace:
