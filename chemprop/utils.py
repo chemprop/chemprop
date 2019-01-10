@@ -44,7 +44,7 @@ def save_checkpoint(path: str,
             'stds': features_scaler.stds
         } if features_scaler is not None else None
     }
-    if args.moe:
+    if args is not None and args.moe:
         state['domain_encs'] = model.get_domain_encs()
     torch.save(state, path)
 
