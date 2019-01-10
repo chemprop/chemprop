@@ -32,11 +32,11 @@
         </div>
         <br>
 
-        <div id="textInputForm">
+        <div id="textInputForm" {% if show_file_upload %} style="display:none" {% endif %}>
             <h5>SMILES (one per line)</h5>
             <textarea name="smiles" cols="100" rows="10" placeholder="smiles"></textarea>
         </div>
-        <div id="fileInputForm" style="display:none">
+        <div id="fileInputForm" {% if not show_file_upload %} style="display:none" {% endif %}>
             <h5>File containing SMILES (one per line)</h5>
             <input type="file" name="data" accept=".csv">
         </div>

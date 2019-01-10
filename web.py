@@ -144,6 +144,7 @@ def predict():
 
     if 'data' in request.files:
         # Upload data file with SMILES
+        show_file_upload = True
         data = request.files['data']
         data_name = secure_filename(data.filename)
         data_path = os.path.join(app.config['TEMP_FOLDER'], data_name)
@@ -161,6 +162,7 @@ def predict():
             for line in f:
                 smiles.append(line.strip().split(',')[0])
     else:
+        show_file_upload = False
         smiles = request.form['smiles']
         smiles = smiles.split()
 
@@ -200,6 +202,7 @@ def predict():
                            task_names=task_names,
                            num_tasks=len(task_names),
                            preds=preds,
+                           show_file_upload=show_file_upload,
                            warning="List contains invalid SMILES strings" if invalid_smiles_warning in preds else None,
                            error="No SMILES strings given" if len(preds) == 0 else None)
 
