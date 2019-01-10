@@ -10,6 +10,7 @@ import logging
 from flask import Flask, redirect, render_template, request, send_from_directory, url_for, jsonify
 import torch
 from werkzeug.utils import secure_filename
+from rdkit import Chem
 
 from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
@@ -42,7 +43,7 @@ def progress_bar(args: Namespace, progress: mp.Value):
                 content = f.read()
                 if 'Epoch ' + str(current_epoch + 1) in content:
                     current_epoch += 1
-                    progress.value = (current_epoch + 1) * 100 / args.epochs  # TODO communicate with other process
+                    progress.value = (current_epoch + 1) * 100 / args.epochs
         else:
             pass
         time.sleep(0)
@@ -151,8 +152,12 @@ def predict():
         smiles = []
         with open(data_path, 'r') as f:
             header = f.readline()
-            if 'smiles' not in header:  # in which case there's no header, and first line is actually just the first smiles
-                smiles.append(header.strip().split(',')[0])
+            try:  # if there's no header, add the smiles in the first line
+                possible_smiles = header.strip().split(',')[0]
+                mol = Chem.MolFromSmiles(possible_smiles)
+                smiles.append(possible_smiles)
+            except:
+                pass
             for line in f:
                 smiles.append(line.strip().split(',')[0])
     else:
@@ -178,7 +183,8 @@ def predict():
             args.gpu = int(gpu)
 
     # Run prediction
-    preds = make_predictions(args, smiles=smiles)
+    invalid_smiles_warning="Invalid SMILES String"
+    preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
 
     return render_template('predict.html',
                            checkpoints=get_checkpoints(),
@@ -190,7 +196,8 @@ def predict():
                            show_more=max(0, len(smiles)-10),
                            task_names=task_names,
                            num_tasks=len(task_names),
-                           preds=preds)
+                           preds=preds,
+                           warning="List contains invalid SMILES strings" if invalid_smiles_warning in preds else None)
 
 
 @app.route('/download_predictions')

@@ -4,16 +4,26 @@ from typing import List
 import numpy as np
 import torch
 from tqdm import tqdm
+from rdkit import Chem
 
 from .predict import predict
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
-def make_predictions(args: Namespace, smiles: List[str] = None) -> List[List[float]]:
+def make_predictions(args: Namespace, smiles: List[str] = None, invalid_smiles_warning: str = None) -> List[List[float]]:
     """Makes predictions."""
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
+    
+    if invalid_smiles_warning is not None:
+        success_indices = []
+        for i, s in enumerate(smiles):
+            mol = Chem.MolFromSmiles(s)
+            if mol is not None:
+                success_indices.append(i)
+        full_smiles = smiles
+        smiles = [smiles[i] for i in success_indices]
 
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
@@ -73,5 +83,11 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[List[flo
             if args.compound_names:
                 f.write(compound_names[i] + ',')
             f.write(','.join(str(p) for p in avg_preds[i]) + '\n')
+
+    if invalid_smiles_warning is not None:
+        full_preds = [invalid_smiles_warning for _ in range(len(full_smiles))]
+        for i, si in enumerate(success_indices):
+            full_preds[si] = avg_preds[i]
+        return full_preds
 
     return avg_preds
