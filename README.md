@@ -30,6 +30,9 @@ Requirements:
    * GPU: `pip install tensorflow-gpu`
  * RDKit: `conda install -c rdkit rdkit`
  * Other packages: `pip install -r requirements.txt`
+ * Note that if you get warning messages about kyotocabinet, it's safe to ignore them.
+   * This is a requirement from descriptastorus, but not necessary for the parts of descriptastorus that we use. 
+   * See https://github.com/bp-kelley/descriptastorus for installation details if you want to install anyway.
 
 ## Data
 
