@@ -91,7 +91,7 @@ def train():
     # Get arguments
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
-    gpu = request.form.get('gpu', None)
+    gpu = request.form.get('gpu')
     data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     dataset_type = request.form.get('datasetType', 'regression')
 
@@ -170,13 +170,18 @@ def train():
     return render_train(trained=True, warnings=warnings, errors=errors)
 
 
+def render_predict(**kwargs):
+    return render_template('predict.html',
+                           checkpoints=get_checkpoints(),
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           **kwargs)
+
+
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
     if request.method == 'GET':
-        return render_template('predict.html',
-                               checkpoints=get_checkpoints(),
-                               cuda=app.config['CUDA'],
-                               gpus=app.config['GPUS'])
+        return render_predict()
 
     # Get arguments
     checkpoint_name = request.form['checkpointName']
@@ -207,7 +212,7 @@ def predict():
 
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     task_names = load_task_names(checkpoint_path)
-    gpu = request.form.get('gpu', None)
+    gpu = request.form.get('gpu')
 
     # Create and modify args
     parser = ArgumentParser()
@@ -223,27 +228,23 @@ def predict():
         else:
             args.gpu = int(gpu)
 
-    invalid_smiles_warning="Invalid SMILES String"
+    invalid_smiles_warning = "Invalid SMILES String"
     if len(smiles) > 0:
         # Run prediction
         preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
     else:
         preds = []
 
-    return render_template('predict.html',
-                           checkpoints=get_checkpoints(),
-                           cuda=app.config['CUDA'],
-                           gpus=app.config['GPUS'],
-                           predicted=True,
-                           smiles=smiles,
-                           num_smiles=min(10, len(smiles)),
-                           show_more=max(0, len(smiles)-10),
-                           task_names=task_names,
-                           num_tasks=len(task_names),
-                           preds=preds,
-                           show_file_upload=show_file_upload,
-                           warnings=["List contains invalid SMILES strings"] if invalid_smiles_warning in preds else None,
-                           errors=["No SMILES strings given"] if len(preds) == 0 else None)
+    return render_predict(predicted=True,
+                          smiles=smiles,
+                          num_smiles=min(10, len(smiles)),
+                          show_more=max(0, len(smiles)-10),
+                          task_names=task_names,
+                          num_tasks=len(task_names),
+                          preds=preds,
+                          show_file_upload=show_file_upload,
+                          warnings=["List contains invalid SMILES strings"] if invalid_smiles_warning in preds else None,
+                          errors=["No SMILES strings given"] if len(preds) == 0 else None)
 
 
 @app.route('/download_predictions')
