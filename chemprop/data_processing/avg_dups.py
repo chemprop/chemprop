@@ -14,15 +14,19 @@ def average_duplicates(args):
     print('Data size = {:,}'.format(len(data)))
 
     # Map SMILES string to lists of targets
+    smiles_in_order = []
     smiles_to_targets = defaultdict(list)
     for smiles, targets in zip(data.smiles(), data.targets()):
         smiles_to_targets[smiles].append(targets)
+        if len(smiles_to_targets[smiles]) == 1:
+            smiles_in_order.append(smiles)
 
     # Find duplicates
     duplicate_count = 0
     stds = []
     new_data = []
-    for smiles, all_targets in smiles_to_targets.items():
+    for smiles in smiles_in_order:
+        all_targets = smiles_to_targets[smiles]
         duplicate_count += len(all_targets) - 1
         num_tasks = len(all_targets[0])
 
