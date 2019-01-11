@@ -59,9 +59,17 @@
 
     <br>
 
-    {{ warning_message(warning) }}
+    {% if warnings %}
+        {% for warning in warnings %}
+            {{ warning_message(warning) }}
+        {% endfor %}
+    {% endif %}
 
-    {{ error_message(error) }}
+    {% if errors %}
+        {% for error in errors %}
+            {{ error_message(error) }}
+        {% endfor %}
+    {% endif %}
 
     <script>
         $(document).ready(function() {

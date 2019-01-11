@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-    {{ add_data('train') }}
+    {{ add_data('train', data_upload_errors) }}
 
     <hr>
 
@@ -60,27 +60,30 @@
 
     <br>
 
-    <div id="training_message" class="alert alert-warning" role="alert" style="display:none"></div>
+    {% if warnings %}
+        {% for warning in warnings %}
+            {{ warning_message(warning) }}
+        {% endfor %}
+    {% endif %}
 
-    {{ warning_message(warning) }}
-
-    {{ error_message(error) }}
+    {% if errors %}
+        {% for error in errors %}
+            {{ error_message(error) }}
+        {% endfor %}
+    {% endif %}
 
     <script type=text/javascript>
         function refresh() {
             $.post("receiver", function(data){
-                if (data.started == 1) {
-                    document.getElementById("myProgress").style.visibility = "visible";
+                if (data.running == 1) {
+                    document.getElementById("myProgress").style.display = "";
                     document.getElementById("myBar").style.width = data.progress + "%";
-                }
-                if (data.message != "") {
-                    document.getElementById("training_message").style.display = ""
-                    document.getElementById("training_message").innerHTML = "Warning: " + data.message
                 }
             });
         }
         setInterval(refresh, 500);
     </script>
+
     <style>
         #myProgress {
         width: 100%;
@@ -93,8 +96,8 @@
         background-color: #4CAF50;
         }
     </style>
-    <br>
-    <div id="myProgress" style="visibility:hidden">
+
+    <div id="myProgress" style="display:none">
         <div id="myBar"></div>
     </div>
 

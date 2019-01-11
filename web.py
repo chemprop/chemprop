@@ -1,17 +1,19 @@
 from argparse import ArgumentParser, Namespace
 import os
 import shutil
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List, Set
 import time
 import multiprocessing as mp
 import logging
 
-from flask import Flask, redirect, render_template, request, send_from_directory, url_for, jsonify
+from flask import Flask, json, jsonify, redirect, render_template, request, send_from_directory, url_for
+import numpy as np
+from rdkit import Chem
 import torch
 from werkzeug.utils import secure_filename
-from rdkit import Chem
 
+from chemprop.data.utils import get_data, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
@@ -30,9 +32,8 @@ app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
 app.config['CUDA'] = torch.cuda.is_available()
 app.config['GPUS'] = list(range(torch.cuda.device_count()))
 
-started = 0
+running = 0
 progress = mp.Value('d', 0.0)
-training_message = ""
 
 
 def progress_bar(args: Namespace, progress: mp.Value):
@@ -58,30 +59,9 @@ def get_checkpoints() -> List[str]:
     return os.listdir(app.config['CHECKPOINT_FOLDER'])
 
 
-def get_target_set(path: str) -> Set[float]:
-    targets = set()
-    with open(path, 'r') as f:
-        header = f.readline()
-        num_tasks = len(header.strip().split(',')[1:])
-        target_has_labels = [False for _ in range(num_tasks)]
-        for line in f:
-            targets.update([t for t in line.strip().split(',')[1:] if len(t) > 0])
-            if all(target_has_labels):
-                continue
-            for i, t in enumerate(line.strip().split(',')[1:]):
-                if len(t) > 0: 
-                    target_has_labels[i] = True
-    try:
-        float_targets = set([float(t) for t in targets])
-        has_invalid_targets = False
-    except:
-        float_targets = targets
-        has_invalid_targets = True
-    return float_targets, all(target_has_labels), has_invalid_targets
-
-@app.route('/receiver', methods= ['POST'])
+@app.route('/receiver', methods=['POST'])
 def receiver():
-    return jsonify(progress=progress.value, started=started, message=training_message)
+    return jsonify(progress=progress.value, running=running)
 
 
 @app.route('/')
@@ -89,20 +69,30 @@ def home():
     return render_template('home.html')
 
 
+def render_train(**kwargs):
+    errors_raw = request.args.get('data_upload_errors')
+    data_upload_errors = json.loads(errors_raw) if errors_raw is not None else None
+
+    return render_template('train.html',
+                           datasets=get_datasets(),
+                           cuda=app.config['CUDA'],
+                           gpus=app.config['GPUS'],
+                           data_upload_errors=data_upload_errors,
+                           **kwargs)
+
+
 @app.route('/train', methods=['GET', 'POST'])
 def train():
-    global training_message
+    warnings, errors = [], []
+
     if request.method == 'GET':
-        return render_template('train.html', 
-                               datasets=get_datasets(), 
-                               started=False,
-                               cuda=app.config['CUDA'],
-                               gpus=app.config['GPUS'])
+        return render_train()
 
     # Get arguments
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
-    gpu = request.form.get('gpu', None)
+    gpu = request.form.get('gpu')
+    data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     dataset_type = request.form.get('datasetType', 'regression')
 
     if not checkpoint_name.endswith('.pt'):
@@ -113,38 +103,24 @@ def train():
     add_train_args(parser)
     args = parser.parse_args()
 
-    args.data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+    args.data_path = data_path
     args.dataset_type = dataset_type
     args.epochs = epochs
 
-    target_set, all_targets_have_labels, has_invalid_targets = get_target_set(args.data_path)
-    if len(target_set) == 0:
-        return render_template('train.html',
-                           datasets=get_datasets(),
-                           started=False,
-                           cuda=app.config['CUDA'],
-                           gpus=app.config['GPUS'],
-                           error="No training labels provided")
-    if has_invalid_targets:
-        return render_template('train.html',
-                           datasets=get_datasets(),
-                           started=False,
-                           cuda=app.config['CUDA'],
-                           gpus=app.config['GPUS'],
-                           error="Training data contains invalid labels")
-    classification_on_regression_dataset = ((not target_set <= set([0, 1])) and args.dataset_type == 'classification')
-    if classification_on_regression_dataset:
-        return render_template('train.html',
-                           datasets=get_datasets(),
-                           started=False,
-                           cuda=app.config['CUDA'],
-                           gpus=app.config['GPUS'],
-                           error='Selected classification dataset, but not all labels are 0 or 1')
-    regression_on_classification_dataset = (target_set <= set([0, 1]) and args.dataset_type == 'regression')
-    if not all_targets_have_labels:
-        training_message += 'One or more targets have no labels. \n'  # TODO could have separate warning messages for each?
-    if regression_on_classification_dataset:
-        training_message += 'All labels are 0 or 1; did you mean to train classification instead of regression?\n'
+    # Check if regression/classification selection matches data
+    data = get_data(data_path)
+    targets = data.targets()
+    unique_targets = set(np.unique(targets))
+
+    if dataset_type == 'classification' and len(unique_targets - {0, 1}) > 0:
+        errors.append('Selected classification dataset but not all labels are 0 or 1. Select regression instead.')
+
+        return render_train(warnings=warnings, errors=errors)
+
+    if dataset_type == 'regression' and unique_targets <= {0, 1}:
+        errors.append('Selected regression dataset but all labels are 0 or 1. Select classification instead.')
+
+        return render_train(warnings=warnings, errors=errors)
 
     if gpu is not None:
         if gpu == 'None':
@@ -155,47 +131,57 @@ def train():
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
         modify_train_args(args)
-        if os.path.isdir(args.save_dir):
-            training_message += 'Overwriting preexisting checkpoint with the same name.'
+
         logger = logging.getLogger('train')
         logger.setLevel(logging.DEBUG)
         logger.propagate = False
         set_logger(logger, args.save_dir, args.quiet)
 
-        global progress
+        global progress, running
         process = mp.Process(target=progress_bar, args=(args, progress))
         process.start()
-        global started
-        started = 1
+        running = 1
+
         # Run training
         run_training(args, logger)
         process.join()
 
-        # reset globals
-        started = 0
+        # Reset globals
+        running = 0
         progress = mp.Value('d', 0.0)
 
-        # Move checkpoint
-        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'),
-                    os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name))
+        # Check if name overlap
+        save_dir = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+        if os.path.exists(save_dir):
+            i = 2
+            new_save_dir = save_dir.replace('.pt', '{}.pt'.format(i))
+            while os.path.exists(new_save_dir):
+                i += 1
+                new_save_dir = save_dir.replace('.pt', '{}.pt'.format(i))
 
-    warning = training_message if len(training_message) > 0 else None
-    training_message = ""
-    return render_template('train.html',
-                           datasets=get_datasets(),
+            warnings.append('Checkpoint name "{}" already exists. Saving to "{}"'.format(
+                os.path.basename(save_dir), os.path.basename(new_save_dir)))
+
+            save_dir = new_save_dir
+
+        # Move checkpoint
+        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'), save_dir)
+
+    return render_train(trained=True, warnings=warnings, errors=errors)
+
+
+def render_predict(**kwargs):
+    return render_template('predict.html',
+                           checkpoints=get_checkpoints(),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
-                           trained=True,
-                           warning=warning)
+                           **kwargs)
 
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
     if request.method == 'GET':
-        return render_template('predict.html',
-                               checkpoints=get_checkpoints(),
-                               cuda=app.config['CUDA'],
-                               gpus=app.config['GPUS'])
+        return render_predict()
 
     # Get arguments
     checkpoint_name = request.form['checkpointName']
@@ -226,7 +212,7 @@ def predict():
 
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     task_names = load_task_names(checkpoint_path)
-    gpu = request.form.get('gpu', None)
+    gpu = request.form.get('gpu')
 
     # Create and modify args
     parser = ArgumentParser()
@@ -242,27 +228,23 @@ def predict():
         else:
             args.gpu = int(gpu)
 
-    invalid_smiles_warning="Invalid SMILES String"
+    invalid_smiles_warning = "Invalid SMILES String"
     if len(smiles) > 0:
         # Run prediction
         preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
     else:
         preds = []
 
-    return render_template('predict.html',
-                           checkpoints=get_checkpoints(),
-                           cuda=app.config['CUDA'],
-                           gpus=app.config['GPUS'],
-                           predicted=True,
-                           smiles=smiles,
-                           num_smiles=min(10, len(smiles)),
-                           show_more=max(0, len(smiles)-10),
-                           task_names=task_names,
-                           num_tasks=len(task_names),
-                           preds=preds,
-                           show_file_upload=show_file_upload,
-                           warning="List contains invalid SMILES strings" if invalid_smiles_warning in preds else None,
-                           error="No SMILES strings given" if len(preds) == 0 else None)
+    return render_predict(predicted=True,
+                          smiles=smiles,
+                          num_smiles=min(10, len(smiles)),
+                          show_more=max(0, len(smiles)-10),
+                          task_names=task_names,
+                          num_tasks=len(task_names),
+                          preds=preds,
+                          show_file_upload=show_file_upload,
+                          warnings=["List contains invalid SMILES strings"] if invalid_smiles_warning in preds else None,
+                          errors=["No SMILES strings given"] if len(preds) == 0 else None)
 
 
 @app.route('/download_predictions')
@@ -272,17 +254,31 @@ def download_predictions():
 
 @app.route('/data')
 def data():
-    return render_template('data.html', datasets=get_datasets())
+    errors_raw = request.args.get('data_upload_errors')
+    data_upload_errors = json.loads(errors_raw) if errors_raw is not None else None
+
+    return render_template('data.html',
+                           datasets=get_datasets(),
+                           data_upload_errors=data_upload_errors)
 
 
 @app.route('/data/upload/<string:return_page>', methods=['POST'])
 def upload_data(return_page: str):
     data = request.files['data']
-    data_name = secure_filename(data.filename)
-    data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
-    data.save(data_path)
 
-    return redirect(url_for(return_page))
+    with NamedTemporaryFile() as temp_file:
+        data.save(temp_file.name)
+        errors = validate_data(temp_file.name)
+
+        if len(errors) > 0:
+            errors = json.dumps(list(errors))
+        else:
+            errors = None
+            data_name = secure_filename(data.filename)
+            data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+            shutil.copy(temp_file.name, data_path)
+
+    return redirect(url_for(return_page, data_upload_errors=errors))
 
 
 @app.route('/data/download/<string:dataset>')
