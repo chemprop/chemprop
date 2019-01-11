@@ -11,7 +11,6 @@ from rdkit import Chem
 from .descriptors import mordred_features
 from .morgan_fingerprint import morgan_fingerprint
 from .rdkit_features import rdkit_2d_features
-from .rdkit_normalized_features import rdkit_2d_normalized_features
 
 
 def load_features(path: str) -> List[np.ndarray]:
@@ -58,11 +57,12 @@ def get_features_func(features_generator: str,
         return partial(rdkit_2d_features, args=args)
 
     if features_generator == "rdkit_2d_normalized":
-       if rdkit_2d_normalized_features is None:
-           logging.getLogger(__name__).warning("Please install descriptastorus for normalized descriptors")
-           raise ValueError('feature_generator type "{}" not installed'.format(features_generator))
+        from .rdkit_normalized_features import rdkit_2d_normalized_features
+        if rdkit_2d_normalized_features is None:
+            logging.getLogger(__name__).warning("Please install descriptastorus for normalized descriptors")
+            raise ValueError('feature_generator type "{}" not installed'.format(features_generator))
        
-       return rdkit_2d_normalized_features
+        return rdkit_2d_normalized_features
 
     if features_generator == 'mordred':
         return mordred_features
