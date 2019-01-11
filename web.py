@@ -91,6 +91,7 @@ def home():
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
+    global training_message
     if request.method == 'GET':
         return render_template('train.html', 
                                datasets=get_datasets(), 
@@ -140,7 +141,6 @@ def train():
                            gpus=app.config['GPUS'],
                            error='Selected classification dataset, but not all labels are 0 or 1')
     regression_on_classification_dataset = (target_set <= set([0, 1]) and args.dataset_type == 'regression')
-    global training_message
     if not all_targets_have_labels:
         training_message += 'One or more targets have no labels. \n'  # TODO could have separate warning messages for each?
     if regression_on_classification_dataset:
@@ -155,6 +155,8 @@ def train():
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
         modify_train_args(args)
+        if os.path.isdir(args.save_dir):
+            training_message += 'Overwriting preexisting checkpoint with the same name.'
         logger = logging.getLogger('train')
         logger.setLevel(logging.DEBUG)
         logger.propagate = False
