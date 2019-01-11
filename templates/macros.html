@@ -1,11 +1,41 @@
+{% macro warning_message(message) %}
+    {% if message %}
+        <div class="alert alert-warning alert-dismissible show" role="alert">
+            Warning: {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro error_message(message) %}
+    {% if message %}
+        <div class="alert alert-danger alert-dismissible show" role="alert">
+            Error: {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    {% endif %}
+{% endmacro %}
+
 <!--TODO: Better explanation of data format (maybe on another page)-->
-{% macro add_data(return_page) %}
+{% macro add_data(return_page, data_upload_errors) %}
     <h4>Add New Dataset <span class="glyphicon glyphicon-question-sign" style="font-size:15px" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h4>
     <form enctype="multipart/form-data" action="{{url_for('upload_data', return_page=return_page)}}" method="POST">
         <input type="file" name="data" accept=".csv" required>
         <br>
         <button type="submit" class="btn btn-primary btn-sm">Upload</button>
     </form>
+
+    <br>
+
+    {% if data_upload_errors %}
+        {% for error in data_upload_errors %}
+            {{ error_message(error) }}
+        {% endfor %}
+    {% endif %}
 {% endmacro %}
 
 {% macro add_checkpoint(return_page) %}
@@ -16,20 +46,4 @@
         <br>
         <button type="submit" class="btn btn-primary btn-sm">Upload</button>
     </form>
-{% endmacro %}
-
-{% macro warning_message(message) %}
-    {% if message %}
-        <div class="alert alert-warning" role="alert">
-            Warning: {{ message }}
-        </div>
-    {% endif %}
-{% endmacro %}
-
-{% macro error_message(message) %}
-    {% if message %}
-        <div class="alert alert-danger" role="alert">
-            Error: {{ message }}
-        </div>
-    {% endif %}
 {% endmacro %}
