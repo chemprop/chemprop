@@ -106,5 +106,16 @@
 
     {% if trained %}
         <h3>Training complete!</h3>
+
+        <h4>Test performance</h4>
+
+        <p>Overall: {{ mean_score }} {{ metric }}</p>
+
+        <h5>By task</h5>
+        {% for i in range(num_tasks) %}
+            <p>{{ task_names[i] }}: {{ task_scores[i] }} {{ metric }}</p>
+        {% endfor %}
+
     {% endif %}
+
 {% endblock %}

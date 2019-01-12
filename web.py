@@ -87,6 +87,14 @@ def get_data_upload_warnings_errors() -> Tuple[List[str], List[str]]:
     return warnings, errors
 
 
+def format_float(f: float, precision: int = 4) -> str:
+    return ('{:.' + str(precision) + '}').format(f)
+
+
+def format_float_list(array: List[float], precision: int = 4) -> List[str]:
+    return [format_float(f, precision) for f in array]
+
+
 @app.route('/receiver', methods=['POST'])
 def receiver():
     return jsonify(progress=progress.value, training=training)
@@ -172,7 +180,7 @@ def train():
         training = 1
 
         # Run training
-        run_training(args, logger)
+        task_scores = run_training(args, logger)
         process.join()
 
         # Reset globals
@@ -188,7 +196,14 @@ def train():
         # Move checkpoint
         shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'), save_path)
 
-    return render_train(trained=True, warnings=warnings, errors=errors)
+    return render_train(trained=True,
+                        metric=args.metric,
+                        num_tasks=len(args.task_names),
+                        task_names=args.task_names,
+                        task_scores=format_float_list(task_scores),
+                        mean_score=format_float(np.mean(task_scores)),
+                        warnings=warnings,
+                        errors=errors)
 
 
 def render_predict(**kwargs):
