@@ -1,5 +1,6 @@
 from argparse import Namespace
 from copy import deepcopy
+import csv
 from logging import Logger
 import pickle
 import random
@@ -49,8 +50,7 @@ def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     :return: A list of task names.
     """
     index = 2 if use_compound_names else 1
-    with open(path) as f:
-        task_names = f.readline().strip().split(',')[index:]
+    task_names = get_header(path)[index:]
 
     return task_names
 
@@ -74,9 +74,33 @@ def get_header(path: str) -> List[str]:
     :return: A list of strings containing the strings in the comma-separated header.
     """
     with open(path) as f:
-        header = f.readline().strip().split(',')
+        header = next(csv.reader(f))
 
     return header
+
+
+def get_num_tasks(path: str) -> int:
+    """
+    Gets the number of tasks in a data CSV file.
+
+    :param path: Path to a CSV file.
+    :return: The number of tasks.
+    """
+    return len(get_header(path)) - 1
+
+
+def get_smiles(path: str) -> List[str]:
+    """
+    Returns the smiles strings from a data CSV file (assuming the first line is a header).
+
+    :param path: Path to a CSV file
+    :return: A list of smiles strings.
+    """
+    with open(path) as f:
+        f.readline()  # Skip header
+        smiles = [line.strip().split(',')[0] for line in f]
+
+    return smiles
 
 
 def get_data(path: str,
@@ -372,8 +396,10 @@ def validate_data(data_path: str) -> Set[str]:
     """
     errors = set()
 
+    header = get_header(data_path)
+
     with open(data_path) as f:
-        header = f.readline().strip()
+        f.readline()  # Skip header
         smiles, targets = [], []
         for line in f:
             line = line.strip().split(',')
@@ -381,16 +407,14 @@ def validate_data(data_path: str) -> Set[str]:
             targets.append(line[1:])
 
     # Validate header
-    if header == '':
+    if len(header) == 0:
         errors.add('Empty header')
+    elif len(header) < 2:
+        errors.add('Header must include task names.')
 
-    mol = Chem.MolFromSmiles(header)
+    mol = Chem.MolFromSmiles(header[0])
     if mol is not None:
         errors.add('First row is a SMILES string instead of a header.')
-
-    header = header.split(',')
-    if len(header) < 2:
-        errors.add('Header must include task names.')
 
     # Validate smiles
     for smile in tqdm(smiles, total=len(smiles)):

@@ -13,7 +13,7 @@ from rdkit import Chem
 import torch
 from werkzeug.utils import secure_filename
 
-from chemprop.data.utils import get_data, validate_data
+from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
@@ -214,17 +214,12 @@ def predict():
         data_path = os.path.join(app.config['TEMP_FOLDER'], data_name)
         data.save(data_path)
 
-        smiles = []
-        with open(data_path, 'r') as f:
-            header = f.readline()
-            try:  # if there's no header, add the smiles in the first line
-                possible_smiles = header.strip().split(',')[0]
-                mol = Chem.MolFromSmiles(possible_smiles)
-                smiles.append(possible_smiles)
-            except:
-                pass
-            for line in f:
-                smiles.append(line.strip().split(',')[0])
+        # Check if header is smiles
+        possible_smiles = get_header(data_path)[0]
+        smiles = [possible_smiles] if Chem.MolFromSmiles(possible_smiles) is not None else []
+
+        # Get remaining smiles
+        smiles.extend(get_smiles(data_path))
     else:
         show_file_upload = False
         smiles = request.form['smiles']
@@ -232,6 +227,7 @@ def predict():
 
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     task_names = load_task_names(checkpoint_path)
+    num_tasks = len(task_names)
     gpu = request.form.get('gpu')
 
     # Create and modify args
@@ -242,18 +238,19 @@ def predict():
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
     args.preds_path = preds_path
     args.checkpoint_paths = [checkpoint_path]
+    args.write_smiles = True
     if gpu is not None:
         if gpu == 'None':
             args.no_cuda = True
         else:
             args.gpu = int(gpu)
 
+    # Run predictions
+    preds = make_predictions(args, smiles=smiles, allow_invalid_smiles=True)
+
+    # Replace invalid smiles with message
     invalid_smiles_warning = "Invalid SMILES String"
-    if len(smiles) > 0:
-        # Run prediction
-        preds = make_predictions(args, smiles=smiles, invalid_smiles_warning=invalid_smiles_warning)
-    else:
-        preds = []
+    preds = [pred if pred is not None else [invalid_smiles_warning] * num_tasks for pred in preds]
 
     return render_predict(predicted=True,
                           smiles=smiles,
@@ -263,7 +260,7 @@ def predict():
                           num_tasks=len(task_names),
                           preds=preds,
                           show_file_upload=show_file_upload,
-                          warnings=["List contains invalid SMILES strings"] if invalid_smiles_warning in preds else None,
+                          warnings=["List contains invalid SMILES strings"] if None in preds else None,
                           errors=["No SMILES strings given"] if len(preds) == 0 else None)
 
 
