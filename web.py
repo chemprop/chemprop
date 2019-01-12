@@ -32,7 +32,7 @@ app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
 app.config['CUDA'] = torch.cuda.is_available()
 app.config['GPUS'] = list(range(torch.cuda.device_count()))
 
-running = 0
+training = 0
 progress = mp.Value('d', 0.0)
 
 
@@ -59,18 +59,18 @@ def get_checkpoints() -> List[str]:
     return sorted(os.listdir(app.config['CHECKPOINT_FOLDER']))
 
 
-def find_unique_path(name: str) -> str:
-    if not os.path.exists(name):
-        return name
+def find_unique_path(path: str) -> str:
+    if not os.path.exists(path):
+        return path
 
-    base_name, ext = os.path.splitext(name)
+    base_name, ext = os.path.splitext(path)
 
     i = 2
-    while os.path.exists(name):
-        name = base_name + str(i) + ext
+    while os.path.exists(path):
+        path = base_name + str(i) + ext
         i += 1
 
-    return name
+    return path
 
 
 def name_already_exists_message(thing_being_named: str, original_path: str, new_path: str) -> str:
@@ -89,7 +89,7 @@ def get_data_upload_warnings_errors() -> Tuple[List[str], List[str]]:
 
 @app.route('/receiver', methods=['POST'])
 def receiver():
-    return jsonify(progress=progress.value, running=running)
+    return jsonify(progress=progress.value, training=training)
 
 
 @app.route('/')
@@ -111,6 +111,8 @@ def render_train(**kwargs):
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
+    global progress, training
+
     warnings, errors = [], []
 
     if request.method == 'GET':
@@ -165,17 +167,16 @@ def train():
         logger.propagate = False
         set_logger(logger, args.save_dir, args.quiet)
 
-        global progress, running
         process = mp.Process(target=progress_bar, args=(args, progress))
         process.start()
-        running = 1
+        training = 1
 
         # Run training
         run_training(args, logger)
         process.join()
 
         # Reset globals
-        running = 0
+        training = 0
         progress = mp.Value('d', 0.0)
 
         # Check if name overlap

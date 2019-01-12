@@ -12,7 +12,7 @@
 
     <h3>Train</h3>
 
-    <form method="POST">
+    <form id="trainForm" method="POST">
         <h5>Data</h5>
         <select name="dataName" required>
             {% for dataset in datasets %}
@@ -55,7 +55,8 @@
         <br>
         <br>
 
-        <button type="submit" class="btn btn-primary btn-md">Train</button>
+        <button id="train" type="submit" class="btn btn-primary btn-md">Train</button>
+        <button id="training" class="btn btn-default btn-md disabled" style="display:none">Training</button>
     </form>
 
     <br>
@@ -75,9 +76,11 @@
     <script type=text/javascript>
         function refresh() {
             $.post("receiver", function(data){
-                if (data.running == 1) {
+                if (data.training == 1) {
                     document.getElementById("myProgress").style.display = "";
                     document.getElementById("myBar").style.width = data.progress + "%";
+                    document.getElementById("train").style.display = "none";
+                    document.getElementById("training").style.display = "";
                 }
             });
         }
