@@ -21,7 +21,7 @@
 {% endmacro %}
 
 <!--TODO: Better explanation of data format (maybe on another page)-->
-{% macro add_data(return_page, data_upload_errors) %}
+{% macro add_data(return_page, data_upload_warnings, data_upload_errors) %}
     <h4>Add New Dataset <span class="glyphicon glyphicon-question-sign" style="font-size:15px" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h4>
     <form enctype="multipart/form-data" action="{{url_for('upload_data', return_page=return_page)}}" method="POST">
         <input type="file" name="data" accept=".csv" required>
@@ -30,6 +30,12 @@
     </form>
 
     <br>
+
+    {% if data_upload_warnings %}
+        {% for warning in data_upload_warnings %}
+            {{ warning_message(warning) }}
+        {% endfor %}
+    {% endif %}
 
     {% if data_upload_errors %}
         {% for error in data_upload_errors %}

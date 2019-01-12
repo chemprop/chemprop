@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 import os
 import shutil
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from typing import List, Set
+from typing import List, Tuple
 import time
 import multiprocessing as mp
 import logging
@@ -52,11 +52,39 @@ def progress_bar(args: Namespace, progress: mp.Value):
 
 
 def get_datasets() -> List[str]:
-    return os.listdir(app.config['DATA_FOLDER'])
+    return sorted(os.listdir(app.config['DATA_FOLDER']))
 
 
 def get_checkpoints() -> List[str]:
-    return os.listdir(app.config['CHECKPOINT_FOLDER'])
+    return sorted(os.listdir(app.config['CHECKPOINT_FOLDER']))
+
+
+def find_unique_path(name: str) -> str:
+    if not os.path.exists(name):
+        return name
+
+    base_name, ext = os.path.splitext(name)
+
+    i = 2
+    while os.path.exists(name):
+        name = base_name + str(i) + ext
+        i += 1
+
+    return name
+
+
+def name_already_exists_message(thing_being_named: str, original_path: str, new_path: str) -> str:
+    return '{} "{}" already exists. Saving to "{}"'.format(
+        thing_being_named, os.path.basename(original_path), os.path.basename(new_path))
+
+
+def get_data_upload_warnings_errors() -> Tuple[List[str], List[str]]:
+    warnings_raw = request.args.get('data_upload_warnings')
+    errors_raw = request.args.get('data_upload_errors')
+    warnings = json.loads(warnings_raw) if warnings_raw is not None else None
+    errors = json.loads(errors_raw) if errors_raw is not None else None
+
+    return warnings, errors
 
 
 @app.route('/receiver', methods=['POST'])
@@ -70,13 +98,13 @@ def home():
 
 
 def render_train(**kwargs):
-    errors_raw = request.args.get('data_upload_errors')
-    data_upload_errors = json.loads(errors_raw) if errors_raw is not None else None
+    data_upload_warnings, data_upload_errors = get_data_upload_warnings_errors()
 
     return render_template('train.html',
                            datasets=get_datasets(),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
+                           data_upload_warnings=data_upload_warnings,
                            data_upload_errors=data_upload_errors,
                            **kwargs)
 
@@ -151,21 +179,13 @@ def train():
         progress = mp.Value('d', 0.0)
 
         # Check if name overlap
-        save_dir = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
-        if os.path.exists(save_dir):
-            i = 2
-            new_save_dir = save_dir.replace('.pt', '{}.pt'.format(i))
-            while os.path.exists(new_save_dir):
-                i += 1
-                new_save_dir = save_dir.replace('.pt', '{}.pt'.format(i))
-
-            warnings.append('Checkpoint name "{}" already exists. Saving to "{}"'.format(
-                os.path.basename(save_dir), os.path.basename(new_save_dir)))
-
-            save_dir = new_save_dir
+        original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+        save_path = find_unique_path(original_save_path)
+        if save_path != original_save_path:
+            warnings.append(name_already_exists_message('Checkpoint', original_save_path, save_path))
 
         # Move checkpoint
-        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'), save_dir)
+        shutil.move(os.path.join(args.save_dir, 'model_0', 'model.pt'), save_path)
 
     return render_train(trained=True, warnings=warnings, errors=errors)
 
@@ -254,31 +274,39 @@ def download_predictions():
 
 @app.route('/data')
 def data():
-    errors_raw = request.args.get('data_upload_errors')
-    data_upload_errors = json.loads(errors_raw) if errors_raw is not None else None
+    data_upload_warnings, data_upload_errors = get_data_upload_warnings_errors()
 
     return render_template('data.html',
                            datasets=get_datasets(),
+                           data_upload_warnings=data_upload_warnings,
                            data_upload_errors=data_upload_errors)
 
 
 @app.route('/data/upload/<string:return_page>', methods=['POST'])
 def upload_data(return_page: str):
+    warnings, errors = [], []
+
     data = request.files['data']
 
     with NamedTemporaryFile() as temp_file:
         data.save(temp_file.name)
-        errors = validate_data(temp_file.name)
+        data_errors = validate_data(temp_file.name)
 
-        if len(errors) > 0:
-            errors = json.dumps(list(errors))
+        if len(data_errors) > 0:
+            errors.extend(data_errors)
         else:
-            errors = None
             data_name = secure_filename(data.filename)
-            data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+            original_data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+
+            data_path = find_unique_path(original_data_path)
+            if data_path != original_data_path:
+                warnings.append(name_already_exists_message('Data', original_data_path, data_path))
+
             shutil.copy(temp_file.name, data_path)
 
-    return redirect(url_for(return_page, data_upload_errors=errors))
+    warnings, errors = json.dumps(warnings), json.dumps(errors)
+
+    return redirect(url_for(return_page, data_upload_warnings=warnings, data_upload_errors=errors))
 
 
 @app.route('/data/download/<string:dataset>')
