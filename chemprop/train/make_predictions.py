@@ -26,19 +26,6 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
 
-    # Edge case if empty list of smiles is provided
-    if smiles is not None and len(smiles) == 0:
-        return []
-
-    print('Loading training args')
-    scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
-    train_args = load_args(args.checkpoint_paths[0])
-
-    # Update args with training arguments
-    for key, value in vars(train_args).items():
-        if not hasattr(args, key):
-            setattr(args, key, value)
-
     if allow_invalid_smiles:
         assert smiles is not None  # Note: Currently only works with smiles provided, not with data file.
         print('Validating SMILES')
@@ -48,6 +35,19 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
                 valid_indices.append(i)
         full_smiles = smiles
         smiles = [smiles[i] for i in valid_indices]
+
+    # Edge case if empty list of smiles is provided
+    if smiles is not None and len(smiles) == 0:
+        return [None] * len(full_smiles) if allow_invalid_smiles else []
+
+    print('Loading training args')
+    scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
+    train_args = load_args(args.checkpoint_paths[0])
+
+    # Update args with training arguments
+    for key, value in vars(train_args).items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
 
     print('Loading data')
     if smiles is not None:

@@ -78,9 +78,9 @@ def name_already_exists_message(thing_being_named: str, original_path: str, new_
         thing_being_named, os.path.basename(original_path), os.path.basename(new_path))
 
 
-def get_data_upload_warnings_errors() -> Tuple[List[str], List[str]]:
-    warnings_raw = request.args.get('data_upload_warnings')
-    errors_raw = request.args.get('data_upload_errors')
+def get_upload_warnings_errors(upload_item: str) -> Tuple[List[str], List[str]]:
+    warnings_raw = request.args.get('{}_upload_warnings'.format(upload_item))
+    errors_raw = request.args.get('{}_upload_errors'.format(upload_item))
     warnings = json.loads(warnings_raw) if warnings_raw is not None else None
     errors = json.loads(errors_raw) if errors_raw is not None else None
 
@@ -106,7 +106,7 @@ def home():
 
 
 def render_train(**kwargs):
-    data_upload_warnings, data_upload_errors = get_data_upload_warnings_errors()
+    data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('train.html',
                            datasets=get_datasets(),
@@ -207,10 +207,14 @@ def train():
 
 
 def render_predict(**kwargs):
+    checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
+
     return render_template('predict.html',
                            checkpoints=get_checkpoints(),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
+                           checkpoint_upload_warnings=checkpoint_upload_warnings,
+                           checkpoint_upload_errors=checkpoint_upload_errors,
                            **kwargs)
 
 
@@ -264,6 +268,9 @@ def predict():
     # Run predictions
     preds = make_predictions(args, smiles=smiles, allow_invalid_smiles=True)
 
+    if all(p is None for p in preds):
+        return render_predict(show_file_upload=show_file_upload, errors=['All SMILES are invalid'])
+
     # Replace invalid smiles with message
     invalid_smiles_warning = "Invalid SMILES String"
     preds = [pred if pred is not None else [invalid_smiles_warning] * num_tasks for pred in preds]
@@ -287,7 +294,7 @@ def download_predictions():
 
 @app.route('/data')
 def data():
-    data_upload_warnings, data_upload_errors = get_data_upload_warnings_errors()
+    data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('data.html',
                            datasets=get_datasets(),
@@ -335,17 +342,31 @@ def delete_data(dataset: str):
 
 @app.route('/checkpoints')
 def checkpoints():
-    return render_template('checkpoints.html', checkpoints=get_checkpoints())
+    checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
+
+    return render_template('checkpoints.html',
+                           checkpoints=get_checkpoints(),
+                           checkpoint_upload_warnings=checkpoint_upload_warnings,
+                           checkpoint_upload_errors=checkpoint_upload_errors)
 
 
 @app.route('/checkpoints/upload/<string:return_page>', methods=['POST'])
 def upload_checkpoint(return_page: str):
+    warnings, errors = [], []
+
     checkpoint = request.files['checkpoint']
     checkpoint_name = secure_filename(checkpoint.filename)
-    checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+    original_checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+
+    checkpoint_path = find_unique_path(original_checkpoint_path)
+    if checkpoint_path != original_checkpoint_path:
+        warnings.append(name_already_exists_message('Checkpoint', original_checkpoint_path, checkpoint_path))
+
     checkpoint.save(checkpoint_path)
 
-    return redirect(url_for(return_page))
+    warnings, errors = json.dumps(warnings), json.dumps(errors)
+
+    return redirect(url_for(return_page, checkpoint_upload_warnings=warnings, checkpoint_upload_errors=errors))
 
 
 @app.route('/checkpoints/download/<string:checkpoint>')
