@@ -26,8 +26,16 @@
     <p>If you wish to train or predict on a remote server, you can use SSH port-forwarding to run training/predicting on the remote server while viewing the website it locally. To do so, follow these instructions:</p>
     <ol>
         <li>Connect to the remote server: <code>ssh &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
-        <li>On the remote server, start the website: <code>python web.py</code></li>
-        <li>On your local machine, set up port-forwarding: <code>ssh -N -L 5000:localhost:5000 &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
-        <li>On your local machine, open a web browser and navigate to <a href="localhost:5000">localhost:5000</a></li>
+        <li>On the remote server:</li>
+        <ol>
+            <li>Navigate to the <code>chemprop</code> directory.</li>
+            <li>Activate the conda environment with the <code>chemprop</code> requirements: <code>source activate &lt;environment_name&gt;</code></li>
+            <li>Start the website: <code>python web.py</code></li>
+        </ol>
+        <li>On your local machine:</li>
+        <ol>
+            <li>Set up port-forwarding: <code>ssh -N -L 5000:localhost:5000 &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
+            <li>Open a web browser and go to <a href="localhost:5000">localhost:5000</a></li>
+        </ol>
     </ol>
 {% endblock %}
