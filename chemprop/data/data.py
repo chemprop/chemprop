@@ -194,7 +194,7 @@ class MoleculeDatapoint:
                 self.mask[np.random.randint(len(self.mask))] = 0
 
         else:
-            raise ValueError('bert_mask_type "{}" not supported.'.format(self.bert_mask_type))
+            raise ValueError(f'bert_mask_type "{self.bert_mask_type}" not supported.')
 
         # np.ndarray --> list
         self.mask = list(self.mask)
@@ -229,7 +229,7 @@ class MoleculeDataset(Dataset):
         if not hasattr(args, 'vocab'):
             debug('Determining vocab')
             args.vocab = load_vocab(args.checkpoint_paths[0]) if args.checkpoint_paths is not None else Vocab(args, self.smiles())
-            debug('Vocab/Output size = {:,}'.format(args.vocab.output_size))
+            debug(f'Vocab/Output size = {args.vocab.output_size:,}')
 
         if args.sequential:
             for d in tqdm(self.data, total=len(self.data)):

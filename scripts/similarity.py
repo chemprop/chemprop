@@ -32,4 +32,4 @@ if __name__ == '__main__':
     elif args.similarity_measure == 'morgan':
         morgan_similarity(data_1.smiles(), data_2.smiles(), args.radius, args.sample_rate)
     else:
-        raise ValueError('Similarity measure "{}" not supported.'.format(args.similarity_measure))
+        raise ValueError(f'Similarity measure "{args.similarity_measure}" not supported.')

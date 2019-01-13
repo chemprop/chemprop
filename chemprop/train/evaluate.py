@@ -88,7 +88,7 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
                         elif metric in ['prc-auc', 'accuracy']:
                             results.append(0)
                         else:
-                            raise ValueError('Metric "{}" not supported for keep_nan_metrics'.format(metric))
+                            raise ValueError(f'Metric "{metric}" not supported for keep_nan_metrics')
                     else:
                         results.append(float('nan'))
                     continue

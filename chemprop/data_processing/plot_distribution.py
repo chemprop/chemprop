@@ -30,7 +30,7 @@ def plot_distribution(data_path: str, save_dir: str, bins: int):
         plt.hist(values[i], bins=bins)
 
         # Save plot
-        plt.title('{} - {}'.format(data_name, task_names[i]))
+        plt.title(f'{data_name} - {task_names[i]}')
         plt.xlabel(task_names[i])
         plt.ylabel('Frequency')
-        plt.savefig(os.path.join(save_dir, '{}_{}.png'.format(data_name, task_names[i])))
+        plt.savefig(os.path.join(save_dir, f'{data_name}_{task_names[i]}.png'))

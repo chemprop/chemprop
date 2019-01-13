@@ -23,40 +23,36 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
     # Run training on different random seeds for each fold
     all_scores = []
     for fold_num in range(args.num_folds):
-        info('Fold {}'.format(fold_num))
+        info(f'Fold {fold_num}')
         args.seed = init_seed + fold_num
-        args.save_dir = os.path.join(save_dir, 'fold_{}'.format(fold_num))
+        args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         os.makedirs(args.save_dir, exist_ok=True)
         model_scores = run_training(args, logger)
         all_scores.append(model_scores)
     all_scores = np.array(all_scores)
 
     # Report results
-    info('{}-fold cross validation'.format(args.num_folds))
+    info(f'{args.num_folds}-fold cross validation')
 
     # Report scores for each fold
     for fold_num, scores in enumerate(all_scores):
-        info('Seed {} ==> test {} = {:.6f}'.format(init_seed + fold_num, args.metric, np.nanmean(scores)))
+        info(f'Seed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
 
         if args.show_individual_scores:
             for task_name, score in zip(task_names, scores):
                 if task_name in desired_labels:
-                    info('Seed {} ==> test {} {} = {:.6f}'.format(init_seed + fold_num, task_name, args.metric, score))
+                    info(f'Seed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
 
     # Report scores across models
     avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
     mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
-    info('Overall test {} = {:.6f} +/- {:.6f}'.format(args.metric, mean_score, std_score))
+    info(f'Overall test {args.metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):
             if task_name in desired_labels:
-                info('Overall test {} {} = {:.6f} +/- {:.6f}'.format(
-                    task_name,
-                    args.metric,
-                    np.nanmean(all_scores[:, task_num]),
-                    np.nanstd(all_scores[:, task_num]))
-                )
+                info(f'Overall test {task_name} {args.metric} = '
+                     f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
     if args.num_chunks > 1:
         shutil.rmtree(args.chunk_temp_dir)

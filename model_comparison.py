@@ -78,9 +78,9 @@ def run_comparison(experiment_args: Namespace,
         TRAIN_LOGGER.removeHandler(fh)
 
         # Record results
-        logger.info('{} +/- {} {}'.format(mean_score, std_score, metric))
+        logger.info(f'{mean_score} +/- {std_score} {metric}')
         temp_model = build_model(args)
-        logger.info('num params: {:,}'.format(param_count(temp_model)))
+        logger.info(f'num params: {param_count(temp_model):,}')
 
 
 def create_logger(name: str, save_dir: str, save_name: str) -> logging.Logger:

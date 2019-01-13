@@ -43,7 +43,7 @@ def filter_by_scaffold(args: Namespace):
     print('Filtering data')
     filtered_data = [d for d in data if smiles_to_scaffold[d.smiles] in scaffolds_to_keep]
 
-    print('Filtered data from {:,} to {:,} molecules'.format(len(data), len(filtered_data)))
+    print(f'Filtered data from {len(data):,} to {len(filtered_data):,} molecules')
 
     print('Saving data')
     with open(args.save_path, 'w') as f:

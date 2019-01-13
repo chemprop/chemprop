@@ -28,11 +28,11 @@ if __name__ == '__main__':
     size_1, size_2 = len(smiles1), len(smiles2)
     intersection = smiles1.intersection(smiles2)
     size_intersect = len(intersection)
-    print('Size of dataset 1: {}'.format(size_1))
-    print('Size of dataset 2: {}'.format(size_2))
-    print('Size of intersection: {}'.format(size_intersect))
-    print('Size of intersection as frac of dataset 1: {}'.format(size_intersect/size_1))
-    print('Size of intersection as frac of dataset 2: {}'.format(size_intersect/size_2))
+    print(f'Size of dataset 1: {size_1}')
+    print(f'Size of dataset 2: {size_2}')
+    print(f'Size of intersection: {size_intersect}')
+    print(f'Size of intersection as frac of dataset 1: {size_intersect / size_1}')
+    print(f'Size of intersection as frac of dataset 2: {size_intersect / size_2}')
 
     if args.save_intersection_path is not None:
         with open(args.data_path_1, 'r') as rf, open(args.save_intersection_path, 'w') as wf:

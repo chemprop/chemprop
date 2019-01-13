@@ -29,7 +29,7 @@ def load_features(path: str) -> List[np.ndarray]:
     else:
         features = []
         features_num = 0
-        features_path = os.path.join(path, '{}.pckl'.format(features_num))
+        features_path = os.path.join(path, f'{features_num}.pckl')
 
         while os.path.exists(features_path):
             with open(features_path, 'rb') as f:
@@ -37,7 +37,7 @@ def load_features(path: str) -> List[np.ndarray]:
             features.extend([np.squeeze(np.array(feat.todense())) for feat in feats])
 
             features_num += 1
-            features_path = os.path.join(path, '{}.pckl'.format(features_num))
+            features_path = os.path.join(path, f'{features_num}.pckl')
 
     return features
 
@@ -60,11 +60,11 @@ def get_features_func(features_generator: str,
         from .rdkit_normalized_features import rdkit_2d_normalized_features
         if rdkit_2d_normalized_features is None:
             logging.getLogger(__name__).warning("Please install descriptastorus for normalized descriptors")
-            raise ValueError('feature_generator type "{}" not installed'.format(features_generator))
+            raise ValueError(f'feature_generator type "{features_generator}" not installed')
        
         return rdkit_2d_normalized_features
 
     if features_generator == 'mordred':
         return mordred_features
 
-    raise ValueError('features_generator type "{}" not supported.'.format(features_generator))
+    raise ValueError(f'features_generator type "{features_generator}" not supported.')

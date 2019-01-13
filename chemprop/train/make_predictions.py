@@ -58,7 +58,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
 
     if args.compound_names:
         compound_names = test_data.compound_names()
-    print('Test size = {:,}'.format(len(test_data)))
+    print(f'Test size = {len(test_data):,}')
 
     # Normalize features
     if train_args.features_scaling:
@@ -66,7 +66,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
 
     # Predict with each model individually and sum predictions
     sum_preds = np.zeros((len(test_data), args.num_tasks))
-    print('Predicting with an ensemble of {} models'.format(len(args.checkpoint_paths)))
+    print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
         model = load_checkpoint(checkpoint_path, cuda=args.cuda)
@@ -84,7 +84,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
 
     # Save predictions
     assert len(test_data) == len(avg_preds)
-    print('Saving predictions to {}'.format(args.preds_path))
+    print(f'Saving predictions to {args.preds_path}')
 
     # Put Nones for invalid smiles
     if allow_invalid_smiles:

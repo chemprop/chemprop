@@ -164,7 +164,7 @@ def atom_vocab(smiles: str,
                nb_info: bool = False) -> Union[List[str],
                                                Tuple[List[str], List[List[int]]]]:
     if vocab_func not in ['atom', 'atom_features', 'feature_vector', 'substructure']:
-        raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
+        raise ValueError(f'vocab_func "{vocab_func}" not supported.')
 
     mol = Chem.MolFromSmiles(smiles)
     atoms = mol.GetAtoms()
@@ -187,7 +187,7 @@ def atom_vocab(smiles: str,
         substructures = get_substructures(list(atoms), substructure_sizes)
         features = [substructure_to_feature(mol, substructure, fg_features) for substructure in substructures]
     else:
-        raise ValueError('vocab_func "{}" not supported.'.format(vocab_func))
+        raise ValueError(f'vocab_func "{vocab_func}" not supported.')
 
     if nb_info:
         nb_indices = []

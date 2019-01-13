@@ -130,12 +130,10 @@ def scaffold_split(data: MoleculeDataset,
             test_scaffold_count += 1
 
     if logger is not None:
-        logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
-            len(scaffold_to_indices),
-            train_scaffold_count,
-            val_scaffold_count,
-            test_scaffold_count
-        ))
+        logger.debug(f'Total scaffolds = {len(scaffold_to_indices):,} | '
+                     f'train scaffolds = {train_scaffold_count:,} | '
+                     f'val scaffolds = {val_scaffold_count:,} | '
+                     f'test scaffolds = {test_scaffold_count:,}')
     
     log_scaffold_stats(data, index_sets, logger=logger)
 
@@ -177,7 +175,7 @@ def log_scaffold_stats(data: MoleculeDataset,
 
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
-                     'capped at {} scaffolds and {} labels: {}'.format(num_scaffolds, num_labels, stats))
+                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels: {stats}')
 
     return stats
 
@@ -239,8 +237,8 @@ def cluster_split(data: MoleculeDataset,
         seed += 1
     
     if logger is not None:
-        logger.debug('Split into {} clusters'.format(n_clusters))
-        logger.debug('Cluster sizes: {}'.format([len(c) for c in clusters]))
+        logger.debug(f'Split into {n_clusters} clusters')
+        logger.debug(f'Cluster sizes: {[len(c) for c in clusters]}')
 
     return [MoleculeDataset(cluster) for cluster in clusters]
 
@@ -481,7 +479,7 @@ def scaffold_split_overlap(data: MoleculeDataset,
 
         # If reached max attempts unsuccessfully, raise error
         if attempt == max_attempts:
-            raise Exception('Unable to achieve desired scaffold overlap after {:,} attempts :('.format(attempt))
+            raise Exception(f'Unable to achieve desired scaffold overlap after {attempt:,} attempts :(')
 
         # Adjust overlap balance
         if current_overlap > overlap:
@@ -505,12 +503,10 @@ def scaffold_split_overlap(data: MoleculeDataset,
 
     # Log scaffold sizes
     if logger is not None:
-        logger.debug('Total scaffolds = {:,} | train scaffolds = {:,} | val scaffolds = {:,} | test scaffolds = {:,}'.format(
-            len(scaffold_to_indices),
-            len(set(index_to_scaffold[index] for index in train)),
-            len(set(index_to_scaffold[index] for index in val)),
-            len(set(index_to_scaffold[index] for index in test)),
-        ))
+        logger.debug(f'Total scaffolds = {len(scaffold_to_indices):,} | '
+                     f'train scaffolds = {len(set(index_to_scaffold[index] for index in train)):,} | '
+                     f'val scaffolds = {len(set(index_to_scaffold[index] for index in val)):,} | '
+                     f'test scaffolds = {len(set(index_to_scaffold[index] for index in test)):,}')
 
     # Map from indices to data
     train = [data[i] for i in train]

@@ -31,12 +31,12 @@ def plot_counts(counter: Counter, args: Namespace):
         indexes = np.arange(len(values))
 
         plt.bar(indexes, values, width=1)
-        plt.title('{} {} frequency'.format(data_name, args.vocab_func))
-        plt.xlabel('{} 100 most common {}s'.format(num_to_plot, args.vocab_func))
+        plt.title(f'{data_name} {args.vocab_func} frequency')
+        plt.xlabel(f'{num_to_plot} 100 most common {args.vocab_func}s')
         plt.ylabel('frequency')
 
         if args.plot_dir is not None:
-            plt.savefig(os.path.join(args.plot_dir, '{}_frequency.png'.format(num_to_plot)))
+            plt.savefig(os.path.join(args.plot_dir, f'{num_to_plot}_frequency.png'))
         else:
             plt.show()
 
@@ -47,12 +47,12 @@ def plot_counts(counter: Counter, args: Namespace):
         cumulative_freqs = cumulative_counts / total_count
 
         plt.bar(indexes, cumulative_freqs, width=1)
-        plt.title('{} {} cumulative frequency'.format(data_name, args.vocab_func))
-        plt.xlabel('{} most common {}s'.format(num_to_plot, args.vocab_func))
+        plt.title(f'{data_name} {args.vocab_func} cumulative frequency')
+        plt.xlabel(f'{num_to_plot} most common {args.vocab_func}s')
         plt.ylabel('cumulative')
 
         if args.plot_dir is not None:
-            plt.savefig(os.path.join(args.plot_dir, '{}_cumulative_frequency.png'.format(num_to_plot)))
+            plt.savefig(os.path.join(args.plot_dir, f'{num_to_plot}_cumulative_frequency.png'))
         else:
             plt.show()
 
@@ -76,7 +76,7 @@ def generate_vocab(args: Namespace):
         with Pool() as pool:
             counter = sum(pool.map(count_vocab, pairs), Counter())
 
-    print('Vocab size = {:,}'.format(len(counter)))
+    print(f'Vocab size = {len(counter):,}')
 
     # Save vocab
     if args.vocab_path is not None:

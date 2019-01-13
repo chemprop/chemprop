@@ -27,14 +27,14 @@ def load_temp(temp_dir: str) -> Tuple[List[List[float]], int]:
     """
     features = []
     temp_num = 0
-    temp_path = os.path.join(temp_dir, '{}.pckl'.format(temp_num))
+    temp_path = os.path.join(temp_dir, f'{temp_num}.pckl')
 
     while os.path.exists(temp_path):
         with open(temp_path, 'rb') as f:
             features.extend(pickle.load(f).todense().tolist())
 
             temp_num += 1
-        temp_path = os.path.join(temp_dir, '{}.pckl'.format(temp_num))
+        temp_path = os.path.join(temp_dir, f'{temp_num}.pckl')
 
     return features, temp_num
 
@@ -68,7 +68,7 @@ def save_features(args: Namespace):
         shutil.rmtree(temp_save_dir)
     else:
         if os.path.exists(args.save_path):
-            raise ValueError('"{}" already exists and args.restart is False.'.format(args.save_path))
+            raise ValueError(f'"{args.save_path}" already exists and args.restart is False.')
 
         if os.path.exists(temp_save_dir):
             features, temp_num = load_temp(temp_save_dir)
@@ -93,7 +93,7 @@ def save_features(args: Namespace):
 
         # Save temporary features every save_frequency
         if (i > 0 and (i + 1) % args.save_frequency == 0) or i == len(data) - 1:
-            save(os.path.join(temp_save_dir, '{}.pckl'.format(temp_num)), temp_features)
+            save(os.path.join(temp_save_dir, f'{temp_num}.pckl'), temp_features)
             features.extend(temp_features)
             temp_features = []
             temp_num += 1

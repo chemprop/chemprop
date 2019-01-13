@@ -16,7 +16,7 @@ def get_kernel_func(kernel_func_name: str):
     if kernel_func_name == 'WL':
         return WL_kernel
 
-    raise ValueError('kernel function "{}" not supported.'.format(kernel_func_name))
+    raise ValueError(f'kernel function "{kernel_func_name}" not supported.')
 
 
 def features_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint', measure: str) -> float:
@@ -26,7 +26,7 @@ def features_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapo
     if measure == 'cos':
         return 1 - cosine(datapoint1.features, datapoint2.features)
 
-    raise ValueError('measure "{}" not supported.'.format(measure))
+    raise ValueError(f'measure "{measure}" not supported.')
 
 
 def WL_kernel(datapoint1: 'MoleculeDatapoint', datapoint2: 'MoleculeDatapoint') -> float:

@@ -45,7 +45,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
     args.real_num_tasks = args.num_tasks - args.features_size if args.predict_features else args.num_tasks
-    debug('Number of tasks = {}'.format(args.num_tasks))
+    debug(f'Number of tasks = {args.num_tasks}')
 
     if args.dataset_type == 'bert_pretraining':
         data.bert_init(args, logger)
@@ -54,11 +54,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
         data, bin_predictions, regression_data = data
         args.bin_predictions = bin_predictions
-        debug('Splitting data with seed {}'.format(args.seed))
+        debug(f'Splitting data with seed {args.seed}')
         train_data, _, _ = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
         _, val_data, test_data = split_data(regression_data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
     else:
-        debug('Splitting data with seed {}'.format(args.seed))
+        debug(f'Splitting data with seed {args.seed}')
         if args.separate_test_set:
             test_data = get_data(args.separate_test_set, args)
             if args.separate_val_set:
@@ -79,8 +79,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         class_sizes = get_class_sizes(data)
         debug('Class sizes')
         for i, task_class_sizes in enumerate(class_sizes):
-            debug('{} '.format(args.task_names[i]) +
-                  ', '.join('{}: {:.2f}%'.format(cls, size * 100) for cls, size in enumerate(task_class_sizes)))
+            debug(f'{args.task_names[i]} '
+                  f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
 
         if args.class_balance:
             train_class_sizes = get_class_sizes(train_data)
@@ -128,8 +128,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.adversarial or args.moe:
         val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
     
-    debug('Total size = {:,} | train size = {:,} | val size = {:,} | test size = {:,}'.format(
-        len(data), len(train_data), len(val_data), len(test_data)))
+    debug(f'Total size = {len(data):,} | '
+          f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
 
     # Optionally truncate outlier values
     if args.truncate_outliers:
@@ -204,20 +204,20 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
-        save_dir = os.path.join(args.save_dir, 'model_{}'.format(model_idx))
+        save_dir = os.path.join(args.save_dir, f'model_{model_idx}')
         os.makedirs(save_dir, exist_ok=True)
         writer = SummaryWriter(log_dir=save_dir)
 
         # Load/build model
         if args.checkpoint_paths is not None:
-            debug('Loading model {} from {}'.format(model_idx, args.checkpoint_paths[model_idx]))
+            debug(f'Loading model {model_idx} from {args.checkpoint_paths[model_idx]}')
             model = load_checkpoint(args.checkpoint_paths[model_idx], current_args=args, logger=logger)
         else:
-            debug('Building model {}'.format(model_idx))
+            debug(f'Building model {model_idx}')
             model = build_model(args)
 
         debug(model)
-        debug('Number of parameters = {:,}'.format(param_count(model)))
+        debug(f'Number of parameters = {param_count(model):,}')
         if args.cuda:
             debug('Moving model to cuda')
             model = model.cuda()
@@ -238,7 +238,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
-            debug('Epoch {}'.format(epoch))
+            debug(f'Epoch {epoch}')
 
             if args.prespecified_chunk_dir is not None:
                 # load some different random chunks each epoch
@@ -287,21 +287,21 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             if args.dataset_type == 'bert_pretraining':
                 if val_scores['features'] is not None:
-                    debug('Validation features rmse = {:.6f}'.format(val_scores['features']))
+                    debug(f'Validation features rmse = {val_scores["features"]:.6f}')
                     writer.add_scalar('validation_features_rmse', val_scores['features'], n_iter)
                 val_scores = [val_scores['vocab']]
 
             # Average validation score
             avg_val_score = np.nanmean(val_scores)
-            debug('Validation {} = {:.6f}'.format(args.metric, avg_val_score))
-            writer.add_scalar('validation_{}'.format(args.metric), avg_val_score, n_iter)
+            debug(f'Validation {args.metric} = {avg_val_score:.6f}')
+            writer.add_scalar(f'validation_{args.metric}', avg_val_score, n_iter)
 
             if args.show_individual_scores:
                 # Individual validation scores
                 for task_name, val_score in zip(args.task_names, val_scores):
                     if task_name in desired_labels:
-                        debug('Validation {} {} = {:.6f}'.format(task_name, args.metric, val_score))
-                        writer.add_scalar('validation_{}_{}'.format(task_name, args.metric), val_score, n_iter)
+                        debug(f'Validation {task_name} {args.metric} = {val_score:.6f}')
+                        writer.add_scalar(f'validation_{task_name}_{args.metric}', val_score, n_iter)
 
             # Save model checkpoint if improved validation score, or always save it if unsupervised
             if args.minimize_score and avg_val_score < best_score or \
@@ -314,7 +314,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             return [0]  # rest of this is meaningless when unsupervised            
 
         # Evaluate on test set using model with best validation score
-        info('Model {} best validation {} = {:.6f} on epoch {}'.format(model_idx, args.metric, best_score, best_epoch))
+        info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
 
         if args.split_test_by_overlap_dataset is not None:
@@ -344,7 +344,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     logger=logger
                 )
                 avg_test_score = np.nanmean(test_scores)
-                info('Model {} test {} for {} = {:.6f}'.format(model_idx, args.metric, name, avg_test_score))
+                info(f'Model {model_idx} test {args.metric} for {name} = {avg_test_score:.6f}')
         
         if len(test_data) == 0:  # just get some garbage results without crashing; in this case we didn't care anyway
             test_preds, test_scores = sum_test_preds, [0 for _ in range(len(args.task_names))]
@@ -378,21 +378,21 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
         if args.dataset_type == 'bert_pretraining':
             if test_preds['features'] is not None:
-                debug('Model {} test features rmse = {:.6f}'.format(model_idx, test_scores['features']))
+                debug(f'Model {model_idx} test features rmse = {test_scores["features"]:.6f}')
                 writer.add_scalar('test_features_rmse', test_scores['features'], 0)
             test_scores = [test_scores['vocab']]
 
         # Average test score
         avg_test_score = np.nanmean(test_scores)
-        info('Model {} test {} = {:.6f}'.format(model_idx, args.metric, avg_test_score))
-        writer.add_scalar('test_{}'.format(args.metric), avg_test_score, 0)
+        info(f'Model {model_idx} test {args.metric} = {avg_test_score:.6f}')
+        writer.add_scalar(f'test_{args.metric}', avg_test_score, 0)
 
         if args.show_individual_scores:
             # Individual test scores
             for task_name, test_score in zip(args.task_names, test_scores):
                 if task_name in desired_labels:
-                    info('Model {} test {} {} = {:.6f}'.format(model_idx, task_name, args.metric, test_score))
-                    writer.add_scalar('test_{}_{}'.format(task_name, args.metric), test_score, n_iter)
+                    info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
+                    writer.add_scalar(f'test_{task_name}_{args.metric}', test_score, n_iter)
 
     # Evaluate ensemble on test set
     if args.dataset_type == 'bert_pretraining':
@@ -418,17 +418,17 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Average ensemble score
     if args.dataset_type == 'bert_pretraining':
         if ensemble_scores['features'] is not None:
-            info('Ensemble test features rmse = {:.6f}'.format(ensemble_scores['features']))
+            info(f'Ensemble test features rmse = {ensemble_scores["features"]:.6f}')
             writer.add_scalar('ensemble_test_features_rmse', ensemble_scores['features'], 0)
         ensemble_scores = [ensemble_scores['vocab']]
 
     avg_ensemble_test_score = np.nanmean(ensemble_scores)
-    info('Ensemble test {} = {:.6f}'.format(args.metric, avg_ensemble_test_score))
-    writer.add_scalar('ensemble_test_{}'.format(args.metric), avg_ensemble_test_score, 0)
+    info(f'Ensemble test {args.metric} = {avg_ensemble_test_score:.6f}')
+    writer.add_scalar(f'ensemble_test_{args.metric}', avg_ensemble_test_score, 0)
 
     # Individual ensemble scores
     if args.show_individual_scores:
         for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
-            info('Ensemble test {} {} = {:.6f}'.format(task_name, args.metric, ensemble_score))
+            info(f'Ensemble test {task_name} {args.metric} = {ensemble_score:.6f}')
 
     return ensemble_scores

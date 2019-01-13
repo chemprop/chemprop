@@ -314,17 +314,17 @@ def train(model: nn.Module,
                 d_loss_sum, g_loss_sum, gp_norm_sum = 0, 0, 0
             loss_sum, iter_count = 0, 0
 
-            lrs_str = ', '.join('lr_{} = {:.4e}'.format(i, lr) for i, lr in enumerate(lrs))
-            debug("Loss = {:.4e}, PNorm = {:.4f}, GNorm = {:.4f}, {}".format(loss_avg, pnorm, gnorm, lrs_str))
+            lrs_str = ', '.join(f'lr_{i} = {lr:.4e}' for i, lr in enumerate(lrs))
+            debug(f'Loss = {loss_avg:.4e}, PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
             if args.adversarial:
-                debug("D Loss = {:.4e}, G Loss = {:.4e}, GP Norm = {:.4}".format(d_loss_avg, g_loss_avg, gp_norm_avg))
+                debug(f'D Loss = {d_loss_avg:.4e}, G Loss = {g_loss_avg:.4e}, GP Norm = {gp_norm_avg:.4}')
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)
                 writer.add_scalar('param_norm', pnorm, n_iter)
                 writer.add_scalar('gradient_norm', gnorm, n_iter)
                 for i, lr in enumerate(lrs):
-                    writer.add_scalar('learning_rate_{}'.format(i), lr, n_iter)
+                    writer.add_scalar(f'learning_rate_{i}', lr, n_iter)
 
     if args.parallel_featurization:
         exit_queue.put(0)  # dummy var to get the subprocess to know that we're done

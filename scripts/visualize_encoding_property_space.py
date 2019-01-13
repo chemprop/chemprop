@@ -24,7 +24,7 @@ def visualize_encoding_property_space(args: Namespace):
     elif args.similarity_measure == 'random':
         data.shuffle(args.seed)
     else:
-        raise ValueError('similarity_measure "{}" not supported or not implemented yet.'.format(args.similarity_measure))
+        raise ValueError(f'similarity_measure "{args.similarity_measure}" not supported or not implemented yet.')
 
     # Load model and scalers
     model = load_checkpoint(args.checkpoint_path)
@@ -67,14 +67,14 @@ def visualize_encoding_property_space(args: Namespace):
         figure, tax = ternary.figure(scale=scale)
         tax.heatmapf(predict_property, boundary=True, style="hexagonal")
         tax.set_title("Property Prediction")
-        tax.right_axis_label('{} ({:.6f}) -->'.format(molecules[0].smiles, molecules[0].targets[args.task_index]),
+        tax.right_axis_label(f'{molecules[0].smiles} ({molecules[0].targets[args.task_index]:.6f}) -->',
                              fontsize=fontsize)
-        tax.left_axis_label('{} ({:.6f}) -->'.format(molecules[1].smiles, molecules[1].targets[args.task_index]),
+        tax.left_axis_label(f'{molecules[1].smiles} ({molecules[1].targets[args.task_index]:.6f}) -->',
                             fontsize=fontsize)
-        tax.bottom_axis_label('<-- {} ({:.6f})'.format(molecules[2].smiles, molecules[2].targets[args.task_index]),
+        tax.bottom_axis_label(f'<-- {molecules[2].smiles} ({molecules[2].targets[args.task_index]:.6f})',
                               fontsize=fontsize)
 
-        tax.savefig(os.path.join(args.save_dir, '{}.png'.format(i)))
+        tax.savefig(os.path.join(args.save_dir, f'{i}.png'))
 
 
 if __name__ == '__main__':

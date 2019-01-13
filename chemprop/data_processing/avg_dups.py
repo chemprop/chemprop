@@ -11,7 +11,7 @@ def average_duplicates(args):
     print('Loading data')
     header = get_header(args.data_path)
     data = get_data(args.data_path)
-    print('Data size = {:,}'.format(len(data)))
+    print(f'Data size = {len(data):,}')
 
     # Map SMILES string to lists of targets
     smiles_in_order = []
@@ -40,9 +40,9 @@ def average_duplicates(args):
         means = [np.mean(task_targets) if len(task_targets) > 0 else None for task_targets in targets_by_task]
         new_data.append((smiles, means))
 
-    print('Number of duplicates = {:,}'.format(duplicate_count))
-    print('Duplicate standard deviation per task = {}'.format(', '.join('{:.4e}'.format(std) for std in np.mean(stds, axis=0))))
-    print('New data size = {:,}'.format(len(new_data)))
+    print(f'Number of duplicates = {duplicate_count:,}')
+    print(f'Duplicate standard deviation per task = {", ".join(f":{std:.4e}" for std in np.mean(stds, axis=0))}')
+    print(f'New data size = {len(new_data):,}')
 
     # Save new data
     with open(args.save_path, 'w') as f:

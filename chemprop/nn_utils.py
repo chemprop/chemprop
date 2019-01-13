@@ -107,7 +107,7 @@ def get_activation_function(activation: str) -> nn.Module:
     elif activation == 'tanh':
         return nn.Tanh()
     else:
-        raise ValueError('Activation "{}" not supported.'.format(args.activation))
+        raise ValueError(f'Activation "{args.activation}" not supported.')
 
 
 def initialize_weights(model: nn.Module, args: Namespace):
@@ -254,7 +254,7 @@ def visualize_bond_attention(viz_dir: str,
 
             # Plot attention weights on molecule
             fig = SimilarityMaps.GetSimilarityMapFromWeights(mol, a_weights, highlightMap={a1: (1, 1, 0), a2: (0, 1, 0)})
-            save_path = os.path.join(smiles_viz_dir, 'bond_{}_depth_{}.png'.format(b - b_start, depth))
+            save_path = os.path.join(smiles_viz_dir, f'bond_{b - b_start}_depth_{depth}.png')
             fig.savefig(save_path, bbox_inches='tight')
             plt.close(fig)
 
@@ -281,7 +281,7 @@ def visualize_atom_attention(viz_dir: str,
 
         # Plot attention weights on molecule
         fig = SimilarityMaps.GetSimilarityMapFromWeights(mol, a_weights, highlightMap={a: (0, 1, 0)})
-        save_path = os.path.join(smiles_viz_dir, 'atom_{}.png'.format(a))
+        save_path = os.path.join(smiles_viz_dir, f'atom_{a}.png')
         fig.savefig(save_path, bbox_inches='tight')
         plt.close(fig)
 

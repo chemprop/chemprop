@@ -93,8 +93,8 @@ class MPNEncoder(nn.Module):
             if self.message_attention:
                 self.num_heads = self.message_attention_heads
                 self.W_ma = [partial(F.linear,
-                                    weight=params[self.param_prefix + 'W_ma.{}.weight'.format(i)],
-                                    bias=params[self.param_prefix + 'W_ma.{}.bias'.format(i)])
+                                    weight=params[self.param_prefix + f'W_ma.{i}.weight'],
+                                    bias=params[self.param_prefix + f'W_ma.{i}.bias'])
                             for i in range(self.num_heads)]
             if args.learn_virtual_edges:
                 self.lve = partial(F.linear,
@@ -102,15 +102,15 @@ class MPNEncoder(nn.Module):
                                 bias=params[self.param_prefix + 'lve.bias'])
             if self.diff_depth_weights:
                 self.W_h = [[partial(F.linear,
-                                     weight=params[self.param_prefix + 'W_h.{}.{}.weight'.format(i, j)],
-                                     bias=params[self.param_prefix + 'W_h.{}.{}.bias'.format(i, j)])
+                                     weight=params[self.param_prefix + f'W_h.{i}.{j}.weight'],
+                                     bias=params[self.param_prefix + f'W_h.{i}.{j}.bias'])
                              for j in range(self.depth - 1)]
                             for i in range(self.layers_per_message)]
             else:
                 # TODO this option is currently broken; the params are None
                 self.W_h = [[partial(F.linear,
-                                     weight=params[self.param_prefix + 'W_h.{}.{}.weight'.format(i, j)],
-                                     bias=params[self.param_prefix + 'W_h.{}.{}.bias'.format(i, j)])
+                                     weight=params[self.param_prefix + f'W_h.{i}.{j}.weight'],
+                                     bias=params[self.param_prefix + f'W_h.{i}.{j}.bias'])
                              for j in range(self.depth - 1)]
                             for i in range(self.layers_per_message)]
             self.W_ga1 = partial(F.linear,

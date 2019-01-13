@@ -31,7 +31,7 @@ def grid_search(args: Namespace):
         # Create logger for dataset
         logger = create_logger(name=dataset_name,
                                save_dir=args.save_dir,
-                               save_name='{}_{}.log'.format(dataset_name, args.split_type))
+                               save_name=f'{dataset_name}_{args.split_type}.log')
 
         # Set up args for dataset
         dataset_args = deepcopy(args)
@@ -65,8 +65,8 @@ def grid_search(args: Namespace):
             # Record results
             temp_model = build_model(gs_args)
             num_params = param_count(temp_model)
-            logger.info('num params: {:,}'.format(num_params))
-            logger.info('{} +/- {} {}'.format(mean_score, std_score, metric))
+            logger.info(f'num params: {num_params:,}')
+            logger.info(f'{mean_score} +/- {std_score} {metric}')
 
             results.append({
                 'mean_score': mean_score,
@@ -91,8 +91,8 @@ def grid_search(args: Namespace):
         best_result = min(results, key=lambda result: (1 if dataset_args.minimize_score else -1) * result['mean_score'])
         logger.info('best')
         logger.info(best_result['hyperparams'])
-        logger.info('num params: {:,}'.format(best_result['num_params']))
-        logger.info('{} +/- {} {}'.format(best_result['mean_score'], best_result['std_score'], metric))
+        logger.info(f'num params: {best_result["num_params"]:,}')
+        logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {metric}')
 
 
 if __name__ == '__main__':

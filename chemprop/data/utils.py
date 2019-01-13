@@ -27,7 +27,7 @@ def convert_to_classes(data: MoleculeDataset, num_bins: int = 20) -> Tuple[Molec
     :return: A tuple with the new classification data, a numpy array with the bin centers,
     and the original regression data.
     """
-    print('Num bins for binning: {}'.format(num_bins))
+    print(f'Num bins for binning: {num_bins}')
     old_data = deepcopy(data)
     for task in range(data.num_tasks()):
         regress = np.array([targets[task] for targets in data.targets()])
@@ -290,7 +290,7 @@ def split_data(data: MoleculeDataset,
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     else:
-        raise ValueError('split_type "{}" not supported.'.format(split_type))
+        raise ValueError(f'split_type "{split_type}" not supported.')
 
 
 def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:

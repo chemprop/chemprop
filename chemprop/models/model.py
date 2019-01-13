@@ -70,8 +70,8 @@ class MoleculeModel(nn.Module):
             def linear_layer(input_dim: int, output_dim: int, p: float, idx: int):
                 if params is not None:
                     return MAMLLinear(
-                                   weight=params['ffn.{}.weight'.format(idx)],
-                                   bias=params['ffn.{}.bias'.format(idx)])
+                                   weight=params[f'ffn.{idx}.weight'],
+                                   bias=params[f'ffn.{idx}.bias'])
                 return nn.Linear(input_dim, output_dim)
 
         # Create FFN layers

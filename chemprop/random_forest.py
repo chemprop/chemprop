@@ -34,7 +34,7 @@ def single_task_random_forest(train_data: MoleculeDataset,
         elif args.dataset_type == 'classification':
             model = RandomForestClassifier(class_weight=args.class_weight, n_estimators=args.num_trees, n_jobs=-1)
         else:
-            raise ValueError('dataset_type "{}" not supported.'.format(args.dataset_type))
+            raise ValueError(f'dataset_type "{args.dataset_type}" not supported.')
 
         model.fit(train_features, train_targets)
 
@@ -63,7 +63,7 @@ def multi_task_random_forest(train_data: MoleculeDataset,
     elif args.dataset_type == 'classification':
         model = RandomForestClassifier(n_estimators=args.num_trees, n_jobs=-1)
     else:
-        raise ValueError('dataset_type "{}" not supported.'.format(args.dataset_type))
+        raise ValueError(f'dataset_type "{args.dataset_type}" not supported.')
 
     train_targets = train_data.targets()
     if train_data.num_tasks() == 1:
@@ -98,12 +98,11 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
     debug('Loading data')
     data = get_data(args.data_path)
 
-    debug('Splitting data with seed {}'.format(args.seed))
+    debug(f'Splitting data with seed {args.seed}')
     # Need to have val set so that train and test sets are the same as when doing MPN
     train_data, _, test_data = split_data(data=data, split_type=args.split_type, seed=args.seed)
 
-    debug('Total size = {:,} | train size = {:,} | test size = {:,}'.format(
-        len(data), len(train_data), len(test_data)))
+    debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
 
     debug('Computing morgan fingerprints')
     for dataset in [train_data, test_data]:
@@ -116,7 +115,7 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         scores = multi_task_random_forest(train_data, test_data, metric_func, args)
 
-    info('Test {} = {}'.format(args.metric, np.nanmean(scores)))
+    info(f'Test {args.metric} = {np.nanmean(scores)}')
 
     return scores
 
@@ -128,7 +127,7 @@ def cross_validate_random_forest(args: Namespace, logger: Logger = None) -> Tupl
     # Run training on different random seeds for each fold
     all_scores = []
     for fold_num in range(args.num_folds):
-        info('Fold {}'.format(fold_num))
+        info(f'Fold {fold_num}')
         args.seed = init_seed + fold_num
         model_scores = run_random_forest(args, logger)
         all_scores.append(model_scores)
@@ -136,11 +135,11 @@ def cross_validate_random_forest(args: Namespace, logger: Logger = None) -> Tupl
 
     # Report scores for each fold
     for fold_num, scores in enumerate(all_scores):
-        info('Seed {} ==> test {} = {:.6f}'.format(init_seed + fold_num, args.metric, np.nanmean(scores)))
+        info(f'Seed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
 
     # Report scores across folds
     avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
     mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
-    info('Overall test {} = {:.6f} +/- {:.6f}'.format(args.metric, mean_score, std_score))
+    info(f'Overall test {args.metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
     return mean_score, std_score

@@ -84,14 +84,13 @@ def load_checkpoint(path: str,
             continue
 
         if param_name not in model_state_dict:
-            debug('Pretrained parameter "{}" cannot be found in model parameters.'.format(param_name))
+            debug(f'Pretrained parameter "{param_name}" cannot be found in model parameters.')
         elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
-            debug('Pretrained parameter "{}" of shape {} does not match corresponding '
-                  'model parameter of shape {}.'.format(param_name,
-                                                        loaded_state_dict[param_name].shape,
-                                                        model_state_dict[param_name].shape))
+            debug(f'Pretrained parameter "{param_name}" '
+                  f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
+                  f'model parameter of shape {model_state_dict[param_name].shape}.')
         else:
-            debug('Loading pretrained parameter "{}".'.format(param_name))
+            debug(f'Loading pretrained parameter "{param_name}".')
             pretrained_state_dict[param_name] = loaded_state_dict[param_name]
 
     # Load pretrained weights
@@ -179,9 +178,9 @@ def get_loss_func(args: Namespace) -> nn.Module:
         if args.kernel_func in ['features', 'features_dot', 'WL']:  # could have other kernel funcs later
             return nn.MSELoss(reduction='none')
         else:
-            raise ValueError('loss not implemented for kernel function "{}".'.format(args.kernel_func))
+            raise ValueError(f'loss not implemented for kernel function "{args.kernel_func}".')
 
-    raise ValueError('Dataset type "{}" not supported.'.format(args.dataset_type))
+    raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
 
 
 def prc_auc(targets: List[int], preds: List[float]) -> float:
@@ -250,7 +249,7 @@ def get_metric_func(metric: str, args: Namespace = None) -> Callable:
     if metric == 'majority_baseline_accuracy':
         return majority_baseline_accuracy
 
-    raise ValueError('Metric "{}" not supported.'.format(metric))
+    raise ValueError(f'Metric "{metric}" not supported.')
 
 
 def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
@@ -292,7 +291,7 @@ def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
     if args.optimizer == 'SGD':
         return SGD(params)
 
-    raise ValueError('Optimizer "{}" not supported.'.format(args.optimizer))
+    raise ValueError(f'Optimizer "{args.optimizer}" not supported.')
 
 
 def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List[int] = None) -> _LRScheduler:
@@ -321,7 +320,7 @@ def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List
     if args.scheduler == 'decay':
         return ExponentialLR(optimizer, args.lr_decay_rate)
 
-    raise ValueError('Learning rate scheduler "{}" not supported.'.format(args.scheduler))
+    raise ValueError(f'Learning rate scheduler "{args.scheduler}" not supported.')
 
 
 def set_logger(logger: logging.Logger, save_dir: str = None, quiet: bool = False):

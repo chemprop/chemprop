@@ -49,6 +49,6 @@ if __name__ == '__main__':
         elif args.dataset_type == 'classification':
             args.metric = 'auc'
         else:
-            raise ValueError('Default metric not supported for dataset_type "{}"'.format(args.dataset_type))
+            raise ValueError(f'Default metric not supported for dataset_type "{args.dataset_type}"')
 
     cross_validate_random_forest(args, logger)

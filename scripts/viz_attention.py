@@ -15,9 +15,9 @@ def visualize_attention(args: Namespace):
     print('Loading data')
     data = get_data(args.data_path)
     smiles = data.smiles()
-    print('Data size = {:,}'.format(len(smiles)))
+    print(f'Data size = {len(smiles):,}')
 
-    print('Loading model from "{}"'.format(args.checkpoint_path))
+    print(f'Loading model from "{args.checkpoint_path}"')
     model = load_checkpoint(args.checkpoint_path, cuda=args.cuda)
     mpn = model[0]
 

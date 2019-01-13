@@ -368,7 +368,7 @@ def update_checkpoint_args(args: Namespace):
     args.ensemble_size = len(args.checkpoint_paths)
 
     if args.ensemble_size == 0:
-        raise ValueError('Failed to find any model checkpoints in directory "{}"'.format(args.checkpoint_dir))
+        raise ValueError(f'Failed to find any model checkpoints in directory "{args.checkpoint_dir}"')
 
 
 def modify_predict_args(args: Namespace):
@@ -433,7 +433,7 @@ def modify_train_args(args: Namespace):
             if args.kernel_func in ['features', 'features_dot', 'WL']:  # could have other kernel_funcs with different metrics
                 args.metric = 'rmse'
             else:
-                raise ValueError('metric not implemented for kernel function "{}".'.format(args.kernel_func))
+                raise ValueError(f'metric not implemented for kernel function "{args.kernel_func}".')
         else:
             args.metric = 'rmse'
 
@@ -441,7 +441,7 @@ def modify_train_args(args: Namespace):
             (args.dataset_type == 'regression' or args.dataset_type == 'regression_with_binning') and args.metric in ['rmse', 'mae', 'r2'] \
             or args.dataset_type == 'kernel' and args.metric in ['rmse']) \
             and not args.dataset_type in ['unsupervised', 'bert_pretraining']:
-        raise ValueError('Metric "{}" invalid for dataset type "{}".'.format(args.metric, args.dataset_type))
+        raise ValueError(f'Metric "{args.metric}" invalid for dataset type "{args.dataset_type}".')
 
     args.minimize_score = args.metric in ['rmse', 'mae', 'log_loss']
 
@@ -451,7 +451,7 @@ def modify_train_args(args: Namespace):
         if not hasattr(args, 'vocab_path'):
             raise ValueError('Must provide vocab_path when using jtnn')
         elif not os.path.exists(args.vocab_path):
-            raise ValueError('Vocab path "{}" does not exist'.format(args.vocab_path))
+            raise ValueError(f'Vocab path "{args.vocab_path}" does not exist')
 
     args.use_input_features = args.features_generator or args.features_path
 
