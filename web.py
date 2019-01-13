@@ -74,21 +74,21 @@ def find_unique_path(path: str) -> str:
 
 
 def name_already_exists_message(thing_being_named: str, original_path: str, new_path: str) -> str:
-    return '{} "{}" already exists. Saving to "{}"'.format(
-        thing_being_named, os.path.basename(original_path), os.path.basename(new_path))
+    return f'{thing_being_named} "{os.path.basename(original_path)} already exists. ' \
+           f'Saving to "{os.path.basename(new_path)}".'
 
 
 def get_upload_warnings_errors(upload_item: str) -> Tuple[List[str], List[str]]:
-    warnings_raw = request.args.get('{}_upload_warnings'.format(upload_item))
-    errors_raw = request.args.get('{}_upload_errors'.format(upload_item))
+    warnings_raw = request.args.get(f'{upload_item}_upload_warnings')
+    errors_raw = request.args.get(f'{upload_item}_upload_errors')
     warnings = json.loads(warnings_raw) if warnings_raw is not None else None
     errors = json.loads(errors_raw) if errors_raw is not None else None
 
     return warnings, errors
 
 
-def format_float(f: float, precision: int = 4) -> str:
-    return ('{:.' + str(precision) + '}').format(f)
+def format_float(value: float, precision: int = 4) -> str:
+    return f'{value:.{precision}f}'
 
 
 def format_float_list(array: List[float], precision: int = 4) -> List[str]:
