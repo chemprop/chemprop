@@ -228,7 +228,6 @@ def predict():
 
     if 'data' in request.files:
         # Upload data file with SMILES
-        show_file_upload = True
         data = request.files['data']
         data_name = secure_filename(data.filename)
         data_path = os.path.join(app.config['TEMP_FOLDER'], data_name)
@@ -240,10 +239,10 @@ def predict():
 
         # Get remaining smiles
         smiles.extend(get_smiles(data_path))
+    elif request.form['textSmiles'] != '':
+        smiles = request.form['textSmiles'].split()
     else:
-        show_file_upload = False
-        smiles = request.form['smiles']
-        smiles = smiles.split()
+        smiles = [request.form['drawSmiles']]
 
     checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
     task_names = load_task_names(checkpoint_path)
@@ -269,7 +268,7 @@ def predict():
     preds = make_predictions(args, smiles=smiles, allow_invalid_smiles=True)
 
     if all(p is None for p in preds):
-        return render_predict(show_file_upload=show_file_upload, errors=['All SMILES are invalid'])
+        return render_predict(errors=['All SMILES are invalid'])
 
     # Replace invalid smiles with message
     invalid_smiles_warning = "Invalid SMILES String"
@@ -282,7 +281,6 @@ def predict():
                           task_names=task_names,
                           num_tasks=len(task_names),
                           preds=preds,
-                          show_file_upload=show_file_upload,
                           warnings=["List contains invalid SMILES strings"] if None in preds else None,
                           errors=["No SMILES strings given"] if len(preds) == 0 else None)
 

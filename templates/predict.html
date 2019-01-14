@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from 'macros.html' import add_checkpoint, error_message, warning_message %}
+{% from 'macros.html' import add_checkpoint, chemdraw, error_message, warning_message %}
 
 {% block title %}
     <h1>Predict</h1>
@@ -13,41 +13,98 @@
     <h3>Predict</h3>
 
     <form enctype="multipart/form-data" method="POST">
+        <!--Model checkpoint selector-->
         <h5>Model checkpoint</h5>
         <select name="checkpointName" required>
             {% for checkpoint in checkpoints %}
-                <option value="{{checkpoint}}">{{checkpoint}}</option>
+                <option value="{{ checkpoint }}">{{ checkpoint }}</option>
             {% endfor %}
         </select>
+
         <br>
         <br>
 
+        <!--SMILES upload type selector-->
         <div class="btn-group" id="inputSelect" data-toggle="buttons">
-            <label class="btn btn-primary active" id="textButton">
+            <label id="textButton" class="btn btn-primary active">
               <input type="radio" name="inputType" value="text" autocomplete="off"> Text Input
             </label>
-            <label class="btn btn-primary" id="fileButton">
+            <label id="fileButton" class="btn btn-primary">
               <input type="radio" name="inputType" value="file" autocomplete="off"> Upload File
             </label>
+            <label id="drawButton" class="btn btn-primary">
+              <input type="radio" name="inputType" value="file" autocomplete="off"> Draw Molecule
+            </label>
         </div>
+
         <br>
 
-        <div id="textInputForm" {% if show_file_upload %} style="display:none" {% endif %}>
+        <!--SMILES input-->
+        <div id="textInputForm">
             <h5>SMILES (one per line)</h5>
-            <textarea name="smiles" cols="100" rows="10" placeholder="smiles"></textarea>
+            <textarea id="textSmilesInput" name="textSmiles" cols="100" rows="10" placeholder="SMILES" required></textarea>
         </div>
-        <div id="fileInputForm" {% if not show_file_upload %} style="display:none" {% endif %}>
+        <div id="fileInputForm" style="display:none">
             <h5>File containing SMILES (one per line)</h5>
-            <input type="file" name="data" accept=".csv">
+            <input id="fileSmilesInput" type="file" name="data" accept=".csv">
         </div>
+        <div id="drawInputForm" style="display:none">
+            <h5>Draw a molecule</h5>
+            {{ chemdraw() }}
+            <br>
+            <button type="button" id="convertToSmiles" class="btn btn-primary btn-xs">Convert to SMILES</button>
+            <input id="drawSmilesInput" name="drawSmiles" placeholder="SMILES">
+        </div>
+
         <br>
 
+        <!--SMILES input functionality-->
+        <script>
+            $(document).ready(function() {
+                $(document).ready(function() {
+                    $("#textButton").click(function() {
+                        $("#textInputForm").show();
+                        $("#textSmilesInput").prop('required', true);
+                        $("#fileInputForm").hide();
+                        $("#fileSmilesInput").prop('required', false);
+                        $("#drawInputForm").hide();
+                        $("#drawSmilesInput").prop('required', false);
+                        $("#drawSmilesInput").val('');
+                    });
+                    $("#fileButton").click(function() {
+                        $("#textInputForm").hide();
+                        $("#textSmilesInput").prop('required', false);
+                        $("#textSmilesInput").val('');
+                        $("#fileInputForm").show();
+                        $("#fileSmilesInput").prop('required', true);
+                        $("#drawInputForm").hide();
+                        $("#drawSmilesInput").prop('required', false);
+                        $("#drawSmilesInput").val('');
+                    });
+                    $("#drawButton").click(function() {
+                        $("#textInputForm").hide();
+                        $("#textSmilesInput").prop('required', false);
+                        $("#textSmilesInput").val('');
+                        $("#fileInputForm").hide();
+                        $("#fileSmilesInput").prop('required', false);
+                        $("#drawInputForm").show();
+                        $("#drawSmilesInput").prop('required', true);
+                    });
+                });
+
+                $("#convertToSmiles").click(function() {
+                    $("#drawSmilesInput").val(jsmeApplet.smiles());
+                });
+            });
+        </script>
+
+        <!--GPU selector-->
         {% if cuda %}
             <h5>GPU</h5>
             <select name="gpu">
                 <option value="None">None</option>
                 {% for gpu in gpus %}
-                    <option value="{{gpu}}">{{gpu}}</option>
+                    <option value="{{ gpu }}">{{ gpu }}</option>
                 {% endfor %}
             </select>
             <br>
@@ -70,21 +127,6 @@
             {{ error_message(error) }}
         {% endfor %}
     {% endif %}
-
-    <script>
-        $(document).ready(function() {
-            $("#textButton").click(function() {
-                $("#textInputForm").show();
-                $("#fileInputForm").hide();
-                console.log('text');
-            });
-            $("#fileButton").click(function() {
-                $("#textInputForm").hide();
-                $("#fileInputForm").show();
-                console.log('file');
-            });
-        });
-    </script>
 
     {% if predicted %}
         <hr>

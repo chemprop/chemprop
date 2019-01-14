@@ -67,3 +67,13 @@
         {% endfor %}
     {% endif %}
 {% endmacro %}
+
+{% macro chemdraw() %}
+<script type="text/javascript" language="javascript" src="/static/jsme/jsme/jsme.nocache.js"></script>
+<script>
+    function jsmeOnLoad() {
+        jsmeApplet = new JSApplet.JSME("jsme_container", "565px", "400px");
+    };
+</script>
+<div id="jsme_container"></div>
+{% endmacro %}
