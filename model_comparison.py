@@ -83,7 +83,7 @@ def run_comparison(experiment_args: Namespace,
         logger.info(f'num params: {param_count(temp_model):,}')
 
 
-def create_logger(name: str, save_dir: str, save_name: str) -> logging.Logger:
+def create_logger(name: str, save_path: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
@@ -91,8 +91,9 @@ def create_logger(name: str, save_dir: str, save_name: str) -> logging.Logger:
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
-    os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, save_name)
+    save_dir = os.path.dirname(save_path)
+    if save_dir != '':
+        os.makedirs(save_dir, exist_ok=True)
     fh = logging.FileHandler(save_path)
     fh.setLevel(logging.DEBUG)
 
@@ -113,7 +114,9 @@ if __name__ == '__main__':
                         help='Which datasets to perform a grid search on')
     args = parser.parse_args()
 
-    logger = create_logger(name='model_comparison', save_dir=args.save_dir, save_name=args.log_name)
+    log_path = os.path.join(args.save_dir, args.log_name)
+
+    logger = create_logger(name='model_comparison', save_path=log_path)
 
     if 'all' in args.experiments or 'base' in args.experiments:
         logger.info('base')

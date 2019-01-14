@@ -24,86 +24,68 @@ TRAIN_LOGGER = create_train_logger()
 
 
 def grid_search(args: Namespace):
-    for dataset_name in args.datasets:
-        # Get dataset
-        dataset_type, dataset_path, _, metric = DATASETS[dataset_name]
+    # Create logger for dataset
+    logger = create_logger(name='hyperparameter_optimization', save_path=args.log_path)
 
-        # Create logger for dataset
-        logger = create_logger(name=dataset_name,
-                               save_dir=args.save_dir,
-                               save_name=f'{dataset_name}_{args.split_type}.log')
+    # Run grid search
+    results = []
 
-        # Set up args for dataset
-        dataset_args = deepcopy(args)
-        dataset_args.data_path = dataset_path
-        dataset_args.dataset_type = dataset_type
-        dataset_args.save_dir = None
-        dataset_args.metric = metric
-        modify_train_args(dataset_args)
+    # Define hyperparameter optimization
+    def objective(hyperparams: Dict[str, Union[int, float]]) -> float:
+        # Convert hyperparams from float to int when necessary
+        for key in INT_KEYS:
+            hyperparams[key] = int(hyperparams[key])
 
-        # Run grid search
-        results = []
+        for key, value in hyperparams.items():
+            setattr(args, key, value)
 
-        # Define hyperparameter optimization
-        def objective(hyperparams: Dict[str, Union[int, float]]) -> float:
-            # Convert hyperparms from float to int when necessary
-            for key in INT_KEYS:
-                hyperparams[key] = int(hyperparams[key])
+        # Record hyperparameters
+        logger.info(hyperparams)
 
-            # Copy args
-            gs_args = deepcopy(dataset_args)
+        # Cross validate
+        mean_score, std_score = cross_validate(args, TRAIN_LOGGER)
 
-            for key, value in hyperparams.items():
-                setattr(gs_args, key, value)
+        # Record results
+        temp_model = build_model(args)
+        num_params = param_count(temp_model)
+        logger.info(f'num params: {num_params:,}')
+        logger.info(f'{mean_score} +/- {std_score} {args.metric}')
 
-            # Record hyperparameters
-            logger.info(hyperparams)
+        results.append({
+            'mean_score': mean_score,
+            'std_score': std_score,
+            'hyperparams': hyperparams,
+            'num_params': num_params
+        })
 
-            # Cross validate
-            mean_score, std_score = cross_validate(gs_args, TRAIN_LOGGER)
+        # Deal with nan
+        if np.isnan(mean_score):
+            if args.dataset_type == 'classification':
+                mean_score = 0
+            else:
+                raise ValueError('Can\'t handle nan score for non-classification dataset.')
 
-            # Record results
-            temp_model = build_model(gs_args)
-            num_params = param_count(temp_model)
-            logger.info(f'num params: {num_params:,}')
-            logger.info(f'{mean_score} +/- {std_score} {metric}')
+        return (1 if args.minimize_score else -1) * mean_score
 
-            results.append({
-                'mean_score': mean_score,
-                'std_score': std_score,
-                'hyperparams': hyperparams,
-                'num_params': num_params
-            })
+    fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_runs_per_dataset)
 
-            # Deal with nan
-            if np.isnan(mean_score):
-                if gs_args.dataset_type == 'classification':
-                    mean_score = 0
-                else:
-                    raise ValueError('Can\'t handle nan score for non-classification dataset.')
-
-            return (1 if gs_args.minimize_score else -1) * mean_score
-
-        fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_runs_per_dataset)
-
-        # Report best result
-        results = [result for result in results if not np.isnan(result['mean_score'])]
-        best_result = min(results, key=lambda result: (1 if dataset_args.minimize_score else -1) * result['mean_score'])
-        logger.info('best')
-        logger.info(best_result['hyperparams'])
-        logger.info(f'num params: {best_result["num_params"]:,}')
-        logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {metric}')
+    # Report best result
+    results = [result for result in results if not np.isnan(result['mean_score'])]
+    best_result = min(results, key=lambda result: (1 if args.minimize_score else -1) * result['mean_score'])
+    logger.info('best')
+    logger.info(best_result['hyperparams'])
+    logger.info(f'num params: {best_result["num_params"]:,}')
+    logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     add_train_args(parser)
-    parser.add_argument('--datasets', type=str, nargs='+', default=list(DATASETS.keys()), choices=list(DATASETS.keys()),
-                        help='Which datasets to perform a grid search on')
+    parser.add_argument('--log_path', type=str, required=True,
+                        help='Path to .log file where the results of the hyperparameter optimization will be written')
     parser.add_argument('--num_runs_per_dataset', type=int, default=20,
                         help='Number of hyperparameter choices to try for each datasets')
     args = parser.parse_args()
+    modify_train_args(args)
 
     grid_search(args)
-
-    # python hyperparameter_optimization.py --save_dir ../chemprop_grid_search --datasets delaney --num_runs_per_dataset 50 --num_folds 3 --quiet
