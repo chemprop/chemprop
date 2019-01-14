@@ -83,8 +83,8 @@ if __name__ == '__main__':
     add_train_args(parser)
     parser.add_argument('--log_path', type=str, required=True,
                         help='Path to .log file where the results of the hyperparameter optimization will be written')
-    parser.add_argument('--num_runs_per_dataset', type=int, default=20,
-                        help='Number of hyperparameter choices to try for each datasets')
+    parser.add_argument('--num_iters', type=int, default=20,
+                        help='Number of hyperparameter choices to try')
     args = parser.parse_args()
     modify_train_args(args)
 
