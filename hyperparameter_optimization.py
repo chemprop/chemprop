@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-from copy import deepcopy
 from typing import Dict, Union
 
 from hyperopt import fmin, hp, tpe
@@ -9,7 +8,7 @@ from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
-from model_comparison import create_logger, create_train_logger, DATASETS
+from model_comparison import create_logger, create_train_logger
 
 
 SPACE = {
