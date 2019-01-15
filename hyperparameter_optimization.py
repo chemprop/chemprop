@@ -66,7 +66,7 @@ def grid_search(args: Namespace):
 
         return (1 if args.minimize_score else -1) * mean_score
 
-    fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_runs_per_dataset)
+    fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_iters)
 
     # Report best result
     results = [result for result in results if not np.isnan(result['mean_score'])]
