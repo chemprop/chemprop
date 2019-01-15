@@ -94,8 +94,12 @@ def add_train_args(parser: ArgumentParser):
                         help='store memo dicts for mol2graph in chunk_temp_dir when chunking, at large disk space cost')
     parser.add_argument('--separate_val_set', type=str,
                         help='Path to separate val set, optional')
+    parser.add_argument('--separate_val_set_features', type=str, nargs='*',
+                        help='Path to .pckl file with features for separate val set')
     parser.add_argument('--separate_test_set', type=str,
                         help='Path to separate test set, optional')
+    parser.add_argument('--separate_test_set_features', type=str, nargs='*',
+                        help='Path to .pckl file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold', 'scaffold_balanced', 'scaffold_one', 'scaffold_overlap', 'predetermined'],
                         help='Method of splitting the data into train/val/test')

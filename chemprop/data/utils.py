@@ -105,6 +105,7 @@ def get_smiles(path: str) -> List[str]:
 
 def get_data(path: str,
              args: Namespace = None,
+             features_path: str = None,
              max_data_size: int = None,
              use_compound_names: bool = False) -> MoleculeDataset:
     """
@@ -112,25 +113,32 @@ def get_data(path: str,
 
     :param path: Path to a CSV file.
     :param args: Arguments.
+    :param features_path: Path to a .pckl file containing features. If provided, it is used
+    in place of args.features_path.
     :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
+    if features_path is not None:
+        features_path = [features_path]
+
     if args is not None:
         max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
         skip_smiles_path = args.skip_smiles_path
-
-        if args.features_path:
-            features_data = []
-            for features_path in args.features_path:
-                features_data.append(load_features(features_path))  # each is num_data x num_features
-            features_data = np.concatenate(features_data, axis=1)
-        else:
-            features_data = None
+        features_path = features_path or args.features_path
     else:
-        features_data = skip_smiles_path = None
+        skip_smiles_path = None
         max_data_size = max_data_size or float('inf')
+
+    # Load features
+    if features_path is not None:
+        features_data = []
+        for feat_path in features_path:
+            features_data.append(load_features(feat_path))  # each is num_data x num_features
+        features_data = np.concatenate(features_data, axis=1)
+    else:
+        features_data = None
 
     # Load smiles to skip
     if skip_smiles_path is not None:

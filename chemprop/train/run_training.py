@@ -60,9 +60,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         debug(f'Splitting data with seed {args.seed}')
         if args.separate_test_set:
-            test_data = get_data(args.separate_test_set, args)
+            test_data = get_data(args.separate_test_set, args, features_path=args.separate_test_set_features)
             if args.separate_val_set:
-                val_data = get_data(args.separate_val_set, args)
+                val_data = get_data(args.separate_val_set, args, features_path=args.separate_val_set_features)
                 train_data = data  # nothing to split; we already got our test and val sets
             else:
                 train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
