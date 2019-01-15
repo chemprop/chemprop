@@ -14,7 +14,7 @@ import torch
 from werkzeug.utils import secure_filename
 
 from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
-from chemprop.parsing import add_predict_args, add_train_args, modify_train_args
+from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
 from chemprop.utils import load_task_names, set_logger
@@ -255,14 +255,17 @@ def predict():
     args = parser.parse_args()
 
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+    args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
     args.preds_path = preds_path
-    args.checkpoint_paths = [checkpoint_path]
+    args.checkpoint_path = checkpoint_path
     args.write_smiles = True
     if gpu is not None:
         if gpu == 'None':
             args.no_cuda = True
         else:
             args.gpu = int(gpu)
+
+    modify_predict_args(args)
 
     # Run predictions
     preds = make_predictions(args, smiles=smiles, allow_invalid_smiles=True)

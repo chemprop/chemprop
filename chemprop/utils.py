@@ -71,6 +71,8 @@ def load_checkpoint(path: str,
     if current_args is not None:
         args = current_args
 
+    args.cuda = cuda
+
     load_encoder_only = current_args.load_encoder_only if current_args is not None else False
 
     # Build model
