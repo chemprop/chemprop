@@ -1,0 +1,22 @@
+<html>
+
+<head>
+<script type="text/javascript" language="javascript" src="jsme/jsme.nocache.js"></script>
+
+<script>
+    //this function will be called after the JavaScriptApplet code has been loaded.
+    function jsmeOnLoad() {
+        jsmeApplet = new JSApplet.JSME("jsme_container", "380px", "340px", {
+           "options" : "oldlook,star"
+        });
+   }
+</script>
+</head>
+
+<body>
+<div id="jsme_container"></div>
+<button type="button" onclick="alert(jsmeApplet.smiles())">Show SMILES</button>
+
+</body>
+</html>
+

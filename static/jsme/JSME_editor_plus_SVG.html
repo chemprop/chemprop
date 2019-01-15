@@ -1,0 +1,38 @@
+<html>
+
+
+<head>
+<script type="text/javascript" language="javascript" src="jsme/jsme.nocache.js"></script>
+
+<script>
+    //this function will be called after the JavaScriptApplet code has been loaded.
+    function jsmeOnLoad() {
+        var startingStructure = "13 14 C 15.94 -11.45 C 15.94 -10.05 C 14.72 -9.35 C 13.51 -10.05 C 13.51 -11.45 C 14.72 -12.15 C 17.34 -11.45 C 17.34 -10.05 O 18.33 -9.06 C 18.33 -12.44 C 17.96 -13.79 C 19.68 -12.07 N 21.03 -11.71 1 2 1 2 3 -1 3 4 1 4 5 1 5 6 1 1 6 -1 7 8 1 2 8 1 1 7 1 8 9 2 7 10 -1 10 11 2 10 12 1 12 13 3";
+    
+        jsmeApplet = new JSApplet.JSME("jsme_container", "640px", "480px", {
+            "options" : "oldlook",
+            "jme" : startingStructure 
+        });
+        jsmeApplet.setNotifyStructuralChangeJSfunction("showSVG");
+   }
+   function showSVG() {
+ 		elm =document.getElementById("svg_container");
+		elm.innerHTML = jsmeApplet.getMolecularAreaGraphicsString();
+		     
+		elm =document.getElementById("svg_textarea");
+		elm.innerHTML = jsmeApplet.getMolecularAreaGraphicsString();
+   }
+</script>
+</head>
+
+<body>
+<div id="jsme_container" ></div>
+<button type="button" onclick="showSVG()">Show SVG</button>
+
+<div id="svg_container"></div>
+
+<textarea id="svg_textarea" rows="20" cols="80">
+</textarea>
+</body>
+</html>
+
