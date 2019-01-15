@@ -105,7 +105,7 @@ def get_smiles(path: str) -> List[str]:
 
 def get_data(path: str,
              args: Namespace = None,
-             features_path: str = None,
+             features_path: List[str] = None,
              max_data_size: int = None,
              use_compound_names: bool = False) -> MoleculeDataset:
     """
@@ -113,16 +113,13 @@ def get_data(path: str,
 
     :param path: Path to a CSV file.
     :param args: Arguments.
-    :param features_path: Path to a .pckl file containing features. If provided, it is used
+    :param features_path: A list of paths to .pckl files containing features. If provided, it is used
     in place of args.features_path.
     :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
-    if features_path is not None:
-        features_path = [features_path]
-
     if args is not None:
         max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
         skip_smiles_path = args.skip_smiles_path
