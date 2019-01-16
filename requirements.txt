@@ -1,5 +1,4 @@
 flask
-hpbandster
 hyperopt
 matplotlib
 mordred
@@ -11,4 +10,3 @@ scipy
 tensorboardX
 tqdm
 git+https://github.com/bp-kelley/descriptastorus
-
