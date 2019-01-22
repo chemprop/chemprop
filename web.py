@@ -146,7 +146,7 @@ def train():
     args.epochs = epochs
 
     # Check if regression/classification selection matches data
-    data = get_data(data_path)
+    data = get_data(path=data_path)
     targets = data.targets()
     unique_targets = set(np.unique(targets))
 
@@ -268,7 +268,7 @@ def predict():
     modify_predict_args(args)
 
     # Run predictions
-    preds = make_predictions(args, smiles=smiles, allow_invalid_smiles=True)
+    preds = make_predictions(args, smiles=smiles)
 
     if all(p is None for p in preds):
         return render_predict(errors=['All SMILES are invalid'])

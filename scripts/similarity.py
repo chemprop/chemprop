@@ -24,8 +24,8 @@ if __name__ == '__main__':
                         help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
     args = parser.parse_args()
 
-    data_1 = get_data(args.data_path_1, use_compound_names=args.compound_names_1)
-    data_2 = get_data(args.data_path_2, use_compound_names=args.compound_names_2)
+    data_1 = get_data(path=args.data_path_1, use_compound_names=args.compound_names_1)
+    data_2 = get_data(path=args.data_path_2, use_compound_names=args.compound_names_2)
 
     if args.similarity_measure == 'scaffold':
         scaffold_similarity(data_1.smiles(), data_2.smiles())

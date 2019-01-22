@@ -96,7 +96,7 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
     metric_func = get_metric_func(args.metric)
 
     debug('Loading data')
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path)
 
     debug(f'Splitting data with seed {args.seed}')
     # Need to have val set so that train and test sets are the same as when doing MPN

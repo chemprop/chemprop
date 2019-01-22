@@ -59,7 +59,7 @@ def plot_counts(counter: Counter, args: Namespace):
 
 def generate_vocab(args: Namespace):
     # Get smiles
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path)
     smiles = data.smiles()
 
     vocab_func = partial(
