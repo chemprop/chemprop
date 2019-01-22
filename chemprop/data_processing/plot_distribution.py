@@ -15,7 +15,7 @@ def plot_distribution(data_path: str, save_dir: str, bins: int):
     """
     # Get values
     task_names = get_task_names(data_path)
-    data = get_data(data_path)
+    data = get_data(path=data_path)
     targets = data.targets()
 
     # Arrange values by task

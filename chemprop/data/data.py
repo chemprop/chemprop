@@ -5,7 +5,6 @@ import math
 from multiprocessing import Pool
 import random
 from typing import Callable, Dict, List, Tuple, Union, Set, FrozenSet
-from copy import deepcopy
 
 import numpy as np
 from torch.utils.data.dataset import Dataset

@@ -97,26 +97,55 @@ def get_smiles(path: str) -> List[str]:
     :return: A list of smiles strings.
     """
     with open(path) as f:
-        f.readline()  # Skip header
-        smiles = [line.strip().split(',')[0] for line in f]
+        reader = csv.reader(f)
+        next(reader)  # Skip header
+        smiles = [line[0] for line in reader]
 
     return smiles
 
 
+def filter_invalid_smiles(data: MoleculeDataset, allow_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+    """
+    Filters out invalid SMILES.
+
+    :param data: A MoleculeDataset.
+    :param allow_invalid_smiles: Whether to allow invalid smiles.
+    If true, skips invalid smiles. If false, raises an error.
+    :param logger: Logger.
+    :return: A MoleculeDataset with only valid molecules.
+    """
+    debug = logger.debug if logger is not None else print
+
+    original_data_size = len(data)
+    data = MoleculeDataset([datapoint for datapoint in data if datapoint.smiles != '' and datapoint.mol is not None])
+    if len(data) < original_data_size:
+        message = f'{original_data_size - len(data)} SMILES are invalid.'
+        if allow_invalid_smiles:
+            debug(f'Warning: {message}')
+        else:
+            raise ValueError(message)
+
+    return data
+
+
 def get_data(path: str,
+             allow_invalid_smiles: bool = True,
              args: Namespace = None,
              features_path: List[str] = None,
              max_data_size: int = None,
-             use_compound_names: bool = False) -> MoleculeDataset:
+             use_compound_names: bool = False,
+             logger: Logger = None) -> MoleculeDataset:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
     :param path: Path to a CSV file.
+    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, invalid smiles are skipped.
     :param args: Arguments.
     :param features_path: A list of paths to .pckl files containing features. If provided, it is used
     in place of args.features_path.
     :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
+    :param logger: Logger.
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
@@ -140,20 +169,20 @@ def get_data(path: str,
     # Load smiles to skip
     if skip_smiles_path is not None:
         with open(skip_smiles_path) as f:
-            f.readline()  # skip header
-            skip_smiles = {line.split(',')[0] for line in f}
+            reader = csv.reader(f)
+            next(reader)  # skip header
+            skip_smiles = {line[0] for line in reader}
     else:
         skip_smiles = set()
 
     # Load data
     with open(path) as f:
-        f.readline()  # skip header
-        lines = []
-        for line in f:
-            smiles = line.split(',')[0]
+        reader = csv.reader(f)
+        next(reader)  # skip header
 
-            # if smiles == '':
-            #     line = 'C' + line  # bandage for if your dataset has an empty line on rare occasions
+        lines = []
+        for line in reader:
+            smiles = line[0]
 
             if smiles in skip_smiles:
                 continue
@@ -165,11 +194,15 @@ def get_data(path: str,
 
         data = MoleculeDataset([
             MoleculeDatapoint(
-                line=line.strip().split(','),
+                line=line,
                 args=args,
                 features=features_data[i] if features_data is not None else None,
-                use_compound_names=use_compound_names,
-            ) for i, line in tqdm(enumerate(lines), total=len(lines))])
+                use_compound_names=use_compound_names
+            ) for i, line in tqdm(enumerate(lines), total=len(lines))
+        ])
+
+    # Filter out invalid SMILES
+    data = filter_invalid_smiles(data=data, allow_invalid_smiles=allow_invalid_smiles, logger=logger)
 
     if data.data[0].features is not None:
         args.features_dim = len(data.data[0].features)
@@ -180,8 +213,19 @@ def get_data(path: str,
     return data
 
 
-def get_data_from_smiles(smiles: List[str]) -> MoleculeDataset:
-    return MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
+def get_data_from_smiles(smiles: List[str], allow_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+    """
+    Converts SMILES to a MoleculeDataset.
+
+    :param smiles: A list of SMILES strings.
+    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, invalid smiles are skipped.
+    :param logger: Logger.
+    :return: A MoleculeDataset with all of the provided SMILES.
+    """
+    data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
+    data = filter_invalid_smiles(data=data, allow_invalid_smiles=allow_invalid_smiles, logger=logger)
+
+    return data
 
 
 def split_data(data: MoleculeDataset,
@@ -376,7 +420,7 @@ def load_prespecified_chunks(args: Namespace, logger: Logger = None):
     for fname in fnames:
         remaining_data_len = args.prespecified_chunks_max_examples_per_epoch - data_len
         path = os.path.join(args.prespecified_chunk_dir, fname)
-        data = get_data(path, args, max_data_size=remaining_data_len)
+        data = get_data(path=path, args=args, max_data_size=remaining_data_len)
         chunks.append(data)
         data_len += len(data)
         if data_len >= args.prespecified_chunks_max_examples_per_epoch:
@@ -409,10 +453,11 @@ def validate_data(data_path: str) -> Set[str]:
     header = get_header(data_path)
 
     with open(data_path) as f:
-        f.readline()  # Skip header
+        reader = csv.reader(f)
+        next(reader)  # Skip header
+
         smiles, targets = [], []
-        for line in f:
-            line = line.strip().split(',')
+        for line in reader:
             smiles.append(line[0])
             targets.append(line[1:])
 

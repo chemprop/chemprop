@@ -33,8 +33,8 @@ def get_data(path: str) -> List[Datapoint]:
 def filter_by_scaffold(args: Namespace):
     print('Loading data')
     header = get_header(args.data_path)
-    data = get_data(args.data_path)
-    scaffold_data = get_data(args.scaffold_data_path)
+    data = get_data(path=args.data_path)
+    scaffold_data = get_data(path=args.scaffold_data_path)
 
     print('Generating scaffolds')
     smiles_to_scaffold = {d.smiles: generate_scaffold(d.smiles) for d in tqdm(data, total=len(data))}

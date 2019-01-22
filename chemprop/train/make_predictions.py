@@ -12,13 +12,13 @@ from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
-def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_smiles: bool = False) -> List[List[float]]:
+def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_smiles: bool = True) -> List[List[float]]:
     """
     Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
 
     :param args: Arguments.
     :param smiles: Smiles to make predictions on.
-    :param allow_invalid_smiles: Whether to allow invalid smiles. In this case, predictions for the invalid smiles
+    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, predictions for the invalid smiles
     are replaced with None.
     NOTE: Currently only works when smiles are provided as an argument instead of as a data file.
     :return: A list of lists of target predictions.
@@ -51,9 +51,9 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
 
     print('Loading data')
     if smiles is not None:
-        test_data = get_data_from_smiles(smiles)
+        test_data = get_data_from_smiles(smiles=smiles)
     else:
-        test_data = get_data(args.test_path, args, use_compound_names=args.compound_names)
+        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.compound_names)
     test_smiles = test_data.smiles()
 
     if args.compound_names:

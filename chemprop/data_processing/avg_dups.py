@@ -10,7 +10,7 @@ from chemprop.data.utils import get_data, get_header
 def average_duplicates(args):
     print('Loading data')
     header = get_header(args.data_path)
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path)
     print(f'Data size = {len(data):,}')
 
     # Map SMILES string to lists of targets

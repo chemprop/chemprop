@@ -1,4 +1,5 @@
 from argparse import Namespace
+import csv
 from logging import Logger
 import os
 from pprint import pformat
@@ -24,7 +25,13 @@ from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, g
 
 
 def run_training(args: Namespace, logger: Logger = None) -> List[float]:
-    """Trains a model and returns test scores on the model checkpoint with the highest validation score"""
+    """
+    Trains a model and returns test scores on the model checkpoint with the highest validation score.
+
+    :param args: Arguments.
+    :param logger: Logger.
+    :return: A list of ensemble scores for each task.
+    """
     if logger is not None:
         debug, info = logger.debug, logger.info
     else:
@@ -41,7 +48,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     debug('Loading data')
     args.task_names = get_task_names(args.data_path)
     desired_labels = get_desired_labels(args, args.task_names)
-    data = get_data(args.data_path, args)
+    data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
     args.real_num_tasks = args.num_tasks - args.features_size if args.predict_features else args.num_tasks
@@ -60,9 +67,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         debug(f'Splitting data with seed {args.seed}')
         if args.separate_test_set:
-            test_data = get_data(args.separate_test_set, args, features_path=args.separate_test_set_features)
+            test_data = get_data(path=args.separate_test_set, args=args, features_path=args.separate_test_set_features, logger=logger)
             if args.separate_val_set:
-                val_data = get_data(args.separate_val_set, args, features_path=args.separate_val_set_features)
+                val_data = get_data(path=args.separate_val_set, args=args, features_path=args.separate_val_set_features, logger=logger)
                 train_data = data  # nothing to split; we already got our test and val sets
             else:
                 train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
@@ -89,25 +96,28 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     if args.save_smiles_splits:
         with open(args.data_path, 'r') as f:
-            header = f.readline().strip()
+            reader = csv.reader(f)
+            header = next(reader)
+
             lines_by_smiles = {}
             indices_by_smiles = {}
-            for i, line in enumerate(f):
-                line = line.strip()
-                smiles = line.split(',')[0]
+            for i, line in enumerate(reader):
+                smiles = line[0]
                 lines_by_smiles[smiles] = line
                 indices_by_smiles[smiles] = i
 
         all_split_indices = []
         for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
             with open(os.path.join(args.save_dir, name + '_smiles.csv'), 'w') as f:
-                f.write('smiles\n')
+                writer = csv.writer(f)
+                writer.writerow(['smiles'])
                 for smiles in dataset.smiles():
-                    f.write(smiles.strip() + '\n')
+                    writer.writerow([smiles])
             with open(os.path.join(args.save_dir, name + '_full.csv'), 'w') as f:
-                f.write(header + '\n')
+                writer = csv.writer(f)
+                writer.writerow(header)
                 for smiles in dataset.smiles():
-                    f.write(lines_by_smiles[smiles] + '\n')
+                    writer.writerow(lines_by_smiles[smiles])
             split_indices = []
             for smiles in dataset.smiles():
                 split_indices.append(indices_by_smiles[smiles])
@@ -318,7 +328,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
 
         if args.split_test_by_overlap_dataset is not None:
-            overlap_data = get_data(args.split_test_by_overlap_dataset)
+            overlap_data = get_data(path=args.split_test_by_overlap_dataset, logger=logger)
             overlap_smiles = set(overlap_data.smiles())
             test_data_intersect, test_data_nonintersect = [], []
             for d in test_data.data:

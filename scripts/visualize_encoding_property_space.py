@@ -16,7 +16,7 @@ from chemprop.utils import load_checkpoint, load_scalers
 
 def visualize_encoding_property_space(args: Namespace):
     # Load data
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path)
 
     # Sort according to similarity measure
     if args.similarity_measure == 'property':

@@ -200,7 +200,6 @@ class MolGraph:
             self.f_atoms[atom_idx] = [0 for _ in range(len(self.f_atoms[atom_idx]))]
         self.f_atoms = [self.f_atoms[self.reverse_index_map[i]] for i in range(self.n_atoms)]
 
-        
         for _ in range(self.n_atoms):
             self.a2b.append([])
 

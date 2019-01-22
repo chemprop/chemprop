@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import csv
 import sys
 sys.path.append('../')
 
@@ -20,8 +21,8 @@ if __name__ == '__main__':
                         help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
     args = parser.parse_args()
 
-    data_1 = get_data(args.data_path_1, use_compound_names=args.compound_names_1)
-    data_2 = get_data(args.data_path_2, use_compound_names=args.compound_names_2)
+    data_1 = get_data(path=args.data_path_1, use_compound_names=args.compound_names_1)
+    data_2 = get_data(path=args.data_path_2, use_compound_names=args.compound_names_2)
 
     smiles1 = set(data_1.smiles())
     smiles2 = set(data_2.smiles())
@@ -36,16 +37,18 @@ if __name__ == '__main__':
 
     if args.save_intersection_path is not None:
         with open(args.data_path_1, 'r') as rf, open(args.save_intersection_path, 'w') as wf:
-            header = rf.readline()
-            wf.write(header.strip() + '\n')
-            for line in rf:
-                if line.strip().split(',')[0] in intersection:
-                    wf.write(line.strip() + '\n')
-    
+            reader, writer = csv.reader(rf), csv.writer(wf)
+            header = next(reader)
+            writer.writerow(header)
+            for line in reader:
+                if line[0] in intersection:
+                    writer.writerow(line)
+
     if args.save_difference_path is not None:
         with open(args.data_path_1, 'r') as rf, open(args.save_difference_path, 'w') as wf:
-            header = rf.readline()
-            wf.write(header.strip() + '\n')
-            for line in rf:
-                if line.strip().split(',')[0] not in intersection:
-                    wf.write(line.strip() + '\n')
+            reader, writer = csv.reader(rf), csv.writer(wf)
+            header = next(reader)
+            writer.writerow(header)
+            for line in reader():
+                if line[0] not in intersection:
+                    writer.writerow(line)

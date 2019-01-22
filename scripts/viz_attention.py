@@ -13,7 +13,7 @@ from chemprop.utils import load_checkpoint
 def visualize_attention(args: Namespace):
     """Visualizes attention weights."""
     print('Loading data')
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path)
     smiles = data.smiles()
     print(f'Data size = {len(smiles):,}')
 
