@@ -106,8 +106,10 @@ def get_activation_function(activation: str) -> nn.Module:
         return nn.PReLU()
     elif activation == 'tanh':
         return nn.Tanh()
+    elif activation == 'SELU':
+        return nn.SELU()
     else:
-        raise ValueError(f'Activation "{args.activation}" not supported.')
+        raise ValueError(f'Activation "{activation}" not supported.')
 
 
 def initialize_weights(model: nn.Module, args: Namespace):

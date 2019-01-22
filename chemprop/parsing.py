@@ -254,7 +254,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Normalize bond messages at each message passing step')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout probability')
-    parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh'],
+    parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU'],
                         help='Activation function')
     parser.add_argument('--attention', action='store_true', default=False,
                         help='Perform self attention over the atoms in a molecule')

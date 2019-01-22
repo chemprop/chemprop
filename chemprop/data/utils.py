@@ -364,7 +364,11 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
         # Make sure we're dealing with a binary classification task
         assert set(np.unique(task_targets)) <= {0, 1}
 
-        ones = np.count_nonzero(task_targets) / len(task_targets)
+        try:
+            ones = np.count_nonzero(task_targets) / len(task_targets)
+        except ZeroDivisionError:
+            ones = float('nan')
+            print('Warning: class has no targets')
         class_sizes.append([1 - ones, ones])
 
     return class_sizes
