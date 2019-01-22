@@ -283,10 +283,11 @@ def split_data(data: MoleculeDataset,
         assert folds_file is not None
         assert test_fold_index is not None
 
-        with open(folds_file, 'rb') as f:
-            try:
+        try:
+            with open(folds_file, 'rb') as f:
                 all_fold_indices = pickle.load(f)
-            except UnicodeDecodeError:
+        except UnicodeDecodeError:
+            with open(folds_file, 'rb') as f:
                 all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
         assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
 
