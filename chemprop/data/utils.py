@@ -152,8 +152,8 @@ def get_data(path: str,
         for line in f:
             smiles = line.split(',')[0]
 
-            if smiles == '':
-                line = 'C' + line  # bandage for if your dataset has an empty line on rare occasions
+            # if smiles == '':
+            #     line = 'C' + line  # bandage for if your dataset has an empty line on rare occasions
 
             if smiles in skip_smiles:
                 continue
@@ -234,7 +234,8 @@ def split_data(data: MoleculeDataset,
         return train_data, val_data, test_data
 
     if split_type == 'predetermined':
-        assert sizes[2] == 0  # test set is created separately
+        if not val_fold_index:
+            assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
         assert folds_file is not None
         assert test_fold_index is not None
 
