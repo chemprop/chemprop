@@ -83,7 +83,8 @@ class MoleculeDatapoint:
 
             for fg in self.features_generator:
                 features_func = get_features_func(fg, args)
-                self.features.extend(features_func(self.mol))
+                if self.mol is not None:
+                    self.features.extend(features_func(self.mol))
 
             self.features = np.array(self.features)
 
