@@ -78,7 +78,7 @@ def grid_search(args: Namespace):
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
-    with open(args.config_path, 'w') as f:
+    with open(args.config_save_path, 'w') as f:
         json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
 
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     add_train_args(parser)
     parser.add_argument('--num_iters', type=int, default=20,
                         help='Number of hyperparameter choices to try')
-    parser.add_argument('--config_path', type=str, required=True,
+    parser.add_argument('--config_save_path', type=str, required=True,
                         help='Path to .json file where best hyperparameter settings will be written')
     parser.add_argument('--log_path', type=str,
                         help='(Optional) Path to .log file where all results of the hyperparameter optimization will be written')
