@@ -117,7 +117,7 @@ def filter_invalid_smiles(data: MoleculeDataset, allow_invalid_smiles: bool = Tr
     debug = logger.debug if logger is not None else print
 
     original_data_size = len(data)
-    data = MoleculeDataset([datapoint for datapoint in data if datapoint.smiles != '' and datapoint.mol is not None])
+    data = MoleculeDataset([datapoint for datapoint in data if datapoint.smiles != '' and datapoint.mol is not None and datapoint.mol.GetNumHeavyAtoms() > 0])
     if len(data) < original_data_size:
         message = f'{original_data_size - len(data)} SMILES are invalid.'
         if allow_invalid_smiles:

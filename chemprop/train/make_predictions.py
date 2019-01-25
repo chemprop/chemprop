@@ -31,7 +31,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
         print('Validating SMILES')
         valid_indices = []
         for i, s in tqdm(enumerate(smiles), total=len(smiles)):
-            if Chem.MolFromSmiles(s) is not None:
+            if Chem.MolFromSmiles(s) is not None and Chem.MolFromSmiles(s).GetNumHeavyAtoms() > 0:
                 valid_indices.append(i)
         full_smiles = smiles
         smiles = [smiles[i] for i in valid_indices]
