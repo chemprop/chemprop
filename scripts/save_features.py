@@ -64,8 +64,10 @@ def save_features(args: Namespace):
 
     # Load partially complete data
     if args.restart:
-        os.remove(args.save_path)
-        shutil.rmtree(temp_save_dir)
+        if os.path.exists(args.save_path):
+            os.remove(args.save_path)
+        if os.path.exists(temp_save_dir):
+            shutil.rmtree(temp_save_dir)
     else:
         if os.path.exists(args.save_path):
             raise ValueError(f'"{args.save_path}" already exists and args.restart is False.')
@@ -80,11 +82,11 @@ def save_features(args: Namespace):
     # Build features map function
     data = data[len(features):]  # restrict to data for which features have not been computed yet
     mols = (d.mol for d in data)
-    if args.sequential:
-        features_map = tqdm(map(features_func, mols), total=len(data))
-    else:
+    if args.parallel:
         with Pool() as pool:
             features_map = tqdm(pool.imap(features_func, mols), total=len(data))
+    else:
+        features_map = tqdm(map(features_func, mols), total=len(data))
 
     # Get features
     temp_features = []
@@ -125,8 +127,8 @@ if __name__ == '__main__':
                         help='Path to txt file of smarts for functional groups, if functional_group features are on.')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
-    parser.add_argument('--sequential', action='store_true', default=False,
-                        help='Whether to run sequential rather than in parallel')
+    parser.add_argument('--parallel', action='store_true', default=False,
+                        help='Whether to run in parallel rather than sequentially (warning: doesn\'t always work')
     args = parser.parse_args()
 
     dirname = os.path.dirname(args.save_path)
