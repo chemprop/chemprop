@@ -83,7 +83,7 @@ class MoleculeDatapoint:
 
             for fg in self.features_generator:
                 features_func = get_features_func(fg, args)
-                if self.mol is not None:
+                if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
                     self.features.extend(features_func(self.mol))
 
             self.features = np.array(self.features)
