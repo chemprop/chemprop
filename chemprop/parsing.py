@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import json
 import os
 from tempfile import TemporaryDirectory
 
@@ -161,6 +162,9 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--test_split', type=str, default='test',
                         choices=['train', 'val', 'test'],
                         help='Which split (train/val/test) to use as the test set in run_training.py')
+    parser.add_argument('--config_path', type=str,
+                        help='Path to a .json file containing arguments. Any arguments present in the config'
+                             'file will override arguments specified via the command line or by the defaults.')
 
     # Training arguments
     parser.add_argument('--epochs', type=int, default=30,
@@ -403,6 +407,13 @@ def parse_predict_args() -> Namespace:
 def modify_train_args(args: Namespace):
     """Modifies and validates training arguments."""
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
+
+    # Load config file
+    if args.config_path is not None:
+        with open(args.config_path) as f:
+            config = json.load(f)
+            for key, value in config.items():
+                setattr(args, key, value)
 
     assert args.data_path is not None
     assert args.dataset_type is not None

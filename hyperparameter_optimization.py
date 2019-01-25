@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import json
 from typing import Dict, Union
 
 from hyperopt import fmin, hp, tpe
@@ -76,14 +77,20 @@ def grid_search(args: Namespace):
     logger.info(f'num params: {best_result["num_params"]:,}')
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
+    # Save best hyperparameter settings as JSON config file
+    with open(args.config_path, 'w') as f:
+        json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     add_train_args(parser)
-    parser.add_argument('--log_path', type=str, required=True,
-                        help='Path to .log file where the results of the hyperparameter optimization will be written')
     parser.add_argument('--num_iters', type=int, default=20,
                         help='Number of hyperparameter choices to try')
+    parser.add_argument('--config_path', type=str, required=True,
+                        help='Path to .json file where best hyperparameter settings will be written')
+    parser.add_argument('--log_path', type=str,
+                        help='(Optional) Path to .log file where all results of the hyperparameter optimization will be written')
     args = parser.parse_args()
     modify_train_args(args)
 

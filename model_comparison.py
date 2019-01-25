@@ -83,22 +83,22 @@ def run_comparison(experiment_args: Namespace,
         logger.info(f'num params: {param_count(temp_model):,}')
 
 
-def create_logger(name: str, save_path: str) -> logging.Logger:
+def create_logger(name: str, save_path: str = None) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-
-    save_dir = os.path.dirname(save_path)
-    if save_dir != '':
-        os.makedirs(save_dir, exist_ok=True)
-    fh = logging.FileHandler(save_path)
-    fh.setLevel(logging.DEBUG)
-
     logger.addHandler(ch)
-    logger.addHandler(fh)
+
+    if save_path is not None:
+        save_dir = os.path.dirname(save_path)
+        if save_dir != '':
+            os.makedirs(save_dir, exist_ok=True)
+        fh = logging.FileHandler(save_path)
+        fh.setLevel(logging.DEBUG)
+        logger.addHandler(fh)
     
     return logger
 
