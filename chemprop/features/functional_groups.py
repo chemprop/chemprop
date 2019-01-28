@@ -1,4 +1,5 @@
 from argparse import Namespace
+import os
 import numpy as np
 from typing import List, Union
 
@@ -6,7 +7,7 @@ from rdkit import Chem
 
 
 def get_num_functional_groups(args: Namespace):
-    with open(args.functional_group_smarts, 'r') as f:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'smarts.txt'), 'r') as f:
         count = len(f.readlines())
     return count
 

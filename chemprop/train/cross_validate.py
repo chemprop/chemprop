@@ -54,7 +54,4 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
                 info(f'Overall test {task_name} {args.metric} = '
                      f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
-    if args.num_chunks > 1:
-        shutil.rmtree(args.chunk_temp_dir)
-    
     return mean_score, std_score

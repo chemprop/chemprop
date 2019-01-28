@@ -99,8 +99,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
         writer = csv.writer(f)
 
         header = []
-        if args.write_smiles:
-            header.append('smiles')
+        header.append('smiles')
         if args.compound_names:
             header.append('compound_names')
 
@@ -110,8 +109,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
         for i in range(len(avg_preds)):
             row = []
 
-            if args.write_smiles:
-                row.append(test_smiles[i])
+            row.append(test_smiles[i])
             if args.compound_names:
                 row.append(compound_names[i])
 

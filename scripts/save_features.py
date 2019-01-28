@@ -58,7 +58,7 @@ def save(save_path: str, features: List[List[int]]):
 def save_features(args: Namespace):
     """Computes and saves features for a dataset of molecules as a sparse 2D array in a .pckl file."""
     # Get data and features function
-    data = get_data(path=args.data_path, max_data_size=args.max_data_size)
+    data = get_data(path=args.data_path, max_data_size=None)
     features_func = get_features_func(args.features_generator, args)
     temp_save_dir = args.save_path + '_temp'
 

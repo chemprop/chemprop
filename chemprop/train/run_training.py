@@ -16,8 +16,7 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from chemprop.data import cluster_split, MoleculeDataset, StandardScaler
-from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data, \
-    truncate_outliers, load_prespecified_chunks
+from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count, compute_pnorm
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
@@ -51,11 +50,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
-    args.real_num_tasks = args.num_tasks - args.features_size if args.predict_features else args.num_tasks
+    args.real_num_tasks = args.num_tasks
     debug(f'Number of tasks = {args.num_tasks}')
-
-    if args.dataset_type == 'bert_pretraining':
-        data.bert_init(args, logger)
 
     # Split data
     if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
@@ -76,23 +72,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         else:
             train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
 
-    # Optionally replace test data with train or val data
-    if args.test_split == 'train':
-        test_data = train_data
-    elif args.test_split == 'val':
-        test_data = val_data
-
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(data)
         debug('Class sizes')
         for i, task_class_sizes in enumerate(class_sizes):
             debug(f'{args.task_names[i]} '
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
-
-        if args.class_balance:
-            train_class_sizes = get_class_sizes(train_data)
-            class_batch_counts = torch.Tensor(train_class_sizes) * args.batch_size
-            args.class_weights = 1 / torch.Tensor(class_batch_counts)
 
     if args.save_smiles_splits:
         with open(args.data_path, 'r') as f:
@@ -127,27 +112,19 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             pickle.dump(all_split_indices, f)
 
     if args.features_scaling:
-        features_scaler = train_data.normalize_features(replace_nan_token=None if args.predict_features else 0)
+        features_scaler = train_data.normalize_features(replace_nan_token=0)
         val_data.normalize_features(features_scaler)
         test_data.normalize_features(features_scaler)
     else:
         features_scaler = None
 
-    args.train_data_size = len(train_data) if args.prespecified_chunk_dir is None else args.prespecified_chunks_max_examples_per_epoch
-
-    if args.adversarial or args.moe:
-        val_smiles, test_smiles = val_data.smiles(), test_data.smiles()
+    args.train_data_size = len(train_data)
     
     debug(f'Total size = {len(data):,} | '
           f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
 
-    # Optionally truncate outlier values
-    if args.truncate_outliers:
-        print('Truncating outliers in train set')
-        train_data = truncate_outliers(train_data)
-
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
-    if args.dataset_type == 'regression' and args.target_scaling:
+    if args.dataset_type == 'regression':
         debug('Fitting scaler')
         train_smiles, train_targets = train_data.smiles(), train_data.targets()
         scaler = StandardScaler().fit(train_targets)
@@ -156,60 +133,13 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         scaler = None
 
-    if args.moe:
-        train_data = cluster_split(train_data, 
-                                   args.num_sources, 
-                                   args.cluster_max_ratio, 
-                                   seed=args.cluster_split_seed, 
-                                   logger=logger)
-
-    # Chunk training data if too large to load in memory all at once
-    if args.num_chunks > 1:
-        os.makedirs(args.chunk_temp_dir, exist_ok=True)
-        train_paths = []
-        if args.moe:
-            chunked_sources = [td.chunk(args.num_chunks) for td in train_data]
-            chunks = []
-            for i in range(args.num_chunks):
-                chunks.append([source[i] for source in chunked_sources])
-        else:
-            chunks = train_data.chunk(args.num_chunks)
-        for i in range(args.num_chunks):
-            chunk_path = os.path.join(args.chunk_temp_dir, str(i) + '.txt')
-            memo_path = os.path.join(args.chunk_temp_dir, 'memo' + str(i) + '.txt')
-            with open(chunk_path, 'wb') as f:
-                pickle.dump(chunks[i], f)
-            train_paths.append((chunk_path, memo_path))
-        train_data = train_paths
-
     # Get loss and metric functions
     loss_func = get_loss_func(args)
     metric_func = get_metric_func(metric=args.metric, args=args)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
-    if args.maml:  # TODO refactor
-        test_targets = []
-        for task_idx in range(len(data.data[0].targets)):
-            _, task_test_data, _ = test_data.sample_maml_task(args, seed=0)
-            test_targets += task_test_data.targets()
-
-    if args.dataset_type == 'bert_pretraining':
-        sum_test_preds = {
-            'features': np.zeros((len(test_smiles), args.features_size)) if args.features_size is not None else None,
-            'vocab': np.zeros((len(test_targets['vocab']), args.vocab.output_size))
-        }
-    elif args.dataset_type == 'kernel':
-        sum_test_preds = np.zeros((len(test_targets), args.num_tasks))
-    else:
-        sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
-
-    if args.maml:
-        sum_test_preds = None  # annoying to determine exact size; will initialize later
-
-    if args.dataset_type == 'bert_pretraining':
-        # Only predict targets that are masked out
-        test_targets['vocab'] = [target if mask == 0 else None for target, mask in zip(test_targets['vocab'], test_data.mask())]
+    sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
@@ -235,9 +165,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
 
-        if args.adjust_weight_decay:
-            args.pnorm_target = compute_pnorm(model)
-
         # Optimizers
         optimizer = build_optimizer(model, args)
 
@@ -250,26 +177,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         for epoch in trange(args.epochs):
             debug(f'Epoch {epoch}')
 
-            if args.prespecified_chunk_dir is not None:
-                # load some different random chunks each epoch
-                train_data, val_data = load_prespecified_chunks(args, logger)
-                debug('Loaded prespecified chunks for epoch')
-
-            if args.dataset_type == 'unsupervised':  # won't work with moe
-                full_data = MoleculeDataset(train_data.data + val_data.data)
-                generate_unsupervised_cluster_labels(build_model(args), full_data, args)  # cluster with a new random init
-                model.create_ffn(args)  # reset the ffn since we're changing targets-- we're just pretraining the encoder.
-                optimizer.param_groups.pop()  # remove ffn parameters
-                optimizer.add_param_group({'params': model.ffn.parameters(), 'lr': args.init_lr[1], 'weight_decay': args.weight_decay[1]})
-                if args.cuda:
-                    model.ffn.cuda()
-            
-            if args.gradual_unfreezing:
-                if epoch % args.epochs_per_unfreeze == 0:
-                    unfroze_layer = model.unfreeze_next()  # consider just stopping early after we have nothing left to unfreeze?
-                    if unfroze_layer:
-                        debug('Unfroze last frozen layer')
-
             n_iter = train(
                 model=model,
                 data=train_data,
@@ -280,9 +187,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 n_iter=n_iter,
                 logger=logger,
                 writer=writer,
-                chunk_names=(args.num_chunks > 1),
-                val_smiles=val_smiles if args.adversarial else None,
-                test_smiles=test_smiles if args.adversarial or args.moe else None
+                chunk_names=False,
+                val_smiles=None,
+                test_smiles=None
             )
             if isinstance(scheduler, ExponentialLR):
                 scheduler.step()
@@ -294,12 +201,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 scaler=scaler,
                 logger=logger
             )
-
-            if args.dataset_type == 'bert_pretraining':
-                if val_scores['features'] is not None:
-                    debug(f'Validation features rmse = {val_scores["features"]:.6f}')
-                    writer.add_scalar('validation_features_rmse', val_scores['features'], n_iter)
-                val_scores = [val_scores['vocab']]
 
             # Average validation score
             avg_val_score = np.nanmean(val_scores)
@@ -318,10 +219,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     not args.minimize_score and avg_val_score > best_score or \
                     args.dataset_type == 'unsupervised':
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
-
-        if args.dataset_type == 'unsupervised':
-            return [0]  # rest of this is meaningless when unsupervised            
+                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
@@ -375,22 +273,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 logger=logger
             )
 
-        if args.maml:
-            if sum_test_preds is None:
-                sum_test_preds = np.zeros(np.array(test_preds).shape)
-
-        if args.dataset_type == 'bert_pretraining':
-            if test_preds['features'] is not None:
-                sum_test_preds['features'] += np.array(test_preds['features'])
-            sum_test_preds['vocab'] += np.array(test_preds['vocab'])
-        else:
-            sum_test_preds += np.array(test_preds)
-
-        if args.dataset_type == 'bert_pretraining':
-            if test_preds['features'] is not None:
-                debug(f'Model {model_idx} test features rmse = {test_scores["features"]:.6f}')
-                writer.add_scalar('test_features_rmse', test_scores['features'], 0)
-            test_scores = [test_scores['vocab']]
+        sum_test_preds += np.array(test_preds)
 
         # Average test score
         avg_test_score = np.nanmean(test_scores)
@@ -405,13 +288,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                     writer.add_scalar(f'test_{task_name}_{args.metric}', test_score, n_iter)
 
     # Evaluate ensemble on test set
-    if args.dataset_type == 'bert_pretraining':
-        avg_test_preds = {
-            'features': (sum_test_preds['features'] / args.ensemble_size).tolist() if sum_test_preds['features'] is not None else None,
-            'vocab': (sum_test_preds['vocab'] / args.ensemble_size).tolist()
-        }
-    else:
-        avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
+    avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
 
     if len(test_data) == 0:  # just return some garbage when we didn't want test data
         ensemble_scores = test_scores
@@ -426,12 +303,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         )
 
     # Average ensemble score
-    if args.dataset_type == 'bert_pretraining':
-        if ensemble_scores['features'] is not None:
-            info(f'Ensemble test features rmse = {ensemble_scores["features"]:.6f}')
-            writer.add_scalar('ensemble_test_features_rmse', ensemble_scores['features'], 0)
-        ensemble_scores = [ensemble_scores['vocab']]
-
     avg_ensemble_test_score = np.nanmean(ensemble_scores)
     info(f'Ensemble test {args.metric} = {avg_ensemble_test_score:.6f}')
     writer.add_scalar(f'ensemble_test_{args.metric}', avg_ensemble_test_score, 0)

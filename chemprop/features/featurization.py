@@ -47,17 +47,12 @@ def clear_cache():
 
 def get_atom_fdim(args: Namespace, is_output: bool=False) -> int:
     """Gets the dimensionality of atom features."""
-    if 'functional_group' in args.additional_atom_features \
-                or (is_output and 'functional_group' in args.additional_output_features):
-        return ATOM_FDIM + get_num_functional_groups(args)
     return ATOM_FDIM
 
 
 def get_bond_fdim(args: Namespace) -> int:
     """Gets the dimensionality of bond features."""
-    return BOND_FDIM + \
-           args.virtual_edges * (1 + len(PATH_DISTANCE_BINS)) + \
-           args.three_d * (1 + len(THREE_D_DISTANCE_BINS))
+    return BOND_FDIM
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -135,16 +130,6 @@ def bond_features(bond: Chem.rdchem.Bond,
 
 class MolGraph:
     def __init__(self, smiles: Union[str, Tuple[str, List[int]]], args: Namespace):
-        if type(smiles) == tuple:
-            smiles, index_map, substructures = smiles
-            self.index_map = index_map  # map from real atom idx to idx after collapsing substructures
-            # the following map gives an arbitrary index for each substructure, but that'll be masked to 0 anyway
-            self.reverse_index_map = [index_map.index(i) for i in range(max(index_map)+1)]
-            self.substructures = substructures
-            self.substructure_atoms = set().union(*substructures)
-            self.collapsing_substructures = True
-        else:
-            self.collapsing_substructures = False
         self.smiles = smiles
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
@@ -156,45 +141,20 @@ class MolGraph:
 
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smiles)
-        if not self.collapsing_substructures:
-            self.index_map = range(mol.GetNumAtoms())
-            self.reverse_index_map = self.index_map
-            self.substructures = set()
-            self.substructure_atoms = set()
-
-        # Add hydrogens
-        if args.addHs:
-            mol = Chem.AddHs(mol)
-
-        # Get 3D distance matrix
-        if args.three_d:
-            mol = Chem.AddHs(mol)
-            AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-            if not args.addHs:
-                mol = Chem.RemoveHs(mol)
-            try:
-                distances_3d = Chem.Get3DDistanceMatrix(mol)
-                distances_3d = np.digitize(distances_3d, THREE_D_DISTANCE_BINS)  # bin 3d distances
-            except:
-                # zero distance matrix, in case rdkit errors out
-                print('distance embedding failed')
-                distances_3d = np.zeros((mol.GetNumAtoms(), mol.GetNumAtoms()))
+        self.index_map = range(mol.GetNumAtoms())
+        self.reverse_index_map = self.index_map
+        self.substructures = set()
+        self.substructure_atoms = set()
 
         # Get topological (i.e. path-length) distance matrix and number of atoms
         distances_path = Chem.GetDistanceMatrix(mol)
 
         # fake the number of "atoms" if we are collapsing substructures
-        self.n_atoms = mol.GetNumAtoms() if not self.collapsing_substructures else max(self.index_map) + 1
+        self.n_atoms = mol.GetNumAtoms()
         
         # Get atom features
-        if 'functional_group' in args.additional_atom_features:
-            fg_featurizer = FunctionalGroupFeaturizer(args)
-            fg_features = fg_featurizer.featurize(mol)
         for i, atom in enumerate(mol.GetAtoms()):
-            if 'functional_group' in args.additional_atom_features:
-                self.f_atoms.append(atom_features(atom, fg_features[i]))
-            else:
-                self.f_atoms.append(atom_features(atom))
+            self.f_atoms.append(atom_features(atom))
         for atom_idx in self.substructure_atoms:
             # mask all of these features to 0 since they'll end up collapsed in substructures
             self.f_atoms[atom_idx] = [0 for _ in range(len(self.f_atoms[atom_idx]))]
@@ -202,13 +162,6 @@ class MolGraph:
 
         for _ in range(self.n_atoms):
             self.a2b.append([])
-
-        if args.learn_virtual_edges:
-            model = args.lve_model  # this is the MPN model, added to args so we can access it here
-            f_atoms_cuda = torch.Tensor(self.f_atoms).cuda()
-            processed_f_atoms_cuda = model.lve(f_atoms_cuda)
-            lve_scores = torch.matmul(processed_f_atoms_cuda, f_atoms_cuda.t())
-            symmetric_lve_scores = lve_scores + lve_scores.t()
 
         # Get bond features
         for a1 in range(self.n_atoms):
@@ -233,26 +186,8 @@ class MolGraph:
                             if mol.GetBondBetweenAtoms(alternate_a1, alternate_a2) is not None:
                                 bond = mol.GetBondBetweenAtoms(alternate_a1, alternate_a2)
 
-                # Randomly drop O(n_atoms) virtual edges so a total of O(n_atoms) edges instead of O(n_atoms^2)
-                if bond is None:
-                    if not args.virtual_edges:
-                        continue
-
-                    if args.drop_virtual_edges and hash(str((a1, a2))) % self.n_atoms != 0:
-                        continue
-
-                    # this option below doesn't seem to be as good
-                    # if args.drop_virtual_edges and (hash(mol_fatoms[a1])+hash(mol_fatoms[a2])) % n_atoms != 0:
-                    #     continue
-
-                    if args.learn_virtual_edges:
-                        # if score less than 0, don't add the edge
-                        model = args.lve_model
-                        if symmetric_lve_scores[a1, a2] < 0:  # want symmetry in a1/a2
-                            continue
-
-                distance_3d = distances_3d[a1, a2] if args.three_d else None
-                distance_path = distances_path[a1, a2] if args.virtual_edges else None
+                distance_3d = None
+                distance_path = None
 
                 f_bond = bond_features(bond, distance_path=distance_path, distance_3d=distance_3d)
                 if zero_bond:
@@ -315,8 +250,6 @@ class BatchMolGraph:
             self.n_bonds += mol_graph.n_bonds
 
         self.max_num_bonds = max(len(in_bonds) for in_bonds in a2b)
-        self.bert_mask_bonds = args.bert_mask_bonds
-        self.bert_vocab_func = args.bert_vocab_func
 
         self.f_atoms = torch.FloatTensor(f_atoms)
         self.f_bonds = torch.FloatTensor(f_bonds)
@@ -350,45 +283,6 @@ class BatchMolGraph:
 
         return self.a2a
 
-    def bert_mask(self,
-                  mask: List[int],
-                  zero_prob: float = 0.8,
-                  diff_prob: float = 0.1,
-                  same_prob: float = 0.1):
-        """
-        Masks the atom features for bert pretraining.
-
-        :param mask: A list of 0s and 1s where 0s indicate which atoms to mask out.
-        :param zero_prob: The probability of replacing a masked atom with 0s.
-        :param diff_prob: The probability of replacing a masked atom with a different atom feature vector.
-        :param same_prob: The probability of keeping a masked atom's feature vector.
-        """
-        f_atoms = self.f_atoms[1:]  # 1 for padding
-
-        assert zero_prob + diff_prob + same_prob == 1
-        assert len(mask) == len(f_atoms)
-
-        if self.bert_vocab_func == 'substructure':
-            zero_prob, diff_prob, same_prob = 1, 0, 0
-
-        mask_indices = np.where(np.array(mask) == 0)[0]
-        rands = np.random.random(len(mask_indices))
-
-        for i, rand in zip(mask_indices, rands):
-            if rand < zero_prob:
-                f_atoms[i] = 0  # mask with zeros
-            elif rand < zero_prob + diff_prob:
-                f_atoms[i] = f_atoms[np.random.randint(len(f_atoms))]  # mask with different atom feature vector
-            # mask with same atom feature vector (i.e. do nothing)
-            for bond_idx in self.a2b[i+1]:
-                self.f_bonds[self.b2revb[bond_idx]][:f_atoms[i].size(0)] = f_atoms[i]
-        
-        if self.bert_mask_bonds:
-            for i in range(len(self.f_bonds)):
-                if self.f_atoms[self.b2a[i]].sum() == 0 and self.f_atoms[self.b2a[self.b2revb[i]]].sum() == 0:
-                    # mask with zeros if both adjacent atoms are masked out; TODO could do something different too
-                    self.f_bonds[i] = 0
-
 
 def mol2graph(smiles_batch: List[str],
               args: Namespace) -> BatchMolGraph:
@@ -401,12 +295,12 @@ def mol2graph(smiles_batch: List[str],
     """
     mol_graphs = []
     for smiles in smiles_batch:
-        if type(smiles) == str and smiles in SMILES_TO_GRAPH:  # bert substructures passes a tuple
+        if smiles in SMILES_TO_GRAPH:
             mol_graph = SMILES_TO_GRAPH[smiles]
         else:
             mol_graph = MolGraph(smiles, args)
             # Memoize if we're not chunking or learning virtual edges, to save memory
-            if not args.no_cache and (type(smiles) == str and ((args.num_chunks == 1 and args.prespecified_chunk_dir is None) or args.memoize_chunks) and not args.learn_virtual_edges):
+            if not args.no_cache:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)
     

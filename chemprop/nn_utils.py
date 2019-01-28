@@ -122,10 +122,7 @@ def initialize_weights(model: nn.Module, args: Namespace):
         if param.dim() == 1:
             nn.init.constant_(param, 0)
         else:
-            if args.uniform_init:  # for relu, to match chembl paper
-                nn.init.xavier_uniform_(param, gain=nn.init.calculate_gain('relu'))
-            else:
-                nn.init.xavier_normal_(param)
+            nn.init.xavier_normal_(param)
 
 
 class MockLR(_LRScheduler):

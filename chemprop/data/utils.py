@@ -150,11 +150,9 @@ def get_data(path: str,
     with other info such as additional features and compound names when desired.
     """
     if args is not None:
-        max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
-        skip_smiles_path = args.skip_smiles_path
+        max_data_size = max_data_size or float('inf')
         features_path = features_path or args.features_path
     else:
-        skip_smiles_path = None
         max_data_size = max_data_size or float('inf')
 
     # Load features
@@ -166,14 +164,7 @@ def get_data(path: str,
     else:
         features_data = None
 
-    # Load smiles to skip
-    if skip_smiles_path is not None:
-        with open(skip_smiles_path) as f:
-            reader = csv.reader(f)
-            next(reader)  # skip header
-            skip_smiles = {line[0] for line in reader}
-    else:
-        skip_smiles = set()
+    skip_smiles = set()
 
     # Load data
     with open(path) as f:
@@ -251,31 +242,10 @@ def split_data(data: MoleculeDataset,
     assert len(sizes) == 3 and sum(sizes) == 1
 
     if args is not None:
-        maml, folds_file, val_fold_index, test_fold_index, scaffold_overlap = \
-            args.maml, args.folds_file, args.val_fold_index, args.test_fold_index, args.scaffold_overlap
+        folds_file, val_fold_index, test_fold_index = \
+            args.folds_file, args.val_fold_index, args.test_fold_index
     else:
-        folds_file = val_fold_index = test_fold_index = scaffold_overlap = None
-        maml = False
-
-    if maml:
-        train_data, val_data, test_data = deepcopy(data), deepcopy(data), deepcopy(data)
-
-        task_idxs = list(range(data.num_tasks()))
-        random.seed(seed)
-        random.shuffle(task_idxs)
-
-        train_size = int(sizes[0] * data.num_tasks())
-        train_val_size = int((sizes[0] + sizes[1]) * data.num_tasks())
-
-        train_task_idxs = task_idxs[:train_size]
-        val_task_idxs = task_idxs[train_size:train_val_size]
-        test_task_idxs = task_idxs[train_val_size:]
-
-        train_data.maml_init(train_task_idxs)
-        val_data.maml_init(val_task_idxs)
-        test_data.maml_init(test_task_idxs)
-
-        return train_data, val_data, test_data
+        folds_file = val_fold_index = test_fold_index = None
 
     if split_type == 'predetermined':
         if not val_fold_index:
@@ -320,13 +290,6 @@ def split_data(data: MoleculeDataset,
     
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
-
-    elif split_type == 'scaffold_one':
-        return scaffold_split_one(data)
-
-    elif split_type == 'scaffold_overlap':
-        assert scaffold_overlap is not None
-        return scaffold_split_overlap(data, overlap=scaffold_overlap, seed=seed, logger=logger)
 
     elif split_type == 'random':
         data.shuffle(seed=seed)
@@ -400,46 +363,6 @@ def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
         data[i].targets = targets[i]
 
     return data
-
-
-def load_prespecified_chunks(args: Namespace, logger: Logger = None):
-    """
-    Load some number of chunks into train and val datasets. 
-
-    :param args: Namespace of arguments.
-    :param logger: An optional logger.
-    :return: A tuple containing the train and validation MoleculeDatasets
-    from loading a few random chunks. 
-    """
-    fnames = []
-    for _, _, files in os.walk(args.prespecified_chunk_dir):
-        fnames.extend(files)
-    random.shuffle(fnames)
-
-    data_len = 0
-    chunks = []
-    for fname in fnames:
-        remaining_data_len = args.prespecified_chunks_max_examples_per_epoch - data_len
-        path = os.path.join(args.prespecified_chunk_dir, fname)
-        data = get_data(path=path, args=args, max_data_size=remaining_data_len)
-        chunks.append(data)
-        data_len += len(data)
-        if data_len >= args.prespecified_chunks_max_examples_per_epoch:
-            break
-
-    data = [d for chunk in chunks for d in chunk.data]
-    random.shuffle(data)
-    data = MoleculeDataset(data)
-
-    if args.dataset_type == 'bert_pretraining':
-        data.bert_init(args, logger)
-
-    split_sizes = deepcopy(args.split_sizes)
-    split_sizes[2] = 0  # no test set
-    split_sizes = [i / sum(split_sizes) for i in split_sizes]
-    train, val, _ = split_data(data=data, split_type=args.split_type, sizes=split_sizes, args=args)
-
-    return train, val
 
 
 def validate_data(data_path: str) -> Set[str]:

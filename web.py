@@ -258,7 +258,6 @@ def predict():
     args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
     args.preds_path = preds_path
     args.checkpoint_path = checkpoint_path
-    args.write_smiles = True
     if gpu is not None:
         if gpu == 'None':
             args.no_cuda = True
