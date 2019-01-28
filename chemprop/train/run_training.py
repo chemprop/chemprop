@@ -224,54 +224,22 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
-
-        if args.split_test_by_overlap_dataset is not None:
-            overlap_data = get_data(path=args.split_test_by_overlap_dataset, logger=logger)
-            overlap_smiles = set(overlap_data.smiles())
-            test_data_intersect, test_data_nonintersect = [], []
-            for d in test_data.data:
-                if d.smiles in overlap_smiles:
-                    test_data_intersect.append(d)
-                else:
-                    test_data_nonintersect.append(d)
-            test_data_intersect, test_data_nonintersect = MoleculeDataset(test_data_intersect), MoleculeDataset(test_data_nonintersect)
-            for name, td in [('Intersect', test_data_intersect), ('Nonintersect', test_data_nonintersect)]:
-                test_preds = predict(
-                    model=model,
-                    data=td,
-                    args=args,
-                    scaler=scaler,
-                    logger=logger
-                )
-                test_scores = evaluate_predictions(
-                    preds=test_preds,
-                    targets=td.targets(),
-                    metric_func=metric_func,
-                    dataset_type=args.dataset_type,
-                    args=args,
-                    logger=logger
-                )
-                avg_test_score = np.nanmean(test_scores)
-                info(f'Model {model_idx} test {args.metric} for {name} = {avg_test_score:.6f}')
         
-        if len(test_data) == 0:  # just get some garbage results without crashing; in this case we didn't care anyway
-            test_preds, test_scores = sum_test_preds, [0 for _ in range(len(args.task_names))]
-        else:
-            test_preds = predict(
-                model=model,
-                data=test_data,
-                args=args,
-                scaler=scaler,
-                logger=logger
-            )
-            test_scores = evaluate_predictions(
-                preds=test_preds,
-                targets=test_targets,
-                metric_func=metric_func,
-                dataset_type=args.dataset_type,
-                args=args,
-                logger=logger
-            )
+        test_preds = predict(
+            model=model,
+            data=test_data,
+            args=args,
+            scaler=scaler,
+            logger=logger
+        )
+        test_scores = evaluate_predictions(
+            preds=test_preds,
+            targets=test_targets,
+            metric_func=metric_func,
+            dataset_type=args.dataset_type,
+            args=args,
+            logger=logger
+        )
 
         sum_test_preds += np.array(test_preds)
 

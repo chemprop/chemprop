@@ -186,6 +186,8 @@ class MolGraph:
                             if mol.GetBondBetweenAtoms(alternate_a1, alternate_a2) is not None:
                                 bond = mol.GetBondBetweenAtoms(alternate_a1, alternate_a2)
 
+                if bond is None:
+                    continue
                 distance_3d = None
                 distance_path = None
 

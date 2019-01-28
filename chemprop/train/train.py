@@ -60,12 +60,14 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
 
-    num_iters = len(data)
+    num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
 
     iter_size = args.batch_size
 
     for i in trange(0, num_iters, iter_size):
         # Prepare batch
+        if i + args.batch_size > len(data):
+            break
         mol_batch = MoleculeDataset(data[i:i + args.batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
         batch = smiles_batch
