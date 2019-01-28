@@ -12,8 +12,7 @@ from rdkit import Chem
 from tqdm import tqdm
 
 from .scaler import StandardScaler
-from .vocab import load_vocab, Vocab, get_substructures, substructure_to_feature
-from chemprop.features import get_features_func, get_kernel_func
+from chemprop.features import get_features_func
 
 
 class SparseNoneArray:

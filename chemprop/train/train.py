@@ -18,7 +18,6 @@ from torch.multiprocessing import Process, Queue
 
 from chemprop.data import MoleculeDataset
 from chemprop.features import featurization, mol2graph
-from chemprop.features.async_featurization import async_mol2graph
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 from chemprop.models import build_model
 

@@ -1,5 +1,4 @@
 import chemprop.data
-import chemprop.data_processing
 import chemprop.features
 import chemprop.models
 import chemprop.train

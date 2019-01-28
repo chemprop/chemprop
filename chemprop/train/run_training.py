@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import cluster_split, generate_unsupervised_cluster_labels, MoleculeDataset, StandardScaler
+from chemprop.data import cluster_split, MoleculeDataset, StandardScaler
 from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data, \
     truncate_outliers, load_prespecified_chunks
 from chemprop.models import build_model

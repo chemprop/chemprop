@@ -11,7 +11,6 @@ from tqdm import trange
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.features import mol2graph
-from chemprop.features.async_featurization import async_mol2graph
 from chemprop.models import build_model
 from chemprop.utils import get_loss_func
 
