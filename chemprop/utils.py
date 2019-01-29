@@ -69,8 +69,6 @@ def load_checkpoint(path: str,
 
     args.cuda = cuda
 
-    load_encoder_only = current_args.load_encoder_only if current_args is not None else False
-
     # Build model
     model = build_model(args)
     model_state_dict = model.state_dict()
@@ -78,8 +76,6 @@ def load_checkpoint(path: str,
     # Skip missing parameters and parameters of mismatched size
     pretrained_state_dict = {}
     for param_name in loaded_state_dict.keys():
-        if load_encoder_only and 'encoder' not in param_name:
-            continue
 
         if param_name not in model_state_dict:
             debug(f'Pretrained parameter "{param_name}" cannot be found in model parameters.')
