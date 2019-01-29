@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .mpn import MPN
-from chemprop.nn_utils import get_activation_function, initialize_weights, MayrDropout, MayrLinear, MAMLLinear
+from chemprop.nn_utils import get_activation_function, initialize_weights
 
 
 class MoleculeModel(nn.Module):

@@ -145,7 +145,7 @@ class MoleculeDataset(Dataset):
 
         return self.scaler
     
-    def set_targets(self, targets: List[List[float]]):  # for unsupervised pretraining only
+    def set_targets(self, targets: List[List[float]]):
         assert len(self.data) == len(targets) # assume user kept them aligned
         for i in range(len(self.data)):
             self.data[i].set_targets(targets[i])

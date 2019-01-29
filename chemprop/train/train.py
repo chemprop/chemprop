@@ -6,7 +6,6 @@ import os
 
 from tensorboardX import SummaryWriter
 import torch
-torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.nn as nn
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
@@ -14,7 +13,6 @@ from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 from tqdm import trange, tqdm
 import pickle
 from copy import deepcopy
-from torch.multiprocessing import Process, Queue
 
 from chemprop.data import MoleculeDataset
 from chemprop.features import featurization, mol2graph
@@ -30,10 +28,7 @@ def train(model: nn.Module,
           args: Namespace,
           n_iter: int = 0,
           logger: logging.Logger = None,
-          writer: SummaryWriter = None,
-          chunk_names: bool = False,
-          val_smiles: List[str] = None,
-          test_smiles: List[str] = None) -> int:
+          writer: SummaryWriter = None) -> int:
     """
     Trains a model for an epoch.
 
@@ -46,10 +41,6 @@ def train(model: nn.Module,
     :param n_iter: The number of iterations (training examples) trained on so far.
     :param logger: A logger for printing intermediate results.
     :param writer: A tensorboardX SummaryWriter.
-    :param chunk_names: Whether to train on the data in chunks. In this case,
-    data must be a list of paths to the data chunks.
-    :param val_smiles: Validation smiles strings without targets.
-    :param test_smiles: Test smiles strings without targets, used for adversarial setting.
     :return: The total number of iterations (training examples) trained on so far.
     """
     debug = logger.debug if logger is not None else print

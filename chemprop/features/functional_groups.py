@@ -18,7 +18,7 @@ class FunctionalGroupFeaturizer:
     """
     def __init__(self, args: Namespace):
         self.smarts = []
-        with open(args.functional_group_smarts, 'r') as f:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'smarts.txt'), 'r') as f:
             for line in f:
                 self.smarts.append(Chem.MolFromSmarts(line.strip()))
     

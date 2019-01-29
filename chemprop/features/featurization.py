@@ -92,9 +92,7 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
     return features
 
 
-def bond_features(bond: Chem.rdchem.Bond,
-                  distance_path: int = None,
-                  distance_3d: int = None) -> List[Union[bool, int, float]]:
+def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for a bond.
 
@@ -118,13 +116,6 @@ def bond_features(bond: Chem.rdchem.Bond,
             (bond.IsInRing() if bt is not None else 0)
         ]
         fbond += onek_encoding_unk(int(bond.GetStereo()), list(range(6)))
-
-    if distance_path is not None:
-        fbond += onek_encoding_unk(distance_path, PATH_DISTANCE_BINS)
-
-    if distance_3d is not None:
-        fbond += onek_encoding_unk(distance_3d, THREE_D_DISTANCE_BINS)
-
     return fbond
 
 
@@ -141,10 +132,6 @@ class MolGraph:
 
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smiles)
-        self.index_map = range(mol.GetNumAtoms())
-        self.reverse_index_map = self.index_map
-        self.substructures = set()
-        self.substructure_atoms = set()
 
         # Get topological (i.e. path-length) distance matrix and number of atoms
         distances_path = Chem.GetDistanceMatrix(mol)
@@ -155,10 +142,7 @@ class MolGraph:
         # Get atom features
         for i, atom in enumerate(mol.GetAtoms()):
             self.f_atoms.append(atom_features(atom))
-        for atom_idx in self.substructure_atoms:
-            # mask all of these features to 0 since they'll end up collapsed in substructures
-            self.f_atoms[atom_idx] = [0 for _ in range(len(self.f_atoms[atom_idx]))]
-        self.f_atoms = [self.f_atoms[self.reverse_index_map[i]] for i in range(self.n_atoms)]
+        self.f_atoms = [self.f_atoms[i] for i in range(self.n_atoms)]
 
         for _ in range(self.n_atoms):
             self.a2b.append([])
@@ -166,34 +150,12 @@ class MolGraph:
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
-                bond = mol.GetBondBetweenAtoms(self.reverse_index_map[a1], self.reverse_index_map[a2])
-                zero_bond = self.reverse_index_map[a1] in self.substructure_atoms or self.reverse_index_map[a2] in self.substructure_atoms
-                
-                # need to check all possible atoms in the substructure to see if there's a bond
-                if zero_bond:
-                    candidate_endpoints = []
-                    for atom_idx in [a1, a2]:
-                        reverse_idx = self.reverse_index_map[atom_idx]
-                        if reverse_idx in self.substructure_atoms:
-                            for substructure in self.substructures:
-                                if reverse_idx in substructure:
-                                    candidate_endpoints.append(substructure)
-                                    break
-                        else:
-                            candidate_endpoints.append([atom_idx])
-                    for alternate_a1 in candidate_endpoints[0]:
-                        for alternate_a2 in candidate_endpoints[1]:
-                            if mol.GetBondBetweenAtoms(alternate_a1, alternate_a2) is not None:
-                                bond = mol.GetBondBetweenAtoms(alternate_a1, alternate_a2)
+                bond = mol.GetBondBetweenAtoms(a1, a2)
 
                 if bond is None:
                     continue
-                distance_3d = None
-                distance_path = None
 
-                f_bond = bond_features(bond, distance_path=distance_path, distance_3d=distance_3d)
-                if zero_bond:
-                    f_bond = [0 for _ in range(len(f_bond))]
+                f_bond = bond_features(bond)
 
                 if args.atom_messages:
                     self.f_bonds.append(f_bond)
@@ -216,7 +178,6 @@ class MolGraph:
 
 class BatchMolGraph:
     def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
-        # this is only used in visualization; smiles strings will be incorrect when masking substructures
         self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
         self.n_mols = len(self.smiles_batch)
 

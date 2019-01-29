@@ -28,10 +28,9 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     :return: A list with the score for each task based on `metric_func`.
     """
     if args is not None:
-        real_num_tasks, metric = \
-            args.real_num_tasks, args.metric
+        metric = args.metric
     else:
-        real_num_tasks = metric = None
+        metric = None
 
     info = logger.info if logger is not None else print
     data_size, num_tasks = len(preds), len(preds[0])
@@ -63,7 +62,6 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
                 results.append(float('nan'))
                 continue
 
-        # TODO: handle this case better??? (this currently only happens when a feature is None for all molecules)
         if len(valid_targets[i]) == 0:
             continue
         results.append(metric_func(valid_targets[i], valid_preds[i]))

@@ -10,12 +10,12 @@ from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precis
     roc_auc_score, accuracy_score
 import torch
 import torch.nn as nn
-from torch.optim import Adam, Optimizer, SGD
+from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
 
 from chemprop.data import StandardScaler
 from chemprop.models import build_model
-from chemprop.nn_utils import MockLR, NoamLR
+from chemprop.nn_utils import NoamLR
 
 
 def save_checkpoint(path: str,
@@ -146,7 +146,7 @@ def get_loss_func(args: Namespace) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
-    :param args: Namespace containing the dataset type ("classification" or "regression" or "regression_with_binning").
+    :param args: Namespace containing the dataset type ("classification" or "regression").
     :return: A PyTorch loss function.
     """
     if args.dataset_type == 'classification':

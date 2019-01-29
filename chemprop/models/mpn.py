@@ -9,8 +9,7 @@ import torch.nn as nn
 import numpy as np
 
 from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
-from chemprop.nn_utils import create_mask, index_select_ND, visualize_atom_attention, visualize_bond_attention, \
-    get_activation_function
+from chemprop.nn_utils import create_mask, index_select_ND, get_activation_function
 
 
 class MPNEncoder(nn.Module):
@@ -71,14 +70,12 @@ class MPNEncoder(nn.Module):
 
     def forward(self,
                 mol_graph: BatchMolGraph,
-                features_batch: List[np.ndarray] = None,
-                viz_dir: str = None) -> Union[torch.FloatTensor, Dict[str, torch.FloatTensor]]:
+                features_batch: List[np.ndarray] = None) -> Union[torch.FloatTensor, Dict[str, torch.FloatTensor]]:
         """
         Encodes a batch of molecular graphs.
 
         :param mol_graph: A BatchMolGraph representing a batch of molecular graphs.
         :param features_batch: A list of ndarrays containing additional features.
-        :param viz_dir: Directory in which to save visualized attention weights.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
         if self.use_input_features:
@@ -140,7 +137,6 @@ class MPNEncoder(nn.Module):
 
         # Readout
         mol_vecs = []
-        # TODO: Maybe do this in parallel with masking rather than looping
         for i, (a_start, a_size) in enumerate(a_scope):
             if a_size == 0:
                 mol_vecs.append(self.cached_zero_vector)
@@ -194,19 +190,3 @@ class MPN(nn.Module):
         output = self.encoder.forward(batch, features_batch)
 
         return output
-
-    def viz_attention(self,
-                      viz_dir: str,
-                      batch: Union[List[str], BatchMolGraph],
-                      features_batch: List[np.ndarray] = None):
-        """
-        Visualizes attention weights for a batch of molecular SMILES strings
-
-        :param viz_dir: Directory in which to save visualized attention weights.
-        :param batch: A list of SMILES strings or a BatchMolGraph (if self.graph_input).
-        :param features_batch: A list of ndarrays containing additional features.
-        """
-        if not self.graph_input:
-            batch = mol2graph(batch, self.args)
-
-        self.encoder.forward(batch, features_batch, viz_dir=viz_dir)

@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import cluster_split, MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count, compute_pnorm
@@ -50,27 +50,19 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
-    args.real_num_tasks = args.num_tasks
     debug(f'Number of tasks = {args.num_tasks}')
 
     # Split data
-    if args.dataset_type == 'regression_with_binning':  # Note: for now, binning based on whole dataset, not just training set
-        data, bin_predictions, regression_data = data
-        args.bin_predictions = bin_predictions
-        debug(f'Splitting data with seed {args.seed}')
-        train_data, _, _ = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
-        _, val_data, test_data = split_data(regression_data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
-    else:
-        debug(f'Splitting data with seed {args.seed}')
-        if args.separate_test_set:
-            test_data = get_data(path=args.separate_test_set, args=args, features_path=args.separate_test_set_features, logger=logger)
-            if args.separate_val_set:
-                val_data = get_data(path=args.separate_val_set, args=args, features_path=args.separate_val_set_features, logger=logger)
-                train_data = data  # nothing to split; we already got our test and val sets
-            else:
-                train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
+    debug(f'Splitting data with seed {args.seed}')
+    if args.separate_test_set:
+        test_data = get_data(path=args.separate_test_set, args=args, features_path=args.separate_test_set_features, logger=logger)
+        if args.separate_val_set:
+            val_data = get_data(path=args.separate_val_set, args=args, features_path=args.separate_val_set_features, logger=logger)
+            train_data = data  # nothing to split; we already got our test and val sets
         else:
-            train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
+            train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
+    else:
+        train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
 
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(data)
@@ -186,10 +178,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 args=args,
                 n_iter=n_iter,
                 logger=logger,
-                writer=writer,
-                chunk_names=False,
-                val_smiles=None,
-                test_smiles=None
+                writer=writer
             )
             if isinstance(scheduler, ExponentialLR):
                 scheduler.step()
@@ -214,10 +203,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                         debug(f'Validation {task_name} {args.metric} = {val_score:.6f}')
                         writer.add_scalar(f'validation_{task_name}_{args.metric}', val_score, n_iter)
 
-            # Save model checkpoint if improved validation score, or always save it if unsupervised
+            # Save model checkpoint if improved validation score
             if args.minimize_score and avg_val_score < best_score or \
-                    not args.minimize_score and avg_val_score > best_score or \
-                    args.dataset_type == 'unsupervised':
+                    not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
 

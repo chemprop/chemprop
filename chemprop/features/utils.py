@@ -53,7 +53,7 @@ def get_features_func(features_generator: str,
 
     if features_generator == 'rdkit_2d':
         assert args is not None
-        assert hasattr(args, 'functional_group_smarts')  # TODO: handle this in a better way
+        assert hasattr(args, 'functional_group_smarts')
         return partial(rdkit_2d_features, args=args)
 
     if features_generator == "rdkit_2d_normalized":

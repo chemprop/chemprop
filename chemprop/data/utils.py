@@ -16,31 +16,6 @@ from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, sc
 from chemprop.features import load_features
 
 
-def convert_to_classes(data: MoleculeDataset, num_bins: int = 20) -> Tuple[MoleculeDataset,
-                                                                           np.ndarray,
-                                                                           MoleculeDataset]:
-    """
-    Converts regression data to classification data by binning.
-
-    :param data: Regression data as a list of molecule datapoints.
-    :param num_bins: The number of bins to use when doing regression_with_binning.
-    :return: A tuple with the new classification data, a numpy array with the bin centers,
-    and the original regression data.
-    """
-    print(f'Num bins for binning: {num_bins}')
-    old_data = deepcopy(data)
-    for task in range(data.num_tasks()):
-        regress = np.array([targets[task] for targets in data.targets()])
-        bin_edges = np.quantile(regress, [float(i) / float(num_bins) for i in range(num_bins + 1)])
-
-        for i in range(len(data)):
-            bin_index = (bin_edges <= regress[i]).sum() - 1
-            bin_index = min(bin_index, num_bins - 1)
-            data[i].targets[task] = bin_index
-
-    return data, np.array([(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(num_bins)]), old_data
-
-
 def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     """
     Gets the task names from a data CSV file.
@@ -198,9 +173,6 @@ def get_data(path: str,
     if data.data[0].features is not None:
         args.features_dim = len(data.data[0].features)
 
-    if args is not None and args.dataset_type == 'regression_with_binning':
-        data = convert_to_classes(data, args.num_bins)
-
     return data
 
 
@@ -284,9 +256,6 @@ def split_data(data: MoleculeDataset,
             val = train_val[train_size:]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type == 'scaffold':
-        return scaffold_split(data, sizes=sizes, balanced=False, logger=logger)
     
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
@@ -337,32 +306,6 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
         class_sizes.append([1 - ones, ones])
 
     return class_sizes
-
-
-def truncate_outliers(data: MoleculeDataset) -> MoleculeDataset:
-    """Truncates outlier values in a regression dataset.
-
-    Every value which is outside mean +/- 3 * std are truncated to equal mean +/- 3 * std.
-
-    :param data: A MoleculeDataset.
-    :return: The same data but with outliers truncated.
-    """
-    # Determine mean and standard deviation by task
-    smiles, targets = data.smiles(), data.targets()
-    targets_by_task = np.array(targets).T
-    means = np.mean(targets, axis=0)
-    stds = np.std(targets, axis=0)
-
-    # Truncate values
-    for i, task_values in enumerate(targets_by_task):
-        targets_by_task[i] = np.clip(task_values, means[i] - 3 * stds[i], means[i] + 3 * stds[i])
-
-    # Reconstruct data
-    targets = targets_by_task.T.tolist()
-    for i in range(len(data)):
-        data[i].targets = targets[i]
-
-    return data
 
 
 def validate_data(data_path: str) -> Set[str]:

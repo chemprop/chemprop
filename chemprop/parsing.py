@@ -42,7 +42,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Use only the additional features in an FFN, no graph network')
     parser.add_argument('--features_generator', type=str, nargs='*',
                         choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
-                        help='Method of generating additional features')  # TODO allow multiple options
+                        help='Method of generating additional features')
     parser.add_argument('--features_path', type=str, nargs='*',
                         help='Path to features to use in FNN (instead of features_generator)')                   
     parser.add_argument('--save_dir', type=str, default=None,
