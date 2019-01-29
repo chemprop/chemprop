@@ -19,11 +19,15 @@ from scripts.overlap import overlap
 from scripts.save_features import save_features
 from scripts.similarity import scaffold_similarity, morgan_similarity
 
+from hyperparameter_optimization import grid_search
+
 # very basic tests to check that nothing crashes. not 100% coverage but covers basically everything we care about
 
 # TODO hyperopt
 
 class TestScripts(unittest.TestCase):
+    def tearDown(self):
+        clear_cache()
 
     def test_avg_dups(self):
         try:
@@ -373,6 +377,35 @@ class TestPredict(unittest.TestCase):
             make_predictions(self.args)
         except:
             self.fail('predict_compound_names')
+
+class TestHyperopt(unittest.TestCase):
+    def test_hyperopt(self):
+        try:
+            parser = ArgumentParser()
+            add_train_args(parser)
+            parser.add_argument('--num_iters', type=int, default=20,
+                                help='Number of hyperparameter choices to try')
+            parser.add_argument('--config_save_path', type=str,
+                                help='Path to .json file where best hyperparameter settings will be written')
+            parser.add_argument('--log_dir', type=str,
+                                help='(Optional) Path to a directory where all results of the hyperparameter optimization will be written')
+            args = parser.parse_args([])
+            args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            args.dataset_type = 'regression'
+            args.batch_size = 2
+            args.hidden_size = 5
+            args.epochs = 1
+            args.quiet = True
+            temp_file = NamedTemporaryFile()
+            args.config_save_path = temp_file.name
+            args.num_iters = 3
+            modify_train_args(args)
+
+            grid_search(args)
+            clear_cache()
+        except:
+            self.fail('hyperopt')
+
 
 if __name__ == '__main__':
     unittest.main()
