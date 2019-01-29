@@ -38,7 +38,7 @@ For those less familiar with the command line, we also have a web interface whic
 
 ![Training with our web interface](static/images/web_train.png "Train")
 
-![Predicting with our web interface](static/images/web_train.png "Predict")
+![Predicting with our web interface](static/images/web_predict.png "Predict")
 
 
 ## Data
