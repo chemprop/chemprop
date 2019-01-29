@@ -33,11 +33,17 @@ app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
 app.config['CUDA'] = torch.cuda.is_available()
 app.config['GPUS'] = list(range(torch.cuda.device_count()))
 
-training = 0
-progress = mp.Value('d', 0.0)
+TRAINING = 0
+PROGRESS = mp.Value('d', 0.0)
 
 
 def progress_bar(args: Namespace, progress: mp.Value):
+    """
+    Updates a progress bar displayed during training.
+
+    :param args: Arguments.
+    :param progress: The current progress.
+    """
     # no code to handle crashes in model training yet, though
     current_epoch = -1
     while current_epoch < args.epochs - 1:
@@ -53,14 +59,30 @@ def progress_bar(args: Namespace, progress: mp.Value):
 
 
 def get_datasets() -> List[str]:
+    """
+    Gets a list of the available datasets.
+
+    :return: A list of dataset names.
+    """
     return sorted(os.listdir(app.config['DATA_FOLDER']))
 
 
 def get_checkpoints() -> List[str]:
+    """
+    Gets a list of the available checkpoints.
+
+    :return: A list of checkpoint names.
+    """
     return sorted(os.listdir(app.config['CHECKPOINT_FOLDER']))
 
 
-def find_unique_path(path: str) -> str:
+def find_unused_path(path: str) -> str:
+    """
+    Given an initial path, finds an unused path by appending different numbers to the filename.
+
+    :param path: An initial path.
+    :return: An unused path.
+    """
     if not os.path.exists(path):
         return path
 
@@ -75,11 +97,25 @@ def find_unique_path(path: str) -> str:
 
 
 def name_already_exists_message(thing_being_named: str, original_path: str, new_path: str) -> str:
+    """
+    Creates a message about a path already existing and therefore being renamed.
+
+    :param thing_being_named: The thing being renamed (ex. Data, Checkpoint).
+    :param original_path: The original path where the object was supposed to be saved.
+    :param new_path: The new path where the object will actually be saved.
+    :return: A string with a message about the chagned path.
+    """
     return f'{thing_being_named} "{os.path.basename(original_path)} already exists. ' \
            f'Saving to "{os.path.basename(new_path)}".'
 
 
 def get_upload_warnings_errors(upload_item: str) -> Tuple[List[str], List[str]]:
+    """
+    Gets any upload warnings passed along in the request.
+
+    :param upload_item: The thing being uploaded (ex. Data, Checkpoint).
+    :return: A tuple with a list of warning messages and a list of error messages.
+    """
     warnings_raw = request.args.get(f'{upload_item}_upload_warnings')
     errors_raw = request.args.get(f'{upload_item}_upload_errors')
     warnings = json.loads(warnings_raw) if warnings_raw is not None else None
@@ -89,24 +125,41 @@ def get_upload_warnings_errors(upload_item: str) -> Tuple[List[str], List[str]]:
 
 
 def format_float(value: float, precision: int = 4) -> str:
+    """
+    Formats a float value to a specific precision.
+
+    :param value: The float value to format.
+    :param precision: The number of decimal places to use.
+    :return: A string containing the formatted float.
+    """
     return f'{value:.{precision}f}'
 
 
 def format_float_list(array: List[float], precision: int = 4) -> List[str]:
+    """
+    Formats a list of float values to a specific precision.
+
+    :param array: A list of float values to format.
+    :param precision: The number of decimal places to use.
+    :return: A list of strings containing the formatted floats.
+    """
     return [format_float(f, precision) for f in array]
 
 
 @app.route('/receiver', methods=['POST'])
 def receiver():
-    return jsonify(progress=progress.value, training=training)
+    """Receiver monitoring the progress of training."""
+    return jsonify(progress=PROGRESS.value, training=TRAINING)
 
 
 @app.route('/')
 def home():
+    """Renders the home page."""
     return render_template('home.html')
 
 
 def render_train(**kwargs):
+    """Renders the train page with specified kwargs."""
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('train.html',
@@ -120,7 +173,8 @@ def render_train(**kwargs):
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
-    global progress, training
+    """Renders the train page and performs training if request method is POST."""
+    global PROGRESS, TRAINING
 
     warnings, errors = [], []
 
@@ -140,7 +194,7 @@ def train():
     # Create and modify args
     parser = ArgumentParser()
     add_train_args(parser)
-    args = parser.parse_args()
+    args = parser.parse_args([])
 
     args.data_path = data_path
     args.dataset_type = dataset_type
@@ -171,9 +225,9 @@ def train():
         args.save_dir = temp_dir
         modify_train_args(args)
 
-        process = mp.Process(target=progress_bar, args=(args, progress))
+        process = mp.Process(target=progress_bar, args=(args, PROGRESS))
         process.start()
-        training = 1
+        TRAINING = 1
 
         # Run training
         logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
@@ -181,12 +235,12 @@ def train():
         process.join()
 
         # Reset globals
-        training = 0
-        progress = mp.Value('d', 0.0)
+        TRAINING = 0
+        PROGRESS = mp.Value('d', 0.0)
 
         # Check if name overlap
         original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
-        save_path = find_unique_path(original_save_path)
+        save_path = find_unused_path(original_save_path)
         if save_path != original_save_path:
             warnings.append(name_already_exists_message('Checkpoint', original_save_path, save_path))
 
@@ -204,6 +258,7 @@ def train():
 
 
 def render_predict(**kwargs):
+    """Renders the predict page with specified kwargs"""
     checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
 
     return render_template('predict.html',
@@ -217,6 +272,7 @@ def render_predict(**kwargs):
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
+    """Renders the predict page and makes predictions if the method is POST."""
     if request.method == 'GET':
         return render_predict()
 
@@ -249,7 +305,7 @@ def predict():
     # Create and modify args
     parser = ArgumentParser()
     add_predict_args(parser)
-    args = parser.parse_args()
+    args = parser.parse_args([])
 
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
     args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
@@ -286,11 +342,13 @@ def predict():
 
 @app.route('/download_predictions')
 def download_predictions():
+    """Downloads predictions as a .csv file."""
     return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
 @app.route('/data')
 def data():
+    """Renders the data page."""
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('data.html',
@@ -301,6 +359,11 @@ def data():
 
 @app.route('/data/upload/<string:return_page>', methods=['POST'])
 def upload_data(return_page: str):
+    """
+    Uploads a data .csv file.
+
+    :param return_page: The name of the page to render to after uploading the dataset.
+    """
     warnings, errors = [], []
 
     data = request.files['data']
@@ -315,7 +378,7 @@ def upload_data(return_page: str):
             data_name = secure_filename(data.filename)
             original_data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
 
-            data_path = find_unique_path(original_data_path)
+            data_path = find_unused_path(original_data_path)
             if data_path != original_data_path:
                 warnings.append(name_already_exists_message('Data', original_data_path, data_path))
 
@@ -328,17 +391,28 @@ def upload_data(return_page: str):
 
 @app.route('/data/download/<string:dataset>')
 def download_data(dataset: str):
+    """
+    Downloads a dataset as a .csv file.
+
+    :param dataset: The name of the dataset to download.
+    """
     return send_from_directory(app.config['DATA_FOLDER'], dataset, as_attachment=True)
 
 
 @app.route('/data/delete/<string:dataset>')
 def delete_data(dataset: str):
+    """
+    Deletes a dataset.
+
+    :param dataset: The name of the dataset to delete.
+    """
     os.remove(os.path.join(app.config['DATA_FOLDER'], dataset))
     return redirect(url_for('data'))
 
 
 @app.route('/checkpoints')
 def checkpoints():
+    """Renders the checkpoints page."""
     checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
 
     return render_template('checkpoints.html',
@@ -349,13 +423,18 @@ def checkpoints():
 
 @app.route('/checkpoints/upload/<string:return_page>', methods=['POST'])
 def upload_checkpoint(return_page: str):
+    """
+    Uploads a checkpoint .pt file.
+
+    :param return_page: The name of the page to render after uploading the checkpoint file.
+    """
     warnings, errors = [], []
 
     checkpoint = request.files['checkpoint']
     checkpoint_name = secure_filename(checkpoint.filename)
     original_checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
 
-    checkpoint_path = find_unique_path(original_checkpoint_path)
+    checkpoint_path = find_unused_path(original_checkpoint_path)
     if checkpoint_path != original_checkpoint_path:
         warnings.append(name_already_exists_message('Checkpoint', original_checkpoint_path, checkpoint_path))
 
@@ -368,14 +447,30 @@ def upload_checkpoint(return_page: str):
 
 @app.route('/checkpoints/download/<string:checkpoint>')
 def download_checkpoint(checkpoint: str):
+    """
+    Downloads a checkpoint .pt file.
+
+    :param checkpoint: The name of the checkpoint file to download.
+    """
     return send_from_directory(app.config['CHECKPOINT_FOLDER'], checkpoint, as_attachment=True)
 
 
 @app.route('/checkpoints/delete/<string:checkpoint>')
 def delete_checkpoint(checkpoint: str):
+    """
+    Deletes a checkpoint file.
+
+    :param checkpoint: The name of the checkpoint to delete.
+    """
     os.remove(os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint))
     return redirect(url_for('checkpoints'))
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    parser = ArgumentParser()
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host IP address')
+    parser.add_argument('--port', type=int, default=5000, help='Port')
+    parser.add_argument('--debug', action='store_true', default=False, help='Whether to run in debug mode')
+    args = parser.parse_args()
+
+    app.run(host=args.host, port=args.port, debug=args.debug)
