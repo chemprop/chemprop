@@ -104,32 +104,21 @@ def get_smiles(path: str) -> List[str]:
     return smiles
 
 
-def filter_invalid_smiles(data: MoleculeDataset, allow_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
     """
     Filters out invalid SMILES.
 
     :param data: A MoleculeDataset.
-    :param allow_invalid_smiles: Whether to allow invalid smiles.
-    If true, skips invalid smiles. If false, raises an error.
     :param logger: Logger.
     :return: A MoleculeDataset with only valid molecules.
     """
-    debug = logger.debug if logger is not None else print
-
-    original_data_size = len(data)
-    data = MoleculeDataset([datapoint for datapoint in data if datapoint.smiles != '' and datapoint.mol is not None and datapoint.mol.GetNumHeavyAtoms() > 0])
-    if len(data) < original_data_size:
-        message = f'{original_data_size - len(data)} SMILES are invalid.'
-        if allow_invalid_smiles:
-            debug(f'Warning: {message}')
-        else:
-            raise ValueError(message)
-
-    return data
+    return MoleculeDataset([datapoint for datapoint in data
+                            if datapoint.smiles != '' and datapoint.mol is not None
+                            and datapoint.mol.GetNumHeavyAtoms() > 0])
 
 
 def get_data(path: str,
-             allow_invalid_smiles: bool = True,
+             skip_invalid_smiles: bool = True,
              args: Namespace = None,
              features_path: List[str] = None,
              max_data_size: int = None,
@@ -139,7 +128,7 @@ def get_data(path: str,
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
     :param path: Path to a CSV file.
-    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, invalid smiles are skipped.
+    :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
     :param features_path: A list of paths to .pckl files containing features. If provided, it is used
     in place of args.features_path.
@@ -149,6 +138,8 @@ def get_data(path: str,
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
+    debug = logger.debug if logger is not None else print
+
     if args is not None:
         max_data_size = min(args.max_data_size or float('inf'), max_data_size or float('inf'))
         skip_smiles_path = args.skip_smiles_path
@@ -202,7 +193,12 @@ def get_data(path: str,
         ])
 
     # Filter out invalid SMILES
-    data = filter_invalid_smiles(data=data, allow_invalid_smiles=allow_invalid_smiles, logger=logger)
+    if skip_invalid_smiles:
+        original_data_len = len(data)
+        data = filter_invalid_smiles(data)
+
+        if len(data) < original_data_len:
+            debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
     if data.data[0].features is not None:
         args.features_dim = len(data.data[0].features)
@@ -213,17 +209,26 @@ def get_data(path: str,
     return data
 
 
-def get_data_from_smiles(smiles: List[str], allow_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
     """
     Converts SMILES to a MoleculeDataset.
 
     :param smiles: A list of SMILES strings.
-    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, invalid smiles are skipped.
+    :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param logger: Logger.
     :return: A MoleculeDataset with all of the provided SMILES.
     """
+    debug = logger.debug if logger is not None else print
+
     data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
-    data = filter_invalid_smiles(data=data, allow_invalid_smiles=allow_invalid_smiles, logger=logger)
+
+    # Filter out invalid SMILES
+    if skip_invalid_smiles:
+        original_data_len = len(data)
+        data = filter_invalid_smiles(data)
+
+        if len(data) < original_data_len:
+            debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
     return data
 

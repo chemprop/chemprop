@@ -1,6 +1,6 @@
 from argparse import Namespace
 import csv
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -8,37 +8,21 @@ from tqdm import tqdm
 from rdkit import Chem
 
 from .predict import predict
+from chemprop.data import MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 
-def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_smiles: bool = True) -> List[List[float]]:
+def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional[List[float]]]:
     """
     Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
 
     :param args: Arguments.
     :param smiles: Smiles to make predictions on.
-    :param allow_invalid_smiles: Whether to allow invalid smiles. If true, predictions for the invalid smiles
-    are replaced with None.
-    NOTE: Currently only works when smiles are provided as an argument instead of as a data file.
     :return: A list of lists of target predictions.
     """
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
-
-    if allow_invalid_smiles:
-        assert smiles is not None  # Note: Currently only works with smiles provided, not with data file.
-        print('Validating SMILES')
-        valid_indices = []
-        for i, s in tqdm(enumerate(smiles), total=len(smiles)):
-            if Chem.MolFromSmiles(s) is not None and Chem.MolFromSmiles(s).GetNumHeavyAtoms() > 0:
-                valid_indices.append(i)
-        full_smiles = smiles
-        smiles = [smiles[i] for i in valid_indices]
-
-    # Edge case if empty list of smiles is provided
-    if smiles is not None and len(smiles) == 0:
-        return [None] * len(full_smiles) if allow_invalid_smiles else []
 
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
@@ -51,9 +35,19 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
 
     print('Loading data')
     if smiles is not None:
-        test_data = get_data_from_smiles(smiles=smiles)
+        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False)
     else:
-        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.compound_names)
+        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.compound_names, skip_invalid_smiles=False)
+
+    print('Validating SMILES')
+    valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
+    full_data = test_data
+    test_data = MoleculeDataset([test_data[i] for i in valid_indices])
+
+    # Edge case if empty list of smiles is provided
+    if len(test_data) == 0:
+        return [None] * len(full_data)
+
     test_smiles = test_data.smiles()
 
     if args.compound_names:
@@ -87,12 +81,11 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
     print(f'Saving predictions to {args.preds_path}')
 
     # Put Nones for invalid smiles
-    if allow_invalid_smiles:
-        full_preds = [None] * len(full_smiles)
-        for i, si in enumerate(valid_indices):
-            full_preds[si] = avg_preds[i]
-        avg_preds = full_preds
-        test_smiles = full_smiles
+    full_preds = [None] * len(full_data)
+    for i, si in enumerate(valid_indices):
+        full_preds[si] = avg_preds[i]
+    avg_preds = full_preds
+    test_smiles = full_data.smiles()
 
     # Write predictions
     with open(args.preds_path, 'w') as f:
@@ -118,7 +111,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, allow_invalid_sm
             if avg_preds[i] is not None:
                 row.extend(avg_preds[i])
             else:
-                row.extend([''] * (args.num_tasks - 1))
+                row.extend([''] * args.num_tasks)
 
             writer.writerow(row)
 
