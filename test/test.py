@@ -2,20 +2,127 @@ from argparse import ArgumentParser
 import os
 import logging
 from copy import deepcopy
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 import unittest
 
 import sys
 sys.path.append('../')
 
-from chemprop.parsing import add_train_args, modify_train_args
+from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
 from chemprop.utils import create_logger
-from chemprop.train import cross_validate
+from chemprop.train import cross_validate, make_predictions
 from chemprop.features import clear_cache
+from chemprop.data.utils import get_data
+
+from scripts.avg_dups import average_duplicates
+from scripts.overlap import overlap
+from scripts.save_features import save_features
+from scripts.similarity import scaffold_similarity, morgan_similarity
 
 # very basic tests to check that nothing crashes. not 100% coverage but covers basically everything we care about
 
-# TODO features_path, separate val/test with features, folds with predetermined splits, config path, scripts
+# TODO hyperopt
+
+class TestScripts(unittest.TestCase):
+
+    def test_avg_dups(self):
+        try:
+            parser = ArgumentParser()
+            parser.add_argument('--data_path', type=str,
+                                help='Path to data CSV file')
+            parser.add_argument('--save_path', type=str,
+                                help='Path where average data CSV file will be saved')
+            args = parser.parse_args([])
+            args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            args.save_path = NamedTemporaryFile().name
+            average_duplicates(args)
+            os.unlink(args.save_path)
+        except:
+            self.fail('avg_dups')
+    
+    def test_overlap(self):
+        try:
+            parser = ArgumentParser()
+            parser.add_argument('--data_path_1', type=str,
+                                help='Path to first data CSV file')
+            parser.add_argument('--data_path_2', type=str,
+                                help='Path to second data CSV file')
+            parser.add_argument('--compound_names_1', action='store_true', default=False,
+                                help='Whether data_path_1 has compound names in addition to smiles')
+            parser.add_argument('--compound_names_2', action='store_true', default=False,
+                                help='Whether data_path_2 has compound names in addition to smiles')
+            parser.add_argument('--save_intersection_path', type=str, default=None,
+                                help='Path to save intersection at; labeled with data_path 1 header')
+            parser.add_argument('--save_difference_path', type=str, default=None,
+                                help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
+            args = parser.parse_args([])
+            args.data_path_1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            args.data_path_2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+
+            overlap(args)
+        except:
+            self.fail('overlap')
+    
+    def test_save_features(self):
+        try:
+            parser = ArgumentParser()
+            parser.add_argument('--data_path', type=str,
+                                help='Path to data CSV')
+            parser.add_argument('--features_generator', type=str,
+                                choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
+                                help='Type of features to generate')
+            parser.add_argument('--save_path', type=str,
+                                help='Path to .pckl file where features will be saved as a Python pickle file')
+            parser.add_argument('--save_frequency', type=int, default=10000,
+                                help='Frequency with which to save the features')
+            parser.add_argument('--restart', action='store_true', default=False,
+                                help='Whether to not load partially complete featurization and instead start from scratch')
+            parser.add_argument('--max_data_size', type=int,
+                                help='Maximum number of data points to load')
+            parser.add_argument('--parallel', action='store_true', default=False,
+                                help='Whether to run in parallel rather than sequentially (warning: doesn\'t always work')
+            args = parser.parse_args([])
+            args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            args.save_path = NamedTemporaryFile().name
+            args.features_generator = 'morgan_count'
+
+            dirname = os.path.dirname(args.save_path)
+            if dirname != '':
+                os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+
+            save_features(args)
+            os.unlink(args.save_path)
+        except:
+            self.fail('save_features')
+    
+    def test_similarity(self):
+        try:
+            parser = ArgumentParser()
+            parser.add_argument('--data_path_1', type=str,
+                                help='Path to first data CSV file')
+            parser.add_argument('--data_path_2', type=str,
+                                help='Path to second data CSV file')
+            parser.add_argument('--compound_names_1', action='store_true', default=False,
+                                help='Whether data_path_1 has compound names in addition to smiles')
+            parser.add_argument('--compound_names_2', action='store_true', default=False,
+                                help='Whether data_path_2 has compound names in addition to smiles')
+            parser.add_argument('--radius', type=int, default=3,
+                                help='Radius of Morgan fingerprint')
+            parser.add_argument('--sample_rate', type=float, default=1.0,
+                                help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
+            args = parser.parse_args([])
+
+            args.data_path_1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            args.data_path_2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+
+            data_1 = get_data(path=args.data_path_1, use_compound_names=args.compound_names_1)
+            data_2 = get_data(path=args.data_path_2, use_compound_names=args.compound_names_2)
+
+            scaffold_similarity(data_1.smiles(), data_2.smiles())
+            morgan_similarity(data_1.smiles(), data_2.smiles(), args.radius, args.sample_rate)
+        except:
+            self.fail('similarity')
+
 
 class TestTrain(unittest.TestCase):
 
@@ -174,6 +281,98 @@ class TestTrain(unittest.TestCase):
             cross_validate(self.args, self.logger)
         except:
             self.fail('atom_messages')
+    
+    def test_features_path(self):
+        try:
+            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.no_features_scaling = True
+            modify_train_args(self.args)
+            cross_validate(self.args, self.logger)
+        except:
+            self.fail('features_path')
+    
+    def test_separate_val_test(self):
+        try:
+            self.args.separate_val_set = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            self.args.separate_test_set = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.separate_val_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.separate_test_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.no_features_scaling = True
+            modify_train_args(self.args)
+            cross_validate(self.args, self.logger)
+        except:
+            self.fail('separate_val_test')
+    
+    def test_predetermined_split(self):
+        try:
+            self.args.split_type = 'predetermined'
+            self.args.folds_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_folds.pkl')
+            self.args.val_fold_index = 1
+            self.args.test_fold_index = 2
+            modify_train_args(self.args)
+            cross_validate(self.args, self.logger)
+        except:
+            self.fail('predetermined_split')
+    
+    def test_config(self):
+        try:
+            self.args.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+            modify_train_args(self.args)
+            cross_validate(self.args, self.logger)
+        except:
+            self.fail('config')
+
+
+class TestPredict(unittest.TestCase):
+
+    def setUp(self):
+        parser = ArgumentParser()
+        add_train_args(parser)
+        args = parser.parse_args([])
+        args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
+        args.dataset_type = 'regression'
+        args.batch_size = 2
+        args.hidden_size = 5
+        args.epochs = 1
+        args.quiet = True
+        self.temp_dir = TemporaryDirectory()
+        args.save_dir = self.temp_dir.name
+        logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
+        modify_train_args(args)
+        cross_validate(args, logger)
+        clear_cache()
+
+        parser = ArgumentParser()
+        add_predict_args(parser)
+        args = parser.parse_args([])
+        args.batch_size = 2
+        args.checkpoint_dir = self.temp_dir.name
+        args.preds_path = NamedTemporaryFile().name
+        args.test_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_smiles.csv')
+        self.args = args
+    
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        os.unlink(self.args.preds_path)
+        self.args = None
+        clear_cache()
+    
+    def test_predict(self):
+        try:
+            modify_predict_args(self.args)
+            make_predictions(self.args)
+        except:
+            self.fail('predict')
+    
+    def test_predict_compound_names(self):
+        try:
+            self.args.test_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_smiles_names.csv')
+            self.args.compound_names = True
+            modify_predict_args(self.args)
+            make_predictions(self.args)
+        except:
+            self.fail('predict_compound_names')
 
 if __name__ == '__main__':
     unittest.main()
