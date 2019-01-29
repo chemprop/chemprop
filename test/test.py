@@ -11,17 +11,18 @@ sys.path.append('../')
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.utils import create_logger
 from chemprop.train import cross_validate
+from chemprop.features import clear_cache
 
 # very basic tests to check that nothing crashes. not 100% coverage but covers basically everything we care about
 
-# TODO features_path, separate val/test with features, folds with predetermined splits, config path
+# TODO features_path, separate val/test with features, folds with predetermined splits, config path, scripts
 
 class TestTrain(unittest.TestCase):
 
     def setUp(self):
         parser = ArgumentParser()
         add_train_args(parser)
-        args = parser.parse_args()
+        args = parser.parse_args([])
         args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
         args.dataset_type = 'regression'
         args.batch_size = 2
@@ -35,6 +36,7 @@ class TestTrain(unittest.TestCase):
     def tearDown(self):
         self.args = None
         self.logger = None
+        clear_cache()
 
     def test_regression_default(self):
         try:
