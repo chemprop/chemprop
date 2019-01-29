@@ -11,36 +11,37 @@ import numpy as np
 from .data import MoleculeDataset
 
 
-def generate_scaffold(smiles: str, include_chirality: bool = False) -> str:
+def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False) -> str:
     """
     Compute the Bemis-Murcko scaffold for a SMILES string.
 
-    :param smiles: A smiles string describing a molecule.
+    :param mol: A smiles string or an RDKit molecule.
     :param include_chirality: Whether to include chirality.
     :return:
     """
-    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=include_chirality)
 
     return scaffold
 
 
-def scaffold_to_smiles(all_smiles: List[str], use_indices: bool = False) -> Dict[str, Union[Set[str], Set[int]]]:
+def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol]],
+                       use_indices: bool = False) -> Dict[str, Union[Set[str], Set[int]]]:
     """
     Computes scaffold for each smiles string and returns a mapping from scaffolds to sets of smiles.
 
-    :param all_smiles: A list of smiles strings.
+    :param mols: A list of smiles strings or RDKit molecules.
     :param use_indices: Whether to map to the smiles' index in all_smiles rather than mapping
     to the smiles string itself. This is necessary if there are duplicate smiles.
     :return: A dictionary mapping each unique scaffold to all smiles (or smiles indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
-    for i, smiles in tqdm(enumerate(all_smiles), total=len(all_smiles)):
-        scaffold = generate_scaffold(smiles)
+    for i, mol in tqdm(enumerate(mols), total=len(mols)):
+        scaffold = generate_scaffold(mol)
         if use_indices:
             scaffolds[scaffold].add(i)
         else:
-            scaffolds[scaffold].add(smiles)
+            scaffolds[scaffold].add(mol)
 
     return scaffolds
 
