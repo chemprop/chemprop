@@ -66,13 +66,13 @@ def add_train_args(parser: ArgumentParser):
                         choices=['classification', 'regression'],
                         help='Type of dataset, e.g. classification or regression.'
                              'This determines the loss function used during training.')
-    parser.add_argument('--separate_val_set', type=str,
+    parser.add_argument('--separate_val_path', type=str,
                         help='Path to separate val set, optional')
-    parser.add_argument('--separate_val_set_features', type=str, nargs='*',
+    parser.add_argument('--separate_val_features_path', type=str, nargs='*',
                         help='Path to .pckl file with features for separate val set')
-    parser.add_argument('--separate_test_set', type=str,
+    parser.add_argument('--separate_test_path', type=str,
                         help='Path to separate test set, optional')
-    parser.add_argument('--separate_test_set_features', type=str, nargs='*',
+    parser.add_argument('--separate_test_features_path', type=str, nargs='*',
                         help='Path to .pckl file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold_balanced', 'predetermined'],

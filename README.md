@@ -1,21 +1,19 @@
 # Property Prediction
-This repository contains graph convolutional networks (or message passing network) for molecule property prediction.
+This repository contains message passing neural networks for molecular property prediction.
 
 ## Table of Contents
 
-* [Installation](#installation)
-* [Data](#data)
-* [Training](#training)
-  + [Train/Validation/Test Split](#train-validation-test-split)
-    - [Random split](#random-split)
-    - [Separate test set](#separate-test-set)
-  + [Cross validation](#cross-validation)
-  + [Ensembling](#ensembling)
-  + [Model hyperparameters and augmentations](#model-hyperparameters-and-augmentations)
-* [Predicting](#predicting)
-* [TensorBoard](#tensorboard)
-* [Deepchem test](#deepchem-test)
-  + [Results](#results)
+- [Installation](#installation)
+- [Web Interface](#web-interface)
+- [Data](#data)
+- [Training](#training)
+  * [Train/Validation/Test Splits](#train-validation-test-splits)
+  * [Cross validation](#cross-validation)
+  * [Ensembling](#ensembling)
+  * [Hyperparameter Optimization](#hyperparameter-optimization)
+- [Predicting](#predicting)
+- [TensorBoard](#tensorboard)
+- [Results](#results)
 
 ## Installation
 Requirements:
@@ -33,6 +31,15 @@ Requirements:
  * Note that if you get warning messages about kyotocabinet, it's safe to ignore them.
    * This is a requirement from descriptastorus, but not necessary for the parts of descriptastorus that we use. 
    * See https://github.com/bp-kelley/descriptastorus for installation details if you want to install anyway.
+   
+## Web Interface
+
+For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. To start the web interface (after doing the above installation), run `python web.py` and then go to [localhost:5000](localhost:5000) in a web browser.
+
+![Training with our web interface](static/images/web_train.png "Train")
+
+![Predicting with our web interface](static/images/web_train.png "Predict")
+
 
 ## Data
 
@@ -43,7 +50,7 @@ CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
 CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
 ...
 ```
-Data sets from [deepchem](http://moleculenet.ai/) are available in the `data` directory.
+Datasets from [deepchem](http://moleculenet.ai/) and a 450K subset of the ChEMBL dataset from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
 
 ## Training
 
@@ -62,39 +69,40 @@ Notes:
 * Classification is assumed to be binary.
 * Empty values in the CSV are ignored.
 * `--save_dir` may be left out if you don't want to save model checkpoints.
-* The default metric for classification is AUC and the default metric for regression is RMSE. The qm8 and qm9 datasets use MAE instead of RMSE, so you need to specify `--metric mae`.
+* The default metric for classification is AUC and the default metric for regression is RMSE. Other metrics may be specified with `--metric <metric>`.
+* `--quiet` can be added to reduce the amount of debugging information printed to the console. Both a quiet and verbose version of the logs are saved in the `save_dir`.
 
-### Train/Validation/Test Split
+### Train/Validation/Test Splits
 
-#### Random split
+Our code supports several ways of splitting data into train, validation, and test splits.
 
-By default, the data in `--data_path` will be split randomly into train, validation, and test sets using the seed specified by `--seed` (default = 0). By default, the train set contains 80% of the data while the validation and test sets contain 10% of the data each. These sizes can be controlled with `--split_sizes` (for example, the default would be `--split_sizes 0.8 0.1 0.1`).
+**Random:** By default, the data in `--data_path` will be split randomly into train, validation, and test sets.
 
-#### Separate test set
+**Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified with `--split_type scaffold_balanced`.
 
-To use a different data set for testing, specify `--separate_test_path`. In this case, the data in `--data_path` will be split into only train and validation sets (80% and 20% of the data), and the test set will contain all the dta in `--separate_test_path`.
+**Separate val/test:** If you have a separate data file you would like to use as the validation or test set, you can specify it with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`.
+
+Note: Both random and scaffold  split the data into 80% train, 10% validation, and 10% test. Both also involve a random component and can be seeded with `--seed <seed>`. (A seed of 0 is used by default.)
 
 ### Cross validation
 
-k-fold cross-validation can be run by specifying the `--num_folds` argument (which is 1 by default). For example:
-```
-python train.py --data_path data/tox21.csv --dataset_type classification --num_folds 5
-```
+k-fold cross-validation can be run by specifying `--num_folds <k>` (which is 1 by default).
 
 ### Ensembling
 
-To train an ensemble, specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
+To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>` (which is 1 by default).
+
+### Hyperparameter Optimization
+
+Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the hyperopt package) in `hyperparameter_optimization.py`. This script finds the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
 ```
-python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 5
+python hyperparameter_optimization.py --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
 ```
-
-### Model hyperparameters and augmentations
-
-The base message passing architecture can be modified in a range of ways that can be controlled through command line arguments. The full range of options can be seen in `parsing.py`. Suggested modifications are:
-* `--hidden_size <int>` Control the hidden size of the neural network layers.
-* `--depth <int>` Control the number of message passing steps.
-* `--virtual_edges` Adds "virtual" edges connected non-bonded atoms to improve information flow. This works very well on some datasets (ex. QM9) but very poorly on others (ex. delaney).
-
+where `num_iters` is the number of hyperparameter settings to try and `config_save_path` is the path to a `.json` file where the optimal hyperparameters will be saved. Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the `config_path` as follows:
+```
+python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
+```
+ 
 ## Predicting
 
 To load a trained model and make predictions, run `predict.py` and specify:
@@ -117,15 +125,9 @@ python predict.py --test_path data/tox21.csv --checkpoint_path tox21_checkpoints
 
 During training, TensorBoard logs are automatically saved to the same directory as the model checkpoints. To view TensorBoard logs, run `tensorboard --logdir=<dir>` where `<dir>` is the path to the checkpoint directory. Then navigate to [http://localhost:6006](http://localhost:6006).
 
-## Deepchem test
-We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
-properties. To train our model on those datasets, run:
-```
-bash run.sh 1
-```
-where 1 is the random seed for randomly splitting the dataset into training, validation and testing (not applied to datasets with scaffold splitting).
+## Results
 
-### Results
+**NOTE:** These results are out of date and will be updated shortly.
 
 We compared our model against the graph convolution in deepchem. Our results are averaged over 3 runs with different random seeds, namely different splits across datasets. Unless otherwise indicated, all models were trained using hidden size 1800, depth 6, and master node. We did a few hyperparameter experiments on qm9, but did no searching on the other datasets, so there may still be further room for improvement.
 
