@@ -139,10 +139,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Activation function')
     parser.add_argument('--undirected', action='store_true', default=False,
                         help='Undirected edges (always sum the two relevant bond vectors)')                     
-    parser.add_argument('--ffn_input_dropout', type=float, default=None,
-                        help='Input dropout for higher-capacity FFN (defaults to dropout)')
-    parser.add_argument('--ffn_dropout', type=float, default=None,
-                        help='Dropout for higher-capacity FFN (defaults to dropout)')
     parser.add_argument('--ffn_hidden_size', type=int, default=None,
                         help='Hidden dim for higher-capacity FFN (defaults to hidden_size)')
     parser.add_argument('--ffn_num_layers', type=int, default=2,
@@ -247,10 +243,8 @@ def modify_train_args(args: Namespace):
 
     if args.ffn_hidden_size is None:
         args.ffn_hidden_size = args.hidden_size
-    if args.ffn_input_dropout is None:
-        args.ffn_input_dropout = args.dropout
-    if args.ffn_dropout is None:
-        args.ffn_dropout = args.dropout
+    args.ffn_input_dropout = args.dropout
+    args.ffn_dropout = args.dropout
 
     assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
 
