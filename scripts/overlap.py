@@ -1,26 +1,14 @@
-from argparse import ArgumentParser
+"""Computes the overlap of molecules between two datasets."""
+
+from argparse import ArgumentParser, Namespace
 import csv
 import sys
 sys.path.append('../')
 
 from chemprop.data.utils import get_data
 
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path_1', type=str, required=True,
-                        help='Path to first data CSV file')
-    parser.add_argument('--data_path_2', type=str, required=True,
-                        help='Path to second data CSV file')
-    parser.add_argument('--compound_names_1', action='store_true', default=False,
-                        help='Whether data_path_1 has compound names in addition to smiles')
-    parser.add_argument('--compound_names_2', action='store_true', default=False,
-                        help='Whether data_path_2 has compound names in addition to smiles')
-    parser.add_argument('--save_intersection_path', type=str, default=None,
-                        help='Path to save intersection at; labeled with data_path 1 header')
-    parser.add_argument('--save_difference_path', type=str, default=None,
-                        help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
-    args = parser.parse_args()
 
+def overlap(args: Namespace):
     data_1 = get_data(path=args.data_path_1, use_compound_names=args.compound_names_1)
     data_2 = get_data(path=args.data_path_2, use_compound_names=args.compound_names_2)
 
@@ -52,3 +40,22 @@ if __name__ == '__main__':
             for line in reader():
                 if line[0] not in intersection:
                     writer.writerow(line)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--data_path_1', type=str, required=True,
+                        help='Path to first data CSV file')
+    parser.add_argument('--data_path_2', type=str, required=True,
+                        help='Path to second data CSV file')
+    parser.add_argument('--compound_names_1', action='store_true', default=False,
+                        help='Whether data_path_1 has compound names in addition to smiles')
+    parser.add_argument('--compound_names_2', action='store_true', default=False,
+                        help='Whether data_path_2 has compound names in addition to smiles')
+    parser.add_argument('--save_intersection_path', type=str, default=None,
+                        help='Path to save intersection at; labeled with data_path 1 header')
+    parser.add_argument('--save_difference_path', type=str, default=None,
+                        help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
+    args = parser.parse_args()
+
+    overlap(args)

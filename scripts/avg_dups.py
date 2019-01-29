@@ -1,3 +1,5 @@
+"""Averages the target values for duplicate smiles strings. (Only used for regression datasets.)"""
+
 from argparse import ArgumentParser
 import sys
 sys.path.append('../')
@@ -5,6 +7,7 @@ from collections import defaultdict
 import numpy as np
 
 from chemprop.data.utils import get_data, get_header
+
 
 def average_duplicates(args):
     """Averages duplicate data points in a dataset."""

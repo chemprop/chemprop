@@ -103,7 +103,6 @@ To load a trained model and make predictions, run `predict.py` and specify:
   * `--checkpoint_dir <dir>` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
   * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
 * `--preds_path` Path where a CSV file containing the predictions will be saved.
-* (Optional) `--write_smiles` Add this flag if you would like to save the SMILES string for each molecule alongside the property prediction.
 
 For example:
 ```

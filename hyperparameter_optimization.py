@@ -1,3 +1,5 @@
+"""Optimizes hyperparameters using Bayesian optimization."""
+
 from argparse import ArgumentParser, Namespace
 import json
 from typing import Dict, Union
@@ -9,7 +11,7 @@ from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
-from model_comparison import create_logger, create_train_logger
+from chemprop.utils import create_logger
 
 
 SPACE = {
@@ -20,12 +22,11 @@ SPACE = {
 }
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
 
-TRAIN_LOGGER = create_train_logger()
-
 
 def grid_search(args: Namespace):
-    # Create logger for dataset
-    logger = create_logger(name='hyperparameter_optimization', save_path=args.log_path)
+    # Create loggers
+    logger = create_logger(name='hyperparameter_optimization', save_dir=args.log_dir, quiet=True)
+    train_logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
 
     # Run grid search
     results = []
@@ -43,7 +44,7 @@ def grid_search(args: Namespace):
         logger.info(hyperparams)
 
         # Cross validate
-        mean_score, std_score = cross_validate(args, TRAIN_LOGGER)
+        mean_score, std_score = cross_validate(args, train_logger)
 
         # Record results
         temp_model = build_model(args)
@@ -89,8 +90,8 @@ if __name__ == '__main__':
                         help='Number of hyperparameter choices to try')
     parser.add_argument('--config_save_path', type=str, required=True,
                         help='Path to .json file where best hyperparameter settings will be written')
-    parser.add_argument('--log_path', type=str,
-                        help='(Optional) Path to .log file where all results of the hyperparameter optimization will be written')
+    parser.add_argument('--log_dir', type=str,
+                        help='(Optional) Path to a directory where all results of the hyperparameter optimization will be written')
     args = parser.parse_args()
     modify_train_args(args)
 

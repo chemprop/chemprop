@@ -1,3 +1,5 @@
+"""Computes and saves molecular features for a dataset."""
+
 from argparse import ArgumentParser, Namespace
 from multiprocessing import Pool
 import os
@@ -56,10 +58,14 @@ def save(save_path: str, features: List[List[int]]):
 
 
 def save_features(args: Namespace):
-    """Computes and saves features for a dataset of molecules as a sparse 2D array in a .pckl file."""
+    """
+    Computes and saves features for a dataset of molecules as a sparse 2D array in a .pckl file.
+
+    :param args: Arguments.
+    """
     # Get data and features function
     data = get_data(path=args.data_path, max_data_size=None)
-    features_func = get_features_func(args.features_generator, args)
+    features_func = get_features_func(args.features_generator)
     temp_save_dir = args.save_path + '_temp'
 
     # Load partially complete data
@@ -115,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV')
     parser.add_argument('--features_generator', type=str, required=True,
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
+                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
                         help='Type of features to generate')
     parser.add_argument('--save_path', type=str, required=True,
                         help='Path to .pckl file where features will be saved as a Python pickle file')
@@ -123,8 +129,6 @@ if __name__ == '__main__':
                         help='Frequency with which to save the features')
     parser.add_argument('--restart', action='store_true', default=False,
                         help='Whether to not load partially complete featurization and instead start from scratch')
-    parser.add_argument('--functional_group_smarts', type=str, default='../chemprop/features/smarts.txt',
-                        help='Path to txt file of smarts for functional groups, if functional_group features are on.')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
     parser.add_argument('--parallel', action='store_true', default=False,

@@ -7,7 +7,11 @@ import torch
 
 
 def add_predict_args(parser: ArgumentParser):
-    """Add predict arguments to an ArgumentParser."""
+    """
+    Adds predict arguments to an ArgumentParser.
+
+    :param parser: An ArgumentParser.
+    """
     parser.add_argument('--gpu', type=int,
                         choices=list(range(torch.cuda.device_count())),
                         help='Which GPU to use')
@@ -29,7 +33,11 @@ def add_predict_args(parser: ArgumentParser):
 
 
 def add_train_args(parser: ArgumentParser):
-    """Add training arguments to an ArgumentParser."""
+    """
+    Adds training arguments to an ArgumentParser.
+
+    :param parser: An ArgumentParser.
+    """
     # General arguments
     parser.add_argument('--gpu', type=int,
                         choices=list(range(torch.cuda.device_count())),
@@ -41,7 +49,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--features_only', action='store_true', default=False,
                         help='Use only the additional features in an FFN, no graph network')
     parser.add_argument('--features_generator', type=str, nargs='*',
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
+                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
                         help='Method of generating additional features')
     parser.add_argument('--features_path', type=str, nargs='*',
                         help='Path to features to use in FNN (instead of features_generator)')                   
@@ -84,8 +92,7 @@ def add_train_args(parser: ArgumentParser):
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
     parser.add_argument('--metric', type=str, default=None,
-                        choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy', 'argmax_accuracy',
-                                 'majority_baseline_accuracy'],
+                        choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
@@ -98,8 +105,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Turn off cuda')
     parser.add_argument('--show_individual_scores', action='store_true', default=False,
                         help='Show all scores for individual targets, not just average, at the end')
-    parser.add_argument('--labels_to_show', type=str, nargs='+',
-                        help='List of targets to show individual scores for, if specified')
     parser.add_argument('--no_cache', action='store_true', default=False,
                         help='Turn off caching mol2graph computation')
     parser.add_argument('--config_path', type=str,
@@ -146,8 +151,13 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--atom_messages', action='store_true', default=False,
                         help='Use messages on atoms instead of messages on bonds')
 
+
 def update_checkpoint_args(args: Namespace):
-    """Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size."""
+    """
+    Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size.
+
+    :param args: Arguments.
+    """
     if args.checkpoint_dir is not None and args.checkpoint_path is not None:
         raise ValueError('Only one of checkpoint_dir and checkpoint_path can be specified.')
 
@@ -169,6 +179,11 @@ def update_checkpoint_args(args: Namespace):
 
 
 def modify_predict_args(args: Namespace):
+    """
+    Modifies and validates predicting args in place.
+
+    :param args: Arguments.
+    """
     assert args.test_path
     assert args.preds_path
     assert args.checkpoint_dir is not None or args.checkpoint_path is not None
@@ -194,7 +209,11 @@ def parse_predict_args() -> Namespace:
 
 
 def modify_train_args(args: Namespace):
-    """Modifies and validates training arguments."""
+    """
+    Modifies and validates training arguments in place.
+
+    :param args: Arguments.
+    """
     global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
     # Load config file
@@ -239,20 +258,22 @@ def modify_train_args(args: Namespace):
         assert not args.features_scaling
 
     args.num_lrs = 1
-    lr_params = [[args.init_lr], [args.max_lr], [args.final_lr], 1, [args.warmup_epochs], 0]
 
     if args.ffn_hidden_size is None:
         args.ffn_hidden_size = args.hidden_size
-    args.ffn_input_dropout = args.dropout
-    args.ffn_dropout = args.dropout
 
     assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
 
     if args.test:
         args.epochs = 0
 
+
 def parse_train_args() -> Namespace:
-    """Parses arguments for training (includes modifying/validating arguments)."""
+    """
+    Parses arguments for training (includes modifying/validating arguments).
+
+    :return: A Namespace containing the parsed, modified, and validated args.
+    """
     parser = ArgumentParser()
     add_train_args(parser)
     args = parser.parse_args()

@@ -1,9 +1,11 @@
+"""Cleans a dataset by removing molecules which cannot be parsed by RDKit."""
+
 from argparse import ArgumentParser
 import csv
 from rdkit import Chem
 
 
-def sanitize(data_path: str, save_path):
+def sanitize(data_path: str, save_path: str):
     with open(data_path) as f:
         reader = csv.reader(f)
         header = next(reader)

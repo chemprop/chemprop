@@ -1,3 +1,5 @@
+"""Computes the similarity of molecular scaffolds between two datasets."""
+
 from argparse import ArgumentParser
 import sys
 sys.path.append('../')
@@ -14,6 +16,7 @@ from tqdm import tqdm
 
 from chemprop.data import scaffold_to_smiles
 from chemprop.data.utils import get_data
+
 
 def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
     """
@@ -124,7 +127,6 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
     print()
     print('Percentiles for dice similarity')
     print(' | '.join([f'{i}% = {np.percentile(similarities, i):.4f}' for i in range(0, 101, 10)]))
-
 
 
 if __name__ == '__main__':

@@ -1,10 +1,6 @@
 flask
 hyperopt
-matplotlib
-mordred
-networkx
 numpy
-python-ternary
 scikit-learn
 scipy
 tensorboardX

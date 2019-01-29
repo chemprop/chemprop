@@ -1,18 +1,30 @@
-from typing import List
+from typing import Any, List
 
 import numpy as np
 
 
 class StandardScaler:
-    def __init__(self, means: np.ndarray = None, stds: np.ndarray = None, replace_nan_token=None):
-        """Initialize StandardScaler, optionally with means and standard deviations precomputed."""
+    """A StandardScaler normalizes a dataset.
+
+    When fit on a dataset, the StandardScaler learns the mean and standard deviation across the 0th axis.
+    When transforming a dataset, the StandardScaler subtracts the means and divides by the standard deviations.
+    """
+
+    def __init__(self, means: np.ndarray = None, stds: np.ndarray = None, replace_nan_token: Any = None):
+        """
+        Initialize StandardScaler, optionally with means and standard deviations precomputed.
+
+        :param means: An optional 1D numpy array of precomputed means.
+        :param stds: An optional 1D numpy array of precomputed standard deviations.
+        :param replace_nan_token: The token to use in place of nans.
+        """
         self.means = means
         self.stds = stds
         self.replace_nan_token = replace_nan_token
 
     def fit(self, X: List[List[float]]) -> 'StandardScaler':
         """
-        Learns means and standard deviations across the 0-th axis.
+        Learns means and standard deviations across the 0th axis.
 
         :param X: A list of lists of floats.
         :return: The fitted StandardScaler.

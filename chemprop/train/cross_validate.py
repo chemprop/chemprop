@@ -4,9 +4,8 @@ import os
 from typing import Tuple
 
 import numpy as np
-import shutil
 
-from chemprop.data.utils import get_task_names, get_desired_labels
+from chemprop.data.utils import get_task_names
 from .run_training import run_training
 
 
@@ -18,7 +17,6 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
     init_seed = args.seed
     save_dir = args.save_dir
     task_names = get_task_names(args.data_path)
-    desired_labels = get_desired_labels(args, task_names)
 
     # Run training on different random seeds for each fold
     all_scores = []
@@ -40,8 +38,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
 
         if args.show_individual_scores:
             for task_name, score in zip(task_names, scores):
-                if task_name in desired_labels:
-                    info(f'Seed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
+                info(f'Seed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
 
     # Report scores across models
     avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
@@ -50,8 +47,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(task_names):
-            if task_name in desired_labels:
-                info(f'Overall test {task_name} {args.metric} = '
-                     f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
+            info(f'Overall test {task_name} {args.metric} = '
+                 f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
     return mean_score, std_score

@@ -15,10 +15,10 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import MoleculeDataset, StandardScaler
-from chemprop.data.utils import get_class_sizes, get_data, get_desired_labels, get_task_names, split_data
+from chemprop.data import StandardScaler
+from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
 from chemprop.models import build_model
-from chemprop.nn_utils import param_count, compute_pnorm
+from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
     save_checkpoint
 
@@ -46,7 +46,6 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Get data
     debug('Loading data')
     args.task_names = get_task_names(args.data_path)
-    desired_labels = get_desired_labels(args, args.task_names)
     data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
@@ -127,7 +126,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Get loss and metric functions
     loss_func = get_loss_func(args)
-    metric_func = get_metric_func(metric=args.metric, args=args)
+    metric_func = get_metric_func(metric=args.metric)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
@@ -199,9 +198,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             if args.show_individual_scores:
                 # Individual validation scores
                 for task_name, val_score in zip(args.task_names, val_scores):
-                    if task_name in desired_labels:
-                        debug(f'Validation {task_name} {args.metric} = {val_score:.6f}')
-                        writer.add_scalar(f'validation_{task_name}_{args.metric}', val_score, n_iter)
+                    debug(f'Validation {task_name} {args.metric} = {val_score:.6f}')
+                    writer.add_scalar(f'validation_{task_name}_{args.metric}', val_score, n_iter)
 
             # Save model checkpoint if improved validation score
             if args.minimize_score and avg_val_score < best_score or \
@@ -239,9 +237,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         if args.show_individual_scores:
             # Individual test scores
             for task_name, test_score in zip(args.task_names, test_scores):
-                if task_name in desired_labels:
-                    info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
-                    writer.add_scalar(f'test_{task_name}_{args.metric}', test_score, n_iter)
+                info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
+                writer.add_scalar(f'test_{task_name}_{args.metric}', test_score, n_iter)
 
     # Evaluate ensemble on test set
     avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()

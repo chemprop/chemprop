@@ -1,17 +1,15 @@
-from collections import Counter
 import logging
 import math
 import os
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 from argparse import Namespace
 
-import numpy as np
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score
 import torch
 import torch.nn as nn
 from torch.optim import Adam, Optimizer
-from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
+from torch.optim.lr_scheduler import _LRScheduler
 
 from chemprop.data import StandardScaler
 from chemprop.models import build_model
@@ -159,36 +157,47 @@ def get_loss_func(args: Namespace) -> nn.Module:
 
 
 def prc_auc(targets: List[int], preds: List[float]) -> float:
+    """
+    Computes the area under the precision-recall curve.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :return: The computed prc-auc.
+    """
     precision, recall, _ = precision_recall_curve(targets, preds)
     return auc(recall, precision)
 
 
 def rmse(targets: List[float], preds: List[float]) -> float:
+    """
+    Computes the root mean squared error.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :return: The computed rmse.
+    """
     return math.sqrt(mean_squared_error(targets, preds))
 
 
-def accuracy(targets: List[int], preds: List[float]) -> float:
-    hard_preds = [1 if p > 0.5 else 0 for p in preds]
+def accuracy(targets: List[int], preds: List[float], threshold: float = 0.5) -> float:
+    """
+    Computes the accuracy of a binary prediction task using a given threshold for generating hard predictions.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0
+    :return: The computed accuracy.
+    """
+    hard_preds = [1 if p > threshold else 0 for p in preds]
     return accuracy_score(targets, hard_preds)
 
 
-def argmax_accuracy(targets: List[int], preds: List[List[float]]) -> float:
-    hard_preds = np.argmax(preds, axis=1)
-    return accuracy_score(targets, hard_preds)
-
-
-def majority_baseline_accuracy(targets: List[int], *args) -> float:
-    counter = Counter(targets)
-    return counter.most_common()[0][1] / len(targets)
-
-
-def get_metric_func(metric: str, args: Namespace = None) -> Callable:
+def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], List[float]], float]:
     """
     Gets the metric function corresponding to a given metric name.
 
     :param metric: Metric name.
-    :param args: Namespace.
-    :return: A metric function which takes as arguments a list of targets and a list of predictions.
+    :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
     """
     if metric == 'auc':
         return roc_auc_score
@@ -207,12 +216,6 @@ def get_metric_func(metric: str, args: Namespace = None) -> Callable:
     
     if metric == 'accuracy':
         return accuracy
-
-    if metric == 'argmax_accuracy':
-        return argmax_accuracy
-
-    if metric == 'majority_baseline_accuracy':
-        return majority_baseline_accuracy
 
     raise ValueError(f'Metric "{metric}" not supported.')
 
@@ -236,6 +239,7 @@ def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List
 
     :param optimizer: The Optimizer whose learning rate will be scheduled.
     :param args: Arguments.
+    :param total_epochs: The total number of epochs for which the model will be run.
     :return: An initialized learning rate scheduler.
     """
     # Learning rate scheduler
@@ -250,17 +254,22 @@ def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List
     )
 
 
-def set_logger(logger: logging.Logger, save_dir: str = None, quiet: bool = False):
+def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> logging.Logger:
     """
-    Sets up a logger with a stream handler and two file handlers.
+    Creates a logger with a stream handler and two file handlers.
 
     The stream handler prints to the screen depending on the value of `quiet`.
     One file handler (verbose.log) saves all logs, the other (quiet.log) only saves important info.
 
-    :param logger: A logger.
+    :param name: The name of the logger.
     :param save_dir: The directory in which to save the logs.
     :param quiet: Whether the stream handler should be quiet (i.e. print only important info).
+    :return: The logger.
     """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+
     # Set logger depending on desired verbosity
     ch = logging.StreamHandler()
     if quiet:
@@ -270,6 +279,9 @@ def set_logger(logger: logging.Logger, save_dir: str = None, quiet: bool = False
     logger.addHandler(ch)
 
     if save_dir is not None:
+        if save_dir != '':
+            os.makedirs(save_dir, exist_ok=True)
+
         fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
         fh_v.setLevel(logging.DEBUG)
         fh_q = logging.FileHandler(os.path.join(save_dir, 'quiet.log'))
@@ -278,3 +290,4 @@ def set_logger(logger: logging.Logger, save_dir: str = None, quiet: bool = False
         logger.addHandler(fh_v)
         logger.addHandler(fh_q)
 
+    return logger

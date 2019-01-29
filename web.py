@@ -1,3 +1,5 @@
+"""Runs the web interface version of chemprop, allowing for training and predicting in a web browser."""
+
 from argparse import ArgumentParser, Namespace
 import os
 import shutil
@@ -5,7 +7,6 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List, Tuple
 import time
 import multiprocessing as mp
-import logging
 
 from flask import Flask, json, jsonify, redirect, render_template, request, send_from_directory, url_for
 import numpy as np
@@ -17,7 +18,7 @@ from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
-from chemprop.utils import load_task_names, set_logger
+from chemprop.utils import create_logger, load_task_names
 
 TEMP_FOLDER = TemporaryDirectory()
 
@@ -170,16 +171,12 @@ def train():
         args.save_dir = temp_dir
         modify_train_args(args)
 
-        logger = logging.getLogger('train')
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-        set_logger(logger, args.save_dir, args.quiet)
-
         process = mp.Process(target=progress_bar, args=(args, progress))
         process.start()
         training = 1
 
         # Run training
+        logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
         task_scores = run_training(args, logger)
         process.join()
 

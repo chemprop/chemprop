@@ -3,14 +3,11 @@ from functools import partial
 import os
 import pickle
 from typing import Callable, List, Union
-import logging
 
 import numpy as np
 from rdkit import Chem
 
-from .descriptors import mordred_features
 from .morgan_fingerprint import morgan_fingerprint
-from .rdkit_features import rdkit_2d_features
 
 
 def load_features(path: str) -> List[np.ndarray]:
@@ -42,9 +39,13 @@ def load_features(path: str) -> List[np.ndarray]:
     return features
 
 
-def get_features_func(features_generator: str,
-                      args: Namespace = None) -> Union[Callable[[Chem.Mol], np.ndarray],
-                                                       partial]:
+def get_features_func(features_generator: str) -> Union[Callable[[Union[str, Chem.Mol]], np.ndarray], partial]:
+    """
+    Gets a features generator function by name.
+
+    :param features_generator: The name of a features generator function.
+    :return: A features generator function which process RDKit molecules and returns numpy arrays of features.
+    """
     if features_generator == 'morgan':
         return partial(morgan_fingerprint, use_counts=False)
 
@@ -52,19 +53,13 @@ def get_features_func(features_generator: str,
         return partial(morgan_fingerprint, use_counts=True)
 
     if features_generator == 'rdkit_2d':
-        assert args is not None
-        assert hasattr(args, 'functional_group_smarts')
-        return partial(rdkit_2d_features, args=args)
+        from .rdkit_features import rdkit_2d_features
+
+        return rdkit_2d_features
 
     if features_generator == "rdkit_2d_normalized":
-        from .rdkit_normalized_features import rdkit_2d_normalized_features
-        if rdkit_2d_normalized_features is None:
-            logging.getLogger(__name__).warning("Please install descriptastorus for normalized descriptors")
-            raise ValueError(f'feature_generator type "{features_generator}" not installed')
-       
-        return rdkit_2d_normalized_features
+        from .rdkit_features import rdkit_2d_normalized_features
 
-    if features_generator == 'mordred':
-        return mordred_features
+        return rdkit_2d_normalized_features
 
     raise ValueError(f'features_generator type "{features_generator}" not supported.')

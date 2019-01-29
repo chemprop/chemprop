@@ -1,22 +1,21 @@
+from typing import Union
+
 import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 
-def morgan_fingerprint(smiles: str, radius: int = 2, num_bits: int = 2048, use_counts: bool = False) -> np.ndarray:
+def morgan_fingerprint(mol: Union[str, Chem.Mol], radius: int = 2, num_bits: int = 2048, use_counts: bool = False) -> np.ndarray:
     """
     Generates a morgan fingerprint for a smiles string.
 
-    :param smiles: A smiles string for a molecule.
+    :param mol: A smiles string or an RDKit molecule.
     :param radius: The radius of the fingerprint.
     :param num_bits: The number of bits to use in the fingerprint.
     :param use_counts: Whether to use counts or just a bit vector for the fingerprint
     :return: A 1-D numpy array containing the morgan fingerprint.
     """
-    if type(smiles) == str:
-        mol = Chem.MolFromSmiles(smiles)
-    else:
-        mol = smiles
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     if use_counts:
         fp_vect = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
     else:

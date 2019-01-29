@@ -1,12 +1,8 @@
 from argparse import Namespace
 from typing import List, Tuple, Union
 
-import numpy as np
 from rdkit import Chem
-from rdkit.Chem import AllChem
 import torch
-
-from chemprop.features.functional_groups import get_num_functional_groups, FunctionalGroupFeaturizer
 
 # Atom feature sizes
 MAX_ATOMIC_NUM = 100
@@ -45,13 +41,21 @@ def clear_cache():
     SMILES_TO_GRAPH = {}
 
 
-def get_atom_fdim(args: Namespace, is_output: bool=False) -> int:
-    """Gets the dimensionality of atom features."""
+def get_atom_fdim(args: Namespace) -> int:
+    """
+    Gets the dimensionality of atom features.
+
+    :param: Arguments.
+    """
     return ATOM_FDIM
 
 
 def get_bond_fdim(args: Namespace) -> int:
-    """Gets the dimensionality of bond features."""
+    """
+    Gets the dimensionality of bond features.
+
+    :param: Arguments.
+    """
     return BOND_FDIM
 
 
@@ -77,7 +81,7 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
 
     :param atom: An RDKit atom.
     :param functional_groups: A k-hot vector indicating the functional groups the atom belongs to.
-    :return: A PyTorch tensor containing the atom features.
+    :return: A list containing the atom features.
     """
     features = onek_encoding_unk(atom.GetAtomicNum() - 1, ATOM_FEATURES['atomic_num']) + \
            onek_encoding_unk(atom.GetTotalDegree(), ATOM_FEATURES['degree']) + \
@@ -97,10 +101,7 @@ def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
     Builds a feature vector for a bond.
 
     :param bond: A RDKit bond.
-    :param distance_path: The topological (path) distance between the atoms in the bond.
-    Note: This is always 1 if the atoms are actually bonded and >1 for "virtual" edges between non-bonded atoms.
-    :param distance_3d: The bin index of the 3D distance in THREE_D_DISTANCE_BINS.
-    :return: A PyTorch tensor containing the bond features.
+    :return: A list containing the bond features.
     """
     if bond is None:
         fbond = [1] + [0] * (BOND_FDIM - 1)
@@ -120,7 +121,27 @@ def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
 
 
 class MolGraph:
-    def __init__(self, smiles: Union[str, Tuple[str, List[int]]], args: Namespace):
+    """
+    A MolGraph represents the graph structure and featurization of a single molecule.
+
+    A MolGraph computes the following attributes:
+    - smiles: Smiles string.
+    - n_atoms: The number of atoms in the molecule.
+    - n_bonds: The number of bonds in the molecule.
+    - f_atoms: A mapping from an atom index to a list atom features.
+    - f_bonds: A mapping from a bond index to a list of bond features.
+    - a2b: A mapping from an atom index to a list of incoming bond indices.
+    - b2a: A mapping from a bond index to the index of the atom the bond originates from.
+    - b2revb: A mapping from a bond index to the index of the reverse bond.
+    """
+
+    def __init__(self, smiles: str, args: Namespace):
+        """
+        Computes the graph structure and featurization of a molecule.
+
+        :param smiles: A smiles string.
+        :param args: Arguments.
+        """
         self.smiles = smiles
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
@@ -132,9 +153,6 @@ class MolGraph:
 
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smiles)
-
-        # Get topological (i.e. path-length) distance matrix and number of atoms
-        distances_path = Chem.GetDistanceMatrix(mol)
 
         # fake the number of "atoms" if we are collapsing substructures
         self.n_atoms = mol.GetNumAtoms()
@@ -177,6 +195,21 @@ class MolGraph:
 
 
 class BatchMolGraph:
+    """
+    A BatchMolGraph represents the graph structure and featurization of a batch of molecules.
+
+    A BatchMolGraph contains the attributes of a MolGraph plus:
+    - smiles_batch: A list of smiles strings.
+    - n_mols: The number of molecules in the batch.
+    - atom_fdim: The dimensionality of the atom features.
+    - bond_fdim: The dimensionality of the bond features (technically the combined atom/bond features).
+    - a_scope: A list of tuples indicating the start and end atom indices for each molecule.
+    - b_scope: A list of tuples indicating the start and end bond indices for each molecule.
+    - max_num_bonds: The maximum number of bonds neighboring an atom in this batch.
+    - b2b: (Optional) A mapping from a bond index to incoming bond indices.
+    - a2a: (Optional): A mapping from an atom index to neighboring atom indices.
+    """
+
     def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
         self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
         self.n_mols = len(self.smiles_batch)
@@ -185,7 +218,7 @@ class BatchMolGraph:
         self.bond_fdim = get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
-        self.n_atoms = 1  # number of atoms
+        self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
         self.n_bonds = 1  # number of bonds (start at 1 b/c need index 0 as padding)
         self.a_scope = []  # list of tuples indicating (start_atom_index, num_atoms) for each molecule
         self.b_scope = []  # list of tuples indicating (start_bond_index, num_bonds) for each molecule
@@ -225,9 +258,21 @@ class BatchMolGraph:
     def get_components(self) -> Tuple[torch.FloatTensor, torch.FloatTensor,
                                       torch.LongTensor, torch.LongTensor, torch.LongTensor,
                                       List[Tuple[int, int]], List[Tuple[int, int]]]:
+        """
+        Returns the components of the BatchMolGraph.
+
+        :return: A tuple containing PyTorch tensors with the atom features, bond features, and graph structure
+        and two lists indicating the scope of the atoms and bonds (i.e. which molecules they belong to).
+        """
         return self.f_atoms, self.f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
     def get_b2b(self) -> torch.LongTensor:
+        """
+        Computes (if necessary) and returns a mapping from each bond index to all the incoming bond indices.
+
+        :return: A PyTorch tensor containing the mapping from each bond index to all the incoming bond indices.
+        """
+
         if self.b2b is None:
             b2b = self.a2b[self.b2a]  # num_bonds x max_num_bonds
             # b2b includes reverse edge for each bond so need to mask out
@@ -237,6 +282,11 @@ class BatchMolGraph:
         return self.b2b
 
     def get_a2a(self) -> torch.LongTensor:
+        """
+        Computes (if necessary) and returns a mapping from each atom index to all neighboring atom indices.
+
+        :return: A PyTorch tensor containing the mapping from each bond index to all the incodming bond indices.
+        """
         if self.a2a is None:
             # b = a1 --> a2
             # a2b maps a2 to all incoming bonds b
@@ -262,7 +312,6 @@ def mol2graph(smiles_batch: List[str],
             mol_graph = SMILES_TO_GRAPH[smiles]
         else:
             mol_graph = MolGraph(smiles, args)
-            # Memoize if we're not chunking or learning virtual edges, to save memory
             if not args.no_cache:
                 SMILES_TO_GRAPH[smiles] = mol_graph
         mol_graphs.append(mol_graph)

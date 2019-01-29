@@ -1,18 +1,16 @@
 from argparse import Namespace
-from copy import deepcopy
 import csv
 from logging import Logger
 import pickle
 import random
 from typing import List, Set, Tuple
-import os
 
 from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset
-from .scaffold import log_scaffold_stats, scaffold_split, scaffold_split_one, scaffold_split_overlap
+from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.features import load_features
 
 
@@ -28,17 +26,6 @@ def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     task_names = get_header(path)[index:]
 
     return task_names
-
-
-def get_desired_labels(args: Namespace, task_names: List[str]) -> List[str]:
-    if args.show_individual_scores and args.labels_to_show:
-        desired_labels = []
-        with open(args.labels_to_show, 'r') as f:
-            for line in f:
-                desired_labels.append(line.strip())
-    else:
-        desired_labels = task_names
-    return desired_labels
 
 
 def get_header(path: str) -> List[str]:
@@ -84,7 +71,6 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
     Filters out invalid SMILES.
 
     :param data: A MoleculeDataset.
-    :param logger: Logger.
     :return: A MoleculeDataset with only valid molecules.
     """
     return MoleculeDataset([datapoint for datapoint in data
