@@ -31,6 +31,9 @@ Requirements:
  * Note that if you get warning messages about kyotocabinet, it's safe to ignore them.
    * This is a requirement from descriptastorus, but not necessary for the parts of descriptastorus that we use. 
    * See https://github.com/bp-kelley/descriptastorus for installation details if you want to install anyway.
+
+Alternatively, you can use Docker. The provided Dockerfile, when built and run, should get you a container with a conda env
+that has the proper packages installed for you to run the chemprop code. 
    
 ## Web Interface
 
