@@ -1,0 +1,10 @@
+name: fordocker
+channels:
+  - rdkit
+  - pytorch
+dependencies:
+  - rdkit
+  - nox
+  - cairo
+  - pytorch
+  - torchvision
