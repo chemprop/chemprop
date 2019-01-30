@@ -160,3 +160,5 @@ qm9 | 133,884 |	2.47 ± 0.036	| 3.2 ± 1.5 |
 
 †HIV was trained with hidden size 1800 and depth 6 but without the master node.
 *MUV and PCBA are using a much older version of the model.
+
+Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments . 
