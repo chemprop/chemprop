@@ -3,7 +3,12 @@ This repository contains message passing neural networks for molecular property 
 
 ## Table of Contents
 
+- [Requirements](#requirements)
 - [Installation](#installation)
+  * [Option 1: Conda](#option-1-conda)
+  * [Option 2: Docker](#option-2-docker)
+  * [(Optional) Installing `chemprop` as a Package](#optional-installing-chemprop-as-a-package)
+  * [Notes](#notes)
 - [Web Interface](#web-interface)
 - [Data](#data)
 - [Training](#training)
@@ -15,36 +20,60 @@ This repository contains message passing neural networks for molecular property 
 - [TensorBoard](#tensorboard)
 - [Results](#results)
 
-## Installation
-Requirements:
- * cuda >= 8.0 + cuDNN
- * Python 3/conda: Please follow the installation guide on [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-   * Create a conda environment with `conda create -n <name> python=3.6`
-   * Activate the environment with `conda activate <name>`
- * pytorch: Please follow the installation guide on [https://pytorch.org/](https://pytorch.org/)
-   * Typically it's `conda install pytorch torchvision -c pytorch`
- * tensorflow: Needed for Tensorboard training visualization
-   * CPU-only: `pip install tensorflow`
-   * GPU: `pip install tensorflow-gpu`
- * RDKit: `conda install -c rdkit rdkit`
- * Other packages: `pip install -r requirements.txt`
- * Note that if you get warning messages about kyotocabinet, it's safe to ignore them.
-   * This is a requirement from descriptastorus, but not necessary for the parts of descriptastorus that we use. 
-   * See https://github.com/bp-kelley/descriptastorus for installation details if you want to install anyway.
+## Requirements
 
-Alternatively, you can use Docker. The provided Dockerfile, when built and run, should get you a container with a conda env
-that has the proper packages installed for you to run the chemprop code. 
+While it is possible to run all of the code on a CPU-only machine, GPUs make training significantly faster. To run with GPUs, you will need:
+ * cuda >= 8.0
+ * cuDNN
+
+## Installation
+
+### Option 1: Conda
+
+The easiest way to install the `chemprop` dependencies is via conda. Here are the steps:
+
+1. Install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
+2. `cd /path/to/chemprop`
+3. `conda env create -f environment.yml`
+4. `source activate chemprop` (or `conda activate chemprop` for newer versions of conda)
+5. `pip install -r requirements.txt`
+
+### Option 2: Docker
+
+Docker provides a nice way to isolate the `chemprop` code and environment. To install and run our code in a Docker container, follow these steps:
+
+1. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
+2. `cd /path/to/chemprop`
+3. `docker build -t chemprop .`
+4. `docker run -i -t chemprop:latest /bin/bash`
+
+### (Optional) Installing `chemprop` as a Package
+
+If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
+
+1. `cd /path/to/chemprop`
+2. `pip install .`
+
+Then you can use `import chemprop` or `from chemprop import ...` in your other code.
+
+### Notes
+
+If you get warning messages about `kyotocabinet` not being installed, it's safe to ignore them.
    
 ## Web Interface
 
-For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. To start the web interface (after doing the above installation), run `python web.py` and then go to [localhost:5000](localhost:5000) in a web browser.
+For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. After installing the dependencies following the instructions above, you can start the web interface by running `python web.py` and then navigating to [localhost:5000](http://localhost:5000) in a web browser.
 
-![Training with our web interface](static/images/web_train.png "Train")
+![Training with our web interface](static/images/web_train.png "Training with our web interface")
 
-![Predicting with our web interface](static/images/web_predict.png "Predict")
+![Predicting with our web interface](static/images/web_predict.png "Predicting with our web interface")
 
 
 ## Data
+
+In order to train a model, you must provide training data containing molecules (as SMILES strings) and known target values. Targets can either be real numbers, if performing regression, or binary (i.e. 0s and 1s), if performing classification. Target values which are unknown can be left as blanks.
+
+Our model can either train on a single target ("single tasking") or on multiple targets simultaneously ("multi-tasking").
 
 The data file must be be a **CSV file with a header row**. For example:
 ```
@@ -53,7 +82,7 @@ CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
 CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
 ...
 ```
-Datasets from [MoleculeNet](http://moleculenet.ai/) and a 450K subset of the ChEMBL dataset from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
+Datasets from [MoleculeNet](http://moleculenet.ai/) and a 450K subset of ChEMBL from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
 
 ## Training
 
@@ -69,31 +98,29 @@ python train.py --data_path data/tox21.csv --dataset_type classification --save_
 ```
 
 Notes:
-* Classification is assumed to be binary.
-* Empty values in the CSV are ignored.
-* `--save_dir` may be left out if you don't want to save model checkpoints.
 * The default metric for classification is AUC and the default metric for regression is RMSE. Other metrics may be specified with `--metric <metric>`.
+* `--save_dir` may be left out if you don't want to save model checkpoints.
 * `--quiet` can be added to reduce the amount of debugging information printed to the console. Both a quiet and verbose version of the logs are saved in the `save_dir`.
 
 ### Train/Validation/Test Splits
 
-Our code supports several ways of splitting data into train, validation, and test splits.
+Our code supports several methods of splitting data into train, validation, and test sets.
 
-**Random:** By default, the data in `--data_path` will be split randomly into train, validation, and test sets.
+**Random:** By default, the data will be split randomly into train, validation, and test sets.
 
-**Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified with `--split_type scaffold_balanced`.
+**Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
 
-**Separate val/test:** If you have a separate data file you would like to use as the validation or test set, you can specify it with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`.
+**Separate val/test:** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`.
 
-Note: Both random and scaffold  split the data into 80% train, 10% validation, and 10% test. Both also involve a random component and can be seeded with `--seed <seed>`. (A seed of 0 is used by default.)
+Note: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with `--split_sizes <train_frac> <val_frac> <test_frac>`. For example, the default setting is `--split_sizes 0.8 0.1 0.1`. Both also involve a random component and can be seeded with `--seed <seed>`. The default setting is `--seed 0`.
 
 ### Cross validation
 
-k-fold cross-validation can be run by specifying `--num_folds <k>` (which is 1 by default).
+k-fold cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`.
 
 ### Ensembling
 
-To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>` (which is 1 by default).
+To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`.
 
 ### Hyperparameter Optimization
 
@@ -101,7 +128,7 @@ Although the default message passing architecture works quite well on a variety 
 ```
 python hyperparameter_optimization.py --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
 ```
-where `num_iters` is the number of hyperparameter settings to try and `config_save_path` is the path to a `.json` file where the optimal hyperparameters will be saved. Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the `config_path` as follows:
+where `<n>` is the number of hyperparameter settings to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
 ```
 python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
 ```

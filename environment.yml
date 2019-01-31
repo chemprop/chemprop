@@ -1,10 +1,10 @@
-name: fordocker
+name: chemprop
+
 channels:
   - rdkit
   - pytorch
+
 dependencies:
   - rdkit
-  - nox
-  - cairo
   - pytorch
   - torchvision

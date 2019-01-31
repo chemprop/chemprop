@@ -1,29 +1,30 @@
+"""Very basic tests to check that nothing crashes. Not 100% coverage but covers what we care about."""
+
 from argparse import ArgumentParser
-import os
-import logging
 from copy import deepcopy
+import os
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import unittest
 
 import sys
 sys.path.append('../')
 
-from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
-from chemprop.utils import create_logger
-from chemprop.train import cross_validate, make_predictions
-from chemprop.features import clear_cache
 from chemprop.data.utils import get_data
+from chemprop.features import clear_cache
+from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
+from chemprop.train import cross_validate, make_predictions
+from chemprop.utils import create_logger
+
+from hyperparameter_optimization import grid_search
 
 from scripts.avg_dups import average_duplicates
 from scripts.overlap import overlap
 from scripts.save_features import save_features
 from scripts.similarity import scaffold_similarity, morgan_similarity
 
-from hyperparameter_optimization import grid_search
-
-# very basic tests to check that nothing crashes. not 100% coverage but covers basically everything we care about
 
 # TODO hyperopt
+
 
 class TestScripts(unittest.TestCase):
     def tearDown(self):
@@ -129,7 +130,6 @@ class TestScripts(unittest.TestCase):
 
 
 class TestTrain(unittest.TestCase):
-
     def setUp(self):
         parser = ArgumentParser()
         add_train_args(parser)
@@ -329,7 +329,6 @@ class TestTrain(unittest.TestCase):
 
 
 class TestPredict(unittest.TestCase):
-
     def setUp(self):
         parser = ArgumentParser()
         add_train_args(parser)
@@ -377,6 +376,7 @@ class TestPredict(unittest.TestCase):
             make_predictions(self.args)
         except:
             self.fail('predict_compound_names')
+
 
 class TestHyperopt(unittest.TestCase):
     def test_hyperopt(self):

@@ -3,6 +3,7 @@ hyperopt
 numpy
 scikit-learn
 scipy
+tensorflow
 tensorboardX
 tqdm
 git+https://github.com/bp-kelley/descriptastorus
