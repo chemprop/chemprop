@@ -30,6 +30,13 @@ def add_predict_args(parser: ArgumentParser):
                         help='Batch size')
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')
+    parser.add_argument('--features_generator', type=str, nargs='*',
+                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
+                        help='Method of generating additional features')
+    parser.add_argument('--features_path', type=str, nargs='*',
+                        help='Path to features to use in FNN (instead of features_generator)')
+    parser.add_argument('--no_features_scaling', action='store_true', default=False,
+                        help='Turn off scaling of features')
 
 
 def add_train_args(parser: ArgumentParser):
