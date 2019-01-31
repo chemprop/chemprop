@@ -45,8 +45,6 @@ def save(save_path: str, features: List[List[int]]):
     """
     Saves features as a sparse 2D array in a .pckl file.
 
-    Assumes temporary files are named in order 0.pckl, 1.pckl, ...
-
     :param save_path: Path to .pckl file where features will be saved.
     :param features: A list of molecule features, where each molecule's features is a list of floats.
     """
