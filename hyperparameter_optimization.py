@@ -3,7 +3,6 @@
 from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 import json
-import os
 from typing import Dict, Union
 
 from hyperopt import fmin, hp, tpe
@@ -32,7 +31,6 @@ def grid_search(args: Namespace):
 
     # Run grid search
     results = []
-    iter_num = 0
 
     # Define hyperparameter optimization
     def objective(hyperparams: Dict[str, Union[int, float]]) -> float:
@@ -42,8 +40,6 @@ def grid_search(args: Namespace):
 
         # Update args with hyperparams
         hyper_args = deepcopy(args)
-        hyper_args.save_dir = os.path.join(hyper_args.save_dir, f'iter_{iter_num}')
-        iter_num += 1
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
 
