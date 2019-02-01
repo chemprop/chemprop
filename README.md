@@ -45,7 +45,7 @@ Docker provides a nice way to isolate the `chemprop` code and environment. To in
 1. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
 2. `cd /path/to/chemprop`
 3. `docker build -t chemprop .`
-4. `docker run -i -t chemprop:latest /bin/bash`
+4. `docker run -it chemprop:latest /bin/bash`
 
 ### (Optional) Installing `chemprop` as a Package
 

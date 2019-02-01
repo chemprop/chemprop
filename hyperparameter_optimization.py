@@ -1,6 +1,7 @@
 """Optimizes hyperparameters using Bayesian optimization."""
 
 from argparse import ArgumentParser, Namespace
+from copy import deepcopy
 import json
 from typing import Dict, Union
 
@@ -37,20 +38,22 @@ def grid_search(args: Namespace):
         for key in INT_KEYS:
             hyperparams[key] = int(hyperparams[key])
 
+        # Update args with hyperparams
+        hyper_args = deepcopy(args)
         for key, value in hyperparams.items():
-            setattr(args, key, value)
+            setattr(hyper_args, key, value)
 
         # Record hyperparameters
         logger.info(hyperparams)
 
         # Cross validate
-        mean_score, std_score = cross_validate(args, train_logger)
+        mean_score, std_score = cross_validate(hyper_args, train_logger)
 
         # Record results
-        temp_model = build_model(args)
+        temp_model = build_model(hyper_args)
         num_params = param_count(temp_model)
         logger.info(f'num params: {num_params:,}')
-        logger.info(f'{mean_score} +/- {std_score} {args.metric}')
+        logger.info(f'{mean_score} +/- {std_score} {hyper_args.metric}')
 
         results.append({
             'mean_score': mean_score,
@@ -61,12 +64,12 @@ def grid_search(args: Namespace):
 
         # Deal with nan
         if np.isnan(mean_score):
-            if args.dataset_type == 'classification':
+            if hyper_args.dataset_type == 'classification':
                 mean_score = 0
             else:
                 raise ValueError('Can\'t handle nan score for non-classification dataset.')
 
-        return (1 if args.minimize_score else -1) * mean_score
+        return (1 if hyper_args.minimize_score else -1) * mean_score
 
     fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_iters)
 
