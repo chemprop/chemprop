@@ -47,6 +47,8 @@ Docker provides a nice way to isolate the `chemprop` code and environment. To in
 3. `docker build -t chemprop .`
 4. `docker run -it chemprop:latest /bin/bash`
 
+Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs. 
+
 ### (Optional) Installing `chemprop` as a Package
 
 If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
@@ -157,35 +159,28 @@ During training, TensorBoard logs are automatically saved to the same directory 
 
 ## Results
 
-**NOTE:** These results are out of date and will be updated shortly.
-
-We compared our model against the graph convolution in deepchem. Our results are averaged over 3 runs with different random seeds, namely different splits across datasets. Unless otherwise indicated, all models were trained using hidden size 1800, depth 6, and master node. We did a few hyperparameter experiments on qm9, but did no searching on the other datasets, so there may still be further room for improvement.
+We compared our model against MolNet by Wu et al. on all of the MolNet datasets for which we could reproduce their splits (all but Bace, Toxcast, and qm7). When there was only one fold provided (scaffold split for BBBP and HIV), we ran our model multiple times and reported average performance. In each case we optimize hyperparameters on separate folds, use rdkit_2d_normalized features when useful, and compare to the best-performing model in MolNet as reported by Wu et al. We did not ensemble our model in these results.
 
 Results on classification datasets (AUC score, the higher the better)
 
-| Dataset | Size |	Ours |	GraphConv (deepchem) |
+| Dataset | Size |	Ours |	MolNet Best Model |
 | :---: | :---: | :---: | :---: |
-| Bace | 1,513 | 0.884 ± 0.034	| 0.783 ± 0.014 |
-| BBBP | 2,039 | 0.922 ± 0.012	| 0.690 ± 0.009 |
-| Tox21 | 7,831 | 0.851 ± 0.015	| 0.829 ± 0.006 |
-| Toxcast | 8,576 | 0.748 ± 0.014	| 0.716 ± 0.014 |
-| Sider | 1,427 |	0.643 ± 0.027	| 0.638 ± 0.012 |
-| clintox | 1,478 | 0.882 ± 0.022	| 0.807 ± 0.047 |
-| MUV | 93,087 | 0.067 ± 0.03* | 0.046 ± 0.031 |
-| HIV | 41,127 |	0.821 ± 0.034† |	0.763 ± 0.016 |
-| PCBA | 437,928 | 0.218 ± 0.001* | 	0.136 ± 0.003 | 
+| BBBP | 2,039 | 0.735 ± 0.0064	| 0.729 |
+| Tox21 | 7,831 | 0.855 ± 0.0052	| 0.829 ± 0.006 |
+| Sider | 1,427 |	0.678 ± 0.019	| 0.648 ± 0.009 |
+| clintox | 1,478 | 0.9 ± 0.0089	| 0.832 ± 0.037 |
+| MUV | 93,087 | 0.0897 ± 0.015 | 0.184 ± 0.02 |
+| HIV | 41,127 |	0.793 ± 0.0012 |	0.792 |
+| PCBA | 437,928 | 0.397 ± .00075 | 	0.136 ± 0.004 | 
 
 Results on regression datasets (score, the lower the better)
 
 Dataset | Size | Ours | GraphConv/MPNN (deepchem) |
 | :---: | :---: | :---: | :---: |
-delaney	| 1,128 | 0.687 ± 0.037 | 	0.58 ± 0.03 |
-Freesolv | 642 |	0.915 ± 0.154	| 1.15 ± 0.12 |
-Lipo | 4,200 |	0.565 ± 0.052 |	0.655 ± 0.036 |
-qm8 | 21,786 |	0.008 ± 0.000 | 0.0143 ± 0.0011 |
-qm9 | 133,884 |	2.47 ± 0.036	| 3.2 ± 1.5 |
-
-†HIV was trained with hidden size 1800 and depth 6 but without the master node.
-*MUV and PCBA are using a much older version of the model.
+delaney	| 1,128 | 0.567 ± 0.026 | 0.58 ± 0.03 |
+Freesolv | 642 |	1.11 ± 0.035 | 1.15 ± 0.12 |
+Lipo | 4,200 |	0.542 ± 0.02 |	0.655 ± 0.036 |
+qm8 | 21,786 |	0.0082 ± 0.00019 | 0.0143 ± 0.0011 |
+qm9 | 133,884 |	2.03 ± 0.021	| 2.4 ± 1.1 |
 
 Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments . 
