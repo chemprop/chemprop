@@ -47,6 +47,8 @@ Docker provides a nice way to isolate the `chemprop` code and environment. To in
 3. `docker build -t chemprop .`
 4. `docker run -i -t chemprop:latest /bin/bash`
 
+Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs. 
+
 ### (Optional) Installing `chemprop` as a Package
 
 If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
