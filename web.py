@@ -103,7 +103,7 @@ def name_already_exists_message(thing_being_named: str, original_path: str, new_
     :param thing_being_named: The thing being renamed (ex. Data, Checkpoint).
     :param original_path: The original path where the object was supposed to be saved.
     :param new_path: The new path where the object will actually be saved.
-    :return: A string with a message about the chagned path.
+    :return: A string with a message about the changed path.
     """
     return f'{thing_being_named} "{os.path.basename(original_path)} already exists. ' \
            f'Saving to "{os.path.basename(new_path)}".'
