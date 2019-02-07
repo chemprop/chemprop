@@ -1,4 +1,3 @@
-from argparse import Namespace
 from functools import partial
 import os
 import pickle

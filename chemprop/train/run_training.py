@@ -219,8 +219,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model=model,
             data=test_data,
             args=args,
-            scaler=scaler,
-            logger=logger
+            scaler=scaler
         )
         test_scores = evaluate_predictions(
             preds=test_preds,

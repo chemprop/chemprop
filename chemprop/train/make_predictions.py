@@ -5,7 +5,6 @@ from typing import List, Optional
 import numpy as np
 import torch
 from tqdm import tqdm
-from rdkit import Chem
 
 from .predict import predict
 from chemprop.data import MoleculeDataset

@@ -3,11 +3,9 @@ import logging
 from typing import Callable, Dict, List, Union
 
 import torch.nn as nn
-import numpy as  np
 
 from .predict import predict
 from chemprop.data import MoleculeDataset, StandardScaler
-from chemprop.utils import rmse
 
 
 def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[float]]]],
@@ -27,11 +25,6 @@ def evaluate_predictions(preds: Union[List[List[float]], Dict[str, List[List[flo
     :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
-    if args is not None:
-        metric = args.metric
-    else:
-        metric = None
-
     info = logger.info if logger is not None else print
     data_size, num_tasks = len(preds), len(preds[0])
     
@@ -91,8 +84,7 @@ def evaluate(model: nn.Module,
         model=model,
         data=data,
         args=args,
-        scaler=scaler,
-        logger=logger
+        scaler=scaler
     )
 
     targets = data.targets()

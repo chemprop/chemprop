@@ -1,5 +1,4 @@
 from argparse import Namespace
-from typing import Dict
 
 import torch.nn as nn
 

@@ -1,25 +1,18 @@
 from argparse import Namespace
-import logging
 from typing import List
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.nn as nn
-from torch.multiprocessing import Process, Queue
-import numpy as np
 from tqdm import trange
 
 from chemprop.data import MoleculeDataset, StandardScaler
-from chemprop.features import mol2graph
-from chemprop.models import build_model
-from chemprop.utils import get_loss_func
 
 
 def predict(model: nn.Module,
             data: MoleculeDataset,
             args: Namespace,
-            scaler: StandardScaler = None,
-            logger: logging.Logger = None) -> List[List[float]]:
+            scaler: StandardScaler = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
@@ -27,7 +20,6 @@ def predict(model: nn.Module,
     :param data: A MoleculeDataset.
     :param args: Arguments.
     :param scaler: A StandardScaler object fit on the training targets.
-    :param logger: Logger.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
     """

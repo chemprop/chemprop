@@ -1,23 +1,16 @@
 from argparse import Namespace
 import logging
-import random
 from typing import Callable, List, Union
-import os
 
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
-from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler, ExponentialLR
-from tqdm import trange, tqdm
-import pickle
-from copy import deepcopy
+from torch.optim.lr_scheduler import _LRScheduler
+from tqdm import trange
 
 from chemprop.data import MoleculeDataset
-from chemprop.features import featurization, mol2graph
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
-from chemprop.models import build_model
 
 
 def train(model: nn.Module,
