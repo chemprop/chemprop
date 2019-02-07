@@ -147,7 +147,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of message passing steps')
     parser.add_argument('--dropout', type=float, default=0.0,
                         help='Dropout probability')
-    parser.add_argument('--activation', type=str, default='ReLU', choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU'],
+    parser.add_argument('--activation', type=str, default='ReLU',
+                        choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'],
                         help='Activation function')
     parser.add_argument('--undirected', action='store_true', default=False,
                         help='Undirected edges (always sum the two relevant bond vectors)')                     
@@ -258,6 +259,9 @@ def modify_train_args(args: Namespace):
     args.minimize_score = args.metric in ['rmse', 'mae']
 
     update_checkpoint_args(args)
+    
+    if args.features_only:
+        assert args.features_generator or args.features_path
 
     args.use_input_features = args.features_generator or args.features_path
 

@@ -65,6 +65,8 @@ def get_activation_function(activation: str) -> nn.Module:
         return nn.Tanh()
     elif activation == 'SELU':
         return nn.SELU()
+    elif activation == 'ELU':
+        return nn.ELU()
     else:
         raise ValueError(f'Activation "{activation}" not supported.')
 
