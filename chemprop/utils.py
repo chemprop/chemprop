@@ -144,7 +144,7 @@ def get_loss_func(args: Namespace) -> nn.Module:
     :return: A PyTorch loss function.
     """
     if args.dataset_type == 'classification':
-        return nn.BCELoss(reduction='none')
+        return nn.BCEWithLogitsLoss(reduction='none')
 
     if args.dataset_type == 'regression':
         return nn.MSELoss(reduction='none')

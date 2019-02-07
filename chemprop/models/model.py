@@ -9,6 +9,18 @@ from chemprop.nn_utils import get_activation_function, initialize_weights
 class MoleculeModel(nn.Module):
     """A MoleculeModel is a model which contains a message passing network following by feed-forward layers."""
 
+    def __init__(self, classification: bool):
+        """
+        Initializes the MoleculeModel.
+
+        :param classification: Whether the model is a classification model.
+        """
+        super(MoleculeModel, self).__init__()
+
+        self.classification = classification
+        if self.classification:
+            self.sigmoid = nn.Sigmoid()
+
     def create_encoder(self, args: Namespace):
         """
         Creates the message passing encoder for the model.
@@ -53,10 +65,6 @@ class MoleculeModel(nn.Module):
                 nn.Linear(args.ffn_hidden_size, args.output_size),
             ])
 
-        # Classification
-        if args.dataset_type == 'classification':
-            ffn.append(nn.Sigmoid())
-
         # Create FFN model
         self.ffn = nn.Sequential(*ffn)
 
@@ -67,7 +75,13 @@ class MoleculeModel(nn.Module):
         :param input: Input.
         :return: The output of the MoleculeModel.
         """
-        return self.ffn(self.encoder(*input))
+        output = self.ffn(self.encoder(*input))
+
+        # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
+        if self.classification and not self.training:
+            output = self.sigmoid(output)
+
+        return output
 
 
 def build_model(args: Namespace) -> nn.Module:
@@ -80,7 +94,7 @@ def build_model(args: Namespace) -> nn.Module:
     output_size = args.num_tasks
     args.output_size = output_size
 
-    model = MoleculeModel()
+    model = MoleculeModel(classification=args.dataset_type == 'classification')
     model.create_encoder(args)
     model.create_ffn(args)
 
