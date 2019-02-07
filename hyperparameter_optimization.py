@@ -42,7 +42,7 @@ def grid_search(args: Namespace):
         # Update args with hyperparams
         hyper_args = deepcopy(args)
         if args.save_dir is not None:
-            folder_name = '_'.join([f'{key}_{value}' if key in INT_KEYS else f'{key}_{value}' for key, value in hyperparams.items()])
+            folder_name = '_'.join(f'{key}_{value}' for key, value in hyperparams.items())
             hyper_args.save_dir = os.path.join(hyper_args.save_dir, folder_name)
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
