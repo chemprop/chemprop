@@ -1,7 +1,6 @@
 from typing import List
 
 import torch
-torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.nn as nn
 from tqdm import trange
 
@@ -41,9 +40,11 @@ def predict(model: nn.Module,
 
         batch_preds = batch_preds.data.cpu().numpy()
 
+        # Inverse scale if regression
         if scaler is not None:
             batch_preds = scaler.inverse_transform(batch_preds)
-        
+
+        # Collect vectors
         batch_preds = batch_preds.tolist()
         preds.extend(batch_preds)
 
