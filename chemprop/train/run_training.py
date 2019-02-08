@@ -188,8 +188,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             val_scores = evaluate(
                 model=model,
                 data=val_data,
+                num_tasks=args.num_tasks,
                 metric_func=metric_func,
-                args=args,
+                batch_size=args.batch_size,
+                dataset_type=args.dataset_type,
                 scaler=scaler,
                 logger=logger
             )
@@ -224,13 +226,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         test_scores = evaluate_predictions(
             preds=test_preds,
             targets=test_targets,
+            num_tasks=args.num_tasks,
             metric_func=metric_func,
             dataset_type=args.dataset_type,
-            args=args,
             logger=logger
         )
 
-        sum_test_preds += np.array(test_preds)
+        if len(test_preds) != 0:
+            sum_test_preds += np.array(test_preds)
 
         # Average test score
         avg_test_score = np.nanmean(test_scores)
@@ -246,17 +249,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     # Evaluate ensemble on test set
     avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
 
-    if len(test_data) == 0:  # just return some garbage when we didn't want test data
-        ensemble_scores = test_scores
-    else:
-        ensemble_scores = evaluate_predictions(
-            preds=avg_test_preds,
-            targets=test_targets,
-            metric_func=metric_func,
-            dataset_type=args.dataset_type,
-            args=args,
-            logger=logger
-        )
+    ensemble_scores = evaluate_predictions(
+        preds=avg_test_preds,
+        targets=test_targets,
+        num_tasks=args.num_tasks,
+        metric_func=metric_func,
+        dataset_type=args.dataset_type,
+        logger=logger
+    )
 
     # Average ensemble score
     avg_ensemble_test_score = np.nanmean(ensemble_scores)
