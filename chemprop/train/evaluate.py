@@ -83,7 +83,7 @@ def evaluate(model: nn.Module,
     preds = predict(
         model=model,
         data=data,
-        args=args,
+        batch_size=args.batch_size,
         scaler=scaler
     )
 

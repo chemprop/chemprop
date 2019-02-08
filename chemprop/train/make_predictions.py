@@ -66,7 +66,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         model_preds = predict(
             model=model,
             data=test_data,
-            args=args,
+            batch_size=args.batch_size,
             scaler=scaler
         )
         sum_preds += np.array(model_preds)
