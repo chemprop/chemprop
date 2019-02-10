@@ -6,9 +6,6 @@ from typing import Callable, List, Union
 import numpy as np
 from rdkit import Chem
 
-from .morgan_fingerprint import morgan_fingerprint
-
-
 def load_features(path: str) -> List[np.ndarray]:
     """
     Loads features saved as a .pckl file or as a directory of .pckl files.
@@ -36,29 +33,3 @@ def load_features(path: str) -> List[np.ndarray]:
             features_path = os.path.join(path, f'{features_num}.pckl')
 
     return features
-
-
-def get_features_func(features_generator: str) -> Union[Callable[[Union[str, Chem.Mol]], np.ndarray], partial]:
-    """
-    Gets a features generator function by name.
-
-    :param features_generator: The name of a features generator function.
-    :return: A features generator function which process RDKit molecules and returns numpy arrays of features.
-    """
-    if features_generator == 'morgan':
-        return partial(morgan_fingerprint, use_counts=False)
-
-    if features_generator == 'morgan_count':
-        return partial(morgan_fingerprint, use_counts=True)
-
-    if features_generator == 'rdkit_2d':
-        from .rdkit_features import rdkit_2d_features
-
-        return rdkit_2d_features
-
-    if features_generator == "rdkit_2d_normalized":
-        from .rdkit_features import rdkit_2d_normalized_features
-
-        return rdkit_2d_normalized_features
-
-    raise ValueError(f'features_generator type "{features_generator}" not supported.')

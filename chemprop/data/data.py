@@ -7,8 +7,8 @@ from torch.utils.data.dataset import Dataset
 from rdkit import Chem
 
 from .scaler import StandardScaler
-from chemprop.features import get_features_func
-
+from descriptastorus.descriptors import DescriptorGenerator
+from descriptastorus.descriptors.DescriptorGenerator import MakeGenerator
 
 class MoleculeDatapoint:
     """A MoleculeDatapoint contains a single molecule and its associated features and targets."""
@@ -50,10 +50,11 @@ class MoleculeDatapoint:
         if self.features_generator is not None:
             self.features = []
 
-            for fg in self.features_generator:
-                features_func = get_features_func(fg)
-                if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
-                    self.features.extend(features_func(self.mol))
+            generator=MakeGenerator(self.features_generator)
+            if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
+                # This is a bit of a waste, but the desciptastorus API is smiles based for normalization purposes
+                smiles = Chem.MolToSmiles(self.mol, isomericSmiles=True)
+                self.features.extend(generator.process(smiles)[1:])
 
             self.features = np.array(self.features)
 
