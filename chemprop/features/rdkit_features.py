@@ -6,8 +6,9 @@ from rdkit import Chem
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
     from descriptastorus.descriptors import DescriptorGenerator
+    from descriptastorus.descriptors.rdDescriptors import RDKit2D,MorganCounts
 
-    class RDKit2D_variant(DescriptorGenerator):
+    class RDKit2D_variant(RDKit2D):
         """Computes all RDKit Descriptors"""
         NAME = "RDKit2D"
         def __init__(self, properties=rdDescriptors.RDKIT_PROPS[rdDescriptors.CURRENT_VERSION],short_name=None):
@@ -32,11 +33,8 @@ try:
                     raise ValueError("%s: Failed to initialize: unable to find specified properties:\n\t%s"%(
                         self.__class__.__name__,
                         "\n\t".join(failed)))
-        def calculateMol(self, m, smiles, internalParsing=False):
-            res = [ applyFunc(name, m) for name, _ in self.columns ]
-            return res
         
-    class MorganCounts_variant(DescriptorGenerator):
+    class MorganCounts_variant(MorganCounts):
         """Computes Morgan3 bitvector counts"""
         NAME = "Morgan%s"
         def __init__(self, radius=3, nbits=2048, count=True):
