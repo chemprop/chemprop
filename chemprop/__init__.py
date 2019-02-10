@@ -13,6 +13,7 @@ try:
     from descriptastorus.descriptors import DescriptorGenerator
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
     from chemprop.features.rdkit_features import MorganCounts_variant, RDKit2D_variant
+    from chemprop.features.mordred_features import Mordred, MordredNormalized
 
     fpSize=2048
     rdDescriptors.AtomPairCounts(nbits=fpSize)
@@ -28,5 +29,8 @@ try:
     filtered = [i for i in rdDescriptors.RDKIT_PROPS[rdDescriptors.CURRENT_VERSION] if regex.match(i)]
     RDKit2D_variant(properties=filtered,short_name="peoe")
 
+    Mordred()
+    MordredNormalized()
+
 except ImportError:
-    raise ImportError('Descriptastorus not available. Please install it for rdkit descriptors.')
+    raise ImportError('Descriptastorus or mordred not available. Please install it for rdkit or mordred descriptors.')
