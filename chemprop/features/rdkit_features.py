@@ -32,7 +32,10 @@ try:
                     raise ValueError("%s: Failed to initialize: unable to find specified properties:\n\t%s"%(
                         self.__class__.__name__,
                         "\n\t".join(failed)))
-
+        def calculateMol(self, m, smiles, internalParsing=False):
+            res = [ applyFunc(name, m) for name, _ in self.columns ]
+            return res
+        
     class MorganCounts_variant(DescriptorGenerator):
         """Computes Morgan3 bitvector counts"""
         NAME = "Morgan%s"
