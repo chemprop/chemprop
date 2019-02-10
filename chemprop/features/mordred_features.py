@@ -24,7 +24,7 @@ try:
             calculator = Calculator(descriptors, ignore_3D=True)
             return [float(f) for f in calculator(m)]
 
-    class MordredNormalized(rdDescriptors.RDKit2D):
+    class MordredNormalized(rdDescriptors.Mordred):
         NAME = "MordredNormalized"
 
         def calculateMol(self, m, smiles, internalParsing=False):
