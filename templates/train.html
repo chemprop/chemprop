@@ -55,7 +55,7 @@
         <br>
         <br>
 
-        <button id="train" type="submit" class="btn btn-primary btn-md">Train</button>
+        <button id="train" class="btn btn-primary btn-md">Train</button>
         <button id="training" class="btn btn-default btn-md disabled" disabled="disabled" style="display:none">Training</button>
     </form>
 
@@ -74,6 +74,11 @@
     {% endif %}
 
     <script type=text/javascript>
+        $("#train").click(function() {
+            document.getElementById("train").form.submit();
+            document.getElementById("train").disabled = "disabled";
+        });
+
         function refresh() {
             $.post("receiver", function(data){
                 if (data.training == 1) {
