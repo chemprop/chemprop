@@ -16,6 +16,7 @@ This repository contains message passing neural networks for molecular property 
   * [Cross validation](#cross-validation)
   * [Ensembling](#ensembling)
   * [Hyperparameter Optimization](#hyperparameter-optimization)
+  * [Additional Features](#additional-features)
 - [Predicting](#predicting)
 - [TensorBoard](#tensorboard)
 - [Results](#results)
@@ -36,7 +37,9 @@ The easiest way to install the `chemprop` dependencies is via conda. Here are th
 2. `cd /path/to/chemprop`
 3. `conda env create -f environment.yml`
 4. `source activate chemprop` (or `conda activate chemprop` for newer versions of conda)
-5. `pip install -r requirements.txt`
+5. (Optional) `pip install git+https://github.com/bp-kelley/descriptastorus`
+
+The optional `descriptastorus` package is only necessary if you plan to incorporate computed RDKit features into your model (see [Additional Features](#additional-features)). The addition of these features improves model performance on some datasets but is not necessary for the base model.
 
 ### Option 2: Docker
 
@@ -134,6 +137,14 @@ where `<n>` is the number of hyperparameter settings to try and `<config_path>` 
 ```
 python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
 ```
+
+### Additional Features
+
+While the model works very well on its own, especially after hyperparameter optimization, we have seen that adding computed molecule-level features can further improve performance on certain datasets. Features can be added to the model using the `--features_generator <generator>` flag.
+
+As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
+
+Note: In order to use the `rdkit_2d_normalized` features, you must have `descriptastorus` installed. If you installed via conda, you can install `descriptastorus` by running `pip install git+https://github.com/bp-kelley/descriptastorus`. If you installed via Docker, `descriptastorus` should already be installed.
  
 ## Predicting
 

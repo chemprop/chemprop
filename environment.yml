@@ -3,8 +3,17 @@ name: chemprop
 channels:
   - rdkit
   - pytorch
+  - conda-forge
 
 dependencies:
   - rdkit
   - pytorch
   - torchvision
+  - flask
+  - hyperopt
+  - numpy
+  - scikit-learn
+  - scipy
+  - tensorflow
+  - tensorboardX
+  - tqdm

@@ -21,4 +21,4 @@ RUN conda install pip
 RUN conda install -c rdkit nox
 RUN conda install cairo
 RUN conda env update -n base --file environment.yml
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip install git+https://github.com/bp-kelley/descriptastorus
