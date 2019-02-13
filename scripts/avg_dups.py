@@ -1,10 +1,12 @@
 """Averages the target values for duplicate smiles strings. (Only used for regression datasets.)"""
 
 from argparse import ArgumentParser
-import sys
-sys.path.append('../')
 from collections import defaultdict
+import os
+import sys
 import numpy as np
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data, get_header
 
