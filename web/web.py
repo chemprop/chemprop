@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser, Namespace
 import os
+import sys
 import shutil
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List, Tuple
@@ -13,6 +14,8 @@ import numpy as np
 from rdkit import Chem
 import torch
 from werkzeug.utils import secure_filename
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
