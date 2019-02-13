@@ -67,11 +67,11 @@ If you get warning messages about `kyotocabinet` not being installed, it's safe 
    
 ## Web Interface
 
-For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. After installing the dependencies following the instructions above, you can start the web interface by running `python web.py` and then navigating to [localhost:5000](http://localhost:5000) in a web browser.
+For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. After installing the dependencies following the instructions above, you can start the web interface by running `python web/web.py` and then navigating to [localhost:5000](http://localhost:5000) in a web browser.
 
-![Training with our web interface](static/images/web_train.png "Training with our web interface")
+![Training with our web interface](web/static/images/web_train.png "Training with our web interface")
 
-![Predicting with our web interface](static/images/web_predict.png "Predicting with our web interface")
+![Predicting with our web interface](web/static/images/web_predict.png "Predicting with our web interface")
 
 
 ## Data
