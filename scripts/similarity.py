@@ -1,8 +1,8 @@
 """Computes the similarity of molecular scaffolds between two datasets."""
 
 from argparse import ArgumentParser
+import os
 import sys
-sys.path.append('../')
 
 from itertools import product
 from typing import List
@@ -13,6 +13,8 @@ from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 from tqdm import tqdm
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data import scaffold_to_smiles
 from chemprop.data.utils import get_data

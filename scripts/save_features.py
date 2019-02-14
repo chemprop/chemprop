@@ -6,12 +6,13 @@ import os
 import pickle
 import shutil
 import sys
-sys.path.append('../')
 from typing import List, Tuple
 
 import numpy as np
 from scipy import sparse
 from tqdm import tqdm
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 from chemprop.features import get_features_func
