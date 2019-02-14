@@ -1,11 +1,11 @@
 """Computes the overlap of molecules between two datasets."""
 
 from argparse import ArgumentParser, Namespace
-from os.path import dirname, realpath
 import csv
+import os
 import sys
 
-sys.path.append(dirname(dirname(realpath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 
