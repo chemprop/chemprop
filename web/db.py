@@ -47,3 +47,20 @@ def close_db(e=None):
 
     if db is not None:
         db.close()
+
+# Table Specific Functions
+def insert_user(username):
+    cur = get_db().execute('INSERT INTO user (username) VALUES (?)', [username])
+    new_user_id = cur.lastrowid
+    cur.close()
+
+    return new_user_id
+
+def insert_model(checkpoint_name, associated_user, model_class, num_epochs):
+    cur = get_db().execute('INSERT INTO model (model_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
+                           [checkpoint_name, associated_user, model_class, num_epochs])
+    new_model_id = cur.lastrowid
+    cur.close()
+
+    return new_model_id
+

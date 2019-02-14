@@ -229,16 +229,7 @@ def train():
         else:
             args.gpu = int(gpu)
 
-    tempdb = db.get_db()
-    tempdb.execute('INSERT INTO user (username) VALUES (?)', ["lior"])
-    tempdb.execute('INSERT INTO model (model_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', [checkpoint_name, 0, args.dataset_type, args.epochs])
- 
-    models = db.query_db('select * from model')
-
-    if models:
-        print([[model[i] for i in range(len(model))] for model in models])
-    else:
-        print("THERE ARE NO MODELS IN THE DATABASE")
+    model_id = db.insert_model(checkpoint_name, 1, args.dataset_type, args.epochs)
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
