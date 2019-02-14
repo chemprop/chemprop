@@ -10,10 +10,11 @@ CREATE TABLE user (
 CREATE TABLE model (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   model_name TEXT NOT NULL,
+  associated_user INTEGER NOT NULL,
   created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   class TEXT NOT NULL,
   stats JSON,
   epochs INTEGER NOT NULL DEFAULT 30,
-  FOREIGN KEY (associated_user) REFERENCES user (id),
-  completed BOOLEAN NOT NULL DEFAULT 0
+  completed BOOLEAN NOT NULL DEFAULT 0,
+  FOREIGN KEY (associated_user) REFERENCES user (id)
 );

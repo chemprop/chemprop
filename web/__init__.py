@@ -20,8 +20,6 @@ from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-print("HIIIIIIIIIIIIIIIIIIII", sys.path[-1])
-
 from web import db
 from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
@@ -230,6 +228,17 @@ def train():
             args.no_cuda = True
         else:
             args.gpu = int(gpu)
+
+    tempdb = db.get_db()
+    tempdb.execute('INSERT INTO user (username) VALUES (?)', ["lior"])
+    tempdb.execute('INSERT INTO model (model_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', [checkpoint_name, 0, args.dataset_type, args.epochs])
+ 
+    models = db.query_db('select * from model')
+
+    if models:
+        print([[model[i] for i in range(len(model))] for model in models])
+    else:
+        print("THERE ARE NO MODELS IN THE DATABASE")
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
@@ -480,11 +489,14 @@ if __name__ == "__main__":
     parser.add_argument('--host', type=str, default='127.0.0.1', help='Host IP address')
     parser.add_argument('--port', type=int, default=5000, help='Port')
     parser.add_argument('--debug', action='store_true', default=False, help='Whether to run in debug mode')
+    parser.add_argument('--initdb', action='store_true', default=False, help='Initialize Database')
     args = parser.parse_args()
 
     db.init_app(app)
 
-    with app.app_context():
-        db.init_db()
+    if args.initdb or not os.path.isfile('chemprop.sqlite3'):
+        with app.app_context():
+            db.init_db()
+            print("-- INITIALIZED DATABASE --")
 
     app.run(host=args.host, port=args.port, debug=args.debug)
