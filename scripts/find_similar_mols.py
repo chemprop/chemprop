@@ -117,11 +117,11 @@ def find_similar_mols_from_file(test_path: str,
 
 def save_similar_mols(test_path: str,
                       train_path: str,
-                      checkpoint_path: str,
                       save_path: str,
                       distance_measure: str,
-                      num_neighbors: int,
-                      batch_size: int):
+                      checkpoint_path: str = None,
+                      num_neighbors: int = None,
+                      batch_size: int = 50):
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
     Loads molecules and model from file and saves results to file.
@@ -162,13 +162,13 @@ if __name__ == '__main__':
                         help='Path to CSV file with test set of molecules')
     parser.add_argument('--train_path', type=str, required=True,
                         help='Path to CSV file with train set of molecules')
-    parser.add_argument('--checkpoint_path', type=str,
-                        help='Path to .pt file containing a model checkpoint'
-                             '(only needed for distance_measure == "embedding")')
     parser.add_argument('--save_path', type=str, required=True,
                         help='Path to CSV file where similar molecules will be saved')
     parser.add_argument('--distance_measure', type=str, choices=['embedding', 'morgan'], default='embedding',
                         help='Distance measure to use to find nearest neighbors in train set')
+    parser.add_argument('--checkpoint_path', type=str,
+                        help='Path to .pt file containing a model checkpoint'
+                             '(only needed for distance_measure == "embedding")')
     parser.add_argument('--num_neighbors', type=int, default=5,
                         help='Number of neighbors to search for each molecule')
     parser.add_argument('--batch_size', type=int, default=50,
@@ -178,9 +178,9 @@ if __name__ == '__main__':
     save_similar_mols(
         test_path=args.test_path,
         train_path=args.train_path,
-        checkpoint_path=args.checkpoint_path,
         save_path=args.save_path,
         distance_measure=args.distance_measure,
+        checkpoint_path=args.checkpoint_path,
         num_neighbors=args.num_neighbors,
         batch_size=args.batch_size
     )
