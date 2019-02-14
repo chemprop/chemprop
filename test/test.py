@@ -13,7 +13,7 @@ from chemprop.data.utils import get_data
 from chemprop.features import clear_cache
 from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
 from chemprop.train import cross_validate, make_predictions
-from chemprop.utils import create_logger
+from chemprop.utils import create_logger, makedirs
 
 from hyperparameter_optimization import grid_search
 
@@ -91,9 +91,7 @@ class TestScripts(unittest.TestCase):
             args.save_path = NamedTemporaryFile().name
             args.features_generator = 'morgan_count'
 
-            dirname = os.path.dirname(args.save_path)
-            if dirname != '':
-                os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+            makedirs(args.save_path, isfile=True)
 
             save_features(args)
             os.unlink(args.save_path)

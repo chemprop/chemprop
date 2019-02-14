@@ -12,19 +12,35 @@ from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 from chemprop.data import StandardScaler
-from chemprop.models import build_model
+from chemprop.models import build_model, MoleculeModel
 from chemprop.nn_utils import NoamLR
 
 
+def makedirs(path: str, isfile: bool = False):
+    """
+    Creates a directory given a path to either a directory or file.
+
+    If a directory is provided, creates that directory. If a file is provided (i.e. isfiled == True),
+    creates the parent directory for that file.
+
+    :param path: Path to a directory or file.
+    :param isfile: Whether the provided path is a directory or file.
+    """
+    if isfile:
+        path = os.path.dirname(path)
+    if path != '':
+        os.makedirs(path, exist_ok=True)
+
+
 def save_checkpoint(path: str,
-                    model: nn.Module,
+                    model: MoleculeModel,
                     scaler: StandardScaler = None,
                     features_scaler: StandardScaler = None,
                     args: Namespace = None):
     """
     Saves a model checkpoint.
 
-    :param model: A PyTorch model.
+    :param model: A MoleculeModel.
     :param scaler: A StandardScaler fitted on the data.
     :param features_scaler: A StandardScaler fitted on the features.
     :param args: Arguments namespace.
@@ -48,7 +64,7 @@ def save_checkpoint(path: str,
 def load_checkpoint(path: str,
                     current_args: Namespace = None,
                     cuda: bool = False,
-                    logger: logging.Logger = None) -> nn.Module:
+                    logger: logging.Logger = None) -> MoleculeModel:
     """
     Loads a model checkpoint.
 
@@ -56,7 +72,7 @@ def load_checkpoint(path: str,
     :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
     :param cuda: Whether to move model to cuda.
     :param logger: A logger.
-    :return: The loaded model.
+    :return: The loaded MoleculeModel.
     """
     debug = logger.debug if logger is not None else print
 
@@ -275,8 +291,7 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
     logger.addHandler(ch)
 
     if save_dir is not None:
-        if save_dir != '':
-            os.makedirs(save_dir, exist_ok=True)
+        makedirs(save_dir)
 
         fh_v = logging.FileHandler(os.path.join(save_dir, 'verbose.log'))
         fh_v.setLevel(logging.DEBUG)

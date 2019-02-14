@@ -21,15 +21,15 @@ from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
-from chemprop.utils import create_logger, load_task_names
+from chemprop.utils import create_logger, load_task_names, makedirs
 
 TEMP_FOLDER = TemporaryDirectory()
 
 app = Flask(__name__)
 app.config['DATA_FOLDER'] = 'web_data'
-os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
+makedirs(app.config['DATA_FOLDER'])
 app.config['CHECKPOINT_FOLDER'] = 'web_checkpoints'
-os.makedirs(app.config['CHECKPOINT_FOLDER'], exist_ok=True)
+makedirs(app.config['CHECKPOINT_FOLDER'])
 app.config['TEMP_FOLDER'] = TEMP_FOLDER.name
 app.config['SMILES_FILENAME'] = 'smiles.csv'
 app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'

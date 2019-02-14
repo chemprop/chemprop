@@ -5,6 +5,8 @@ from tempfile import TemporaryDirectory
 
 import torch
 
+from chemprop.utils import makedirs
+
 
 def add_predict_args(parser: ArgumentParser):
     """
@@ -202,9 +204,7 @@ def modify_predict_args(args: Namespace):
     del args.no_cuda
 
     # Create directory for preds path
-    preds_dir = os.path.dirname(args.preds_path)
-    if preds_dir != '':
-        os.makedirs(preds_dir, exist_ok=True)
+    makedirs(args.preds_path, isfile=True)
 
 
 def parse_predict_args() -> Namespace:
@@ -235,7 +235,7 @@ def modify_train_args(args: Namespace):
     assert args.dataset_type is not None
 
     if args.save_dir is not None:
-        os.makedirs(args.save_dir, exist_ok=True)
+        makedirs(args.save_dir)
     else:
         temp_dir = TemporaryDirectory()
         args.save_dir = temp_dir.name

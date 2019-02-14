@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 from chemprop.features import get_features_func
+from chemprop.utils import makedirs
 
 
 def load_temp(temp_dir: str) -> Tuple[List[List[float]], int]:
@@ -62,6 +63,9 @@ def save_features(args: Namespace):
 
     :param args: Arguments.
     """
+    # Create directory for save_path
+    makedirs(args.save_path, isfile=True)
+
     # Get data and features function
     data = get_data(path=args.data_path, max_data_size=None)
     features_func = get_features_func(args.features_generator)
@@ -81,7 +85,7 @@ def save_features(args: Namespace):
             features, temp_num = load_temp(temp_save_dir)
 
     if not os.path.exists(temp_save_dir):
-        os.makedirs(temp_save_dir)
+        makedirs(temp_save_dir)
         features, temp_num = [], 0
 
     # Build features map function
@@ -133,9 +137,5 @@ if __name__ == '__main__':
     parser.add_argument('--parallel', action='store_true', default=False,
                         help='Whether to run in parallel rather than sequentially (warning: doesn\'t always work')
     args = parser.parse_args()
-
-    dirname = os.path.dirname(args.save_path)
-    if dirname != '':
-        os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
 
     save_features(args)

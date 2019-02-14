@@ -5,8 +5,9 @@ from typing import Tuple
 
 import numpy as np
 
-from chemprop.data.utils import get_task_names
 from .run_training import run_training
+from chemprop.data.utils import get_task_names
+from chemprop.utils import makedirs
 
 
 def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float]:
@@ -24,7 +25,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
         info(f'Fold {fold_num}')
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
-        os.makedirs(args.save_dir, exist_ok=True)
+        makedirs(args.save_dir)
         model_scores = run_training(args, logger)
         all_scores.append(model_scores)
     all_scores = np.array(all_scores)

@@ -13,7 +13,7 @@ from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
-from chemprop.utils import create_logger
+from chemprop.utils import create_logger, makedirs
 
 
 SPACE = {
@@ -86,9 +86,7 @@ def grid_search(args: Namespace):
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
-    config_save_dir = os.path.dirname(args.config_save_path)
-    if config_save_dir != '':
-        os.makedirs(config_save_dir, exist_ok=True)
+    makedirs(args.config_save_path, isfile=True)
 
     with open(args.config_save_path, 'w') as f:
         json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
