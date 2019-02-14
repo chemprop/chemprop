@@ -86,6 +86,10 @@ def grid_search(args: Namespace):
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
+    config_save_dir = os.path.dirname(args.config_save_path)
+    if config_save_dir != '':
+        os.makedirs(config_save_dir, exist_ok=True)
+
     with open(args.config_save_path, 'w') as f:
         json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
 
