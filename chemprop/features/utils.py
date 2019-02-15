@@ -24,7 +24,7 @@ def load_features(path: str) -> np.ndarray:
     - .npz compressed (assumes features are saved with name "features")
     - .npz (assumes features are saved with name "features")
     - .npy
-    - .csv (assumes comma-separated features with a header and with one line per molecule)
+    - .csv/.txt (assumes comma-separated features with a header and with one line per molecule)
     - .pkl/.pckl/.pickle containing a sparse numpy array (TODO: remove this option once we are no longer dependent on it)
 
     All formats assume that the SMILES strings loaded elsewhere in the code are in the same
@@ -39,7 +39,7 @@ def load_features(path: str) -> np.ndarray:
         features = np.load(path)['features']
     elif extension == '.npy':
         features = np.load(path)
-    elif extension == '.csv':
+    elif extension in ['.csv', '.txt']:
         with open(path) as f:
             reader = csv.reader(f)
             next(reader)  # skip header
