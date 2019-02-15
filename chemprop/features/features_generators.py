@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import Callable, List, Union
 
 import numpy as np
@@ -6,21 +5,11 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 
+Molecule = Union[str, Chem.Mol]
+FeaturesGenerator = Callable[[Molecule], np.ndarray]
+
+
 FEATURES_GENERATOR_REGISTRY = {}
-
-
-class FeaturesGenerator(ABC):
-    """An abstract class for a classes which generate features for a molecule."""
-
-    @abstractmethod
-    def __call__(self, mol: Union[str, Chem.Mol]) -> np.ndarray:
-        """
-        Generates features for a molecule.
-
-        :param mol: Either a SMILES string or an RDKit molecule.
-        :return: A 1-D numpy array containing the features for the molecule.
-        """
-        pass
 
 
 def register_features_generator(features_generator_name: str) -> Callable[[FeaturesGenerator], FeaturesGenerator]:
@@ -37,19 +26,18 @@ def register_features_generator(features_generator_name: str) -> Callable[[Featu
     return decorator
 
 
-def get_features_generator(features_generator_name: str, **kwargs) -> FeaturesGenerator:
+def get_features_generator(features_generator_name: str) -> FeaturesGenerator:
     """
     Gets a registered FeaturesGenerator by name.
 
     :param features_generator_name: The name of the FeaturesGenerator.
-    :param kwargs: Keyword arguments for the FeaturesGenerator.
     :return: The desired FeaturesGenerator.
     """
     if features_generator_name not in FEATURES_GENERATOR_REGISTRY:
         raise ValueError(f'Features generator "{features_generator_name}" could not be found. '
                          f'If this generator relies on rdkit features, you may need to install descriptastorus.')
 
-    return FEATURES_GENERATOR_REGISTRY[features_generator_name](**kwargs)
+    return FEATURES_GENERATOR_REGISTRY[features_generator_name]
 
 
 def get_available_features_generators() -> List[str]:
@@ -57,96 +45,96 @@ def get_available_features_generators() -> List[str]:
     return list(FEATURES_GENERATOR_REGISTRY.keys())
 
 
-class MorganBaseFeaturesGenerator(FeaturesGenerator, ABC):
-    """A Morgan Fingerprint generator which can produce either binary or count-based Morgan fingerprints."""
-
-    def __init__(self, radius: int = 2, num_bits: int = 2048):
-        """
-        Initializes the MorganFeaturesGenerator.
-
-        :param radius: The radius of the fingerprint.
-        :param num_bits: The number of bits to use in the fingerprint.
-        """
-        super(MorganBaseFeaturesGenerator, self).__init__()
-
-        self.radius = radius
-        self.num_bits = num_bits
-
-    @property
-    @abstractmethod
-    def use_counts(self) -> bool:
-        """Whether to use counts instead of bits."""
-        pass
-
-    def __call__(self, mol: Union[str, Chem.Mol]) -> np.ndarray:
-        """
-        Generates features for a molecule.
-
-        :param mol: Either a SMILES string or an RDKit molecule.
-        :return: A 1-D numpy array containing the features for the molecule.
-        """
-        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
-        if self.use_counts:
-            features_vec = AllChem.GetHashedMorganFingerprint(mol, self.radius, nBits=self.num_bits)
-        else:
-            features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, self.radius, nBits=self.num_bits)
-        features = np.zeros((1,))
-        DataStructs.ConvertToNumpyArray(features_vec, features)
-
-        return features
+MORGAN_RADIUS = 2
+MORGAN_NUM_BITS = 2048
 
 
 @register_features_generator('morgan')
-class MorganBinaryFeaturesGenerator(MorganBaseFeaturesGenerator):
-    @property
-    def use_counts(self) -> bool:
-        """Whether to use counts instead of bits."""
-        return False
+def morgan_binary_features_generator(mol: Molecule,
+                                     radius: int = MORGAN_RADIUS,
+                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+    """
+    Generates a binary Morgan fingerprint for a molecule.
+
+    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+    :param radius: Morgan fingerprint radius.
+    :param num_bits: Number of bits in Morgan fingerprint.
+    :return: A 1-D numpy array containing the binary Morgan fingerprint.
+    """
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+    features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
+    features = np.zeros((1,))
+    DataStructs.ConvertToNumpyArray(features_vec, features)
+
+    return features
 
 
 @register_features_generator('morgan_count')
-class MorganBinaryFeaturesGenerator(MorganBaseFeaturesGenerator):
-    @property
-    def use_counts(self) -> bool:
-        """Whether to use counts instead of bits."""
-        return True
+def morgan_counts_features_generator(mol: Molecule,
+                                     radius: int = MORGAN_RADIUS,
+                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+    """
+     Generates a counts-based Morgan fingerprint for a molecule.
+
+     :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+     :param radius: Morgan fingerprint radius.
+     :param num_bits: Number of bits in Morgan fingerprint.
+     :return: A 1D numpy array containing the counts-based Morgan fingerprint.
+     """
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+    features_vec = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
+    features = np.zeros((1,))
+    DataStructs.ConvertToNumpyArray(features_vec, features)
+
+    return features
 
 
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
-    class RDKit2DBaseFeaturesGenerator(FeaturesGenerator, ABC):
-        """Abstract base class for RDKit FeaturesGenerators."""
-
-        @property
-        @abstractmethod
-        def generator(self) -> rdDescriptors.DescriptorGenerator:
-            """Returns an RDKit descriptor generator."""
-            pass
-
-        def __call__(self, mol: Union[str, Chem.Mol]) -> np.ndarray:
-            """
-            Generates features for a molecule.
-
-            :param mol: Either a SMILES string or an RDKit molecule.
-            :return: A 1-D numpy array containing the features for the molecule.
-            """
-            smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
-            features = self.generator.process(smiles)[1:]
-
-            return features
-
     @register_features_generator('rdkit_2d')
-    class RDKit2DFeaturesGenerator(RDKit2DBaseFeaturesGenerator):
-        @property
-        def generator(self) -> rdDescriptors.DescriptorGenerator:
-            return rdDescriptors.RDKit2D()
+    def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+        """
+        Generates RDKit 2D features for a molecule.
+
+        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :return: A 1D numpy array containing the RDKit 2D features.
+        """
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+        generator = rdDescriptors.RDKit2D()
+        features = generator.process(smiles)[1:]
+
+        return features
 
     @register_features_generator('rdkit_2d_normalized')
-    class RDKit2DNormalizedFeaturesGenerator(RDKit2DBaseFeaturesGenerator):
-        @property
-        def generator(self) -> rdDescriptors.DescriptorGenerator:
-            return rdNormalizedDescriptors.RDKit2DNormalized()
+    def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+        """
+        Generates RDKit 2D normalized features for a molecule.
+
+        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :return: A 1D numpy array containing the RDKit 2D normalized features.
+        """
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+        generator = rdNormalizedDescriptors.RDKit2DNormalized()
+        features = generator.process(smiles)[1:]
+
+        return features
 except ImportError:
     pass
 
+
+# Your custom features generator goes here:
+"""
+@register_features_generator('custom')
+def custom_features_generator(mol: Molecule) -> np.ndarray:
+    # If you want to use the SMILES string
+    smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+
+    # If you want to use the RDKit molecule
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+
+    # Replace this with code generating your features from the molecule
+    features = np.array([0, 0, 1])
+
+    return features
+"""

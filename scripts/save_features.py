@@ -91,15 +91,15 @@ def save_features(args: Namespace):
     # Build features map function
     data = data[len(features):]  # restrict to data for which features have not been computed yet
     mols = (d.mol for d in data)
-    if args.parallel:
-        with Pool() as pool:
-            features_map = tqdm(pool.imap(features_generator, mols), total=len(data))
+
+    if args.sequential:
+        features_map = map(features_generator, mols)
     else:
-        features_map = tqdm(map(features_generator, mols), total=len(data))
+        features_map = Pool().imap(features_generator, mols)
 
     # Get features
     temp_features = []
-    for i, feats in enumerate(features_map):
+    for i, feats in tqdm(enumerate(features_map), total=len(data)):
         temp_features.append(feats)
 
         # Save temporary features every save_frequency
@@ -134,8 +134,8 @@ if __name__ == '__main__':
                         help='Whether to not load partially complete featurization and instead start from scratch')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
-    parser.add_argument('--parallel', action='store_true', default=False,
-                        help='Whether to run in parallel rather than sequentially (warning: doesn\'t always work')
+    parser.add_argument('--sequential', action='store_true', default=False,
+                        help='Whether to run sequentially rather than in parallel')
     args = parser.parse_args()
 
     save_features(args)

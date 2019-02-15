@@ -84,8 +84,8 @@ class TestScripts(unittest.TestCase):
                                 help='Whether to not load partially complete featurization and instead start from scratch')
             parser.add_argument('--max_data_size', type=int,
                                 help='Maximum number of data points to load')
-            parser.add_argument('--parallel', action='store_true', default=False,
-                                help='Whether to run in parallel rather than sequentially (warning: doesn\'t always work')
+            parser.add_argument('--sequential', action='store_true', default=False,
+                                help='Whether to run sequentially rather than in parallel')
             args = parser.parse_args([])
             args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
             args.save_path = NamedTemporaryFile().name
