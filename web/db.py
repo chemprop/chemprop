@@ -50,17 +50,42 @@ def close_db(e=None):
 
 # Table Specific Functions
 def insert_user(username):
-    cur = get_db().execute('INSERT INTO user (username) VALUES (?)', [username])
-    new_user_id = cur.lastrowid
+    new_user_id = None
+
+    count = 0
+    while new_user_id == None:
+        temp_name = username
+        
+        if count != 0:
+            temp_name += str(count)
+        try:
+            cur = get_db().execute('INSERT INTO user (username) VALUES (?)', [tempName])
+            new_user_id = cur.lastrowid
+        except sqlite3.IntegrityError:
+            count += 1
+            continue
+    
     cur.close()
 
-    return new_user_id
+    return new_user_id, temp_name
 
-def insert_model(checkpoint_name, associated_user, model_class, num_epochs):
-    cur = get_db().execute('INSERT INTO model (model_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
-                           [checkpoint_name, associated_user, model_class, num_epochs])
-    new_model_id = cur.lastrowid
+def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
+    new_ckpt_id = None
+
+    count = 0
+    while new_ckpt_name == None:
+        temp_name = ckpt_name
+
+        if count != 0:
+            temp_name += str(count)
+        try:
+            cur = get_db().execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
+                                [temp_name, associated_user, model_class, num_epochs])
+            new_ckpt_id = cur.lastrowid
+        except sqlite3.IntegrityError as e:
+            count += 1
+            continue
+    
     cur.close()
 
-    return new_model_id
-
+    return new_ckpt_id, temp_name

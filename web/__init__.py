@@ -229,7 +229,7 @@ def train():
         else:
             args.gpu = int(gpu)
 
-    model_id = db.insert_model(checkpoint_name, 1, args.dataset_type, args.epochs)
+    ckpt_id = db.insert_ckpt(checkpoint_name, 1, args.dataset_type, args.epochs)
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
