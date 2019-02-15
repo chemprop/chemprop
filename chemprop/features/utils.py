@@ -25,7 +25,7 @@ def load_features(path: str) -> np.ndarray:
     - .npz (assumes features are saved with name "features")
     - .npy
     - .csv (assumes comma-separated features with a header and with one line per molecule)
-    - .pckl containing a sparse numpy array (TODO: remove this option once we are no longer dependent on it)
+    - .pkl/.pckl/.pickle containing a sparse numpy array (TODO: remove this option once we are no longer dependent on it)
 
     All formats assume that the SMILES strings loaded elsewhere in the code are in the same
     order as the features loaded here.
@@ -44,7 +44,7 @@ def load_features(path: str) -> np.ndarray:
             reader = csv.reader(f)
             next(reader)  # skip header
             features = np.array([[float(value) for value in row] for row in reader])
-    elif extension == '.pckl':
+    elif extension in ['.pkl', '.pckl', '.pickle']:
         with open(path, 'rb') as f:
             features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
     else:

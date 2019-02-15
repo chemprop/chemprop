@@ -3,23 +3,21 @@
 from argparse import ArgumentParser
 from copy import deepcopy
 import os
+import sys
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import unittest
 
-import sys
-sys.path.append('../')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 from chemprop.features import clear_cache, get_available_features_generators
 from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
 from chemprop.train import cross_validate, make_predictions
-from chemprop.utils import create_logger, makedirs
-
+from chemprop.utils import create_logger
 from hyperparameter_optimization import grid_search
-
 from scripts.avg_dups import average_duplicates
 from scripts.overlap import overlap
-from scripts.save_features import save_features
+from scripts.save_features import generate_and_save_features
 from scripts.similarity import scaffold_similarity, morgan_similarity
 
 
@@ -41,7 +39,7 @@ class TestScripts(unittest.TestCase):
             args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
             args.save_path = NamedTemporaryFile().name
             average_duplicates(args)
-            os.unlink(args.save_path)
+            os.remove(args.save_path)
         except:
             self.fail('avg_dups')
     
@@ -88,13 +86,13 @@ class TestScripts(unittest.TestCase):
                                 help='Whether to run sequentially rather than in parallel')
             args = parser.parse_args([])
             args.data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
-            args.save_path = NamedTemporaryFile().name
+            args.save_path = NamedTemporaryFile(suffix='.npz').name
+            args.restart = True
             args.features_generator = 'morgan_count'
 
-            makedirs(args.save_path, isfile=True)
+            generate_and_save_features(args)
 
-            save_features(args)
-            os.unlink(args.save_path)
+            os.remove(args.save_path)
         except:
             self.fail('save_features')
     
@@ -286,7 +284,7 @@ class TestTrain(unittest.TestCase):
     
     def test_features_path(self):
         try:
-            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.npz')]
             self.args.no_features_scaling = True
             modify_train_args(self.args)
             cross_validate(self.args, self.logger)
@@ -297,9 +295,9 @@ class TestTrain(unittest.TestCase):
         try:
             self.args.separate_val_set = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
             self.args.separate_test_set = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
-            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
-            self.args.separate_val_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
-            self.args.separate_test_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.pkl')]
+            self.args.features_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.npz')]
+            self.args.separate_val_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.npz')]
+            self.args.separate_test_set_features = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_features.npz')]
             self.args.no_features_scaling = True
             modify_train_args(self.args)
             cross_validate(self.args, self.logger)
@@ -355,7 +353,7 @@ class TestPredict(unittest.TestCase):
     
     def tearDown(self):
         self.temp_dir.cleanup()
-        os.unlink(self.args.preds_path)
+        os.remove(self.args.preds_path)
         self.args = None
         clear_cache()
     
