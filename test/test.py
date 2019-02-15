@@ -10,7 +10,7 @@ import sys
 sys.path.append('../')
 
 from chemprop.data.utils import get_data
-from chemprop.features import clear_cache
+from chemprop.features import clear_cache, get_available_features_generators
 from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
 from chemprop.train import cross_validate, make_predictions
 from chemprop.utils import create_logger, makedirs
@@ -74,7 +74,7 @@ class TestScripts(unittest.TestCase):
             parser.add_argument('--data_path', type=str,
                                 help='Path to data CSV')
             parser.add_argument('--features_generator', type=str,
-                                choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
+                                choices=get_available_features_generators(),
                                 help='Type of features to generate')
             parser.add_argument('--save_path', type=str,
                                 help='Path to .pckl file where features will be saved as a Python pickle file')

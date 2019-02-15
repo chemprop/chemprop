@@ -7,7 +7,7 @@ from torch.utils.data.dataset import Dataset
 from rdkit import Chem
 
 from .scaler import StandardScaler
-from chemprop.features import get_features_func
+from chemprop.features import get_features_generator
 
 
 class MoleculeDatapoint:
@@ -51,9 +51,9 @@ class MoleculeDatapoint:
             self.features = []
 
             for fg in self.features_generator:
-                features_func = get_features_func(fg)
+                features_generator = get_features_generator(fg)
                 if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
-                    self.features.extend(features_func(self.mol))
+                    self.features.extend(features_generator(self.mol))
 
             self.features = np.array(self.features)
 

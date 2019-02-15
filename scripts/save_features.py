@@ -15,7 +15,7 @@ from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
-from chemprop.features import get_features_func
+from chemprop.features import get_available_features_generators, get_features_generator
 from chemprop.utils import makedirs
 
 
@@ -68,7 +68,7 @@ def save_features(args: Namespace):
 
     # Get data and features function
     data = get_data(path=args.data_path, max_data_size=None)
-    features_func = get_features_func(args.features_generator)
+    features_generator = get_features_generator(args.features_generator)
     temp_save_dir = args.save_path + '_temp'
 
     # Load partially complete data
@@ -93,9 +93,9 @@ def save_features(args: Namespace):
     mols = (d.mol for d in data)
     if args.parallel:
         with Pool() as pool:
-            features_map = tqdm(pool.imap(features_func, mols), total=len(data))
+            features_map = tqdm(pool.imap(features_generator, mols), total=len(data))
     else:
-        features_map = tqdm(map(features_func, mols), total=len(data))
+        features_map = tqdm(map(features_generator, mols), total=len(data))
 
     # Get features
     temp_features = []
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV')
     parser.add_argument('--features_generator', type=str, required=True,
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
+                        choices=get_available_features_generators(),
                         help='Type of features to generate')
     parser.add_argument('--save_path', type=str, required=True,
                         help='Path to .pckl file where features will be saved as a Python pickle file')
