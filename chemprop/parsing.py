@@ -79,11 +79,11 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--separate_val_path', type=str,
                         help='Path to separate val set, optional')
     parser.add_argument('--separate_val_features_path', type=str, nargs='*',
-                        help='Path to .pckl file with features for separate val set')
+                        help='Path to file with features for separate val set')
     parser.add_argument('--separate_test_path', type=str,
                         help='Path to separate test set, optional')
     parser.add_argument('--separate_test_features_path', type=str, nargs='*',
-                        help='Path to .pckl file with features for separate test set')
+                        help='Path to file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold_balanced', 'predetermined'],
                         help='Method of splitting the data into train/val/test')

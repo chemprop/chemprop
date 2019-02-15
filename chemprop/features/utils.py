@@ -13,7 +13,7 @@ def save_features(path: str, features: List[np.ndarray]):
     :param path: Path to a .npz file where the features will be saved.
     :param features: A list of 1D numpy arrays containing the features for molecules.
     """
-    np.savez_compressed(path, features)
+    np.savez_compressed(path, features=features)
 
 
 def load_features(path: str) -> np.ndarray:

@@ -77,7 +77,7 @@ class TestScripts(unittest.TestCase):
                                 choices=get_available_features_generators(),
                                 help='Type of features to generate')
             parser.add_argument('--save_path', type=str,
-                                help='Path to .pckl file where features will be saved as a Python pickle file')
+                                help='Path to .npz file where features will be saved as a numpy compressed archive')
             parser.add_argument('--save_frequency', type=int, default=10000,
                                 help='Frequency with which to save the features')
             parser.add_argument('--restart', action='store_true', default=False,

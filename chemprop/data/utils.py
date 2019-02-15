@@ -91,7 +91,7 @@ def get_data(path: str,
     :param path: Path to a CSV file.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
-    :param features_path: A list of paths to .pckl files containing features. If provided, it is used
+    :param features_path: A list of paths to files containing features. If provided, it is used
     in place of args.features_path.
     :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
