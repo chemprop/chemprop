@@ -123,8 +123,13 @@ except ImportError:
     pass
 
 
-# Your custom features generator goes here:
 """
+Custom features generator template.
+
+Note: The name you use to register the features generator is the name
+you will specify on the command line when using the --features_generator <name> flag.
+Ex. python train.py ... --features_generator custom ...
+
 @register_features_generator('custom')
 def custom_features_generator(mol: Molecule) -> np.ndarray:
     # If you want to use the SMILES string
@@ -133,7 +138,7 @@ def custom_features_generator(mol: Molecule) -> np.ndarray:
     # If you want to use the RDKit molecule
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
 
-    # Replace this with code generating your features from the molecule
+    # Replace this with code which generates features from the molecule
     features = np.array([0, 0, 1])
 
     return features
