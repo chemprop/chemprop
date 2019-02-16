@@ -74,13 +74,13 @@ def morgan_counts_features_generator(mol: Molecule,
                                      radius: int = MORGAN_RADIUS,
                                      num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
     """
-     Generates a counts-based Morgan fingerprint for a molecule.
+    Generates a counts-based Morgan fingerprint for a molecule.
 
-     :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
-     :param radius: Morgan fingerprint radius.
-     :param num_bits: Number of bits in Morgan fingerprint.
-     :return: A 1D numpy array containing the counts-based Morgan fingerprint.
-     """
+    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+    :param radius: Morgan fingerprint radius.
+    :param num_bits: Number of bits in Morgan fingerprint.
+    :return: A 1D numpy array containing the counts-based Morgan fingerprint.
+    """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     features_vec = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
     features = np.zeros((1,))
