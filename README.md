@@ -17,6 +17,8 @@ This repository contains message passing neural networks for molecular property 
   * [Ensembling](#ensembling)
   * [Hyperparameter Optimization](#hyperparameter-optimization)
   * [Additional Features](#additional-features)
+    * [RDKit 2D Features](#rdkit-2d-features)
+    * [Custom Features](#custom-features)
 - [Predicting](#predicting)
 - [TensorBoard](#tensorboard)
 - [Results](#results)
@@ -142,9 +144,18 @@ python train.py --data_path <data_path> --dataset_type <type> --config_path <con
 
 While the model works very well on its own, especially after hyperparameter optimization, we have seen that adding computed molecule-level features can further improve performance on certain datasets. Features can be added to the model using the `--features_generator <generator>` flag.
 
+#### RDKit 2D Features
+
 As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
 
 Note: In order to use the `rdkit_2d_normalized` features, you must have `descriptastorus` installed. If you installed via conda, you can install `descriptastorus` by running `pip install git+https://github.com/bp-kelley/descriptastorus`. If you installed via Docker, `descriptastorus` should already be installed.
+
+#### Custom Features
+
+If you would like to load custom features, you can do so in two ways:
+
+1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
+2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
  
 ## Predicting
 

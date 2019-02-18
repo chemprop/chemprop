@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from chemprop.utils import makedirs
+from chemprop.features import get_available_features_generators
 
 
 def add_predict_args(parser: ArgumentParser):
@@ -33,7 +34,7 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Turn off cuda')
     parser.add_argument('--features_generator', type=str, nargs='*',
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized', 'mordred'],
+                        choices=get_available_features_generators(),
                         help='Method of generating additional features')
     parser.add_argument('--features_path', type=str, nargs='*',
                         help='Path to features to use in FNN (instead of features_generator)')
@@ -58,7 +59,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--features_only', action='store_true', default=False,
                         help='Use only the additional features in an FFN, no graph network')
     parser.add_argument('--features_generator', type=str, nargs='*',
-                        choices=['morgan', 'morgan_count', 'rdkit_2d', 'rdkit_2d_normalized'],
+                        choices=get_available_features_generators(),
                         help='Method of generating additional features')
     parser.add_argument('--features_path', type=str, nargs='*',
                         help='Path to features to use in FNN (instead of features_generator)')                   
@@ -78,11 +79,11 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--separate_val_path', type=str,
                         help='Path to separate val set, optional')
     parser.add_argument('--separate_val_features_path', type=str, nargs='*',
-                        help='Path to .pckl file with features for separate val set')
+                        help='Path to file with features for separate val set')
     parser.add_argument('--separate_test_path', type=str,
                         help='Path to separate test set, optional')
     parser.add_argument('--separate_test_features_path', type=str, nargs='*',
-                        help='Path to .pckl file with features for separate test set')
+                        help='Path to file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold_balanced', 'predetermined'],
                         help='Method of splitting the data into train/val/test')

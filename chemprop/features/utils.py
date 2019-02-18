@@ -1,64 +1,53 @@
-from functools import partial
+import csv
 import os
 import pickle
-from typing import Callable, List, Union
+from typing import List
 
 import numpy as np
-from rdkit import Chem
-
-from .morgan_fingerprint import morgan_fingerprint
 
 
-def load_features(path: str) -> List[np.ndarray]:
+def save_features(path: str, features: List[np.ndarray]):
     """
-    Loads features saved as a .pckl file or as a directory of .pckl files.
+    Saves features to a compressed .npz file with array name "features".
 
-    If path is a directory, assumes features are saved in files named 0.pckl, 1.pckl, ...
-
-    :param path: Path to a .pckl file or a directory of .pckl files named as above.
-    :return: A list of numpy arrays containing the features.
+    :param path: Path to a .npz file where the features will be saved.
+    :param features: A list of 1D numpy arrays containing the features for molecules.
     """
-    if os.path.isfile(path):
+    np.savez_compressed(path, features=features)
+
+
+def load_features(path: str) -> np.ndarray:
+    """
+    Loads features saved in a variety of formats.
+
+    Supported formats:
+    - .npz compressed (assumes features are saved with name "features")
+    - .npz (assumes features are saved with name "features")
+    - .npy
+    - .csv/.txt (assumes comma-separated features with a header and with one line per molecule)
+    - .pkl/.pckl/.pickle containing a sparse numpy array (TODO: remove this option once we are no longer dependent on it)
+
+    All formats assume that the SMILES strings loaded elsewhere in the code are in the same
+    order as the features loaded here.
+
+    :param path: Path to a file containing features.
+    :return: A 2D numpy array of size (num_molecules, features_size) containing the features.
+    """
+    extension = os.path.splitext(path)[1]
+
+    if extension == '.npz':
+        features = np.load(path)['features']
+    elif extension == '.npy':
+        features = np.load(path)
+    elif extension in ['.csv', '.txt']:
+        with open(path) as f:
+            reader = csv.reader(f)
+            next(reader)  # skip header
+            features = np.array([[float(value) for value in row] for row in reader])
+    elif extension in ['.pkl', '.pckl', '.pickle']:
         with open(path, 'rb') as f:
-            features = pickle.load(f)
-        features = [np.squeeze(np.array(feat.todense())) for feat in features]
+            features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
     else:
-        features = []
-        features_num = 0
-        features_path = os.path.join(path, f'{features_num}.pckl')
-
-        while os.path.exists(features_path):
-            with open(features_path, 'rb') as f:
-                feats = pickle.load(f)
-            features.extend([np.squeeze(np.array(feat.todense())) for feat in feats])
-
-            features_num += 1
-            features_path = os.path.join(path, f'{features_num}.pckl')
+        raise ValueError(f'Features path extension {extension} not supported.')
 
     return features
-
-
-def get_features_func(features_generator: str) -> Union[Callable[[Union[str, Chem.Mol]], np.ndarray], partial]:
-    """
-    Gets a features generator function by name.
-
-    :param features_generator: The name of a features generator function.
-    :return: A features generator function which process RDKit molecules and returns numpy arrays of features.
-    """
-    if features_generator == 'morgan':
-        return partial(morgan_fingerprint, use_counts=False)
-
-    if features_generator == 'morgan_count':
-        return partial(morgan_fingerprint, use_counts=True)
-
-    if features_generator == 'rdkit_2d':
-        from .rdkit_features import rdkit_2d_features
-
-        return rdkit_2d_features
-
-    if features_generator == "rdkit_2d_normalized":
-        from .rdkit_features import rdkit_2d_normalized_features
-
-        return rdkit_2d_normalized_features
-
-    raise ValueError(f'features_generator type "{features_generator}" not supported.')
