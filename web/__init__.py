@@ -26,7 +26,6 @@ from chemprop.parsing import add_predict_args, add_train_args, modify_predict_ar
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
 from chemprop.utils import create_logger, load_task_names
-# from web.db import get_db, close_db, init_app, init_db
 
 TEMP_FOLDER = TemporaryDirectory()
 
@@ -163,7 +162,7 @@ def receiver():
 @app.route('/')
 def home():
     """Renders the home page."""
-    return render_template('home.html')
+    return render_template('home.html', users=db.get_all_users())
 
 
 def render_train(**kwargs):
@@ -176,6 +175,7 @@ def render_train(**kwargs):
                            gpus=app.config['GPUS'],
                            data_upload_warnings=data_upload_warnings,
                            data_upload_errors=data_upload_errors,
+                           users=db.get_all_users(),
                            **kwargs)
 
 
@@ -277,6 +277,7 @@ def render_predict(**kwargs):
                            gpus=app.config['GPUS'],
                            checkpoint_upload_warnings=checkpoint_upload_warnings,
                            checkpoint_upload_errors=checkpoint_upload_errors,
+                           users=db.get_all_users(),
                            **kwargs)
 
 
@@ -364,7 +365,8 @@ def data():
     return render_template('data.html',
                            datasets=get_datasets(),
                            data_upload_warnings=data_upload_warnings,
-                           data_upload_errors=data_upload_errors)
+                           data_upload_errors=data_upload_errors,
+                           users=db.get_all_users())
 
 
 @app.route('/data/upload/<string:return_page>', methods=['POST'])
@@ -428,7 +430,8 @@ def checkpoints():
     return render_template('checkpoints.html',
                            checkpoints=get_checkpoints(),
                            checkpoint_upload_warnings=checkpoint_upload_warnings,
-                           checkpoint_upload_errors=checkpoint_upload_errors)
+                           checkpoint_upload_errors=checkpoint_upload_errors,
+                           users=db.get_all_users())
 
 
 @app.route('/checkpoints/upload/<string:return_page>', methods=['POST'])

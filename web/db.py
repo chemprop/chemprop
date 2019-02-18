@@ -49,6 +49,14 @@ def close_db(e=None):
         db.close()
 
 # Table Specific Functions
+def get_all_users():
+    rows = db.query_db("SELECT * FROM user")
+
+    if rows:
+        return [list(row) for row in db.query_db("SELECT * FROM user")]
+    else:
+        return []
+
 def insert_user(username):
     new_user_id = None
 
