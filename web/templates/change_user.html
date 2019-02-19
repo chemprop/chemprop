@@ -11,13 +11,13 @@
     </select>
 
     <h4>Create a New User</h4>
-    <form>
-        New User: <input type="text" id="newUserName"><br/>
-        <button type="submit">Create</button>
+    <form method="POST">
+        New User: <input type="text" name="newUserName"><br/>
+        <button type="submit" class="btn btn-primary btn-md">Create</button>
     </form>
 
     <script>
-        console.log({{users | tojson}})
+        console.log({{users | tojson}});
         $("#userSelect").change(() => {
             localStorage.setItem("currentUser", $(this).value());
             location.reload();

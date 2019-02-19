@@ -58,8 +58,9 @@ def get_all_users():
         return {}
 
 def insert_user(username):
-    new_user_id = None
+    db = get_db()
 
+    new_user_id = None
     count = 0
     while new_user_id == None:
         temp_name = username
@@ -67,33 +68,36 @@ def insert_user(username):
         if count != 0:
             temp_name += str(count)
         try:
-            cur = get_db().execute('INSERT INTO user (username) VALUES (?)', [tempName])
+            cur = db.execute('INSERT INTO user (username) VALUES (?)', [temp_name])
             new_user_id = cur.lastrowid
         except sqlite3.IntegrityError:
             count += 1
             continue
     
+    db.commit()
     cur.close()
 
     return new_user_id, temp_name
 
 def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
-    new_ckpt_id = None
+    db = get_db()
 
+    new_ckpt_id = None
     count = 0
-    while new_ckpt_name == None:
+    while new_ckpt_id == None:
         temp_name = ckpt_name
 
         if count != 0:
             temp_name += str(count)
         try:
-            cur = get_db().execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
+            cur = db.execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
                                 [temp_name, associated_user, model_class, num_epochs])
             new_ckpt_id = cur.lastrowid
         except sqlite3.IntegrityError as e:
             count += 1
             continue
     
+    db.commit()
     cur.close()
 
     return new_ckpt_id, temp_name
