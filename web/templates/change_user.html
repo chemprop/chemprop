@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    <h1>Change User</h1>
+    <h4>Select an Existing User</h4>
+    <select id="userSelect">
+        {% for id, user in users.items() %}
+
+            <option value="{{id}}">{{user.username}}</option>
+        {% endfor %}
+    </select>
+
+    <h4>Create a New User</h4>
+    <form>
+        New User: <input type="text" id="newUserName"><br/>
+        <button type="submit">Create</button>
+    </form>
+
+    <script>
+        console.log({{users | tojson}})
+        $("#userSelect").change(() => {
+            localStorage.setItem("currentUser", $(this).value());
+            location.reload();
+        });
+    </script>
+{% endblock %}

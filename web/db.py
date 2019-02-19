@@ -50,12 +50,12 @@ def close_db(e=None):
 
 # Table Specific Functions
 def get_all_users():
-    rows = db.query_db("SELECT * FROM user")
+    rows = query_db("SELECT * FROM user")
 
     if rows:
-        return [list(row) for row in db.query_db("SELECT * FROM user")]
+        return {row[0]: {"username": row[1], "preferences": row[2]} for row in rows}
     else:
-        return []
+        return {}
 
 def insert_user(username):
     new_user_id = None

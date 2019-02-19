@@ -32,6 +32,10 @@
             <li><a href="{{ url_for('data') }}">Data</a></li>
             <li><a href="{{ url_for('checkpoints') }}">Checkpoints</a></li>
         </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href=# id="userDisplay"></a></li>
+            <li><a href="{{ url_for('change_user') }}">Change User</a></li>
+        </ul>
     </div>
 </nav>
 
@@ -53,7 +57,15 @@
 
 </body>
 <script>
-    var users = {{users | tojson }};
-    console.log(users);
+    let users = {{users | tojson }};
+    let currentUser = localStorage.getItem("currentUser");
+
+    if (currentUser === null || !(currentUser in users)) {
+        currentUser = 1;
+        localStorage.setItem("currentUser", currentUser);
+    }
+
+    $("#userDisplay").text(users[currentUser].username);
+
 </script>
 </html>
