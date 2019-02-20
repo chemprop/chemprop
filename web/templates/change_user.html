@@ -17,11 +17,10 @@
     </form>
 
     <script>
-        $(`#userSelect option[value=${localStorage.getItem('currentUser')}]`).attr('selected', 'selected');
+        $(`#userSelect option[value=${Cookies.get('currentUser')}]`).attr('selected', 'selected');
 
         $("#userSelect").on('change', function() {
-            localStorage.clear();
-            localStorage.setItem("currentUser", this.value);
+            Cookies.set("currentUser", this.value);
             location.reload();
         });
     </script>

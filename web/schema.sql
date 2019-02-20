@@ -9,14 +9,15 @@ CREATE TABLE user (
 
 CREATE TABLE ckpt (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ckpt_name TEXT UNIQUE NOT NULL,
+  ckpt_name TEXT NOT NULL,
   associated_user INTEGER NOT NULL,
   created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   class TEXT NOT NULL,
   stats JSON,
   epochs INTEGER NOT NULL DEFAULT 30,
   completed BOOLEAN NOT NULL DEFAULT 0,
-  FOREIGN KEY (associated_user) REFERENCES user (id)
+  FOREIGN KEY (associated_user) REFERENCES user (id),
+  CONSTRAINT uq_ckpt_names UNIQUE(ckpt_name, associated_user)
 );
 
 INSERT INTO user (username) VALUES ("DEFAULT")

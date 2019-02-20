@@ -170,13 +170,15 @@ def change_user():
     If a POST request is made, creates a new user.
     Renders the change_user page.
     """
-    if request.method == 'POST':   
-        new_name = request.form['newUserName']
+    if request.method == 'GET':   
+        return render_template('change_user.html', users=db.get_all_users())
 
-        if new_name != None:
-            db.insert_user(new_name)
-    
-    return render_template('change_user.html', users=db.get_all_users())
+    new_name = request.form['newUserName']
+
+    if new_name != None:
+        db.insert_user(new_name)
+
+    return redirect(url_for('change_user'))
 
 def render_train(**kwargs):
     """Renders the train page with specified kwargs."""
@@ -190,7 +192,6 @@ def render_train(**kwargs):
                            data_upload_errors=data_upload_errors,
                            users=db.get_all_users(),
                            **kwargs)
-
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
@@ -208,9 +209,6 @@ def train():
     gpu = request.form.get('gpu')
     data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
     dataset_type = request.form.get('datasetType', 'regression')
-
-    if not checkpoint_name.endswith('.pt'):
-        checkpoint_name += '.pt'
 
     # Create and modify args
     parser = ArgumentParser()
@@ -242,7 +240,14 @@ def train():
         else:
             args.gpu = int(gpu)
 
-    ckpt_id = db.insert_ckpt(checkpoint_name, 1, args.dataset_type, args.epochs)
+    current_user = request.cookies.get('currentUser')
+
+    if not current_user:
+        # Use DEFAULT as current user if the client's cookie is not set.
+        current_user = 1
+    
+    
+    ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name, current_user, args.dataset_type, args.epochs)
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
@@ -262,7 +267,7 @@ def train():
         PROGRESS = mp.Value('d', 0.0)
 
         # Check if name overlap
-        original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+        original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], str(ckpt_id) + ".pt")
         save_path = find_unused_path(original_save_path)
         if save_path != original_save_path:
             warnings.append(name_already_exists_message('Checkpoint', original_save_path, save_path))
@@ -285,7 +290,7 @@ def render_predict(**kwargs):
     checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
 
     return render_template('predict.html',
-                           checkpoints=get_checkpoints(),
+                           checkpoints=db.get_ckpts(request.cookies.get('currentUser')),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
                            checkpoint_upload_warnings=checkpoint_upload_warnings,

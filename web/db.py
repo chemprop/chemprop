@@ -79,6 +79,12 @@ def insert_user(username):
 
     return new_user_id, temp_name
 
+def get_ckpts(user_id):
+    if not user_id:
+        user_id = 0
+
+    return query_db('SELECT * FROM ckpt WHERE associated_user = ' + str(user_id))
+
 def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
     db = get_db()
 
