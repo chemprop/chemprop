@@ -1,3 +1,5 @@
+import os
+import shutil
 import sqlite3
 from flask import current_app, g
 from flask.cli import with_appcontext
@@ -12,6 +14,8 @@ def init_db():
     Executes schema.sql to initialize the database.
     This will wipe existing tables.
     """
+    shutil.rmtree('web_checkpoints')
+    os.makedirs('web_checkpoints')
     db = get_db()
 
     with current_app.open_resource('schema.sql') as f:

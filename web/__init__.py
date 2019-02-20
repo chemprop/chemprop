@@ -8,7 +8,6 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 from typing import List, Tuple
 import time
 import multiprocessing as mp
-import sqlite3
 import click
 
 from flask import Flask, json, jsonify, redirect, render_template, request, send_from_directory, url_for
