@@ -163,21 +163,21 @@ def home():
     """Renders the home page."""
     return render_template('home.html', users=db.get_all_users())
 
-@app.route('/change_user', methods=['GET', 'POST'])
-def change_user():
+@app.route('/create_user', methods=['GET', 'POST'])
+def create_user():
     """    
     If a POST request is made, creates a new user.
-    Renders the change_user page.
+    Renders the create_user page.
     """
     if request.method == 'GET':   
-        return render_template('change_user.html', users=db.get_all_users())
+        return render_template('create_user.html', users=db.get_all_users())
 
     new_name = request.form['newUserName']
 
     if new_name != None:
         db.insert_user(new_name)
 
-    return redirect(url_for('change_user'))
+    return redirect(url_for('create_user'))
 
 def render_train(**kwargs):
     """Renders the train page with specified kwargs."""

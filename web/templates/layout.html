@@ -34,8 +34,15 @@
             <li><a href="{{ url_for('checkpoints') }}">Checkpoints</a></li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
-            <li><a href=# id="userDisplay"></a></li>
-            <li><a href="{{ url_for('change_user') }}">Change User</a></li>
+            <li class="dropdown">
+                <a href="#" id="currentUser" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span></a>
+                <ul class="dropdown-menu" id="userSelect">
+                    {% for id, user in users.items() %}
+                        <li id="select{{id}}"><a value="{{id}}" href="#" class="userSelect">{{user.username}}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+            <li><a href="{{ url_for('create_user') }}">Create User</a></li>
         </ul>
     </div>
 </nav>
@@ -66,7 +73,14 @@
         Cookies.set("currentUser", currentUser);
     }
 
-    $("#userDisplay").text(users[currentUser].username);
+    $('#currentUser').prepend(users[currentUser].username);
+    $(`#select` + currentUser).css('display', 'none');
+
+    $(".userSelect").click(function() {
+        Cookies.set("currentUser", $(this).attr('value'));
+        location.reload();
+    });
+    </script>
 
 </script>
 </html>
