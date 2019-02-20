@@ -73,15 +73,6 @@ def get_datasets() -> List[str]:
     return sorted(os.listdir(app.config['DATA_FOLDER']))
 
 
-def get_checkpoints() -> List[str]:
-    """
-    Gets a list of the available checkpoints.
-
-    :return: A list of checkpoint names.
-    """
-    return sorted(os.listdir(app.config['CHECKPOINT_FOLDER']))
-
-
 def find_unused_path(path: str) -> str:
     """
     Given an initial path, finds an unused path by appending different numbers to the filename.
@@ -102,17 +93,17 @@ def find_unused_path(path: str) -> str:
     return path
 
 
-def name_already_exists_message(thing_being_named: str, original_path: str, new_path: str) -> str:
+def name_already_exists_message(thing_being_named: str, original_name: str, new_name: str) -> str:
     """
     Creates a message about a path already existing and therefore being renamed.
 
     :param thing_being_named: The thing being renamed (ex. Data, Checkpoint).
-    :param original_path: The original path where the object was supposed to be saved.
-    :param new_path: The new path where the object will actually be saved.
-    :return: A string with a message about the changed path.
+    :param original_name: The original name of the object.
+    :param new_name: The new name of the object.
+    :return: A string with a message about the changed name.
     """
-    return f'{thing_being_named} "{os.path.basename(original_path)} already exists. ' \
-           f'Saving to "{os.path.basename(new_path)}".'
+    return f'{thing_being_named} "{original_name} already exists. ' \
+           f'Saving to "{new_name}".'
 
 
 def get_upload_warnings_errors(upload_item: str) -> Tuple[List[str], List[str]]:
@@ -445,7 +436,7 @@ def checkpoints():
     checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
 
     return render_template('checkpoints.html',
-                           checkpoints=get_checkpoints(),
+                           checkpoints=db.get_ckpts(request.cookies.get('currentUser')),
                            checkpoint_upload_warnings=checkpoint_upload_warnings,
                            checkpoint_upload_errors=checkpoint_upload_errors,
                            users=db.get_all_users())
@@ -460,15 +451,23 @@ def upload_checkpoint(return_page: str):
     """
     warnings, errors = [], []
 
-    checkpoint = request.files['checkpoint']
-    checkpoint_name = secure_filename(checkpoint.filename)
-    original_checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+    current_user = request.cookies.get('currentUser')
 
-    checkpoint_path = find_unused_path(original_checkpoint_path)
-    if checkpoint_path != original_checkpoint_path:
-        warnings.append(name_already_exists_message('Checkpoint', original_checkpoint_path, checkpoint_path))
+    if not current_user:
+        # Use DEFAULT as current user if the client's cookie is not set.
+        current_user = 1
 
-    checkpoint.save(checkpoint_path)
+    ckpt = request.files['checkpoint']
+    ckpt_name = secure_filename(ckpt.filename)
+
+    ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, "UNKNOWN", -1)
+
+    ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], str(ckpt_id) + '.pt')
+
+    if ckpt_name != new_ckpt_name:
+        warnings.append(name_already_exists_message('Checkpoint', ckpt_name, new_ckpt_name))
+
+    ckpt.save(ckpt_path)
 
     warnings, errors = json.dumps(warnings), json.dumps(errors)
 
@@ -482,7 +481,7 @@ def download_checkpoint(checkpoint: str):
 
     :param checkpoint: The name of the checkpoint file to download.
     """
-    return send_from_directory(app.config['CHECKPOINT_FOLDER'], checkpoint, as_attachment=True)
+    return send_from_directory(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt', as_attachment=True)
 
 
 @app.route('/checkpoints/delete/<string:checkpoint>')
@@ -490,9 +489,10 @@ def delete_checkpoint(checkpoint: str):
     """
     Deletes a checkpoint file.
 
-    :param checkpoint: The name of the checkpoint to delete.
+    :param checkpoint: The id of the checkpoint to delete.
     """
-    os.remove(os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint))
+    db.delete_ckpt(checkpoint)
+    os.remove(os.path.join(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt'))
     return redirect(url_for('checkpoints'))
 
 if __name__ == "__main__":

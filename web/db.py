@@ -111,3 +111,9 @@ def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
     cur.close()
 
     return new_ckpt_id, temp_name
+
+def delete_ckpt(ckpt_id):
+    db = get_db()
+    cur = db.execute('DELETE FROM ckpt WHERE id =' + str(ckpt_id))
+    db.commit()
+    cur.close()
