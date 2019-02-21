@@ -23,7 +23,7 @@ from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
-from chemprop.utils import create_logger, load_task_names
+from chemprop.utils import create_logger, load_task_names, load_args
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -377,23 +377,32 @@ def upload_data(return_page: str):
     """
     warnings, errors = [], []
 
-    data = request.files['data']
+    current_user = request.cookies.get('currentUser')
+
+    if not current_user:
+        # Use DEFAULT as current user if the client's cookie is not set.
+        current_user = 1
+
+    dataset = request.files['dataset']
 
     with NamedTemporaryFile() as temp_file:
-        data.save(temp_file.name)
-        data_errors = validate_data(temp_file.name)
+        dataset.save(temp_file.name)
+        dataset_errors = validate_data(temp_file.name)
 
-        if len(data_errors) > 0:
-            errors.extend(data_errors)
+        if len(dataset_errors) > 0:
+            errors.extend(dataset_errors)
         else:
-            data_name = secure_filename(data.filename)
-            original_data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+            dataset_name = request.form['datasetName']
+            # dataset_class = load_args(ckpt).dataset_type #TODO: SWITCH TO ACTUALLY FINDING THE CLASS
 
-            data_path = find_unused_path(original_data_path)
-            if data_path != original_data_path:
-                warnings.append(name_already_exists_message('Data', original_data_path, data_path))
+            dataset_id, new_dataset_name = db.insert_dataset(dataset_name, current_user, "UNKNOWN")
 
-            shutil.copy(temp_file.name, data_path)
+            dataset_path = os.path.join(app.config['DATA_FOLDER'], str(dataset_id) + '.csv')
+
+            if dataset_name != new_dataset_name:
+                warnings.append(name_already_exists_message('Data', dataset_name, new_dataset_name))
+
+            dataset.save(dataset_path)
 
     warnings, errors = json.dumps(warnings), json.dumps(errors)
 
@@ -449,9 +458,12 @@ def upload_checkpoint(return_page: str):
         current_user = 1
 
     ckpt = request.files['checkpoint']
-    ckpt_name = secure_filename(ckpt.filename)
 
-    ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, "UNKNOWN", -1)
+    ckpt_name = request.form['checkpointName']
+
+    ckpt_args = load_args(ckpt)
+
+    ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, ckpt_args.dataset_type, ckpt_args.epochs)
 
     ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], str(ckpt_id) + '.pt')
 

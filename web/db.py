@@ -117,3 +117,38 @@ def delete_ckpt(ckpt_id):
     cur = db.execute('DELETE FROM ckpt WHERE id =' + str(ckpt_id))
     db.commit()
     cur.close()
+
+def get_datasets(user_id):
+    if not user_id:
+        user_id = 0
+
+    return query_db('SELECT * FROM dataset WHERE associated_user = ' + str(user_id))
+
+def insert_dataset(dataset_name, associated_user, dataset_class):
+    db = get_db()
+
+    new_dataset_id = None
+    count = 0
+    while new_dataset_id == None:
+        temp_name = dataset_name
+
+        if count != 0:
+            temp_name += str(count)
+        try:
+            cur = db.execute('INSERT INTO dataset (dataset_name, associated_user, class) VALUES (?, ?, ?)', 
+                                [temp_name, associated_user, dataset_class])
+            new_dataset_id = cur.lastrowid
+        except sqlite3.IntegrityError as e:
+            count += 1
+            continue
+    
+    db.commit()
+    cur.close()
+
+    return new_dataset_id, temp_name
+
+def delete_dataset(dataset_id):
+    db = get_db()
+    cur = db.execute('DELETE FROM dataset WHERE id =' + str(dataset_id))
+    db.commit()
+    cur.close()

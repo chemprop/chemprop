@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS ckpt;
+DROP TABLE IF EXISTS dataset;
 
 CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,6 +19,16 @@ CREATE TABLE ckpt (
   completed BOOLEAN NOT NULL DEFAULT 0,
   FOREIGN KEY (associated_user) REFERENCES user (id),
   CONSTRAINT uq_ckpt_names UNIQUE(ckpt_name, associated_user)
+);
+
+CREATE TABLE dataset (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dataset_name TEXT NOT NULL,
+  associated_user INTEGER NOT NULL,
+  created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  class TEXT NOT NULL,
+  FOREIGN KEY (associated_user) REFERENCES user (id),
+  CONSTRAINT uq_dataset_names UNIQUE(dataset_name, associated_user)
 );
 
 INSERT INTO user (username) VALUES ("DEFAULT")
