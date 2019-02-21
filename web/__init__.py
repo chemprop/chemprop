@@ -14,7 +14,6 @@ from flask import Flask, json, jsonify, redirect, render_template, request, send
 from flask.cli import with_appcontext
 import numpy as np
 from rdkit import Chem
-import torch
 from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
@@ -26,18 +25,10 @@ from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
 from chemprop.utils import create_logger, load_task_names
 
-TEMP_FOLDER = TemporaryDirectory()
-
 app = Flask(__name__)
-app.config['DATA_FOLDER'] = 'web_data'
-os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
-app.config['CHECKPOINT_FOLDER'] = 'web_checkpoints'
+app.config.from_object('config')
 os.makedirs(app.config['CHECKPOINT_FOLDER'], exist_ok=True)
-app.config['TEMP_FOLDER'] = TEMP_FOLDER.name
-app.config['SMILES_FILENAME'] = 'smiles.csv'
-app.config['PREDICTIONS_FILENAME'] = 'predictions.csv'
-app.config['CUDA'] = torch.cuda.is_available()
-app.config['GPUS'] = list(range(torch.cuda.device_count()))
+os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
 
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)
