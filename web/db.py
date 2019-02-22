@@ -15,7 +15,9 @@ def init_db():
     This will wipe existing tables.
     """
     shutil.rmtree('web_checkpoints')
+    shutil.rmtree('web_data')
     os.makedirs('web_checkpoints')
+    os.makedirs('web_data')
     db = get_db()
 
     with current_app.open_resource('schema.sql') as f:
