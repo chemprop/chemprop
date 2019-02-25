@@ -10,25 +10,20 @@ import time
 import multiprocessing as mp
 import click
 
-from flask import Flask, json, jsonify, redirect, render_template, request, send_from_directory, url_for
-from flask.cli import with_appcontext
+from flask import json, jsonify, redirect, render_template, request, send_from_directory, url_for
 import numpy as np
 from rdkit import Chem
 from werkzeug.utils import secure_filename
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+from app import app, db
 
-from web import db
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
 from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
 from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
 from chemprop.utils import create_logger, load_task_names, load_args
-
-app = Flask(__name__)
-app.config.from_object('config')
-os.makedirs(app.config['CHECKPOINT_FOLDER'], exist_ok=True)
-os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
 
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)
@@ -497,20 +492,3 @@ def delete_checkpoint(checkpoint: str):
     db.delete_ckpt(checkpoint)
     os.remove(os.path.join(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt'))
     return redirect(url_for('checkpoints'))
-
-if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host IP address')
-    parser.add_argument('--port', type=int, default=5000, help='Port')
-    parser.add_argument('--debug', action='store_true', default=False, help='Whether to run in debug mode')
-    parser.add_argument('--initdb', action='store_true', default=False, help='Initialize Database')
-    args = parser.parse_args()
-
-    db.init_app(app)
-
-    if args.initdb or not os.path.isfile('chemprop.sqlite3'):
-        with app.app_context():
-            db.init_db()
-            print("-- INITIALIZED DATABASE --")
-
-    app.run(host=args.host, port=args.port, debug=args.debug)
