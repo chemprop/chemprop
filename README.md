@@ -1,37 +1,86 @@
 # Property Prediction
-This repository contains graph convolutional networks (or message passing network) for molecule property prediction.
+This repository contains message passing neural networks for molecular property prediction.
 
 ## Table of Contents
 
-* [Installation](#installation)
-* [Data](#data)
-* [Training](#training)
-  + [Train/Validation/Test Split](#train-validation-test-split)
-    - [Random split](#random-split)
-    - [Separate test set](#separate-test-set)
-  + [Cross validation](#cross-validation)
-  + [Ensembling](#ensembling)
-  + [Model hyperparameters and augmentations](#model-hyperparameters-and-augmentations)
-* [Predicting](#predicting)
-* [TensorBoard](#tensorboard)
-* [Deepchem test](#deepchem-test)
-  + [Results](#results)
+- [Requirements](#requirements)
+- [Installation](#installation)
+  * [Option 1: Conda](#option-1-conda)
+  * [Option 2: Docker](#option-2-docker)
+  * [(Optional) Installing `chemprop` as a Package](#optional-installing-chemprop-as-a-package)
+  * [Notes](#notes)
+- [Web Interface](#web-interface)
+- [Data](#data)
+- [Training](#training)
+  * [Train/Validation/Test Splits](#train-validation-test-splits)
+  * [Cross validation](#cross-validation)
+  * [Ensembling](#ensembling)
+  * [Hyperparameter Optimization](#hyperparameter-optimization)
+  * [Additional Features](#additional-features)
+    * [RDKit 2D Features](#rdkit-2d-features)
+    * [Custom Features](#custom-features)
+- [Predicting](#predicting)
+- [TensorBoard](#tensorboard)
+- [Results](#results)
+
+## Requirements
+
+While it is possible to run all of the code on a CPU-only machine, GPUs make training significantly faster. To run with GPUs, you will need:
+ * cuda >= 8.0
+ * cuDNN
 
 ## Installation
-Requirements:
- * cuda >= 8.0 + cuDNN
- * Python 3/conda: Please follow the installation guide on [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-   * Create a conda environment with `conda create -n <name> python=3.6`
-   * Activate the environment with `conda activate <name>`
- * pytorch: Please follow the installation guide on [https://pytorch.org/](https://pytorch.org/)
-   * Typically it's `conda install pytorch torchvision -c pytorch`
- * tensorflow: Needed for Tensorboard training visualization
-   * CPU-only: `pip install tensorflow`
-   * GPU: `pip install tensorflow-gpu`
- * RDKit: `conda install -c rdkit rdkit`
- * Other packages: `pip install -r requirements.txt`
+
+### Option 1: Conda
+
+The easiest way to install the `chemprop` dependencies is via conda. Here are the steps:
+
+1. Install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
+2. `cd /path/to/chemprop`
+3. `conda env create -f environment.yml`
+4. `source activate chemprop` (or `conda activate chemprop` for newer versions of conda)
+5. (Optional) `pip install git+https://github.com/bp-kelley/descriptastorus`
+
+The optional `descriptastorus` package is only necessary if you plan to incorporate computed RDKit features into your model (see [Additional Features](#additional-features)). The addition of these features improves model performance on some datasets but is not necessary for the base model.
+
+### Option 2: Docker
+
+Docker provides a nice way to isolate the `chemprop` code and environment. To install and run our code in a Docker container, follow these steps:
+
+1. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
+2. `cd /path/to/chemprop`
+3. `docker build -t chemprop .`
+4. `docker run -it chemprop:latest /bin/bash`
+
+Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs. 
+
+### (Optional) Installing `chemprop` as a Package
+
+If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
+
+1. `cd /path/to/chemprop`
+2. `pip install .`
+
+Then you can use `import chemprop` or `from chemprop import ...` in your other code.
+
+### Notes
+
+If you get warning messages about `kyotocabinet` not being installed, it's safe to ignore them.
+   
+## Web Interface
+
+For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. After installing the dependencies following the instructions above, you can start the web interface by running `python web/web.py` and then navigating to [localhost:5000](http://localhost:5000) in a web browser.
+
+![Training with our web interface](web/static/images/web_train.png "Training with our web interface")
+
+![Predicting with our web interface](web/static/images/web_predict.png "Predicting with our web interface")
+
 
 ## Data
+
+In order to train a model, you must provide training data containing molecules (as SMILES strings) and known target values. Targets can either be real numbers, if performing regression, or binary (i.e. 0s and 1s), if performing classification. Target values which are unknown can be left as blanks.
+
+Our model can either train on a single target ("single tasking") or on multiple targets simultaneously ("multi-tasking").
 
 The data file must be be a **CSV file with a header row**. For example:
 ```
@@ -40,7 +89,7 @@ CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
 CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
 ...
 ```
-Data sets from [deepchem](http://moleculenet.ai/) are available in the `data` directory.
+Datasets from [MoleculeNet](http://moleculenet.ai/) and a 450K subset of ChEMBL from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
 
 ## Training
 
@@ -56,96 +105,104 @@ python train.py --data_path data/tox21.csv --dataset_type classification --save_
 ```
 
 Notes:
-* Classification is assumed to be binary.
-* Empty values in the CSV are ignored.
+* The default metric for classification is AUC and the default metric for regression is RMSE. Other metrics may be specified with `--metric <metric>`.
 * `--save_dir` may be left out if you don't want to save model checkpoints.
-* The default metric for classification is AUC and the default metric for regression is RMSE. The qm8 and qm9 datasets use MAE instead of RMSE, so you need to specify `--metric mae`.
+* `--quiet` can be added to reduce the amount of debugging information printed to the console. Both a quiet and verbose version of the logs are saved in the `save_dir`.
 
-### Train/Validation/Test Split
+### Train/Validation/Test Splits
 
-#### Random split
+Our code supports several methods of splitting data into train, validation, and test sets.
 
-By default, the data in `--data_path` will be split randomly into train, validation, and test sets using the seed specified by `--seed` (default = 0). By default, the train set contains 80% of the data while the validation and test sets contain 10% of the data each. These sizes can be controlled with `--split_sizes` (for example, the default would be `--split_sizes 0.8 0.1 0.1`).
+**Random:** By default, the data will be split randomly into train, validation, and test sets.
 
-#### Separate test set
+**Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
 
-To use a different data set for testing, specify `--separate_test_path`. In this case, the data in `--data_path` will be split into only train and validation sets (80% and 20% of the data), and the test set will contain all the dta in `--separate_test_path`.
+**Separate val/test:** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`.
+
+Note: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with `--split_sizes <train_frac> <val_frac> <test_frac>`. For example, the default setting is `--split_sizes 0.8 0.1 0.1`. Both also involve a random component and can be seeded with `--seed <seed>`. The default setting is `--seed 0`.
 
 ### Cross validation
 
-k-fold cross-validation can be run by specifying the `--num_folds` argument (which is 1 by default). For example:
-```
-python train.py --data_path data/tox21.csv --dataset_type classification --num_folds 5
-```
+k-fold cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`.
 
 ### Ensembling
 
-To train an ensemble, specify the number of models in the ensemble with the `--ensemble_size` argument (which is 1 by default). For example:
+To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`.
+
+### Hyperparameter Optimization
+
+Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package) in `hyperparameter_optimization.py`. This script finds the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
 ```
-python train.py --data_path data/tox21.csv --dataset_type classification --ensemble_size 5
+python hyperparameter_optimization.py --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
+```
+where `<n>` is the number of hyperparameter settings to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
+```
+python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
 ```
 
-### Model hyperparameters and augmentations
+### Additional Features
 
-The base message passing architecture can be modified in a range of ways that can be controlled through command line arguments. The full range of options can be seen in `parsing.py`. Suggested modifications are:
-* `--hidden_size <int>` Control the hidden size of the neural network layers.
-* `--depth <int>` Control the number of message passing steps.
-* `--virtual_edges` Adds "virtual" edges connected non-bonded atoms to improve information flow. This works very well on some datasets (ex. QM9) but very poorly on others (ex. delaney).
+While the model works very well on its own, especially after hyperparameter optimization, we have seen that adding computed molecule-level features can further improve performance on certain datasets. Features can be added to the model using the `--features_generator <generator>` flag.
 
+#### RDKit 2D Features
+
+As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
+
+Note: In order to use the `rdkit_2d_normalized` features, you must have `descriptastorus` installed. If you installed via conda, you can install `descriptastorus` by running `pip install git+https://github.com/bp-kelley/descriptastorus`. If you installed via Docker, `descriptastorus` should already be installed.
+
+#### Custom Features
+
+If you would like to load custom features, you can do so in two ways:
+
+1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
+2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
+ 
 ## Predicting
 
 To load a trained model and make predictions, run `predict.py` and specify:
-* `--test_path` Path to the data to predict on.
-* `--checkpoint_dir` Directory where the checkpoints were saved (i.e. `--save_dir` during training).
+* `--test_path <path>` Path to the data to predict on.
+* A checkpoint by using either:
+  * `--checkpoint_dir <dir>` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
+  * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
 * `--preds_path` Path where a CSV file containing the predictions will be saved.
 
 For example:
 ```
 python predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_preds.csv
 ```
+or
+```
+python predict.py --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
+```
 
 ## TensorBoard
 
 During training, TensorBoard logs are automatically saved to the same directory as the model checkpoints. To view TensorBoard logs, run `tensorboard --logdir=<dir>` where `<dir>` is the path to the checkpoint directory. Then navigate to [http://localhost:6006](http://localhost:6006).
 
-## Deepchem test
-We tested our model on 14 deepchem benchmark datasets (http://moleculenet.ai/), ranging from physical chemistry to biophysics
-properties. To train our model on those datasets, run:
-```
-bash run.sh 1
-```
-where 1 is the random seed for randomly splitting the dataset into training, validation and testing (not applied to datasets with scaffold splitting).
+## Results
 
-### Results
-
-**Note:** The results below are out of date. We will try to update these results soon.
-
-We compared our model against the graph convolution in deepchem. Our results are averaged over 3 runs with different random seeds, namely different splits accross datasets.
+We compared our model against MolNet by Wu et al. on all of the MolNet datasets for which we could reproduce their splits (all but Bace, Toxcast, and qm7). When there was only one fold provided (scaffold split for BBBP and HIV), we ran our model multiple times and reported average performance. In each case we optimize hyperparameters on separate folds, use rdkit_2d_normalized features when useful, and compare to the best-performing model in MolNet as reported by Wu et al. We did not ensemble our model in these results.
 
 Results on classification datasets (AUC score, the higher the better)
 
-| Dataset   |	Ours   |	GraphConv (deepchem)   |
-| :-------------: |:-------------:| :-----:|
-| Bace	| 0.884 ± 0.034	| 0.783 ± 0.014 |
-| BBBP	| 0.922 ± 0.012	| 0.690 ± 0.009 |
-| Tox21	| 0.851 ± 0.015	| 0.829 ± 0.006 |
-| Toxcast	| 0.748 ± 0.014	| 0.716 ± 0.014 |
-| Sider |	0.643 ± 0.027	| 0.638 ± 0.012 |
-| clintox	| 0.882 ± 0.022	| 0.807 ± 0.047 |
-| MUV	| 0.067 ± 0.03* | 0.046 ± 0.031 |
-| HIV |	0.763 ± 0.001* |	0.763 ± 0.016 |
-| PCBA	| 0.218 ± 0.001* | 	0.136 ± 0.003 | 
+| Dataset | Size |	Ours |	MolNet Best Model |
+| :---: | :---: | :---: | :---: |
+| BBBP | 2,039 | 0.735 ± 0.0064	| 0.729 |
+| Tox21 | 7,831 | 0.855 ± 0.0052	| 0.829 ± 0.006 |
+| Sider | 1,427 |	0.678 ± 0.019	| 0.648 ± 0.009 |
+| clintox | 1,478 | 0.9 ± 0.0089	| 0.832 ± 0.037 |
+| MUV | 93,087 | 0.0897 ± 0.015 | 0.184 ± 0.02 |
+| HIV | 41,127 |	0.793 ± 0.0012 |	0.792 |
+| PCBA | 437,928 | 0.397 ± .00075 | 	0.136 ± 0.004 | 
 
 Results on regression datasets (score, the lower the better)
 
-Dataset	| Ours	| GraphConv/MPNN (deepchem) |
-| :-------------: |:-------------:| :-----:|
-delaney	| 0.687 ± 0.037 | 	0.58 ± 0.03 |
-Freesolv |	0.915 ± 0.154	| 1.15 ± 0.12 |
-Lipo |	0.565 ± 0.052 |	0.655 ± 0.036 |
-qm8 |	0.008 ± 0.000 | 0.0143 ± 0.0011 |
-qm9 |	2.47 ± 0.036*	| 3.2 ± 1.5 |
+Dataset | Size | Ours | GraphConv/MPNN (deepchem) |
+| :---: | :---: | :---: | :---: |
+delaney	| 1,128 | 0.567 ± 0.026 | 0.58 ± 0.03 |
+Freesolv | 642 |	1.11 ± 0.035 | 1.15 ± 0.12 |
+Lipo | 4,200 |	0.542 ± 0.02 |	0.655 ± 0.036 |
+qm8 | 21,786 |	0.0082 ± 0.00019 | 0.0143 ± 0.0011 |
+qm9 | 133,884 |	2.03 ± 0.021	| 2.4 ± 1.1 |
 
-*MUV, HIV, PCBA are using an older version of the model. qm9 is using virtual edges with depth 3 and hidden size 1800.
-Others are using hidden size 1800, depth 6, master node with otherwise default settings.
-We did a few hyperparameter experiments on qm9, but did no searching on the other datasets, so there may still be further room for improvement, for example checking if we're overfitting on the smaller sets. 
+Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments . 
