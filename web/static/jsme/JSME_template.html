@@ -1,0 +1,62 @@
+<html>
+<head>
+<script type="text/javascript" language="javascript" src="jsme/jsme.nocache.js"></script>
+<title>JME template creation</title>
+</head>
+
+<body>
+
+<script type="text/javascript" language="javascript">
+	function getJMEstring() {
+		var data = document.JME.jmeFile();
+		document.getElementById("jme_output").value = data;
+	}
+	function setTemplate() {
+		
+		var jme = document.getElementById("jme_output").value;
+		var name = document.getElementById("name_template").value;
+		document.JME.setTemplate(jme, name);
+		
+	}
+
+
+</script>
+<H1>This page shows how to create custom templates for JSME</H1>
+
+To create a template, one has to:
+ <ol>
+  <li>draw a chemical structure</li>
+  <li>mark the connection atom using the blue circle</li>
+  <li>save the template as JME string (button "get JME string")</li>
+</ol> 
+<p>
+The atom that should act as a connection point (root) of the template should by marked by :1 (for example the oxygen serving as root should have atomic symbol O:1). 
+<p>
+<div code="JME.class" name="JME" archive="JME.jar" width="360" height="315" id="JME">
+<param name="options" value="star">
+You have to enable JavaScript in your browser to use JSME! </div>
+
+
+
+<button type="button" onclick='getJMEstring();'>get JME string</button>
+<TEXTAREA id="jme_output" ROWS=2 COLS=80></TEXTAREA>
+
+<bR>
+<HR>
+
+To use a predefined template:
+ <ol>
+  <li>draw a chemical structure</li>
+  <li>input a name</li>
+  <li>Click on "set template"</li>
+  <li>Click on one atom of the chemical structure to attach the template, or alternatively use the NEW button and click elsewhere in the drawing area</li>
+</ol> 
+<button type="button" onclick='setTemplate();'>set template</button> <BR>
+Template name: <TEXTAREA id="name_template" ROWS=1 COLS=20></TEXTAREA><BR>
+
+<p>
+<p>
+See <a href="JSME_parent_and_metabolites.html">this page</a> for real example.
+
+</body>
+</html>
