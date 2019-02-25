@@ -388,7 +388,7 @@ def upload_data(return_page: str):
             if dataset_name != new_dataset_name:
                 warnings.append(name_already_exists_message('Data', dataset_name, new_dataset_name))
 
-            temp_file.save(dataset_path)
+            shutil.copy(temp_file.name, dataset_path)
 
     warnings, errors = json.dumps(warnings), json.dumps(errors)
 
