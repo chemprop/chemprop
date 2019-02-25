@@ -402,9 +402,8 @@ def download_data(dataset: int):
 
     :param dataset: The id of the dataset to download.
     """
-    print(str(dataset) + '.csv')
-
-    return send_from_directory(app.config['DATA_FOLDER'], str(dataset) + '.csv', as_attachment=True)
+    path = os.path.join(app.config['ROOT_FOLDER'], app.config['DATA_FOLDER'])
+    return send_from_directory(path, str(dataset) + '.csv', as_attachment=True)
 
 
 @app.route('/data/delete/<int:dataset>')
@@ -473,7 +472,8 @@ def download_checkpoint(checkpoint: int):
 
     :param checkpoint: The name of the checkpoint file to download.
     """
-    return send_from_directory(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt', as_attachment=True)
+    path = os.path.join(app.config['ROOT_FOLDER'], app.config['CHECKPOINT_FOLDER'])
+    return send_from_directory(path, str(checkpoint) + '.pt', as_attachment=True)
 
 
 @app.route('/checkpoints/delete/<int:checkpoint>')
