@@ -50,15 +50,6 @@ def progress_bar(args: Namespace, progress: mp.Value):
         time.sleep(0)
 
 
-def get_datasets() -> List[str]:
-    """
-    Gets a list of the available datasets.
-
-    :return: A list of dataset names.
-    """
-    return sorted(os.listdir(app.config['DATA_FOLDER']))
-
-
 def find_unused_path(path: str) -> str:
     """
     Given an initial path, finds an unused path by appending different numbers to the filename.
@@ -161,7 +152,7 @@ def render_train(**kwargs):
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('train.html',
-                           datasets=get_datasets(),
+                           datasets=db.get_datasets(request.cookies.get('currentUser')),
                            cuda=app.config['CUDA'],
                            gpus=app.config['GPUS'],
                            data_upload_warnings=data_upload_warnings,
@@ -183,7 +174,7 @@ def train():
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
     gpu = request.form.get('gpu')
-    data_path = os.path.join(app.config['DATA_FOLDER'], data_name)
+    data_path = os.path.join(app.config['DATA_FOLDER'], str(data_name) + '.csv')
     dataset_type = request.form.get('datasetType', 'regression')
 
     # Create and modify args
@@ -357,7 +348,7 @@ def data():
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
 
     return render_template('data.html',
-                           datasets=get_datasets(),
+                           datasets=db.get_datasets(request.cookies.get('currentUser')),
                            data_upload_warnings=data_upload_warnings,
                            data_upload_errors=data_upload_errors,
                            users=db.get_all_users())
@@ -397,31 +388,34 @@ def upload_data(return_page: str):
             if dataset_name != new_dataset_name:
                 warnings.append(name_already_exists_message('Data', dataset_name, new_dataset_name))
 
-            dataset.save(dataset_path)
+            temp_file.save(dataset_path)
 
     warnings, errors = json.dumps(warnings), json.dumps(errors)
 
     return redirect(url_for(return_page, data_upload_warnings=warnings, data_upload_errors=errors))
 
 
-@app.route('/data/download/<string:dataset>')
-def download_data(dataset: str):
+@app.route('/data/download/<int:dataset>')
+def download_data(dataset: int):
     """
     Downloads a dataset as a .csv file.
 
-    :param dataset: The name of the dataset to download.
+    :param dataset: The id of the dataset to download.
     """
-    return send_from_directory(app.config['DATA_FOLDER'], dataset, as_attachment=True)
+    print(str(dataset) + '.csv')
+
+    return send_from_directory(app.config['DATA_FOLDER'], str(dataset) + '.csv', as_attachment=True)
 
 
-@app.route('/data/delete/<string:dataset>')
-def delete_data(dataset: str):
+@app.route('/data/delete/<int:dataset>')
+def delete_data(dataset: int):
     """
     Deletes a dataset.
 
-    :param dataset: The name of the dataset to delete.
+    :param dataset: The id of the dataset to delete.
     """
-    os.remove(os.path.join(app.config['DATA_FOLDER'], dataset))
+    db.delete_dataset(dataset)
+    os.remove(os.path.join(app.config['DATA_FOLDER'], str(dataset) + '.csv'))
     return redirect(url_for('data'))
 
 
@@ -472,8 +466,8 @@ def upload_checkpoint(return_page: str):
     return redirect(url_for(return_page, checkpoint_upload_warnings=warnings, checkpoint_upload_errors=errors))
 
 
-@app.route('/checkpoints/download/<string:checkpoint>')
-def download_checkpoint(checkpoint: str):
+@app.route('/checkpoints/download/<int:checkpoint>')
+def download_checkpoint(checkpoint: int):
     """
     Downloads a checkpoint .pt file.
 
@@ -482,8 +476,8 @@ def download_checkpoint(checkpoint: str):
     return send_from_directory(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt', as_attachment=True)
 
 
-@app.route('/checkpoints/delete/<string:checkpoint>')
-def delete_checkpoint(checkpoint: str):
+@app.route('/checkpoints/delete/<int:checkpoint>')
+def delete_checkpoint(checkpoint: int):
     """
     Deletes a checkpoint file.
 
