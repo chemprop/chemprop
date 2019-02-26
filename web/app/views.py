@@ -1,4 +1,4 @@
-"""Runs the web interface version of chemprop, allowing for training and predicting in a web browser."""
+"""Defines a number of routes/views for the flask app."""
 
 from argparse import ArgumentParser, Namespace
 import os

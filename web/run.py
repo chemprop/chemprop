@@ -1,3 +1,8 @@
+"""
+Runs the web interface version of Chemprop.
+This allows for training and predicting in a web browser.
+"""
+
 import os
 from app import app, db
 from argparse import ArgumentParser

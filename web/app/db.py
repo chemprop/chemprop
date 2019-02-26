@@ -1,7 +1,11 @@
+"""Defines a number of database helper functions."""
+
 import os
 import shutil
 import sqlite3
+
 from flask import current_app, g
+from typing import Tuple
 from app import app 
 
 def init_app(app):
@@ -10,8 +14,8 @@ def init_app(app):
 # Database setup.
 def init_db():
     """
-    Executes schema.sql to initialize the database.
-    This will wipe existing tables.
+    Initializes the database by running schema.sql.
+    This will wipe existing tables and the corresponding files.
     """
     shutil.rmtree(app.config['DATA_FOLDER'])
     os.makedirs(app.config['DATA_FOLDER'])
@@ -27,8 +31,8 @@ def init_db():
 # Database access.
 def get_db():
     """
-    Returns a representation of the database.
-    Forms a connection with the database if one is not found.
+    Connects to the database.
+    Returns a database object that can be queried.
     """
     if 'db' not in g:
         g.db = sqlite3.connect(
@@ -39,7 +43,15 @@ def get_db():
 
     return g.db
 
-def query_db(query, args=(), one=False):
+def query_db(query: str, args = (), one: bool = False):
+    """
+    Helper function to allow for easy queries.
+    
+    :param query: The query to be executed.
+    :param args: The arguments to be passed into the query.
+    :param one: Whether the query should return all results or just the first. 
+    :return The results of the query.
+    """
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
     cur.close()
@@ -57,6 +69,11 @@ def close_db(e=None):
 
 # Table Specific Functions
 def get_all_users():
+    """
+    Returns all users.
+
+    :return A dictionary of users with their ids as keys.
+    """
     rows = query_db("SELECT * FROM user")
 
     if rows:
@@ -64,7 +81,14 @@ def get_all_users():
     else:
         return {}
 
-def insert_user(username):
+def insert_user(username: str) -> Tuple[int, str]:
+    """
+    Inserts a new user. If the desired username is already taken,  
+    appends integers incrementally until an open name is found.
+
+    :param username: The desired username for the new user.
+    :return A tuple containing the id and name of the new user.
+    """
     db = get_db()
 
     new_user_id = None
@@ -86,13 +110,34 @@ def insert_user(username):
 
     return new_user_id, temp_name
 
-def get_ckpts(user_id):
+def get_ckpts(user_id: int):
+    """
+    Returns the checkpoints associated with the given user.
+    If no user_id is provided, return the checkpoints associated
+    with the default user.
+
+    :param user_id: The id of the user whose checkpoints are returned.
+    :return A list of checkpoints.
+    """
     if not user_id:
         user_id = 0
 
     return query_db('SELECT * FROM ckpt WHERE associated_user = ' + str(user_id))
 
-def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
+def insert_ckpt(ckpt_name: str, 
+                associated_user: str, 
+                model_class: str, 
+                num_epochs: int) -> Tuple[int, str]:
+    """
+    Inserts a new checkpoint. If the desired name is already taken,  
+    appends integers incrementally until an open name is found.   
+
+    :param ckpt_name: The desired name for the new checkpoint.
+    :param associated_user: The user that should be associated with the new checkpoint.
+    :param model_class: The class of the new checkpoint.
+    :param num_epochs: The number of epochs the new checkpoint will run for.
+    :return A tuple containing the id and name of the new checkpoint.   
+    """
     db = get_db()
 
     new_ckpt_id = None
@@ -115,19 +160,44 @@ def insert_ckpt(ckpt_name, associated_user, model_class, num_epochs):
 
     return new_ckpt_id, temp_name
 
-def delete_ckpt(ckpt_id):
+def delete_ckpt(ckpt_id: int):
+    """
+    Removes the checkpoint with the specified id from the database,
+    and deletes the corresponding file.
+
+    :param ckpt_id: The id of the checkpoint to be deleted.
+    """
     db = get_db()
     cur = db.execute('DELETE FROM ckpt WHERE id =' + str(ckpt_id))
     db.commit()
     cur.close()
 
-def get_datasets(user_id):
+def get_datasets(user_id: int):
+    """
+    Returns the datasets associated with the given user.
+    If no user_id is provided, return the datasets associated
+    with the default user.
+
+    :param user_id: The id of the user whose datasets are returned.
+    :return A list of datasets.
+    """
     if not user_id:
         user_id = 0
 
     return query_db('SELECT * FROM dataset WHERE associated_user = ' + str(user_id))
 
-def insert_dataset(dataset_name, associated_user, dataset_class):
+def insert_dataset(dataset_name: str, 
+                   associated_user: str, 
+                   dataset_class: str) -> Tuple[int, str]:
+    """
+    Inserts a new dataset. If the desired name is already taken,  
+    appends integers incrementally until an open name is found.   
+
+    :param dataset_name: The desired name for the new dataset.
+    :param associated_user: The user to be associated with the new dataset.
+    :param dataset_class: The class of the new dataset.
+    :return A tuple containing the id and name of the new dataset.   
+    """
     db = get_db()
 
     new_dataset_id = None
@@ -150,7 +220,13 @@ def insert_dataset(dataset_name, associated_user, dataset_class):
 
     return new_dataset_id, temp_name
 
-def delete_dataset(dataset_id):
+def delete_dataset(dataset_id: int):
+    """
+    Removes the dataset with the specified id from the database,
+    and deletes the corresponding file.
+
+    :param dataset_id: The id of the dataset to be deleted.
+    """
     db = get_db()
     cur = db.execute('DELETE FROM dataset WHERE id =' + str(dataset_id))
     db.commit()

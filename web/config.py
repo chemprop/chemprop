@@ -1,3 +1,8 @@
+"""
+Sets the config parameters for the flask app object.
+These are accessible in a dictionary, with each line defining a key.
+"""
+
 import os
 import torch
 from tempfile import TemporaryDirectory
