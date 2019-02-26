@@ -3,9 +3,9 @@ import shutil
 import sqlite3
 from flask import current_app, g
 from app import app 
+
 def init_app(app):
     app.teardown_appcontext(close_db)
-
 
 # Database setup.
 def init_db():
