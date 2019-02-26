@@ -20,7 +20,7 @@ from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
-    save_checkpoint
+    makedirs, save_checkpoint
 
 
 def run_training(args: Namespace, logger: Logger = None) -> List[float]:
@@ -140,7 +140,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
         save_dir = os.path.join(args.save_dir, f'model_{model_idx}')
-        os.makedirs(save_dir, exist_ok=True)
+        makedirs(save_dir)
         writer = SummaryWriter(log_dir=save_dir)
 
         # Load/build model
