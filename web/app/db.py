@@ -8,7 +8,7 @@ from flask import current_app, g
 from typing import Tuple
 from app import app 
 
-def init_app(app):
+def init_app(app: Flask):
     app.teardown_appcontext(close_db)
 
 # Database setup.
