@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     db.init_app(app)
 
-    if args.initdb or not os.path.isfile('chemprop.sqlite3'):
+    if args.initdb or not os.path.isfile(app.config['DB_FILENAME']):
         with app.app_context():
             db.init_db()
             print("-- INITIALIZED DATABASE --")

@@ -3,16 +3,17 @@
 import os
 import shutil
 import sqlite3
-from typing import Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from flask import current_app, g
+from flask import current_app, Flask, g
 
 from app import app
+
 
 def init_app(app: Flask):
     app.teardown_appcontext(close_db)
 
-# Database setup.
+
 def init_db():
     """
     Initializes the database by running schema.sql.
@@ -29,7 +30,7 @@ def init_db():
     with current_app.open_resource('schema.sql') as f:
         db.executescript(f.read().decode('utf8'))
 
-# Database access.
+
 def get_db():
     """
     Connects to the database.
@@ -44,7 +45,8 @@ def get_db():
 
     return g.db
 
-def query_db(query: str, args = (), one: bool = False):
+
+def query_db(query: str, args: Tuple[Any] = (), one: bool = False) -> Union[Optional[sqlite3.Row], List[sqlite3.Row]]:
     """
     Helper function to allow for easy queries.
     
@@ -59,17 +61,20 @@ def query_db(query: str, args = (), one: bool = False):
     return (rv[0] if rv else None) if one else rv
 
 
-def close_db(e = None):
+def close_db(e: Optional[Any] = None):
     """
     Closes the connection to the database. Called after every request.
+
+    :param e: Error object from last call.
     """
     db = g.pop('db', None)
 
     if db is not None:
         db.close()
 
+
 # Table Specific Functions
-def get_all_users():
+def get_all_users() -> Dict[int, Dict[str, Any]]:
     """
     Returns all users.
 
@@ -77,10 +82,8 @@ def get_all_users():
     """
     rows = query_db("SELECT * FROM user")
 
-    if rows:
-        return {row[0]: {"username": row[1], "preferences": row[2]} for row in rows}
-    else:
-        return {}
+    return {row['id']: {"username": row['username'], "preferences": row['preferences']} for row in rows} if rows else {}
+
 
 def insert_user(username: str) -> Tuple[int, str]:
     """
@@ -94,7 +97,7 @@ def insert_user(username: str) -> Tuple[int, str]:
 
     new_user_id = None
     count = 0
-    while new_user_id == None:
+    while new_user_id is None:
         temp_name = username
         
         if count != 0:
@@ -104,12 +107,12 @@ def insert_user(username: str) -> Tuple[int, str]:
             new_user_id = cur.lastrowid
         except sqlite3.IntegrityError:
             count += 1
-            continue
-    
+
     db.commit()
     cur.close()
 
     return new_user_id, temp_name
+
 
 def get_ckpts(user_id: int):
     """
@@ -121,9 +124,10 @@ def get_ckpts(user_id: int):
     :return A list of checkpoints.
     """
     if not user_id:
-        user_id = 0
+        user_id = app.config['DEFAULT_USER_ID']
 
     return query_db(f'SELECT * FROM ckpt WHERE associated_user = {user_id}')
+
 
 def insert_ckpt(ckpt_name: str, 
                 associated_user: str, 
@@ -143,14 +147,14 @@ def insert_ckpt(ckpt_name: str,
 
     new_ckpt_id = None
     count = 0
-    while new_ckpt_id == None:
+    while new_ckpt_id is None:
         temp_name = ckpt_name
 
         if count != 0:
             temp_name += str(count)
         try:
-            cur = db.execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)', 
-                                [temp_name, associated_user, model_class, num_epochs])
+            cur = db.execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)',
+                             [temp_name, associated_user, model_class, num_epochs])
             new_ckpt_id = cur.lastrowid
         except sqlite3.IntegrityError as e:
             count += 1
@@ -160,6 +164,7 @@ def insert_ckpt(ckpt_name: str,
     cur.close()
 
     return new_ckpt_id, temp_name
+
 
 def delete_ckpt(ckpt_id: int):
     """
@@ -173,7 +178,8 @@ def delete_ckpt(ckpt_id: int):
     db.commit()
     cur.close()
 
-def get_datasets(user_id: int):
+
+def get_datasets(user_id: int) -> List[sqlite3.Row]:
     """
     Returns the datasets associated with the given user.
     If no user_id is provided, return the datasets associated
@@ -183,9 +189,10 @@ def get_datasets(user_id: int):
     :return A list of datasets.
     """
     if not user_id:
-        user_id = DEFAULT_USER_ID
+        user_id = app.config['DEFAULT_USER_ID']
 
     return query_db(f'SELECT * FROM dataset WHERE associated_user = {user_id}')
+
 
 def insert_dataset(dataset_name: str, 
                    associated_user: str, 
@@ -209,8 +216,8 @@ def insert_dataset(dataset_name: str,
         if count != 0:
             temp_name += str(count)
         try:
-            cur = db.execute('INSERT INTO dataset (dataset_name, associated_user, class) VALUES (?, ?, ?)', 
-                                [temp_name, associated_user, dataset_class])
+            cur = db.execute('INSERT INTO dataset (dataset_name, associated_user, class) VALUES (?, ?, ?)',
+                             [temp_name, associated_user, dataset_class])
             new_dataset_id = cur.lastrowid
         except sqlite3.IntegrityError as e:
             count += 1
@@ -220,6 +227,7 @@ def insert_dataset(dataset_name: str,
     cur.close()
 
     return new_dataset_id, temp_name
+
 
 def delete_dataset(dataset_id: int):
     """

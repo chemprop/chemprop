@@ -210,7 +210,7 @@ def train():
 
     if not current_user:
         # Use DEFAULT as current user if the client's cookie is not set.
-        current_user = 1
+        current_user = app.config['DEFAULT_USER_ID']
     
     
     ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name, current_user, args.dataset_type, args.epochs)
@@ -272,7 +272,7 @@ def predict():
         return render_predict()
 
     # Get arguments
-    checkpoint_name = request.form['checkpointName']
+    ckpt_id = request.form['checkpointName']
 
     if 'data' in request.files:
         # Upload data file with SMILES
@@ -292,7 +292,7 @@ def predict():
     else:
         smiles = [request.form['drawSmiles']]
 
-    checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], checkpoint_name)
+    checkpoint_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{ckpt_id}.pt')
     task_names = load_task_names(checkpoint_path)
     num_tasks = len(task_names)
     gpu = request.form.get('gpu')
@@ -366,7 +366,7 @@ def upload_data(return_page: str):
 
     if not current_user:
         # Use DEFAULT as current user if the client's cookie is not set.
-        current_user = 1
+        current_user = app.config['DEFAULT_USER_ID']
 
     dataset = request.files['dataset']
 
@@ -441,7 +441,7 @@ def upload_checkpoint(return_page: str):
 
     if not current_user:
         # Use DEFAULT as current user if the client's cookie is not set.
-        current_user = 1
+        current_user = app.config['DEFAULT_USER_ID']
 
     ckpt = request.files['checkpoint']
 

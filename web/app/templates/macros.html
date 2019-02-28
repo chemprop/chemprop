@@ -25,13 +25,13 @@
     <h4>Add New Dataset <span class="glyphicon glyphicon-question-sign" style="font-size:15px" data-toggle="tooltip" data-placement="right" title="The data file must be a comma-separate values file (.csv) with a header. Each row should contain the SMILES and each of the property values for a molecule."></span></h4>
     <form enctype="multipart/form-data" action="{{url_for('upload_data', return_page=return_page)}}" method="POST">
         Name: <input type="text" name="datasetName" required>
-        <br /><br />
+        <br><br>
         <input type="file" name="dataset" accept=".csv" required>
-        <br />
+        <br>
         <button type="submit" class="btn btn-primary btn-sm">Upload</button>
     </form>
 
-    <br />
+    <br>
 
     {% if data_upload_warnings %}
         {% for warning in data_upload_warnings %}
@@ -51,13 +51,13 @@
 
     <form enctype="multipart/form-data" action="{{url_for('upload_checkpoint', return_page=return_page)}}" method="POST">
         Name: <input type="text" name="checkpointName" required>
-        <br /><br />
+        <br><br>
         <input type="file" name="checkpoint" accept=".pt" required>
-        <br />
+        <br>
         <button type="submit" class="btn btn-primary btn-sm">Upload</button>
     </form>
 
-    <br />
+    <br>
 
     {% if checkpoint_upload_warnings %}
         {% for warning in checkpoint_upload_warnings %}
