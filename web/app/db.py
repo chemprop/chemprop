@@ -3,10 +3,11 @@
 import os
 import shutil
 import sqlite3
+from typing import Tuple
 
 from flask import current_app, g
-from typing import Tuple
-from app import app 
+
+from app import app
 
 def init_app(app: Flask):
     app.teardown_appcontext(close_db)

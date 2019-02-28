@@ -1,8 +1,6 @@
 """Runs the web interface version of chemprop, allowing for training and predicting in a web browser."""
 import os
-
 from flask import Flask
-from argparse import ArgumentParser, Namespace
 
 app = Flask(__name__)
 app.config.from_object('config')

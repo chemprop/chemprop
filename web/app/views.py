@@ -5,10 +5,9 @@ import os
 import sys
 import shutil
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from typing import List, Tuple
 import time
+from typing import List, Tuple
 import multiprocessing as mp
-import click
 
 from flask import json, jsonify, redirect, render_template, request, send_from_directory, url_for
 import numpy as np
