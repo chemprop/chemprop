@@ -16,7 +16,7 @@
         <h5>Data</h5>
         <select name="dataName" required>
             {% for dataset in datasets %}
-                <option value="{{dataset}}">{{dataset}}</option>
+                <option value="{{ dataset[0] }}">{{ dataset[1] }}</option>
             {% endfor %}
         </select>
         <br>

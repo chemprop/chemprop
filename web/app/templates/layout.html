@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
           integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
@@ -32,6 +33,17 @@
             <li><a href="{{ url_for('data') }}">Data</a></li>
             <li><a href="{{ url_for('checkpoints') }}">Checkpoints</a></li>
         </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+                <a href="#" id="currentUser" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span></a>
+                <ul class="dropdown-menu" id="userSelect">
+                    {% for id, user in users.items() %}
+                        <li id="select{{ id }}"><a value="{{ id }}" href="#" class="userSelect">{{ user.username }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+            <li><a href="{{ url_for('create_user') }}">Create User</a></li>
+        </ul>
     </div>
 </nav>
 
@@ -52,4 +64,23 @@
 </div>
 
 </body>
+<script>
+    let users = {{ users | tojson }};
+    let currentUser = Cookies.get("currentUser");
+
+    if (currentUser === undefined || !(currentUser in users)) {
+        currentUser = 1;
+        Cookies.set("currentUser", currentUser);
+    }
+
+    $('#currentUser').prepend(users[currentUser].username);
+    $('#select' + currentUser).css('display', 'none');
+
+    $(".userSelect").click(function() {
+        Cookies.set("currentUser", $(this).attr('value'));
+        location.reload();
+    });
+    </script>
+
+</script>
 </html>
