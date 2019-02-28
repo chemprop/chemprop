@@ -38,7 +38,7 @@
                 <a href="#" id="currentUser" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span></a>
                 <ul class="dropdown-menu" id="userSelect">
                     {% for id, user in users.items() %}
-                        <li id="select{{id}}"><a value="{{id}}" href="#" class="userSelect">{{user.username}}</a></li>
+                        <li id="select{{ id }}"><a value="{{ id }}" href="#" class="userSelect">{{ user.username }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -65,7 +65,7 @@
 
 </body>
 <script>
-    let users = {{users | tojson }};
+    let users = {{ users | tojson }};
     let currentUser = Cookies.get("currentUser");
 
     if (currentUser === undefined || !(currentUser in users)) {
@@ -74,7 +74,7 @@
     }
 
     $('#currentUser').prepend(users[currentUser].username);
-    $(`#select` + currentUser).css('display', 'none');
+    $('#select' + currentUser).css('display', 'none');
 
     $(".userSelect").click(function() {
         Cookies.set("currentUser", $(this).attr('value'));

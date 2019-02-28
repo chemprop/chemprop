@@ -174,7 +174,7 @@ def train():
     data_name, epochs, checkpoint_name = \
         request.form['dataName'], int(request.form['epochs']), request.form['checkpointName']
     gpu = request.form.get('gpu')
-    data_path = os.path.join(app.config['DATA_FOLDER'], str(data_name) + '.csv')
+    data_path = os.path.join(app.config['DATA_FOLDER'], f'{data_name}.csv')
     dataset_type = request.form.get('datasetType', 'regression')
 
     # Create and modify args
@@ -234,7 +234,7 @@ def train():
         PROGRESS = mp.Value('d', 0.0)
 
         # Check if name overlap
-        original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], str(ckpt_id) + ".pt")
+        original_save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{ckpt_id}.pt')
         save_path = find_unused_path(original_save_path)
         if save_path != original_save_path:
             warnings.append(name_already_exists_message('Checkpoint', original_save_path, save_path))
@@ -379,11 +379,11 @@ def upload_data(return_page: str):
             errors.extend(dataset_errors)
         else:
             dataset_name = request.form['datasetName']
-            # dataset_class = load_args(ckpt).dataset_type #TODO: SWITCH TO ACTUALLY FINDING THE CLASS
+            # dataset_class = load_args(ckpt).dataset_type  # TODO: SWITCH TO ACTUALLY FINDING THE CLASS
 
-            dataset_id, new_dataset_name = db.insert_dataset(dataset_name, current_user, "UNKNOWN")
+            dataset_id, new_dataset_name = db.insert_dataset(dataset_name, current_user, 'UNKNOWN')
 
-            dataset_path = os.path.join(app.config['DATA_FOLDER'], str(dataset_id) + '.csv')
+            dataset_path = os.path.join(app.config['DATA_FOLDER'], f'{dataset_id}.csv')
 
             if dataset_name != new_dataset_name:
                 warnings.append(name_already_exists_message('Data', dataset_name, new_dataset_name))
@@ -402,7 +402,7 @@ def download_data(dataset: int):
 
     :param dataset: The id of the dataset to download.
     """
-    return send_from_directory(app.config['DATA_FOLDER'], str(dataset) + '.csv', as_attachment=True)
+    return send_from_directory(app.config['DATA_FOLDER'], f'{dataset}.csv', as_attachment=True)
 
 
 @app.route('/data/delete/<int:dataset>')
@@ -413,7 +413,7 @@ def delete_data(dataset: int):
     :param dataset: The id of the dataset to delete.
     """
     db.delete_dataset(dataset)
-    os.remove(os.path.join(app.config['DATA_FOLDER'], str(dataset) + '.csv'))
+    os.remove(os.path.join(app.config['DATA_FOLDER'], f'{dataset}.csv'))
     return redirect(url_for('data'))
 
 
@@ -452,7 +452,7 @@ def upload_checkpoint(return_page: str):
 
     ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, ckpt_args.dataset_type, ckpt_args.epochs)
 
-    ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], str(ckpt_id) + '.pt')
+    ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{ckpt_id}.pt')
 
     if ckpt_name != new_ckpt_name:
         warnings.append(name_already_exists_message('Checkpoint', ckpt_name, new_ckpt_name))
@@ -471,7 +471,7 @@ def download_checkpoint(checkpoint: int):
 
     :param checkpoint: The name of the checkpoint file to download.
     """
-    return send_from_directory(app.config['CHECKPOINT_FOLDER'], str(checkpoint) + '.pt', as_attachment=True)
+    return send_from_directory(app.config['CHECKPOINT_FOLDER'], f'{checkpoint}.pt', as_attachment=True)
 
 
 @app.route('/checkpoints/delete/<int:checkpoint>')
