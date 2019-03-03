@@ -471,16 +471,20 @@ def upload_checkpoint(return_page: str):
 
     ckpt_name = request.form['checkpointName']
 
-    ckpt_args = load_args(ckpt)
+    # Create temporary file to get ckpt_args without losing data.
+    with NamedTemporaryFile() as temp_file:
+        ckpt.save(temp_file.name)
 
-    ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, ckpt_args.dataset_type, ckpt_args.epochs)
+        ckpt_args = load_args(temp_file)
 
-    ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{ckpt_id}.pt')
+        ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, ckpt_args.dataset_type, ckpt_args.epochs)
 
-    if ckpt_name != new_ckpt_name:
-        warnings.append(name_already_exists_message('Checkpoint', ckpt_name, new_ckpt_name))
+        ckpt_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{ckpt_id}.pt')
 
-    ckpt.save(ckpt_path)
+        if ckpt_name != new_ckpt_name:
+            warnings.append(name_already_exists_message('Checkpoint', ckpt_name, new_ckpt_name))
+
+        shutil.copy(temp_file.name, ckpt_path)
 
     warnings, errors = json.dumps(warnings), json.dumps(errors)
 
