@@ -14,7 +14,11 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=5000, help='Port')
     parser.add_argument('--debug', action='store_true', default=False, help='Whether to run in debug mode')
     parser.add_argument('--initdb', action='store_true', default=False, help='Initialize Database')
+    parser.add_argument('--demo', action='store_true', default=False, help='Display only demo features')
     args = parser.parse_args()
+
+    if args.demo:
+        app.config['DEMO'] = True
 
     db.init_app(app)
 
