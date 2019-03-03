@@ -29,6 +29,12 @@ TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)
 
 def check_not_demo(func: Callable) -> Callable:
+    """
+    View wrapper, which will redirect request to site
+    homepage if app is run in DEMO mode.
+    :param func: A view which performs sensitive behavior.
+    :return: A view with behavior adjusted based on DEMO flag.
+    """
     @wraps(func)
     def decorated_function(*args, **kwargs):
         if app.config['DEMO']:
@@ -223,8 +229,8 @@ def train():
     if not current_user:
         # Use DEFAULT as current user if the client's cookie is not set.
         current_user = app.config['DEFAULT_USER_ID']
-    
-    
+
+
     ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name, current_user, args.dataset_type, args.epochs)
 
     with TemporaryDirectory() as temp_dir:
