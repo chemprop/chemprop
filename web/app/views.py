@@ -1,12 +1,13 @@
 """Defines a number of routes/views for the flask app."""
 
 from argparse import ArgumentParser, Namespace
+from functools import wraps
 import os
 import sys
 import shutil
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 import time
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 import multiprocessing as mp
 
 from flask import json, jsonify, redirect, render_template, request, send_from_directory, url_for
@@ -27,6 +28,20 @@ from chemprop.utils import create_logger, load_task_names, load_args
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)
 
+def check_not_demo(func: Callable) -> Callable:
+    """
+    View wrapper, which will redirect request to site
+    homepage if app is run in DEMO mode.
+    :param func: A view which performs sensitive behavior.
+    :return: A view with behavior adjusted based on DEMO flag.
+    """
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if app.config['DEMO']:
+            return redirect(url_for('home'))
+        return func(*args, **kwargs)
+
+    return decorated_function
 
 def progress_bar(args: Namespace, progress: mp.Value):
     """
@@ -120,6 +135,7 @@ def format_float_list(array: List[float], precision: int = 4) -> List[str]:
 
 
 @app.route('/receiver', methods=['POST'])
+@check_not_demo
 def receiver():
     """Receiver monitoring the progress of training."""
     return jsonify(progress=PROGRESS.value, training=TRAINING)
@@ -131,6 +147,7 @@ def home():
     return render_template('home.html', users=db.get_all_users())
 
 @app.route('/create_user', methods=['GET', 'POST'])
+@check_not_demo
 def create_user():
     """    
     If a POST request is made, creates a new user.
@@ -160,6 +177,7 @@ def render_train(**kwargs):
                            **kwargs)
 
 @app.route('/train', methods=['GET', 'POST'])
+@check_not_demo
 def train():
     """Renders the train page and performs training if request method is POST."""
     global PROGRESS, TRAINING
@@ -211,8 +229,8 @@ def train():
     if not current_user:
         # Use DEFAULT as current user if the client's cookie is not set.
         current_user = app.config['DEFAULT_USER_ID']
-    
-    
+
+
     ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name, current_user, args.dataset_type, args.epochs)
 
     with TemporaryDirectory() as temp_dir:
@@ -342,6 +360,7 @@ def download_predictions():
 
 
 @app.route('/data')
+@check_not_demo
 def data():
     """Renders the data page."""
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
@@ -354,6 +373,7 @@ def data():
 
 
 @app.route('/data/upload/<string:return_page>', methods=['POST'])
+@check_not_demo
 def upload_data(return_page: str):
     """
     Uploads a data .csv file.
@@ -395,6 +415,7 @@ def upload_data(return_page: str):
 
 
 @app.route('/data/download/<int:dataset>')
+@check_not_demo
 def download_data(dataset: int):
     """
     Downloads a dataset as a .csv file.
@@ -405,6 +426,7 @@ def download_data(dataset: int):
 
 
 @app.route('/data/delete/<int:dataset>')
+@check_not_demo
 def delete_data(dataset: int):
     """
     Deletes a dataset.
@@ -417,6 +439,7 @@ def delete_data(dataset: int):
 
 
 @app.route('/checkpoints')
+@check_not_demo
 def checkpoints():
     """Renders the checkpoints page."""
     checkpoint_upload_warnings, checkpoint_upload_errors = get_upload_warnings_errors('checkpoint')
@@ -429,6 +452,7 @@ def checkpoints():
 
 
 @app.route('/checkpoints/upload/<string:return_page>', methods=['POST'])
+@check_not_demo
 def upload_checkpoint(return_page: str):
     """
     Uploads a checkpoint .pt file.
@@ -464,6 +488,7 @@ def upload_checkpoint(return_page: str):
 
 
 @app.route('/checkpoints/download/<int:checkpoint>')
+@check_not_demo
 def download_checkpoint(checkpoint: int):
     """
     Downloads a checkpoint .pt file.
@@ -474,6 +499,7 @@ def download_checkpoint(checkpoint: int):
 
 
 @app.route('/checkpoints/delete/<int:checkpoint>')
+@check_not_demo
 def delete_checkpoint(checkpoint: int):
     """
     Deletes a checkpoint file.

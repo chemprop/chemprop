@@ -6,11 +6,12 @@
 {% endblock %}
 
 {% block content %}
+    {% if not config['DEMO'] %}
     {{ add_checkpoint('predict', checkpoint_upload_warnings, checkpoint_upload_errors) }}
-
     <hr>
 
     <h3>Predict</h3>
+    {% endif %}
 
     <form enctype="multipart/form-data" method="POST">
         <!--Model checkpoint selector-->

@@ -13,8 +13,12 @@ if __name__ == "__main__":
     parser.add_argument('--host', type=str, default='127.0.0.1', help='Host IP address')
     parser.add_argument('--port', type=int, default=5000, help='Port')
     parser.add_argument('--debug', action='store_true', default=False, help='Whether to run in debug mode')
+    parser.add_argument('--demo', action='store_true', default=False, help='Display only demo features')
     parser.add_argument('--initdb', action='store_true', default=False, help='Initialize Database')
     args = parser.parse_args()
+
+    if args.demo:
+        app.config['DEMO'] = args.demo
 
     db.init_app(app)
 
