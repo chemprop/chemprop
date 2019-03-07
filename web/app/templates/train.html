@@ -33,8 +33,14 @@
 
         <h5>Epochs</h5>
         <input type="number" name="epochs" min="1" step="1" value="30" required>
-        <br>
-        <br>
+
+        <h5>Ensemble Size</h5>
+        <select name="ensembleSize" required>
+            <option value="1" selected="selected">1</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+        </select>
 
         <h5>Checkpoint name</h5>
         <!--TODO: Verify that name isn't already in use-->
