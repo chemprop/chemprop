@@ -114,7 +114,7 @@ def insert_user(username: str) -> Tuple[int, str]:
     return new_user_id, temp_name
 
 
-def get_ckpts(user_id: int):
+def get_ckpts(user_id: int) -> List[sqlite3.Row]:
     """
     Returns the checkpoints associated with the given user.
     If no user_id is provided, return the checkpoints associated
@@ -169,15 +169,45 @@ def insert_ckpt(ckpt_name: str,
 def delete_ckpt(ckpt_id: int):
     """
     Removes the checkpoint with the specified id from the database,
-    and deletes the corresponding file.
+    associated model columns, and the corresponding files.
 
     :param ckpt_id: The id of the checkpoint to be deleted.
     """
+    rows = query_db(f'SELECT * FROM model WHERE associated_ckpt = {ckpt_id}')
+
+    for row in rows:
+        os.remove(os.path.join(app.config['CHECKPOINT_FOLDER'], f'{row["id"]}.pt'))
+
     db = get_db()
-    cur = db.execute(f'DELETE FROM ckpt WHERE id = {ckpt_id}')
+    cur = db.cursor()
+    db.execute(f'DELETE FROM ckpt WHERE id = {ckpt_id}')
+    db.execute(f'DELETE FROM model WHERE associated_ckpt = {ckpt_id}')
     db.commit()
     cur.close()
 
+def get_models(ckpt_id: int) -> List[sqlite3.Row]:
+    """
+    Returns the models associated with the given ckpt.
+
+    :param ckpt_id: The id of the ckpt whose component models are returned.
+    :return A list of models.
+    """
+    return query_db(f'SELECT * FROM model WHERE associated_ckpt = {ckpt_id}')
+
+def insert_model(ckpt_id: int) -> str:
+    """
+    Inserts a new model.
+
+    :param ckpt_id: The id of the checkpoint this model should be associated with.
+    :return: The id of the new model.
+    """
+    db = get_db()
+    cur = db.execute('INSERT INTO model (associated_ckpt) VALUES (?)', [ckpt_id])
+    new_model_id = cur.lastrowid
+    db.commit()
+    cur.close()
+
+    return new_model_id
 
 def get_datasets(user_id: int) -> List[sqlite3.Row]:
     """

@@ -169,6 +169,9 @@ def update_checkpoint_args(args: Namespace):
 
     :param args: Arguments.
     """
+    if hasattr(args, 'checkpoint_paths') and args.checkpoint_paths is not None:
+        return
+
     if args.checkpoint_dir is not None and args.checkpoint_path is not None:
         raise ValueError('Only one of checkpoint_dir and checkpoint_path can be specified.')
 
@@ -180,7 +183,7 @@ def update_checkpoint_args(args: Namespace):
 
     for root, _, files in os.walk(args.checkpoint_dir):
         for fname in files:
-            if fname == 'model.pt':
+            if fname.endswith('.pt'):
                 args.checkpoint_paths.append(os.path.join(root, fname))
 
     args.ensemble_size = len(args.checkpoint_paths)
@@ -197,7 +200,7 @@ def modify_predict_args(args: Namespace):
     """
     assert args.test_path
     assert args.preds_path
-    assert args.checkpoint_dir is not None or args.checkpoint_path is not None
+    assert args.checkpoint_dir is not None or args.checkpoint_path is not None or args.checkpoint_paths is not None
 
     update_checkpoint_args(args)
 
