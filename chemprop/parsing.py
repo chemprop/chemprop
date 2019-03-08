@@ -183,7 +183,7 @@ def update_checkpoint_args(args: Namespace):
 
     for root, _, files in os.walk(args.checkpoint_dir):
         for fname in files:
-            if fname == 'model.pt':
+            if fname.endswith('.pt'):
                 args.checkpoint_paths.append(os.path.join(root, fname))
 
     args.ensemble_size = len(args.checkpoint_paths)

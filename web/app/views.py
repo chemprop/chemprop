@@ -261,9 +261,8 @@ def train():
         # Move models
         for root, _, files in os.walk(args.save_dir):
             for fname in files:
-                if fname == 'model.pt':
+                if fname.endswith('.pt'):
                     model_id = db.insert_model(ckpt_id)
-                    print("TRAINED A MODEL WITH ID", model_id)
                     save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model_id}.pt')
                     shutil.move(os.path.join(args.save_dir, root, fname), save_path)
 
