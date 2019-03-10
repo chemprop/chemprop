@@ -132,7 +132,9 @@ def get_ckpts(user_id: int) -> List[sqlite3.Row]:
 def insert_ckpt(ckpt_name: str, 
                 associated_user: str, 
                 model_class: str, 
-                num_epochs: int) -> Tuple[int, str]:
+                num_epochs: int,
+                ensemble_size: int,
+                training_size: int) -> Tuple[int, str]:
     """
     Inserts a new checkpoint. If the desired name is already taken,  
     appends integers incrementally until an open name is found.   
@@ -141,6 +143,8 @@ def insert_ckpt(ckpt_name: str,
     :param associated_user: The user that should be associated with the new checkpoint.
     :param model_class: The class of the new checkpoint.
     :param num_epochs: The number of epochs the new checkpoint will run for.
+    :param ensemble_size: The number of models included in the ensemble.
+    :param training_size: The number of molecules used for training.
     :return A tuple containing the id and name of the new checkpoint.   
     """
     db = get_db()
@@ -153,8 +157,10 @@ def insert_ckpt(ckpt_name: str,
         if count != 0:
             temp_name += str(count)
         try:
-            cur = db.execute('INSERT INTO ckpt (ckpt_name, associated_user, class, epochs) VALUES (?, ?, ?, ?)',
-                             [temp_name, associated_user, model_class, num_epochs])
+            cur = db.execute('INSERT INTO ckpt '
+                             '(ckpt_name, associated_user, class, epochs, ensemble_size, training_size) '
+                             'VALUES (?, ?, ?, ?, ?, ?)',
+                             [temp_name, associated_user, model_class, num_epochs, ensemble_size, training_size])
             new_ckpt_id = cur.lastrowid
         except sqlite3.IntegrityError as e:
             count += 1

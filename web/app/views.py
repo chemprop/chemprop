@@ -234,8 +234,12 @@ def train():
         # Use DEFAULT as current user if the client's cookie is not set.
         current_user = app.config['DEFAULT_USER_ID']
 
-
-    ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name, current_user, args.dataset_type, args.epochs)
+    ckpt_id, ckpt_name = db.insert_ckpt(checkpoint_name,
+                                        current_user,
+                                        args.dataset_type,
+                                        args.epochs,
+                                        args.ensemble_size,
+                                        len(targets))
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
@@ -486,7 +490,12 @@ def upload_checkpoint(return_page: str):
 
         ckpt_args = load_args(temp_file)
 
-        ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name, current_user, ckpt_args.dataset_type, ckpt_args.epochs)
+        ckpt_id, new_ckpt_name = db.insert_ckpt(ckpt_name,
+                                                current_user,
+                                                ckpt_args.dataset_type,
+                                                ckpt_args.epochs,
+                                                1,
+                                                ckpt_args.train_data_size)
 
         model_id = db.insert_model(ckpt_id)
 

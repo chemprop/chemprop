@@ -17,6 +17,8 @@ CREATE TABLE ckpt (
   class TEXT NOT NULL,
   stats JSON,
   epochs INTEGER NOT NULL DEFAULT 30,
+  ensemble_size INTEGER NOT NULL,
+  training_size INTEGER NOT NULL,
   completed BOOLEAN NOT NULL DEFAULT 0,
   FOREIGN KEY (associated_user) REFERENCES user (id),
   CONSTRAINT uq_ckpt_names UNIQUE(ckpt_name, associated_user)
