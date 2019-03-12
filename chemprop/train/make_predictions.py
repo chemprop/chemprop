@@ -36,7 +36,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     if smiles is not None:
         test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False)
     else:
-        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.compound_names, skip_invalid_smiles=False)
+        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.use_compound_names, skip_invalid_smiles=False)
 
     print('Validating SMILES')
     valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
@@ -49,7 +49,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
     test_smiles = test_data.smiles()
 
-    if args.compound_names:
+    if args.use_compound_names:
         compound_names = test_data.compound_names()
     print(f'Test size = {len(test_data):,}')
 
@@ -92,7 +92,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
         header = []
         header.append('smiles')
-        if args.compound_names:
+        if args.use_compound_names:
             header.append('compound_names')
 
         header.extend(args.task_names)
@@ -102,7 +102,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
             row = []
 
             row.append(test_smiles[i])
-            if args.compound_names:
+            if args.use_compound_names:
                 row.append(compound_names[i])
 
             if avg_preds[i] is not None:

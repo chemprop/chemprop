@@ -83,7 +83,7 @@ def get_data(path: str,
              args: Namespace = None,
              features_path: List[str] = None,
              max_data_size: int = None,
-             use_compound_names: bool = False,
+             use_compound_names: bool = None,
              logger: Logger = None) -> MoleculeDataset:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
@@ -102,10 +102,14 @@ def get_data(path: str,
     debug = logger.debug if logger is not None else print
 
     if args is not None:
-        max_data_size = max_data_size or float('inf')
-        features_path = features_path or args.features_path
+        # Prefer explicit function arguments but default to args if not provided
+        features_path = features_path if features_path is not None else args.features_path
+        max_data_size = max_data_size if max_data_size is not None else args.max_data_size
+        use_compound_names = use_compound_names if use_compound_names is not None else args.use_compound_names
     else:
-        max_data_size = max_data_size or float('inf')
+        use_compound_names = False
+
+    max_data_size = max_data_size or float('inf')
 
     # Load features
     if features_path is not None:

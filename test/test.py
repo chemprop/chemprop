@@ -50,9 +50,9 @@ class TestScripts(unittest.TestCase):
                                 help='Path to first data CSV file')
             parser.add_argument('--data_path_2', type=str,
                                 help='Path to second data CSV file')
-            parser.add_argument('--compound_names_1', action='store_true', default=False,
+            parser.add_argument('--use_compound_names_1', action='store_true', default=False,
                                 help='Whether data_path_1 has compound names in addition to smiles')
-            parser.add_argument('--compound_names_2', action='store_true', default=False,
+            parser.add_argument('--use_compound_names_2', action='store_true', default=False,
                                 help='Whether data_path_2 has compound names in addition to smiles')
             parser.add_argument('--save_intersection_path', type=str, default=None,
                                 help='Path to save intersection at; labeled with data_path 1 header')
@@ -103,9 +103,9 @@ class TestScripts(unittest.TestCase):
                                 help='Path to first data CSV file')
             parser.add_argument('--data_path_2', type=str,
                                 help='Path to second data CSV file')
-            parser.add_argument('--compound_names_1', action='store_true', default=False,
+            parser.add_argument('--use_compound_names_1', action='store_true', default=False,
                                 help='Whether data_path_1 has compound names in addition to smiles')
-            parser.add_argument('--compound_names_2', action='store_true', default=False,
+            parser.add_argument('--use_compound_names_2', action='store_true', default=False,
                                 help='Whether data_path_2 has compound names in addition to smiles')
             parser.add_argument('--radius', type=int, default=3,
                                 help='Radius of Morgan fingerprint')
@@ -116,8 +116,8 @@ class TestScripts(unittest.TestCase):
             args.data_path_1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
             args.data_path_2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy.csv')
 
-            data_1 = get_data(path=args.data_path_1, use_compound_names=args.compound_names_1)
-            data_2 = get_data(path=args.data_path_2, use_compound_names=args.compound_names_2)
+            data_1 = get_data(path=args.data_path_1, use_compound_names=args.use_compound_names_1)
+            data_2 = get_data(path=args.data_path_2, use_compound_names=args.use_compound_names_2)
 
             scaffold_similarity(data_1.smiles(), data_2.smiles())
             morgan_similarity(data_1.smiles(), data_2.smiles(), args.radius, args.sample_rate)
@@ -367,7 +367,7 @@ class TestPredict(unittest.TestCase):
     def test_predict_compound_names(self):
         try:
             self.args.test_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delaney_toy_smiles_names.csv')
-            self.args.compound_names = True
+            self.args.use_compound_names = True
             modify_predict_args(self.args)
             make_predictions(self.args)
         except:

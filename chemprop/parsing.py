@@ -20,7 +20,7 @@ def add_predict_args(parser: ArgumentParser):
                         help='Which GPU to use')
     parser.add_argument('--test_path', type=str,
                         help='Path to CSV file containing testing data for which predictions will be made')
-    parser.add_argument('--compound_names', action='store_true', default=False,
+    parser.add_argument('--use_compound_names', action='store_true', default=False,
                         help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--preds_path', type=str,
                         help='Path to CSV file where predictions will be saved')
@@ -54,6 +54,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Which GPU to use')
     parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file')
+    parser.add_argument('--use_compound_names', action='store_true', default=False,
+                        help='Use when test data file contains compound names in addition to SMILES strings')
+    parser.add_argument('--max_data_size', type=int,
+                        help='Maximum number of data points to load')
     parser.add_argument('--test', action='store_true', default=False,
                         help='Whether to skip training and only test the model')
     parser.add_argument('--features_only', action='store_true', default=False,
