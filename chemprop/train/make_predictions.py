@@ -47,8 +47,6 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     if len(test_data) == 0:
         return [None] * len(full_data)
 
-    test_smiles = test_data.smiles()
-
     if args.use_compound_names:
         compound_names = test_data.compound_names()
     print(f'Test size = {len(test_data):,}')
@@ -91,9 +89,11 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         writer = csv.writer(f)
 
         header = []
-        header.append('smiles')
+
         if args.use_compound_names:
             header.append('compound_names')
+
+        header.append('smiles')
 
         header.extend(args.task_names)
         writer.writerow(header)
@@ -101,9 +101,10 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         for i in range(len(avg_preds)):
             row = []
 
-            row.append(test_smiles[i])
             if args.use_compound_names:
                 row.append(compound_names[i])
+
+            row.append(test_smiles[i])
 
             if avg_preds[i] is not None:
                 row.extend(avg_preds[i])
