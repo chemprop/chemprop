@@ -40,6 +40,8 @@ def add_predict_args(parser: ArgumentParser):
                         help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
+    parser.add_argument('--max_data_size', type=int,
+                        help='Maximum number of data points to load')
 
 
 def add_train_args(parser: ArgumentParser):
