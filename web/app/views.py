@@ -135,7 +135,6 @@ def format_float_list(array: List[float], precision: int = 4) -> List[str]:
     """
     return [format_float(f, precision) for f in array]
 
-
 @app.route('/receiver', methods=['POST'])
 @check_not_demo
 def receiver():
@@ -369,7 +368,7 @@ def predict():
 @app.route('/download_predictions')
 def download_predictions():
     """Downloads predictions as a .csv file."""
-    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
+    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True, cache_timeout=-1)
 
 
 @app.route('/data')
@@ -435,7 +434,7 @@ def download_data(dataset: int):
 
     :param dataset: The id of the dataset to download.
     """
-    return send_from_directory(app.config['DATA_FOLDER'], f'{dataset}.csv', as_attachment=True)
+    return send_from_directory(app.config['DATA_FOLDER'], f'{dataset}.csv', as_attachment=True, cache_timeout=-1)
 
 
 @app.route('/data/delete/<int:dataset>')
@@ -535,7 +534,8 @@ def download_checkpoint(checkpoint: int):
         model_data,
         mimetype='application/zip',
         as_attachment=True,
-        attachment_filename=f'{ckpt["ckpt_name"]}.zip'
+        attachment_filename=f'{ckpt["ckpt_name"]}.zip',
+        cache_timeout=-1
     )
 
 @app.route('/checkpoints/delete/<int:checkpoint>')
