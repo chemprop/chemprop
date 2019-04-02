@@ -210,7 +210,7 @@ def train():
     # Check if regression/classification selection matches data
     data = get_data(path=data_path)
     targets = data.targets()
-    unique_targets = set(np.unique(targets))
+    unique_targets = {target for row in targets for target in row if target is not None}
 
     if dataset_type == 'classification' and len(unique_targets - {0, 1}) > 0:
         errors.append('Selected classification dataset but not all labels are 0 or 1. Select regression instead.')
