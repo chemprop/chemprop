@@ -69,14 +69,14 @@ class MPNEncoder(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if self.features_only:
-            return torch.FloatTensor(features_batch)
-
         if self.use_input_features:
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
 
             if self.args.cuda:
                 features_batch = features_batch.cuda()
+
+            if self.features_only:
+                return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
