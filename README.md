@@ -150,6 +150,13 @@ As a starting point, we recommend using pre-normalized RDKit features by using t
 
 Note: In order to use the `rdkit_2d_normalized` features, you must have `descriptastorus` installed. If you installed via conda, you can install `descriptastorus` by running `pip install git+https://github.com/bp-kelley/descriptastorus`. If you installed via Docker, `descriptastorus` should already be installed.
 
+The full list of available features for `--feagrtures_generator` is as follows. 
+
+`morgan` is binary Morgan fingerprints, radius 2 and 2048 bits.
+`morgan_count` is count-based Morgan, radius 2 and 2048 bits.
+`rdkit_2d` is an unnormalized version of 200 assorted rdkit descriptors. Full list can be found at the bottom of our paper: https://arxiv.org/pdf/1904.01561.pdf
+`rdkit_2d_normalized` is the CDF-normalized version of the 200 rdkit descriptors.
+
 #### Custom Features
 
 If you would like to load custom features, you can do so in two ways:
