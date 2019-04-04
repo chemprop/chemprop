@@ -2,7 +2,6 @@ from argparse import Namespace
 
 import torch.nn as nn
 
-from .features_only import FeaturesOnly
 from .mpn import MPN
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
@@ -28,10 +27,7 @@ class MoleculeModel(nn.Module):
 
         :param args: Arguments.
         """
-        if args.features_only:
-            self.encoder = FeaturesOnly()
-        else:
-            self.encoder = MPN(args)
+        self.encoder = MPN(args)
 
     def create_ffn(self, args: Namespace):
         """
@@ -39,9 +35,12 @@ class MoleculeModel(nn.Module):
 
         :param args: Arguments.
         """
-        first_linear_dim = args.hidden_size
-        if args.use_input_features:
-            first_linear_dim += args.features_dim
+        if args.features_only:
+            first_linear_dim = args.features_size
+        else:
+            first_linear_dim = args.hidden_size
+            if args.use_input_features:
+                first_linear_dim += args.features_dim
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)

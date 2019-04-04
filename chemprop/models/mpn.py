@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import Dict, List, Union
+from typing import List, Union
 
 import torch
 import torch.nn as nn
@@ -29,8 +29,12 @@ class MPNEncoder(nn.Module):
         self.layers_per_message = 1
         self.undirected = args.undirected
         self.atom_messages = args.atom_messages
+        self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.args = args
+
+        if self.features_only:
+            return
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -65,6 +69,9 @@ class MPNEncoder(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
+        if self.features_only:
+            return torch.FloatTensor(features_batch)
+
         if self.use_input_features:
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
 
