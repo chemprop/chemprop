@@ -57,7 +57,7 @@ class MPNEncoder(nn.Module):
 
     def forward(self,
                 mol_graph: BatchMolGraph,
-                features_batch: List[np.ndarray] = None) -> Union[torch.FloatTensor, Dict[str, torch.FloatTensor]]:
+                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecular graphs.
 
@@ -166,7 +166,7 @@ class MPN(nn.Module):
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],
-                features_batch: List[np.ndarray] = None) -> torch.Tensor:
+                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecular SMILES strings.
 
