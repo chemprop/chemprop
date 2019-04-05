@@ -35,9 +35,12 @@ class MoleculeModel(nn.Module):
 
         :param args: Arguments.
         """
-        first_linear_dim = args.hidden_size
-        if args.use_input_features:
-            first_linear_dim += args.features_dim
+        if args.features_only:
+            first_linear_dim = args.features_size
+        else:
+            first_linear_dim = args.hidden_size
+            if args.use_input_features:
+                first_linear_dim += args.features_dim
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)

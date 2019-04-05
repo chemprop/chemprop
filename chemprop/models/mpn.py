@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import Dict, List, Union
+from typing import List, Union
 
 import torch
 import torch.nn as nn
@@ -29,8 +29,12 @@ class MPNEncoder(nn.Module):
         self.layers_per_message = 1
         self.undirected = args.undirected
         self.atom_messages = args.atom_messages
+        self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.args = args
+
+        if self.features_only:
+            return
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -57,7 +61,7 @@ class MPNEncoder(nn.Module):
 
     def forward(self,
                 mol_graph: BatchMolGraph,
-                features_batch: List[np.ndarray] = None) -> Union[torch.FloatTensor, Dict[str, torch.FloatTensor]]:
+                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecular graphs.
 
@@ -70,6 +74,9 @@ class MPNEncoder(nn.Module):
 
             if self.args.cuda:
                 features_batch = features_batch.cuda()
+
+            if self.features_only:
+                return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
 
@@ -166,7 +173,7 @@ class MPN(nn.Module):
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],
-                features_batch: List[np.ndarray] = None) -> torch.Tensor:
+                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecular SMILES strings.
 
