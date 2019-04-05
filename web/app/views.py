@@ -302,7 +302,12 @@ def predict():
     # Get arguments
     ckpt_id = request.form['checkpointName']
 
-    if 'data' in request.files:
+    if request.form['textSmiles'] != '':
+        smiles = request.form['textSmiles'].split()
+    elif request.form['drawSmiles'] != '':
+        smiles = [request.form['drawSmiles']]
+    else:
+        print(" GOT HERE")
         # Upload data file with SMILES
         data = request.files['data']
         data_name = secure_filename(data.filename)
@@ -315,10 +320,6 @@ def predict():
 
         # Get remaining smiles
         smiles.extend(get_smiles(data_path))
-    elif request.form['textSmiles'] != '':
-        smiles = request.form['textSmiles'].split()
-    else:
-        smiles = [request.form['drawSmiles']]
 
     models = db.get_models(ckpt_id)
     model_paths = [os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model["id"]}.pt') for model in models]
