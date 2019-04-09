@@ -70,7 +70,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         sum_preds += np.array(model_preds)
 
     # Ensemble predictions
-    avg_preds = sum_preds / args.ensemble_size
+    avg_preds = sum_preds / len(args.checkpoint_paths)
     avg_preds = avg_preds.tolist()
 
     # Save predictions
