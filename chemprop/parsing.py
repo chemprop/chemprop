@@ -2,6 +2,7 @@ from argparse import ArgumentParser, Namespace
 import json
 import os
 from tempfile import TemporaryDirectory
+import pickle
 
 import torch
 
@@ -91,7 +92,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--separate_test_features_path', type=str, nargs='*',
                         help='Path to file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
-                        choices=['random', 'scaffold_balanced', 'predetermined'],
+                        choices=['random', 'scaffold_balanced', 'predetermined', 'crossval'],
                         help='Method of splitting the data into train/val/test')
     parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
                         help='Split proportions for train/validation/test sets')
@@ -103,6 +104,11 @@ def add_train_args(parser: ArgumentParser):
                         help='Which fold to use as val for leave-one-out cross val')
     parser.add_argument('--test_fold_index', type=int, default=None,
                         help='Which fold to use as test for leave-one-out cross val')
+    parser.add_argument('--crossval_index_dir', type=str, 
+                        help='Directory in which to find cross validation index files')
+    parser.add_argument('--crossval_index_file', type=str, 
+                        help='Indices of files to use as train/val/test'
+                             'Overrides --num_folds and --seed.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
@@ -284,6 +290,12 @@ def modify_train_args(args: Namespace):
         args.ffn_hidden_size = args.hidden_size
 
     assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
+    assert (args.split_type == 'crossval') == (args.crossval_index_dir is not None) == (args.crossval_index_file is not None)
+    if args.split_type == 'crossval':
+        with open(args.crossval_index_file, 'rb') as rf:
+            args.crossval_index_sets = pickle.load(rf)
+        args.num_folds = len(args.crossval_index_sets)
+        args.seed = 0
 
     if args.test:
         args.epochs = 0

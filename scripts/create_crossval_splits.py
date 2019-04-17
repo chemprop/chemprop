@@ -20,9 +20,9 @@ def create_crossval_splits(args):
         raise NotImplementedError # TODO
     else:
         raise ValueError
-    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(os.path.join(args.save_dir, args.split_type), exist_ok=True)
     for i in range(args.num_folds):
-        with open(f'{i}.pkl', 'wb') as wf:
+        with open(os.path.join(args.save_dir, args.split_type, f'{i}.pkl'), 'wb') as wf:
             pickle.dump(fold_indices[i], wf)
     
 
