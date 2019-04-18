@@ -25,7 +25,7 @@ for i in ${!datasets[@]}; do
         else 
             CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python hyperparameter_optimization.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_opt.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --num_iters 20 --config_save_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --log_dir ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/logdir --quiet --metric ${metrics[$i]} &
         fi 
-        gpu=$($(${gpu_index} + 1) % ${num_gpus})
+        gpu_index=$(($((${gpu_index} + 1)) % ${num_gpus}))
     done
     wait
 done
