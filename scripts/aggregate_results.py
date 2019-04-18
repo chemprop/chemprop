@@ -16,7 +16,7 @@ def aggregate_results(args):
                     last_line = last_line.split('+')[0]
                     results.append(float(last_line.strip()))
     results = np.array(results)
-    print(f'Mean: {np.mean(results)}, Std: {np.std(results)}')
+    print(f'Mean: {np.mean(results)}, Std: {np.std(results)}, Total num files: {len(results)}')
                     
 if __name__ == '__main__':
     parser = ArgumentParser()
