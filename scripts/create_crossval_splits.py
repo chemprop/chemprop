@@ -20,6 +20,12 @@ def create_crossval_splits(args):
             fold_indices.append(np.array(all_indices[begin:end]))
     elif args.split_type == 'scaffold':
         raise NotImplementedError  # TODO
+    elif args.split_type == 'time': # same as random, but without shuffling. ASSUME DATA GIVEN IN CHRONOLOGICAL ORDER. 
+        all_indices = list(range(num_data))
+        fold_indices = []
+        for i in range(args.num_folds):
+            begin, end = int(i * num_data / args.num_folds), int((i+1) * num_data / args.num_folds)
+            fold_indices.append(np.array(all_indices[begin:end]))
     else:
         raise ValueError
     os.makedirs(os.path.join(args.save_dir, args.split_type), exist_ok=True)
@@ -34,7 +40,7 @@ if __name__ == '__main__':
                         help='Path to CSV file with dataset of molecules')
     parser.add_argument('--save_dir', type=str, required=True,
                         help='Path to CSV file where splits will be saved')
-    parser.add_argument('--split_type', type=str, choices=['random', 'scaffold'], required=True,
+    parser.add_argument('--split_type', type=str, choices=['random', 'scaffold', 'time'], required=True,
                         help='Random or scaffold based split')
     parser.add_argument('--num_folds', type=int, default=10,
                         help='Number of cross validation folds')
