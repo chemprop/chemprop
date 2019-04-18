@@ -1,10 +1,11 @@
-import pickle
-import os
+from argparse import ArgumentParser, Namespace
 from copy import deepcopy
+import os
+import pickle
 import random
-from argparse import ArgumentParser
 
-def create_crossval_indices(args):
+
+def create_crossval_indices(args: Namespace):
     random.seed(0)
     if args.test_folds_to_test is None:
         args.test_folds_to_test = args.num_folds
@@ -21,12 +22,13 @@ def create_crossval_indices(args):
             index_folds.remove(i)
             random.shuffle(index_folds)
             for val_index in index_folds[:args.val_folds_per_test]:
-                train, val, test = [index for index in index_folds if index != val_index], [val_index], [i] # test set = val set during cv for now
+                train, val, test = [index for index in index_folds if index != val_index], [val_index], [i]  # test set = val set during cv for now
                 index_sets.append([train, val, val])
                 test_index_sets.append([train, val, test])
             pickle.dump(index_sets, valf)
             pickle.dump(test_index_sets, testf)
         print(i, index_sets, test_index_sets)
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()

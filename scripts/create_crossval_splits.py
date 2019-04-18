@@ -1,10 +1,12 @@
 from argparse import ArgumentParser
-import random
 import pickle
 import os
+import random
+
 import numpy as np
 
 from chemprop.data.utils import get_data
+
 
 def create_crossval_splits(args):
     data = get_data(args.data_path)
@@ -17,7 +19,7 @@ def create_crossval_splits(args):
             begin, end = int(i * num_data / args.num_folds), int((i+1) * num_data / args.num_folds)
             fold_indices.append(np.array(all_indices[begin:end]))
     elif args.split_type == 'scaffold':
-        raise NotImplementedError # TODO
+        raise NotImplementedError  # TODO
     else:
         raise ValueError
     os.makedirs(os.path.join(args.save_dir, args.split_type), exist_ok=True)
