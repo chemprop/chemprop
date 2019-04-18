@@ -11,8 +11,9 @@ sizes=('small' 'small' 'small' 'small' 'small' 'small' 'small' 'small' 'small' '
 # sizes=('small')
 
 folds=(0 1 2 3 4 5 6 7 8 9)
-gpu=0
-num_gpus=2
+gpus=(0, 1)
+num_gpus=${#gpus[@]}
+gpu_index=0
 
 # no ensemble
 for i in ${!datasets[@]}; do
@@ -23,9 +24,9 @@ for i in ${!datasets[@]}; do
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else 
-            CUDA_VISIBLE_DEVICES=${gpu} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_hyperopt_eval/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --config_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --quiet --metric ${metrics[$i]} &
+            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_hyperopt_eval/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --config_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --quiet --metric ${metrics[$i]} &
         fi 
-        gpu=$($(${gpu} + 1) % ${num_gpus})
+        gpu=$($(${gpu_index} + 1) % ${num_gpus})
     done
     wait
 done
@@ -39,9 +40,9 @@ for i in ${!datasets[@]}; do
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else 
-            CUDA_VISIBLE_DEVICES=$gpu python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_hyperopt_ensemble/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --config_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --quiet --metric ${metrics[$i]} --ensemble_size 5 &
+            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_hyperopt_ensemble/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --config_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --quiet --metric ${metrics[$i]} --ensemble_size 5 &
         fi 
-        gpu=$($(${gpu} + 1) % ${num_gpus})
+        gpu=$($(${gpu_index} + 1) % ${num_gpus})
     done
     wait
 done
