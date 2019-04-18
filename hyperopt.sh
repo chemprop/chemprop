@@ -19,7 +19,7 @@ for i in ${!datasets[@]}; do
     echo ${datasets[$i]}
     for fold in ${!folds[@]}; do
         echo ${folds[$fold]}
-        file=./crossval_index_files/${sizes[$i]}/${folds[$fold]}.pkl
+        file=./crossval_index_files/${sizes[$i]}/${folds[$fold]}_opt.pkl
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else 
