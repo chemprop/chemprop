@@ -14,16 +14,19 @@ def create_crossval_indices(args):
     random.shuffle(folds)
     os.makedirs(args.save_dir, exist_ok=True)
     for i in folds[:args.test_folds_to_test]:
-        with open(os.path.join(args.save_dir, f'{i}.pkl'), 'wb') as wf:
+        with open(os.path.join(args.save_dir, f'{i}_opt.pkl'), 'wb') as valf, open(os.path.join(args.save_dir, f'{i}_test.pkl'), 'wb') as testf:
             index_sets = []
+            test_index_sets = []
             index_folds = deepcopy(folds)
             index_folds.remove(i)
             random.shuffle(index_folds)
             for val_index in index_folds[:args.val_folds_per_test]:
-                train, val, test = [index for index in index_folds if index != val_index], [val_index], [val_index] # test set = val set during cv for now
-                index_sets.append([train, val, test])
-            pickle.dump(index_sets, wf)
-        print(i, index_sets)
+                train, val, test = [index for index in index_folds if index != val_index], [val_index], [i] # test set = val set during cv for now
+                index_sets.append([train, val, val])
+                test_index_sets.append([train, val, test])
+            pickle.dump(index_sets, valf)
+            pickle.dump(test_index_sets, testf)
+        print(i, index_sets, test_index_sets)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
