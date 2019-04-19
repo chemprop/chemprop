@@ -6,6 +6,8 @@ import numpy as np
 
 
 def aggregate_results(ckpts_dirs: List[str]):
+    names = [os.path.basename(ckpts_dir) for ckpts_dir in ckpts_dirs]
+    
     means, stds = [], []
     for ckpts_dir in ckpts_dirs:
         print(f'Walking {ckpts_dir} for verbose.log files')
@@ -46,8 +48,8 @@ def aggregate_results(ckpts_dirs: List[str]):
     print()
     print('Results')
     print('Mean\tStd')
-    for mean, std in zip(means, stds):
-        print(f'{mean}\t{std}')
+    for name, mean, std in zip(names, means, stds):
+        print(f'{name}\t{mean}\t{std}')
 
 
 if __name__ == '__main__':
