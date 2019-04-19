@@ -109,7 +109,7 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
 
     debug(f'Splitting data with seed {args.seed}')
     # Need to have val set so that train and test sets are the same as when doing MPN
-    train_data, _, test_data = split_data(data=data, split_type=args.split_type, seed=args.seed)
+    train_data, _, test_data = split_data(data=data, split_type=args.split_type, seed=args.seed, args=args)
 
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
 

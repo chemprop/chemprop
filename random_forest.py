@@ -19,6 +19,11 @@ if __name__ == '__main__':
     parser.add_argument('--split_type', type=str, default='random',
                         choices=['random', 'scaffold_balanced', 'crossval'],
                         help='Split type')
+    parser.add_argument('--crossval_index_dir', type=str,
+                        help='Directory in which to find cross validation index files')
+    parser.add_argument('--crossval_index_file', type=str,
+                        help='Indices of files to use as train/val/test'
+                             'Overrides --num_folds and --seed.')
     parser.add_argument('--class_weight', type=str,
                         choices=['balanced'],
                         help='How to weight classes (None means no class balance)')
