@@ -9,7 +9,7 @@ def aggregate_results(ckpts_dirs: List[str]):
     print('Name\tMean\tStd\tNum files')
 
     for ckpts_dir in ckpts_dirs:
-        name = os.path.basename(ckpts_dirs)
+        name = os.path.basename(ckpts_dir)
 
         # Collect verbose.log files
         paths = []
