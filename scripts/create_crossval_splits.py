@@ -26,16 +26,17 @@ def create_time_splits(args):
     data = get_data(args.data_path)
     num_data = len(data)
     all_indices = list(range(num_data))
-    fold_indices = []
+    fold_indices = {'random':[], 'scaffold':[], 'time':[]}
     for i in range(args.num_folds - args.time_folds_per_train_set - 1):
         begin, end = int(i * num_data / args.num_folds), int((i + args.time_folds_per_train_set + 2) * num_data / args.num_folds)
         subset_indices = all_indices[begin:end]
         subset_data = data[begin:end] # TODO check this syntax?
-        fold_indices.append({'random': split_indices(deepcopy(subset_indices)), # so we don't shuffle this for time split later; TODO check this is all correct
-                             'scaffold': split_indices(subset_indices, scaffold=True, data=subset_data)
-                             'time': split_indices(subset_data, shuffle=False)})
-    with open(args.save_dir, 'wb') as wf:
-        pickle.dump(fold_indices, wf)
+        fold_indices['random'].append(split_indices(deepcopy(subset_indices)))
+        fold_indices['scaffold'].append(split_indices(subset_indices, scaffold=True, data=subset_data))
+        fold_indices['time'].append(split_indices(subset_data, shuffle=False)}))
+    for split_type in ['random', 'scaffold', 'time']:
+    with open(os.path.join(args.save_dir, split_type) + '.pkl', 'wb') as wf:
+        pickle.dump(fold_indices[split_type], wf) # each is a pickle file containing a list of length-3 index lists for train/val/test
 
 def create_crossval_splits(args):
     data = get_data(args.data_path)
