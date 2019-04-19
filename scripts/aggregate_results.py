@@ -9,12 +9,12 @@ ORDER = {
         'qm7',
         'qm8',
         'qm9',
-        'esol',
+        'delaney',
         'freesolv',
-        'lipophilicity',
-        'pdbbind-f',
-        'pdbbind-c',
-        'pdbbind-r',
+        'lipo',
+        'pdbbind_full',
+        'pdbbind_core',
+        'pdbbind_refined',
         'pcba',
         'muv',
         'hiv',
@@ -47,7 +47,7 @@ ORDER = {
 
 def aggregate_results(ckpts_dirs: List[str]):
     print('Name\tMean\tStd\tNum files')
-    
+
     ckpts_dirs.sort(key=lambda ckpts_dir: ORDER[os.path.basename(ckpts_dir)])
 
     for ckpts_dir in ckpts_dirs:
