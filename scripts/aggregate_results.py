@@ -4,9 +4,51 @@ from typing import List
 
 import numpy as np
 
+ORDER = {
+    name: index for index, name in enumerate([
+        'qm7',
+        'qm8',
+        'qm9',
+        'esol',
+        'freesolv',
+        'lipophilicity',
+        'pdbbind-f',
+        'pdbbind-c',
+        'pdbbind-r',
+        'pcba',
+        'muv',
+        'hiv',
+        'bace',
+        'bbbp',
+        'tox21',
+        'toxcast',
+        'sider',
+        'clintox',
+        'chembl',
+        'rppb',
+        'sol',
+        'rlm',
+        'hpxr',
+        'hpxr (class)',
+        'benzene',
+        'cyclohexane',
+        'dichloromethane',
+        'dmso',
+        'ethanol',
+        'ethyl acetate',
+        'h2o',
+        'octanol',
+        'tetrahydrofuran',
+        'toluene',
+        'logp'
+    ])
+}
+
 
 def aggregate_results(ckpts_dirs: List[str]):
     print('Name\tMean\tStd\tNum files')
+    
+    ckpts_dirs.sort(key=lambda ckpts_dir: ORDER[os.path.basename(ckpts_dir)])
 
     for ckpts_dir in ckpts_dirs:
         name = os.path.basename(ckpts_dir)
