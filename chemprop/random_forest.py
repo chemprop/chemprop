@@ -117,7 +117,7 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
     morgan_fingerprint = get_features_generator('morgan')
     for dataset in [train_data, test_data]:
         for datapoint in tqdm(dataset, total=len(dataset)):
-            datapoint.set_features(morgan_fingerprint(smiles=datapoint.smiles, radius=args.radius, num_bits=args.num_bits))
+            datapoint.set_features(morgan_fingerprint(mol=datapoint.smiles, radius=args.radius, num_bits=args.num_bits))
 
     debug('Training')
     if args.single_task:
