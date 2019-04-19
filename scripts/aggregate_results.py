@@ -13,7 +13,7 @@ def aggregate_results(ckpts_dirs: List[str]):
 
         # Collect verbose.log files
         paths = []
-        for root, _, files in os.walk(args.ckpts_dir):
+        for root, _, files in os.walk(ckpts_dir):
             paths += [os.path.join(root, fname) for fname in files if fname == 'verbose.log']
 
         # Process verbose.log files
