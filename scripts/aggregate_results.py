@@ -6,7 +6,7 @@ import numpy as np
 def aggregate_results(args: Namespace):
     print(f'Walking {args.ckpts_dir} for verbose.log files')
     results = []
-    for root, _, files in os.walk(args.ckpt_dir):
+    for root, _, files in os.walk(args.ckpts_dir):
         for fname in files:
             if fname == 'verbose.log':
                 with open(os.path.join(root, fname), 'r') as rf:
