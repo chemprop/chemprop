@@ -9,9 +9,6 @@ metrics=('rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'mae' 'mae' 'auc' 'auc' 'auc'
 # metrics=('rmse')
 
 folds=(0 1 2 3 4 5 6 7 8 9)
-gpus=(0, 1)
-num_gpus=${#gpus[@]}
-gpu_index=0
 
 # FFN baselines
 for i in ${!datasets[@]}; do
@@ -24,7 +21,5 @@ for i in ${!datasets[@]}; do
         else
             python random_forest.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_random_forest/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/one/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]}
         fi
-        gpu_index=$(($((${gpu_index} + 1)) % ${num_gpus}))
     done
-    wait
 done
