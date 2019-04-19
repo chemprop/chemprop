@@ -48,7 +48,7 @@ def single_task_random_forest(train_data: MoleculeDataset,
         score = evaluate_predictions(
             preds=test_preds,
             targets=test_targets,
-            num_tasks=num_tasks,
+            num_tasks=1,
             metric_func=metric_func,
             dataset_type=args.dataset_type,
             logger=logger
