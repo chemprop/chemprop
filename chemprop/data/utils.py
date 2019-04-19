@@ -226,6 +226,15 @@ def split_data(data: MoleculeDataset,
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+    
+    elif split_type == 'index_predetermined':
+        split_indices = args.crossval_index_sets[args.seed]
+        assert len(split_indices) == 3
+        data_split = []
+        for split in range(3):
+            data_split.append(data[i] for i in split_indices[split])
+        train, val, test = tuple(data_split)
+        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type == 'predetermined':
         if not val_fold_index:
