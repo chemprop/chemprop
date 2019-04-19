@@ -10,7 +10,7 @@ from tqdm import trange, tqdm
 
 from chemprop.data import MoleculeDataset
 from chemprop.data.utils import get_data, split_data
-from chemprop.features import morgan_fingerprint
+from chemprop.features import get_features_generator
 from chemprop.train.evaluate import evaluate_predictions
 from chemprop.utils import get_metric_func
 
@@ -114,6 +114,7 @@ def run_random_forest(args: Namespace, logger: Logger = None) -> List[float]:
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
 
     debug('Computing morgan fingerprints')
+    morgan_fingerprint = get_features_generator('morgan')
     for dataset in [train_data, test_data]:
         for datapoint in tqdm(dataset, total=len(dataset)):
             datapoint.set_features(morgan_fingerprint(smiles=datapoint.smiles, radius=args.radius, num_bits=args.num_bits))
