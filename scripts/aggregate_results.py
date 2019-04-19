@@ -6,12 +6,10 @@ import numpy as np
 
 
 def aggregate_results(ckpts_dirs: List[str]):
-    names = [os.path.basename(ckpts_dir) for ckpts_dir in ckpts_dirs]
-    
-    means, stds = [], []
+    print('Name\tMean\tStd\tNum files')
+
     for ckpts_dir in ckpts_dirs:
-        print(f'Walking {ckpts_dir} for verbose.log files')
-        results = []
+        name = os.path.basename(ckpts_dirs)
 
         # Collect verbose.log files
         paths = []
@@ -19,6 +17,7 @@ def aggregate_results(ckpts_dirs: List[str]):
             paths += [os.path.join(root, fname) for fname in files if fname == 'verbose.log']
 
         # Process verbose.log files
+        results = []
         invalid = False
         for path in paths:
             with open(path) as rf:
@@ -34,22 +33,12 @@ def aggregate_results(ckpts_dirs: List[str]):
                     break
 
         if invalid:
-            print('Invalid verbose.log file')
-            means.append('N/A')
-            stds.append('N/A')
-            continue
+            mean, std = 'N/A', 'N/A'
+        else:
+            mean, std = np.mean(results), np.std(results)
 
         # Compute results
-        mean, std = np.mean(results), np.std(results)
-        print(f'Mean: {mean}, Std: {std}, Total num files: {len(results)}')
-        means.append(mean)
-        stds.append(std)
-
-    print()
-    print('Results')
-    print('Mean\tStd')
-    for name, mean, std in zip(names, means, stds):
-        print(f'{name}\t{mean}\t{std}')
+        print(f'{name}\t{mean}\t{std}\t{len(results)}')
 
 
 if __name__ == '__main__':
