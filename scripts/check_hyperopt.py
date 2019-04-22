@@ -12,8 +12,8 @@ def main(ckpt_dir: str, num_folds: int):
     complete = {int(os.path.basename(os.path.dirname(fname))) for fname in fnames}
     incomplete = set(range(num_folds)) - complete
 
-    print(f'complete = {" ".join(sorted(complete))}')
-    print(f'incomplete = {" ".join(sorted(incomplete))}')
+    print(f'complete = {" ".join(str(fold) for fold in sorted(complete))}')
+    print(f'incomplete = {" ".join(str(fold) for fold in sorted(incomplete))}')
 
 
 if __name__ == '__main__':
