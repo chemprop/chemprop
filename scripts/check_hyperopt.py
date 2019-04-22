@@ -2,30 +2,33 @@ from argparse import ArgumentParser
 import os
 
 
-def main(ckpt_dir: str, num_folds: int):
-    # Find all config.json files
-    fnames = []
-    for root, _, files in os.walk(ckpt_dir):
-        fnames += [os.path.join(root, fname) for fname in files if fname == 'config.json']
+def main(ckpts_dirs: str, num_folds: int):
+    for ckpts_dir in ckpts_dirs:
+        # Find all config.json files
+        fnames = []
+        for root, _, files in os.walk(ckpts_dir):
+            fnames += [os.path.join(root, fname) for fname in files if fname == 'config.json']
 
-    # Print out complete and incomplete
-    complete = {int(os.path.basename(os.path.dirname(fname))) for fname in fnames}
-    incomplete = set(range(num_folds)) - complete
+        # Print out complete and incomplete
+        complete = {int(os.path.basename(os.path.dirname(fname))) for fname in fnames}
+        incomplete = set(range(num_folds)) - complete
 
-    print(f'complete = {" ".join(str(fold) for fold in sorted(complete))}')
-    print(f'incomplete = {" ".join(str(fold) for fold in sorted(incomplete))}')
+        print(os.path.basename(ckpts_dir))
+        print(f'complete = {" ".join(str(fold) for fold in sorted(complete))}')
+        print(f'incomplete = {" ".join(str(fold) for fold in sorted(incomplete))}')
+        print()
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_dir', type=str, required=True,
-                        help='Path to directory containing hyperopt config.json files'
+    parser.add_argument('--ckpts_dirs', type=str, nargs='+', required=True,
+                        help='Paths to directory containing hyperopt config.json files'
                              'in directories labelled by fold number (0, 1, ...)')
     parser.add_argument('--num_folds', type=int, default=10,
                         help='Number of folds')
     args = parser.parse_args()
 
     main(
-        ckpt_dir=args.ckpt_dir,
+        ckpts_dirs=args.ckpts_dirs,
         num_folds=args.num_folds
     )
