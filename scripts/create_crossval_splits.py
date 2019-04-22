@@ -9,6 +9,7 @@ import numpy as np
 from chemprop.data.utils import get_data
 
 def split_indices(all_indices, scaffold=False, data=None, shuffle=True):
+    num_data = len(all_indices)
     if scaffold:
         raise NotImplementedError  # TODO
     else: # random
@@ -35,8 +36,11 @@ def create_time_splits(args):
         fold_indices['scaffold'].append(split_indices(subset_indices, scaffold=True, data=subset_data))
         fold_indices['time'].append(split_indices(subset_data, shuffle=False)}))
     for split_type in ['random', 'scaffold', 'time']:
-    with open(os.path.join(args.save_dir, split_type) + '.pkl', 'wb') as wf:
-        pickle.dump(fold_indices[split_type], wf) # each is a pickle file containing a list of length-3 index lists for train/val/test
+        with open(os.path.join(args.save_dir, split_type) + '.pkl', 'wb') as wf:
+            pickle.dump(fold_indices[split_type], wf) # each is a pickle file containing a list of length-3 index lists for train/val/test
+        for i in range(len(fold_indices[split_type])):
+            with open(os.path.join(args.save_dir, 'mayr', split_type, str(i)) + '.pkl', 'wb') as wf:
+                pickle.dump(fold_indices[split_type][i], wf)
 
 def create_crossval_splits(args):
     data = get_data(args.data_path)
