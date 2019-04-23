@@ -75,6 +75,7 @@ For those less familiar with the command line, we also have a web interface whic
 2. Run `gunicorn --bind {host}:{port} 'wsgi:build_app()'`. This will start the site in production mode.
    * To run this server in the background, add the `--daemon` flag.
    * Arguments including `init_db` and `demo` can be passed with this pattern: `'wsgi:build_app(init_db=True, demo=True)'` 
+   * Gunicorn documentation can be found [here](http://docs.gunicorn.org/en/stable/index.html).
 
 ![Training with our web interface](web/app/static/images/web_train.png "Training with our web interface")
 
