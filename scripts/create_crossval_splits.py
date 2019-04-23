@@ -7,11 +7,20 @@ from copy import deepcopy
 import numpy as np
 
 from chemprop.data.utils import get_data
+from chemprop.data.scaffold import scaffold_to_smiles
 
 def split_indices(all_indices, scaffold=False, data=None, shuffle=True):
     num_data = len(all_indices)
     if scaffold:
-        raise NotImplementedError  # TODO
+        scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
+        index_sets = sorted(list(scaffold_to_indices.values()),
+                            key=lambda index_set: len(index_set),
+                            reverse=True)
+        fold_indices = [[] for _ in range(args.num_folds)]
+        for s in index_sets:
+            length_array = [len(fi) for fi in fold_indices]
+            min_index = length_array.index(min(length_array))
+            fold_indices[min_index] += s
     else: # random
         if shuffle:
             random.shuffle(all_indices)
