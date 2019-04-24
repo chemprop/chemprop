@@ -248,7 +248,7 @@ def split_data(data: MoleculeDataset,
         except UnicodeDecodeError:
             with open(folds_file, 'rb') as f:
                 all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
-        assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
+        # assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
 
         log_scaffold_stats(data, all_fold_indices, logger=logger)
 
