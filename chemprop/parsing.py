@@ -290,8 +290,8 @@ def modify_train_args(args: Namespace):
         args.ffn_hidden_size = args.hidden_size
 
     assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
-    assert (args.split_type == 'crossval') == (args.crossval_index_file is not None)
-    assert (args.split_type in ['crossval', 'index_predetermined']) == (args.crossval_index_dir is not None)
+    assert (args.split_type == 'crossval') == (args.crossval_index_dir is not None)
+    assert (args.split_type in ['crossval', 'index_predetermined']) == (args.crossval_index_file is not None)
     if args.split_type in ['crossval', 'index_predetermined']:
         with open(args.crossval_index_file, 'rb') as rf:
             args.crossval_index_sets = pickle.load(rf)
