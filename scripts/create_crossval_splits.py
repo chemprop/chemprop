@@ -1,15 +1,18 @@
-from argparse import ArgumentParser
-import pickle
-import os
-import random
+from argparse import ArgumentParser, Namespace
 from copy import deepcopy
+import os
+import pickle
+import random
+from typing import List
 
 import numpy as np
 
-from chemprop.data.utils import get_data
+from chemprop.data import MoleculeDataset
 from chemprop.data.scaffold import scaffold_to_smiles
+from chemprop.data.utils import get_data
 
-def split_indices(all_indices, scaffold=False, data=None, shuffle=True):
+
+def split_indices(all_indices: List[int], scaffold: bool = False, data: MoleculeDataset = None, shuffle: bool = True):
     num_data = len(all_indices)
     if scaffold:
         scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
@@ -21,7 +24,7 @@ def split_indices(all_indices, scaffold=False, data=None, shuffle=True):
             length_array = [len(fi) for fi in fold_indices]
             min_index = length_array.index(min(length_array))
             fold_indices[min_index] += s
-    else: # random
+    else:  # random
         if shuffle:
             random.shuffle(all_indices)
         fold_indices = []
@@ -30,8 +33,9 @@ def split_indices(all_indices, scaffold=False, data=None, shuffle=True):
             fold_indices.append(np.array(all_indices[begin:end]))
     return fold_indices
 
-def create_time_splits(args):
-    #ASSUME DATA GIVEN IN CHRONOLOGICAL ORDER. 
+
+def create_time_splits(args: Namespace):
+    # ASSUME DATA GIVEN IN CHRONOLOGICAL ORDER.
     # this will dump a very different format of indices, with all in one file; TODO modify as convenient later.
     data = get_data(args.data_path)
     num_data = len(data)
@@ -40,18 +44,20 @@ def create_time_splits(args):
     for i in range(args.num_folds - args.time_folds_per_train_set - 1):
         begin, end = int(i * num_data / args.num_folds), int((i + args.time_folds_per_train_set + 2) * num_data / args.num_folds)
         subset_indices = all_indices[begin:end]
-        subset_data = data[begin:end] # TODO check this syntax?
+        subset_data = MoleculeDataset(data[begin:end])  # TODO check this syntax?
         fold_indices['random'].append(split_indices(deepcopy(subset_indices)))
         fold_indices['scaffold'].append(split_indices(subset_indices, scaffold=True, data=subset_data))
-        fold_indices['time'].append(split_indices(subset_data, shuffle=False)}))
+        # TODO: should the line below be using subset_indices instead of subset_data?
+        fold_indices['time'].append(split_indices(subset_data, shuffle=False))
     for split_type in ['random', 'scaffold', 'time']:
         with open(os.path.join(args.save_dir, split_type) + '.pkl', 'wb') as wf:
-            pickle.dump(fold_indices[split_type], wf) # each is a pickle file containing a list of length-3 index lists for train/val/test
+            pickle.dump(fold_indices[split_type], wf)  # each is a pickle file containing a list of length-3 index lists for train/val/test
         for i in range(len(fold_indices[split_type])):
             with open(os.path.join(args.save_dir, 'mayr', split_type, str(i)) + '.pkl', 'wb') as wf:
                 pickle.dump(fold_indices[split_type][i], wf)
 
-def create_crossval_splits(args):
+
+def create_crossval_splits(args: Namespace):
     data = get_data(args.data_path)
     num_data = len(data)
     if args.split_type == 'random':
