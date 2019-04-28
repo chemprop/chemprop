@@ -232,7 +232,7 @@ def split_data(data: MoleculeDataset,
         assert len(split_indices) == 3
         data_split = []
         for split in range(3):
-            data_split.append(data[i] for i in split_indices[split])
+            data_split.append([data[i] for i in split_indices[split]])
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
