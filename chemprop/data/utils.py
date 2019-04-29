@@ -52,16 +52,18 @@ def get_num_tasks(path: str) -> int:
     return len(get_header(path)) - 1
 
 
-def get_smiles(path: str) -> List[str]:
+def get_smiles(path: str, header: bool = True) -> List[str]:
     """
     Returns the smiles strings from a data CSV file (assuming the first line is a header).
 
-    :param path: Path to a CSV file
+    :param path: Path to a CSV file.
+    :param header: Whether the CSV file contains a header (that will be skipped).
     :return: A list of smiles strings.
     """
     with open(path) as f:
         reader = csv.reader(f)
-        next(reader)  # Skip header
+        if header:
+            next(reader)  # Skip header
         smiles = [line[0] for line in reader]
 
     return smiles
