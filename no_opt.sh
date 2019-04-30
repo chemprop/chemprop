@@ -24,8 +24,8 @@ for i in ${!datasets[@]}; do
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else 
-            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_default/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/one/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]} &
-            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_features_no_opt/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/one/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --quiet --metric ${metrics[$i]} &
+            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_default/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]} &
+            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python train.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_features_no_opt/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --quiet --metric ${metrics[$i]} &
             gpu_index=$(($((${gpu_index} + 1)) % ${num_gpus}))
         fi
     done

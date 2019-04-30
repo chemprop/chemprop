@@ -21,7 +21,7 @@ for i in ${!datasets[@]}; do
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else
-            python random_forest.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_random_forest/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/one/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]}
+            python random_forest.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_random_forest/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]}
         fi
     done
 done
