@@ -72,7 +72,6 @@ def aggregate_results(ckpts_dirs: List[str]):
                     results.append(float(last_line.strip()))
                 except (IndexError, ValueError):
                     invalid = True
-                    break
 
         if invalid:
             mean, std = 'N/A', 'N/A'
