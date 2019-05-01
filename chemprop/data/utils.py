@@ -52,16 +52,18 @@ def get_num_tasks(path: str) -> int:
     return len(get_header(path)) - 1
 
 
-def get_smiles(path: str) -> List[str]:
+def get_smiles(path: str, header: bool = True) -> List[str]:
     """
     Returns the smiles strings from a data CSV file (assuming the first line is a header).
 
-    :param path: Path to a CSV file
+    :param path: Path to a CSV file.
+    :param header: Whether the CSV file contains a header (that will be skipped).
     :return: A list of smiles strings.
     """
     with open(path) as f:
         reader = csv.reader(f)
-        next(reader)  # Skip header
+        if header:
+            next(reader)  # Skip header
         smiles = [line[0] for line in reader]
 
     return smiles
@@ -232,7 +234,7 @@ def split_data(data: MoleculeDataset,
         assert len(split_indices) == 3
         data_split = []
         for split in range(3):
-            data_split.append(data[i] for i in split_indices[split])
+            data_split.append([data[i] for i in split_indices[split]])
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
@@ -248,7 +250,7 @@ def split_data(data: MoleculeDataset,
         except UnicodeDecodeError:
             with open(folds_file, 'rb') as f:
                 all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
-        assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
+        # assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
 
         log_scaffold_stats(data, all_fold_indices, logger=logger)
 
