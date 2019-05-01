@@ -117,7 +117,7 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
     for smile_1, smile_2 in tqdm(product(sample_smiles_1, sample_smiles_2), total=sample_num_pairs):
         mol_1, mol_2 = Chem.MolFromSmiles(smile_1), Chem.MolFromSmiles(smile_2)
         fp_1, fp_2 = AllChem.GetMorganFingerprint(mol_1, radius), AllChem.GetMorganFingerprint(mol_2, radius)
-        similarity = DataStructs.DiceSimilarity(fp_1, fp_2)
+        similarity = DataStructs.TanimotoSimilarity(fp_1, fp_2)
         similarities.append(similarity)
     similarities = np.array(similarities)
 

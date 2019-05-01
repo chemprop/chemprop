@@ -6,6 +6,7 @@ channels:
   - conda-forge
 
 dependencies:
+  - gunicorn
   - rdkit
   - pytorch
   - torchvision
