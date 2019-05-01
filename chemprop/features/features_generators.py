@@ -1,13 +1,19 @@
 from typing import Callable, List, Union
 
 import numpy as np
-from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem
+import pandas as pd
+try:
+    from openeye.oechem import *
+    RDKIT=False
+    Molecule = Union[str, OEGraphMol]
+except:
+    from rdkit import Chem, DataStructs
+    from rdkit.Chem import AllChem
+    RDKIT=True
+    Molecule = Union[str, Chem.Mol]
 
-
-Molecule = Union[str, Chem.Mol]
 FeaturesGenerator = Callable[[Molecule], np.ndarray]
-
+#Descs_DF = pd.read_pickle("/tmp/rrck_rdsmiles.pkl")
 
 FEATURES_GENERATOR_REGISTRY = {}
 
@@ -45,48 +51,74 @@ def get_available_features_generators() -> List[str]:
     return list(FEATURES_GENERATOR_REGISTRY.keys())
 
 
-MORGAN_RADIUS = 2
-MORGAN_NUM_BITS = 2048
+if RDKIT:
+    MORGAN_RADIUS = 2
+    MORGAN_NUM_BITS = 2048
+
+    @register_features_generator('morgan')
+    def morgan_binary_features_generator(mol: Molecule,
+                                         radius: int = MORGAN_RADIUS,
+                                         num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+        """
+        Generates a binary Morgan fingerprint for a molecule.
+
+        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :param radius: Morgan fingerprint radius.
+        :param num_bits: Number of bits in Morgan fingerprint.
+        :return: A 1-D numpy array containing the binary Morgan fingerprint.
+        """
+        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+        features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
+        features = np.zeros((1,))
+        DataStructs.ConvertToNumpyArray(features_vec, features)
+
+        return features
 
 
-@register_features_generator('morgan')
-def morgan_binary_features_generator(mol: Molecule,
-                                     radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
-    """
-    Generates a binary Morgan fingerprint for a molecule.
+    @register_features_generator('morgan_count')
+    def morgan_counts_features_generator(mol: Molecule,
+                                         radius: int = MORGAN_RADIUS,
+                                         num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+        """
+        Generates a counts-based Morgan fingerprint for a molecule.
 
-    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
-    :param radius: Morgan fingerprint radius.
-    :param num_bits: Number of bits in Morgan fingerprint.
-    :return: A 1-D numpy array containing the binary Morgan fingerprint.
-    """
-    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
-    features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
-    features = np.zeros((1,))
-    DataStructs.ConvertToNumpyArray(features_vec, features)
+        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :param radius: Morgan fingerprint radius.
+        :param num_bits: Number of bits in Morgan fingerprint.
+        :return: A 1D numpy array containing the counts-based Morgan fingerprint.
+        """
+        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+        features_vec = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
+        features = np.zeros((1,))
+        DataStructs.ConvertToNumpyArray(features_vec, features)
 
-    return features
+        return features
 
+try:
+    import rdkit
+    @register_features_generator('file_cache')
+    def cached_dragon_features(mol: Molecule,) -> np.ndarray:
+        """
+        Pulls descriptors from an external file by a smiles join
+        """
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
+        desc = Descs_DF.loc[[smiles]].values
+        return desc[0]    
+except ImportError:
+    pass
 
-@register_features_generator('morgan_count')
-def morgan_counts_features_generator(mol: Molecule,
-                                     radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
-    """
-    Generates a counts-based Morgan fingerprint for a molecule.
-
-    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
-    :param radius: Morgan fingerprint radius.
-    :param num_bits: Number of bits in Morgan fingerprint.
-    :return: A 1D numpy array containing the counts-based Morgan fingerprint.
-    """
-    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
-    features_vec = AllChem.GetHashedMorganFingerprint(mol, radius, nBits=num_bits)
-    features = np.zeros((1,))
-    DataStructs.ConvertToNumpyArray(features_vec, features)
-
-    return features
+try:
+    from openeye.oechem import *
+    @register_features_generator('file_cache')
+    def cached_dragon_features(mol: Molecule,) -> np.ndarray:
+        """
+        Pulls descriptors from an external file by a smiles join
+        """
+        smiles = OECreateSmiString(mol, OESMILESFlag_ISOMERIC) 
+        desc = Descs_DF.loc[[smiles]].values
+        return desc[0]
+except ImportError:
+    pass
 
 
 try:

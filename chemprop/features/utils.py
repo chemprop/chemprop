@@ -4,7 +4,7 @@ import pickle
 from typing import List
 
 import numpy as np
-
+import pandas as pd
 
 def save_features(path: str, features: List[np.ndarray]):
     """
@@ -34,20 +34,25 @@ def load_features(path: str) -> np.ndarray:
     :return: A 2D numpy array of size (num_molecules, features_size) containing the features.
     """
     extension = os.path.splitext(path)[1]
-
+    print("Trying to load features from %s" % extension)
+    #I've broken all other forms because id-less features is asking for pain
     if extension == '.npz':
         features = np.load(path)['features']
+        raise ValueError('Braindead feature loading ignored')
     elif extension == '.npy':
         features = np.load(path)
-    elif extension in ['.csv', '.txt']:
-        with open(path) as f:
-            reader = csv.reader(f)
-            next(reader)  # skip header
-            features = np.array([[float(value) for value in row] for row in reader])
+        raise ValueError('Braindead feature loading ignored')
+    elif extension in ['.csv', '.txt','.test']:
+        # NAW: Blech.  our input will be csv so I'm just fixing this.  We assume a id,desc,desc,desc
+        df = pd.read_csv(path, index_col=0, header=0)
+        # Rather than do the indexing later, I'll just create a lookup to numpy array
+        features = {}
+        for idx, row in df.iterrows():
+            features[idx] = row.values
     elif extension in ['.pkl', '.pckl', '.pickle']:
         with open(path, 'rb') as f:
             features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
+            raise ValueError('Braindead feature loading ignored')
     else:
         raise ValueError(f'Features path extension {extension} not supported.')
-
     return features

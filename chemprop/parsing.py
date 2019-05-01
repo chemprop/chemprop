@@ -42,6 +42,8 @@ def add_predict_args(parser: ArgumentParser):
                         help='Turn off scaling of features')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
+    parser.add_argument('--features_only', action='store_true', default=False,
+                        help='Use only the additional features in an FFN, no graph network')
 
 
 def add_train_args(parser: ArgumentParser):

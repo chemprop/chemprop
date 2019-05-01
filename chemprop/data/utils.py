@@ -5,12 +5,12 @@ import pickle
 import random
 from typing import List, Set, Tuple
 
-from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
-from .data import MoleculeDatapoint, MoleculeDataset
-from .scaffold import log_scaffold_stats, scaffold_split
+from .data import MoleculeDatapoint, MoleculeDataset, read_mol, clear_mol
+# NAW: Not supporting for OpenEye
+#from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.features import load_features
 
 
@@ -77,7 +77,7 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
     """
     return MoleculeDataset([datapoint for datapoint in data
                             if datapoint.smiles != '' and datapoint.mol is not None
-                            and datapoint.mol.GetNumHeavyAtoms() > 0])
+                            and datapoint.hvyCnt > 0])
 
 
 def get_data(path: str,
@@ -254,8 +254,10 @@ def split_data(data: MoleculeDataset,
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
     
-    elif split_type == 'scaffold_balanced':
-        return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
+    # NAW: Not supporting this as it's work and all of our splitting is down outside of the model package.
+    #      There is support for Murko's in OpenEye, but implementation will be left to the reader.
+    #elif split_type == 'scaffold_balanced':
+    #    return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
     elif split_type == 'random':
         data.shuffle(seed=seed)
@@ -331,13 +333,13 @@ def validate_data(data_path: str) -> Set[str]:
     elif len(header) < 2:
         errors.add('Header must include task names.')
 
-    mol = Chem.MolFromSmiles(header[0])
+    mol, hvyCnt = read_mol(header[0])
     if mol is not None:
         errors.add('First row is a SMILES string instead of a header.')
 
     # Validate smiles
     for smile in tqdm(smiles, total=len(smiles)):
-        mol = Chem.MolFromSmiles(smile)
+        mol, hvyCnt = read_mol(smile)
         if mol is None:
             errors.add('Data includes an invalid SMILES.')
 

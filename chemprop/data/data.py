@@ -4,11 +4,29 @@ from typing import Callable, List, Union
 
 import numpy as np
 from torch.utils.data.dataset import Dataset
-from rdkit import Chem
 
 from .scaler import StandardScaler
 from chemprop.features import get_features_generator
 
+
+try:
+    from openeye.oechem import *
+    Molecule = OEGraphMol
+    def read_mol(smile):
+        mol = OEGraphMol()
+        if not OEParseSmiles(mol, smile):
+            return None, 0
+        return mol, OECount(mol, OEIsHeavy())
+    def clear_mol(mol):
+        mol.Clear()
+except:
+    from rdkit import Chem
+    Molecule = Chem.Mol
+    def read_mol(smile):
+        mol = Chem.MolFromSmiles(smile)
+        return mol, mol.GetNumHeavyAtoms()
+    def clear_mol(mol):
+        pass
 
 class MoleculeDatapoint:
     """A MoleculeDatapoint contains a single molecule and its associated features and targets."""
@@ -44,7 +62,8 @@ class MoleculeDatapoint:
             self.compound_name = None
 
         self.smiles = line[0]  # str
-        self.mol = Chem.MolFromSmiles(self.smiles)
+
+        self.mol, self.hvyCnt = read_mol(self.smiles)
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -52,7 +71,7 @@ class MoleculeDatapoint:
 
             for fg in self.features_generator:
                 features_generator = get_features_generator(fg)
-                if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
+                if self.mol is not None and hvyCnt > 0:
                     self.features.extend(features_generator(self.mol))
 
             self.features = np.array(self.features)
@@ -122,7 +141,7 @@ class MoleculeDataset(Dataset):
         """
         return [d.smiles for d in self.data]
     
-    def mols(self) -> List[Chem.Mol]:
+    def mols(self) -> List[Molecule]:
         """
         Returns the RDKit molecules associated with the molecules.
 
