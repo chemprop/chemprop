@@ -22,7 +22,7 @@ for i in ${!datasets[@]}; do
     echo ${datasets[$i]}
     for fold in ${!folds[@]}; do
         echo ${folds[$fold]}
-        if [["${split_type}" == "random"]]; then
+        if [[ "${split_type}" == "random" ]]; then
             file="./crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
             split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
         else
@@ -45,7 +45,7 @@ for i in ${!datasets[@]}; do
     echo ${datasets[$i]}
     for fold in ${!folds[@]}; do
         echo ${folds[$fold]}
-        if [["${split_type}" == "random"]]; then
+        if [[ "${split_type}" == "random" ]]; then
             file="./crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
             split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
         else
