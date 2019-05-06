@@ -23,7 +23,7 @@ for i in ${!datasets[@]}; do
             file="/data/rsg/chemistry/swansonk/chemprop/crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
             split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
         else
-            file="/data/rsg/chemistry/yangk/data/${dataName}/scaffold/fold_$i/0/split_indices.pckl"
+            file="/data/rsg/chemistry/yangk/data/${datasets[$i]}/scaffold/fold_$i/$i/split_indices.pckl"
             split_info="--split_type predetermined --folds_file $file --val_fold_index 1 --test_fold_index 2"
         fi
         if [[ ! -e "$file" ]]; then
