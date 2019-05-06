@@ -31,7 +31,7 @@ for i in ${!datasets[@]}; do
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else 
-            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python hyperparameter_optimization.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} ${split_info} --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --num_iters 20 --config_save_path ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/config.json --log_dir ../ckpt/417_hyperopt/${datasets[$i]}/random/${folds[$fold]}/logdir --quiet --metric ${metrics[$i]} &
+            CUDA_VISIBLE_DEVICES=${gpus[${gpu_index}]} python hyperparameter_optimization.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} ${split_info} --features_path /data/rsg/chemistry/yangk/saved_features/${datasets[$i]}.pckl --no_features_scaling --num_iters 20 --config_save_path ../ckpt/417_hyperopt/${datasets[$i]}/${split_type}/${folds[$fold]}/config.json --log_dir ../ckpt/417_hyperopt/${datasets[$i]}/${split_type}/${folds[$fold]}/logdir --quiet --metric ${metrics[$i]} &
             gpu_index=$(($((${gpu_index} + 1)) % ${num_gpus}))
         fi
     done
