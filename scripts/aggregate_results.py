@@ -45,7 +45,7 @@ ORDER = {
 }
 
 
-def aggregate_results(ckpts_dirs: List[str]):
+def aggregate_results(ckpts_dirs: List[str], split_type: str):
     print('Name\tMean\tStd\tNum files')
 
     ckpts_dirs.sort(key=lambda ckpts_dir: ORDER[os.path.basename(ckpts_dir)])
@@ -56,6 +56,8 @@ def aggregate_results(ckpts_dirs: List[str]):
         # Collect verbose.log files
         paths = []
         for root, _, files in os.walk(ckpts_dir):
+            if split_type not in root:
+                continue
             paths += [os.path.join(root, fname) for fname in files if fname == 'verbose.log']
 
         # Process verbose.log files
@@ -86,8 +88,11 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--ckpts_dirs', type=str, nargs='+', required=True,
                         help='Path to directories (one per dataset) with model save dirs')
+    parser.add_argument('--split_type', type=str, required=True,
+                        help='"random" or "scaffold"')
     args = parser.parse_args()
 
     aggregate_results(
-        ckpts_dirs=args.ckpts_dirs
+        ckpts_dirs=args.ckpts_dirs,
+        split_type=args.split_type
     )
