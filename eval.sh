@@ -13,7 +13,7 @@ sizes=('one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' '
 split_type="random"
 
 folds=(0 1 2 3 4 5 6 7 8 9)
-gpus=(0, 1)
+gpus=(0 1)
 num_gpus=${#gpus[@]}
 gpu_index=0
 
