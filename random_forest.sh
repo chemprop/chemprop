@@ -10,6 +10,8 @@ sizes=('one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' '
 # metrics=('rmse')
 # sizes=('one')
 
+split_type="random"
+
 folds=(0 1 2 3 4 5 6 7 8 9)
 
 # FFN baselines
@@ -17,11 +19,17 @@ for i in ${!datasets[@]}; do
     echo ${datasets[$i]}
     for fold in ${!folds[@]}; do
         echo ${folds[$fold]}
-        file=./crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl
+        if [["${split_type}" == "random"]]; then
+            file="./crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
+            split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
+        else
+            file="../../data/${dataName}/scaffold/fold_$i/0/split_indices.pckl"
+            split_info="--split_type predetermined --folds_file $file --val_fold_index 1 --test_fold_index 2"
+        fi
         if [[ ! -e "$file" ]]; then
             echo "Fold indices do not exist" # you should expect this to happen when not testing on all 10 folds
         else
-            python random_forest.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_random_forest/${datasets[$i]}/random/${folds[$fold]} --split_type crossval --crossval_index_file crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl --crossval_index_dir crossval_folds/${datasets[$i]}/random --quiet --metric ${metrics[$i]}
+            python random_forest.py --data_path data/${datasets[$i]}.csv --dataset_type ${dataset_type[$i]} --save_dir ../ckpt/417_random_forest/${datasets[$i]}/random/${folds[$fold]} ${split_info} --quiet --metric ${metrics[$i]}
         fi
     done
 done
