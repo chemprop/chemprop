@@ -17,12 +17,14 @@ def class_balance(data_path: str, split_type: str):
     args.task_names = get_task_names(path=args.data_path)
 
     for i in range(10):
+        print(f'Fold {i}')
+
         # Update args
         data_name = os.path.splitext(os.path.basename(data_path))[0]
         args.folds_file = f'/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/{data_name}/{split_type}/fold_{i}/0/split_indices.pckl'
 
         if not os.path.exists(args.folds_file):
-            print(f'Fold indices for fold {i} not found')
+            print(f'Fold indices do not exist')
             continue
 
         # Split data
@@ -40,6 +42,8 @@ def class_balance(data_path: str, split_type: str):
             for i, task_class_sizes in enumerate(class_sizes):
                 print(f'{args.task_names[i]} '
                       f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
+
+        print()
 
 
 if __name__ == '__main__':
