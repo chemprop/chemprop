@@ -4,7 +4,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from chemprop.data.utils import get_class_sizes, get_data, split_data
+from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
 
 
 def class_balance(data_path: str, split_type: str):
@@ -14,12 +14,13 @@ def class_balance(data_path: str, split_type: str):
 
     # Load data
     data = get_data(path=args.data_path)
+    args.task_names = get_task_names(path=args.data_path)
 
     for i in range(10):
         # Update args
         data_name = os.path.splitext(os.path.basename(data_path))[0]
         args.folds_file = f'/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/{data_name}/{split_type}/fold_{i}/0/split_indices.pckl'
-        
+
         if not os.path.exists(args.folds_file):
             print(f'Fold indices for fold {i} not found')
             continue
