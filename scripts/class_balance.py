@@ -19,7 +19,11 @@ def class_balance(data_path: str, split_type: str):
     args.task_names = get_task_names(path=args.data_path)
 
     # Average class sizes
-    all_class_sizes = []
+    all_class_sizes = {
+        'train': [],
+        'val': [],
+        'test': []
+    }
 
     for i in range(10):
         print(f'Fold {i}')
@@ -48,19 +52,19 @@ def class_balance(data_path: str, split_type: str):
                 print(f'{args.task_names[i]} '
                       f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
 
+            all_class_sizes[split_name].append(class_sizes)
+
         print()
 
-        all_class_sizes.append(class_sizes)
-
     # Mean and std across folds
-    mean_class_sizes, std_class_sizes = np.mean(all_class_sizes, axis=0), np.std(all_class_sizes, axis=0)
-
     for split_name in ['train', 'val', 'test']:
         print(f'Average class sizes for {split_name}')
 
+        mean_class_sizes, std_class_sizes = np.mean(all_class_sizes[split_name], axis=0), np.std(all_class_sizes[split_name], axis=0)
+
         for i, (mean_task_class_sizes, std_task_class_sizes) in enumerate(zip(mean_class_sizes, std_class_sizes)):
             print(f'{args.task_names[i]} '
-                  f'{", ".join(f"{cls}: {mean_size * 100:.2f}% +/- {std_size * 100:.2f}" for cls, (mean_size, std_size) in enumerate(zip(mean_task_class_sizes, std_task_class_sizes)))}')
+                  f'{", ".join(f"{cls}: {mean_size * 100:.2f}% +/- {std_size * 100:.2f}%" for cls, (mean_size, std_size) in enumerate(zip(mean_task_class_sizes, std_task_class_sizes)))}')
 
 
 if __name__ == '__main__':
