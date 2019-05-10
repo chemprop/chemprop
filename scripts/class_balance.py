@@ -2,6 +2,8 @@ from argparse import ArgumentParser
 import os
 import sys
 
+import numpy as np
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
@@ -15,6 +17,9 @@ def class_balance(data_path: str, split_type: str):
     # Load data
     data = get_data(path=args.data_path)
     args.task_names = get_task_names(path=args.data_path)
+
+    # Average class sizes
+    all_class_sizes = []
 
     for i in range(10):
         print(f'Fold {i}')
@@ -44,6 +49,18 @@ def class_balance(data_path: str, split_type: str):
                       f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
 
         print()
+
+        all_class_sizes.append(class_sizes)
+
+    # Mean and std across folds
+    mean_class_sizes, std_class_sizes = np.mean(all_class_sizes, axis=0), np.std(all_class_sizes, axis=0)
+
+    for split_name in ['train', 'val', 'test']:
+        print(f'Average class sizes for {split_name}')
+
+        for i, (mean_task_class_sizes, std_task_class_sizes) in enumerate(zip(mean_class_sizes, std_class_sizes)):
+            print(f'{args.task_names[i]} '
+                  f'{", ".join(f"{cls}: {mean_size * 100:.2f}% +/- {std_size * 100:.2f}" for cls, (mean_size, std_size) in enumerate(zip(mean_task_class_sizes, std_task_class_sizes)))}')
 
 
 if __name__ == '__main__':
