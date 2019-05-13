@@ -1,19 +1,19 @@
-#!/bin/bash
+#!/bin/bash -x
 
-# TODO do qm9, pcba, muv, hiv, chembl separately later because they're bigger
-datasets=('delaney' 'lipo' 'freesolv' 'pdbbind_full' 'pdbbind_core' 'pdbbind_refined' 'qm7' 'qm8' 'bace' 'bbbp' 'sider' 'clintox' 'tox21' 'toxcast' 'qm9' 'pcba' 'muv' 'hiv' 'chembl')
-dataset_type=('regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'classification' 'classification' 'classification' 'classification' 'classification' 'classification' 'regression' 'classification' 'classification' 'classification' 'classification')
-metrics=('rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'mae' 'mae' 'auc' 'auc' 'auc' 'auc' 'auc' 'auc' 'mae' 'prc-auc' 'prc-auc' 'auc' 'auc')
-sizes=('one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'big' 'big' 'big' 'one' 'big')
+# TODO do pcba, chembl separately later because they're bigger
+datasets=('delaney' 'lipo' 'freesolv' 'pdbbind_full' 'pdbbind_core' 'pdbbind_refined' 'qm7' 'qm8' 'bace' 'bbbp' 'sider' 'clintox' 'tox21' 'toxcast' 'hiv' 'muv' 'qm9') # 'pcba' 'chembl')
+dataset_type=('regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'regression' 'classification' 'classification' 'classification' 'classification' 'classification' 'classification' 'classification' 'classification' 'regression') # 'classification' 'classification')
+metrics=('rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'rmse' 'mae' 'mae' 'auc' 'auc' 'auc' 'auc' 'auc' 'auc' 'auc' 'prc-auc' 'mae') # 'auc' 'auc')
+sizes=('one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'one' 'big' 'big') # 'big' 'big')
 # datasets=('delaney')
 # dataset_type=('regression')
 # metrics=('rmse')
 # sizes=('one')
 
-split_type="random"
+split_type="scaffold"
 
 folds=(0 1 2 3 4 5 6 7 8 9)
-gpus=(0 1)
+gpus=(0 1 2)
 num_gpus=${#gpus[@]}
 gpu_index=0
 
@@ -26,7 +26,7 @@ for i in ${!datasets[@]}; do
             file="/data/rsg/chemistry/swansonk/chemprop/crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
             split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
         else
-            file="/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/${datasets[$i]}/scaffold/fold_$i/0/split_indices.pckl"
+            file="/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/${datasets[$i]}/scaffold/fold_$fold/0/split_indices.pckl"
             split_info="--split_type predetermined --folds_file $file --val_fold_index 1 --test_fold_index 2"
         fi
         if [[ ! -e "$file" ]]; then
@@ -48,7 +48,7 @@ for i in ${!datasets[@]}; do
             file="/data/rsg/chemistry/swansonk/chemprop/crossval_index_files/${sizes[$i]}/${folds[$fold]}_test.pkl"
             split_info="--split_type crossval --crossval_index_file $file --crossval_index_dir crossval_folds/${datasets[$i]}/random"
         else
-            file="/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/${datasets[$i]}/scaffold/fold_$i/0/split_indices.pckl"
+            file="/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/${datasets[$i]}/scaffold/fold_$fold/0/split_indices.pckl"
             split_info="--split_type predetermined --folds_file $file --val_fold_index 1 --test_fold_index 2"
         fi
         if [[ ! -e "$file" ]]; then
