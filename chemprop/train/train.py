@@ -70,7 +70,11 @@ def train(model: nn.Module,
         model.zero_grad()
         preds = model(batch, features_batch)
 
-        loss = loss_func(preds, targets) * class_weights * mask
+        if args.dataset_type == 'multiclass':
+            targets = targets.long()
+            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * class_weights * mask
+        else:
+            loss = loss_func(preds, targets) * class_weights * mask
         loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()

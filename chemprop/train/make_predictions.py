@@ -56,7 +56,10 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         test_data.normalize_features(features_scaler)
 
     # Predict with each model individually and sum predictions
-    sum_preds = np.zeros((len(test_data), args.num_tasks))
+    if args.dataset_type == 'multiclass':
+        sum_preds = np.zeros((len(test_data), args.num_tasks, args.multiclass_num_classes))
+    else:
+        sum_preds = np.zeros((len(test_data), args.num_tasks))
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
@@ -95,7 +98,12 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
         header.append('smiles')
 
-        header.extend(args.task_names)
+        if args.dataset_type == 'multiclass':
+            for name in args.task_names:
+                for i in range(args.multiclass_num_classes):
+                    header.append(name + '_class' + str(i))
+        else:
+            header.extend(args.task_names)
         writer.writerow(header)
 
         for i in range(len(avg_preds)):
@@ -107,9 +115,16 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
             row.append(test_smiles[i])
 
             if avg_preds[i] is not None:
-                row.extend(avg_preds[i])
+                if args.dataset_type == 'multiclass':
+                    for task_probs in avg_preds[i]:
+                        row.extend(task_probs)
+                else:
+                    row.extend(avg_preds[i])
             else:
-                row.extend([''] * args.num_tasks)
+                if args.dataset_type == 'multiclass':
+                    row.extend([''] * args.num_tasks * args.multiclass_num_classes)
+                else:
+                    row.extend([''] * args.num_tasks)
 
             writer.writerow(row)
 

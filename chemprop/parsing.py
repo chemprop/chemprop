@@ -80,9 +80,11 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--checkpoint_path', type=str, default=None,
                         help='Path to model checkpoint (.pt file)')
     parser.add_argument('--dataset_type', type=str,
-                        choices=['classification', 'regression'],
+                        choices=['classification', 'regression', 'multiclass'],
                         help='Type of dataset, e.g. classification or regression.'
                              'This determines the loss function used during training.')
+    parser.add_argument('--multiclass_num_classes', type=int, default=3,
+                        help='Number of classes when running multiclass classification')
     parser.add_argument('--separate_val_path', type=str,
                         help='Path to separate val set, optional')
     parser.add_argument('--separate_val_features_path', type=str, nargs='*',
@@ -114,7 +116,7 @@ def add_train_args(parser: ArgumentParser):
                              'When `num_folds` > 1, the first fold uses this seed and all'
                              'subsequent folds add 1 to the seed.')
     parser.add_argument('--metric', type=str, default=None,
-                        choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy'],
+                        choices=['auc', 'prc-auc', 'rmse', 'mae', 'r2', 'accuracy', 'cross_entropy'],
                         help='Metric to use during evaluation.'
                              'Note: Does NOT affect loss function used during training'
                              '(loss is determined by the `dataset_type` argument).'
@@ -265,14 +267,17 @@ def modify_train_args(args: Namespace):
     if args.metric is None:
         if args.dataset_type == 'classification':
             args.metric = 'auc'
+        elif args.dataset_type == 'multiclass':
+            args.metric = 'cross_entropy'
         else:
             args.metric = 'rmse'
 
     if not ((args.dataset_type == 'classification' and args.metric in ['auc', 'prc-auc', 'accuracy']) or
-            (args.dataset_type == 'regression' and args.metric in ['rmse', 'mae', 'r2'])):
+            (args.dataset_type == 'regression' and args.metric in ['rmse', 'mae', 'r2']) or
+            (args.dataset_type == 'multiclass' and args.metric in ['cross_entropy', 'accuracy'])):
         raise ValueError(f'Metric "{args.metric}" invalid for dataset type "{args.dataset_type}".')
 
-    args.minimize_score = args.metric in ['rmse', 'mae']
+    args.minimize_score = args.metric in ['rmse', 'mae', 'cross_entropy']
 
     update_checkpoint_args(args)
     
