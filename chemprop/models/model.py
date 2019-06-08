@@ -23,7 +23,7 @@ class MoleculeModel(nn.Module):
         self.multiclass = multiclass
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
-        assert not self.classification and self.multiclass
+        assert not (self.classification and self.multiclass)
 
     def create_encoder(self, args: Namespace):
         """
