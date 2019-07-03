@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import os
 import pickle
 from pprint import pprint
@@ -22,7 +23,7 @@ def compute_ratios(data: MoleculeDataset) -> np.ndarray:
     return ratios
 
 
-def examine_split_balance():
+def examine_split_balance(split_type: str):
     results = []
 
     for dataset in DATASETS:
@@ -37,9 +38,9 @@ def examine_split_balance():
         ratio_diffs = []
 
         # Loop through folds
-        for fold in os.listdir(os.path.join(BASE, dataset, 'scaffold')):
+        for fold in os.listdir(os.path.join(BASE, dataset, split_type)):
             # Open fold indices
-            with open(os.path.join(BASE, dataset, 'scaffold', fold, '0', 'split_indices.pckl'), 'rb') as f:
+            with open(os.path.join(BASE, dataset, split_type, fold, '0', 'split_indices.pckl'), 'rb') as f:
                 indices = pickle.load(f)
 
             # Get test data
@@ -80,4 +81,9 @@ def examine_split_balance():
 
 
 if __name__ == '__main__':
-    examine_split_balance()
+    parser = ArgumentParser()
+    parser.add_argument('--split_type', type=str, required=True, choices=['random', 'scaffold'],
+                        help='Split type')
+    args = parser.parse_args()
+
+    examine_split_balance(args.split_type)
