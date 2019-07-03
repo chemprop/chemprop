@@ -17,7 +17,7 @@ DATASETS = ['pcba', 'muv', 'hiv', 'bace', 'bbbp', 'tox21', 'toxcast', 'sider', '
 
 def compute_ratios(data: MoleculeDataset) -> np.ndarray:
     ratios = np.nanmean(np.array(data.targets(), dtype=np.float), axis=0)
-    ratios = np.maximum(ratios, 1 - ratios)
+    ratios = np.minimum(ratios, 1 - ratios)
 
     return ratios
 
