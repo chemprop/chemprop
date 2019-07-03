@@ -1,5 +1,6 @@
 import os
 import pickle
+from pprint import pprint
 import sys
 
 import numpy as np
@@ -22,9 +23,9 @@ def compute_ratios(data: MoleculeDataset) -> np.ndarray:
 
 
 def examine_split_balance():
-    for dataset in DATASETS:
-        print(dataset)
+    results = []
 
+    for dataset in DATASETS:
         # Load task names for the dataset
         data_path = os.path.join(BASE, dataset, f'{dataset}.csv')
         data = get_data(data_path)
@@ -66,7 +67,16 @@ def examine_split_balance():
         # Compute mean and standard deviation across folds
         mean, std = np.nanmean(ratio_diffs), np.nanstd(ratio_diffs)
 
-        print(f'mean = {mean}, std = {std}, num_folds = {num_folds}, num_failures = {num_failures}')
+        # Add results
+        results.append({
+            'dataset': dataset,
+            'mean': mean,
+            'std': std,
+            'num_folds': num_folds,
+            'num_failures': num_failures
+        })
+
+    pprint(results)
 
 
 if __name__ == '__main__':
