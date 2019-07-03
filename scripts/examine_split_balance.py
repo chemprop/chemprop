@@ -51,6 +51,7 @@ def examine_split_balance(split_type: str):
 
             # Compute ratio diff
             ratio_diff = np.maximum(ratios / test_ratios, test_ratios / ratios)
+            ratio_diff[np.where(np.isinf(ratio_diff))[0]] = np.nan
 
             # Add ratio diff
             ratio_diffs.append(ratio_diff)
