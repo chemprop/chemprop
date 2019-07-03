@@ -23,8 +23,6 @@ def compute_ratios(data: MoleculeDataset) -> np.ndarray:
 
 def examine_split_balance():
     for dataset in DATASETS:
-        import pdb; pdb.set_trace()
-
         print(dataset)
 
         # Load task names for the dataset
@@ -55,12 +53,11 @@ def examine_split_balance():
             # Add ratio diff
             ratio_diffs.append(ratio_diff)
 
-        # Compute mean and standard deviation diff and number of failures
-
         # Convert to numpy array
         ratio_diffs = np.array(ratio_diffs)  # num_folds x num_tasks
 
-        # Determine number of failures
+        # Determine number of folds and number of failures
+        num_folds = len(ratio_diffs)
         num_failures = np.sum(np.isnan(ratio_diffs))
 
         # Average across tasks
@@ -69,7 +66,7 @@ def examine_split_balance():
         # Compute mean and standard deviation across folds
         mean, std = np.nanmean(ratio_diffs), np.nanstd(ratio_diffs)
 
-        print(f'mean = {mean}, std = {std}, num_failures = {num_failures}')
+        print(f'mean = {mean}, std = {std}, num_folds = {num_folds}, num_failures = {num_failures}')
 
 
 if __name__ == '__main__':
