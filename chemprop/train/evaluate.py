@@ -59,7 +59,10 @@ def evaluate_predictions(preds: List[List[float]],
         if len(valid_targets[i]) == 0:
             continue
 
-        results.append(metric_func(valid_targets[i], valid_preds[i]))
+        if dataset_type == 'multiclass':
+            results.append(metric_func(valid_targets[i], valid_preds[i], labels=list(range(len(valid_preds[i][0])))))
+        else:
+            results.append(metric_func(valid_targets[i], valid_preds[i]))
 
     return results
 
