@@ -194,6 +194,17 @@ def rmse(targets: List[float], preds: List[float]) -> float:
     return math.sqrt(mean_squared_error(targets, preds))
 
 
+def mse(targets: List[float], preds: List[float]) -> float:
+    """
+    Computes the mean squared error.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :return: The computed mse.
+    """
+    return mean_squared_error(targets, preds)
+
+
 def accuracy(targets: List[int], preds: List[float], threshold: float = 0.5) -> float:
     """
     Computes the accuracy of a binary prediction task using a given threshold for generating hard predictions.
@@ -226,6 +237,9 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'rmse':
         return rmse
+    
+    if metric =='mse':
+        return mse
 
     if metric == 'mae':
         return mean_absolute_error
