@@ -329,9 +329,7 @@ def predict():
     gpu = request.form.get('gpu')
 
     # Create and modify args
-    parser = ArgumentParser()
-    add_predict_args(parser)
-    args = parser.parse_args([])
+    args = load_args(model_paths[0])
 
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
     args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
