@@ -331,6 +331,10 @@ def predict():
     # Create and modify args
     args = load_args(model_paths[0])
 
+    if args.features_path != None:
+        args.features_generator = ["rdkit_2d_normalized"]
+        args.features_path = None
+
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
     args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
     args.preds_path = preds_path
