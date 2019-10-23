@@ -34,7 +34,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
     print('Loading data')
     if smiles is not None:
-        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False)
+        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, args=args)
     else:
         test_data = get_data(path=args.test_path, args=args, use_compound_names=args.use_compound_names, skip_invalid_smiles=False)
 

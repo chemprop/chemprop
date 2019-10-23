@@ -165,7 +165,7 @@ def get_data(path: str,
     return data
 
 
-def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None, args: Namespace = None) -> MoleculeDataset:
     """
     Converts SMILES to a MoleculeDataset.
 
@@ -176,7 +176,7 @@ def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, lo
     """
     debug = logger.debug if logger is not None else print
 
-    data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
+    data = MoleculeDataset([MoleculeDatapoint(line = [smile], args = args) for smile in smiles])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
