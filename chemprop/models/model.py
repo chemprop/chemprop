@@ -1,5 +1,6 @@
 from argparse import Namespace
 
+import torch
 import torch.nn as nn
 
 from .mpn import MPN
@@ -27,11 +28,13 @@ class MoleculeModel(nn.Module):
 
     def create_encoder(self, args: Namespace):
         """
-        Creates the message passing encoder for the model.
+        Creates the paired message passing encoders for the model.
 
         :param args: Arguments.
         """
-        self.encoder = MPN(args)
+        # self.encoder = MPN(args)
+        self.encoder1 = MPN(args)
+        self.encoder2 = MPN(args)
 
     def create_ffn(self, args: Namespace):
         """
@@ -51,6 +54,9 @@ class MoleculeModel(nn.Module):
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
+
+        # Pure concatenation
+        first_linear_dim *= 2
 
         # Create FFN layers
         if args.ffn_num_layers == 1:
@@ -85,7 +91,12 @@ class MoleculeModel(nn.Module):
         :param input: Input.
         :return: The output of the MoleculeModel.
         """
-        output = self.ffn(self.encoder(*input))
+        smiles, feats = input
+        learnedRep1 = self.encoder1([x[0] for x in smiles], [x[0] for x in feats])
+        learnedRep2 = self.encoder2([x[1] for x in smiles], [x[1] for x in feats])
+        newInput = torch.cat([learnedRep1, learnedRep2], dim=1)
+
+        output = self.ffn(newInput)
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if self.classification and not self.training:

@@ -4,18 +4,18 @@ import torch
 import torch.nn as nn
 from tqdm import trange
 
-from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.data import MolPairDataset, StandardScaler
 
 
 def predict(model: nn.Module,
-            data: MoleculeDataset,
+            data: MolPairDataset,
             batch_size: int,
             scaler: StandardScaler = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
     :param model: A model.
-    :param data: A MoleculeDataset.
+    :param data: A MolPairDataset.
     :param batch_size: Batch size.
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list of lists of predictions. The outer list is examples
@@ -29,7 +29,7 @@ def predict(model: nn.Module,
 
     for i in trange(0, num_iters, iter_step):
         # Prepare batch
-        mol_batch = MoleculeDataset(data[i:i + batch_size])
+        mol_batch = MolPairDataset(data[i:i + batch_size])
         smiles_batch, features_batch = mol_batch.smiles(), mol_batch.features()
 
         # Run model

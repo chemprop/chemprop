@@ -10,7 +10,8 @@ from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
-from .data import MoleculeDatapoint, MoleculeDataset
+from .data import *
+# from .data import MolPairDatapoint, MolPairDataset
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.features import load_features
 
@@ -87,7 +88,7 @@ def get_data(path: str,
              features_path: List[str] = None,
              max_data_size: int = None,
              use_compound_names: bool = None,
-             logger: Logger = None) -> MoleculeDataset:
+             logger: Logger = None) -> MolPairDataset:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
@@ -142,25 +143,28 @@ def get_data(path: str,
             if len(lines) >= max_data_size:
                 break
 
-        data = MoleculeDataset([
-            MoleculeDatapoint(
+        data = MolPairDataset([
+            MolPairDatapoint(
                 line=line,
                 args=args,
-                features=features_data[i] if features_data is not None else None,
+                # TODO: implement this
+                # features=features_data[i] if features_data is not None else None,
                 use_compound_names=use_compound_names
             ) for i, line in tqdm(enumerate(lines), total=len(lines))
         ])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
-        original_data_len = len(data)
-        data = filter_invalid_smiles(data)
+        debug(f'WARNING: NOT IMPLEMENTED SKIP INVALID SMILES')
+        # TODO: fix
+        # original_data_len = len(data)
+        # data = filter_invalid_smiles(data)
 
-        if len(data) < original_data_len:
-            debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
+        # if len(data) < original_data_len:
+            # debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    if data.data[0].features is not None:
-        args.features_dim = len(data.data[0].features)
+    if data.data[0].features1 is not None:
+        args.features_dim = len(data.data[0].features1)
 
     return data
 
@@ -189,14 +193,14 @@ def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, lo
     return data
 
 
-def split_data(data: MoleculeDataset,
+def split_data(data: MolPairDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
                args: Namespace = None,
-               logger: Logger = None) -> Tuple[MoleculeDataset,
-                                               MoleculeDataset,
-                                               MoleculeDataset]:
+               logger: Logger = None) -> Tuple[MolPairDataset,
+                                               MolPairDataset,
+                                               MolPairDataset]:
     """
     Splits data into training, validation, and test splits.
 
@@ -227,7 +231,7 @@ def split_data(data: MoleculeDataset,
                     split_indices.extend(pickle.load(rf))
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+        return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
     
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
@@ -236,7 +240,7 @@ def split_data(data: MoleculeDataset,
         for split in range(3):
             data_split.append([data[i] for i in split_indices[split]])
         train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+        return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
     elif split_type == 'predetermined':
         if not val_fold_index:
@@ -274,10 +278,11 @@ def split_data(data: MoleculeDataset,
             train = train_val[:train_size]
             val = train_val[train_size:]
 
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+        return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
     
     elif split_type == 'scaffold_balanced':
-        return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
+        raise NotImplementedError('not valid for pairs yet')
+        # return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
     elif split_type == 'random':
         data.shuffle(seed=seed)
@@ -289,7 +294,7 @@ def split_data(data: MoleculeDataset,
         val = data[train_size:train_val_size]
         test = data[train_val_size:]
 
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+        return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')

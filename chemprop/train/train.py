@@ -9,12 +9,12 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import trange
 
-from chemprop.data import MoleculeDataset
+from chemprop.data import MolPairDataset
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
 def train(model: nn.Module,
-          data: Union[MoleculeDataset, List[MoleculeDataset]],
+          data: Union[MolPairDataset, List[MolPairDataset]],
           loss_func: Callable,
           optimizer: Optimizer,
           scheduler: _LRScheduler,
@@ -26,7 +26,7 @@ def train(model: nn.Module,
     Trains a model for an epoch.
 
     :param model: Model.
-    :param data: A MoleculeDataset (or a list of MoleculeDatasets if using moe).
+    :param data: A MolPairDataset (or a list of MolPairDatasets if using moe).
     :param loss_func: Loss function.
     :param optimizer: An Optimizer.
     :param scheduler: A learning rate scheduler.
@@ -52,7 +52,7 @@ def train(model: nn.Module,
         # Prepare batch
         if i + args.batch_size > len(data):
             break
-        mol_batch = MoleculeDataset(data[i:i + args.batch_size])
+        mol_batch = MolPairDataset(data[i:i + args.batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
         batch = smiles_batch
         mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
