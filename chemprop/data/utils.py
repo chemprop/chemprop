@@ -220,7 +220,7 @@ def split_data(data: MolPairDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
-    
+
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -232,7 +232,7 @@ def split_data(data: MolPairDataset,
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
-    
+
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
         assert len(split_indices) == 3
@@ -242,7 +242,7 @@ def split_data(data: MolPairDataset,
         train, val, test = tuple(data_split)
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
-    elif split_type == 'predetermined':
+    elif split_type in ['predetermined', 'loocv']:
         if not val_fold_index:
             assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
         assert folds_file is not None

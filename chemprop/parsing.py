@@ -94,7 +94,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--separate_test_features_path', type=str, nargs='*',
                         help='Path to file with features for separate test set')
     parser.add_argument('--split_type', type=str, default='random',
-                        choices=['random', 'scaffold_balanced', 'predetermined', 'crossval', 'index_predetermined'],
+                        choices=['random', 'scaffold_balanced', 'predetermined', 'crossval', 'index_predetermined', 'loocv'],
                         help='Method of splitting the data into train/val/test')
     parser.add_argument('--split_sizes', type=float, nargs=3, default=[0.8, 0.1, 0.1],
                         help='Split proportions for train/validation/test sets')
@@ -294,9 +294,15 @@ def modify_train_args(args: Namespace):
     if args.ffn_hidden_size is None:
         args.ffn_hidden_size = args.hidden_size
 
-    assert (args.split_type == 'predetermined') == (args.folds_file is not None) == (args.test_fold_index is not None)
+    assert (args.split_type in ['loocv', 'predetermined']) == (args.folds_file is not None)
+    assert (args.split_type == 'predetermined') == (args.test_fold_index is not None)
     assert (args.split_type == 'crossval') == (args.crossval_index_dir is not None)
     assert (args.split_type in ['crossval', 'index_predetermined']) == (args.crossval_index_file is not None)
+    if args.split_type == 'loocv':
+        with open(args.folds_file, 'rb') as f:
+            all_fold_indices = pickle.load(f)
+        args.num_folds = len(all_fold_indices)
+        args.seed = 0
     if args.split_type in ['crossval', 'index_predetermined']:
         with open(args.crossval_index_file, 'rb') as rf:
             args.crossval_index_sets = pickle.load(rf)
