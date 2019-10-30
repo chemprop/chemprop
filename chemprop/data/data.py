@@ -157,6 +157,9 @@ class MolPairDatapoint:
 
             self.features1 = np.array(self.features1)
             self.features2 = np.array(self.features2)
+        else:
+            if len(self.features1) != 200 or len(self.features2) != 200:
+                print('ERROR w/ feature dim', self.mol1, 'PAIRED W/', self.mol2)
 
         # Fix nans in features
         if self.features1 is not None:
@@ -164,8 +167,7 @@ class MolPairDatapoint:
             self.features1 = np.where(np.isnan(self.features1), replace_token, self.features1)
         if self.features2 is not None:
             replace_token = 0
-            self.features2 = np.where(np.isnan(self.features2), replace_token, self.features2)
-
+            self.features2 = np.where(np.isnan(self.features2), replace_token, self.features2) 
         # Create targets
         self.targets = [float(x) if x != '' else None for x in line[2:]]
 

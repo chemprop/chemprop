@@ -45,8 +45,10 @@ def load_features(path: str) -> np.ndarray:
             next(reader)  # skip header
             features = np.array([[float(value) for value in row] for row in reader])
     elif extension in ['.pkl', '.pckl', '.pickle']:
-        with open(path, 'rb') as f:
-            features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
+        with open(path, 'rb') as f: # TODO: ONLY MEANT TO BE FOR PAIRED USE
+            features = pickle.load(f)
+        # with open(path, 'rb') as f:
+            # features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
     else:
         raise ValueError(f'Features path extension {extension} not supported.')
 
