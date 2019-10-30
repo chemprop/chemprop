@@ -24,7 +24,7 @@ def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :return: A list of task names.
     """
-    index = 2 if use_compound_names else 1
+    index = 3 if use_compound_names else 2
     task_names = get_header(path)[index:]
 
     return task_names
