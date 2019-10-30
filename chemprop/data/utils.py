@@ -117,10 +117,12 @@ def get_data(path: str,
 
     # Load features
     if features_path is not None:
-        features_data = []
         for feat_path in features_path:
-            features_data.append(load_features(feat_path))  # each is num_data x num_features
-        features_data = np.concatenate(features_data, axis=1)
+            features_data = load_features(feat_path)
+        # features_data = []
+        # for feat_path in features_path:
+            # features_data.append(load_features(feat_path))  # each is num_data x num_features
+        # features_data = np.concatenate(features_data, axis=1)
     else:
         features_data = None
 
@@ -134,6 +136,7 @@ def get_data(path: str,
         lines = []
         for line in reader:
             smiles = line[0]
+            smiles2 = line[1]
 
             if smiles in skip_smiles:
                 continue
@@ -147,8 +150,8 @@ def get_data(path: str,
             MolPairDatapoint(
                 line=line,
                 args=args,
-                # TODO: implement this
-                # features=features_data[i] if features_data is not None else None,
+                features1=features_data[smiles] if features_data is not None else None,
+                features2=features_data[smiles2] if features_data is not None else None,
                 use_compound_names=use_compound_names
             ) for i, line in tqdm(enumerate(lines), total=len(lines))
         ])
