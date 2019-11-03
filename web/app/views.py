@@ -307,7 +307,6 @@ def predict():
     elif request.form['drawSmiles'] != '':
         smiles = [request.form['drawSmiles']]
     else:
-        print(" GOT HERE")
         # Upload data file with SMILES
         data = request.files['data']
         data_name = secure_filename(data.filename)
@@ -329,11 +328,9 @@ def predict():
     gpu = request.form.get('gpu')
 
     # Create and modify args
-    args = load_args(model_paths[0])
-
-    if args.features_path != None:
-        args.features_generator = ["rdkit_2d_normalized"]
-        args.features_path = None
+    parser = ArgumentParser()
+    add_predict_args(parser)
+    args = parser.parse_args([])
 
     preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
     args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
@@ -344,6 +341,19 @@ def predict():
             args.no_cuda = True
         else:
             args.gpu = int(gpu)
+
+    if hasattr(args, "features_path"):
+        del args.features_path
+
+    train_args = load_args(model_paths[0])
+
+    for key, value in vars(train_args).items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
+    if args.features_path != None:
+        args.features_generator = ["rdkit_2d_normalized"]
+        args.features_path = None
 
     modify_predict_args(args)
 
