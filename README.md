@@ -1,8 +1,7 @@
 # Property Prediction
-TEST EDIT
-TEST EDIT 2
 
 This repository contains message passing neural networks for molecular property prediction.
+Credit for this repository goes to the original authors; we (Aayush Gupta, Jason Zhao, Rajiv Movva) will be adapting some parts to test other graph neural network (GNN) architectures.
 
 ## Table of Contents
 
