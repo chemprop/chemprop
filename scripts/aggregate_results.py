@@ -56,7 +56,7 @@ def aggregate_results(ckpts_dirs: List[str], split_type: str):
         # Collect verbose.log files
         paths = []
         for root, _, files in os.walk(ckpts_dir):
-            if split_type not in root:
+            if f'/{split_type}/' not in root:
                 continue
             paths += [os.path.join(root, fname) for fname in files if fname == 'verbose.log']
 
