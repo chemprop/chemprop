@@ -1,5 +1,5 @@
-# Property Prediction
-This repository contains message passing neural networks for molecular property prediction.
+# Molecular Property Prediction
+This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237).
 
 ## Table of Contents
 
@@ -59,13 +59,15 @@ Note that you will need to run the latter command with nvidia-docker if you are 
 If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
 
 1. `cd /path/to/chemprop`
-2. `pip install .`
+2. `pip install -e .`
 
 Then you can use `import chemprop` or `from chemprop import ...` in your other code.
 
 ### Notes
 
-If you get warning messages about `kyotocabinet` not being installed, it's safe to ignore them.
+**PyTorch GPU:** Although PyTorch is installed automatically along with `chemprop`, you may need to install the GPU version manually. Instructions are available [here](https://pytorch.org/get-started/locally/).
+
+**kyotocabinet**: If you get warning messages about `kyotocabinet` not being installed, it's safe to ignore them.
    
 ## Web Interface
 
@@ -196,26 +198,29 @@ During training, TensorBoard logs are automatically saved to the same directory 
 
 We compared our model against MolNet by Wu et al. on all of the MolNet datasets for which we could reproduce their splits (all but Bace, Toxcast, and qm7). When there was only one fold provided (scaffold split for BBBP and HIV), we ran our model multiple times and reported average performance. In each case we optimize hyperparameters on separate folds, use rdkit_2d_normalized features when useful, and compare to the best-performing model in MolNet as reported by Wu et al. We did not ensemble our model in these results.
 
-Results on classification datasets (AUC score, the higher the better)
+Results on regression datasets (lower is better)
 
-| Dataset | Size |	Ours |	MolNet Best Model |
-| :---: | :---: | :---: | :---: |
-| BBBP | 2,039 | 0.735 ± 0.0064	| 0.729 |
-| Tox21 | 7,831 | 0.855 ± 0.0052	| 0.829 ± 0.006 |
-| Sider | 1,427 |	0.678 ± 0.019	| 0.648 ± 0.009 |
-| clintox | 1,478 | 0.9 ± 0.0089	| 0.832 ± 0.037 |
-| MUV | 93,087 | 0.0897 ± 0.015 | 0.184 ± 0.02 |
-| HIV | 41,127 |	0.793 ± 0.0012 |	0.792 |
-| PCBA | 437,928 | 0.397 ± .00075 | 	0.136 ± 0.004 | 
+Dataset | Size | Metric | Ours | MolNet Best Model |
+| :---: | :---: | :---: | :---: | :---: |
+QM8 | 21,786 | MAE | 0.011 ± 0.000 | 0.0143 ± 0.0011 |
+QM9 | 133,885 | MAE | 2.666 ± 0.006 | 2.4 ± 1.1 |
+ESOL | 1,128 | RMSE | 0.555 ± 0.047 | 0.58 ± 0.03 |
+FreeSolv | 642 | RMSE | 1.075 ± 0.054 | 1.15 ± 0.12 |
+Lipophilicity | 4,200 | RMSE | 0.555 ± 0.023 | 0.655 ± 0.036 |
+PDBbind (full) | 9,880 | RMSE | 1.391 ± 0.012 | 1.25 ± 0 | 
+PDBbind (core) | 168 | RMSE | 2.173 ± 0.090 | 1.92 ± 0.07 | 
+PDBbind (refined) | 3,040 | RMSE | 1.486 ± 0.026 | 1.38 ± 0 | 
 
-Results on regression datasets (score, the lower the better)
+Results on classification datasets (higher is better)
 
-Dataset | Size | Ours | GraphConv/MPNN (deepchem) |
-| :---: | :---: | :---: | :---: |
-delaney	| 1,128 | 0.567 ± 0.026 | 0.58 ± 0.03 |
-Freesolv | 642 |	1.11 ± 0.035 | 1.15 ± 0.12 |
-Lipo | 4,200 |	0.542 ± 0.02 |	0.655 ± 0.036 |
-qm8 | 21,786 |	0.0082 ± 0.00019 | 0.0143 ± 0.0011 |
-qm9 | 133,884 |	2.03 ± 0.021	| 2.4 ± 1.1 |
+| Dataset | Size | Metric | Ours | MolNet Best Model |
+| :---: | :---: | :---: | :---: | :---: |
+| PCBA | 437,928 | PRC-AUC | 0.335 ± 0.001 |  0.136 ± 0.004 |
+| MUV | 93,087 | PRC-AUC | 0.041 ± 0.007 | 0.184 ± 0.02 |
+| HIV | 41,127 | ROC-AUC | 0.776 ± 0.007 | 0.792 ± 0 |
+| BBBP | 2,039 | ROC-AUC | 0.737 ± 0.001 | 0.729 ± 0 |
+| Tox21 | 7,831 | ROC-AUC | 0.851 ± 0.002 | 0.829 ± 0.006 |
+| SIDER | 1,427 | ROC-AUC | 0.676 ± 0.014 | 0.648 ± 0.009 |
+| ClinTox | 1,478 | ROC-AUC | 0.864 ± 0.017 | 0.832 ± 0.037 |
 
 Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments . 
