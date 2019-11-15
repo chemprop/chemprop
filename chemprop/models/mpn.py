@@ -60,7 +60,7 @@ class MPNEncoder(nn.Module):
 
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
-        self.W_att = nn.Linear(self.atom_fdim + self.hidden_size, 1)
+        self.W_att = nn.Linear(2*self.hidden_size + self.bond_fdim, 1)
 
     def forward(self,
                 mol_graph: BatchMolGraph,
@@ -109,8 +109,15 @@ class MPNEncoder(nn.Module):
                 nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
                 nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
 
-                prealphas = self.W_att(nei_message) # num_atoms x max_num_bonds x 1
-                # prealphas = torch.ones_like(prealphas)
+                # atom i's embedding
+                messages_i = message.unsqueeze(dim=1).repeat(1, nei_message.shape[1], 1) # num_atoms x max_num_bonds x hidden)
+                # CONCAT(h_i, h_j, x_j), i.e. concatenate atom embeddings and atom j features
+                messages_ij = torch.cat([messages_i, nei_message], dim=2)
+                # print(messages_ij.shape)
+                # print(self.W_att.weight.shape)
+
+                prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij))) # num_atoms x max_num_bonds x 1
+                prealphas = torch.ones_like(prealphas)
                 alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
 
                 message = alphas * nei_message # num_atoms x max_num_bonds x hidden + bond_fdim
