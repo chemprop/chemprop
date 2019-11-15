@@ -117,7 +117,7 @@ class MPNEncoder(nn.Module):
                 # print(self.W_att.weight.shape)
 
                 prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij))) # num_atoms x max_num_bonds x 1
-                prealphas = torch.ones_like(prealphas)
+                # prealphas = torch.ones_like(prealphas)
                 alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
 
                 message = alphas * nei_message # num_atoms x max_num_bonds x hidden + bond_fdim
