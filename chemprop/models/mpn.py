@@ -3,6 +3,7 @@ from typing import List, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
@@ -59,6 +60,8 @@ class MPNEncoder(nn.Module):
 
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
+        self.W_att = nn.Linear(self.atom_fdim + self.hidden_size, 1)
+
     def forward(self,
                 mol_graph: BatchMolGraph,
                 features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
@@ -105,7 +108,13 @@ class MPNEncoder(nn.Module):
                 nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
                 nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
                 nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
-                message = nei_message.sum(dim=1)  # num_atoms x hidden + bond_fdim
+
+                prealphas = self.W_att(nei_message) # num_atoms x max_num_bonds x 1
+                # prealphas = torch.ones_like(prealphas)
+                alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
+
+                message = alphas * nei_message # num_atoms x max_num_bonds x hidden + bond_fdim
+                message = message.sum(dim=1)  # num_atoms x hidden + bond_fdim
             else:
                 # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
                 # message      a_message = sum(nei_a_message)      rev_message
