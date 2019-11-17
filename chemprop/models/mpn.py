@@ -12,7 +12,7 @@ from chemprop.nn_utils import index_select_ND, get_activation_function
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int):
+    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int, override_feats=False):
         """Initializes the MPNEncoder.
 
         :param args: Arguments.
@@ -29,7 +29,7 @@ class MPNEncoder(nn.Module):
         self.layers_per_message = 1
         self.undirected = args.undirected
         self.atom_messages = args.atom_messages
-        self.features_only = args.features_only
+        self.features_only = args.features_only or override_feats
         self.use_input_features = args.use_input_features
         self.args = args
 
@@ -155,7 +155,8 @@ class MPN(nn.Module):
                  args: Namespace,
                  atom_fdim: int = None,
                  bond_fdim: int = None,
-                 graph_input: bool = False):
+                 graph_input: bool = False,
+                 override_feats: bool = False):
         """
         Initializes the MPN.
 
@@ -169,7 +170,7 @@ class MPN(nn.Module):
         self.atom_fdim = atom_fdim or get_atom_fdim(args)
         self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
         self.graph_input = graph_input
-        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim, override_feats)
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],

@@ -34,7 +34,7 @@ class MoleculeModel(nn.Module):
         """
         # self.encoder = MPN(args)
         self.encoder1 = MPN(args)
-        self.encoder2 = MPN(args)
+        self.encoder2 = MPN(args, override_feats=True)
 
     def create_ffn(self, args: Namespace):
         """
@@ -56,7 +56,8 @@ class MoleculeModel(nn.Module):
         activation = get_activation_function(args.activation)
 
         # Pure concatenation
-        first_linear_dim *= 2
+        # first_linear_dim *= 2
+        first_linear_dim += args.features_dim
 
         # Create FFN layers
         if args.ffn_num_layers == 1:

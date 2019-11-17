@@ -28,10 +28,10 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
         makedirs(args.save_dir)
         if args.split_type == 'loocv':
             args.test_fold_index = args.seed
-        if fold_num == 4 or fold_num == 8 or fold_num == 9: #TODO: remove tmp hack for antidataset
-            model_scores = [float('nan')]
-        else:
-            model_scores = run_training(args, logger)
+        # if fold_num == 4 or fold_num == 8 or fold_num == 9: #TODO: remove tmp hack for antidataset
+            # model_scores = [float('nan')]
+        # else:
+        model_scores = run_training(args, logger)
         all_scores.append(model_scores)
     all_scores = np.array(all_scores)
 
