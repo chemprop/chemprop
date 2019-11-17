@@ -70,11 +70,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
 
     if args.dataset_type == 'classification':
-        class_sizes = get_class_sizes(data)
+        class_sizes = get_class_sizes(test_data)
         debug('Class sizes')
         for i, task_class_sizes in enumerate(class_sizes):
             debug(f'{args.task_names[i]} '
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
+            if task_class_sizes == 0: # TODO: only works for just 1 property prediction task
+                debug('Moved to next epoch due to homogenous targets in test set.')
+                return [float('nan')]
 
     if args.save_smiles_splits:
         with open(args.data_path, 'r') as f:
