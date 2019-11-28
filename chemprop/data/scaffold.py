@@ -8,7 +8,7 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm import tqdm
 import numpy as np
 
-from .data import MoleculeDataset
+from .data import MolPairDataset
 
 
 def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False) -> str:
@@ -46,17 +46,17 @@ def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol]],
     return scaffolds
 
 
-def scaffold_split(data: MoleculeDataset,
+def scaffold_split(data: MolPairDataset,
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                    balanced: bool = False,
                    seed: int = 0,
-                   logger: logging.Logger = None) -> Tuple[MoleculeDataset,
-                                                           MoleculeDataset,
-                                                           MoleculeDataset]:
+                   logger: logging.Logger = None) -> Tuple[MolPairDataset,
+                                                           MolPairDataset,
+                                                           MolPairDataset]:
     """
     Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
 
-    :param data: A MoleculeDataset.
+    :param data: A MolPairDataset.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param balanced: Try to balance sizes of scaffolds in each set, rather than just putting smallest in test set.
@@ -116,10 +116,10 @@ def scaffold_split(data: MoleculeDataset,
     val = [data[i] for i in val]
     test = [data[i] for i in test]
 
-    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+    return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
 
-def log_scaffold_stats(data: MoleculeDataset,
+def log_scaffold_stats(data: MolPairDataset,
                        index_sets: List[Set[int]],
                        num_scaffolds: int = 10,
                        num_labels: int = 20,
@@ -127,7 +127,7 @@ def log_scaffold_stats(data: MoleculeDataset,
     """
     Logs and returns statistics about counts and average target values in molecular scaffolds.
 
-    :param data: A MoleculeDataset.
+    :param data: A MolPairDataset.
     :param index_sets: A list of sets of indices representing splits of the data.
     :param num_scaffolds: The number of scaffolds about which to display statistics.
     :param num_labels: The number of labels about which to display statistics.

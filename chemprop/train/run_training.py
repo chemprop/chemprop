@@ -75,7 +75,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         for i, task_class_sizes in enumerate(class_sizes):
             debug(f'{args.task_names[i]} '
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
-            if task_class_sizes == 0: # TODO: only works for just 1 property prediction task
+            if not args.train_all and task_class_sizes == 0: # TODO: only works for just 1 property prediction task
                 debug('Moved to next epoch due to homogenous targets in test set.')
                 return [float('nan')]
 
@@ -112,11 +112,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             pickle.dump(all_split_indices, f)
 
     if args.features_scaling:
-        features_scaler = train_data.normalize_features(replace_nan_token=0)
-        val_data.normalize_features(features_scaler)
-        test_data.normalize_features(features_scaler)
+        drug_scaler, cmpd_scaler = train_data.normalize_features(replace_nan_token=0)
+        val_data.normalize_features(drug_scaler, cmpd_scaler)
+        test_data.normalize_features(drug_scaler, cmpd_scaler)
     else:
-        features_scaler = None
+        drug_scaler, cmpd_scaler = None, None
 
     args.train_data_size = len(train_data)
     
@@ -168,7 +168,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model = model.cuda()
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
+        save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, drug_scaler, cmpd_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -221,7 +221,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
+                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, drug_scaler, cmpd_scaler, args)        
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')

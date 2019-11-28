@@ -27,7 +27,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
         if args.split_type == 'loocv':
-            args.test_fold_index = args.seed
+            args.test_fold_index = fold_num
         model_scores = run_training(args, logger)
         all_scores.append(model_scores)
     all_scores = np.array(all_scores)

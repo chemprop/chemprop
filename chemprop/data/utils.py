@@ -10,8 +10,7 @@ from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
-from .data import *
-# from .data import MolPairDatapoint, MolPairDataset
+from .data import MolPairDatapoint, MolPairDataset
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.features import load_features
 
@@ -69,17 +68,19 @@ def get_smiles(path: str, header: bool = True) -> List[str]:
 
     return smiles
 
+def invalid_smile(datapoint: MolPairDatapoint) -> bool:
+    return datapoint.drug_smiles == '' or datapoint.drug_mol is None or datapoint.drug_mol.GetNumHeavyAtoms() == 0 or datapoint.cmpd_smiles == '' or datapoint.cmpd_mol is None or datapoint.cmpd_mol.GetNumHeavyAtoms() == 0
 
-def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
+
+def filter_invalid_smiles(data: MolPairDataset) -> MolPairDataset:
     """
     Filters out invalid SMILES.
 
-    :param data: A MoleculeDataset.
-    :return: A MoleculeDataset with only valid molecules.
+    :param data: A MolPairDataset.
+    :return: A MolPairDataset with only valid molecules.
     """
-    return MoleculeDataset([datapoint for datapoint in data
-                            if datapoint.smiles != '' and datapoint.mol is not None
-                            and datapoint.mol.GetNumHeavyAtoms() > 0])
+    return MolPairDataset([datapoint for datapoint in data
+                            if not invalid_smile(datapoint)])
 
 
 def get_data(path: str,
@@ -100,7 +101,7 @@ def get_data(path: str,
     :param max_data_size: The maximum number of data points to load.
     :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :param logger: Logger.
-    :return: A MoleculeDataset containing smiles strings and target values along
+    :return: A MolPairDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
     """
     debug = logger.debug if logger is not None else print
@@ -135,10 +136,10 @@ def get_data(path: str,
 
         lines = []
         for line in reader:
-            smiles = line[0]
-            smiles2 = line[1]
+            drug_smiles = line[0]
+            cmpd_smiles = line[1]
 
-            if smiles in skip_smiles:
+            if drug_smiles in skip_smiles or cmpd_smiles in skip_smiles:
                 continue
 
             lines.append(line)
@@ -150,40 +151,40 @@ def get_data(path: str,
             MolPairDatapoint(
                 line=line,
                 args=args,
-                features1=features_data[smiles] if features_data is not None else None,
-                features2=features_data[smiles2] if features_data is not None else None,
+                drug_feats=features_data[drug_smiles] if features_data is not None else None,
+                cmpd_feats=features_data[cmpd_smiles] if features_data is not None else None,
                 use_compound_names=use_compound_names
             ) for i, line in tqdm(enumerate(lines), total=len(lines))
         ])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
-        debug(f'WARNING: NOT IMPLEMENTED SKIP INVALID SMILES')
-        # TODO: fix
-        # original_data_len = len(data)
-        # data = filter_invalid_smiles(data)
+        original_data_len = len(data)
+        data = filter_invalid_smiles(data)
 
-        # if len(data) < original_data_len:
-            # debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
+        if len(data) < original_data_len:
+            debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    if data.data[0].features1 is not None:
+    print(len(data.data))
+    if data.data[0].drug_feats is not None: # TODO fix this later
         args.features_dim = len(data.data[0].features1)
 
     return data
 
 
-def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None) -> MoleculeDataset:
+def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None) -> MolPairDataset:
     """
-    Converts SMILES to a MoleculeDataset.
+    Converts SMILES to a MolPairDataset.
 
     :param smiles: A list of SMILES strings.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param logger: Logger.
-    :return: A MoleculeDataset with all of the provided SMILES.
+    :return: A MolPairDataset with all of the provided SMILES.
     """
+    raise NotImplementedError
     debug = logger.debug if logger is not None else print
 
-    data = MoleculeDataset([MoleculeDatapoint([smile]) for smile in smiles])
+    data = MolPairDataset([MoleculeDatapoint([smile]) for smile in smiles])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
@@ -207,7 +208,7 @@ def split_data(data: MolPairDataset,
     """
     Splits data into training, validation, and test splits.
 
-    :param data: A MoleculeDataset.
+    :param data: A MolPairDataset.
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
@@ -303,7 +304,7 @@ def split_data(data: MolPairDataset,
         raise ValueError(f'split_type "{split_type}" not supported.')
 
 
-def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
+def get_class_sizes(data: MolPairDataset) -> List[List[float]]:
     """
     Determines the proportions of the different classes in the classification dataset.
 

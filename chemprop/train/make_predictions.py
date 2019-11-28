@@ -24,7 +24,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         torch.cuda.set_device(args.gpu)
 
     print('Loading training args')
-    scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
+    scaler, drug_scaler, cmpd_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
 
     # Update args with training arguments
@@ -53,7 +53,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
     # Normalize features
     if train_args.features_scaling:
-        test_data.normalize_features(features_scaler)
+        test_data.normalize_features(drug_scaler, cmpd_scaler)
 
     # Predict with each model individually and sum predictions
     if args.dataset_type == 'multiclass':
@@ -68,7 +68,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
             model=model,
             data=test_data,
             batch_size=args.batch_size,
-            scaler=scaler
+            scaler=scaler  # TODO: Shouldn't this be the custom scalers if avail?
         )
         sum_preds += np.array(model_preds)
 

@@ -35,14 +35,16 @@ def makedirs(path: str, isfile: bool = False):
 def save_checkpoint(path: str,
                     model: MoleculeModel,
                     scaler: StandardScaler = None,
-                    features_scaler: StandardScaler = None,
+                    drug_scaler: StandardScaler = None,
+                    cmpd_scaler: StandardScaler = None,
                     args: Namespace = None):
     """
     Saves a model checkpoint.
 
     :param model: A MoleculeModel.
     :param scaler: A StandardScaler fitted on the data.
-    :param features_scaler: A StandardScaler fitted on the features.
+    :param drug_scaler: A StandardScaler fitted on the drug features.
+    :param cmpd_scaler: A StandardScaler fitted on the cmpd features.
     :param args: Arguments namespace.
     :param path: Path where checkpoint will be saved.
     """
@@ -53,10 +55,14 @@ def save_checkpoint(path: str,
             'means': scaler.means,
             'stds': scaler.stds
         } if scaler is not None else None,
-        'features_scaler': {
-            'means': features_scaler.means,
-            'stds': features_scaler.stds
-        } if features_scaler is not None else None
+        'drug_scaler': {
+            'means': drug_scaler.means,
+            'stds': drug_scaler.stds
+        } if drug_scaler is not None else None,
+        'cmpd_scaler': {
+            'means': cmpd_scaler.means,
+            'stds': cmpd_scaler.stds
+        } if cmpd_scaler is not None else None
     }
     torch.save(state, path)
 
@@ -114,22 +120,25 @@ def load_checkpoint(path: str,
     return model
 
 
-def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
+def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler, StandardScaler]:
     """
     Loads the scalers a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: A tuple with the data scaler and the features scaler.
+    :return: A tuple with the data scaler and the features scaler for drugs/compounds.
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
 
     scaler = StandardScaler(state['data_scaler']['means'],
                             state['data_scaler']['stds']) if state['data_scaler'] is not None else None
-    features_scaler = StandardScaler(state['features_scaler']['means'],
-                                     state['features_scaler']['stds'],
-                                     replace_nan_token=0) if state['features_scaler'] is not None else None
+    drug_scaler = StandardScaler(state['drug_scaler']['means'],
+                                 state['drug_scaler']['stds'],
+                                 replace_nan_token=0) if state['drug_scaler'] is not None else None
+    cmpd_scaler = StandardScaler(state['cmpd_scaler']['means'],
+                                 state['cmpd_scaler']['stds'],
+                                 replace_nan_token=0) if state['cmpd_scaler'] is not None else None
 
-    return scaler, features_scaler
+    return scaler, drug_scaler, cmpd_scaler
 
 
 def load_args(path: str) -> Namespace:

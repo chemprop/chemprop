@@ -43,6 +43,9 @@ def add_predict_args(parser: ArgumentParser):
                         help='Turn off scaling of features')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
+    parser.add_argument('--config_path', type=str,
+                        help='Path to a .json file containing arguments. Any arguments present in the config'
+                             'file will override arguments specified via the command line or by the defaults.')
 
 
 def add_train_args(parser: ArgumentParser):
@@ -152,6 +155,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Final learning rate')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
+    parser.add_argument('--train_all', action='store_true', default=False,
+                        help='Train model for all folds, even if test fold cannot be evaluated.')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -212,6 +217,13 @@ def modify_predict_args(args: Namespace):
 
     :param args: Arguments.
     """
+    # Load config file
+    if args.config_path is not None:
+        with open(args.config_path) as f:
+            config = json.load(f)
+            for key, value in config.items():
+                setattr(args, key, value)
+
     assert args.test_path
     assert args.preds_path
     assert args.checkpoint_dir is not None or args.checkpoint_path is not None or args.checkpoint_paths is not None
@@ -302,7 +314,6 @@ def modify_train_args(args: Namespace):
         with open(args.folds_file, 'rb') as f:
             all_fold_indices = pickle.load(f)
         args.num_folds = len(all_fold_indices)
-        args.seed = 0
     if args.split_type in ['crossval', 'index_predetermined']:
         with open(args.crossval_index_file, 'rb') as rf:
             args.crossval_index_sets = pickle.load(rf)
@@ -311,6 +322,7 @@ def modify_train_args(args: Namespace):
 
     if args.test:
         args.epochs = 0
+    print('Using GPU', args.cuda, args.gpu)
 
 
 def parse_train_args() -> Namespace:
