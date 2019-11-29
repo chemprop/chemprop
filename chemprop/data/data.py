@@ -153,14 +153,14 @@ class MolPairDataset(Dataset):
         """
         return [(d.drug_mol, d.cmpd_mol) for d in self.data]
 
-    def features(self) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    def features(self) -> List[Tuple[np.ndarray, np.ndarray]]:
         """
         Returns the features associated with each molecule (if they exist).
 
         :return: A list of 1D numpy arrays containing the features for each molecule or None if there are no features.
         """
         if len(self.data) == 0:
-            return (None, None)
+            return None
         # if self.data[0].drug_feats is None and self.data[0].cmpd_feats is None)
         # TODO fix
 

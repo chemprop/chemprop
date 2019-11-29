@@ -165,9 +165,9 @@ def get_data(path: str,
         if len(data) < original_data_len:
             debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    print(len(data.data))
-    if data.data[0].drug_feats is not None: # TODO fix this later
-        args.features_dim = len(data.data[0].features1)
+    feats_size = data.features_size()
+    if feats_size:
+        args.features_dim = feats_size
 
     return data
 

@@ -34,7 +34,7 @@ class MoleculeModel(nn.Module):
         """
         # self.encoder = MPN(args)
         self.encoder1 = MPN(args)
-        self.encoder2 = MPN(args, override_feats=True)
+        self.encoder2 = MPN(args)
 
     def create_ffn(self, args: Namespace):
         """
@@ -48,16 +48,12 @@ class MoleculeModel(nn.Module):
         if args.features_only:
             first_linear_dim = args.features_size
         else:
-            first_linear_dim = args.hidden_size
+            first_linear_dim = args.hidden_size*2
             if args.use_input_features:
                 first_linear_dim += args.features_dim
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
-
-        # Pure concatenation
-        # first_linear_dim *= 2
-        first_linear_dim += args.features_dim
 
         # Create FFN layers
         if args.ffn_num_layers == 1:

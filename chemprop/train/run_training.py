@@ -87,7 +87,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             lines_by_smiles = {}
             indices_by_smiles = {}
             for i, line in enumerate(reader):
-                smiles = line[0]
+                smiles = (line[0], line[1])
                 lines_by_smiles[smiles] = line
                 indices_by_smiles[smiles] = i
 
