@@ -97,11 +97,12 @@ if __name__ == '__main__':
     add_train_args(parser)
     parser.add_argument('--num_iters', type=int, default=20,
                         help='Number of hyperparameter choices to try')
-    parser.add_argument('--config_save_path', type=str, required=True,
+    parser.add_argument('--config_save_path', type=str,
                         help='Path to .json file where best hyperparameter settings will be written')
     parser.add_argument('--log_dir', type=str,
                         help='(Optional) Path to a directory where all results of the hyperparameter optimization will be written')
     args = parser.parse_args()
     modify_train_args(args)
+    assert args.config_save_path  # check if supplied
 
     grid_search(args)
