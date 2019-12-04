@@ -1,0 +1,1909 @@
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 358,960
+Epoch 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+      (tokeys): Linear(in_features=300, out_features=300, bias=False)
+      (toqueries): Linear(in_features=300, out_features=300, bias=False)
+      (tovalues): Linear(in_features=300, out_features=300, bias=False)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 628,960
+Epoch 0
+Loss = 1.1535e-02, PNorm = 45.6088, GNorm = 0.7068, lr_0 = 1.3600e-04
+Fold 0
+{'activation': 'ReLU',
+ 'atom_messages': False,
+ 'batch_size': 50,
+ 'bias': False,
+ 'checkpoint_dir': None,
+ 'checkpoint_path': None,
+ 'checkpoint_paths': None,
+ 'config_path': None,
+ 'crossval_index_dir': None,
+ 'crossval_index_file': None,
+ 'cuda': False,
+ 'data_path': 'data/tox21.csv',
+ 'dataset_type': 'classification',
+ 'depth': 3,
+ 'dropout': 0.0,
+ 'ensemble_size': 1,
+ 'epochs': 30,
+ 'features_generator': None,
+ 'features_only': False,
+ 'features_path': None,
+ 'features_scaling': True,
+ 'ffn_hidden_size': 300,
+ 'ffn_num_layers': 2,
+ 'final_lr': 0.0001,
+ 'folds_file': None,
+ 'gpu': None,
+ 'hidden_size': 300,
+ 'init_lr': 0.0001,
+ 'log_frequency': 10,
+ 'max_data_size': None,
+ 'max_lr': 0.001,
+ 'metric': 'auc',
+ 'minimize_score': False,
+ 'multiclass_num_classes': 3,
+ 'no_cache': False,
+ 'num_folds': 1,
+ 'num_lrs': 1,
+ 'quiet': False,
+ 'save_dir': 'tox21_attention/fold_0',
+ 'save_smiles_splits': False,
+ 'seed': 0,
+ 'separate_test_features_path': None,
+ 'separate_test_path': None,
+ 'separate_val_features_path': None,
+ 'separate_val_path': None,
+ 'show_individual_scores': False,
+ 'split_sizes': [0.8, 0.1, 0.1],
+ 'split_type': 'random',
+ 'test': False,
+ 'test_fold_index': None,
+ 'undirected': False,
+ 'use_compound_names': False,
+ 'use_input_features': None,
+ 'val_fold_index': None,
+ 'warmup_epochs': 2.0}
+Loading data
+Number of tasks = 12
+Splitting data with seed 0
+Class sizes
+NR-AR 0: 95.75%, 1: 4.25%
+NR-AR-LBD 0: 96.49%, 1: 3.51%
+NR-AhR 0: 88.27%, 1: 11.73%
+NR-Aromatase 0: 94.85%, 1: 5.15%
+NR-ER 0: 87.20%, 1: 12.80%
+NR-ER-LBD 0: 94.97%, 1: 5.03%
+NR-PPAR-gamma 0: 97.12%, 1: 2.88%
+SR-ARE 0: 83.85%, 1: 16.15%
+SR-ATAD5 0: 96.27%, 1: 3.73%
+SR-HSE 0: 94.25%, 1: 5.75%
+SR-MMP 0: 84.20%, 1: 15.80%
+SR-p53 0: 93.76%, 1: 6.24%
+Total size = 7,831 | train size = 6,264 | val size = 783 | test size = 784
+Building model 0
+MoleculeModel(
+  (sigmoid): Sigmoid()
+  (encoder): MPN(
+    (encoder): MPNEncoder(
+      (dropout_layer): Dropout(p=0.0, inplace=False)
+      (act_func): ReLU()
+      (W_i): Linear(in_features=147, out_features=300, bias=False)
+      (W_h): Linear(in_features=300, out_features=300, bias=False)
+      (W_o): Linear(in_features=433, out_features=300, bias=True)
+      (W_att): Linear(in_features=747, out_features=1, bias=True)
+      (tokeys): Linear(in_features=300, out_features=300, bias=False)
+      (toqueries): Linear(in_features=300, out_features=300, bias=False)
+      (tovalues): Linear(in_features=300, out_features=300, bias=False)
+    )
+  )
+  (ffn): Sequential(
+    (0): Dropout(p=0.0, inplace=False)
+    (1): Linear(in_features=300, out_features=300, bias=True)
+    (2): ReLU()
+    (3): Dropout(p=0.0, inplace=False)
+    (4): Linear(in_features=300, out_features=12, bias=True)
+  )
+)
+Number of parameters = 628,960
+Epoch 0
+Loss = 1.2736e-02, PNorm = 45.6208, GNorm = 0.7035, lr_0 = 1.3600e-04
+Loss = 9.3314e-03, PNorm = 45.6307, GNorm = 0.5448, lr_0 = 1.7200e-04
+Loss = 6.3137e-03, PNorm = 45.6460, GNorm = 0.2104, lr_0 = 2.0800e-04
+Loss = 5.8862e-03, PNorm = 45.6522, GNorm = 0.5279, lr_0 = 2.4400e-04

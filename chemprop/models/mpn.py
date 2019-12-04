@@ -60,7 +60,12 @@ class MPNEncoder(nn.Module):
 
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
-        self.W_att = nn.Linear(2*self.hidden_size + self.bond_fdim, 1)
+        self.featLen = 2*self.hidden_size + self.bond_fdim
+        self.W_att = nn.Linear(self.featLen, 1)
+        self.heads = 1 #TO-DO: HOW DO I DO HYPER PARAMETER OPTIMIZAITON W THIS VAL?. also todo implement multihead.
+        self.tokeys    = nn.Linear(self.hidden_size, self.hidden_size * self.heads, bias=False)
+        self.toqueries = nn.Linear(self.hidden_size, self.hidden_size * self.heads, bias=False)
+        self.tovalues  = nn.Linear(self.hidden_size, self.hidden_size * self.heads, bias=False)
 
     def forward(self,
                 mol_graph: BatchMolGraph,
@@ -97,26 +102,37 @@ class MPNEncoder(nn.Module):
             input = self.W_i(f_atoms)  # num_atoms x hidden_size
         else:
             input = self.W_i(f_bonds)  # num_bonds x hidden_size
-        message = self.act_func(input)  # num_bonds x hidden_size
-
+        message = self.act_func(input)  # num_atoms/num_bonds x hidden_size
+        
         # Message passing
         for depth in range(self.depth - 1):
             if self.undirected:
                 message = (message + message[b2revb]) / 2
 
             if self.atom_messages:
-                nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
+                message_attn = self.toqueries(message) @ self.tokeys(message).T / np.sqrt(self.hidden * self.heads) #num_atoms x num_atoms
+                # above normalized to help softmax converge (not sure if neccessary but mentioned in peter bloems post) 
+                
+                #add masking
+                message_attn = F.softmax(message_attn, dim = 1) # num_atoms x num_atoms
+                message_weighted = message_attn @ self.tovalues(message) # num_atoms x (self.hidden_size * self.heads), basically weight messages
+                # meaningless global weighting without respect to position embedding; need to filter to local only
+
+                nei_a_message = index_select_ND(message_weighted, a2a)  # num_atoms x max_num_bonds x hidden
                 nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
                 nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
 
-                # atom i's embedding
+
+                # calculate atom i's embedding
+                # duplicate message to all the bonds
                 messages_i = message.unsqueeze(dim=1).repeat(1, nei_message.shape[1], 1) # num_atoms x max_num_bonds x hidden)
                 # CONCAT(h_i, h_j, x_j), i.e. concatenate atom embeddings and atom j features
-                messages_ij = torch.cat([messages_i, nei_message], dim=2)
+                messages_ij = torch.cat([messages_i, nei_message], dim=2) #num_atoms x max_num_bonds x (hidden * 2 + bond_fdim)     
                 # print(messages_ij.shape)
                 # print(self.W_att.weight.shape)
 
-                prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij))) # num_atoms x max_num_bonds x 1
+                #scale by self.featLen since W_att makes the values inherently 
+                prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij) / np.sqrt(self.featLen))) # num_atoms x max_num_bonds x 1 
                 # prealphas = torch.ones_like(prealphas)
                 alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
 

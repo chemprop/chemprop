@@ -41,13 +41,13 @@ def index_select_ND(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     :return: A tensor of shape (num_atoms/num_bonds, max_num_bonds, hidden_size) containing the message
     features corresponding to the atoms/bonds specified in index.
     """
-    index_size = index.size()  # (num_atoms/num_bonds, max_num_bonds)
+    index_size = index.size()  # (num_atoms/num_bonds, max_num_bonds) aayush: 900ish x 4
     suffix_dim = source.size()[1:]  # (hidden_size,)
     final_size = index_size + suffix_dim  # (num_atoms/num_bonds, max_num_bonds, hidden_size)
-
+    # print(index[0][index[0] != 0])
     target = source.index_select(dim=0, index=index.view(-1))  # (num_atoms/num_bonds * max_num_bonds, hidden_size)
     target = target.view(final_size)  # (num_atoms/num_bonds, max_num_bonds, hidden_size)
-
+    
     return target
 
 
