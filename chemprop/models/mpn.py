@@ -51,7 +51,7 @@ class MPNEncoder(nn.Module):
         self.W_i = nn.Linear(input_dim, self.hidden_size, bias=self.bias)
 
         if self.atom_messages:
-            w_h_input_size = self.hidden_size + self.bond_fdim
+            w_h_input_size = self.hidden_size# + self.bond_fdim
         else:
             w_h_input_size = self.hidden_size
 
@@ -104,40 +104,60 @@ class MPNEncoder(nn.Module):
             input = self.W_i(f_bonds)  # num_bonds x hidden_size
         message = self.act_func(input)  # num_atoms/num_bonds x hidden_size
         
+        if self.atom_messages:
+            scale = np.sqrt(a2a.shape[1]) # hyperparameter for pre softmax normalization,
+                                   # try 1 and a2a.shape[1]
+
         # Message passing
         for depth in range(self.depth - 1):
             if self.undirected:
                 message = (message + message[b2revb]) / 2
 
             if self.atom_messages:
-                message_attn = self.toqueries(message) @ self.tokeys(message).T / np.sqrt(self.hidden * self.heads) #num_atoms x num_atoms
+                # try muliplying softmax by count of # of atoms
+                
+                # filtered_messages = index_select_ND(self.tovalues(message), a2a)
+                # message_attn = self.toqueries(message) @ self.tokeys(message).T / np.sqrt(self.hidden * self.heads) #num_atoms x num_atoms
                 # above normalized to help softmax converge (not sure if neccessary but mentioned in peter bloems post) 
                 
-                #add masking
-                message_attn = F.softmax(message_attn, dim = 1) # num_atoms x num_atoms
-                message_weighted = message_attn @ self.tovalues(message) # num_atoms x (self.hidden_size * self.heads), basically weight messages
+                # add masking (incomplete)
+                # message_attn = F.softmax(message_attn, dim = 1) # num_atoms x num_atoms
+                # message_weighted = message_attn @ self.tovalues(message) # num_atoms x (self.hidden_size * self.heads), basically weight messages
                 # meaningless global weighting without respect to position embedding; need to filter to local only
 
-                nei_a_message = index_select_ND(message_weighted, a2a)  # num_atoms x max_num_bonds x hidden
-                nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
-                nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
-
+                # nei_a_message = index_select_ND(message_weighted, a2a)  # num_atoms x max_num_bonds x hidden
+                # nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
+                # nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
 
                 # calculate atom i's embedding
                 # duplicate message to all the bonds
-                messages_i = message.unsqueeze(dim=1).repeat(1, nei_message.shape[1], 1) # num_atoms x max_num_bonds x hidden)
+                # messages_i = message.unsqueeze(dim=1).repeat(1, nei_message.shape[1], 1) # num_atoms x max_num_bonds x hidden)
                 # CONCAT(h_i, h_j, x_j), i.e. concatenate atom embeddings and atom j features
-                messages_ij = torch.cat([messages_i, nei_message], dim=2) #num_atoms x max_num_bonds x (hidden * 2 + bond_fdim)     
+                # messages_ij = torch.cat([messages_i, nei_message], dim=2) #num_atoms x max_num_bonds x (hidden * 2 + bond_fdim)     
                 # print(messages_ij.shape)
                 # print(self.W_att.weight.shape)
-
-                #scale by self.featLen since W_att makes the values inherently 
-                prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij) / np.sqrt(self.featLen))) # num_atoms x max_num_bonds x 1 
+                
+                # print(a2a.shape[1], 4)
+                filtered_key_messages = index_select_ND(self.tokeys(message), a2a) # num_atoms x max_num_bonds x hidden
+                duplicated_query_messages = self.toqueries(message).unsqueeze(dim=1).repeat(1,a2a.shape[1],1) # num_atoms x max_num_bonds x hidden
+                queryxKey = filtered_key_messages * duplicated_query_messages / scale # num_atoms x max_num_bonds x hidden
+                queryxKey = queryxKey.sum(dim = 2) # num_atoms x max_num_bonds x 1
+                # print(queryxKey.shape)
+                message_attn = F.softmax(queryxKey, dim = 1) # num_atoms x max_num_bonds
+                # print(message_attn.shape)
+                filtered_value_messages = index_select_ND(self.tovalues(message), a2a) # num_atoms x max_num_bonds x hidden
+                # print(filtered_value_messages.shape)
+                duplicated_attn_weights = message_attn.unsqueeze(dim=2).repeat(1,1,filtered_value_messages.shape[2]) # num_atoms x max_num_bonds x hidden
+                message_weighted = (duplicated_attn_weights * filtered_value_messages).sum(dim = 1) # num_atoms x hidden
+                message = message_weighted
+                # print(message_weighted.shape)
+                # scale by self.featLen since W_att makes the values inherently 
+                # prealphas = self.dropout_layer(self.act_func(self.W_att(messages_ij) / np.sqrt(self.featLen))) # num_atoms x max_num_bonds x 1 
                 # prealphas = torch.ones_like(prealphas)
-                alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
+                # alphas = F.softmax(prealphas, dim=1) # num_atoms x max_num_bonds x 1
 
-                message = alphas * nei_message # num_atoms x max_num_bonds x hidden + bond_fdim
-                message = message.sum(dim=1)  # num_atoms x hidden + bond_fdim
+                # message = alphas * nei_message # num_atoms x max_num_bonds x hidden + bond_fdim
+                # message = message.sum(dim=1)  # num_atoms x hidden + bond_fdim
             else:
                 # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
                 # message      a_message = sum(nei_a_message)      rev_message
