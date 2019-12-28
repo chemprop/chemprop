@@ -43,6 +43,8 @@ The easiest way to install the `chemprop` dependencies is via conda. Here are th
 
 The optional `descriptastorus` package is only necessary if you plan to incorporate computed RDKit features into your model (see [Additional Features](#additional-features)). The addition of these features improves model performance on some datasets but is not necessary for the base model.
 
+Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions [here](https://pytorch.org/get-started/locally/).
+
 ### Option 2: Docker
 
 Docker provides a nice way to isolate the `chemprop` code and environment. To install and run our code in a Docker container, follow these steps:
