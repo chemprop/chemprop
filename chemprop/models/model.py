@@ -32,9 +32,8 @@ class MoleculeModel(nn.Module):
 
         :param args: Arguments.
         """
-        # self.encoder = MPN(args)
-        self.encoder1 = MPN(args)
-        self.encoder2 = MPN(args)
+        self.drug_encoder = MPN(args) if not args.cmpd_only else None
+        self.cmpd_encoder = MPN(args) if not args.drug_only else None
 
     def create_ffn(self, args: Namespace):
         """
@@ -51,6 +50,9 @@ class MoleculeModel(nn.Module):
             first_linear_dim = args.hidden_size*2
             if args.use_input_features:
                 first_linear_dim += args.features_dim
+
+        if args.drug_only or args.cmpd_only:
+            first_linear_dim = int(first_linear_dim/2)
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
@@ -89,9 +91,20 @@ class MoleculeModel(nn.Module):
         :return: The output of the MoleculeModel.
         """
         smiles, feats = input
-        learnedRep1 = self.encoder1([x[0] for x in smiles], [x[0] for x in feats])
-        learnedRep2 = self.encoder2([x[1] for x in smiles], [x[1] for x in feats])
-        newInput = torch.cat([learnedRep1, learnedRep2], dim=1)
+
+        newInput = []
+        if self.drug_encoder:
+            learned_drug = self.drug_encoder([x[0] for x in smiles], [x[0] for x in feats])
+            newInput.append(learned_drug)
+        if self.cmpd_encoder:
+            learned_cmpd = self.cmpd_encoder([x[1] for x in smiles], [x[1] for x in feats])
+            newInput.append(learned_cmpd)
+
+        assert len(newInput) != 0
+        if len(newInput) > 1:
+            newInput = torch.cat(newInput, dim=1)
+        else:
+            newInput = newInput[0]
 
         output = self.ffn(newInput)
 
