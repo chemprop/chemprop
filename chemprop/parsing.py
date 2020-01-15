@@ -266,6 +266,8 @@ def modify_train_args(args: Namespace):
             config = json.load(f)
             for key, value in config.items():
                 setattr(args, key, value)
+        if args.save_dir.upper() == 'AUTO':
+            args.save_dir = os.path.dirname(args.config_path)
 
     assert args.data_path is not None
     assert args.dataset_type is not None
