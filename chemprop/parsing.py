@@ -186,6 +186,9 @@ def add_train_args(parser: ArgumentParser):
                         help='Masks learned rep of cmpd structure')
     parser.add_argument('--cmpd_only', action='store_true', default=False,
                         help='Masks learned rep of drug structure')
+    parser.add_argument('--ops', type=str, default='concat',
+                        choices=['plus', 'minus', 'concat'],
+                        help='Operation for embeddings')
 
 
 def update_checkpoint_args(args: Namespace):
@@ -271,6 +274,10 @@ def modify_train_args(args: Namespace):
 
     assert args.data_path is not None
     assert args.dataset_type is not None
+    assert not (args.drug_only and args.cmpd_only)
+
+    if args.drug_only or args.cmpd_only:
+        assert args.ops == 'concat'
 
     if args.save_dir is not None:
         makedirs(args.save_dir)
@@ -300,7 +307,7 @@ def modify_train_args(args: Namespace):
     args.minimize_score = args.metric in ['rmse', 'mae', 'mse', 'cross_entropy']
 
     update_checkpoint_args(args)
-    
+
     if args.features_only:
         assert args.features_generator or args.features_path
 

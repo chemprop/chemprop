@@ -42,6 +42,8 @@ class MoleculeModel(nn.Module):
         :param args: Arguments.
         """
         self.multiclass = args.dataset_type == 'multiclass'
+        self.ops = args.ops
+
         if self.multiclass:
             self.num_classes = args.multiclass_num_classes
         if args.features_only:
@@ -51,7 +53,7 @@ class MoleculeModel(nn.Module):
             if args.use_input_features:
                 first_linear_dim += args.features_dim
 
-        if args.drug_only or args.cmpd_only:
+        if args.drug_only or args.cmpd_only or self.ops != 'concat':
             first_linear_dim = int(first_linear_dim/2)
 
         dropout = nn.Dropout(args.dropout)
@@ -101,8 +103,14 @@ class MoleculeModel(nn.Module):
             newInput.append(learned_cmpd)
 
         assert len(newInput) != 0
+
         if len(newInput) > 1:
-            newInput = torch.cat(newInput, dim=1)
+            if self.ops == 'plus':
+                newInput = newInput[0] + newInput[1]
+            elif self.ops == 'minus':
+                newInput = newInput[0] - newInput[1]
+            else:
+                newInput = torch.cat(newInput, dim=1)
         else:
             newInput = newInput[0]
 
