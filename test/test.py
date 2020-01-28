@@ -364,6 +364,13 @@ class TestPredict(unittest.TestCase):
             make_predictions(self.args)
         except:
             self.fail('predict')
+
+    def test_predict_variance(self):
+        try:
+            modify_predict_args(self.args)
+            make_predictions(self.args, return_variance=True)
+        except:
+            self.fail('predict_variance')
     
     def test_predict_compound_names(self):
         try:

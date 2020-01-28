@@ -89,13 +89,14 @@ def write_predictions(args: Namespace, preds: List[List[float]], smiles: Molecul
 
             writer.writerow(row)
 
-def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional[List[float]]]:
+def make_predictions(args: Namespace, smiles: List[str] = None, return_variance: Optional[bool] = False) -> Tuple[List[Optional[List[float]]], Optional[List[float]]]:
     """
     Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
 
     :param args: Arguments.
     :param smiles: Smiles to make predictions on.
-    :return: A list of lists of target predictions.
+    :return: values A list of lists of target predictions.
+    :return: variances (optional) A list of lists of target prediction variances.
     """
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
@@ -135,7 +136,8 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     else:
         sum_preds = np.zeros((len(test_data), args.num_tasks))
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
-    for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
+    
+    for ii, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
         # Load model
         model = load_checkpoint(checkpoint_path, cuda=args.cuda)
         model_preds = predict(
@@ -144,10 +146,19 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
             batch_size=args.batch_size,
             scaler=scaler
         )
+        x = np.asarray(model_preds)
+        if ii == 0:
+            m = np.asarray(x)
+            v = np.zeros(x.shape)
+        else:            
+            _m = m.copy()
+            m = _m + (x - _m) / (ii +1)
+            v = v + (x - _m) * (x - m)
+        
         sum_preds += np.array(model_preds)
-
+    
     # Ensemble predictions
-    avg_preds = sum_preds / len(args.checkpoint_paths)
+    avg_preds = m
     avg_preds = avg_preds.tolist()
 
     # Save predictions
@@ -160,5 +171,8 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
      # Write predictions
     if args.preds_path:
         write_predictions(args, test_smiles, avg_preds, compound_names)
-
-    return avg_preds
+    
+    if return_variance:
+        return avg_preds, v
+    else:
+        return avg_preds
