@@ -28,7 +28,7 @@ def validate_data(incoming_data: List[str]) -> Tuple[List[Optional[List[float]]]
     return full_data, valid_data, valid_indices
 
 
-def fill_missing_data(args: Namespace, avg_preds: List[List[float]], full_data: MoleculeDataset, valid_indices: List[List[bool]],):
+def fill_missing_data(args: Namespace, avg_preds: List[List[float]], full_data: MoleculeDataset, valid_indices: List[List[bool]]):
     full_preds = [None] * len(full_data)
     for i, si in enumerate(valid_indices):
         full_preds[si] = avg_preds[i]
@@ -154,8 +154,8 @@ def make_predictions(args: Namespace, smiles: List[str] = None, return_variance:
             _m = m.copy()
             m = _m + (x - _m) / (ii +1)
             v = v + (x - _m) * (x - m)
-        
-        sum_preds += np.array(model_preds)
+            assert m.shape == x.shape
+            assert v.shape == x.shape
     
     # Ensemble predictions
     avg_preds = m
