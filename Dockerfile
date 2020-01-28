@@ -15,10 +15,12 @@ ENV PATH /opt/conda/bin:$PATH
 ENV LD_LIBRARY_PATH /usr/local/cuda-8.0/lib64:/usr/local/cuda-8.0/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 
 WORKDIR /app
-COPY . /app
+COPY environment.yml /app
 
 RUN conda install pip
 RUN conda install -c rdkit nox
 RUN conda install cairo
 RUN conda env update -n base --file environment.yml
 RUN pip install git+https://github.com/bp-kelley/descriptastorus
+CMD python test/test.py
+COPY . /app
