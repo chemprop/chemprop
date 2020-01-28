@@ -1,6 +1,6 @@
 from argparse import Namespace
 import csv
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -11,6 +11,83 @@ from chemprop.data import MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
+def validate_data(incoming_data: List[str]) -> Tuple[List[Optional[List[float]]], MoleculeDataset, List[Optional[List[float]]]]:
+    """
+    Validate a list of SMILES and create a MoleculeDataset of the valid SMILES
+
+    :param incoming_data: SMILES input
+    :return: full_data All incoming data
+    :return: valid_data Valid SMILES as MoleculeDataset
+    :return: valid_indices Indices of valid SMILES in full_data
+    """
+    print('Validating SMILES')
+    valid_indices = [i for i in range(
+        len(incoming_data)) if incoming_data[i].mol is not None]
+    full_data = incoming_data
+    valid_data = MoleculeDataset([incoming_data[i] for i in valid_indices])
+    return full_data, valid_data, valid_indices
+
+
+def fill_missing_data(args: Namespace, avg_preds: List[List[float]], full_data: MoleculeDataset, valid_indices: List[List[bool]],):
+    full_preds = [None] * len(full_data)
+    for i, si in enumerate(valid_indices):
+        full_preds[si] = avg_preds[i]
+    avg_preds = full_preds
+    test_smiles = full_data.smiles()
+    if args.use_compound_names:
+        compound_names = full_data.compound_names()
+    else:
+        compound_names = None
+    return test_smiles, full_preds, compound_names
+
+
+def write_predictions(args: Namespace, preds: List[List[float]], smiles: MoleculeDataset, compound_names: List[str]=None):
+    """
+    Write predictions to a file specificed in the arguments
+
+    :param args: Arguments
+    :param args: preds Predictions for each molecule (averaged over the ensemble)
+    :param args: smiles SMILES for the predicted molecules
+    """
+    with open(args.preds_path, 'w') as f:
+        writer = csv.writer(f)
+
+        header = []
+
+        if args.use_compound_names:
+            header.append('compound_names')
+
+        header.append('smiles')
+
+        if args.dataset_type == 'multiclass':
+            for name in args.task_names:
+                for i in range(args.multiclass_num_classes):
+                    header.append(name + '_class' + str(i))
+        else:
+            header.extend(args.task_names)
+        writer.writerow(header)
+
+        for i in range(len(preds)):
+            row = []
+
+            if args.use_compound_names:
+                row.append(compound_names[i])
+
+            row.append(smiles[i])
+
+            if preds[i] is not None:
+                if args.dataset_type == 'multiclass':
+                    for task_probs in preds[i]:
+                        row.extend(task_probs)
+                else:
+                    row.extend(preds[i])
+            else:
+                if args.dataset_type == 'multiclass':
+                    row.extend([''] * args.num_tasks * args.multiclass_num_classes)
+                else:
+                    row.extend([''] * args.num_tasks)
+
+            writer.writerow(row)
 
 def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional[List[float]]]:
     """
@@ -38,17 +115,14 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     else:
         test_data = get_data(path=args.test_path, args=args, use_compound_names=args.use_compound_names, skip_invalid_smiles=False)
 
-    print('Validating SMILES')
-    valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
-    full_data = test_data
-    test_data = MoleculeDataset([test_data[i] for i in valid_indices])
+    # Validate data
+    full_data, test_data, valid_indices = validate_data(test_data)
 
     # Edge case if empty list of smiles is provided
     if len(test_data) == 0:
         return [None] * len(full_data)
 
-    if args.use_compound_names:
-        compound_names = test_data.compound_names()
+    
     print(f'Test size = {len(test_data):,}')
 
     # Normalize features
@@ -81,51 +155,10 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     print(f'Saving predictions to {args.preds_path}')
 
     # Put Nones for invalid smiles
-    full_preds = [None] * len(full_data)
-    for i, si in enumerate(valid_indices):
-        full_preds[si] = avg_preds[i]
-    avg_preds = full_preds
-    test_smiles = full_data.smiles()
+    test_smiles, avg_preds, compound_names = fill_missing_data(args, avg_preds, full_data, valid_indices)
 
-    # Write predictions
-    with open(args.preds_path, 'w') as f:
-        writer = csv.writer(f)
-
-        header = []
-
-        if args.use_compound_names:
-            header.append('compound_names')
-
-        header.append('smiles')
-
-        if args.dataset_type == 'multiclass':
-            for name in args.task_names:
-                for i in range(args.multiclass_num_classes):
-                    header.append(name + '_class' + str(i))
-        else:
-            header.extend(args.task_names)
-        writer.writerow(header)
-
-        for i in range(len(avg_preds)):
-            row = []
-
-            if args.use_compound_names:
-                row.append(compound_names[i])
-
-            row.append(test_smiles[i])
-
-            if avg_preds[i] is not None:
-                if args.dataset_type == 'multiclass':
-                    for task_probs in avg_preds[i]:
-                        row.extend(task_probs)
-                else:
-                    row.extend(avg_preds[i])
-            else:
-                if args.dataset_type == 'multiclass':
-                    row.extend([''] * args.num_tasks * args.multiclass_num_classes)
-                else:
-                    row.extend([''] * args.num_tasks)
-
-            writer.writerow(row)
+     # Write predictions
+    if args.preds_path:
+        write_predictions(args, test_smiles, avg_preds, compound_names)
 
     return avg_preds

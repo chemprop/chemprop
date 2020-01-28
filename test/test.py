@@ -353,7 +353,8 @@ class TestPredict(unittest.TestCase):
     
     def tearDown(self):
         self.temp_dir.cleanup()
-        os.remove(self.args.preds_path)
+        if os.path.exists(self.args.preds_path):
+            os.remove(self.args.preds_path)
         self.args = None
         clear_cache()
     
