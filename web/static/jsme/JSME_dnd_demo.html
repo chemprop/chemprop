@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- The DOCTYPE declaration above will set the     -->
+<!-- browser's rendering engine into                -->
+<!-- "Standards Mode". Replacing this declaration   -->
+<!-- with a "Quirks Mode" doctype is not supported. -->
+
+<html><head>
+<script type="text/javascript" language="javascript" src="jsme/jsme.nocache.js"></script>
+ <script>
+    function jsmeOnLoad() {
+     	document.JME1 = new JSApplet.JSME("JME1", "420px", "315px", {
+     		"options" : "noquery,polarnitro,nocanonize,oldlook"
+     	});
+     	document.JME2 = new JSApplet.JSME("JME2", "420px", "315px", {
+     		"options" : "noquery,polarnitro,nocanonize,oldlook"
+     	});
+
+    }
+</script>
+</head><body>
+ 
+<H1>JSME drag and drop</H1>
+If drag and drop is supported by your browser, an icon will be displayed at the bottom right of the editor.
+
+
+
+
+<div id="JME1"></div>
+<div id="JME2"></div>
+
+<H3>Testing the DnD capabilities of JSME:</H3>
+<ol>
+<li>Draw a structure on the top editor </li>
+<li>Drag it out and drop it on the surface of the bottom editor</li>
+<li>Drag it out and drop it on your computer local file system to save it (does not work in Windows)</li>
+<li>Drag it out and drop it on the window of another program, e.g. text editor</li>
+<li>Drag a MOL or SDF file from your computer local file system and drop it on to the bottom or top editor
+</ol>
+
+Does not work yet on iPad 4 and Android devices.
+ </body></html>
+
+
+
+
+
+ 
