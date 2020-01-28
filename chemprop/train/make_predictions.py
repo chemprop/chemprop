@@ -131,10 +131,6 @@ def make_predictions(args: Namespace, smiles: List[str] = None, return_variance:
         test_data.normalize_features(features_scaler)
 
     # Predict with each model individually and sum predictions
-    if args.dataset_type == 'multiclass':
-        sum_preds = np.zeros((len(test_data), args.num_tasks, args.multiclass_num_classes))
-    else:
-        sum_preds = np.zeros((len(test_data), args.num_tasks))
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     
     for ii, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
