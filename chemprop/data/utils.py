@@ -282,8 +282,10 @@ def split_data(data: MolPairDataset,
             train = train_val[:train_size]
             val = train_val[train_size:]
 
+            train, val = _assure_val_split(train, val, train_size, seed)
+
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
-    
+
     elif split_type == 'scaffold_balanced':
         raise NotImplementedError('not valid for pairs yet')
         # return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
@@ -298,10 +300,21 @@ def split_data(data: MolPairDataset,
         val = data[train_size:train_val_size]
         test = data[train_val_size:]
 
+        train, val = _assure_val_split(train, val, train_size, seed)
+
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')
+
+
+def _assure_val_split(train, val, train_size, seed):
+    while all(mol.targets[0]==0 for mol in val) or all(mol.targets[0]==1 for mol in val):
+        data = MolPairDataset(train+val)
+        data.shuffle(seed=seed)
+        train, val = data[:train_size], data[train_size:]
+    return train, val
+
 
 
 def get_class_sizes(data: MolPairDataset) -> List[List[float]]:
