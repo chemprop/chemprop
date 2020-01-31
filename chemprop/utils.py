@@ -90,6 +90,8 @@ def load_checkpoint(path: str,
         args = current_args
 
     args.cuda = cuda if cuda is not None else args.cuda
+    if hasattr(args, 'ops') is False:  # if doesn't exist, then old model version with concat only
+        args.ops = 'concat'
 
     # Build model
     model = build_model(args)

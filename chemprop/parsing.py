@@ -46,6 +46,9 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--config_path', type=str,
                         help='Path to a .json file containing arguments. Any arguments present in the config'
                              'file will override arguments specified via the command line or by the defaults.')
+    parser.add_argument('--ops', type=str, default='concat',
+                        choices=['plus', 'minus', 'concat'],
+                        help='Operation for embeddings')
 
 
 def add_train_args(parser: ArgumentParser):
