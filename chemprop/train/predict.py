@@ -1,4 +1,6 @@
 from typing import List
+import csv
+import os
 
 import torch
 import torch.nn as nn
@@ -49,3 +51,29 @@ def predict(model: nn.Module,
         preds.extend(batch_preds)
 
     return preds
+
+def save_predictions(save_dir: str,
+                     train_data: MolPairDataset,
+                     val_data: MolPairDataset,
+                     test_data: MolPairDataset,
+                     train_preds: List[List[float]],
+                     val_preds: List[List[float]],
+                     train_preds: List[List[float]]) -> None:
+    """
+    Saves predictions to csv file for entire model.
+    """
+    with open(os.path.join(save_dir, 'preds.csv'), 'w') as f:
+        writer = csv.writer(f)
+        header = ['drugSMILE', 'cmpdSMILE', 'split', 'truth', 'pred']
+        writer.writerow(header)
+
+        splits = ['train', 'val', 'test']
+        dataSplits = [train_data, val_data, test_data]
+        predSplits = [train_preds, val_preds, test_preds]
+        for k, split in enumerate(splits):
+            smiles = dataSplits[k].smiles()
+            targets = dataSplits[k].targets()
+            preds = predSplits[k]
+            for i in range(len(train_data)):
+                row = [smiles[i][0], smiles[i][1], split, targets[i][0], preds[i][0]]
+                writer.writerow(row)

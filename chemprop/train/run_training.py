@@ -13,7 +13,7 @@ import pickle
 from torch.optim.lr_scheduler import ExponentialLR
 
 from .evaluate import evaluate, evaluate_predictions
-from .predict import predict
+from .predict import predict, save_predictions
 from .train import train
 from chemprop.data import StandardScaler
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
@@ -226,13 +226,18 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
-        
+
         test_preds = predict(
             model=model,
             data=test_data,
             batch_size=args.batch_size,
             scaler=scaler
         )
+        if args.save_preds:
+            val_preds = predict(model=model, data=val_data, batch_size=args.batch_size, scaler=scaler)
+            train_preds = predict(model=model, data=train_data, batch_size=args.batch_size, scaler=scaler)
+            save_predictions(save_dir, train_data, val_data, test_data, train_preds, val_preds, train_preds)
+
         test_scores = evaluate_predictions(
             preds=test_preds,
             targets=test_targets,

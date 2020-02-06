@@ -137,7 +137,7 @@ class MolPairDataset(Dataset):
 
         return [d.compound_name for d in self.data]
 
-    def smiles(self) -> List[str]:
+    def smiles(self) -> List[Tuple[str, str]]:
         """
         Returns the smiles strings associated with the molecules.
 
