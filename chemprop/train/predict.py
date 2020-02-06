@@ -58,7 +58,7 @@ def save_predictions(save_dir: str,
                      test_data: MolPairDataset,
                      train_preds: List[List[float]],
                      val_preds: List[List[float]],
-                     train_preds: List[List[float]]) -> None:
+                     test_preds: List[List[float]]) -> None:
     """
     Saves predictions to csv file for entire model.
     """
@@ -74,6 +74,6 @@ def save_predictions(save_dir: str,
             smiles = dataSplits[k].smiles()
             targets = dataSplits[k].targets()
             preds = predSplits[k]
-            for i in range(len(train_data)):
+            for i in range(len(smiles)):
                 row = [smiles[i][0], smiles[i][1], split, targets[i][0], preds[i][0]]
                 writer.writerow(row)
