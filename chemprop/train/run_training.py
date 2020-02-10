@@ -195,9 +195,10 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             )
             if isinstance(scheduler, ExponentialLR):
                 scheduler.step()
-            val_scores = evaluate(
+            val_scores, val_loss = evaluate(
                 model=model,
                 data=val_data,
+                loss_func=loss_func,
                 num_tasks=args.num_tasks,
                 metric_func=metric_func,
                 batch_size=args.batch_size,
@@ -210,6 +211,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             avg_val_score = np.nanmean(val_scores)
             debug(f'Validation {args.metric} = {avg_val_score:.6f}')
             writer.add_scalar(f'validation_{args.metric}', avg_val_score, n_iter)
+
+            debug(f'Validation loss = {val_loss:.6f}')
+            writer.add_scalar(f'validation_loss', val_loss, n_iter)
 
             if args.show_individual_scores:
                 # Individual validation scores

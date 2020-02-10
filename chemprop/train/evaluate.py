@@ -1,10 +1,54 @@
 import logging
-from typing import Callable, List
+from typing import Callable, List, Union
 
 import torch.nn as nn
 
 from .predict import predict
 from chemprop.data import MolPairDataset, StandardScaler
+
+
+def val_loss(model: nn.Module,
+             data: Union[MolPairDataset, List[MolPairDataset]],
+             loss_func: Callable,
+             batch_size: int,
+             dataset_type: str) -> int:
+    """
+    Gets validation loss for an epoch.
+    :param model: Model.
+    :param data: A MolPairDataset (or a list of MolPairDatasets if using more).
+    :param loss_func: Loss function.
+    :param batch_size: Batch size.
+    :param dataset_type: Dataset type.
+    :return: loss on validation set.
+    """
+    model.train()
+    data.shuffle()
+    loss_sum, total_num = 0, 0
+
+    for i in range(0, len(data), batch_size):
+        mol_batch = MolPairDataset(data[i:i + batch_size])
+        smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
+        batch = smiles_batch
+        mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
+        targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+
+        if next(model.parameters()).is_cuda:
+            mask, targets = mask.cuda(), targets.cuda()
+
+        # Run model
+        model.zero_grad()
+        with torch.no_grad():
+            preds = model(batch, features_batch)
+
+            if dataset_type == 'multiclass':
+                targets = targets.long()
+                loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * mask
+            else:
+                loss = loss_func(preds, targets) * mask
+            loss_sum += loss.sum().item()
+            total_num += mask.sum()
+
+    return loss_sum/total_num
 
 
 def evaluate_predictions(preds: List[List[float]],
@@ -69,6 +113,7 @@ def evaluate_predictions(preds: List[List[float]],
 
 def evaluate(model: nn.Module,
              data: MolPairDataset,
+             loss_func: Callable,
              num_tasks: int,
              metric_func: Callable,
              batch_size: int,
@@ -80,6 +125,7 @@ def evaluate(model: nn.Module,
 
     :param model: A model.
     :param data: A MolPairDataset.
+    :param loss_func: Loss function.
     :param num_tasks: Number of tasks.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param batch_size: Batch size.
@@ -88,6 +134,8 @@ def evaluate(model: nn.Module,
     :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
+    loss = val_loss(model, data, loss_func, batch_size, dataset_type)
+
     preds = predict(
         model=model,
         data=data,
@@ -106,4 +154,4 @@ def evaluate(model: nn.Module,
         logger=logger
     )
 
-    return results
+    return results, loss
