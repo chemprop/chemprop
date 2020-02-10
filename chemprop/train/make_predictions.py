@@ -49,6 +49,7 @@ def write_predictions(args: Namespace, preds: List[List[float]], smiles: Molecul
     :param args: preds Predictions for each molecule (averaged over the ensemble)
     :param args: smiles SMILES for the predicted molecules
     """
+    preds = preds.tolist()
     with open(args.preds_path, 'w') as f:
         writer = csv.writer(f)
 
@@ -152,10 +153,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None, return_variance:
             v = v + (x - _m) * (x - m)
             assert m.shape == x.shape
             assert v.shape == x.shape
-    
-    # Ensemble predictions
-    avg_preds = m
-    avg_preds = avg_preds.tolist()
+    avg_preds, var_preds = m, v    
 
     # Save predictions
     assert len(test_data) == len(avg_preds)
@@ -169,6 +167,6 @@ def make_predictions(args: Namespace, smiles: List[str] = None, return_variance:
         write_predictions(args, test_smiles, avg_preds, compound_names)
     
     if return_variance:
-        return avg_preds, v
+        return avg_preds, var_preds
     else:
         return avg_preds
