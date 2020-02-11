@@ -1,9 +1,11 @@
 from argparse import Namespace
+from typing import List
 
 import torch
 import torch.nn as nn
 
 from .mpn import MPN
+from .embed import Embedding
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
 
@@ -25,6 +27,17 @@ class MoleculeModel(nn.Module):
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
         assert not (self.classification and self.multiclass)
+
+    def init_embeddings(self, args: Namespace, drug_set: List[str], cmpd_set: List[str]):
+        """
+        Creates and initializes the independent embedding layer for the model.
+
+        :param args: Arguments.
+        :param drug_set: Set of unique drug compounds.
+        :param cmpd_set: Set of unique cmpd compounds.
+        """
+        self.drug_encoder = Embedding(args, drug_set) if not args.cmpd_only else None
+        self.cmpd_encoder = Embedding(args, cmpd_set) if not args.drug_only else None
 
     def create_encoder(self, args: Namespace):
         """
@@ -85,6 +98,7 @@ class MoleculeModel(nn.Module):
         # Create FFN model
         self.ffn = nn.Sequential(*ffn)
 
+
     def forward(self, *input):
         """
         Runs the MoleculeModel on input.
@@ -101,6 +115,7 @@ class MoleculeModel(nn.Module):
         if self.cmpd_encoder:
             learned_cmpd = self.cmpd_encoder([x[1] for x in smiles], [x[1] for x in feats])
             newInput.append(learned_cmpd)
+        return newInput
 
         assert len(newInput) != 0
 
@@ -127,9 +142,11 @@ class MoleculeModel(nn.Module):
         return output
 
 
-def build_model(args: Namespace) -> nn.Module:
+def build_model(args: Namespace,
+        drug_set: List[str] = None,
+        cmpd_set: List[str] = None) -> nn.Module:
     """
-    Builds a MoleculeModel, which is a message passing neural network + feed-forward layers.
+    Builds a MoleculeModel, which is a message passing neural network + feed-forward layers. If smiles sets are provided, then independent embeddings replace the MPNN.
 
     :param args: Arguments.
     :return: A MoleculeModel containing the MPN encoder along with final linear layers with parameters initialized.
@@ -140,9 +157,11 @@ def build_model(args: Namespace) -> nn.Module:
         args.output_size *= args.multiclass_num_classes
 
     model = MoleculeModel(classification=args.dataset_type == 'classification', multiclass=args.dataset_type == 'multiclass')
-    model.create_encoder(args)
     model.create_ffn(args)
 
-    initialize_weights(model)
-
-    return model
+    if args.embedding:
+        initialize_weights(model)  # initialize xavier for ffn and uniform for embeddings
+        model.init_embeddings(args, drug_set, cmpd_set)
+    else:
+        model.create_encoder(args)
+        initialize_weights(model)  # initialize xavier for both

@@ -16,7 +16,7 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict, save_predictions
 from .train import train
 from chemprop.data import StandardScaler
-from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
+from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data, get_smiles_sets
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
@@ -50,6 +50,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
     debug(f'Number of tasks = {args.num_tasks}')
+    # Set up drug/cmpd sets if using embedding layer
+    drug_set, cmpd_set = get_smiles_sets(data) if args.embedding else None, None
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')
@@ -159,7 +161,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model = load_checkpoint(args.checkpoint_paths[model_idx], current_args=args, logger=logger)
         else:
             debug(f'Building model {model_idx}')
-            model = build_model(args)
+            model = build_model(args, drug_set, cmpd_set)
 
         debug(model)
         debug(f'Number of parameters = {param_count(model):,}')
