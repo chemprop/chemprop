@@ -51,7 +51,8 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     args.features_size = data.features_size()
     debug(f'Number of tasks = {args.num_tasks}')
     # Set up drug/cmpd sets if using embedding layer
-    drug_set, cmpd_set = get_smiles_sets(data) if args.embedding else None, None
+    if args.embedding:
+        drug_set, cmpd_set = get_smiles_sets(data)
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')
@@ -161,7 +162,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             model = load_checkpoint(args.checkpoint_paths[model_idx], current_args=args, logger=logger)
         else:
             debug(f'Building model {model_idx}')
-            model = build_model(args, drug_set, cmpd_set)
+            model = build_model(args, drug_set, cmpd_set) if args.embedding else build_model(args)
 
         debug(model)
         debug(f'Number of parameters = {param_count(model):,}')

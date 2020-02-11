@@ -204,7 +204,7 @@ def get_smiles_sets(data: MolPairDataset) -> Tuple[List[str], List[str]]:
     :param data: A MolPairDataset.
     """
     drug, cmpd = zip(*data.smiles())
-    return list(set(drug)), list(set(cmpd))
+    return (list(set(drug)), list(set(cmpd)))
 
 def split_data(data: MolPairDataset,
                split_type: str = 'random',

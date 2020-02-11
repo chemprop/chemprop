@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import List
+from typing import Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -28,7 +28,9 @@ class MoleculeModel(nn.Module):
             self.multiclass_softmax = nn.Softmax(dim=2)
         assert not (self.classification and self.multiclass)
 
-    def init_embeddings(self, args: Namespace, drug_set: List[str], cmpd_set: List[str]):
+    def init_embeddings(self, args: Namespace,
+            drug_set: Union[Dict[str, int], List[str]],
+            cmpd_set: Union[Dict[str, int], List[str]]):
         """
         Creates and initializes the independent embedding layer for the model.
 
@@ -36,8 +38,11 @@ class MoleculeModel(nn.Module):
         :param drug_set: Set of unique drug compounds.
         :param cmpd_set: Set of unique cmpd compounds.
         """
-        self.drug_encoder = Embedding(args, drug_set) if not args.cmpd_only else None
-        self.cmpd_encoder = Embedding(args, cmpd_set) if not args.drug_only else None
+        if type(drug_set) == list:
+            drug_set = {x: i for i, x in enumerate(drug_set)}
+            cmpd_set = {x: i for i, x in enumerate(cmpd_set)}
+        self.drug_encoder = Embedding(args, drug_set)
+        self.cmpd_encoder = Embedding(args, cmpd_set)
 
     def create_encoder(self, args: Namespace):
         """
@@ -115,7 +120,6 @@ class MoleculeModel(nn.Module):
         if self.cmpd_encoder:
             learned_cmpd = self.cmpd_encoder([x[1] for x in smiles], [x[1] for x in feats])
             newInput.append(learned_cmpd)
-        return newInput
 
         assert len(newInput) != 0
 
@@ -143,8 +147,8 @@ class MoleculeModel(nn.Module):
 
 
 def build_model(args: Namespace,
-        drug_set: List[str] = None,
-        cmpd_set: List[str] = None) -> nn.Module:
+        drug_set: Union[Dict[str, int], List[str]] = None,
+        cmpd_set: Union[Dict[str, int], List[str]] = None) -> nn.Module:
     """
     Builds a MoleculeModel, which is a message passing neural network + feed-forward layers. If smiles sets are provided, then independent embeddings replace the MPNN.
 
@@ -165,3 +169,5 @@ def build_model(args: Namespace,
     else:
         model.create_encoder(args)
         initialize_weights(model)  # initialize xavier for both
+
+    return model

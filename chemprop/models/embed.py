@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import List
+from typing import Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,7 @@ class Embedding(nn.Module):
 
     def __init__(self,
                  args: Namespace,
-                 smiles_set: List[str]):
+                 smiles_map: Dict[str, int]):
         """
         Initializes the MPN.
 
@@ -20,13 +20,13 @@ class Embedding(nn.Module):
         :param bond_fdim: Bond features dimension.
         :param graph_input: If true, expects BatchMolGraph as input. Otherwise expects a list of smiles strings as input.
         """
-        super(MPN, self).__init__()
+        super(Embedding, self).__init__()
         self.cuda = args.cuda
         self.use_input_features = args.use_input_features
 
-        self.map = [x: i for i, x in enumerate(smiles_set)]
+        self.map = smiles_map
         self.encoder = nn.Embedding(len(self.map), args.hidden_size)
-        self.encoder.weight.data.uniform(-0.001, 0.001)
+        self.encoder.weight.data.uniform_(-0.001, 0.001)
 
     def forward(self,
                 batch: List[str],
@@ -38,7 +38,9 @@ class Embedding(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        batch = torch.Tensor([self.map[x] for x in batch])
+        batch = torch.as_tensor([self.map[x] for x in batch], dtype=torch.long)
+        if self.cuda:
+            batch = batch.cuda()
         mol_vecs = self.encoder(batch)
 
         if self.use_input_features:
@@ -49,4 +51,5 @@ class Embedding(nn.Module):
             if len(features_batch.shape) == 1:
                 features_batch = features_batch.view([1,features_batch.shape[0]])
             mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
-        return output
+
+        return mol_vecs
