@@ -158,6 +158,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Maximum learning rate')
     parser.add_argument('--final_lr', type=float, default=1e-4,
                         help='Final learning rate')
+    parser.add_argument('--grad_clip', type=float, default=0, help='Clips grad norm if set')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
     parser.add_argument('--train_all', action='store_true', default=False,

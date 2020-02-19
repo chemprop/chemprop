@@ -81,6 +81,8 @@ def train(model: nn.Module,
         iter_count += len(mol_batch)
 
         loss.backward()
+        if args.grad_clip:
+            nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()
 
         if isinstance(scheduler, NoamLR):
