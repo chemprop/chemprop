@@ -186,8 +186,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of layers in FFN after MPN encoding')
     parser.add_argument('--atom_messages', action='store_true', default=False,
                         help='Use messages on atoms instead of messages on bonds')
-    parser.add_argument('--embedding', action='store_true', default=False,
-                        help='If true, uses independent embedding layer instead of MPN.')
 
     # Experiment
     parser.add_argument('--scale_lr', action='store_true', default=False,

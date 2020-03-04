@@ -64,11 +64,6 @@ def save_checkpoint(path: str,
             'stds': cmpd_scaler.stds
         } if cmpd_scaler is not None else None
     }
-
-    if args.embedding:
-        state['drug_map'] = model.drug_encoder.map
-        state['cmpd_map'] = model.cmpd_encoder.map
-
     torch.save(state, path)
 
 
@@ -90,9 +85,6 @@ def load_checkpoint(path: str,
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
     args, loaded_state_dict = state['args'], state['state_dict']
-    if args.embedding:
-        drug_map = state['drug_map']
-        cmpd_map = state['cmpd_map']
 
     if current_args is not None:
         args = current_args
@@ -102,7 +94,7 @@ def load_checkpoint(path: str,
         args.ops = 'concat'
 
     # Build model
-    model = build_model(args, drug_map, cmpd_map) if args.embedding else build_model(args)
+    model = build_model(args)
     model_state_dict = model.state_dict()
 
     # Skip missing parameters and parameters of mismatched size

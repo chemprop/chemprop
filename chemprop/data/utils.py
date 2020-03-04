@@ -197,15 +197,6 @@ def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, lo
     return data
 
 
-def get_smiles_sets(data: MolPairDataset) -> Tuple[List[str], List[str]]:
-    """
-    Extracts set of smiles seen in dataset.
-
-    :param data: A MolPairDataset.
-    """
-    drug, cmpd = zip(*data.smiles())
-    return (list(set(drug)), list(set(cmpd)))
-
 def split_data(data: MolPairDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
