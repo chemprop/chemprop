@@ -222,6 +222,13 @@ def split_data(data: MolPairDataset,
     if args is not None:
         folds_file, val_fold_index, test_fold_index = \
             args.folds_file, args.val_fold_index, args.test_fold_index
+        if split_type == 'loocv' and not val_fold_index:
+            assert sizes[1] == 0
+            random.seed(seed)
+            val_fold_index = random.randint(1, args.num_folds-1)
+            if val_fold_index == test_fold_index:
+                val_fold_index = 0
+
     else:
         folds_file = val_fold_index = test_fold_index = None
 
@@ -247,8 +254,7 @@ def split_data(data: MolPairDataset,
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
     elif split_type in ['predetermined', 'loocv']:
-        if not val_fold_index:
-            assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
+        assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
         assert folds_file is not None
         assert test_fold_index is not None
 
