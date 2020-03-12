@@ -1,5 +1,6 @@
 from argparse import Namespace
 import csv
+from collections import defaultdict
 from logging import Logger
 import pickle
 import random
@@ -312,6 +313,45 @@ def split_data(data: MolPairDataset,
 
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')
+
+
+def split_loocv(data: MolPairDataset,
+        args: Namespace = None,
+        logger: Logger = None) -> Tuple[MolPairDataset, MolPairDataset, MolPairDataset]:
+    debug = logger.debug if logger is not None else print
+
+    assert len(data[0].targets) == 1
+    test_fold_index = args.seed%args.num_folds
+
+    unique = defaultdict(list)
+    targets = defaultdict(set)
+    for pair in data:
+        unique[pair.drug_smiles].append(pair)
+        targets[pair.drug_smiles].add(pair.targets[0])
+
+    keys = list(sorted(unique.keys()))
+    test_key = keys[test_fold_index]
+    del keys[test_fold_index]
+    debug(f'Test split for {test_key}.')
+
+    for key in targets:
+        if len(targets[key]) == 1:
+            debug(f'No variety in targets: removing from splits {key}.')
+            if key != test_key:  # bc it would've already been removed
+                keys.remove(key)
+
+    random.seed(args.seed)
+    val_key = random.choice(keys)
+    keys.remove(val_key)
+    debug(f'Val split randomly selected as {val_key}.')
+
+    train = []
+    for key in keys:
+        train.extend(unique[key])
+
+    val = unique[val_key]
+    test = unique[test_key]
+    return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
 
 def _assure_val_split(train, val, train_size, seed):
