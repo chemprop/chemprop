@@ -223,12 +223,6 @@ def split_data(data: MolPairDataset,
     if args is not None:
         folds_file, val_fold_index, test_fold_index = \
             args.folds_file, args.val_fold_index, args.test_fold_index
-        if split_type == 'loocv' and not val_fold_index:
-            assert sizes[1] == 0
-            random.seed(seed)
-            val_fold_index = random.randint(1, args.num_folds-1)
-            if val_fold_index == test_fold_index:
-                val_fold_index = 0
 
     else:
         folds_file = val_fold_index = test_fold_index = None
@@ -254,7 +248,7 @@ def split_data(data: MolPairDataset,
         train, val, test = tuple(data_split)
         return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
-    elif split_type in ['predetermined', 'loocv']:
+    elif split_type == 'predetermined':
         assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
         assert folds_file is not None
         assert test_fold_index is not None
@@ -297,6 +291,9 @@ def split_data(data: MolPairDataset,
         raise NotImplementedError('not valid for pairs yet')
         # return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
+    elif split_type == 'loocv':
+        raise ValueError("Deprecated. Call loocv splitting.")
+
     elif split_type == 'random':
         data.shuffle(seed=seed)
 
@@ -317,7 +314,17 @@ def split_data(data: MolPairDataset,
 
 def split_loocv(data: MolPairDataset,
         args: Namespace = None,
-        logger: Logger = None) -> Tuple[MolPairDataset, MolPairDataset, MolPairDataset]:
+        logger: Logger = None,
+        val_size: int = 1) -> Tuple[MolPairDataset, MolPairDataset, MolPairDataset]:
+    """
+    Splits data into training, validation, and test splits.
+
+    :param data: A MolPairDataset.
+    :param args: Namespace of arguments.
+    :param logger: A logger.
+    :param val_size: Number of rows to select for validation set. Can be >= 0.
+    :return: A tuple containing the train, validation, and test splits of the data.
+    """
     debug = logger.debug if logger is not None else print
 
     assert len(data[0].targets) == 1
@@ -329,27 +336,32 @@ def split_loocv(data: MolPairDataset,
         unique[pair.drug_smiles].append(pair)
         targets[pair.drug_smiles].add(pair.targets[0])
 
+    # Select test split
     keys = list(sorted(unique.keys()))
     test_key = keys[test_fold_index]
     del keys[test_fold_index]
     debug(f'Test split for {test_key}.')
 
+    # Remove invalid candidates for val splits
     for key in targets:
         if len(targets[key]) == 1:
             debug(f'No variety in targets: removing from splits {key}.')
             if key != test_key:  # bc it would've already been removed
                 keys.remove(key)
 
+    # Select val split
     random.seed(args.seed)
-    val_key = random.choice(keys)
-    keys.remove(val_key)
-    debug(f'Val split randomly selected as {val_key}.')
+    val = []
+    for num in range(val_size):
+        val_key = random.choice(keys)
+        val.extend( unique[val_key] )
+        keys.remove(val_key)
+        debug(f'Val split randomly selected as {val_key}.')
 
     train = []
     for key in keys:
         train.extend(unique[key])
 
-    val = unique[val_key]
     test = unique[test_key]
     return MolPairDataset(train), MolPairDataset(val), MolPairDataset(test)
 
