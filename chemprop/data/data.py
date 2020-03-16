@@ -3,8 +3,9 @@ import random
 from typing import Callable, List, Tuple, Union
 
 import numpy as np
-from torch.utils.data.dataset import Dataset
+from collections import defaultdict
 from rdkit import Chem
+from torch.utils.data.dataset import Dataset
 
 from .scaler import StandardScaler
 from chemprop.features import get_features_generator
@@ -192,7 +193,7 @@ class MolPairDataset(Dataset):
             return None
         if self.data[0].drug_feats is None and self.data[0].cmpd_feats is None:
             return None
-        
+
         drug_dim, cmpd_dim = 0, 0
         if self.data[0].drug_feats is not None:
             drug_dim = len(self.data[0].drug_feats)
@@ -285,3 +286,82 @@ class MolPairDataset(Dataset):
         :return: A MoleculeDatapoint if an int is provided or a list of MoleculeDatapoints if a slice is provided.
         """
         return self.data[item]
+
+
+class ContrastMolPairDataset(MolPairDataset):
+    """A ContrastMolPairDataset contains a list of molecule pairs and their associated features, context, and targets."""
+
+    def __init__(self, data: List[MolPairDatapoint], sample_ratio: int, seed: int):
+        """
+        Initializes a ContrastMolPairDataset, which contains a list of MolPairDatapoints (i.e. a list of molecules).
+
+        :param data: A list of MolPairDatapoints.
+        :param sample_ratio: Number of negative examples to sample per positive example.
+        :param seed: Random seed.
+        """
+        # Create lists of negative pairs indexed by drug and cmpd
+        self.neg_data = [defaultdict(list),defaultdict(list)]
+        for neg_pair in filter(lambda x: x.targets[0] == 0, data):
+            self.neg_data[0][neg_pair.drug_smiles].append(neg_pair)
+            self.neg_data[1][neg_pair.cmpd_smiles].append(neg_pair)
+
+        # Only include those that have negative pairs to compare against
+        self.pos_data = []
+        for pos_pair in filter(lambda x: x.targets[0] == 1, data):
+            if len(self.neg_data[1][pos_pair.cmpd_smiles]) > 0:
+                self.pos_data.append( (pos_pair, 1) )
+            if len(self.neg_data[0][pos_pair.drug_smiles]) > 0:
+                self.pos_data.append( (pos_pair, 0) )
+        # Need to shuffle order again to separate 0/1's and neg sample correlations.
+        # External shuffle needed to make sure internal seeded shuffle is effective across epochs.
+        self.shuffle(seed)
+
+    # Self note: no need to impelment any more than the basics since it gets converted back to MolPairDataset anyways
+
+    def shuffle(self, seed: int):
+        """
+        Shuffles the dataset.
+
+        :param seed: Optional random seed.
+        """
+        random.seed(seed)
+        random.shuffle(self.pos_data)
+        for key in self.neg_data[0]:
+            random.shuffle(self.neg_data[0][key])
+        for key in self.neg_data[1]:
+            random.shuffle(self.neg_data[1][key])
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the dataset (i.e. the number of molecules).
+
+        :return: The length of the dataset.
+        """
+        return len(self.pos_data)
+
+    def __getitem__(self, item) -> Union[MolPairDatapoint, List[MolPairDatapoint]]:
+        """
+        Gets one or more MoleculeDatapoints via an index or slice.
+
+        :param item: An index (int) or a slice object.
+        :return: A MoleculeDatapoint if an int is provided or a list of MoleculeDatapoints if a slice is provided.
+        """
+        retBatch = []
+        iterate = self.pos_data[item]
+        if type(item) == int:  # Handles case where you want to just query one point
+            iterate = [iterate]
+
+        for pos_pair, ind in iterate:  # Take slice of pos_data list.
+            retBatch.append(pos_pair)
+            query = pos_pair.cmpd_smiles if ind else pos_pair.drug_smiles
+
+            neg_samples = self.neg_data[ind][query]
+            retBatch.extend(neg_samples)
+        return retBatch
+
+
+def convert2contrast(dataset: MolPairDataset) -> ContrastMolPairDataset:
+    if dataset.num_tasks() != 1:
+        raise ValueError("Ambiguous conversion if more than one property.")
+    args = dataset.args
+    return ContrastMolPairDataset(dataset, args.sample_ratio, args.seed)
