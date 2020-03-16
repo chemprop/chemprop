@@ -4,8 +4,9 @@ from typing import Callable, List, Union
 import torch
 import torch.nn as nn
 
+from .loss_funcs import ContrastiveLoss
 from .predict import predict
-from chemprop.data import MolPairDataset, StandardScaler
+from chemprop.data import  convert2contrast, MolPairDataset, StandardScaler
 
 
 def val_loss(model: nn.Module,
@@ -24,14 +25,19 @@ def val_loss(model: nn.Module,
     """
     model.train()
     data.shuffle()
+    if type(loss_func) == ContrastiveLoss:
+        data = convert2contrast(data)
     loss_sum, total_num = 0, 0
 
     for i in range(0, len(data), batch_size):
         mol_batch = MolPairDataset(data[i:i + batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
         batch = smiles_batch
-        mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+        if type(loss_func) == ContrastiveLoss:
+            mask = targets
+        else:
+            mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
 
         if next(model.parameters()).is_cuda:
             mask, targets = mask.cuda(), targets.cuda()

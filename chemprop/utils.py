@@ -14,6 +14,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from chemprop.data import StandardScaler
 from chemprop.models import build_model, MoleculeModel
 from chemprop.nn_utils import NoamLR
+from chemprop.train.loss_funcs import ContrastiveLoss
 
 
 def makedirs(path: str, isfile: bool = False):
@@ -170,16 +171,28 @@ def get_loss_func(args: Namespace) -> nn.Module:
     :param args: Namespace containing the dataset type ("classification" or "regression").
     :return: A PyTorch loss function.
     """
-    if args.dataset_type == 'classification':
-        return nn.BCEWithLogitsLoss(reduction='none')
+    if args.loss_func == 'default':
+        if args.dataset_type == 'classification':
+            return nn.BCEWithLogitsLoss(reduction='none')
+        elif args.dataset_type == 'regression':
+            return nn.MSELoss(reduction='none')
+        elif args.dataset_type == 'multiclass':
+            return nn.CrossEntropyLoss(reduction='none')
+        else:
+            raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
+    elif args.loss_func == 'contrastive':
+        return ContrastiveLoss()
 
-    if args.dataset_type == 'regression':
-        return nn.MSELoss(reduction='none')
-    
-    if args.dataset_type == 'multiclass':
-        return nn.CrossEntropyLoss(reduction='none')
 
-    raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
+def output_raw(args: Namespace) -> bool:
+    """
+    Gets if model should return raw score based on dataset type and loss func settings.
+
+    :param args: Namespace.
+    :return: If model should return score before (True) or after activation.
+    """
+    loss_type = type(get_loss_func(args))
+    return loss_type == nn.BCEWithLogitsLoss or loss_type == nn.CrossEntropyLoss
 
 
 def prc_auc(targets: List[int], preds: List[float]) -> float:

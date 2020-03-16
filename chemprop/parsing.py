@@ -6,7 +6,7 @@ import pickle
 
 import torch
 
-from chemprop.utils import makedirs
+from chemprop.utils import makedirs, output_raw
 from chemprop.features import get_available_features_generators
 
 
@@ -91,6 +91,8 @@ def add_train_args(parser: ArgumentParser):
                         choices=['classification', 'regression', 'multiclass'],
                         help='Type of dataset, e.g. classification or regression.'
                              'This determines the loss function used during training.')
+    parser.add_argument('--loss_func', type=str, default='default',
+                        choices=['default', 'contrastive'], help='Type of loss function to use')
     parser.add_argument('--multiclass_num_classes', type=int, default=3,
                         help='Number of classes when running multiclass classification')
     parser.add_argument('--separate_val_path', type=str,
@@ -148,6 +150,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=50,
                         help='Batch size')
+    parser.add_argument('--sample_ratio', type=int, default=50, help='Neg2pos ratio for contrastive loss.')
     parser.add_argument('--warmup_epochs', type=float, default=2.0,
                         help='Number of epochs during which learning rate increases linearly from'
                              'init_lr to max_lr. Afterwards, learning rate decreases exponentially'
@@ -349,6 +352,8 @@ def modify_train_args(args: Namespace):
             args.crossval_index_sets = pickle.load(rf)
         args.num_folds = len(args.crossval_index_sets)
         args.seed = 0
+
+    args.output_raw = output_raw(args)
 
     if args.test:
         args.epochs = 0

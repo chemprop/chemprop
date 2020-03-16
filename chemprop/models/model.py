@@ -10,21 +10,17 @@ from chemprop.nn_utils import get_activation_function, initialize_weights
 class MoleculeModel(nn.Module):
     """A MoleculeModel is a model which contains a message passing network following by feed-forward layers."""
 
-    def __init__(self, classification: bool, multiclass: bool):
+    def __init__(self, output_raw: bool):
         """
         Initializes the MoleculeModel.
 
-        :param classification: Whether the model is a classification model.
+        :param raw_score: Whether the model should apply activation to output.
         """
         super(MoleculeModel, self).__init__()
 
-        self.classification = classification
-        if self.classification:
-            self.sigmoid = nn.Sigmoid()
-        self.multiclass = multiclass
-        if self.multiclass:
-            self.multiclass_softmax = nn.Softmax(dim=2)
-        assert not (self.classification and self.multiclass)
+        self.activation = nn.Identity()
+        if output_raw:
+            self.activation = nn.Sigmoid()
 
     def create_encoder(self, args: Namespace):
         """
@@ -117,12 +113,8 @@ class MoleculeModel(nn.Module):
         output = self.ffn(newInput)
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
-        if self.classification and not self.training:
-            output = self.sigmoid(output)
-        if self.multiclass:
-            output = output.reshape((output.size(0), -1, self.num_classes)) # batch size x num targets x num classes per target
-            if not self.training:
-                output = self.multiclass_softmax(output) # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
+        if not self.training:
+            output = self.activation(output)
 
         return output
 
@@ -137,9 +129,9 @@ def build_model(args: Namespace) -> nn.Module:
     output_size = args.num_tasks
     args.output_size = output_size
     if args.dataset_type == 'multiclass':
-        args.output_size *= args.multiclass_num_classes
+        raise NotImplementedError
 
-    model = MoleculeModel(classification=args.dataset_type == 'classification', multiclass=args.dataset_type == 'multiclass')
+    model = MoleculeModel(output_raw=args.output_raw)
     model.create_encoder(args)
     model.create_ffn(args)
 

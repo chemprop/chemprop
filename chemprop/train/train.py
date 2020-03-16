@@ -1,6 +1,6 @@
 from argparse import Namespace
 import logging
-from typing import Callable, List, Union
+from typing import Callable, List
 
 from tensorboardX import SummaryWriter
 import torch
@@ -9,12 +9,12 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import trange
 
-from chemprop.data import MolPairDataset
+from chemprop.data import MolPairDataset, convert2contrast
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
 def train(model: nn.Module,
-          data: Union[MolPairDataset, List[MolPairDataset]],
+          data: MolPairDataset,
           loss_func: Callable,
           optimizer: Optimizer,
           scheduler: _LRScheduler,
@@ -37,13 +37,15 @@ def train(model: nn.Module,
     :return: The total number of iterations (training examples) trained on so far.
     """
     debug = logger.debug if logger is not None else print
-    
+
     model.train()
-    
-    data.shuffle()
+
+    data.shuffle()  # Very important this is done before conversion to maintain randomness in contrastive dataset.
 
     loss_sum, iter_count = 0, 0
 
+    if args.loss_func == 'contrastive':
+        data = convert2contrast(data)
     num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
 
     iter_size = args.batch_size
@@ -55,8 +57,11 @@ def train(model: nn.Module,
         mol_batch = MolPairDataset(data[i:i + args.batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
         batch = smiles_batch
-        mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+        if args.loss_func == 'contrastive':
+            mask = targets
+        else:
+            mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
 
         if next(model.parameters()).is_cuda:
             mask, targets = mask.cuda(), targets.cuda()
@@ -78,7 +83,7 @@ def train(model: nn.Module,
         loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
-        iter_count += len(mol_batch)
+        iter_count += 1
 
         loss.backward()
         if args.grad_clip:
@@ -88,7 +93,7 @@ def train(model: nn.Module,
         if isinstance(scheduler, NoamLR):
             scheduler.step()
 
-        n_iter += len(mol_batch)
+        n_iter += args.batch_size
 
         # Log and/or add to tensorboard
         if (n_iter // args.batch_size) % args.log_frequency == 0:
