@@ -153,6 +153,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Final learning rate')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
+    parser.add_argument('--class_balance', action='store_true', default=False,
+                        help='Use weights to balance classes within mini-batches during training')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -279,6 +281,9 @@ def modify_train_args(args: Namespace):
             (args.dataset_type == 'regression' and args.metric in ['rmse', 'mae', 'mse', 'r2']) or
             (args.dataset_type == 'multiclass' and args.metric in ['cross_entropy', 'accuracy'])):
         raise ValueError(f'Metric "{args.metric}" invalid for dataset type "{args.dataset_type}".')
+
+    if args.class_balance:
+        assert args.dataset_type == 'classification'
 
     args.minimize_score = args.metric in ['rmse', 'mae', 'mse', 'cross_entropy']
 

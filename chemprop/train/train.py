@@ -66,6 +66,13 @@ def train(model: nn.Module,
         if args.cuda:
             class_weights = class_weights.cuda()
 
+        if args.class_balance:
+            assert targets.shape[1] == 1  # only works for single class classification
+            n0 = sum(x == 0 for tb in target_batch for x in tb)
+            n1 = sum(x == 1 for tb in target_batch for x in tb)
+            w0, w1 = 1 / (2 * n0), 1 / (2 * n1)  # equivalent to 1/2 * avg(loss for class 0) + 1/2 * avg(loss for class 1)
+            class_weights[targets == 0], class_weights[targets == 1] = w0, w1
+
         # Run model
         model.zero_grad()
         preds = model(batch, features_batch)
