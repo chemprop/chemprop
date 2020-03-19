@@ -44,8 +44,6 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
 
-    num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
-
     iter_size = args.batch_size
 
     if args.class_balance:
@@ -74,6 +72,8 @@ def train(model: nn.Module,
             neg_index += len(new_neg)
 
         data = new_data
+
+    num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
 
     for i in trange(0, num_iters, iter_size):
         # Prepare batch
