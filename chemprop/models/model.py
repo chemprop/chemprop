@@ -2,6 +2,7 @@ from argparse import Namespace
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from .mpn import MPN
 from chemprop.nn_utils import get_activation_function, initialize_weights
@@ -10,17 +11,19 @@ from chemprop.nn_utils import get_activation_function, initialize_weights
 class MoleculeModel(nn.Module):
     """A MoleculeModel is a model which contains a message passing network following by feed-forward layers."""
 
-    def __init__(self, output_raw: bool):
+    def __init__(self, output_raw: bool, use_cuda: bool):
         """
         Initializes the MoleculeModel.
 
         :param raw_score: Whether the model should apply activation to output.
+        :param cuda: Whether or not to use cuda.
         """
         super(MoleculeModel, self).__init__()
 
         self.activation = nn.Identity()
         if output_raw:
             self.activation = nn.Sigmoid()
+        self.use_cuda = use_cuda
 
     def create_encoder(self, args: Namespace):
         """
@@ -45,7 +48,7 @@ class MoleculeModel(nn.Module):
         if args.features_only:
             first_linear_dim = args.features_size
         else:
-            first_linear_dim = args.hidden_size*2
+            first_linear_dim = args.hidden_size*2  # To account for 2 molecules
             if args.use_input_features:
                 first_linear_dim += args.features_dim
 
@@ -88,7 +91,7 @@ class MoleculeModel(nn.Module):
         :param input: Input.
         :return: The output of the MoleculeModel.
         """
-        smiles, feats = input
+        smiles, feats = input  # TODO: in future, move drug/cmpd feats out of MPN
 
         newInput = []
         if self.drug_encoder:
@@ -110,8 +113,13 @@ class MoleculeModel(nn.Module):
         else:
             newInput = newInput[0]
 
-        output = self.ffn(newInput)
+        # Incorporate pair features
+        features_batch = torch.from_numpy(np.array([x[2] for x in feats])).float()
+        if self.use_cuda:
+            features_batch = features_batch.cuda()
+        newInput = torch.cat((newInput, features_batch), dim=1) 
 
+        output = self.ffn(newInput)
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if not self.training:
             output = self.activation(output)
@@ -131,7 +139,7 @@ def build_model(args: Namespace) -> nn.Module:
     if args.dataset_type == 'multiclass':
         raise NotImplementedError
 
-    model = MoleculeModel(output_raw=args.output_raw)
+    model = MoleculeModel(output_raw=args.output_raw, use_cuda=args.cuda)
     model.create_encoder(args)
     model.create_ffn(args)
 

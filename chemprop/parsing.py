@@ -19,6 +19,8 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--gpu', type=int,
                         choices=list(range(torch.cuda.device_count())),
                         help='Which GPU to use')
+    parser.add_argument('--data_format', type=str, default=None,
+                        help='SSPFFFF example for 2 smiles, prop, followed by feats')
     parser.add_argument('--test_path', type=str,
                         help='Path to CSV file containing testing data for which predictions will be made')
     parser.add_argument('--use_compound_names', action='store_true', default=False,
@@ -61,8 +63,8 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--gpu', type=int,
                         choices=list(range(torch.cuda.device_count())),
                         help='Which GPU to use')
-    parser.add_argument('--data_path', type=str,
-                        help='Path to data CSV file')
+    parser.add_argument('--data_path', type=str, help='Path to data CSV file')
+    parser.add_argument('--data_format', type=str, help='SSPFFFF example for 2 smiles, prop, followed by feats')
     parser.add_argument('--use_compound_names', action='store_true', default=False,
                         help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--max_data_size', type=int,
@@ -75,7 +77,7 @@ def add_train_args(parser: ArgumentParser):
                         choices=get_available_features_generators(),
                         help='Method of generating additional features')
     parser.add_argument('--features_path', type=str, nargs='*',
-                        help='Path to features to use in FNN (instead of features_generator)')                   
+                        help='Path to features to use in FNN (instead of features_generator)')
     parser.add_argument('--save_dir', type=str, default=None,
                         help='Directory where model checkpoints will be saved')
     parser.add_argument('--save_smiles_splits', action='store_true', default=False,
@@ -325,6 +327,9 @@ def modify_train_args(args: Namespace):
         assert args.features_generator or args.features_path
 
     args.use_input_features = args.features_generator or args.features_path
+    if args.data_format:
+        assert args.data_format[:2] == 'SS'
+        args.use_input_features = args.use_input_features or 'F' in args.data_format
 
     if args.features_generator is not None and 'rdkit_2d_normalized' in args.features_generator:
         assert not args.features_scaling

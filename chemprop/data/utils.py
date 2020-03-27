@@ -120,11 +120,7 @@ def get_data(path: str,
     # Load features
     if features_path is not None:
         for feat_path in features_path:
-            features_data = load_features(feat_path)
-        # features_data = []
-        # for feat_path in features_path:
-            # features_data.append(load_features(feat_path))  # each is num_data x num_features
-        # features_data = np.concatenate(features_data, axis=1)
+            features_data = load_features(feat_path)  # Expect file to look like {SMILES: feats}
     else:
         features_data = None
 
@@ -166,9 +162,8 @@ def get_data(path: str,
         if len(data) < original_data_len:
             debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    feats_size = data.features_size()
-    if feats_size:
-        args.features_dim = feats_size
+    if args.use_input_features:
+        args.features_dim = data.features_size()
 
     return data
 

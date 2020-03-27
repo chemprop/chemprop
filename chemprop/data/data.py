@@ -82,20 +82,31 @@ class MolPairDatapoint:
             replace_token = 0
             self.cmpd_feats = np.where(np.isnan(self.cmpd_feats), replace_token, self.cmpd_feats) 
         # Create targets
-        self.targets = [float(x) if x != '' else None for x in line[2:]]
+        self.targets = []
+        self.pair_feats = []
+        for i in range(2, len(line)):
+            if line[i] == '':
+                continue
+            elif args.data_format is None or args.data_format[i] == 'P':
+                self.targets.append( float(line[i]) )
+            else:
+                self.pair_feats.append( float(line[i]) )
+
 
     def set_features(self, features: np.ndarray, mol: int):
         """
         Sets the features of the molecule.
 
         :param features: A 1-D numpy array of features for the molecule.
-        :param mol: An int identifying which molecules the features correpond to. 0 for drug, 1 for compound.
+        :param mol: An int identifying which molecules the features correpond to. 0 for drug, 1 for compound, 2 for pair
         """
-        assert (mol == 0 or mol == 1)
-        if mol:
+        assert (mol in [0,1,2])
+        if mol == 0:
             self.cmpd_feats = features
-        else:
+        elif mol == 1:
             self.drug_feats = features
+        else:
+            self.pair_feats = features
 
     def num_tasks(self) -> int:
         """
@@ -154,18 +165,16 @@ class MolPairDataset(Dataset):
         """
         return [(d.drug_mol, d.cmpd_mol) for d in self.data]
 
-    def features(self) -> List[Tuple[np.ndarray, np.ndarray]]:
+    def features(self) -> List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         """
         Returns the features associated with each molecule (if they exist).
 
         :return: A list of 1D numpy arrays containing the features for each molecule or None if there are no features.
         """
-        if len(self.data) == 0:
+        if len(self.data) == 0 or self.features_size() == 0:
             return None
-        # if self.data[0].drug_feats is None and self.data[0].cmpd_feats is None)
-        # TODO fix
 
-        return [(d.drug_feats, d.cmpd_feats) for d in self.data]
+        return [(d.drug_feats, d.cmpd_feats, d.pair_feats) for d in self.data]
 
     def targets(self) -> List[List[float]]:
         """
@@ -191,15 +200,13 @@ class MolPairDataset(Dataset):
         """
         if len(self.data) == 0:
             return None
-        if self.data[0].drug_feats is None and self.data[0].cmpd_feats is None:
-            return None
 
         drug_dim, cmpd_dim = 0, 0
-        if self.data[0].drug_feats is not None:
+        if self.data[0].drug_feats:
             drug_dim = len(self.data[0].drug_feats)
-        if self.data[0].cmpd_feats is not None:
+        if self.data[0].cmpd_feats:
             cmpd_dim = len(self.data[0].cmpd_feats)
-        return drug_dim + cmpd_dim
+        return drug_dim + cmpd_dim + len(self.data[0].pair_feats)
 
     def shuffle(self, seed: int = None):
         """
