@@ -65,6 +65,7 @@ def add_train_args(parser: ArgumentParser):
                         help='Which GPU to use')
     parser.add_argument('--data_path', type=str, help='Path to data CSV file')
     parser.add_argument('--data_format', type=str, help='SSPFFFF example for 2 smiles, prop, followed by feats')
+    parser.add_argument('--symmetric', action='store_true', default=False, help='Trains on symmetric data.')
     parser.add_argument('--use_compound_names', action='store_true', default=False,
                         help='Use when test data file contains compound names in addition to SMILES strings')
     parser.add_argument('--max_data_size', type=int,

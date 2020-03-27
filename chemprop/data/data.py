@@ -15,7 +15,9 @@ class MolPairDatapoint:
     """A MolPairDatapoint contains two molecules and their associated features, context, and targets."""
 
     def __init__(self,
-                 line: List[str],
+                 drug_smiles: str,
+                 cmpd_smiles: str,
+                 targets: List[float],
                  args: Namespace = None,
                  drug_feats: np.ndarray = None,
                  cmpd_feats: np.ndarray = None,
@@ -48,16 +50,15 @@ class MolPairDatapoint:
 
         if use_compound_names:
             raise NotImplementedError
-            # self.compound_name = line[0]  # str
-            # line = line[1:]
-        # else:
         self.compound_name = None
 
-        self.drug_smiles = line[0]  # str
+        self.drug_smiles = drug_smiles  # str
         self.drug_mol = Chem.MolFromSmiles(self.drug_smiles)
 
-        self.cmpd_smiles = line[1]  # str
+        self.cmpd_smiles = cmpd_smiles  # str
         self.cmpd_mol = Chem.MolFromSmiles(self.cmpd_smiles)
+        # Create targets
+        self.targets = targets
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -80,17 +81,10 @@ class MolPairDatapoint:
             self.drug_feats = np.where(np.isnan(self.drug_feats), replace_token, self.drug_feats)
         if self.cmpd_feats is not None:
             replace_token = 0
-            self.cmpd_feats = np.where(np.isnan(self.cmpd_feats), replace_token, self.cmpd_feats) 
-        # Create targets
-        self.targets = []
-        self.pair_feats = []
-        for i in range(2, len(line)):
-            if line[i] == '':
-                continue
-            elif args.data_format is None or args.data_format[i] == 'P':
-                self.targets.append( float(line[i]) )
-            else:
-                self.pair_feats.append( float(line[i]) )
+            self.cmpd_feats = np.where(np.isnan(self.cmpd_feats), replace_token, self.cmpd_feats)
+        if self.context is not None:
+            replace_token = 0
+            self.context = np.where(np.isnan(self.context), replace_token, self.context)
 
 
     def set_features(self, features: np.ndarray, mol: int):
@@ -106,7 +100,7 @@ class MolPairDatapoint:
         elif mol == 1:
             self.drug_feats = features
         else:
-            self.pair_feats = features
+            self.context = features
 
     def num_tasks(self) -> int:
         """
@@ -174,7 +168,7 @@ class MolPairDataset(Dataset):
         if len(self.data) == 0:
             return None
 
-        return [(d.drug_feats, d.cmpd_feats, d.pair_feats) for d in self.data]
+        return [(d.drug_feats, d.cmpd_feats, d.context) for d in self.data]
 
     def targets(self) -> List[List[float]]:
         """
@@ -201,12 +195,14 @@ class MolPairDataset(Dataset):
         if len(self.data) == 0:
             return None
 
-        drug_dim, cmpd_dim = 0, 0
-        if self.data[0].drug_feats:
+        drug_dim, cmpd_dim, context_dim = 0, 0, 0
+        if self.data[0].drug_feats is not None:
             drug_dim = len(self.data[0].drug_feats)
-        if self.data[0].cmpd_feats:
+        if self.data[0].cmpd_feats is not None:
             cmpd_dim = len(self.data[0].cmpd_feats)
-        return drug_dim + cmpd_dim + len(self.data[0].pair_feats)
+        if self.data[0].context is not None:
+            context_dim = len(self.data[0].context)
+        return drug_dim + cmpd_dim + context_dim
 
     def shuffle(self, seed: int = None):
         """

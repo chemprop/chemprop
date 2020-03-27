@@ -113,11 +113,12 @@ class MoleculeModel(nn.Module):
         else:
             newInput = newInput[0]
 
-        # Incorporate pair features
-        features_batch = torch.from_numpy(np.array([x[2] for x in feats])).float()
-        if self.use_cuda:
-            features_batch = features_batch.cuda()
-        newInput = torch.cat((newInput, features_batch), dim=1) 
+        # Incorporate pair features when available
+        if feats[0][2] is not None:
+            features_batch = torch.from_numpy(np.stack([x[2] for x in feats])).float()
+            if self.use_cuda:
+                features_batch = features_batch.cuda()
+            newInput = torch.cat((newInput, features_batch), dim=1)
 
         output = self.ffn(newInput)
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss

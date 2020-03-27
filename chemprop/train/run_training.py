@@ -16,7 +16,7 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict, save_predictions
 from .train import train
 from chemprop.data import StandardScaler
-from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data, split_loocv
+from chemprop.data.utils import flip_data, get_class_sizes, get_data, get_task_names, split_data, split_loocv
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
@@ -110,6 +110,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
             all_split_indices.append(split_indices)
         with open(os.path.join(args.save_dir, 'split_indices.pckl'), 'wb') as f:
             pickle.dump(all_split_indices, f)
+
+    if args.symmetric:
+        train_data = flip_data(train_data)
 
     if args.features_scaling:
         drug_scaler, cmpd_scaler = train_data.normalize_features(replace_nan_token=0)
