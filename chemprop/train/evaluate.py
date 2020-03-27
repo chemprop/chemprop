@@ -13,7 +13,8 @@ def val_loss(model: nn.Module,
              data: Union[MolPairDataset, List[MolPairDataset]],
              loss_func: Callable,
              batch_size: int,
-             dataset_type: str) -> int:
+             dataset_type: str,
+             scaler: StandardScaler = None) -> int:
     """
     Gets validation loss for an epoch.
     :param model: Model.
@@ -21,6 +22,7 @@ def val_loss(model: nn.Module,
     :param loss_func: Loss function.
     :param batch_size: Batch size.
     :param dataset_type: Dataset type.
+    :param scaler: Scaler for data.
     :return: loss on validation set.
     """
     model.train()
@@ -32,6 +34,10 @@ def val_loss(model: nn.Module,
     for i in range(0, len(data), batch_size):
         mol_batch = MolPairDataset(data[i:i + batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
+        # TODO: Apply scaling to features
+        if dataset_type == 'regression':
+            target_batch = scaler.transform(target_batch)
+
         batch = smiles_batch
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
         if type(loss_func) == ContrastiveLoss:
@@ -141,7 +147,7 @@ def evaluate(model: nn.Module,
     :param logger: Logger.
     :return: A list with the score for each task based on `metric_func`.
     """
-    loss = val_loss(model, data, loss_func, batch_size, dataset_type)
+    loss = val_loss(model, data, loss_func, batch_size, dataset_type, scaler)
 
     preds = predict(
         model=model,
