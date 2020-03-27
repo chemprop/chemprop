@@ -171,7 +171,7 @@ class MolPairDataset(Dataset):
 
         :return: A list of 1D numpy arrays containing the features for each molecule or None if there are no features.
         """
-        if len(self.data) == 0 or self.features_size() == 0:
+        if len(self.data) == 0:
             return None
 
         return [(d.drug_feats, d.cmpd_feats, d.pair_feats) for d in self.data]
