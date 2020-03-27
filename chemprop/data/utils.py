@@ -385,6 +385,7 @@ def flip_data(data: MolPairDataset) -> MolPairDataset:
     """
     Flips drug <--> cmpd in dataset.
     """
+    # TODO: Fix error with context.
     flip_feats = data.args.features_path is not None
     flipped = [
         MolPairDatapoint(
@@ -394,7 +395,7 @@ def flip_data(data: MolPairDataset) -> MolPairDataset:
             args=data.args,
             drug_feats=entry.cmpd_feats if flip_feats else None,
             cmpd_feats=entry.drug_feats if flip_feats else None,
-            context=entry.context,
+            context=np.array(list(reversed(list(entry.context)))),
             use_compound_names=False
         ) for _, entry in tqdm(enumerate(data.data), total=len(data.data))
     ]
