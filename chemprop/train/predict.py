@@ -58,7 +58,8 @@ def save_predictions(save_dir: str,
                      test_data: MolPairDataset,
                      train_preds: List[List[float]],
                      val_preds: List[List[float]],
-                     test_preds: List[List[float]]) -> None:
+                     test_preds: List[List[float]],
+                     scaler: StandardScaler = None) -> None:
     """
     Saves predictions to csv file for entire model.
     """
@@ -73,6 +74,10 @@ def save_predictions(save_dir: str,
         for k, split in enumerate(splits):
             smiles = dataSplits[k].smiles()
             targets = dataSplits[k].targets()
+            # Inverse scale if regression and only for training data
+            if k == 0 and scaler is not None:
+                targets = scaler.inverse_transform(targets)
+
             preds = predSplits[k]
             for i in range(len(smiles)):
                 row = [smiles[i][0], smiles[i][1], split, targets[i][0], preds[i][0]]
