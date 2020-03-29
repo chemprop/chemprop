@@ -35,7 +35,9 @@ def val_loss(model: nn.Module,
         mol_batch = MolPairDataset(data[i:i + batch_size])
         smiles_batch, features_batch, target_batch = mol_batch.smiles(), mol_batch.features(), mol_batch.targets()
         # TODO: Apply scaling to features
-        if dataset_type == 'regression':
+
+        # Apply inverse scaling if regression
+        if scaler is not None:
             target_batch = scaler.transform(target_batch)
 
         batch = smiles_batch
