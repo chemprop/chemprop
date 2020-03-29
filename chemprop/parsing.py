@@ -122,8 +122,7 @@ def add_train_args(parser: ArgumentParser):
     parser.add_argument('--crossval_index_dir', type=str, 
                         help='Directory in which to find cross validation index files')
     parser.add_argument('--crossval_index_file', type=str, 
-                        help='Indices of files to use as train/val/test'
-                             'Overrides --num_folds and --seed.')
+                        help='Indices of files to use as train/val/test, Overrides --seed.')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed to use when splitting data into train/val/test sets.'
                              'When `num_folds` > 1, the first fold uses this seed and all'
@@ -356,7 +355,7 @@ def modify_train_args(args: Namespace):
     if args.split_type in ['crossval', 'index_predetermined']:
         with open(args.crossval_index_file, 'rb') as rf:
             args.crossval_index_sets = pickle.load(rf)
-        args.num_folds = len(args.crossval_index_sets)
+        args.num_folds = min(args.num_folds, len(args.crossval_index_sets))
         args.seed = 0
 
     args.output_raw = output_raw(args)
