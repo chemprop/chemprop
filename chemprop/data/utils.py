@@ -120,6 +120,7 @@ def get_data(path: str,
     # Load features
     if features_path is not None:
         for feat_path in features_path:
+            debug(f'Loading features from {feat_path}')
             features_data = load_features(feat_path)  # Expect file to look like {SMILES: feats}
     else:
         features_data = None
@@ -159,8 +160,8 @@ def get_data(path: str,
                 cmpd_smiles=line[1],
                 targets=line[2],
                 args=args,
-                drug_feats=features_data[drug_smiles] if features_data is not None else None,
-                cmpd_feats=features_data[cmpd_smiles] if features_data is not None else None,
+                drug_feats=features_data[line[0]] if features_data is not None else None,
+                cmpd_feats=features_data[line[1]] if features_data is not None else None,
                 context=np.array(line[3]) if len(line[3]) > 0 else None,
                 use_compound_names=use_compound_names
             ) for i, line in tqdm(enumerate(lines), total=len(lines))

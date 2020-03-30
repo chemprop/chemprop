@@ -96,9 +96,9 @@ class MolPairDatapoint:
         """
         assert (mol in [0,1,2])
         if mol == 0:
-            self.cmpd_feats = features
-        elif mol == 1:
             self.drug_feats = features
+        elif mol == 1:
+            self.cmpd_feats = features
         else:
             self.context = features
 
@@ -239,7 +239,7 @@ class MolPairDataset(Dataset):
                 self.drug_scaler.fit(drug_feats)
 
             for d in self.data:
-                d.set_features(self.drug_scaler.transform(d.drug_feats.reshape(1, -1))[0])
+                d.set_features(self.drug_scaler.transform(d.drug_feats.reshape(1, -1))[0], 0)
 
         if self.data[0].cmpd_feats is not None:
             if cmpd_scaler is not None:
@@ -250,7 +250,7 @@ class MolPairDataset(Dataset):
                 self.cmpd_scaler.fit(cmpd_feats)
 
             for d in self.data:
-                d.set_features(self.cmpd_scaler.transform(d.cmpd_feats.reshape(1, -1))[0])
+                d.set_features(self.cmpd_scaler.transform(d.cmpd_feats.reshape(1, -1))[0], 1)
 
         return (self.drug_scaler, self.cmpd_scaler)
 
