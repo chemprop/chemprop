@@ -40,7 +40,12 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
 
+    # Print command line
+    debug('Command line')
+    debug(args.command_line)
+
     # Print args
+    debug('Args')
     debug(pformat(vars(args)))
 
     # Get data
