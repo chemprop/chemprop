@@ -64,7 +64,7 @@ def add_train_args(parser: ArgumentParser):
                         choices=list(range(torch.cuda.device_count())),
                         help='Which GPU to use')
     parser.add_argument('--data_path', type=str, help='Path to data CSV file')
-    parser.add_argument('--class_weights', type=int, default=1)
+    parser.add_argument('--class_weights', type=int, default=1, help='Only used in classification case')
     parser.add_argument('--data_format', type=str, help='SSPFFFF example for 2 smiles, prop, followed by feats')
     parser.add_argument('--symmetric', action='store_true', default=False, help='Trains on symmetric data.')
     parser.add_argument('--use_compound_names', action='store_true', default=False,
