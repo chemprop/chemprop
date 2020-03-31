@@ -66,10 +66,7 @@ def train(model: nn.Module,
         if next(model.parameters()).is_cuda:
             mask, targets = mask.cuda(), targets.cuda()
 
-        class_weights = torch.ones(targets.shape)
-
-        if args.cuda:
-            class_weights = class_weights.cuda()
+        class_weights = targets*(args.class_weights-1) + 1
 
         # Run model
         model.zero_grad()
