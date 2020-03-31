@@ -4,6 +4,7 @@ import os
 import pickle
 from pprint import pformat
 from typing import Callable, List, Tuple
+from collections import Counter
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -14,6 +15,7 @@ from chemprop.data import MolPairDataset
 from chemprop.data.utils import get_data, split_data, flip_data
 from chemprop.features import get_features_generator
 from chemprop.train.evaluate import evaluate_predictions
+from chemprop.train.predict import save_predictions
 from chemprop.utils import get_metric_func, makedirs
 
 
@@ -48,53 +50,16 @@ def predict(model,
     return preds
 
 
-def single_task_sklearn(model,
-                        train_data: MolPairDataset,
-                        test_data: MolPairDataset,
-                        metric_func: Callable,
-                        args: Namespace,
-                        logger: Logger = None) -> List[float]:
-    scores = []
-    num_tasks = train_data.num_tasks()
-    for task_num in trange(num_tasks):
-        # Only get features and targets for molecules where target is not None
-        train_features, train_targets = zip(*[(features, targets[task_num])
-                                              for features, targets in zip(train_data.features(), train_data.targets())
-                                              if targets[task_num] is not None])
-        test_features, test_targets = zip(*[(features, targets[task_num])
-                                            for features, targets in zip(test_data.features(), test_data.targets())
-                                            if targets[task_num] is not None])
-
-        model.fit(train_features, train_targets)
-
-        test_preds = predict(
-            model=model,
-            model_type=args.model_type,
-            dataset_type=args.dataset_type,
-            features=test_features
-        )
-        test_targets = [[target] for target in test_targets]
-
-        score = evaluate_predictions(
-            preds=test_preds,
-            targets=test_targets,
-            num_tasks=1,
-            metric_func=metric_func,
-            dataset_type=args.dataset_type,
-            logger=logger
-        )
-        scores.append(score[0])
-
-    return scores
-
-
-def compose_feats(feat_tuple):
+def _compose(feat_tuple):
     ret = [feat for feat in feat_tuple if feat is not None]
     return np.concatenate(ret)
 
+def compose_feats(data):
+    return [_compose(feat) for feat in data.features()]
 
 def multi_task_sklearn(model,
                        train_data: MolPairDataset,
+                       val_data: MolPairDataset,
                        test_data: MolPairDataset,
                        metric_func: Callable,
                        args: Namespace,
@@ -110,7 +75,8 @@ def multi_task_sklearn(model,
         train_targets = [targets[0] for targets in train_targets]
 
     # Train
-    feats = [compose_feats(feat) for feat in train_data.features()]
+    feats = compose_feats(train_data)
+    debug(f'Using {feats[0].shape} features')
     model.fit(feats, train_targets)
 
     # Save model
@@ -118,13 +84,30 @@ def multi_task_sklearn(model,
         pickle.dump(model, f)
 
     debug('Predicting')
-    feats = [compose_feats(feat) for feat in test_data.features()]
     test_preds = predict(
         model=model,
         model_type=args.model_type,
         dataset_type=args.dataset_type,
-        features=feats
+        features=compose_feats(test_data)
     )
+
+    if args.save_preds:
+        val_preds = predict(
+            model=model,
+            model_type=args.model_type,
+            dataset_type=args.dataset_type,
+            features=compose_feats(val_data)
+        )
+        val_scores = evaluate_predictions(
+            preds=val_preds,
+            targets=val_data.targets(),
+            num_tasks=num_tasks,
+            metric_func=metric_func,
+            dataset_type=args.dataset_type,
+            logger=logger
+        )
+        info(f'Val {args.metric} = {np.nanmean(val_scores)}')
+        save_predictions(args.save_dir, None, val_data, test_data, None, val_preds, test_preds)
 
     scores = evaluate_predictions(
         preds=test_preds,
@@ -134,7 +117,6 @@ def multi_task_sklearn(model,
         dataset_type=args.dataset_type,
         logger=logger
     )
-
     return scores
 
 
@@ -156,7 +138,7 @@ def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
 
     debug(f'Splitting data with seed {args.seed}')
     # Need to have val set so that train and test sets are the same as when doing MPN
-    train_data, _, test_data = split_data(
+    train_data, val_data, test_data = split_data(
         data=data,
         split_type=args.split_type,
         seed=args.seed,
@@ -168,12 +150,13 @@ def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
 
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
 
-    debug('Computing morgan fingerprints')
-    morgan_fingerprint = get_features_generator('morgan')
-    for dataset in [train_data, test_data]:
-        for datapoint in tqdm(dataset, total=len(dataset)):
-            datapoint.set_features(morgan_fingerprint(mol=datapoint.drug_smiles, radius=args.radius, num_bits=args.num_bits), 0)
-            datapoint.set_features(morgan_fingerprint(mol=datapoint.cmpd_smiles, radius=args.radius, num_bits=args.num_bits), 1)
+    if args.features_path is None or len(args.features_path) == 0:
+        debug('Computing morgan fingerprints')
+        morgan_fingerprint = get_features_generator('morgan')
+        for dataset in [train_data, val_data, test_data]:
+            for datapoint in tqdm(dataset, total=len(dataset)):
+                datapoint.set_features(morgan_fingerprint(mol=datapoint.drug_smiles, radius=args.radius, num_bits=args.num_bits), 0)
+                datapoint.set_features(morgan_fingerprint(mol=datapoint.cmpd_smiles, radius=args.radius, num_bits=args.num_bits), 1)
 
     debug('Building model')
     if args.dataset_type == 'regression':
@@ -196,24 +179,15 @@ def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
     debug(model)
 
     debug('Training')
-    if args.single_task:
-        scores = single_task_sklearn(
-            model=model,
-            train_data=train_data,
-            test_data=test_data,
-            metric_func=metric_func,
-            args=args,
-            logger=logger
-        )
-    else:
-        scores = multi_task_sklearn(
-            model=model,
-            train_data=train_data,
-            test_data=test_data,
-            metric_func=metric_func,
-            args=args,
-            logger=logger
-        )
+    scores = multi_task_sklearn(
+        model=model,
+        train_data=train_data,
+        val_data=val_data,
+        test_data=test_data,
+        metric_func=metric_func,
+        args=args,
+        logger=logger
+    )
 
     info(f'Test {args.metric} = {np.nanmean(scores)}')
 

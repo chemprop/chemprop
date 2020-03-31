@@ -62,6 +62,8 @@ def save_predictions(save_dir: str,
                      scaler: StandardScaler = None) -> None:
     """
     Saves predictions to csv file for entire model.
+
+    Any of the datasets can be absent. They will not be saved in that case.
     """
     with open(os.path.join(save_dir, 'preds.csv'), 'w') as f:
         writer = csv.writer(f)
@@ -72,6 +74,8 @@ def save_predictions(save_dir: str,
         dataSplits = [train_data, val_data, test_data]
         predSplits = [train_preds, val_preds, test_preds]
         for k, split in enumerate(splits):
+            if dataSplits[k] is None:
+                continue
             smiles = dataSplits[k].smiles()
             targets = dataSplits[k].targets()
             # Inverse scale if regression and only for training data

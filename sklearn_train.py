@@ -11,9 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--class_weight', type=str,
                         choices=['balanced'],
                         help='How to weight classes (None means no class balance)')
-    parser.add_argument('--single_task', action='store_true', default=False,
-                        help='Whether to run each task separately (needed when dataset has null entries)')
-    parser.add_argument('--radius', type=int, default=3,
+    parser.add_argument('--radius', type=int, default=2,
                         help='Morgan fingerprint radius')
     parser.add_argument('--num_bits', type=int, default=2048,
                         help='Number of bits in morgan fingerprint')
