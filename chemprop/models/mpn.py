@@ -58,6 +58,7 @@ class MPNEncoder(nn.Module):
         self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
 
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+        self.gpu = args.gpu if hasattr(args, "gpu") else 0
 
     def forward(self,
                 mol_graph: BatchMolGraph,
@@ -73,7 +74,7 @@ class MPNEncoder(nn.Module):
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
 
             if self.args.cuda:
-                features_batch = features_batch.cuda()
+                features_batch = features_batch.to(self.gpu)
 
             if self.features_only:
                 return features_batch
@@ -84,10 +85,10 @@ class MPNEncoder(nn.Module):
             a2a = mol_graph.get_a2a()
 
         if self.args.cuda or next(self.parameters()).is_cuda:
-            f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
+            f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.to(self.gpu), f_bonds.to(self.gpu), a2b.to(self.gpu), b2a.to(self.gpu), b2revb.to(self.gpu)
 
             if self.atom_messages:
-                a2a = a2a.cuda()
+                a2a = a2a.to(self.gpu)
 
         # Input
         if self.atom_messages:
