@@ -176,6 +176,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Number of layers in FFN after MPN encoding')
     parser.add_argument('--atom_messages', action='store_true', default=False,
                         help='Use messages on atoms instead of messages on bonds')
+    parser.add_argument('--pytorch_seed', type=int, default=None,
+                        help='Seed for PyTorch randomness (e.g. random initial weights)')
 
 
 def update_checkpoint_args(args: Namespace):

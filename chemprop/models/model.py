@@ -1,5 +1,6 @@
 from argparse import Namespace
 
+import torch
 import torch.nn as nn
 
 from .mpn import MPN
@@ -113,6 +114,10 @@ def build_model(args: Namespace) -> nn.Module:
     model = MoleculeModel(classification=args.dataset_type == 'classification', multiclass=args.dataset_type == 'multiclass')
     model.create_encoder(args)
     model.create_ffn(args)
+
+    # Check hasattr for compatibility with loaded args from previous versions of chemprop
+    if hasattr(args, 'pytorch_seed') and args.pytorch_seed is not None:
+        torch.manual_seed(args.pytorch_seed)
 
     initialize_weights(model)
 
