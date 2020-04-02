@@ -44,9 +44,36 @@ def train(model: nn.Module,
 
     loss_sum, iter_count = 0, 0
 
-    num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
-
     iter_size = args.batch_size
+
+    if args.class_balance:
+        # Reconstruct data so that each batch has equal number of positives and negatives
+        # (will leave out a different random sample of negatives each epoch)
+        assert len(data[0].targets) == 1  # only works for single class classification
+        pos = [d for d in data if d.targets[0] == 1]
+        neg = [d for d in data if d.targets[0] == 0]
+
+        new_data = []
+        pos_size = iter_size // 2
+        pos_index = neg_index = 0
+        while True:
+            new_pos = pos[pos_index:pos_index + pos_size]
+            new_neg = neg[neg_index:neg_index + iter_size - len(new_pos)]
+
+            if len(new_pos) == 0 or len(new_neg) == 0:
+                break
+
+            if len(new_pos) + len(new_neg) < iter_size:
+                new_pos = pos[pos_index:pos_index + iter_size - len(new_neg)]
+
+            new_data += new_pos + new_neg
+
+            pos_index += len(new_pos)
+            neg_index += len(new_neg)
+
+        data = new_data
+
+    num_iters = len(data) // args.batch_size * args.batch_size  # don't use the last batch if it's small, for stability
 
     for i in trange(0, num_iters, iter_size):
         # Prepare batch
