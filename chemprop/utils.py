@@ -20,7 +20,7 @@ def makedirs(path: str, isfile: bool = False):
     """
     Creates a directory given a path to either a directory or file.
 
-    If a directory is provided, creates that directory. If a file is provided (i.e. isfiled == True),
+    If a directory is provided, creates that directory. If a file is provided (i.e. isfile == True),
     creates the parent directory for that file.
 
     :param path: Path to a directory or file.

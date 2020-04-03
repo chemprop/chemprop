@@ -18,6 +18,7 @@ def predict(model: nn.Module,
     :param model: A model.
     :param data: A MoleculeDataset.
     :param batch_size: Batch size.
+    :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list of lists of predictions. The outer list is examples
     while the inner list is tasks.
