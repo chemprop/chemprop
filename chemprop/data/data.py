@@ -3,11 +3,12 @@ import random
 from typing import Callable, List, Union
 
 import numpy as np
-from torch.utils.data.dataset import Dataset
+from torch.utils.data import Dataset
 from rdkit import Chem
 
 from .scaler import StandardScaler
 from chemprop.features import get_features_generator
+from chemprop.features import BatchMolGraph, MolGraph
 
 
 class MoleculeDatapoint:
@@ -65,6 +66,9 @@ class MoleculeDatapoint:
         # Create targets
         self.targets = [float(x) if x != '' else None for x in line[1:]]
 
+        # Create placeholder for graph
+        self._graph = None
+
     def set_features(self, features: np.ndarray):
         """
         Sets the features of the molecule.
@@ -89,19 +93,47 @@ class MoleculeDatapoint:
         """
         self.targets = targets
 
+    def compute_graph(self) -> MolGraph:
+        """Computes and saves the graph featurization for the molecule."""
+        self._graph = MolGraph(self.smiles, self.args)
+
+        return self._graph
+
+    @property
+    def graph(self) -> MolGraph:
+        """
+        Returns the graph featurization of the molecule.
+
+        :return: A MolGraph representing the molecule.
+        """
+        if self._graph is None:
+            self.compute_graph()
+
+        return self._graph
+
+    def get_and_clear_graph(self) -> MolGraph:
+        """
+        Returns the graph featurization of the molecule a
+        :return:
+        """
+
 
 class MoleculeDataset(Dataset):
     """A MoleculeDataset contains a list of molecules and their associated features and targets."""
 
-    def __init__(self, data: List[MoleculeDatapoint]):
+    def __init__(self, data: List[MoleculeDatapoint], precompute_graphs: bool = False):
         """
         Initializes a MoleculeDataset, which contains a list of MoleculeDatapoints (i.e. a list of molecules).
 
         :param data: A list of MoleculeDatapoints.
+        :param precompute_graphs: Whether to precompute graph featurizations of molecules
+        when __getitem__ is called.
         """
         self.data = data
         self.args = self.data[0].args if len(self.data) > 0 else None
         self.scaler = None
+        self.precompute_graphs = precompute_graphs
+        self.graphs = None
 
     def compound_names(self) -> List[str]:
         """
@@ -129,6 +161,14 @@ class MoleculeDataset(Dataset):
         :return: A list of RDKit Mols.
         """
         return [d.mol for d in self.data]
+
+    def graphs(self) -> BatchMolGraph:
+        """
+        Returns a BatchMolGraph representing the batch of molecules.
+
+        :return: A BatchMolGraph representing the batch of molecules.
+        """
+        return BatchMolGraph([d.graph for d in self.data], self.args)
 
     def features(self) -> List[np.ndarray]:
         """
@@ -238,4 +278,14 @@ class MoleculeDataset(Dataset):
         :param item: An index (int) or a slice object.
         :return: A MoleculeDatapoint if an int is provided or a list of MoleculeDatapoints if a slice is provided.
         """
-        return self.data[item]
+        data = self.data[item]
+
+        # Precompute graphs
+        if self.precompute_graphs:
+            if type(data) == list:
+                for d in data:
+                    d.compute_graph()
+            else:
+                data.compute_graph()
+
+        return data
