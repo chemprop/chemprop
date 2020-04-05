@@ -107,7 +107,7 @@ try:
         return features
 
     @register_features_generator('rdkit_2d_normalized')
-    def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+    def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
         """
         Generates RDKit 2D normalized features for a molecule.
 
