@@ -152,7 +152,6 @@ class MoleculeDataset(Dataset):
             for smiles in self.smiles():
                 if smiles in SMILES_TO_GRAPH:
                     mol_graph = SMILES_TO_GRAPH[smiles]
-                    print('cache')
                 else:
                     mol_graph = MolGraph(smiles, self._args)
                     if cache:
