@@ -45,10 +45,7 @@ The easiest way to install the `chemprop` dependencies is via conda. Here are th
 1. Install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
 2. `cd /path/to/chemprop`
 3. `conda env create -f environment.yml`
-4. `source activate chemprop` (or `conda activate chemprop` for newer versions of conda)
-5. (Optional) `pip install git+https://github.com/bp-kelley/descriptastorus`
-
-The optional `descriptastorus` package is only necessary if you plan to incorporate computed RDKit features into your model (see [Additional Features](#additional-features)). The addition of these features improves model performance on some datasets but is not necessary for the base model.
+4. `conda activate chemprop` (or `source activate chemprop` for older versions of conda)
 
 Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions [here](https://pytorch.org/get-started/locally/).
 
