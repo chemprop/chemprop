@@ -134,9 +134,6 @@ def add_train_args(parser: ArgumentParser):
                         help='Show all scores for individual targets, not just average, at the end')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of workers for the parallel DataLoader')
-    parser.add_argument('--cache', action='store_true', default=False,
-                        help='Cache the graph featurization of molecules for faster processing.'
-                             'Only use caching for small datasets since caching consumes significant RAM.')
     parser.add_argument('--config_path', type=str,
                         help='Path to a .json file containing arguments. Any arguments present in the config'
                              'file will override arguments specified via the command line or by the defaults.')
