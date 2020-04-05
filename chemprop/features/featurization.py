@@ -31,15 +31,6 @@ THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE
 ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
 BOND_FDIM = 14
 
-# Memoization
-SMILES_TO_GRAPH = {}
-
-
-def clear_cache():
-    """Clears featurization cache."""
-    global SMILES_TO_GRAPH
-    SMILES_TO_GRAPH = {}
-
 
 def get_atom_fdim(args: Namespace) -> int:
     """
@@ -245,7 +236,7 @@ class BatchMolGraph:
             self.n_atoms += mol_graph.n_atoms
             self.n_bonds += mol_graph.n_bonds
 
-        self.max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b)) # max with 1 to fix a crash in rare case of all single-heavy-atom mols
+        self.max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))  # max with 1 to fix a crash in rare case of all single-heavy-atom mols
 
         self.f_atoms = torch.FloatTensor(f_atoms)
         self.f_bonds = torch.FloatTensor(f_bonds)
@@ -306,14 +297,4 @@ def mol2graph(smiles_batch: List[str],
     :param args: Arguments.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    mol_graphs = []
-    for smiles in smiles_batch:
-        if smiles in SMILES_TO_GRAPH:
-            mol_graph = SMILES_TO_GRAPH[smiles]
-        else:
-            mol_graph = MolGraph(smiles, args)
-            if not args.no_cache:
-                SMILES_TO_GRAPH[smiles] = mol_graph
-        mol_graphs.append(mol_graph)
-    
-    return BatchMolGraph(mol_graphs, args)
+    return BatchMolGraph([MolGraph(smiles, args) for smiles in smiles_batch])

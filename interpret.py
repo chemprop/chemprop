@@ -7,7 +7,7 @@ from rdkit import Chem
 from functools import partial
 
 from chemprop.train import predict
-from chemprop.data import MoleculeDataset
+from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
@@ -36,12 +36,13 @@ class ChempropModel():
         if self.train_args.features_scaling:
             test_data.normalize_features(self.features_scaler)
 
+        test_data_loader = MoleculeDataLoader(test_data, batch_size=batch_size)
+
         sum_preds = [] 
         for model in self.checkpoints:
             model_preds = predict(
                 model=model,
-                data=test_data,
-                batch_size=batch_size,
+                data_loader=test_data_loader,
                 scaler=self.scaler,
                 disable_progress_bar=True
             )

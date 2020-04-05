@@ -154,21 +154,18 @@ class MPN(nn.Module):
     def __init__(self,
                  args: Namespace,
                  atom_fdim: int = None,
-                 bond_fdim: int = None,
-                 graph_input: bool = False):
+                 bond_fdim: int = None):
         """
         Initializes the MPN.
 
         :param args: Arguments.
         :param atom_fdim: Atom features dimension.
         :param bond_fdim: Bond features dimension.
-        :param graph_input: If true, expects BatchMolGraph as input. Otherwise expects a list of smiles strings as input.
         """
         super(MPN, self).__init__()
         self.args = args
         self.atom_fdim = atom_fdim or get_atom_fdim(args)
         self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
-        self.graph_input = graph_input
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
     def forward(self,
@@ -177,11 +174,11 @@ class MPN(nn.Module):
         """
         Encodes a batch of molecular SMILES strings.
 
-        :param batch: A list of SMILES strings or a BatchMolGraph (if self.graph_input is True).
+        :param batch: A list of SMILES strings or a BatchMolGraph.
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
-        if not self.graph_input:  # if features only, batch won't even be used
+        if type(batch) != BatchMolGraph:
             batch = mol2graph(batch, self.args)
 
         output = self.encoder.forward(batch, features_batch)

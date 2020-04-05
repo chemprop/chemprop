@@ -1,9 +1,9 @@
 from argparse import Namespace
-import random
-from typing import Callable, List, Union
+from random import Random
+from typing import Callable, Iterator, List, Union
 
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset, Sampler
 from rdkit import Chem
 
 from .scaler import StandardScaler
@@ -93,47 +93,21 @@ class MoleculeDatapoint:
         """
         self.targets = targets
 
-    def compute_graph(self) -> MolGraph:
-        """Computes and saves the graph featurization for the molecule."""
-        self._graph = MolGraph(self.smiles, self.args)
-
-        return self._graph
-
-    @property
-    def graph(self) -> MolGraph:
-        """
-        Returns the graph featurization of the molecule.
-
-        :return: A MolGraph representing the molecule.
-        """
-        if self._graph is None:
-            self.compute_graph()
-
-        return self._graph
-
-    def get_and_clear_graph(self) -> MolGraph:
-        """
-        Returns the graph featurization of the molecule a
-        :return:
-        """
-
 
 class MoleculeDataset(Dataset):
     """A MoleculeDataset contains a list of molecules and their associated features and targets."""
 
-    def __init__(self, data: List[MoleculeDatapoint], precompute_graphs: bool = False):
+    def __init__(self, data: List[MoleculeDatapoint]):
         """
         Initializes a MoleculeDataset, which contains a list of MoleculeDatapoints (i.e. a list of molecules).
 
         :param data: A list of MoleculeDatapoints.
-        :param precompute_graphs: Whether to precompute graph featurizations of molecules
-        when __getitem__ is called.
         """
-        self.data = data
-        self.args = self.data[0].args if len(self.data) > 0 else None
-        self.scaler = None
-        self.precompute_graphs = precompute_graphs
-        self.graphs = None
+        self._data = data
+        self._args = self._data[0].args if len(self._data) > 0 else None
+        self._scaler = None
+        self._batch_graph = None
+        self._random = Random()
 
     def compound_names(self) -> List[str]:
         """
@@ -141,10 +115,10 @@ class MoleculeDataset(Dataset):
 
         :return: A list of compound names or None if the dataset does not contain compound names.
         """
-        if len(self.data) == 0 or self.data[0].compound_name is None:
+        if len(self._data) == 0 or self._data[0].compound_name is None:
             return None
 
-        return [d.compound_name for d in self.data]
+        return [d.compound_name for d in self._data]
 
     def smiles(self) -> List[str]:
         """
@@ -152,23 +126,26 @@ class MoleculeDataset(Dataset):
 
         :return: A list of smiles strings.
         """
-        return [d.smiles for d in self.data]
-    
+        return [d.smiles for d in self._data]
+
     def mols(self) -> List[Chem.Mol]:
         """
         Returns the RDKit molecules associated with the molecules.
 
         :return: A list of RDKit Mols.
         """
-        return [d.mol for d in self.data]
+        return [d.mol for d in self._data]
 
-    def graphs(self) -> BatchMolGraph:
+    def batch_graph(self) -> BatchMolGraph:
         """
-        Returns a BatchMolGraph representing the batch of molecules.
+        Returns a BatchMolGraph with the graph featurization of the molecules.
 
-        :return: A BatchMolGraph representing the batch of molecules.
+        :return: A BatchMolGraph.
         """
-        return BatchMolGraph([d.graph for d in self.data], self.args)
+        if self._batch_graph is None:
+            self._batch_graph = BatchMolGraph([MolGraph(d.smiles, self._args) for d in self._data], self._args)
+
+        return self._batch_graph
 
     def features(self) -> List[np.ndarray]:
         """
@@ -176,10 +153,10 @@ class MoleculeDataset(Dataset):
 
         :return: A list of 1D numpy arrays containing the features for each molecule or None if there are no features.
         """
-        if len(self.data) == 0 or self.data[0].features is None:
+        if len(self._data) == 0 or self._data[0].features is None:
             return None
 
-        return [d.features for d in self.data]
+        return [d.features for d in self._data]
 
     def targets(self) -> List[List[float]]:
         """
@@ -187,7 +164,7 @@ class MoleculeDataset(Dataset):
 
         :return: A list of lists of floats containing the targets.
         """
-        return [d.targets for d in self.data]
+        return [d.targets for d in self._data]
 
     def num_tasks(self) -> int:
         """
@@ -195,7 +172,7 @@ class MoleculeDataset(Dataset):
 
         :return: The number of tasks.
         """
-        return self.data[0].num_tasks() if len(self.data) > 0 else None
+        return self._data[0].num_tasks() if len(self._data) > 0 else None
 
     def features_size(self) -> int:
         """
@@ -203,7 +180,7 @@ class MoleculeDataset(Dataset):
 
         :return: The size of the features.
         """
-        return len(self.data[0].features) if len(self.data) > 0 and self.data[0].features is not None else None
+        return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
 
     def shuffle(self, seed: int = None):
         """
@@ -212,8 +189,8 @@ class MoleculeDataset(Dataset):
         :param seed: Optional random seed.
         """
         if seed is not None:
-            random.seed(seed)
-        random.shuffle(self.data)
+            self._random.seed(seed)
+        self._random.shuffle(self._data)
     
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """
@@ -228,21 +205,21 @@ class MoleculeDataset(Dataset):
         :return: A fitted StandardScaler. If a scaler is provided, this is the same scaler. Otherwise, this is
         a scaler fit on this dataset.
         """
-        if len(self.data) == 0 or self.data[0].features is None:
+        if len(self._data) == 0 or self._data[0].features is None:
             return None
 
         if scaler is not None:
-            self.scaler = scaler
+            self._scaler = scaler
 
-        elif self.scaler is None:
-            features = np.vstack([d.features for d in self.data])
-            self.scaler = StandardScaler(replace_nan_token=replace_nan_token)
-            self.scaler.fit(features)
+        elif self._scaler is None:
+            features = np.vstack([d.features for d in self._data])
+            self._scaler = StandardScaler(replace_nan_token=replace_nan_token)
+            self._scaler.fit(features)
 
-        for d in self.data:
-            d.set_features(self.scaler.transform(d.features.reshape(1, -1))[0])
+        for d in self._data:
+            d.set_features(self._scaler.transform(d.features.reshape(1, -1))[0])
 
-        return self.scaler
+        return self._scaler
     
     def set_targets(self, targets: List[List[float]]):
         """
@@ -251,9 +228,9 @@ class MoleculeDataset(Dataset):
         :param targets: A list of lists of floats containing targets for each molecule. This must be the
         same length as the underlying dataset.
         """
-        assert len(self.data) == len(targets)
-        for i in range(len(self.data)):
-            self.data[i].set_targets(targets[i])
+        assert len(self._data) == len(targets)
+        for i in range(len(self._data)):
+            self._data[i].set_targets(targets[i])
 
     def sort(self, key: Callable):
         """
@@ -261,7 +238,7 @@ class MoleculeDataset(Dataset):
 
         :param key: A function on a MoleculeDatapoint to determine the sorting order.
         """
-        self.data.sort(key=key)
+        self._data.sort(key=key)
 
     def __len__(self) -> int:
         """
@@ -269,7 +246,7 @@ class MoleculeDataset(Dataset):
 
         :return: The length of the dataset.
         """
-        return len(self.data)
+        return len(self._data)
 
     def __getitem__(self, item) -> Union[MoleculeDatapoint, List[MoleculeDatapoint]]:
         """
@@ -278,14 +255,134 @@ class MoleculeDataset(Dataset):
         :param item: An index (int) or a slice object.
         :return: A MoleculeDatapoint if an int is provided or a list of MoleculeDatapoints if a slice is provided.
         """
-        data = self.data[item]
+        return self._data[item]
 
-        # Precompute graphs
-        if self.precompute_graphs:
-            if type(data) == list:
-                for d in data:
-                    d.compute_graph()
-            else:
-                data.compute_graph()
 
-        return data
+class MoleculeSampler(Sampler):
+    """A Sampler for MoleculeDataLoaders."""
+
+    def __init__(self,
+                 dataset: MoleculeDataset,
+                 class_balance: bool = False,
+                 shuffle: bool = False,
+                 seed: int = 0):
+        """
+        Initializes the MoleculeSampler.
+
+        :param class_balance: Whether to perform class balancing (i.e. use an equal number of positive and negative molecules).
+                              Class balance is only available for single task classification datasets.
+                              Set shuffle to True in order to get a random subset of the larger class.
+        :param shuffle: Whether to shuffle the data.
+        :param seed: Random seed.
+        """
+        super(Sampler, self).__init__()
+
+        self.dataset = dataset
+        self.class_balance = class_balance
+        self.shuffle = shuffle
+
+        self._random = Random(seed)
+
+        if self.class_balance:
+            assert self.dataset.num_tasks() == 1
+
+            self.positive_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 1]
+            self.negative_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 0]
+
+            self.length = 2 * min(len(self.positive_indices), len(self.negative_indices))
+        else:
+            self.positive_indices = self.negative_indices = None
+
+            self.length = len(self.dataset)
+
+    def __iter__(self) -> Iterator[int]:
+        """Creates an iterator over indices to sample."""
+        if self.class_balance:
+            if self.shuffle:
+                self._random.shuffle(self.positive_indices)
+                self._random.shuffle(self.negative_indices)
+
+            indices = [index for pair in zip(self.positive_indices, self.negative_indices) for index in pair]
+        else:
+            indices = list(range(len(self.dataset)))
+
+            if self.shuffle:
+                self._random.shuffle(indices)
+
+        return iter(indices)
+
+    def __len__(self) -> int:
+        """Returns the number of indices that will be sampled."""
+        return self.length
+
+
+def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
+    """
+    Constructs a MoleculeDataset from a list of MoleculeDatapoints while also constructing the BatchMolGraph.
+
+    :param data: A list of MoleculeDatapoints.
+    :return: A MoleculeDataset with all the MoleculeDatapoints and a BatchMolGraph graph featurization.
+    """
+    data = MoleculeDataset(data)
+    data.batch_graph()  # Forces computation and caching of the BatchMolGraph for the molecules
+
+    return data
+
+
+class MoleculeDataLoader(DataLoader):
+    """A DataLoader for MoleculeDatasets."""
+
+    def __init__(self,
+                 dataset: MoleculeDataset,
+                 batch_size: int = 50,
+                 num_workers: int = 0,
+                 class_balance: bool = False,
+                 shuffle: bool = False,
+                 seed: int = 0):
+        """
+        Initializes the MoleculeDataLoader.
+
+        :param dataset: The MoleculeDataset containing the molecules.
+        :param batch_size: Batch size.
+        :param num_workers: Number of workers used to build batches.
+        :param class_balance: Whether to perform class balancing (i.e. use an equal number of positive and negative molecules).
+                              Class balance is only available for single task classification datasets.
+                              Set shuffle to True in order to get a random subset of the larger class.
+        :param shuffle: Whether to shuffle the data.
+        :param seed: Random seed.
+        """
+        self._dataset = dataset
+        self._batch_size = batch_size
+        self._num_workers = num_workers
+        self._class_balance = class_balance
+        self._shuffle = shuffle
+        self._seed = seed
+
+        self._sampler = MoleculeSampler(
+            dataset=self._dataset,
+            class_balance=self._class_balance,
+            shuffle=self._shuffle,
+            seed=self._seed
+        )
+
+        super(MoleculeDataLoader, self).__init__(
+            dataset=self._dataset,
+            batch_size=self._batch_size,
+            sampler=self._sampler,
+            num_workers=self._num_workers,
+            collate_fn=construct_molecule_batch
+        )
+
+    def targets(self) -> List[List[float]]:
+        """
+        Returns the targets associated with each molecule.
+
+        :return: A list of lists of floats containing the targets.
+        """
+        if self._class_balance or self._shuffle:
+            raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
+
+        return [self._dataset[index].targets for index in self._sampler]
+
+    def __iter__(self) -> Iterator[MoleculeDataset]:
+        return super(MoleculeDataLoader, self).__iter__()
