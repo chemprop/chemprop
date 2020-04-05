@@ -44,6 +44,8 @@ def add_predict_args(parser: ArgumentParser):
                         help='Turn off scaling of features')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='Number of workers for the parallel DataLoader')
 
 
 def add_train_args(parser: ArgumentParser):
@@ -130,8 +132,8 @@ def add_train_args(parser: ArgumentParser):
                         help='Turn off cuda')
     parser.add_argument('--show_individual_scores', action='store_true', default=False,
                         help='Show all scores for individual targets, not just average, at the end')
-    parser.add_argument('--no_cache', action='store_true', default=False,
-                        help='Turn off caching mol2graph computation')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='Number of workers for the parallel DataLoader')
     parser.add_argument('--config_path', type=str,
                         help='Path to a .json file containing arguments. Any arguments present in the config'
                              'file will override arguments specified via the command line or by the defaults.')

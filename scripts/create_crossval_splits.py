@@ -51,7 +51,7 @@ def create_time_splits(args: Namespace):
         begin, end = int(i * num_data / args.num_folds), int(
             (i + args.time_folds_per_train_set + 2) * num_data / args.num_folds)
         subset_indices = all_indices[begin:end]
-        subset_data = MoleculeDataset(data.data[begin:end])
+        subset_data = MoleculeDataset(data[begin:end])
         fold_indices['random'].append(split_indices(deepcopy(subset_indices), args.time_folds_per_train_set + 2))
         fold_indices['scaffold'].append(
             split_indices(subset_indices, args.time_folds_per_train_set + 2, scaffold=True, data=subset_data))

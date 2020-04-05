@@ -15,6 +15,7 @@ class MoleculeModel(nn.Module):
         Initializes the MoleculeModel.
 
         :param classification: Whether the model is a classification model.
+        :param classification: Whether the model is a multi-class classification model.
         """
         super(MoleculeModel, self).__init__()
 
@@ -107,7 +108,7 @@ class MoleculeModel(nn.Module):
         return output
 
 
-def build_model(args: Namespace) -> nn.Module:
+def build_model(args: Namespace) -> MoleculeModel:
     """
     Builds a MoleculeModel, which is a message passing neural network + feed-forward layers.
 
@@ -119,7 +120,10 @@ def build_model(args: Namespace) -> nn.Module:
     if args.dataset_type == 'multiclass':
         args.output_size *= args.multiclass_num_classes
 
-    model = MoleculeModel(classification=args.dataset_type == 'classification', multiclass=args.dataset_type == 'multiclass')
+    model = MoleculeModel(
+        classification=args.dataset_type == 'classification',
+        multiclass=args.dataset_type == 'multiclass'
+    )
     model.create_encoder(args)
     model.create_ffn(args)
 

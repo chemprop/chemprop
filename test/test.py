@@ -10,7 +10,7 @@ import unittest
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
-from chemprop.features import clear_cache, get_available_features_generators
+from chemprop.features import get_available_features_generators
 from chemprop.parsing import add_train_args, modify_train_args, add_predict_args, modify_predict_args
 from chemprop.train import cross_validate, make_predictions
 from chemprop.utils import create_logger
@@ -25,9 +25,6 @@ from scripts.similarity import scaffold_similarity, morgan_similarity
 
 
 class TestScripts(unittest.TestCase):
-    def tearDown(self):
-        clear_cache()
-
     def test_avg_dups(self):
         try:
             parser = ArgumentParser()
@@ -143,7 +140,6 @@ class TestTrain(unittest.TestCase):
     def tearDown(self):
         self.args = None
         self.logger = None
-        clear_cache()
 
     def test_regression_default(self):
         try:
@@ -232,14 +228,6 @@ class TestTrain(unittest.TestCase):
             cross_validate(self.args, self.logger)
         except:
             self.fail('show_individual_scores')
-    
-    def test_no_cache(self):
-        try:
-            self.args.no_cache = True
-            modify_train_args(self.args)
-            cross_validate(self.args, self.logger)
-        except:
-            self.fail('no_cache')
 
     def test_num_folds_ensemble(self):
         try:
@@ -340,7 +328,6 @@ class TestPredict(unittest.TestCase):
         logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
         modify_train_args(args)
         cross_validate(args, logger)
-        clear_cache()
 
         parser = ArgumentParser()
         add_predict_args(parser)
@@ -355,8 +342,7 @@ class TestPredict(unittest.TestCase):
         self.temp_dir.cleanup()
         os.remove(self.args.preds_path)
         self.args = None
-        clear_cache()
-    
+
     def test_predict(self):
         try:
             modify_predict_args(self.args)
@@ -398,7 +384,6 @@ class TestHyperopt(unittest.TestCase):
             modify_train_args(args)
 
             grid_search(args)
-            clear_cache()
         except:
             self.fail('hyperopt')
 

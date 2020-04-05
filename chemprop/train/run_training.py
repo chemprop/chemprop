@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
-from chemprop.data import StandardScaler
+from chemprop.data import StandardScaler, MoleculeDataLoader
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
@@ -144,6 +144,28 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
+    # Create data loaders
+    train_data_loader = MoleculeDataLoader(
+        dataset=train_data,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        class_balance=args.class_balance,
+        shuffle=True,
+        seed=args.seed
+    )
+    val_data_loader = MoleculeDataLoader(
+        dataset=val_data,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        seed=args.seed
+    )
+    test_data_loader = MoleculeDataLoader(
+        dataset=test_data,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        seed=args.seed
+    )
+
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
@@ -184,7 +206,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
             n_iter = train(
                 model=model,
-                data=train_data,
+                data_loader=train_data_loader,
                 loss_func=loss_func,
                 optimizer=optimizer,
                 scheduler=scheduler,
@@ -197,10 +219,9 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
                 scheduler.step()
             val_scores = evaluate(
                 model=model,
-                data=val_data,
+                data_loader=val_data_loader,
                 num_tasks=args.num_tasks,
                 metric_func=metric_func,
-                batch_size=args.batch_size,
                 dataset_type=args.dataset_type,
                 scaler=scaler,
                 logger=logger
@@ -229,8 +250,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         
         test_preds = predict(
             model=model,
-            data=test_data,
-            batch_size=args.batch_size,
+            data_loader=test_data_loader,
             scaler=scaler
         )
         test_scores = evaluate_predictions(

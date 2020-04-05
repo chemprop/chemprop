@@ -2,22 +2,20 @@ from typing import List
 
 import torch
 import torch.nn as nn
-from tqdm import trange
+from tqdm import tqdm
 
-from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
 
 
 def predict(model: nn.Module,
-            data: MoleculeDataset,
-            batch_size: int,
+            data_loader: MoleculeDataLoader,
             disable_progress_bar: bool = False,
             scaler: StandardScaler = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
     :param model: A model.
-    :param data: A MoleculeDataset.
-    :param batch_size: Batch size.
+    :param data_loader: A MoleculeDataLoader.
     :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list of lists of predictions. The outer list is examples
@@ -27,18 +25,14 @@ def predict(model: nn.Module,
 
     preds = []
 
-    num_iters, iter_step = len(data), batch_size
-
-    for i in trange(0, num_iters, iter_step, disable=disable_progress_bar):
+    for batch in tqdm(data_loader, disable=disable_progress_bar):
         # Prepare batch
-        mol_batch = MoleculeDataset(data[i:i + batch_size])
-        smiles_batch, features_batch = mol_batch.smiles(), mol_batch.features()
+        batch: MoleculeDataset
+        mol_batch, features_batch = batch.batch_graph(), batch.features()
 
-        # Run model
-        batch = smiles_batch
-
+        # Make predictions
         with torch.no_grad():
-            batch_preds = model(batch, features_batch)
+            batch_preds = model(mol_batch, features_batch)
 
         batch_preds = batch_preds.data.cpu().numpy()
 

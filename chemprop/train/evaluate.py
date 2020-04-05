@@ -4,7 +4,7 @@ from typing import Callable, List
 import torch.nn as nn
 
 from .predict import predict
-from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataLoader, StandardScaler
 
 
 def evaluate_predictions(preds: List[List[float]],
@@ -68,10 +68,9 @@ def evaluate_predictions(preds: List[List[float]],
 
 
 def evaluate(model: nn.Module,
-             data: MoleculeDataset,
+             data_loader: MoleculeDataLoader,
              num_tasks: int,
              metric_func: Callable,
-             batch_size: int,
              dataset_type: str,
              scaler: StandardScaler = None,
              logger: logging.Logger = None) -> List[float]:
@@ -79,10 +78,9 @@ def evaluate(model: nn.Module,
     Evaluates an ensemble of models on a dataset.
 
     :param model: A model.
-    :param data: A MoleculeDataset.
+    :param data_loader: A MoleculeDataLoader.
     :param num_tasks: Number of tasks.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
-    :param batch_size: Batch size.
     :param dataset_type: Dataset type.
     :param scaler: A StandardScaler object fit on the training targets.
     :param logger: Logger.
@@ -90,12 +88,11 @@ def evaluate(model: nn.Module,
     """
     preds = predict(
         model=model,
-        data=data,
-        batch_size=batch_size,
+        data_loader=data_loader,
         scaler=scaler
     )
 
-    targets = data.targets()
+    targets = data_loader.targets()
 
     results = evaluate_predictions(
         preds=preds,

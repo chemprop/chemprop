@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 from .predict import predict
-from chemprop.data import MoleculeDataset
+from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers
 
@@ -60,14 +60,21 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
         sum_preds = np.zeros((len(test_data), args.num_tasks, args.multiclass_num_classes))
     else:
         sum_preds = np.zeros((len(test_data), args.num_tasks))
+
+    # Create data loader
+    test_data_loader = MoleculeDataLoader(
+        dataset=test_data,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers
+    )
+
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
         model = load_checkpoint(checkpoint_path, cuda=args.cuda)
         model_preds = predict(
             model=model,
-            data=test_data,
-            batch_size=args.batch_size,
+            data_loader=test_data_loader,
             scaler=scaler
         )
         sum_preds += np.array(model_preds)

@@ -2,7 +2,7 @@ from argparse import Namespace
 import csv
 from logging import Logger
 import pickle
-import random
+from random import Random
 from typing import List, Set, Tuple
 import os
 
@@ -159,8 +159,8 @@ def get_data(path: str,
         if len(data) < original_data_len:
             debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    if data.data[0].features is not None:
-        args.features_dim = len(data.data[0].features)
+    if data._data[0].features is not None:
+        args.features_dim = len(data._data[0].features)
 
     return data
 
@@ -210,6 +210,8 @@ def split_data(data: MoleculeDataset,
     :return: A tuple containing the train, validation, and test splits of the data.
     """
     assert len(sizes) == 3 and sum(sizes) == 1
+
+    random = Random(seed)
 
     if args is not None:
         folds_file, val_fold_index, test_fold_index = \
@@ -268,7 +270,6 @@ def split_data(data: MoleculeDataset,
         if val_fold_index is not None:
             train = train_val
         else:
-            random.seed(seed)
             random.shuffle(train_val)
             train_size = int(sizes[0] * len(train_val))
             train = train_val[:train_size]
