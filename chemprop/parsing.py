@@ -157,6 +157,10 @@ def add_train_args(parser: ArgumentParser):
                         help='Turn off scaling of features')
     parser.add_argument('--class_balance', action='store_true', default=False,
                         help='Use weights to balance classes within mini-batches during training')
+    parser.add_argument('--cache_cutoff', type=int, default=10000,
+                        help='Maximum number of molecules in dataset to allow caching.'
+                             'Below this number, caching is used and data loading is sequential.'
+                             'Above this number, caching is not used and data loading is parallel')
 
     # Model arguments
     parser.add_argument('--ensemble_size', type=int, default=1,
@@ -315,11 +319,6 @@ def modify_train_args(args: Namespace):
 
     if args.test:
         args.epochs = 0
-
-    if args.cache:
-        # Caching is not compatible with parallel processing, so set num_workers to 0
-        # (Also there is no real benefit to parallelism (outside of the first epoch) when caching is on)
-        args.num_workers = 0
 
     args.command_line = f'python {" ".join(sys.argv)}'
 

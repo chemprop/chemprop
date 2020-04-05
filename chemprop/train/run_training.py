@@ -145,13 +145,18 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
     # Automatically determine whether to cache
-    cache = len(data) < 10000
+    if len(data) <= args.cache_cutoff:
+        cache = True
+        num_workers = 0
+    else:
+        cache = False
+        num_workers = args.num_workers
 
     # Create data loaders
     train_data_loader = MoleculeDataLoader(
         dataset=train_data,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
+        num_workers=num_workers,
         cache=cache,
         class_balance=args.class_balance,
         shuffle=True,
@@ -160,14 +165,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
     val_data_loader = MoleculeDataLoader(
         dataset=val_data,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
+        num_workers=num_workers,
         cache=cache,
         seed=args.seed
     )
     test_data_loader = MoleculeDataLoader(
         dataset=test_data,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
+        num_workers=num_workers,
         cache=cache,
         seed=args.seed
     )
