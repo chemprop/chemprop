@@ -149,6 +149,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         dataset=train_data,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        cache=args.cache,
         class_balance=args.class_balance,
         shuffle=True,
         seed=args.seed
@@ -157,12 +158,14 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
         dataset=val_data,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        cache=args.cache,
         seed=args.seed
     )
     test_data_loader = MoleculeDataLoader(
         dataset=test_data,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        cache=args.cache,
         seed=args.seed
     )
 

@@ -1,6 +1,6 @@
 from argparse import Namespace
 from random import Random
-from typing import Callable, Iterator, List, Union
+from typing import Callable, Dict, Iterator, List, Union
 
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, Sampler
@@ -9,6 +9,10 @@ from rdkit import Chem
 from .scaler import StandardScaler
 from chemprop.features import get_features_generator
 from chemprop.features import BatchMolGraph, MolGraph
+
+
+# Cache of graph featurizations
+SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
 
 
 class MoleculeDatapoint:
@@ -136,14 +140,26 @@ class MoleculeDataset(Dataset):
         """
         return [d.mol for d in self._data]
 
-    def batch_graph(self) -> BatchMolGraph:
+    def batch_graph(self, cache: bool = False) -> BatchMolGraph:
         """
         Returns a BatchMolGraph with the graph featurization of the molecules.
 
+        :param cache: Whether to store the graph featurizations in the global cache.
         :return: A BatchMolGraph.
         """
         if self._batch_graph is None:
-            self._batch_graph = BatchMolGraph([MolGraph(d.smiles, self._args) for d in self._data], self._args)
+            mol_graphs = []
+            for smiles in self.smiles():
+                if smiles in SMILES_TO_GRAPH:
+                    mol_graph = SMILES_TO_GRAPH[smiles]
+                    print('cache')
+                else:
+                    mol_graph = MolGraph(smiles, self._args)
+                    if cache:
+                        SMILES_TO_GRAPH[smiles] = mol_graph
+                mol_graphs.append(mol_graph)
+
+            self._batch_graph = BatchMolGraph(mol_graphs, self._args)
 
         return self._batch_graph
 
@@ -316,19 +332,6 @@ class MoleculeSampler(Sampler):
         return self.length
 
 
-def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
-    """
-    Constructs a MoleculeDataset from a list of MoleculeDatapoints while also constructing the BatchMolGraph.
-
-    :param data: A list of MoleculeDatapoints.
-    :return: A MoleculeDataset with all the MoleculeDatapoints and a BatchMolGraph graph featurization.
-    """
-    data = MoleculeDataset(data)
-    data.batch_graph()  # Forces computation and caching of the BatchMolGraph for the molecules
-
-    return data
-
-
 class MoleculeDataLoader(DataLoader):
     """A DataLoader for MoleculeDatasets."""
 
@@ -336,6 +339,7 @@ class MoleculeDataLoader(DataLoader):
                  dataset: MoleculeDataset,
                  batch_size: int = 50,
                  num_workers: int = 0,
+                 cache: bool = False,
                  class_balance: bool = False,
                  shuffle: bool = False,
                  seed: int = 0):
@@ -345,6 +349,7 @@ class MoleculeDataLoader(DataLoader):
         :param dataset: The MoleculeDataset containing the molecules.
         :param batch_size: Batch size.
         :param num_workers: Number of workers used to build batches.
+        :param cache: Whether to cache the graph featurizations of molecules for faster processing.
         :param class_balance: Whether to perform class balancing (i.e. use an equal number of positive and negative molecules).
                               Class balance is only available for single task classification datasets.
                               Set shuffle to True in order to get a random subset of the larger class.
@@ -354,6 +359,7 @@ class MoleculeDataLoader(DataLoader):
         self._dataset = dataset
         self._batch_size = batch_size
         self._num_workers = num_workers
+        self._cache = cache
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
@@ -364,6 +370,18 @@ class MoleculeDataLoader(DataLoader):
             shuffle=self._shuffle,
             seed=self._seed
         )
+
+        def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
+            """
+            Constructs a MoleculeDataset from a list of MoleculeDatapoints while also constructing the BatchMolGraph.
+
+            :param data: A list of MoleculeDatapoints.
+            :return: A MoleculeDataset with all the MoleculeDatapoints and a BatchMolGraph graph featurization.
+            """
+            data = MoleculeDataset(data)
+            data.batch_graph(cache=self._cache)  # Forces computation and caching of the BatchMolGraph for the molecules
+
+            return data
 
         super(MoleculeDataLoader, self).__init__(
             dataset=self._dataset,
