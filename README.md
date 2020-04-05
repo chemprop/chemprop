@@ -1,5 +1,11 @@
 # Molecular Property Prediction
-This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237).
+This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approch to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
+
+A web prediction interface with some trained chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+
+## COVID-19 Update
+
+Please see [aicures.mit.edu](aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use chemprop to identify drug candidates for treating COVID-19.
 
 ## Table of Contents
 
@@ -19,6 +25,7 @@ This repository contains message passing neural networks for molecular property 
   * [Additional Features](#additional-features)
     * [RDKit 2D Features](#rdkit-2d-features)
     * [Custom Features](#custom-features)
+  * [Speed](#speed)
 - [Predicting](#predicting)
 - [Interpreting Model Prediction](#Interpreting)
 - [TensorBoard](#tensorboard)
@@ -74,7 +81,9 @@ Then you can use `import chemprop` or `from chemprop import ...` in your other c
    
 ## Web Interface
 
-For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. After installing the dependencies following the instructions above, you can start the web interface in two ways:
+For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+
+You can start the web interface on your local machine in two ways:
 
 1. Run `python web/run.py` and then navigate to [localhost:5000](http://localhost:5000) in a web browser. This will start the site in development mode.
 2. Run `gunicorn --bind {host}:{port} 'wsgi:build_app()'`. This will start the site in production mode.
@@ -177,6 +186,14 @@ If you would like to load custom features, you can do so in two ways:
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
 2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
  
+### Speed
+
+To speed up training when using a small dataset, add the `--cache` flag. This will save the graph featurizations of the SMILES strings in memory (system RAM, not GPU RAM) rather than recomputing them on every epoch.
+
+This should only be used for smaller datasets (roughly <10,000 molecules), otherwise the cache will grow too large and the machine will run out of memory.
+
+Note that when using caching, data loading is sequential rather than parallel. This will make the first epoch slower (before caching takes effect) but subsequent epochs will be faster.
+
 ## Predicting
 
 To load a trained model and make predictions, run `predict.py` and specify:
