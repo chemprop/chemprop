@@ -25,7 +25,6 @@ Please see [aicures.mit.edu](aicures.mit.edu) and the associated [data GitHub re
   * [Additional Features](#additional-features)
     * [RDKit 2D Features](#rdkit-2d-features)
     * [Custom Features](#custom-features)
-  * [Speed](#speed)
 - [Predicting](#predicting)
 - [Interpreting Model Prediction](#Interpreting)
 - [TensorBoard](#tensorboard)
@@ -77,8 +76,6 @@ Then you can use `import chemprop` or `from chemprop import ...` in your other c
 
 **PyTorch GPU:** Although PyTorch is installed automatically along with `chemprop`, you may need to install the GPU version manually. Instructions are available [here](https://pytorch.org/get-started/locally/).
 
-**kyotocabinet**: If you get warning messages about `kyotocabinet` not being installed, it's safe to ignore them.
-   
 ## Web Interface
 
 For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
@@ -186,14 +183,6 @@ If you would like to load custom features, you can do so in two ways:
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
 2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
  
-### Speed
-
-To speed up training when using a small dataset, add the `--cache` flag. This will save the graph featurizations of the SMILES strings in memory (system RAM, not GPU RAM) rather than recomputing them on every epoch.
-
-This should only be used for smaller datasets (roughly <10,000 molecules), otherwise the cache will grow too large and the machine will run out of memory.
-
-Note that when using caching, data loading is sequential rather than parallel. This will make the first epoch slower (before caching takes effect) but subsequent epochs will be faster.
-
 ## Predicting
 
 To load a trained model and make predictions, run `predict.py` and specify:
