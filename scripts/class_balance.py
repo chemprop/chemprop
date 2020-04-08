@@ -1,12 +1,20 @@
-from argparse import ArgumentParser
 import os
 import sys
+from typing import List, Literal
 
 import numpy as np
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
+
+
+class Args(Tap):
+    data_path: str  # Path to data CSV file
+    smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
+    target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
+    split_type: Literal['random', 'scaffold'] = 'scaffold'  # Split type, either "random" or "scaffold"
 
 
 def class_balance(data_path: str, split_type: str):
@@ -68,18 +76,7 @@ def class_balance(data_path: str, split_type: str):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True,
-                        help='Path to data CSV file')
-    parser.add_argument('--smiles_column', type=str, default=None,
-                        help='Name of the column containing SMILES strings.'
-                             'By default, uses the first column.')
-    parser.add_argument('--target_columns', type=str, nargs='+', default=None,
-                        help='Name of the columns containing target values.'
-                             'By default, uses all columns except the SMILES column.')
-    parser.add_argument('--split_type', type=str, default='scaffold',
-                        help='Method of splitting data')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     class_balance(
         data_path=args.data_path,

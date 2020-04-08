@@ -1,15 +1,15 @@
 """Script to find the molecules in the training set which are most similar to each molecule in the test set."""
 
-from argparse import ArgumentParser
 from collections import OrderedDict
 import csv
 import os
 import sys
-from typing import List
+from typing import List, Literal
 
 import numpy as np
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
@@ -18,6 +18,16 @@ from chemprop.features.features_generators import morgan_binary_features_generat
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_molecule_vectors
 from chemprop.utils import load_checkpoint, makedirs
+
+
+class Args(Tap):
+    test_path: str  # Path to CSV file with test set of molecules
+    train_path: str  # Path to CSV file with train set of molecules
+    save_path: str  # Path to CSV file where similar molecules will be saved
+    distance_measure: Literal['embedding', 'morgan'] = 'embedding'  # Distance measure to use to find nearest neighbors in train set
+    checkpoint_path: str = None  # Path to .pt file containing a model checkpoint (only needed for distance_measure == "embedding")
+    num_neighbors: int = 5  # Number of neighbors to search for each molecule
+    batch_size: int = 50  # Batch size when making predictions
 
 
 def find_similar_mols(test_smiles: List[str],
@@ -157,23 +167,7 @@ def save_similar_mols(test_path: str,
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--test_path', type=str, required=True,
-                        help='Path to CSV file with test set of molecules')
-    parser.add_argument('--train_path', type=str, required=True,
-                        help='Path to CSV file with train set of molecules')
-    parser.add_argument('--save_path', type=str, required=True,
-                        help='Path to CSV file where similar molecules will be saved')
-    parser.add_argument('--distance_measure', type=str, choices=['embedding', 'morgan'], default='embedding',
-                        help='Distance measure to use to find nearest neighbors in train set')
-    parser.add_argument('--checkpoint_path', type=str,
-                        help='Path to .pt file containing a model checkpoint'
-                             '(only needed for distance_measure == "embedding")')
-    parser.add_argument('--num_neighbors', type=int, default=5,
-                        help='Number of neighbors to search for each molecule')
-    parser.add_argument('--batch_size', type=int, default=50,
-                        help='Batch size when making predictions')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     save_similar_mols(
         test_path=args.test_path,

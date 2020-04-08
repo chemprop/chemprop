@@ -1,8 +1,17 @@
-from argparse import ArgumentParser
 from typing import List
 
 import numpy as np
 from scipy import stats
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+
+
+class Args(Tap):
+    mean1: List[float]  # Means of distributions of 1st model
+    mean2: List[float]  # Means of distributions of 2nd model
+    std1: List[float]  # Standard deviations of distributions of 1st model
+    std2: List[float]  # Standard deviations of distributions of 2nd model
+    nobs1: List[int]  # Number of observations each mean/std is constructed from in 1st model
+    nobs2: List[int]  # Number of observations each mean/std is constructed from in 2nd model
 
 
 def welchs(mean1: List[float],  # mean performance across folds for each dataset (model 1)
@@ -49,20 +58,7 @@ def welchs(mean1: List[float],  # mean performance across folds for each dataset
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--mean1', type=float, nargs='+', required=True,
-                        help='Means of distributions of 1st model')
-    parser.add_argument('--std1', type=float, nargs='+', required=True,
-                        help='Standard deviations of distributions of 1st model')
-    parser.add_argument('--nobs1', type=int, nargs='+', required=True,
-                        help='Number of observations each mean/std is constructed from in 1st model')
-    parser.add_argument('--mean2', type=float, nargs='+', required=True,
-                        help='Means of distributions of 2nd model')
-    parser.add_argument('--std2', type=float, nargs='+', required=True,
-                        help='Standard deviations of distributions of 2nd model')
-    parser.add_argument('--nobs2', type=int, nargs='+', required=True,
-                        help='Number of observations each mean/std is constructed from in 2nd model')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     welchs(
         mean1=args.mean1,

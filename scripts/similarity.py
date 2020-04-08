@@ -1,23 +1,32 @@
 """Computes the similarity of molecular scaffolds between two datasets."""
 
-from argparse import ArgumentParser
+from itertools import product
+import math
 import os
 import sys
+from typing import List, Literal
 
-from itertools import product
-from typing import List
-
-import math
 import numpy as np
 from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 from tqdm import tqdm
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data import scaffold_to_smiles
 from chemprop.data.utils import get_data
+
+
+class Args(Tap):
+    data_path_1: str  # Path to first data CSV file
+    data_path_2: str  # Path to second data CSV file
+    smiles_column_1: str  # Name of the column containing SMILES strings for the first data. By default, uses the first column.
+    smiles_column_2: str  # Name of the column containing SMILES strings for the second data. By default, uses the first column.
+    similarity_measure: Literal['scaffold', 'morgan']  # Similarity measure to use to compare the two datasets
+    radius: int = 3  # Radius of Morgan fingerprint
+    sample_rate: float = 1.0  # Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)
 
 
 def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
@@ -132,24 +141,7 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path_1', type=str, required=True,
-                        help='Path to first data CSV file')
-    parser.add_argument('--data_path_2', type=str, required=True,
-                        help='Path to second data CSV file')
-    parser.add_argument('--smiles_column_1', type=str, default=None,
-                        help='Name of the column containing SMILES strings for the first data.'
-                             'By default, uses the first column.')
-    parser.add_argument('--smiles_column_2', type=str, default=None,
-                        help='Name of the column containing SMILES strings for the second data.'
-                             'By default, uses the first column.')
-    parser.add_argument('--similarity_measure', type=str, required=True, choices=['scaffold', 'morgan'],
-                        help='Similarity measure to use to compare the two datasets')
-    parser.add_argument('--radius', type=int, default=3,
-                        help='Radius of Morgan fingerprint')
-    parser.add_argument('--sample_rate', type=float, default=1.0,
-                        help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     data_1 = get_data(path=args.data_path_1, smiles_column=args.smiles_column_1)
     data_2 = get_data(path=args.data_path_2, smiles_column=args.smiles_column_2)

@@ -1,22 +1,33 @@
 """Computes and saves molecular features for a dataset."""
 
-from argparse import ArgumentParser, Namespace
 from multiprocessing import Pool
 import os
-import pickle
 import shutil
 import sys
 from typing import List, Tuple
 
-import numpy as np
-from scipy import sparse
 from tqdm import tqdm
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 from chemprop.features import get_available_features_generators, get_features_generator, load_features, save_features
 from chemprop.utils import makedirs
+
+
+class Args(Tap):
+    data_path: str  # Path to data CSV
+    smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
+    features_generator: str = 'rdkit_2d_normalized'  # Type of features to generate
+    save_path: str  # Path to .npz file where features will be saved as a compressed numpy archive
+    save_frequency: int = 10000  # Frequency with which to save the features
+    restart: bool = False  # Whether to not load partially complete featurization and instead start from scratch
+    max_data_size: int = None  # Maximum number of data points to load
+    sequential: bool = False  # Whether to run sequentially rather than in parallel
+
+    def add_arguments(self) -> None:
+        self.add_argument('--features_generator', choices=get_available_features_generators())
 
 
 def load_temp(temp_dir: str) -> Tuple[List[List[float]], int]:
@@ -41,7 +52,7 @@ def load_temp(temp_dir: str) -> Tuple[List[List[float]], int]:
     return features, temp_num
 
 
-def generate_and_save_features(args: Namespace):
+def generate_and_save_features(args: Args):
     """
     Computes and saves features for a dataset of molecules as a 2D array in a .npz file.
 
@@ -104,25 +115,4 @@ def generate_and_save_features(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True,
-                        help='Path to data CSV')
-    parser.add_argument('--smiles_column', type=str, default=None,
-                        help='Name of the column containing SMILES strings.'
-                             'By default, uses the first column.')
-    parser.add_argument('--features_generator', type=str, required=True,
-                        choices=get_available_features_generators(),
-                        help='Type of features to generate')
-    parser.add_argument('--save_path', type=str, required=True,
-                        help='Path to .npz file where features will be saved as a compressed numpy archive')
-    parser.add_argument('--save_frequency', type=int, default=10000,
-                        help='Frequency with which to save the features')
-    parser.add_argument('--restart', action='store_true', default=False,
-                        help='Whether to not load partially complete featurization and instead start from scratch')
-    parser.add_argument('--max_data_size', type=int,
-                        help='Maximum number of data points to load')
-    parser.add_argument('--sequential', action='store_true', default=False,
-                        help='Whether to run sequentially rather than in parallel')
-    args = parser.parse_args()
-
-    generate_and_save_features(args)
+    generate_and_save_features(Args().parse_args())

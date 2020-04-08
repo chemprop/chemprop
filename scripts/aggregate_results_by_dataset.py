@@ -1,5 +1,7 @@
-from argparse import ArgumentParser
 import os
+from typing import Literal
+
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 EXPERIMENTS = [
     'random_forest',
@@ -15,6 +17,12 @@ EXPERIMENTS = [
     'atom_messages'
 ]
 ORDER = {f'417_{name}': index for index, name in enumerate(EXPERIMENTS)}
+
+
+class Args(Tap):
+    dataset: str  # Dataset to collect results for
+    ckpt_dir: str  # Path to directory containing all checkpoints which will be walked to find checkpoints for the dataset
+    split_type: Literal['random', 'scaffold']  # Split type, either "random" or "scaffold"
 
 
 def aggregate_results_by_dataset(dataset: str, ckpt_dir: str, split_type: str):
@@ -58,15 +66,7 @@ def aggregate_results_by_dataset(dataset: str, ckpt_dir: str, split_type: str):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=True,
-                        help='Dataset to collect results for')
-    parser.add_argument('--ckpt_dir', type=str, required=True,
-                        help='Path to directory containing all checkpoints '
-                             'which will be walked to find checkpoints for the dataset')
-    parser.add_argument('--split_type', type=str, required=True, choices=['random', 'scaffold'],
-                        help='"random" or "scaffold"')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     aggregate_results_by_dataset(
         dataset=args.dataset,

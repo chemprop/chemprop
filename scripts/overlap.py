@@ -1,16 +1,26 @@
 """Computes the overlap of molecules between two datasets."""
 
-from argparse import ArgumentParser, Namespace
 import csv
 import os
 import sys
+
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data
 
 
-def overlap(args: Namespace):
+class Args(Tap):
+    data_path_1: str  # Path to first data CSV file
+    data_path_2: str  # Path to second data CSV file
+    smiles_column_1: str = None  # Name of the column containing SMILES strings for the first data. By default, uses the first column.
+    smiles_column_2: str = None  # Name of the column containing SMILES strings for the second data. By default, uses the first column.
+    save_intersection_path: str = None  # Path to save intersection at; labeled with data_path 1 header
+    save_difference_path: str = None  # Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header
+
+
+def overlap(args: Args):
     data_1 = get_data(path=args.data_path_1, smiles_column=args.smiles_column_1)
     data_2 = get_data(path=args.data_path_2, smiles_column=args.smiles_column_2)
 
@@ -45,21 +55,4 @@ def overlap(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path_1', type=str, required=True,
-                        help='Path to first data CSV file')
-    parser.add_argument('--data_path_2', type=str, required=True,
-                        help='Path to second data CSV file')
-    parser.add_argument('--smiles_column_1', type=str, default=None,
-                        help='Name of the column containing SMILES strings for the first data.'
-                             'By default, uses the first column.')
-    parser.add_argument('--smiles_column_2', type=str, default=None,
-                        help='Name of the column containing SMILES strings for the second data.'
-                             'By default, uses the first column.')
-    parser.add_argument('--save_intersection_path', type=str, default=None,
-                        help='Path to save intersection at; labeled with data_path 1 header')
-    parser.add_argument('--save_difference_path', type=str, default=None,
-                        help='Path to save molecules in dataset 1 that are not in dataset 2; labeled with data_path 1 header')
-    args = parser.parse_args()
-
-    overlap(args)
+    overlap(Args().parse_args())
