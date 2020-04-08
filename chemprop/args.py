@@ -2,7 +2,7 @@ import json
 import os
 from tempfile import TemporaryDirectory
 import pickle
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from typing_extensions import Literal
 
 
@@ -12,7 +12,8 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 from chemprop.features import get_available_features_generators
 
 
-def get_checkpoint_paths(checkpoint_dir: Optional[str], checkpoint_path: Optional[str], ext: str = '.pt') -> List[str]:
+def get_checkpoint_paths(checkpoint_dir: Optional[str],
+                         checkpoint_path: Optional[str], ext: str = '.pt') -> Optional[List[str]]:
     """
     Gets a list of checkpoint paths.
 
@@ -23,10 +24,8 @@ def get_checkpoint_paths(checkpoint_dir: Optional[str], checkpoint_path: Optiona
     :param checkpoint_dir: Path to a directory containing checkpoints.
     :param checkpoint_path: Path to a checkpoint.
     :param ext: The extension which defines a checkpoint file.
-    :return: A list of paths to checkpoints.
+    :return: A list of paths to checkpoints or None if both checkpoint_dir and checkpoint_path are None.
     """
-    checkpoint_paths = []
-
     if checkpoint_dir is not None and checkpoint_path is not None:
         raise ValueError('Can only specify one of checkpoint_dir and checkpoint_path')
 
@@ -34,6 +33,8 @@ def get_checkpoint_paths(checkpoint_dir: Optional[str], checkpoint_path: Optiona
         return [checkpoint_path]
 
     if checkpoint_dir is not None:
+        checkpoint_paths = []
+
         for root, _, files in os.walk(checkpoint_dir):
             for fname in files:
                 if fname.endswith(ext):
@@ -42,7 +43,9 @@ def get_checkpoint_paths(checkpoint_dir: Optional[str], checkpoint_path: Optiona
         if len(checkpoint_paths) == 0:
             raise ValueError(f'Failed to find any checkpoints with extension "{ext}" in directory "{checkpoint_dir}"')
 
-    return checkpoint_paths
+        return checkpoint_paths
+
+    return None
 
 
 class PredictArgs(Tap):
@@ -279,7 +282,7 @@ class TrainArgs(Tap):
         )
 
         # Fix ensemble size if loading checkpoints
-        if len(self._checkpoint_paths) > 0:
+        if self._checkpoint_paths is not None and len(self._checkpoint_paths) > 0:
             self.ensemble_size = len(self._checkpoint_paths)
 
         # Process and validate metric and loss function
@@ -329,6 +332,18 @@ class TrainArgs(Tap):
         # Test settings
         if self.test:
             self.epochs = 0
+
+    # TODO: remove this once it's implemented in Tap
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> 'TrainArgs':
+        args = TrainArgs()
+        for key, value in d.items():
+            try:
+                setattr(args, key, value)
+            except AttributeError:
+                pass
+
+        return args
 
 
 class HyperoptArgs(TrainArgs):

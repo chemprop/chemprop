@@ -1,3 +1,4 @@
+from argparse import Namespace
 import logging
 import math
 import os
@@ -46,6 +47,10 @@ def save_checkpoint(path: str,
     :param args: Arguments.
     :param path: Path where checkpoint will be saved.
     """
+    # Convert args to namespace for backwards compatibility
+    if args is not None:
+        args = Namespace(**args.as_dict())
+
     state = {
         'args': args,
         'state_dict': model.state_dict(),
@@ -78,7 +83,8 @@ def load_checkpoint(path: str,
 
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
-    args, loaded_state_dict = state['args'], state['state_dict']
+    args = TrainArgs.from_dict(vars(state['args']))
+    loaded_state_dict = state['state_dict']
 
     if current_args is not None:
         args = current_args
@@ -139,7 +145,7 @@ def load_args(path: str) -> TrainArgs:
     :param path: Path where model checkpoint is saved.
     :return: The arguments that the model was trained with.
     """
-    return torch.load(path, map_location=lambda storage, loc: storage)['args']
+    return TrainArgs.from_dict(vars(torch.load(path, map_location=lambda storage, loc: storage)['args']))
 
 
 def load_task_names(path: str) -> List[str]:
