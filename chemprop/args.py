@@ -64,7 +64,7 @@ class PredictArgs(Tap):
 
     def __init__(self, *args, **kwargs) -> None:
         super(PredictArgs, self).__init__(*args, **kwargs)
-        self._checkpoint_paths = []
+        self._checkpoint_paths = None
 
     @property
     def cuda(self) -> bool:
@@ -169,7 +169,7 @@ class TrainArgs(Tap):
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
         self._task_names = None
-        self._checkpoint_paths = []
+        self._checkpoint_paths = None
         self._crossval_index_sets = None
         self._task_names = None
         self._num_tasks = None
