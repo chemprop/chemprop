@@ -1,8 +1,9 @@
-from argparse import ArgumentParser
 import os
-from typing import List
+from typing import List, Literal
 
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 import numpy as np
+
 
 ORDER = {
     name: index for index, name in enumerate([
@@ -45,6 +46,11 @@ ORDER = {
 }
 
 
+class Args(Tap):
+    ckpts_dirs: List[str]  # Path to directories (one per dataset) with model save dirs
+    split_type: Literal['random', 'scaffold']  # Split type, either "random" or "scaffold"
+
+
 def aggregate_results(ckpts_dirs: List[str], split_type: str):
     print('Name\tMean\tStd\tNum files')
 
@@ -85,12 +91,7 @@ def aggregate_results(ckpts_dirs: List[str], split_type: str):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--ckpts_dirs', type=str, nargs='+', required=True,
-                        help='Path to directories (one per dataset) with model save dirs')
-    parser.add_argument('--split_type', type=str, required=True,
-                        help='"random" or "scaffold"')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     aggregate_results(
         ckpts_dirs=args.ckpts_dirs,

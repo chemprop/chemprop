@@ -1,17 +1,26 @@
 """Averages the target values for duplicate smiles strings. (Only used for regression datasets.)"""
 
-from argparse import ArgumentParser
 from collections import defaultdict
 import os
 import sys
+from typing import List
+
 import numpy as np
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data.utils import get_data, get_header
 
 
-def average_duplicates(args):
+class Args(Tap):
+    data_path: str  # Path to data CSV file
+    smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
+    target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
+    save_path: str  # Path where average data CSV file will be saved
+
+
+def average_duplicates(args: Args):
     """Averages duplicate data points in a dataset."""
     print('Loading data')
     header = get_header(args.data_path)
@@ -58,17 +67,4 @@ def average_duplicates(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str,
-                        help='Path to data CSV file')
-    parser.add_argument('--smiles_column', type=str, default=None,
-                        help='Name of the column containing SMILES strings.'
-                             'By default, uses the first column.')
-    parser.add_argument('--target_columns', type=str, nargs='+', default=None,
-                        help='Name of the columns containing target values.'
-                             'By default, uses all columns except the SMILES column.')
-    parser.add_argument('--save_path', type=str,
-                        help='Path where average data CSV file will be saved')
-    args = parser.parse_args()
-
-    average_duplicates(args)
+    average_duplicates(Args().parse_args())

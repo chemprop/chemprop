@@ -1,11 +1,19 @@
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 import os
 import pickle
 import random
 
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
-def create_crossval_indices(args: Namespace):
+
+class Args(Tap):
+    save_dir: str  # Path to directory to save indices
+    num_folds: int = 10  # Number of cross validation folds
+    test_folds_to_test: int = None  # Number of cross validation folds to test as test folds
+    val_folds_per_test: int = None  # Number of cross validation folds
+
+
+def create_crossval_indices(args: Args):
     random.seed(0)
     if args.test_folds_to_test is None:
         args.test_folds_to_test = args.num_folds
@@ -35,15 +43,4 @@ def create_crossval_indices(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--save_dir', type=str, required=True,
-                        help='Path to directory to save indices')
-    parser.add_argument('--num_folds', type=int, default=10,
-                        help='Number of cross validation folds')
-    parser.add_argument('--test_folds_to_test', type=int, 
-                        help='Number of cross validation folds to test as test folds')
-    parser.add_argument('--val_folds_per_test', type=int, 
-                        help='Number of cross validation folds')
-    args = parser.parse_args()
-
-    create_crossval_indices(args)
+    create_crossval_indices(Args().parse_args())

@@ -1,11 +1,11 @@
-from argparse import ArgumentParser
 from collections import OrderedDict, namedtuple
 import os
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 import numpy as np
 from scipy.stats import wilcoxon
 from tqdm import tqdm
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.train.evaluate import evaluate_predictions
 from chemprop.utils import mean_absolute_error, rmse, roc_auc_score, prc_auc
@@ -51,6 +51,11 @@ COMPARISONS = [
 ]
 
 EXPERIMENTS = sorted({exp for comp in COMPARISONS for exp in comp})
+
+
+class Args(Tap):
+    preds_dir: str  # Path to a directory containing predictions
+    split_type: Literal['random', 'scaffold']  # Split type
 
 
 def load_preds_and_targets(preds_dir: str,
@@ -158,12 +163,7 @@ def wilcoxon_significance(preds_dir: str, split_type: str):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--preds_dir', type=str, required=True,
-                        help='Path to a directory containing predictions')
-    parser.add_argument('--split_type', type=str, required=True, choices=['random', 'scaffold'],
-                        help='Split type')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     wilcoxon_significance(
         preds_dir=args.preds_dir,

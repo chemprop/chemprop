@@ -1,15 +1,25 @@
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 import os
 import pickle
 import random
-from typing import List
+from typing import List, Literal
 
 import numpy as np
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.data import MoleculeDataset
 from chemprop.data.scaffold import scaffold_to_smiles
 from chemprop.data.utils import get_data
+
+
+class Args(Tap):
+    data_path: str  # Path to CSV file with dataset of molecules
+    save_dir: str  # Path to CSV file where splits will be saved
+    split_type: Literal['random', 'scaffold', 'time_window']  # Random or scaffold based split
+    num_folds: int = 10  # Number of cross validation folds
+    test_folds_to_test: int = 3  # Number of test folds
+    val_folds_per_test: int = 3  # Number of val folds
+    time_folds_per_train_set: int = 3  # X:1:1 train:val:test for time split sliding window
 
 
 def split_indices(all_indices: List[int],
@@ -40,7 +50,7 @@ def split_indices(all_indices: List[int],
     return fold_indices
 
 
-def create_time_splits(args: Namespace):
+def create_time_splits(args: Args):
     # ASSUME DATA GIVEN IN CHRONOLOGICAL ORDER.
     # this will dump a very different format of indices, with all in one file; TODO modify as convenient later.
     data = get_data(args.data_path)
@@ -74,7 +84,7 @@ def create_time_splits(args: Namespace):
             pickle.dump(all_splits, wf)
 
 
-def create_crossval_splits(args: Namespace):
+def create_crossval_splits(args: Args):
     data = get_data(args.data_path)
     num_data = len(data)
     if args.split_type == 'random':
@@ -107,22 +117,7 @@ def create_crossval_splits(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True,
-                        help='Path to CSV file with dataset of molecules')
-    parser.add_argument('--save_dir', type=str,
-                        help='Path to CSV file where splits will be saved')
-    parser.add_argument('--split_type', type=str, choices=['random', 'scaffold', 'time_window'], required=True,
-                        help='Random or scaffold based split')
-    parser.add_argument('--num_folds', type=int, default=10,
-                        help='Number of cross validation folds')
-    parser.add_argument('--test_folds_to_test', type=int, default=3,
-                        help='Number of test folds')
-    parser.add_argument('--val_folds_per_test', type=int, default=3,
-                        help='Number of val folds')
-    parser.add_argument('--time_folds_per_train_set', type=int, default=3,
-                        help='X:1:1 train:val:test for time split sliding window')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     random.seed(0)
 

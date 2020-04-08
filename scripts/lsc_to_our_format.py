@@ -1,9 +1,9 @@
-from argparse import ArgumentParser
 import os
 import shutil
 
 import h5py
 import numpy as np
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 
 DATASETS = [
@@ -27,6 +27,12 @@ DATASETS = [
     'clintox',
     'chembl'
 ]
+
+
+class Args(Tap):
+    lsc_dir: str  # Path to directory in lsc save format
+    ckpt_dir: str  # Path to directory with targets saved in our format
+    save_dir: str  # Path to directory where lsc files will be saved in our format
 
 
 def lsc_to_our_format(lsc_dir: str, ckpt_dir: str, save_dir: str):
@@ -65,14 +71,7 @@ def lsc_to_our_format(lsc_dir: str, ckpt_dir: str, save_dir: str):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--lsc_dir', type=str, required=True,
-                        help='Path to directory in lsc save format')
-    parser.add_argument('--ckpt_dir', type=str, required=True,
-                        help='Path to directory with targets saved in our format')
-    parser.add_argument('--save_dir', type=str, required=True,
-                        help='Path to directory where lsc files will be saved in our format')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
     lsc_to_our_format(
         lsc_dir=args.lsc_dir,
