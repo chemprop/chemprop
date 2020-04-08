@@ -51,7 +51,7 @@ def generate_and_save_features(args: Namespace):
     makedirs(args.save_path, isfile=True)
 
     # Get data and features function
-    data = get_data(path=args.data_path, max_data_size=None)
+    data = get_data(path=args.data_path, smiles_column=args.smiles_column, max_data_size=args.max_data_size)
     features_generator = get_features_generator(args.features_generator)
     temp_save_dir = args.save_path + '_temp'
 
@@ -107,6 +107,9 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to data CSV')
+    parser.add_argument('--smiles_column', type=str, default=None,
+                        help='Name of the column containing SMILES strings.'
+                             'By default, uses the first column.')
     parser.add_argument('--features_generator', type=str, required=True,
                         choices=get_available_features_generators(),
                         help='Type of features to generate')

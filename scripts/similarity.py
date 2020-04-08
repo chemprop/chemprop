@@ -137,10 +137,12 @@ if __name__ == '__main__':
                         help='Path to first data CSV file')
     parser.add_argument('--data_path_2', type=str, required=True,
                         help='Path to second data CSV file')
-    parser.add_argument('--use_compound_names_1', action='store_true', default=False,
-                        help='Whether data_path_1 has compound names in addition to smiles')
-    parser.add_argument('--use_compound_names_2', action='store_true', default=False,
-                        help='Whether data_path_2 has compound names in addition to smiles')
+    parser.add_argument('--smiles_column_1', type=str, default=None,
+                        help='Name of the column containing SMILES strings for the first data.'
+                             'By default, uses the first column.')
+    parser.add_argument('--smiles_column_2', type=str, default=None,
+                        help='Name of the column containing SMILES strings for the second data.'
+                             'By default, uses the first column.')
     parser.add_argument('--similarity_measure', type=str, required=True, choices=['scaffold', 'morgan'],
                         help='Similarity measure to use to compare the two datasets')
     parser.add_argument('--radius', type=int, default=3,
@@ -149,8 +151,8 @@ if __name__ == '__main__':
                         help='Rate at which to sample pairs of molecules for Morgan similarity (to reduce time)')
     args = parser.parse_args()
 
-    data_1 = get_data(path=args.data_path_1, use_compound_names=args.use_compound_names_1)
-    data_2 = get_data(path=args.data_path_2, use_compound_names=args.use_compound_names_2)
+    data_1 = get_data(path=args.data_path_1, smiles_column=args.smiles_column_1)
+    data_2 = get_data(path=args.data_path_2, smiles_column=args.smiles_column_2)
 
     if args.similarity_measure == 'scaffold':
         scaffold_similarity(data_1.smiles(), data_2.smiles())

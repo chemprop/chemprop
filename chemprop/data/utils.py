@@ -15,18 +15,22 @@ from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.features import load_features
 
 
-def get_task_names(path: str, use_compound_names: bool = False) -> List[str]:
+def get_task_names(path: str, smiles_column: str = None) -> List[str]:
     """
-    Gets the task names from a data CSV file.
+    Gets the task names from a data CSV file (i.e. all column names except for the SMILES column).
 
     :param path: Path to a CSV file.
-    :param use_compound_names: Whether file has compound names in addition to smiles strings.
+    :param smiles_column: The name of the column containing SMILES strings. By default, uses the first column.
     :return: A list of task names.
     """
-    index = 2 if use_compound_names else 1
-    task_names = get_header(path)[index:]
+    columns = get_header(path)
 
-    return task_names
+    if smiles_column is None:
+        smiles_column = columns[0]
+
+    target_names = [name for name in columns if name != smiles_column]
+
+    return target_names
 
 
 def get_header(path: str) -> List[str]:
@@ -52,19 +56,28 @@ def get_num_tasks(path: str) -> int:
     return len(get_header(path)) - 1
 
 
-def get_smiles(path: str, header: bool = True) -> List[str]:
+def get_smiles(path: str, smiles_column: str = None, header: bool = True) -> List[str]:
     """
     Returns the smiles strings from a data CSV file (assuming the first line is a header).
 
     :param path: Path to a CSV file.
+    :param smiles_column: The name of the column containing SMILES strings. By default, uses the first column.
     :param header: Whether the CSV file contains a header (that will be skipped).
     :return: A list of smiles strings.
     """
+    if smiles_column is not None:
+        assert header
+
     with open(path) as f:
-        reader = csv.reader(f)
         if header:
-            next(reader)  # Skip header
-        smiles = [line[0] for line in reader]
+            reader = csv.DictReader(f)
+            if smiles_column is None:
+                smiles_column = reader.fieldnames[0]
+        else:
+            reader = csv.reader(f)
+            smiles_column = 0
+
+        smiles = [row[smiles_column] for row in reader]
 
     return smiles
 
@@ -82,22 +95,24 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 
 def get_data(path: str,
+             smiles_column: str = None,
+             target_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
              args: Namespace = None,
              features_path: List[str] = None,
              max_data_size: int = None,
-             use_compound_names: bool = None,
              logger: Logger = None) -> MoleculeDataset:
     """
     Gets smiles string and target values (and optionally compound names if provided) from a CSV file.
 
     :param path: Path to a CSV file.
+    :param smiles_column: The name of the column containing SMILES strings. By default, uses the first column.
+    :param target_columns: Name of the columns containing target values. By default, uses all columns except the SMILES column.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
     :param features_path: A list of paths to files containing features. If provided, it is used
     in place of args.features_path.
     :param max_data_size: The maximum number of data points to load.
-    :param use_compound_names: Whether file has compound names in addition to smiles strings.
     :param logger: Logger.
     :return: A MoleculeDataset containing smiles strings and target values along
     with other info such as additional features and compound names when desired.
@@ -106,11 +121,10 @@ def get_data(path: str,
 
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
+        smiles_column = smiles_column if smiles_column is not None else args.smiles_column
+        target_columns = target_columns if target_columns is not None else args.target_columns
         features_path = features_path if features_path is not None else args.features_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
-        use_compound_names = use_compound_names if use_compound_names is not None else args.use_compound_names
-    else:
-        use_compound_names = False
 
     max_data_size = max_data_size or float('inf')
 
@@ -127,28 +141,41 @@ def get_data(path: str,
 
     # Load data
     with open(path) as f:
-        reader = csv.reader(f)
-        next(reader)  # skip header
+        reader = csv.DictReader(f)
+        columns = reader.fieldnames
 
-        lines = []
-        for line in reader:
-            smiles = line[0]
+        # By default, the SMILES column is the first column
+        if smiles_column is None:
+            smiles_column = columns[0]
+
+        # By default, the targets columns are all the columns except the SMILES column
+        if target_columns is None:
+            target_columns = [column for column in columns if column != smiles_column]
+
+        all_smiles, all_targets, all_rows = [], [], []
+        for row in reader:
+            smiles = row[smiles_column]
 
             if smiles in skip_smiles:
                 continue
 
-            lines.append(line)
+            targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 
-            if len(lines) >= max_data_size:
+            all_smiles.append(smiles)
+            all_targets.append(targets)
+            all_rows.append(row)
+
+            if len(all_smiles) >= max_data_size:
                 break
 
         data = MoleculeDataset([
             MoleculeDatapoint(
-                line=line,
+                smiles=smiles,
+                targets=targets,
+                row=row,
                 args=args,
-                features=features_data[i] if features_data is not None else None,
-                use_compound_names=use_compound_names
-            ) for i, line in tqdm(enumerate(lines), total=len(lines))
+                features=features_data[i] if features_data is not None else None
+            ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)), total=len(all_smiles))
         ])
 
     # Filter out invalid SMILES
@@ -165,18 +192,22 @@ def get_data(path: str,
     return data
 
 
-def get_data_from_smiles(smiles: List[str], skip_invalid_smiles: bool = True, logger: Logger = None, args: Namespace = None) -> MoleculeDataset:
+def get_data_from_smiles(smiles: List[str],
+                         skip_invalid_smiles: bool = True,
+                         logger: Logger = None,
+                         args: Namespace = None) -> MoleculeDataset:
     """
     Converts SMILES to a MoleculeDataset.
 
     :param smiles: A list of SMILES strings.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param logger: Logger.
+    :param args: Arguments.
     :return: A MoleculeDataset with all of the provided SMILES.
     """
     debug = logger.debug if logger is not None else print
 
-    data = MoleculeDataset([MoleculeDatapoint(line = [smile], args = args) for smile in smiles])
+    data = MoleculeDataset([MoleculeDatapoint(smiles=smile, args=args) for smile in smiles])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:

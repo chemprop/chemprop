@@ -22,8 +22,9 @@ def add_predict_args(parser: ArgumentParser):
                         help='Which GPU to use')
     parser.add_argument('--test_path', type=str,
                         help='Path to CSV file containing testing data for which predictions will be made')
-    parser.add_argument('--use_compound_names', action='store_true', default=False,
-                        help='Use when test data file contains compound names in addition to SMILES strings')
+    parser.add_argument('--smiles_column', type=str, default=None,
+                        help='Name of the column containing SMILES strings.'
+                             'By default, uses the first column.')
     parser.add_argument('--preds_path', type=str,
                         help='Path to CSV file where predictions will be saved')
     parser.add_argument('--checkpoint_dir', type=str,
@@ -60,8 +61,12 @@ def add_train_args(parser: ArgumentParser):
                         help='Which GPU to use')
     parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file')
-    parser.add_argument('--use_compound_names', action='store_true', default=False,
-                        help='Use when test data file contains compound names in addition to SMILES strings')
+    parser.add_argument('--smiles_column', type=str, default=None,
+                        help='Name of the column containing SMILES strings.'
+                             'By default, uses the first column.')
+    parser.add_argument('--target_columns', type=str, nargs='+', default=None,
+                        help='Name of the columns containing target values.'
+                             'By default, uses all columns except the SMILES column.')
     parser.add_argument('--max_data_size', type=int,
                         help='Maximum number of data points to load')
     parser.add_argument('--test', action='store_true', default=False,
@@ -188,11 +193,12 @@ def add_train_args(parser: ArgumentParser):
                         help='Seed for PyTorch randomness (e.g. random initial weights)')
 
 
-def update_checkpoint_args(args: Namespace):
+def update_checkpoint_args(args: Namespace, ext: str = '.pt'):
     """
     Walks the checkpoint directory to find all checkpoints, updating args.checkpoint_paths and args.ensemble_size.
 
     :param args: Arguments.
+    :param ext: The file extension for the checkpoints.
     """
     if hasattr(args, 'checkpoint_paths') and args.checkpoint_paths is not None:
         return
@@ -208,7 +214,7 @@ def update_checkpoint_args(args: Namespace):
 
     for root, _, files in os.walk(args.checkpoint_dir):
         for fname in files:
-            if fname.endswith('.pt'):
+            if fname.endswith(ext):
                 args.checkpoint_paths.append(os.path.join(root, fname))
 
     args.ensemble_size = len(args.checkpoint_paths)

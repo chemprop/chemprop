@@ -13,7 +13,7 @@ from chemprop.utils import makedirs
 
 def predict_sklearn(args: Namespace):
     print('Loading data')
-    data = get_data(path=args.test_path)
+    data = get_data(path=args.test_path, smiles_column=args.smiles_column)
 
     print('Computing morgan fingerprints')
     morgan_fingerprint = get_features_generator('morgan')
@@ -39,13 +39,20 @@ def predict_sklearn(args: Namespace):
     avg_preds = sum_preds / len(args.checkpoint_paths)
     avg_preds = avg_preds.tolist()
 
-    print('Saving predictions')
+    print(f'Saving predictions to {args.preds_path}')
     assert len(data) == len(avg_preds)
     makedirs(args.preds_path, isfile=True)
 
-    with open(args.preds_path, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(['smiles'] + get_task_names(args.test_path))
+    # Copy predictions over to data
+    pred_names = [f'{pred_name}_prediction' for pred_name in get_task_names(path=args.test_path)]
+    for datapoint, preds in zip(data, avg_preds):
+        for pred_name, pred in zip(pred_names, preds):
+            datapoint.row[pred_name] = pred
 
-        for smiles, pred in zip(data.smiles(), avg_preds):
-            writer.writerow([smiles] + pred)
+    # Save
+    with open(args.preds_path, 'w') as f:
+        writer = csv.DictWriter(f, fieldnames=data[0].row.keys())
+        writer.writeheader()
+
+        for datapoint in data:
+            writer.writerow(datapoint.row)

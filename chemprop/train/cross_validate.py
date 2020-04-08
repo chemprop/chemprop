@@ -17,7 +17,7 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
     # Initialize relevant variables
     init_seed = args.seed
     save_dir = args.save_dir
-    task_names = get_task_names(args.data_path)
+    task_names = args.target_columns or get_task_names(args.data_path)
 
     # Run training on different random seeds for each fold
     all_scores = []

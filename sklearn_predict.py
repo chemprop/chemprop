@@ -8,6 +8,9 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--test_path', type=str, required=True,
                         help='Path to CSV file containing testing data for which predictions will be made')
+    parser.add_argument('--smiles_column', type=str, default=None,
+                        help='Name of the column containing SMILES strings.'
+                             'By default, uses the first column.')
     parser.add_argument('--preds_path', type=str, required=True,
                         help='Path to CSV file where predictions will be saved')
     parser.add_argument('--dataset_type', type=str, required=True, choices=['classification', 'regression'],
@@ -26,6 +29,6 @@ if __name__ == '__main__':
                         help='Number of tasks the trained model makes predictions for')
     args = parser.parse_args()
 
-    update_checkpoint_args(args, ext='pkl')
+    update_checkpoint_args(args, ext='.pkl')
 
     predict_sklearn(args)
