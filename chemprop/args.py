@@ -46,6 +46,8 @@ def get_checkpoint_paths(checkpoint_dir: Optional[str], checkpoint_path: Optiona
 
 
 class PredictArgs(Tap):
+    """PredictArgs contains arguments used for making predictions with a trained chemprop model."""
+
     test_path: str  # Path to CSV file containing testing data for which predictions will be made
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     preds_path: str  # Path to CSV file where predictions will be saved
@@ -101,6 +103,8 @@ class PredictArgs(Tap):
 
 
 class TrainArgs(Tap):
+    """TrainArgs contains arguments used for training a chemprop model."""
+
     # General arguments
     data_path: str  # Path to data CSV file
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
@@ -323,12 +327,16 @@ class TrainArgs(Tap):
 
 
 class HyperoptArgs(TrainArgs):
+    """HyperoptArgs contains arguments used for performing hyperparameter optimization on chemprop models."""
+
     num_iters: int = 20  # Number of hyperparameter choices to try
     config_save_path: str  # Path to .json file where best hyperparameter settings will be written
     log_dir: str = None  # (Optional) Path to a directory where all results of the hyperparameter optimization will be written
 
 
 class SklearnTrainArgs(TrainArgs):
+    """SklearnTrainArgs contains arguments used for training scikit-learn models like random forest and SVM."""
+
     class_weight: Literal['balanced'] = None  # How to weight classes (None means no class balance)
     single_task: bool = False  # Whether to run each task separately (needed when dataset has null entries)
     radius: int = 2  # Morgan fingerprint radius
@@ -338,6 +346,8 @@ class SklearnTrainArgs(TrainArgs):
 
 
 class SklearnPredictArgs(Tap):
+    """SklearnPredictArgs contains arguments used for making predictions with a trained scikit-learn model."""
+
     test_path: str  # Path to CSV file containing testing data for which predictions will be made
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     preds_path: str  # Path to CSV file where predictions will be saved
