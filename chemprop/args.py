@@ -56,8 +56,8 @@ class PredictArgs(Tap):
     no_cuda: bool = False  # Turn off cuda (i.e. use CPU instead of GPU)
     gpu: int = None  # Which GPU to use
     batch_size: int = 50  # Batch size
-    features_generator: List[str]  # Method(s) of generating additional features
-    features_path: List[str]  # Path(s) to features to use in FNN (instead of features_generator)
+    features_generator: List[str] = None  # Method(s) of generating additional features
+    features_path: List[str] = None  # Path(s) to features to use in FNN (instead of features_generator)
     no_features_scaling: bool = False  # Turn off scaling of features
     max_data_size: int = None  # Maximum number of data points to load
     num_workers: int = 4   # Number of workers for the parallel data loading (0 means sequential)
@@ -143,17 +143,17 @@ class TrainArgs(Tap):
     hidden_size: int = 300  # Dimensionality of hidden layers in MPN
     depth: int = 3  # Number of message passing steps
     dropout: float = 0.0  # Dropout probability
-    activation: Literal['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'] = 'ReLu'  # Activation function
+    activation: Literal['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'] = 'ReLU'  # Activation function
     atom_messages: bool = False  # Centers messages on atoms instead of on bonds
     undirected: bool = False  # Undirected edges (always sum the two relevant bond vectors)
     ffn_hidden_size: int = None  # Hidden dim for higher-capacity FFN (defaults to hidden_size)
     ffn_num_layers: int = 2  # Number of layers in FFN after MPN encoding
     features_only: bool = False  # Use only the additional features in an FFN, no graph network
-    features_generator: List[str]  # Method(s) of generating additional features
-    features_path: List[str]  # Path(s) to features to use in FNN (instead of features_generator)
+    features_generator: List[str] = None  # Method(s) of generating additional features
+    features_path: List[str] = None  # Path(s) to features to use in FNN (instead of features_generator)
     no_features_scaling: bool = False  # Turn off scaling of features
-    separate_val_features_path: List[str]  # Path to file with features for separate val set
-    separate_test_features_path: List[str]  # Path to file with features for separate test set
+    separate_val_features_path: List[str] = None  # Path to file with features for separate val set
+    separate_test_features_path: List[str] = None  # Path to file with features for separate test set
     config_path: str = None  # Path to a .json file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.
     ensemble_size: int = 1  # Number of models in ensemble
 
