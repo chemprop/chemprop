@@ -1,4 +1,3 @@
-from argparse import Namespace
 from collections import OrderedDict
 from random import Random
 from typing import Callable, Dict, Iterator, List, Union
@@ -23,8 +22,8 @@ class MoleculeDatapoint:
                  smiles: str,
                  targets: List[float] = None,
                  row: OrderedDict = None,
-                 args: Namespace = None,
-                 features: np.ndarray = None):
+                 features: np.ndarray = None,
+                 features_generator: List[str] = None):
         """
         Initializes a MoleculeDatapoint, which contains a single molecule.
 
@@ -34,19 +33,14 @@ class MoleculeDatapoint:
         :param args: Arguments.
         :param features: A numpy array containing additional features (ex. Morgan fingerprint).
         """
-        if args is not None:
-            self.features_generator = args.features_generator
-            self.args = args
-        else:
-            self.features_generator = self.args = None
-
-        if features is not None and self.features_generator is not None:
-            raise ValueError('Currently cannot provide both loaded features and a features generator.')
+        if features is not None and features_generator is not None:
+            raise ValueError('Cannot provide both loaded features and a features generator.')
 
         self.smiles = smiles
         self.targets = targets
         self.row = row or OrderedDict()
         self.features = features
+        self.features_generator = features_generator
         self.mol = Chem.MolFromSmiles(self.smiles)
 
         # Generate additional features if given a generator
@@ -103,7 +97,6 @@ class MoleculeDataset(Dataset):
         :param data: A list of MoleculeDatapoints.
         """
         self._data = data
-        self._args = self._data[0].args if len(self._data) > 0 else None
         self._scaler = None
         self._batch_graph = None
         self._random = Random()
@@ -137,12 +130,12 @@ class MoleculeDataset(Dataset):
                 if smiles in SMILES_TO_GRAPH:
                     mol_graph = SMILES_TO_GRAPH[smiles]
                 else:
-                    mol_graph = MolGraph(smiles, self._args)
+                    mol_graph = MolGraph(smiles)
                     if cache:
                         SMILES_TO_GRAPH[smiles] = mol_graph
                 mol_graphs.append(mol_graph)
 
-            self._batch_graph = BatchMolGraph(mol_graphs, self._args)
+            self._batch_graph = BatchMolGraph(mol_graphs)
 
         return self._batch_graph
 

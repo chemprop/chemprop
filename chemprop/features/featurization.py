@@ -32,21 +32,13 @@ ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
 BOND_FDIM = 14
 
 
-def get_atom_fdim(args: Namespace) -> int:
-    """
-    Gets the dimensionality of atom features.
-
-    :param: Arguments.
-    """
+def get_atom_fdim() -> int:
+    """Gets the dimensionality of atom features."""
     return ATOM_FDIM
 
 
-def get_bond_fdim(args: Namespace) -> int:
-    """
-    Gets the dimensionality of bond features.
-
-    :param: Arguments.
-    """
+def get_bond_fdim() -> int:
+    """Gets the dimensionality of bond features."""
     return BOND_FDIM
 
 
@@ -126,12 +118,12 @@ class MolGraph:
     - b2revb: A mapping from a bond index to the index of the reverse bond.
     """
 
-    def __init__(self, smiles: str, args: Namespace):
+    def __init__(self, smiles: str, atom_messages: bool = False):
         """
         Computes the graph structure and featurization of a molecule.
 
         :param smiles: A smiles string.
-        :param args: Arguments.
+        :param atom_messages: Whether to send messages along atoms instead of bonds.
         """
         self.smiles = smiles
         self.n_atoms = 0  # number of atoms
@@ -166,7 +158,7 @@ class MolGraph:
 
                 f_bond = bond_features(bond)
 
-                if args.atom_messages:
+                if atom_messages:
                     self.f_bonds.append(f_bond)
                     self.f_bonds.append(f_bond)
                 else:
@@ -201,12 +193,12 @@ class BatchMolGraph:
     - a2a: (Optional): A mapping from an atom index to neighboring atom indices.
     """
 
-    def __init__(self, mol_graphs: List[MolGraph], args: Namespace):
+    def __init__(self, mol_graphs: List[MolGraph], atom_messages: bool = False):
         self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
         self.n_mols = len(self.smiles_batch)
 
-        self.atom_fdim = get_atom_fdim(args)
-        self.bond_fdim = get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
+        self.atom_fdim = get_atom_fdim()
+        self.bond_fdim = get_bond_fdim() + (not atom_messages) * self.atom_fdim
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
@@ -288,13 +280,12 @@ class BatchMolGraph:
         return self.a2a
 
 
-def mol2graph(smiles_batch: List[str],
-              args: Namespace) -> BatchMolGraph:
+def mol2graph(smiles_batch: List[str], atom_messages: bool = False) -> BatchMolGraph:
     """
     Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
 
     :param smiles_batch: A list of SMILES strings.
-    :param args: Arguments.
+    :param atom_messages: Whether to send messages along atoms instead of bonds.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    return BatchMolGraph([MolGraph(smiles, args) for smiles in smiles_batch])
+    return BatchMolGraph([MolGraph(smiles, atom_messages) for smiles in smiles_batch], atom_messages)

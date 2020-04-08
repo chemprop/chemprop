@@ -4,7 +4,9 @@ from itertools import product
 import math
 import os
 import sys
-from typing import List, Literal
+from typing import List
+from typing_extensions import Literal
+
 
 import numpy as np
 from rdkit import Chem

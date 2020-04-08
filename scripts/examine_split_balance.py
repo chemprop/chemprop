@@ -2,7 +2,7 @@ import os
 import pickle
 from pprint import pprint
 import sys
-from typing import Literal
+from typing_extensions import Literal
 
 import numpy as np
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)

@@ -1,8 +1,7 @@
-from argparse import Namespace
 import csv
 from logging import Logger
 import os
-from pprint import pformat
+import sys
 from typing import List
 
 import numpy as np
@@ -15,6 +14,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
+from chemprop.args import TrainArgs
 from chemprop.data import StandardScaler, MoleculeDataLoader
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
 from chemprop.models import build_model
@@ -23,7 +23,7 @@ from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, g
     makedirs, save_checkpoint
 
 
-def run_training(args: Namespace, logger: Logger = None) -> List[float]:
+def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     """
     Trains a model and returns test scores on the model checkpoint with the highest validation score.
 
@@ -42,11 +42,11 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Print command line
     debug('Command line')
-    debug(args.command_line)
+    debug(f'python {" ".join(sys.argv)}')
 
     # Print args
     debug('Args')
-    debug(pformat(vars(args)))
+    debug(args)
 
     # Get data
     debug('Loading data')

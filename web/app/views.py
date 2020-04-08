@@ -1,6 +1,5 @@
 """Defines a number of routes/views for the flask app."""
 
-from argparse import ArgumentParser, Namespace
 from functools import wraps
 import io
 import os
@@ -21,14 +20,15 @@ from app import app, db
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
+from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
-from chemprop.parsing import add_predict_args, add_train_args, modify_predict_args, modify_train_args
 from chemprop.train.make_predictions import make_predictions
 from chemprop.train.run_training import run_training
 from chemprop.utils import create_logger, load_task_names, load_args
 
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)
+
 
 def check_not_demo(func: Callable) -> Callable:
     """
@@ -45,7 +45,8 @@ def check_not_demo(func: Callable) -> Callable:
 
     return decorated_function
 
-def progress_bar(args: Namespace, progress: mp.Value):
+
+def progress_bar(args: TrainArgs, progress: mp.Value):
     """
     Updates a progress bar displayed during training.
 
@@ -135,6 +136,7 @@ def format_float_list(array: List[float], precision: int = 4) -> List[str]:
     """
     return [format_float(f, precision) for f in array]
 
+
 @app.route('/receiver', methods=['POST'])
 @check_not_demo
 def receiver():
@@ -146,6 +148,7 @@ def receiver():
 def home():
     """Renders the home page."""
     return render_template('home.html', users=db.get_all_users())
+
 
 @app.route('/create_user', methods=['GET', 'POST'])
 @check_not_demo
@@ -164,6 +167,7 @@ def create_user():
 
     return redirect(url_for('create_user'))
 
+
 def render_train(**kwargs):
     """Renders the train page with specified kwargs."""
     data_upload_warnings, data_upload_errors = get_upload_warnings_errors('data')
@@ -176,6 +180,7 @@ def render_train(**kwargs):
                            data_upload_errors=data_upload_errors,
                            users=db.get_all_users(),
                            **kwargs)
+
 
 @app.route('/train', methods=['GET', 'POST'])
 @check_not_demo
@@ -197,14 +202,12 @@ def train():
     dataset_type = request.form.get('datasetType', 'regression')
 
     # Create and modify args
-    parser = ArgumentParser()
-    add_train_args(parser)
-    args = parser.parse_args([])
-
-    args.data_path = data_path
-    args.dataset_type = dataset_type
-    args.epochs = epochs
-    args.ensemble_size = ensemble_size
+    args = TrainArgs().parse_args([
+        '--data_path', data_path,
+        '--dataset_type', dataset_type,
+        '--epochs', str(epochs),
+        '--ensemble_size', str(ensemble_size)
+    ])
 
     # Check if regression/classification selection matches data
     data = get_data(path=data_path)
@@ -223,7 +226,7 @@ def train():
 
     if gpu is not None:
         if gpu == 'None':
-            args.no_cuda = True
+            args.cuda = False
         else:
             args.gpu = int(gpu)
 
@@ -242,7 +245,6 @@ def train():
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
-        modify_train_args(args)
 
         process = mp.Process(target=progress_bar, args=(args, PROGRESS))
         process.start()
@@ -328,22 +330,20 @@ def predict():
     gpu = request.form.get('gpu')
 
     # Create and modify args
-    parser = ArgumentParser()
-    add_predict_args(parser)
-    args = parser.parse_args([])
+    args = PredictArgs().parse_args([
+        '--test_path', 'None',
+        '--preds_path', os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
+    ])
 
-    preds_path = os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
-    args.test_path = 'None'  # TODO: Remove this hack to avoid assert crashing in modify_predict_args
-    args.preds_path = preds_path
     args.checkpoint_paths = model_paths
     if gpu is not None:
         if gpu == 'None':
-            args.no_cuda = True
+            args.cuda = False
         else:
             args.gpu = int(gpu)
 
-    if hasattr(args, "features_path"):
-        del args.features_path
+    if hasattr(args, 'features_path'):
+        args.features_path = None
 
     train_args = load_args(model_paths[0])
 
@@ -351,20 +351,18 @@ def predict():
         if not hasattr(args, key):
             setattr(args, key, value)
 
-    if args.features_path != None:
-        args.features_generator = ["rdkit_2d_normalized"]
+    if args.features_path is not None:
+        args.features_generator = ['rdkit_2d_normalized']
         args.features_path = None
 
-    modify_predict_args(args)
-
     # Run predictions
-    preds = make_predictions(args, smiles=smiles)
+    preds = make_predictions(args=args, smiles=smiles)
 
     if all(p is None for p in preds):
         return render_predict(errors=['All SMILES are invalid'])
 
     # Replace invalid smiles with message
-    invalid_smiles_warning = "Invalid SMILES String"
+    invalid_smiles_warning = 'Invalid SMILES String'
     preds = [pred if pred is not None else [invalid_smiles_warning] * num_tasks for pred in preds]
 
     return render_predict(predicted=True,
@@ -573,6 +571,7 @@ def download_checkpoint(checkpoint: int):
         attachment_filename=f'{ckpt["ckpt_name"]}.zip',
         cache_timeout=-1
     )
+
 
 @app.route('/checkpoints/delete/<int:checkpoint>')
 @check_not_demo

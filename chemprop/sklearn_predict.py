@@ -1,17 +1,17 @@
-from argparse import Namespace
 import csv
 import pickle
 
 import numpy as np
 from tqdm import tqdm
 
+from chemprop.args import SklearnPredictArgs
 from chemprop.data.utils import get_data, get_task_names
 from chemprop.features import get_features_generator
 from chemprop.sklearn_train import predict
 from chemprop.utils import makedirs
 
 
-def predict_sklearn(args: Namespace):
+def predict_sklearn(args: SklearnPredictArgs):
     print('Loading data')
     data = get_data(path=args.test_path, smiles_column=args.smiles_column)
 

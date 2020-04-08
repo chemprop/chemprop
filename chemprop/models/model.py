@@ -1,9 +1,8 @@
-from argparse import Namespace
-
 import torch
 import torch.nn as nn
 
 from .mpn import MPN
+from chemprop.args import TrainArgs
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
 
@@ -27,7 +26,7 @@ class MoleculeModel(nn.Module):
             self.multiclass_softmax = nn.Softmax(dim=2)
         assert not (self.classification and self.multiclass)
 
-    def create_encoder(self, args: Namespace):
+    def create_encoder(self, args: TrainArgs):
         """
         Creates the message passing encoder for the model.
 
@@ -35,7 +34,7 @@ class MoleculeModel(nn.Module):
         """
         self.encoder = MPN(args)
 
-    def create_ffn(self, args: Namespace):
+    def create_ffn(self, args: TrainArgs):
         """
         Creates the feed-forward network for the model.
 
@@ -49,7 +48,7 @@ class MoleculeModel(nn.Module):
         else:
             first_linear_dim = args.hidden_size
             if args.use_input_features:
-                first_linear_dim += args.features_dim
+                first_linear_dim += args.features_size
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
@@ -101,14 +100,14 @@ class MoleculeModel(nn.Module):
         if self.classification and not self.training:
             output = self.sigmoid(output)
         if self.multiclass:
-            output = output.reshape((output.size(0), -1, self.num_classes)) # batch size x num targets x num classes per target
+            output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
             if not self.training:
-                output = self.multiclass_softmax(output) # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
+                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
 
         return output
 
 
-def build_model(args: Namespace) -> MoleculeModel:
+def build_model(args: TrainArgs) -> MoleculeModel:
     """
     Builds a MoleculeModel, which is a message passing neural network + feed-forward layers.
 

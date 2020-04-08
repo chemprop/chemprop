@@ -1,18 +1,18 @@
-from argparse import Namespace
 import csv
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
 from .predict import predict
+from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
 
 
-def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional[List[float]]]:
+def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Optional[List[float]]]:
     """
     Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
 
@@ -33,14 +33,15 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
             raise ValueError('Features were used during training so they must be specified again during prediction'
                              'using the same type of features as before (including --no_features_scaling if applicable).')
 
-    # Update args with training arguments
+    # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
         if not hasattr(args, key):
             setattr(args, key, value)
+    args: Union[PredictArgs, TrainArgs]
 
     print('Loading data')
     if smiles is not None:
-        full_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, args=args)
+        full_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=args.features_generator)
     else:
         full_data = get_data(path=args.test_path, args=args, skip_invalid_smiles=False)
 
@@ -99,7 +100,7 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
     # Get prediction column names
     if args.dataset_type == 'multiclass':
-        pred_names = [f'{name}_class_{i}' for name in args.task_names for i in range(len(args.multiclass_num_classes))]
+        pred_names = [f'{name}_class_{i}' for name in args.task_names for i in range(args.multiclass_num_classes)]
     else:
         pred_names = args.task_names
 

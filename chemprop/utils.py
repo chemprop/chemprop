@@ -2,7 +2,6 @@ import logging
 import math
 import os
 from typing import Callable, List, Tuple, Union
-from argparse import Namespace
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score, log_loss
@@ -11,6 +10,7 @@ import torch.nn as nn
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
+from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import StandardScaler
 from chemprop.models import build_model, MoleculeModel
 from chemprop.nn_utils import NoamLR
@@ -36,7 +36,7 @@ def save_checkpoint(path: str,
                     model: MoleculeModel,
                     scaler: StandardScaler = None,
                     features_scaler: StandardScaler = None,
-                    args: Namespace = None):
+                    args: TrainArgs = None):
     """
     Saves a model checkpoint.
 
@@ -62,7 +62,7 @@ def save_checkpoint(path: str,
 
 
 def load_checkpoint(path: str,
-                    current_args: Namespace = None,
+                    current_args: Union[TrainArgs, PredictArgs] = None,
                     cuda: bool = None,
                     logger: logging.Logger = None) -> MoleculeModel:
     """
@@ -132,7 +132,7 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
     return scaler, features_scaler
 
 
-def load_args(path: str) -> Namespace:
+def load_args(path: str) -> TrainArgs:
     """
     Loads the arguments a model was trained with.
 
@@ -152,7 +152,7 @@ def load_task_names(path: str) -> List[str]:
     return load_args(path).task_names
 
 
-def get_loss_func(args: Namespace) -> nn.Module:
+def get_loss_func(args: TrainArgs) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
@@ -256,7 +256,7 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     raise ValueError(f'Metric "{metric}" not supported.')
 
 
-def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
+def build_optimizer(model: nn.Module, args: TrainArgs) -> Optimizer:
     """
     Builds an Optimizer.
 
@@ -269,7 +269,7 @@ def build_optimizer(model: nn.Module, args: Namespace) -> Optimizer:
     return Adam(params)
 
 
-def build_lr_scheduler(optimizer: Optimizer, args: Namespace, total_epochs: List[int] = None) -> _LRScheduler:
+def build_lr_scheduler(optimizer: Optimizer, args: TrainArgs, total_epochs: List[int] = None) -> _LRScheduler:
     """
     Builds a learning rate scheduler.
 
