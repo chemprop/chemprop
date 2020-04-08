@@ -100,18 +100,16 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
     # Get prediction column names
     if args.dataset_type == 'multiclass':
-        pred_names = [f'{name}_class_{i}' for name in args.task_names for i in range(args.multiclass_num_classes)]
+        task_names = [f'{name}_class_{i}' for name in args.task_names for i in range(args.multiclass_num_classes)]
     else:
-        pred_names = args.task_names
-
-    pred_names = [f'{task_name}_prediction' for task_name in pred_names]
+        task_names = args.task_names
 
     # Copy predictions over to full_data
     for full_index, datapoint in enumerate(full_data):
         valid_index = full_to_valid_indices.get(full_index, None)
-        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(pred_names)
+        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
 
-        for pred_name, pred in zip(pred_names, preds):
+        for pred_name, pred in zip(task_names, preds):
             datapoint.row[pred_name] = pred
 
     # Save

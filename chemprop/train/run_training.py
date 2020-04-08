@@ -48,6 +48,9 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     debug('Args')
     debug(args)
 
+    # Save args
+    args.save(path=os.path.join(args.save_dir, 'args.json'))
+
     # Get data
     debug('Loading data')
     args.task_names = args.target_columns or get_task_names(args.data_path)

@@ -44,9 +44,9 @@ def predict_sklearn(args: SklearnPredictArgs):
     makedirs(args.preds_path, isfile=True)
 
     # Copy predictions over to data
-    pred_names = [f'{pred_name}_prediction' for pred_name in get_task_names(path=args.test_path)]
+    task_names = get_task_names(path=args.test_path)
     for datapoint, preds in zip(data, avg_preds):
-        for pred_name, pred in zip(pred_names, preds):
+        for pred_name, pred in zip(task_names, preds):
             datapoint.row[pred_name] = pred
 
     # Save
