@@ -9,7 +9,7 @@ from tqdm import tqdm
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
-from chemprop.utils import load_args, load_checkpoint, load_scalers
+from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
 
 
 def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional[List[float]]]:
@@ -34,21 +34,24 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
 
     print('Loading data')
     if smiles is not None:
-        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, args=args)
+        full_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, args=args)
     else:
-        test_data = get_data(path=args.test_path, args=args, use_compound_names=args.use_compound_names, skip_invalid_smiles=False)
+        full_data = get_data(path=args.test_path, args=args, skip_invalid_smiles=False)
 
     print('Validating SMILES')
-    valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
-    full_data = test_data
-    test_data = MoleculeDataset([test_data[i] for i in valid_indices])
+    full_to_valid_indices = {}
+    valid_index = 0
+    for full_index in range(len(full_data)):
+        if full_data[full_index].mol is not None:
+            full_to_valid_indices[full_index] = valid_index
+            valid_index += 1
+
+    test_data = MoleculeDataset([full_data[i] for i in sorted(full_to_valid_indices.keys())])
 
     # Edge case if empty list of smiles is provided
     if len(test_data) == 0:
         return [None] * len(full_data)
 
-    if args.use_compound_names:
-        compound_names = test_data.compound_names()
     print(f'Test size = {len(test_data):,}')
 
     # Normalize features
@@ -84,55 +87,32 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     avg_preds = avg_preds.tolist()
 
     # Save predictions
-    assert len(test_data) == len(avg_preds)
     print(f'Saving predictions to {args.preds_path}')
+    assert len(test_data) == len(avg_preds)
+    makedirs(args.preds_path, isfile=True)
 
-    # Put Nones for invalid smiles
-    full_preds = [None] * len(full_data)
-    for i, si in enumerate(valid_indices):
-        full_preds[si] = avg_preds[i]
-    avg_preds = full_preds
-    test_smiles = full_data.smiles()
+    # Get prediction column names
+    if args.dataset_type == 'multiclass':
+        pred_names = [f'{name}_class_{i}' for name in args.task_names for i in range(len(args.multiclass_num_classes))]
+    else:
+        pred_names = args.task_names
 
-    # Write predictions
+    pred_names = [f'{task_name}_prediction' for task_name in pred_names]
+
+    # Copy predictions over to full_data
+    for full_index, datapoint in enumerate(full_data):
+        valid_index = full_to_valid_indices.get(full_index, None)
+        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(pred_names)
+
+        for pred_name, pred in zip(pred_names, preds):
+            datapoint.row[pred_name] = pred
+
+    # Save
     with open(args.preds_path, 'w') as f:
-        writer = csv.writer(f)
+        writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+        writer.writeheader()
 
-        header = []
-
-        if args.use_compound_names:
-            header.append('compound_names')
-
-        header.append('smiles')
-
-        if args.dataset_type == 'multiclass':
-            for name in args.task_names:
-                for i in range(args.multiclass_num_classes):
-                    header.append(name + '_class' + str(i))
-        else:
-            header.extend(args.task_names)
-        writer.writerow(header)
-
-        for i in range(len(avg_preds)):
-            row = []
-
-            if args.use_compound_names:
-                row.append(compound_names[i])
-
-            row.append(test_smiles[i])
-
-            if avg_preds[i] is not None:
-                if args.dataset_type == 'multiclass':
-                    for task_probs in avg_preds[i]:
-                        row.extend(task_probs)
-                else:
-                    row.extend(avg_preds[i])
-            else:
-                if args.dataset_type == 'multiclass':
-                    row.extend([''] * args.num_tasks * args.multiclass_num_classes)
-                else:
-                    row.extend([''] * args.num_tasks)
-
-            writer.writerow(row)
+        for datapoint in full_data:
+            writer.writerow(datapoint.row)
 
     return avg_preds

@@ -137,7 +137,7 @@ def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
     metric_func = get_metric_func(args.metric)
 
     debug('Loading data')
-    data = get_data(path=args.data_path)
+    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
 
     if args.model_type == 'svm' and data.num_tasks() != 1:
         raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')

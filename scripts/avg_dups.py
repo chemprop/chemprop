@@ -15,7 +15,7 @@ def average_duplicates(args):
     """Averages duplicate data points in a dataset."""
     print('Loading data')
     header = get_header(args.data_path)
-    data = get_data(path=args.data_path)
+    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
     print(f'Data size = {len(data):,}')
 
     # Map SMILES string to lists of targets
@@ -61,6 +61,12 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str,
                         help='Path to data CSV file')
+    parser.add_argument('--smiles_column', type=str, default=None,
+                        help='Name of the column containing SMILES strings.'
+                             'By default, uses the first column.')
+    parser.add_argument('--target_columns', type=str, nargs='+', default=None,
+                        help='Name of the columns containing target values.'
+                             'By default, uses all columns except the SMILES column.')
     parser.add_argument('--save_path', type=str,
                         help='Path where average data CSV file will be saved')
     args = parser.parse_args()

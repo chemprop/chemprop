@@ -50,7 +50,7 @@ def run_training(args: Namespace, logger: Logger = None) -> List[float]:
 
     # Get data
     debug('Loading data')
-    args.task_names = get_task_names(args.data_path)
+    args.task_names = args.target_columns or get_task_names(args.data_path)
     data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
