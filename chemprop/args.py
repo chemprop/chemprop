@@ -311,6 +311,10 @@ class TrainArgs(Tap):
         if self.ffn_hidden_size is None:
             self.ffn_hidden_size = self.hidden_size
 
+        # Handle MPN variants
+        if self.atom_messages:
+            assert not self.undirected  # Atom messages are by their nature undirected
+
         # Validate split type
         assert (self.split_type == 'predetermined') == (self.folds_file is not None) == (self.test_fold_index is not None)
         assert (self.split_type == 'crossval') == (self.crossval_index_dir is not None)
