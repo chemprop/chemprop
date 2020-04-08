@@ -43,7 +43,7 @@ def save_checkpoint(path: str,
     :param model: A MoleculeModel.
     :param scaler: A StandardScaler fitted on the data.
     :param features_scaler: A StandardScaler fitted on the features.
-    :param args: Arguments namespace.
+    :param args: Arguments.
     :param path: Path where checkpoint will be saved.
     """
     state = {
@@ -137,7 +137,7 @@ def load_args(path: str) -> TrainArgs:
     Loads the arguments a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: The arguments Namespace that the model was trained with.
+    :return: The arguments that the model was trained with.
     """
     return torch.load(path, map_location=lambda storage, loc: storage)['args']
 
@@ -156,7 +156,7 @@ def get_loss_func(args: TrainArgs) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
-    :param args: Namespace containing the dataset type ("classification" or "regression").
+    :param args: Arguments containing the dataset type ("classification" or "regression").
     :return: A PyTorch loss function.
     """
     if args.dataset_type == 'classification':

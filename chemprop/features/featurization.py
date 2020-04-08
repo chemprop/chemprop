@@ -1,4 +1,3 @@
-from argparse import Namespace
 from typing import List, Tuple, Union
 
 from rdkit import Chem
@@ -37,9 +36,15 @@ def get_atom_fdim() -> int:
     return ATOM_FDIM
 
 
-def get_bond_fdim() -> int:
-    """Gets the dimensionality of bond features."""
-    return BOND_FDIM
+def get_bond_fdim(atom_messages: bool = False) -> int:
+    """
+    Gets the dimensionality of bond features.
+
+    :param atom_messages whether atom messages are being used. If atom messages, only contains bond features.
+    Otherwise contains both atom and bond features.
+    :return: The dimensionality of bond features.
+    """
+    return BOND_FDIM + (not atom_messages) * get_atom_fdim()
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -118,12 +123,11 @@ class MolGraph:
     - b2revb: A mapping from a bond index to the index of the reverse bond.
     """
 
-    def __init__(self, smiles: str, atom_messages: bool = False):
+    def __init__(self, smiles: str):
         """
         Computes the graph structure and featurization of a molecule.
 
         :param smiles: A smiles string.
-        :param atom_messages: Whether to send messages along atoms instead of bonds.
         """
         self.smiles = smiles
         self.n_atoms = 0  # number of atoms
@@ -157,13 +161,8 @@ class MolGraph:
                     continue
 
                 f_bond = bond_features(bond)
-
-                if atom_messages:
-                    self.f_bonds.append(f_bond)
-                    self.f_bonds.append(f_bond)
-                else:
-                    self.f_bonds.append(self.f_atoms[a1] + f_bond)
-                    self.f_bonds.append(self.f_atoms[a2] + f_bond)
+                self.f_bonds.append(self.f_atoms[a1] + f_bond)
+                self.f_bonds.append(self.f_atoms[a2] + f_bond)
 
                 # Update index mappings
                 b1 = self.n_bonds
@@ -193,12 +192,12 @@ class BatchMolGraph:
     - a2a: (Optional): A mapping from an atom index to neighboring atom indices.
     """
 
-    def __init__(self, mol_graphs: List[MolGraph], atom_messages: bool = False):
+    def __init__(self, mol_graphs: List[MolGraph]):
         self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
         self.n_mols = len(self.smiles_batch)
 
         self.atom_fdim = get_atom_fdim()
-        self.bond_fdim = get_bond_fdim() + (not atom_messages) * self.atom_fdim
+        self.bond_fdim = get_bond_fdim()
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
@@ -238,16 +237,23 @@ class BatchMolGraph:
         self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
         self.a2a = None  # only needed if using atom messages
 
-    def get_components(self) -> Tuple[torch.FloatTensor, torch.FloatTensor,
-                                      torch.LongTensor, torch.LongTensor, torch.LongTensor,
-                                      List[Tuple[int, int]], List[Tuple[int, int]]]:
+    def get_components(self, atom_messages: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor,
+                                                                   torch.LongTensor, torch.LongTensor, torch.LongTensor,
+                                                                   List[Tuple[int, int]], List[Tuple[int, int]]]:
         """
         Returns the components of the BatchMolGraph.
 
+        :param atom_messages: Whether to use atom messages instead of bond messages. This changes the bond features
+        to contain only bond features rather than a concatenation of atom and bond features.
         :return: A tuple containing PyTorch tensors with the atom features, bond features, and graph structure
         and two lists indicating the scope of the atoms and bonds (i.e. which molecules they belong to).
         """
-        return self.f_atoms, self.f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
+        if atom_messages:
+            f_bonds = self.f_bonds[:, :get_bond_fdim(atom_messages=atom_messages)]
+        else:
+            f_bonds = self.f_bonds
+
+        return self.f_atoms, f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
     def get_b2b(self) -> torch.LongTensor:
         """
@@ -280,12 +286,11 @@ class BatchMolGraph:
         return self.a2a
 
 
-def mol2graph(smiles_batch: List[str], atom_messages: bool = False) -> BatchMolGraph:
+def mol2graph(smiles_batch: List[str]) -> BatchMolGraph:
     """
     Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
 
     :param smiles_batch: A list of SMILES strings.
-    :param atom_messages: Whether to send messages along atoms instead of bonds.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    return BatchMolGraph([MolGraph(smiles, atom_messages) for smiles in smiles_batch], atom_messages)
+    return BatchMolGraph([MolGraph(smiles) for smiles in smiles_batch])

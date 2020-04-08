@@ -12,7 +12,7 @@ from chemprop.nn_utils import index_select_ND, get_activation_function
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int, atom_messages: bool = False):
+    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int):
         """Initializes the MPNEncoder.
 
         :param args: Arguments.
@@ -23,7 +23,7 @@ class MPNEncoder(nn.Module):
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
-        self.atom_messages = atom_messages
+        self.atom_messages = args.atom_messages
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
@@ -79,7 +79,7 @@ class MPNEncoder(nn.Module):
             if self.features_only:
                 return features_batch
 
-        f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components()
+        f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components(atom_messages=self.atom_messages)
 
         if self.atom_messages:
             a2a = mol_graph.get_a2a()
@@ -155,22 +155,19 @@ class MPN(nn.Module):
     def __init__(self,
                  args: TrainArgs,
                  atom_fdim: int = None,
-                 bond_fdim: int = None,
-                 atom_messages: bool = False):
+                 bond_fdim: int = None):
         """
         Initializes the MPN.
 
         :param args: Arguments.
         :param atom_fdim: Atom features dimension.
         :param bond_fdim: Bond features dimension.
-        :param atom_messages: Whether to use atoms to pass messages instead of bonds.
         """
         super(MPN, self).__init__()
         self.args = args
-        self.atom_fdim = atom_fdim or get_atom_fdim(args)
-        self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not atom_messages) * self.atom_fdim
-        self.atom_messages = atom_messages
-        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim, self.atom_messages)
+        self.atom_fdim = atom_fdim or get_atom_fdim()
+        self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],
