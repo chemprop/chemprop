@@ -48,17 +48,14 @@ def train(model: nn.Module,
         mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
-        if next(model.parameters()).is_cuda:
-            mask, targets = mask.cuda(), targets.cuda()
-
-        class_weights = torch.ones(targets.shape)
-
-        if args.cuda:
-            class_weights = class_weights.cuda()
-
         # Run model
         model.zero_grad()
         preds = model(mol_batch, features_batch)
+
+        # Move tensors to correct device
+        mask.to(preds.device)
+        targets.to(preds.device)
+        class_weights = torch.ones(targets.shape, device=preds.device)
 
         if args.dataset_type == 'multiclass':
             targets = targets.long()

@@ -36,10 +36,6 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     else:
         debug = info = print
 
-    # Set GPU
-    if args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-
     # Print command line
     debug('Command line')
     debug(f'python {" ".join(sys.argv)}')
@@ -47,9 +43,6 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     # Print args
     debug('Args')
     debug(args)
-
-    # Save args
-    args.save(path=os.path.join(args.save_dir, 'args.json'))
 
     # Get data
     debug('Loading data')
@@ -201,7 +194,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         debug(f'Number of parameters = {param_count(model):,}')
         if args.cuda:
             debug('Moving model to cuda')
-            model = model.cuda()
+        model = model.to(args.device)
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
@@ -260,7 +253,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
-        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
+        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), device=args.device, logger=logger)
         
         test_preds = predict(
             model=model,

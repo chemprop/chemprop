@@ -68,14 +68,14 @@ def save_checkpoint(path: str,
 
 def load_checkpoint(path: str,
                     current_args: Union[TrainArgs, PredictArgs] = None,
-                    cuda: bool = None,
+                    device: torch.device = None,
                     logger: logging.Logger = None) -> MoleculeModel:
     """
     Loads a model checkpoint.
 
     :param path: Path where checkpoint is saved.
     :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
-    :param cuda: Whether to move model to cuda.
+    :param device: Device where the model will be moved.
     :param logger: A logger.
     :return: The loaded MoleculeModel.
     """
@@ -89,7 +89,8 @@ def load_checkpoint(path: str,
     if current_args is not None:
         args = current_args
 
-    args.cuda = cuda if cuda is not None else args.cuda
+    if device is not None:
+        args.device = device
 
     # Build model
     model = build_model(args)
@@ -113,9 +114,9 @@ def load_checkpoint(path: str,
     model_state_dict.update(pretrained_state_dict)
     model.load_state_dict(model_state_dict)
 
-    if cuda:
+    if args.cuda:
         debug('Moving model to cuda')
-        model = model.cuda()
+    model = model.to(args.device)
 
     return model
 

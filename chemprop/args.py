@@ -70,6 +70,18 @@ class PredictArgs(Tap):
         self._checkpoint_paths = None
 
     @property
+    def device(self) -> torch.device:
+        if not self.cuda:
+            return torch.device('cpu')
+
+        return torch.device('cuda', self.gpu)
+
+    @device.setter
+    def device(self, device: torch.device) -> None:
+        self.cuda = device.type == 'cuda'
+        self.gpu = device.index
+
+    @property
     def cuda(self) -> bool:
         return not self.no_cuda and torch.cuda.is_available()
 
@@ -99,7 +111,7 @@ class PredictArgs(Tap):
 
     def process_args(self) -> None:
         # Load checkpoint paths
-        self._checkpoint_paths = get_checkpoint_paths(
+        self.checkpoint_paths = get_checkpoint_paths(
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.checkpoint_path
         )
@@ -179,6 +191,18 @@ class TrainArgs(Tap):
         self._features_size = None
         self._output_size = None
         self._train_data_size = None
+
+    @property
+    def device(self) -> torch.device:
+        if not self.cuda:
+            return torch.device('cpu')
+
+        return torch.device('cuda', self.gpu)
+
+    @device.setter
+    def device(self, device: torch.device) -> None:
+        self.cuda = device.type == 'cuda'
+        self.gpu = device.index
 
     @property
     def cuda(self) -> bool:
@@ -276,14 +300,14 @@ class TrainArgs(Tap):
             self.save_dir = temp_dir.name
 
         # Load checkpoint paths
-        self._checkpoint_paths = get_checkpoint_paths(
+        self.checkpoint_paths = get_checkpoint_paths(
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.checkpoint_path
         )
 
         # Fix ensemble size if loading checkpoints
-        if self._checkpoint_paths is not None and len(self._checkpoint_paths) > 0:
-            self.ensemble_size = len(self._checkpoint_paths)
+        if self.checkpoint_paths is not None and len(self.checkpoint_paths) > 0:
+            self.ensemble_size = len(self.checkpoint_paths)
 
         # Process and validate metric and loss function
         if self.metric is None:
@@ -393,7 +417,7 @@ class SklearnPredictArgs(Tap):
 
     def process_args(self) -> None:
         # Load checkpoint paths
-        self._checkpoint_paths = get_checkpoint_paths(
+        self.checkpoint_paths = get_checkpoint_paths(
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.checkpoint_path,
             ext='.pkl'
