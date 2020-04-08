@@ -4,7 +4,9 @@ from collections import OrderedDict
 import csv
 import os
 import sys
-from typing import List, Literal
+from typing import List
+from typing_extensions import Literal
+
 
 import numpy as np
 from scipy.spatial.distance import cdist

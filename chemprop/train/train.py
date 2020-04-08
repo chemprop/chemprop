@@ -1,6 +1,5 @@
-from argparse import Namespace
 import logging
-from typing import Callable, List, Union
+from typing import Callable
 
 from tensorboardX import SummaryWriter
 import torch
@@ -9,6 +8,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 
+from chemprop.args import TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
@@ -18,7 +18,7 @@ def train(model: nn.Module,
           loss_func: Callable,
           optimizer: Optimizer,
           scheduler: _LRScheduler,
-          args: Namespace,
+          args: TrainArgs,
           n_iter: int = 0,
           logger: logging.Logger = None,
           writer: SummaryWriter = None) -> int:

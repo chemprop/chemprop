@@ -1,4 +1,3 @@
-from argparse import Namespace
 from logging import Logger
 import os
 import pickle
@@ -10,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
+from chemprop.args import SklearnTrainArgs
 from chemprop.data import MoleculeDataset
 from chemprop.data.utils import get_data, split_data
 from chemprop.features import get_features_generator
@@ -52,7 +52,7 @@ def single_task_sklearn(model,
                         train_data: MoleculeDataset,
                         test_data: MoleculeDataset,
                         metric_func: Callable,
-                        args: Namespace,
+                        args: SklearnTrainArgs,
                         logger: Logger = None) -> List[float]:
     scores = []
     num_tasks = train_data.num_tasks()
@@ -92,7 +92,7 @@ def multi_task_sklearn(model,
                        train_data: MoleculeDataset,
                        test_data: MoleculeDataset,
                        metric_func: Callable,
-                       args: Namespace,
+                       args: SklearnTrainArgs,
                        logger: Logger = None) -> List[float]:
     num_tasks = train_data.num_tasks()
 
@@ -126,7 +126,7 @@ def multi_task_sklearn(model,
     return scores
 
 
-def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
+def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
     if logger is not None:
         debug, info = logger.debug, logger.info
     else:
@@ -205,7 +205,7 @@ def run_sklearn(args: Namespace, logger: Logger = None) -> List[float]:
     return scores
 
 
-def cross_validate_sklearn(args: Namespace, logger: Logger = None) -> Tuple[float, float]:
+def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tuple[float, float]:
     info = logger.info if logger is not None else print
     init_seed = args.seed
     save_dir = args.save_dir

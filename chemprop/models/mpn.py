@@ -1,10 +1,10 @@
-from argparse import Namespace
 from typing import List, Union
 
 import torch
 import torch.nn as nn
 import numpy as np
 
+from chemprop.args import TrainArgs
 from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
 from chemprop.nn_utils import index_select_ND, get_activation_function
 
@@ -12,23 +12,24 @@ from chemprop.nn_utils import index_select_ND, get_activation_function
 class MPNEncoder(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: Namespace, atom_fdim: int, bond_fdim: int):
+    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int, atom_messages: bool = False):
         """Initializes the MPNEncoder.
 
         :param args: Arguments.
         :param atom_fdim: Atom features dimension.
         :param bond_fdim: Bond features dimension.
+        :param atom_messages: Whether to use atoms to pass messages instead of bonds.
         """
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
+        self.atom_messages = atom_messages
         self.hidden_size = args.hidden_size
         self.bias = args.bias
         self.depth = args.depth
         self.dropout = args.dropout
         self.layers_per_message = 1
         self.undirected = args.undirected
-        self.atom_messages = args.atom_messages
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.args = args
@@ -152,21 +153,24 @@ class MPN(nn.Module):
     """A message passing neural network for encoding a molecule."""
 
     def __init__(self,
-                 args: Namespace,
+                 args: TrainArgs,
                  atom_fdim: int = None,
-                 bond_fdim: int = None):
+                 bond_fdim: int = None,
+                 atom_messages: bool = False):
         """
         Initializes the MPN.
 
         :param args: Arguments.
         :param atom_fdim: Atom features dimension.
         :param bond_fdim: Bond features dimension.
+        :param atom_messages: Whether to use atoms to pass messages instead of bonds.
         """
         super(MPN, self).__init__()
         self.args = args
         self.atom_fdim = atom_fdim or get_atom_fdim(args)
-        self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not args.atom_messages) * self.atom_fdim
-        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
+        self.bond_fdim = bond_fdim or get_bond_fdim(args) + (not atom_messages) * self.atom_fdim
+        self.atom_messages = atom_messages
+        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim, self.atom_messages)
 
     def forward(self,
                 batch: Union[List[str], BatchMolGraph],
@@ -179,7 +183,7 @@ class MPN(nn.Module):
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
         if type(batch) != BatchMolGraph:
-            batch = mol2graph(batch, self.args)
+            batch = mol2graph(batch, self.atom_messages)
 
         output = self.encoder.forward(batch, features_batch)
 

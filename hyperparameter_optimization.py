@@ -1,6 +1,5 @@
 """Optimizes hyperparameters using Bayesian optimization."""
 
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 import json
 from typing import Dict, Union
@@ -9,9 +8,9 @@ import os
 from hyperopt import fmin, hp, tpe
 import numpy as np
 
+from chemprop.args import HyperoptArgs
 from chemprop.models import build_model
 from chemprop.nn_utils import param_count
-from chemprop.parsing import add_train_args, modify_train_args
 from chemprop.train import cross_validate
 from chemprop.utils import create_logger, makedirs
 
@@ -25,7 +24,7 @@ SPACE = {
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
 
 
-def grid_search(args: Namespace):
+def grid_search(args: HyperoptArgs):
     # Create loggers
     logger = create_logger(name='hyperparameter_optimization', save_dir=args.log_dir, quiet=True)
     train_logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
@@ -93,15 +92,4 @@ def grid_search(args: Namespace):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    add_train_args(parser)
-    parser.add_argument('--num_iters', type=int, default=20,
-                        help='Number of hyperparameter choices to try')
-    parser.add_argument('--config_save_path', type=str, required=True,
-                        help='Path to .json file where best hyperparameter settings will be written')
-    parser.add_argument('--log_dir', type=str,
-                        help='(Optional) Path to a directory where all results of the hyperparameter optimization will be written')
-    args = parser.parse_args()
-    modify_train_args(args)
-
-    grid_search(args)
+    grid_search(HyperoptArgs().parse_args())

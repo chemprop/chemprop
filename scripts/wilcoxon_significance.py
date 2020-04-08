@@ -1,6 +1,7 @@
 from collections import OrderedDict, namedtuple
 import os
-from typing import List, Literal, Optional, Tuple
+from typing import List, Optional, Tuple
+from typing_extensions import Literal
 
 import numpy as np
 from scipy.stats import wilcoxon

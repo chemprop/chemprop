@@ -1,9 +1,8 @@
-from argparse import Namespace
 import csv
 from logging import Logger
 import pickle
 from random import Random
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Union
 import os
 
 from rdkit import Chem
@@ -12,6 +11,7 @@ from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split
+from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features
 
 
@@ -98,8 +98,9 @@ def get_data(path: str,
              smiles_column: str = None,
              target_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
-             args: Namespace = None,
+             args: Union[PredictArgs, TrainArgs] = None,
              features_path: List[str] = None,
+             features_generator: List[str] = None,
              max_data_size: int = None,
              logger: Logger = None) -> MoleculeDataset:
     """
@@ -112,6 +113,8 @@ def get_data(path: str,
     :param args: Arguments.
     :param features_path: A list of paths to files containing features. If provided, it is used
     in place of args.features_path.
+    :param features_generator: A list of features generators to use. If provided, it is used
+    in place of args.features_generator.
     :param max_data_size: The maximum number of data points to load.
     :param logger: Logger.
     :return: A MoleculeDataset containing smiles strings and target values along
@@ -124,6 +127,7 @@ def get_data(path: str,
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
         target_columns = target_columns if target_columns is not None else args.target_columns
         features_path = features_path if features_path is not None else args.features_path
+        features_generator = features_generator if features_generator is not None else args.features_generator
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
 
     max_data_size = max_data_size or float('inf')
@@ -173,7 +177,7 @@ def get_data(path: str,
                 smiles=smiles,
                 targets=targets,
                 row=row,
-                args=args,
+                features_generator=features_generator,
                 features=features_data[i] if features_data is not None else None
             ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)), total=len(all_smiles))
         ])
@@ -186,28 +190,25 @@ def get_data(path: str,
         if len(data) < original_data_len:
             debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
-    if data._data[0].features is not None:
-        args.features_dim = len(data._data[0].features)
-
     return data
 
 
 def get_data_from_smiles(smiles: List[str],
                          skip_invalid_smiles: bool = True,
                          logger: Logger = None,
-                         args: Namespace = None) -> MoleculeDataset:
+                         features_generator: List[str] = None) -> MoleculeDataset:
     """
     Converts SMILES to a MoleculeDataset.
 
     :param smiles: A list of SMILES strings.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param logger: Logger.
-    :param args: Arguments.
+    :param features_generator: List of features generators.
     :return: A MoleculeDataset with all of the provided SMILES.
     """
     debug = logger.debug if logger is not None else print
 
-    data = MoleculeDataset([MoleculeDatapoint(smiles=smile, args=args) for smile in smiles])
+    data = MoleculeDataset([MoleculeDatapoint(smiles=smile, features_generator=features_generator) for smile in smiles])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
@@ -224,7 +225,7 @@ def split_data(data: MoleculeDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
-               args: Namespace = None,
+               args: TrainArgs = None,
                logger: Logger = None) -> Tuple[MoleculeDataset,
                                                MoleculeDataset,
                                                MoleculeDataset]:

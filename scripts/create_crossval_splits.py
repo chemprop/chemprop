@@ -2,7 +2,9 @@ from copy import deepcopy
 import os
 import pickle
 import random
-from typing import List, Literal
+from typing import List
+from typing_extensions import Literal
+
 
 import numpy as np
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)

@@ -30,7 +30,7 @@ class ChempropModel:
                     self.checkpoints.append(model)
 
     def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
-        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, args=self.train_args)
+        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=self.train_args.features_generator)
         valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
         test_data = MoleculeDataset([test_data[i] for i in valid_indices])
 
