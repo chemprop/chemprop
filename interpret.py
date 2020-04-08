@@ -1,4 +1,3 @@
-import argparse
 import math
 import os
 from typing import Callable, Dict, List, Set, Tuple
@@ -6,6 +5,7 @@ from typing import Callable, Dict, List, Set, Tuple
 import numpy as np
 from rdkit import Chem
 import torch
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data_from_smiles, get_header, get_smiles
@@ -15,6 +15,22 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers
 
 MIN_ATOMS = 15
 C_PUCT = 10
+
+
+class Args(Tap):
+    data_path: str
+    checkpoint_dir: str
+    rollout: int = 20
+    c_puct: float = 10.0
+    max_atoms: int = 20
+    min_atoms: int = 8
+    prop_delta: float = 0.5
+    property_id: int = 1
+    no_cuda: bool = False
+
+    @property
+    def cuda(self) -> bool:
+        return not self.no_cuda and torch.cuda.is_available()
 
 
 class ChempropModel:
@@ -218,22 +234,9 @@ def mcts(smiles: str,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True)
-    parser.add_argument('--checkpoint_dir', type=str, required=True)
-    parser.add_argument('--rollout', type=int, default=20)
-    parser.add_argument('--c_puct', type=float, default=10)
-    parser.add_argument('--max_atoms', type=int, default=20)
-    parser.add_argument('--min_atoms', type=int, default=8)
-    parser.add_argument('--prop_delta', type=float, default=0.5)
-    parser.add_argument('--property_id', type=int, default=1)
-    parser.add_argument('--no_cuda', action='store_true', default=False,
-                        help='Whether to turn off cuda (i.e. GPU)')
-    args = parser.parse_args()
+    args = Args().parse_args()
 
-    cuda = not args.no_cuda and torch.cuda.is_available()
-
-    chemprop_model = ChempropModel(checkpoint_dir=args.checkpoint_dir, cuda=cuda)
+    chemprop_model = ChempropModel(checkpoint_dir=args.checkpoint_dir, cuda=args.cuda)
 
     def scoring_function(smiles: List[str]) -> List[float]:
         return chemprop_model(smiles)[:, args.property_id - 1]

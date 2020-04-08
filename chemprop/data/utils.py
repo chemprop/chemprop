@@ -237,7 +237,7 @@ def split_data(data: MoleculeDataset,
     :param sizes: A length-3 tuple with the proportions of data in the
     train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
-    :param args: Namespace of arguments.
+    :param args: Arguments.
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
