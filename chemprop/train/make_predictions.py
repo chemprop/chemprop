@@ -27,6 +27,12 @@ def make_predictions(args: Namespace, smiles: List[str] = None) -> List[Optional
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
 
+    # If features were used during training, they must be used when predicting
+    if train_args.features_path is not None or train_args.features_generator is not None:
+        if args.features_path is None and args.features_generator is None:
+            raise ValueError('Features were used during training so they must be specified again during prediction'
+                             'using the same type of features as before (including --no_features_scaling if applicable).')
+
     # Update args with training arguments
     for key, value in vars(train_args).items():
         if not hasattr(args, key):
