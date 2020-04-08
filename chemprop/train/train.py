@@ -53,8 +53,8 @@ def train(model: nn.Module,
         preds = model(mol_batch, features_batch)
 
         # Move tensors to correct device
-        mask.to(preds.device)
-        targets.to(preds.device)
+        mask = mask.to(preds.device)
+        targets = targets.to(preds.device)
         class_weights = torch.ones(targets.shape, device=preds.device)
 
         if args.dataset_type == 'multiclass':
