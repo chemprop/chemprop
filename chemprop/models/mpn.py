@@ -70,25 +70,26 @@ class MPNEncoder(nn.Module):
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
+        device = next(self.parameters()).device
+
         if self.use_input_features:
             features_batch = torch.from_numpy(np.stack(features_batch)).float()
-
-            if self.args.cuda:
-                features_batch = features_batch.cuda()
+            features_batch.to(device)
 
             if self.features_only:
                 return features_batch
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components(atom_messages=self.atom_messages)
 
+        f_atoms.to(device)
+        f_bonds.to(device)
+        a2b.to(device)
+        b2a.to(device)
+        b2revb.to(device)
+
         if self.atom_messages:
             a2a = mol_graph.get_a2a()
-
-        if self.args.cuda or next(self.parameters()).is_cuda:
-            f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.cuda(), f_bonds.cuda(), a2b.cuda(), b2a.cuda(), b2revb.cuda()
-
-            if self.atom_messages:
-                a2a = a2a.cuda()
+            a2a.to(device)
 
         # Input
         if self.atom_messages:
@@ -143,7 +144,7 @@ class MPNEncoder(nn.Module):
         if self.use_input_features:
             features_batch = features_batch.to(mol_vecs)
             if len(features_batch.shape) == 1:
-                features_batch = features_batch.view([1,features_batch.shape[0]])
+                features_batch = features_batch.view([1, features_batch.shape[0]])
             mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
 
         return mol_vecs  # num_molecules x hidden

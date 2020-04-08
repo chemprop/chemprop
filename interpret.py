@@ -27,6 +27,14 @@ class Args(Tap):
     prop_delta: float = 0.5
     property_id: int = 1
     no_cuda: bool = False
+    gpu: int = 0
+
+    @property
+    def device(self) -> torch.device:
+        if not self.cuda:
+            return torch.device('cpu')
+
+        return torch.device('cuda', self.gpu)
 
     @property
     def cuda(self) -> bool:
@@ -34,7 +42,7 @@ class Args(Tap):
 
 
 class ChempropModel:
-    def __init__(self, checkpoint_dir: str, cuda: bool = True) -> None:
+    def __init__(self, checkpoint_dir: str, device: torch.device) -> None:
         self.checkpoints = []
         for root, _, files in os.walk(checkpoint_dir):
             for fname in files:
@@ -42,7 +50,7 @@ class ChempropModel:
                     fname = os.path.join(root, fname)
                     self.scaler, self.features_scaler = load_scalers(fname)
                     self.train_args = load_args(fname)
-                    model = load_checkpoint(fname, cuda=cuda)
+                    model = load_checkpoint(fname, device=device)
                     self.checkpoints.append(model)
 
     def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
@@ -236,7 +244,7 @@ def mcts(smiles: str,
 if __name__ == "__main__":
     args = Args().parse_args()
 
-    chemprop_model = ChempropModel(checkpoint_dir=args.checkpoint_dir, cuda=args.cuda)
+    chemprop_model = ChempropModel(checkpoint_dir=args.checkpoint_dir, device=args.device)
 
     def scoring_function(smiles: List[str]) -> List[float]:
         return chemprop_model(smiles)[:, args.property_id - 1]
