@@ -276,7 +276,8 @@ class MoleculeSampler(Sampler):
         self._random = Random(seed)
 
         if self.class_balance:
-            assert self.dataset.num_tasks() == 1
+            if self.dataset.num_tasks() != 1:
+                raise ValueError('Class balance can only be used on single-task classification datasets.')
 
             self.positive_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 1]
             self.negative_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 0]
