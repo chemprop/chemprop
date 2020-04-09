@@ -366,6 +366,7 @@ class TrainArgs(Tap):
                 setattr(args, key, value)
             except AttributeError:
                 pass
+        args._parsed = True
 
         return args
 
