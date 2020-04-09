@@ -24,7 +24,9 @@ class MoleculeModel(nn.Module):
         self.multiclass = multiclass
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
-        assert not (self.classification and self.multiclass)
+
+        if self.classification and self.multiclass:
+            raise ValueError('Model cannot simultaneously be classification and multiclass – only choose one.')
 
     def create_encoder(self, args: TrainArgs):
         """

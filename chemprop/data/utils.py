@@ -65,8 +65,8 @@ def get_smiles(path: str, smiles_column: str = None, header: bool = True) -> Lis
     :param header: Whether the CSV file contains a header (that will be skipped).
     :return: A list of smiles strings.
     """
-    if smiles_column is not None:
-        assert header
+    if smiles_column is not None and not header:
+        raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
     with open(path) as f:
         if header:
@@ -241,7 +241,8 @@ def split_data(data: MoleculeDataset,
     :param logger: A logger.
     :return: A tuple containing the train, validation, and test splits of the data.
     """
-    assert len(sizes) == 3 and sum(sizes) == 1
+    if not (len(sizes) == 3 and sum(sizes) == 1):
+        raise ValueError('Valid split sizes must sum to 1 and must have three sizes: train, validation, and test.')
 
     random = Random(seed)
 
@@ -265,7 +266,10 @@ def split_data(data: MoleculeDataset,
     
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
-        assert len(split_indices) == 3
+
+        if len(split_indices) != 3:
+            raise ValueError('Split indices must have three splits: train, validation, and test')
+
         data_split = []
         for split in range(3):
             data_split.append([data[i] for i in split_indices[split]])
@@ -273,8 +277,10 @@ def split_data(data: MoleculeDataset,
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type == 'predetermined':
-        if not val_fold_index:
-            assert sizes[2] == 0  # test set is created separately so use all of the other data for train and val
+        if not val_fold_index and sizes[2] != 0:
+            raise ValueError('Test size must be zero since test set is created separately '
+                             'and we want to put all other data in train and validation')
+
         assert folds_file is not None
         assert test_fold_index is not None
 
@@ -284,7 +290,6 @@ def split_data(data: MoleculeDataset,
         except UnicodeDecodeError:
             with open(folds_file, 'rb') as f:
                 all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
-        # assert len(data) == sum([len(fold_indices) for fold_indices in all_fold_indices])
 
         log_scaffold_stats(data, all_fold_indices, logger=logger)
 
@@ -347,8 +352,8 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
 
     class_sizes = []
     for task_targets in valid_targets:
-        # Make sure we're dealing with a binary classification task
-        assert set(np.unique(task_targets)) <= {0, 1}
+        if set(np.unique(task_targets)) > {0, 1}:
+            raise ValueError('Classification dataset must only contains 0s and 1s.')
 
         try:
             ones = np.count_nonzero(task_targets) / len(task_targets)

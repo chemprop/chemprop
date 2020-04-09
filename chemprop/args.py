@@ -324,28 +324,34 @@ class TrainArgs(Tap):
             raise ValueError(f'Metric "{self.metric}" invalid for dataset type "{self.dataset_type}".')
 
         # Validate class balance
-        if self.class_balance:
-            assert self.dataset_type == 'classification'
+        if self.class_balance and self.dataset_type != 'classification':
+            raise ValueError('Class balance can only be applied if the dataset type is classification.')
 
         # Validate features
-        if self.features_only:
-            assert self.features_generator or self.features_path
+        if self.features_only and not (self.features_generator or self.features_path):
+            raise ValueError('When using features_only, a features_generator or features_path must be provided.')
 
-        if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator:
-            assert self.no_features_scaling
+        if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
+            raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
         # Handle FFN hidden size
         if self.ffn_hidden_size is None:
             self.ffn_hidden_size = self.hidden_size
 
         # Handle MPN variants
-        if self.atom_messages:
-            assert not self.undirected  # Atom messages are by their nature undirected
+        if self.atom_messages and self.undirected:
+            raise ValueError('Undirected is unnecessary when using atom_messages '
+                             'since atom_messages are by their nature undirected.')
 
-        # Validate split type
-        assert (self.split_type == 'predetermined') == (self.folds_file is not None) == (self.test_fold_index is not None)
-        assert (self.split_type == 'crossval') == (self.crossval_index_dir is not None)
-        assert (self.split_type in ['crossval', 'index_predetermined']) == (self.crossval_index_file is not None)
+        # Validate split type settings
+        if not (self.split_type == 'predetermined') == (self.folds_file is not None) == (self.test_fold_index is not None):
+            raise ValueError('When using predetermined split type, must provide folds_file and test_fold_index.')
+
+        if not (self.split_type == 'crossval') == (self.crossval_index_dir is not None):
+            raise ValueError('When using crossval split type, must provide crossval_index_dir.')
+
+        if not (self.split_type in ['crossval', 'index_predetermined']) == (self.crossval_index_file is not None):
+            raise ValueError('When using crossval or index_predetermined split type, must provide crossval_index_file.')
 
         if self.split_type in ['crossval', 'index_predetermined']:
             with open(self.crossval_index_file, 'rb') as rf:
