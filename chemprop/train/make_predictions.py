@@ -2,7 +2,6 @@ import csv
 from typing import List, Optional, Union
 
 import numpy as np
-import torch
 from tqdm import tqdm
 
 from .predict import predict
@@ -23,12 +22,13 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
+    num_tasks = train_args.num_tasks
 
     # If features were used during training, they must be used when predicting
     if train_args.features_path is not None or train_args.features_generator is not None:
         if args.features_path is None and args.features_generator is None:
             raise ValueError('Features were used during training so they must be specified again during prediction'
-                             'using the same type of features as before (including --no_features_scaling if applicable).')
+                             'using the same type of features as before.')
 
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
@@ -64,9 +64,9 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
     # Predict with each model individually and sum predictions
     if args.dataset_type == 'multiclass':
-        sum_preds = np.zeros((len(test_data), args.num_tasks, args.multiclass_num_classes))
+        sum_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes))
     else:
-        sum_preds = np.zeros((len(test_data), args.num_tasks))
+        sum_preds = np.zeros((len(test_data), num_tasks))
 
     # Create data loader
     test_data_loader = MoleculeDataLoader(
