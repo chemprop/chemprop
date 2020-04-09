@@ -22,7 +22,7 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
     print('Loading training args')
     scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
-    num_tasks = train_args.num_tasks
+    num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
     # If features were used during training, they must be used when predicting
     if train_args.features_path is not None or train_args.features_generator is not None:
@@ -97,9 +97,9 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
     # Get prediction column names
     if args.dataset_type == 'multiclass':
-        task_names = [f'{name}_class_{i}' for name in args.task_names for i in range(args.multiclass_num_classes)]
+        task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
     else:
-        task_names = args.task_names
+        task_names = task_names
 
     # Copy predictions over to full_data
     for full_index, datapoint in enumerate(full_data):
