@@ -39,8 +39,7 @@ def grid_search(args: HyperoptArgs):
             hyperparams[key] = int(hyperparams[key])
 
         # Copy args
-        # TODO: replace with deepcopy once deepcopy is implemented in Tap objects
-        hyper_args = HyperoptArgs.from_dict(args.as_dict())
+        hyper_args = deepcopy(args)
 
         # Update args with hyperparams
         if args.save_dir is not None:
