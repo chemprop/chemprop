@@ -83,7 +83,8 @@ def load_checkpoint(path: str,
 
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
-    args = TrainArgs.from_dict(vars(state['args']))
+    args = TrainArgs()
+    args.from_dict(vars(state['args']), skip_unsettable=True)
     loaded_state_dict = state['state_dict']
 
     if current_args is not None:
@@ -146,7 +147,10 @@ def load_args(path: str) -> TrainArgs:
     :param path: Path where model checkpoint is saved.
     :return: The arguments that the model was trained with.
     """
-    return TrainArgs.from_dict(vars(torch.load(path, map_location=lambda storage, loc: storage)['args']))
+    args = TrainArgs()
+    args.from_dict(vars(torch.load(path, map_location=lambda storage, loc: storage)['args']), skip_unsettable=True)
+
+    return args
 
 
 def load_task_names(path: str) -> List[str]:

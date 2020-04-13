@@ -2,7 +2,7 @@ import json
 import os
 from tempfile import TemporaryDirectory
 import pickle
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from typing_extensions import Literal
 
 
@@ -362,19 +362,6 @@ class TrainArgs(Tap):
         # Test settings
         if self.test:
             self.epochs = 0
-
-    # TODO: remove this once it's implemented in Tap
-    @staticmethod
-    def from_dict(d: Dict[str, Any]) -> 'TrainArgs':
-        args = TrainArgs()
-        for key, value in d.items():
-            try:
-                setattr(args, key, value)
-            except AttributeError:
-                pass
-        args._parsed = True
-
-        return args
 
 
 class HyperoptArgs(TrainArgs):
