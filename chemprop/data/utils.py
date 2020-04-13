@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import csv
 from logging import Logger
 import pickle
@@ -208,7 +209,13 @@ def get_data_from_smiles(smiles: List[str],
     """
     debug = logger.debug if logger is not None else print
 
-    data = MoleculeDataset([MoleculeDatapoint(smiles=smile, features_generator=features_generator) for smile in smiles])
+    data = MoleculeDataset([
+        MoleculeDatapoint(
+            smiles=smile,
+            row=OrderedDict({'smiles': smile}),
+            features_generator=features_generator
+        ) for smile in smiles
+    ])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
