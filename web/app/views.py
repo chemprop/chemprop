@@ -342,16 +342,9 @@ def predict():
         else:
             args.gpu = int(gpu)
 
-    if hasattr(args, 'features_path'):
-        args.features_path = None
-
     train_args = load_args(model_paths[0])
 
-    for key, value in vars(train_args).items():
-        if not hasattr(args, key):
-            setattr(args, key, value)
-
-    if args.features_path is not None:
+    if train_args.features_path is not None:
         args.features_generator = ['rdkit_2d_normalized']
         args.features_path = None
 
