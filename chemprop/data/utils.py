@@ -126,7 +126,8 @@ def get_data(path: str,
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
-        target_columns = target_columns if target_columns is not None else args.target_columns
+        if hasattr(args, 'target_columns'):
+            target_columns = target_columns if target_columns is not None else args.target_columns
         features_path = features_path if features_path is not None else args.features_path
         features_generator = features_generator if features_generator is not None else args.features_generator
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
