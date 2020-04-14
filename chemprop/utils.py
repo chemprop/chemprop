@@ -67,14 +67,12 @@ def save_checkpoint(path: str,
 
 
 def load_checkpoint(path: str,
-                    current_args: Union[TrainArgs, PredictArgs] = None,
                     device: torch.device = None,
                     logger: logging.Logger = None) -> MoleculeModel:
     """
     Loads a model checkpoint.
 
     :param path: Path where checkpoint is saved.
-    :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
     :param device: Device where the model will be moved.
     :param logger: A logger.
     :return: The loaded MoleculeModel.
@@ -86,9 +84,6 @@ def load_checkpoint(path: str,
     args = TrainArgs()
     args.from_dict(vars(state['args']), skip_unsettable=True)
     loaded_state_dict = state['state_dict']
-
-    if current_args is not None:
-        args = current_args
 
     if device is not None:
         args.device = device
