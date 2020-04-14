@@ -85,12 +85,11 @@ def generate_and_save_features(args: Args):
 
     # Build features map function
     smiles = smiles[len(features):]  # restrict to data for which features have not been computed yet
-    mols = (Chem.MolFromSmiles(smile) for smile in smiles)
 
     if args.sequential:
-        features_map = map(features_generator, mols)
+        features_map = map(features_generator, smiles)
     else:
-        features_map = Pool().imap(features_generator, mols)
+        features_map = Pool().imap(features_generator, smiles)
 
     # Get features
     temp_features = []
