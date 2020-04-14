@@ -13,7 +13,7 @@ from chemprop.utils import makedirs
 
 def predict_sklearn(args: SklearnPredictArgs):
     print('Loading data')
-    data = get_data(path=args.test_path, smiles_column=args.smiles_column)
+    data = get_data(path=args.test_path, smiles_column=args.smiles_column, target_columns=[])
 
     print('Computing morgan fingerprints')
     morgan_fingerprint = get_features_generator('morgan')
