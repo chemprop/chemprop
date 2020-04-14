@@ -6,12 +6,13 @@ import shutil
 import sys
 from typing import List, Tuple
 
+from rdkit import Chem
 from tqdm import tqdm
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data.utils import get_data
+from chemprop.data.utils import get_smiles
 from chemprop.features import get_available_features_generators, get_features_generator, load_features, save_features
 from chemprop.utils import makedirs
 
@@ -23,7 +24,6 @@ class Args(Tap):
     save_path: str  # Path to .npz file where features will be saved as a compressed numpy archive
     save_frequency: int = 10000  # Frequency with which to save the features
     restart: bool = False  # Whether to not load partially complete featurization and instead start from scratch
-    max_data_size: int = None  # Maximum number of data points to load
     sequential: bool = False  # Whether to run sequentially rather than in parallel
 
     def add_arguments(self) -> None:
@@ -62,7 +62,7 @@ def generate_and_save_features(args: Args):
     makedirs(args.save_path, isfile=True)
 
     # Get data and features function
-    data = get_data(path=args.data_path, smiles_column=args.smiles_column, max_data_size=args.max_data_size)
+    smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column)
     features_generator = get_features_generator(args.features_generator)
     temp_save_dir = args.save_path + '_temp'
 
@@ -84,8 +84,8 @@ def generate_and_save_features(args: Args):
         features, temp_num = [], 0
 
     # Build features map function
-    data = data[len(features):]  # restrict to data for which features have not been computed yet
-    mols = (d.mol for d in data)
+    smiles = smiles[len(features):]  # restrict to data for which features have not been computed yet
+    mols = (Chem.MolFromSmiles(smile) for smile in smiles)
 
     if args.sequential:
         features_map = map(features_generator, mols)
@@ -94,11 +94,11 @@ def generate_and_save_features(args: Args):
 
     # Get features
     temp_features = []
-    for i, feats in tqdm(enumerate(features_map), total=len(data)):
+    for i, feats in tqdm(enumerate(features_map), total=len(smiles)):
         temp_features.append(feats)
 
         # Save temporary features every save_frequency
-        if (i > 0 and (i + 1) % args.save_frequency == 0) or i == len(data) - 1:
+        if (i > 0 and (i + 1) % args.save_frequency == 0) or i == len(smiles) - 1:
             save_features(os.path.join(temp_save_dir, f'{temp_num}.npz'), temp_features)
             features.extend(temp_features)
             temp_features = []
