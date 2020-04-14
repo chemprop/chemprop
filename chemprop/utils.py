@@ -77,7 +77,10 @@ def load_checkpoint(path: str,
     :param logger: A logger.
     :return: The loaded MoleculeModel.
     """
-    debug = logger.debug if logger is not None else print
+    if logger is not None:
+        debug, info = logger.debug, logger.info
+    else:
+        debug = info = print
 
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
@@ -97,11 +100,11 @@ def load_checkpoint(path: str,
     for param_name in loaded_state_dict.keys():
 
         if param_name not in model_state_dict:
-            debug(f'Pretrained parameter "{param_name}" cannot be found in model parameters.')
+            info(f'Warning: Pretrained parameter "{param_name}" cannot be found in model parameters.')
         elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
-            debug(f'Pretrained parameter "{param_name}" '
-                  f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
-                  f'model parameter of shape {model_state_dict[param_name].shape}.')
+            info(f'Warning: Pretrained parameter "{param_name}" '
+                 f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
+                 f'model parameter of shape {model_state_dict[param_name].shape}.')
         else:
             debug(f'Loading pretrained parameter "{param_name}".')
             pretrained_state_dict[param_name] = loaded_state_dict[param_name]
