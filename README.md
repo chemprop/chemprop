@@ -5,7 +5,7 @@ A web prediction interface with some trained chemprop models is available at [ch
 
 ## COVID-19 Update
 
-Please see [aicures.mit.edu](aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use chemprop to identify drug candidates for treating COVID-19.
+Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use chemprop to identify drug candidates for treating COVID-19.
 
 ## Table of Contents
 
