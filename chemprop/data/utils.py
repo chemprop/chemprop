@@ -90,7 +90,7 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
     :param data: A MoleculeDataset.
     :return: A MoleculeDataset with only valid molecules.
     """
-    return MoleculeDataset([datapoint for datapoint in data
+    return MoleculeDataset([datapoint for datapoint in tqdm(data)
                             if datapoint.smiles != '' and datapoint.mol is not None
                             and datapoint.mol.GetNumHeavyAtoms() > 0])
 
@@ -180,7 +180,8 @@ def get_data(path: str,
                 row=row,
                 features_generator=features_generator,
                 features=features_data[i] if features_data is not None else None
-            ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)), total=len(all_smiles))
+            ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)),
+                                                    total=len(all_smiles))
         ])
 
     # Filter out invalid SMILES

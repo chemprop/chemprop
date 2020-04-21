@@ -41,7 +41,7 @@ class MoleculeDatapoint:
         self.row = row or OrderedDict()
         self.features = features
         self.features_generator = features_generator
-        self.mol = Chem.MolFromSmiles(self.smiles)
+        self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -58,6 +58,14 @@ class MoleculeDatapoint:
         if self.features is not None:
             replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
+
+    @property
+    def mol(self) -> Chem.Mol:
+        """Get the RDKit molecule for the SMILES string (with lazy loading)."""
+        if self._mol == 'None':
+            self._mol = Chem.MolFromSmiles(self.smiles)
+
+        return self._mol
 
     def set_features(self, features: np.ndarray):
         """
@@ -123,13 +131,13 @@ class MoleculeDataset(Dataset):
         """
         if self._batch_graph is None:
             mol_graphs = []
-            for smiles in self.smiles():
-                if smiles in SMILES_TO_GRAPH:
-                    mol_graph = SMILES_TO_GRAPH[smiles]
+            for d in self._data:
+                if d.smiles in SMILES_TO_GRAPH:
+                    mol_graph = SMILES_TO_GRAPH[d.smiles]
                 else:
-                    mol_graph = MolGraph(smiles)
+                    mol_graph = MolGraph(d.mol)
                     if cache:
-                        SMILES_TO_GRAPH[smiles] = mol_graph
+                        SMILES_TO_GRAPH[d.smiles] = mol_graph
                 mol_graphs.append(mol_graph)
 
             self._batch_graph = BatchMolGraph(mol_graphs)
@@ -262,7 +270,7 @@ class MoleculeSampler(Sampler):
                               Class balance is only available for single task classification datasets.
                               Set shuffle to True in order to get a random subset of the larger class.
         :param shuffle: Whether to shuffle the data.
-        :param seed: Random seed.
+        :param seed: Random seed. Only needed if shuffle is True.
         """
         super(Sampler, self).__init__()
 
@@ -328,7 +336,7 @@ class MoleculeDataLoader(DataLoader):
                               Class balance is only available for single task classification datasets.
                               Set shuffle to True in order to get a random subset of the larger class.
         :param shuffle: Whether to shuffle the data.
-        :param seed: Random seed.
+        :param seed: Random seed. Only needed if shuffle is True.
         """
         self._dataset = dataset
         self._batch_size = batch_size

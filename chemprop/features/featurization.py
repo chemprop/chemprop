@@ -113,7 +113,6 @@ class MolGraph:
     A MolGraph represents the graph structure and featurization of a single molecule.
 
     A MolGraph computes the following attributes:
-    - smiles: Smiles string.
     - n_atoms: The number of atoms in the molecule.
     - n_bonds: The number of bonds in the molecule.
     - f_atoms: A mapping from an atom index to a list atom features.
@@ -123,13 +122,16 @@ class MolGraph:
     - b2revb: A mapping from a bond index to the index of the reverse bond.
     """
 
-    def __init__(self, smiles: str):
+    def __init__(self, mol: Union[str, Chem.Mol]):
         """
         Computes the graph structure and featurization of a molecule.
 
-        :param smiles: A smiles string.
+        :param mol: A SMILES string or an RDKit molecule.
         """
-        self.smiles = smiles
+        # Convert SMILES to RDKit molecule if necessary
+        if type(mol) == str:
+            mol = Chem.MolFromSmiles(mol)
+
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
         self.f_atoms = []  # mapping from atom index to atom features
@@ -137,9 +139,6 @@ class MolGraph:
         self.a2b = []  # mapping from atom index to incoming bond indices
         self.b2a = []  # mapping from bond index to the index of the atom the bond is coming from
         self.b2revb = []  # mapping from bond index to the index of the reverse bond
-
-        # Convert smiles to molecule
-        mol = Chem.MolFromSmiles(smiles)
 
         # fake the number of "atoms" if we are collapsing substructures
         self.n_atoms = mol.GetNumAtoms()
@@ -181,8 +180,6 @@ class BatchMolGraph:
     A BatchMolGraph represents the graph structure and featurization of a batch of molecules.
 
     A BatchMolGraph contains the attributes of a MolGraph plus:
-    - smiles_batch: A list of smiles strings.
-    - n_mols: The number of molecules in the batch.
     - atom_fdim: The dimensionality of the atom features.
     - bond_fdim: The dimensionality of the bond features (technically the combined atom/bond features).
     - a_scope: A list of tuples indicating the start and end atom indices for each molecule.
@@ -193,9 +190,6 @@ class BatchMolGraph:
     """
 
     def __init__(self, mol_graphs: List[MolGraph]):
-        self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
-        self.n_mols = len(self.smiles_batch)
-
         self.atom_fdim = get_atom_fdim()
         self.bond_fdim = get_bond_fdim()
 
@@ -286,11 +280,11 @@ class BatchMolGraph:
         return self.a2a
 
 
-def mol2graph(smiles_batch: List[str]) -> BatchMolGraph:
+def mol2graph(mols: Union[List[str], List[Chem.Mol]]) -> BatchMolGraph:
     """
-    Converts a list of SMILES strings to a BatchMolGraph containing the batch of molecular graphs.
+    Converts a list of SMILES strings or RDKit molecules to a BatchMolGraph containing the batch of molecular graphs.
 
-    :param smiles_batch: A list of SMILES strings.
+    :param mols: A list of SMILES strings or a list of RDKit molecules.
     :return: A BatchMolGraph containing the combined molecular graph for the molecules
     """
-    return BatchMolGraph([MolGraph(smiles) for smiles in smiles_batch])
+    return BatchMolGraph([MolGraph(mol) for mol in mols])

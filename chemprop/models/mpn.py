@@ -1,8 +1,9 @@
 from typing import List, Union
 
+import numpy as np
+from rdkit import Chem
 import torch
 import torch.nn as nn
-import numpy as np
 
 from chemprop.args import TrainArgs
 from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
@@ -163,17 +164,17 @@ class MPN(nn.Module):
         self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
 
     def forward(self,
-                batch: Union[List[str], BatchMolGraph],
+                batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
                 features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecular SMILES strings.
 
-        :param batch: A list of SMILES strings or a BatchMolGraph.
+        :param batch: A list of SMILES strings, a list of RDKit molecules, or a BatchMolGraph.
         :param features_batch: A list of ndarrays containing additional features.
         :return: A PyTorch tensor of shape (num_molecules, hidden_size) containing the encoding of each molecule.
         """
         if type(batch) != BatchMolGraph:
-            batch = mol2graph(batch, self.atom_messages)
+            batch = mol2graph(batch)
 
         output = self.encoder.forward(batch, features_batch)
 
