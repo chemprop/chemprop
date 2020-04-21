@@ -320,7 +320,7 @@ class MoleculeDataLoader(DataLoader):
     def __init__(self,
                  dataset: MoleculeDataset,
                  batch_size: int = 50,
-                 num_workers: int = 0,
+                 num_workers: int = 8,
                  cache: bool = False,
                  class_balance: bool = False,
                  shuffle: bool = False,

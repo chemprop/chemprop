@@ -63,7 +63,7 @@ class PredictArgs(Tap):
     features_path: List[str] = None  # Path(s) to features to use in FNN (instead of features_generator)
     no_features_scaling: bool = False  # Turn off scaling of features
     max_data_size: int = None  # Maximum number of data points to load
-    num_workers: int = 4   # Number of workers for the parallel data loading (0 means sequential)
+    num_workers: int = 8   # Number of workers for the parallel data loading (0 means sequential)
 
     def __init__(self, *args, **kwargs) -> None:
         super(PredictArgs, self).__init__(*args, **kwargs)
@@ -150,7 +150,7 @@ class TrainArgs(Tap):
     quiet: bool = False  # Skip non-essential print statements
     log_frequency: int = 10  # The number of batches between each logging of the training loss
     show_individual_scores: bool = False  # Show all scores for individual targets, not just average, at the end
-    num_workers: int = 4  # Number of workers for the parallel data loading (0 means sequential)
+    num_workers: int = 8  # Number of workers for the parallel data loading (0 means sequential)
     cache_cutoff: int = 10000  # Maximum number of molecules in dataset to allow caching. Below this number, caching is used and data loading is sequential. Above this number, caching is not used and data loading is parallel.
 
     # Model arguments

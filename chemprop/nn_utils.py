@@ -90,7 +90,7 @@ def initialize_weights(model: nn.Module):
 def compute_molecule_vectors(model: nn.Module,
                              data: MoleculeDataset,
                              batch_size: int,
-                             num_workers: int = 4) -> List[np.ndarray]:
+                             num_workers: int = 8) -> List[np.ndarray]:
     """
     Computes the molecule vectors output from the last layer of a MoleculeModel.
 
