@@ -59,9 +59,6 @@ class MoleculeDatapoint:
             replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
-        # Create placeholder for graph
-        self._graph = None
-
     def set_features(self, features: np.ndarray):
         """
         Sets the features of the molecule.

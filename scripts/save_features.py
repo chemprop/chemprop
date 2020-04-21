@@ -6,7 +6,6 @@ import shutil
 import sys
 from typing import List, Tuple
 
-from rdkit import Chem
 from tqdm import tqdm
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 

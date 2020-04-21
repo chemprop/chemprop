@@ -158,7 +158,7 @@ def get_data(path: str,
             target_columns = [column for column in columns if column != smiles_column]
 
         all_smiles, all_targets, all_rows = [], [], []
-        for row in reader:
+        for row in tqdm(reader):
             smiles = row[smiles_column]
 
             if smiles in skip_smiles:

@@ -32,7 +32,9 @@ Please see [aicures.mit.edu](aicures.mit.edu) and the associated [data GitHub re
 
 ## Requirements
 
-While it is possible to run all of the code on a CPU-only machine, GPUs make training significantly faster. To run with GPUs, you will need:
+For small datasets (~1000 molecules), it is possible to train models within a few minutes on a standard laptop with CPUs only. However, for larger datasets and larger `chemprop` models, we recommend using a GPU for significantly faster training.
+
+To use `chemprop` with GPUs, you will need:
  * cuda >= 8.0
  * cuDNN
 
