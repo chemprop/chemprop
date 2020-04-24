@@ -1,14 +1,14 @@
 import torch.nn as nn
 
 from .mpn import MPN
-from chemprop.args import ModelArgs
+from chemprop.args import TrainArgs
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
 
 class MoleculeModel(nn.Module):
     """A MoleculeModel is a model which contains a message passing network following by feed-forward layers."""
 
-    def __init__(self, args: ModelArgs, featurizer: bool = False):
+    def __init__(self, args: TrainArgs, featurizer: bool = False):
         """
         Initializes the MoleculeModel.
 
