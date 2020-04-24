@@ -1,7 +1,9 @@
 from argparse import Namespace
+import csv
 import logging
 import math
 import os
+import pickle
 from typing import Callable, List, Tuple, Union
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
@@ -11,9 +13,9 @@ import torch.nn as nn
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
-from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import StandardScaler
-from chemprop.models import build_model, MoleculeModel
+from chemprop.args import TrainArgs
+from chemprop.data import StandardScaler, MoleculeDataset
+from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
 
 
@@ -92,7 +94,7 @@ def load_checkpoint(path: str,
         args.device = device
 
     # Build model
-    model = build_model(args)
+    model = MoleculeModel(args)
     model_state_dict = model.state_dict()
 
     # Skip missing parameters and parameters of mismatched size
@@ -335,3 +337,54 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
         logger.addHandler(fh_q)
 
     return logger
+
+
+def save_smiles_splits(train_data: MoleculeDataset,
+                       val_data: MoleculeDataset,
+                       test_data: MoleculeDataset,
+                       data_path: str,
+                       save_dir: str) -> None:
+    """
+    Saves indices of train/val/test split as a pickle file.
+
+    :param train_data: Train data.
+    :param val_data: Validation data.
+    :param test_data: Test data.
+    :param data_path: Path to data CSV file.
+    :param save_dir: Path where pickle files will be saved.
+    """
+    makedirs(save_dir)
+
+    with open(data_path) as f:
+        reader = csv.reader(f)
+        header = next(reader)
+
+        lines_by_smiles = {}
+        indices_by_smiles = {}
+        for i, line in enumerate(reader):
+            smiles = line[0]
+            lines_by_smiles[smiles] = line
+            indices_by_smiles[smiles] = i
+
+    all_split_indices = []
+    for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
+        with open(os.path.join(save_dir, f'{name}_smiles.csv'), 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['smiles'])
+            for smiles in dataset.smiles():
+                writer.writerow([smiles])
+
+        with open(os.path.join(save_dir, f'{name}_full.csv'), 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for smiles in dataset.smiles():
+                writer.writerow(lines_by_smiles[smiles])
+
+        split_indices = []
+        for smiles in dataset.smiles():
+            split_indices.append(indices_by_smiles[smiles])
+            split_indices = sorted(split_indices)
+        all_split_indices.append(split_indices)
+
+    with open(os.path.join(save_dir, 'split_indices.pckl'), 'wb') as f:
+        pickle.dump(all_split_indices, f)

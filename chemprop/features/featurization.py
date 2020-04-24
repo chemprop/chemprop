@@ -140,14 +140,11 @@ class MolGraph:
         self.b2a = []  # mapping from bond index to the index of the atom the bond is coming from
         self.b2revb = []  # mapping from bond index to the index of the reverse bond
 
-        # fake the number of "atoms" if we are collapsing substructures
-        self.n_atoms = mol.GetNumAtoms()
-        
         # Get atom features
-        for i, atom in enumerate(mol.GetAtoms()):
-            self.f_atoms.append(atom_features(atom))
-        self.f_atoms = [self.f_atoms[i] for i in range(self.n_atoms)]
+        self.f_atoms = [atom_features(atom) for atom in mol.GetAtoms()]
+        self.n_atoms = len(self.f_atoms)
 
+        # Initialize atom to bond mapping for each atom
         for _ in range(self.n_atoms):
             self.a2b.append([])
 

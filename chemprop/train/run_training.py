@@ -17,10 +17,10 @@ from .train import train
 from chemprop.args import TrainArgs
 from chemprop.data import StandardScaler, MoleculeDataLoader
 from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
-from chemprop.models import build_model
+from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
-    makedirs, save_checkpoint
+    makedirs, save_checkpoint, save_smiles_splits
 
 
 def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
@@ -46,6 +46,9 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
 
     # Save args
     args.save(os.path.join(args.save_dir, 'args.json'))
+
+    # Set pytorch seed for random initial weights
+    torch.manual_seed(args.pytorch_seed)
 
     # Get data
     debug('Loading data')
@@ -79,36 +82,13 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
 
     if args.save_smiles_splits:
-        with open(args.data_path, 'r') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-
-            lines_by_smiles = {}
-            indices_by_smiles = {}
-            for i, line in enumerate(reader):
-                smiles = line[0]
-                lines_by_smiles[smiles] = line
-                indices_by_smiles[smiles] = i
-
-        all_split_indices = []
-        for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
-            with open(os.path.join(args.save_dir, name + '_smiles.csv'), 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(['smiles'])
-                for smiles in dataset.smiles():
-                    writer.writerow([smiles])
-            with open(os.path.join(args.save_dir, name + '_full.csv'), 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(header)
-                for smiles in dataset.smiles():
-                    writer.writerow(lines_by_smiles[smiles])
-            split_indices = []
-            for smiles in dataset.smiles():
-                split_indices.append(indices_by_smiles[smiles])
-                split_indices = sorted(split_indices)
-            all_split_indices.append(split_indices)
-        with open(os.path.join(args.save_dir, 'split_indices.pckl'), 'wb') as f:
-            pickle.dump(all_split_indices, f)
+        save_smiles_splits(
+            train_data=train_data,
+            val_data=val_data,
+            test_data=test_data,
+            data_path=args.data_path,
+            save_dir=args.save_dir
+        )
 
     if args.features_scaling:
         features_scaler = train_data.normalize_features(replace_nan_token=0)
@@ -183,13 +163,14 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             writer = SummaryWriter(log_dir=save_dir)
         except:
             writer = SummaryWriter(logdir=save_dir)
+
         # Load/build model
         if args.checkpoint_paths is not None:
             debug(f'Loading model {model_idx} from {args.checkpoint_paths[model_idx]}')
             model = load_checkpoint(args.checkpoint_paths[model_idx], logger=logger)
         else:
             debug(f'Building model {model_idx}')
-            model = build_model(args)
+            model = MoleculeModel(args)
 
         debug(model)
         debug(f'Number of parameters = {param_count(model):,}')

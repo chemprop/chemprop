@@ -123,6 +123,8 @@ For example:
 python train.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
 ```
 
+A full list of available command-line arguments can be found in [chemprop/args.py](https://github.com/chemprop/chemprop/blob/master/chemprop/args.py).
+
 Notes:
 * The default metric for classification is AUC and the default metric for regression is RMSE. Other metrics may be specified with `--metric <metric>`.
 * `--save_dir` may be left out if you don't want to save model checkpoints.

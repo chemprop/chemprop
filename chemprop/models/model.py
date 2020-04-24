@@ -1,32 +1,41 @@
-import torch
 import torch.nn as nn
 
 from .mpn import MPN
-from chemprop.args import TrainArgs
+from chemprop.args import ModelArgs
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
 
 class MoleculeModel(nn.Module):
     """A MoleculeModel is a model which contains a message passing network following by feed-forward layers."""
 
-    def __init__(self, classification: bool, multiclass: bool):
+    def __init__(self, args: ModelArgs, featurizer: bool = False):
         """
         Initializes the MoleculeModel.
 
-        :param classification: Whether the model is a classification model.
-        :param classification: Whether the model is a multi-class classification model.
+        :param args: Arguments.
+        :param featurizer: Whether the model should act as a featurizer, i.e. outputting
+                           learned features in the final layer before prediction.
         """
         super(MoleculeModel, self).__init__()
 
-        self.classification = classification
+        self.classification = args.dataset_type == 'classification'
+        self.multiclass = args.dataset_type == 'multiclass'
+        self.featurizer = featurizer
+
+        self.output_size = args.num_tasks
+        if self.multiclass:
+            self.output_size *= args.multiclass_num_classes
+
         if self.classification:
             self.sigmoid = nn.Sigmoid()
-        self.multiclass = multiclass
+
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
 
-        if self.classification and self.multiclass:
-            raise ValueError('Model cannot simultaneously be classification and multiclass – only choose one.')
+        self.create_encoder(args)
+        self.create_ffn(args)
+
+        initialize_weights(self)
 
     def create_encoder(self, args: TrainArgs):
         """
@@ -59,7 +68,7 @@ class MoleculeModel(nn.Module):
         if args.ffn_num_layers == 1:
             ffn = [
                 dropout,
-                nn.Linear(first_linear_dim, args.output_size)
+                nn.Linear(first_linear_dim, self.output_size)
             ]
         else:
             ffn = [
@@ -75,7 +84,7 @@ class MoleculeModel(nn.Module):
             ffn.extend([
                 activation,
                 dropout,
-                nn.Linear(args.ffn_hidden_size, args.output_size),
+                nn.Linear(args.ffn_hidden_size, self.output_size),
             ])
 
         # Create FFN model
@@ -93,9 +102,13 @@ class MoleculeModel(nn.Module):
         """
         Runs the MoleculeModel on input.
 
-        :param input: Input.
-        :return: The output of the MoleculeModel.
+        :param input: Molecular input.
+        :return: The output of the MoleculeModel. Either property predictions
+                 or molecule features if self.featurizer is True.
         """
+        if self.featurizer:
+            return self.featurize(*input)
+
         output = self.ffn(self.encoder(*input))
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
@@ -107,31 +120,3 @@ class MoleculeModel(nn.Module):
                 output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
 
         return output
-
-
-def build_model(args: TrainArgs) -> MoleculeModel:
-    """
-    Builds a MoleculeModel, which is a message passing neural network + feed-forward layers.
-
-    :param args: Arguments.
-    :return: A MoleculeModel containing the MPN encoder along with final linear layers with parameters initialized.
-    """
-    output_size = args.num_tasks
-    args.output_size = output_size
-    if args.dataset_type == 'multiclass':
-        args.output_size *= args.multiclass_num_classes
-
-    model = MoleculeModel(
-        classification=args.dataset_type == 'classification',
-        multiclass=args.dataset_type == 'multiclass'
-    )
-    model.create_encoder(args)
-    model.create_ffn(args)
-
-    # Check hasattr for compatibility with loaded args from previous versions of chemprop
-    if hasattr(args, 'pytorch_seed') and args.pytorch_seed is not None:
-        torch.manual_seed(args.pytorch_seed)
-
-    initialize_weights(model)
-
-    return model

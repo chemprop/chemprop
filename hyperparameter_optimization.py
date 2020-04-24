@@ -9,7 +9,7 @@ from hyperopt import fmin, hp, tpe
 import numpy as np
 
 from chemprop.args import HyperoptArgs
-from chemprop.models import build_model
+from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.train import cross_validate
 from chemprop.utils import create_logger, makedirs
@@ -55,7 +55,7 @@ def grid_search(args: HyperoptArgs):
         mean_score, std_score = cross_validate(hyper_args, train_logger)
 
         # Record results
-        temp_model = build_model(hyper_args)
+        temp_model = MoleculeModel(hyper_args)
         num_params = param_count(temp_model)
         logger.info(f'num params: {num_params:,}')
         logger.info(f'{mean_score} +/- {std_score} {hyper_args.metric}')

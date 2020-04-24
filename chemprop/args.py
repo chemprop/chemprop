@@ -5,7 +5,6 @@ import pickle
 from typing import List, Optional, Tuple
 from typing_extensions import Literal
 
-
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
@@ -189,7 +188,6 @@ class TrainArgs(Tap):
         self._task_names = None
         self._num_tasks = None
         self._features_size = None
-        self._output_size = None
         self._train_data_size = None
 
     @property
@@ -263,14 +261,6 @@ class TrainArgs(Tap):
     @features_size.setter
     def features_size(self, features_size: int) -> None:
         self._features_size = features_size
-
-    @property
-    def output_size(self) -> int:
-        return self._output_size
-
-    @output_size.setter
-    def output_size(self, output_size: int) -> None:
-        self._output_size = output_size
 
     @property
     def train_data_size(self) -> int:
