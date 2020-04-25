@@ -25,6 +25,7 @@ class Args(Tap):
     smiles_column: str = None  # Name of the column containing SMILES strings for the first data. By default, uses the first column.
     colors: List[str] = ['red', 'green', 'orange', 'purple', 'blue']  # Colors of the points associated with each dataset
     sizes: List[float] = [1, 1, 1, 1, 1]  # Sizes of the points associated with each molecule
+    scale: int = 1  # Scale of figure
     plot_molecules: bool = False  # Whether to plot images of molecules instead of points
     max_per_dataset: int = 10000  # Maximum number of molecules per dataset; larger datasets will be subsampled to this size
     save_path: str  # Path to a .png file where the t-SNE plot will be saved
@@ -74,9 +75,8 @@ def compare_datasets_tsne(args: Args):
     makedirs(args.save_path, isfile=True)
 
     plt.clf()
-    scale = 10
-    fontsize = 5 * scale
-    fig = plt.figure(figsize=(6.4 * scale, 4.8 * scale))
+    fontsize = 50 * args.scale
+    fig = plt.figure(figsize=(64 * args.scale, 48 * args.scale))
     plt.title('t-SNE using Morgan fingerprint with Jaccard similarity', fontsize=2 * fontsize)
     ax = fig.gca()
     handles = []
