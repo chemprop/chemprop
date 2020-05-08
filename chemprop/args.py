@@ -109,6 +109,10 @@ class CommonArgs(Tap):
             checkpoint_path=self.checkpoint_path
         )
 
+        # Validate features
+        if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
+            raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
+
 
 class TrainArgs(CommonArgs):
     """TrainArgs includes CommonArgs along with additional arguments used for training a chemprop model."""
@@ -221,10 +225,6 @@ class TrainArgs(CommonArgs):
     def train_data_size(self, train_data_size: int) -> None:
         self._train_data_size = train_data_size
 
-    def add_arguments(self) -> None:
-        self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
-        self.add_argument('--features_generator', choices=get_available_features_generators())
-
     def process_args(self) -> None:
         global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
@@ -266,9 +266,6 @@ class TrainArgs(CommonArgs):
         if self.features_only and not (self.features_generator or self.features_path):
             raise ValueError('When using features_only, a features_generator or features_path must be provided.')
 
-        if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
-            raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
-
         # Handle FFN hidden size
         if self.ffn_hidden_size is None:
             self.ffn_hidden_size = self.hidden_size
@@ -308,6 +305,32 @@ class PredictArgs(CommonArgs):
     @property
     def ensemble_size(self) -> int:
         return len(self._checkpoint_paths)
+
+    def process_args(self) -> None:
+        super(PredictArgs, self).process_args()
+
+        if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
+            raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
+                             '--checkpoint_dir <dir> containing at least one checkpoint.')
+
+
+class InterpretArgs(CommonArgs):
+    """InterpretArgs includes CommonArgs along with additional arguments used for interpreting a trained chemprop model."""
+    data_path: str  # Path to data CSV file
+    batch_size: int = 500  # Batch size
+    property_id: int = 1  # Index of the property of interest in the trained model
+    rollout: int = 20  # Number of rollout steps
+    c_puct: float = 10.0  # Constant factor in MCTS
+    max_atoms: int = 20  # Maximum number of atoms in rationale
+    min_atoms: int = 8  # Minimum number of atoms in rationale
+    prop_delta: float = 0.5  # Minimum score to count as positive
+
+    def process_args(self) -> None:
+        super(InterpretArgs, self).process_args()
+
+        if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
+            raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
+                             '--checkpoint_dir <dir> containing at least one checkpoint.')
 
 
 class HyperoptArgs(TrainArgs):
