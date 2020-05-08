@@ -226,6 +226,8 @@ class TrainArgs(CommonArgs):
         self._train_data_size = train_data_size
 
     def process_args(self) -> None:
+        super(TrainArgs, self).process_args()
+
         global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
         # Load config file
