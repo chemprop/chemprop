@@ -108,8 +108,9 @@ def scaffold_split(data: MoleculeDataset,
                      f'train scaffolds = {train_scaffold_count:,} | '
                      f'val scaffolds = {val_scaffold_count:,} | '
                      f'test scaffolds = {test_scaffold_count:,}')
-    
-    log_scaffold_stats(data, index_sets, logger=logger)
+
+    if logger is not None:
+        log_scaffold_stats(data, index_sets, logger=logger)
 
     # Map from indices to data
     train = [data[i] for i in train]
