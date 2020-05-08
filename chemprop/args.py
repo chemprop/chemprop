@@ -309,6 +309,11 @@ class PredictArgs(CommonArgs):
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
 
+        if self.features_path is not None:
+            raise ValueError('Cannot use --features_path <path> for interpretation since features '
+                             'need to be computed dynamically for molecular substructures. '
+                             'Please specify --features_generator <generator>.')
+
         if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
