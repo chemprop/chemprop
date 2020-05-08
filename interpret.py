@@ -17,18 +17,22 @@ C_PUCT = 10
 
 
 class ChempropModel:
-    def __init__(self, checkpoint_paths: List[str], device: torch.device) -> None:
-        self.train_args = load_args(checkpoint_paths[0])
+    def __init__(self, args: InterpretArgs) -> None:
+        self.args = args
+        self.train_args = load_args(args.checkpoint_paths[0])
 
-        if self.train_args.features_path is not None and self.train_args.features_generator is None:
-            raise ValueError('Must specify features generator using --features_generator <generator> '
-                             'when using a model trained with additional features.')
+        # If features were used during training, they must be used when predicting
+        if ((self.train_args.features_path is not None or self.train_args.features_generator is not None)
+                and args.features_generator is None):
+            raise ValueError('Features were used during training so they must be specified again during prediction '
+                             'using the same type of features as before (with --features_generator <generator> '
+                             'and using --no_features_scaling if applicable).')
 
-        self.scaler, self.features_scaler = load_scalers(checkpoint_paths[0])
-        self.checkpoints = [load_checkpoint(checkpoint_path, device=device) for checkpoint_path in checkpoint_paths]
+        self.scaler, self.features_scaler = load_scalers(args.checkpoint_paths[0])
+        self.checkpoints = [load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths]
 
     def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
-        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=self.train_args.features_generator)
+        test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=self.args.features_generator)
         valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
         test_data = MoleculeDataset([test_data[i] for i in valid_indices])
 
@@ -218,7 +222,7 @@ def mcts(smiles: str,
 if __name__ == "__main__":
     args = InterpretArgs().parse_args()
 
-    chemprop_model = ChempropModel(checkpoint_paths=args.checkpoint_paths, device=args.device)
+    chemprop_model = ChempropModel(args)
 
     def scoring_function(smiles: List[str]) -> List[float]:
         return chemprop_model(smiles)[:, args.property_id - 1]

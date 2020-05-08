@@ -25,11 +25,12 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
     # If features were used during training, they must be used when predicting
-    if train_args.features_path is not None or train_args.features_generator is not None:
-        if args.features_path is None and args.features_generator is None:
-            raise ValueError('Features were used during training so they must be specified again during prediction '
-                             'using the same type of features as before (with either --features_generator or '
-                             '--features_path and using --no_features_scaling if applicable).')
+    if ((train_args.features_path is not None or train_args.features_generator is not None)
+            and args.features_path is None
+            and args.features_generator is None):
+        raise ValueError('Features were used during training so they must be specified again during prediction '
+                         'using the same type of features as before (with either --features_generator or '
+                         '--features_path and using --no_features_scaling if applicable).')
 
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
@@ -60,7 +61,7 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
     print(f'Test size = {len(test_data):,}')
 
     # Normalize features
-    if train_args.features_scaling:
+    if args.features_scaling:
         test_data.normalize_features(features_scaler)
 
     # Predict with each model individually and sum predictions
