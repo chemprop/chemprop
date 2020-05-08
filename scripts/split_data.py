@@ -47,7 +47,7 @@ def run_split_data(args: Args):
         data.append(datapoint)
     data = MoleculeDataset(data)
 
-    train, dev, test = split_data(
+    train, val, test = split_data(
         data=data,
         split_type=args.split_type,
         sizes=args.split_sizes,
@@ -56,7 +56,7 @@ def run_split_data(args: Args):
 
     makedirs(args.save_dir)
 
-    for name, dataset in [('train', train), ('dev', dev), ('test', test)]:
+    for name, dataset in [('train', train), ('val', val), ('test', test)]:
         with open(os.path.join(args.save_dir, f'{name}.csv'), 'w') as f:
             writer = csv.writer(f)
             writer.writerow(header)
