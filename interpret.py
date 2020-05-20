@@ -3,7 +3,6 @@ from typing import Callable, Dict, List, Set, Tuple
 
 import numpy as np
 from rdkit import Chem
-import torch
 
 from chemprop.args import InterpretArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
