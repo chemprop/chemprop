@@ -11,25 +11,32 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 from chemprop.features import get_available_features_generators
 
 
-def get_checkpoint_paths(checkpoint_dir: Optional[str],
-                         checkpoint_path: Optional[str], ext: str = '.pt') -> Optional[List[str]]:
+def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
+                         checkpoint_paths: Optional[List[str]] = None,
+                         checkpoint_dir: Optional[str] = None,
+                         ext: str = '.pt') -> Optional[List[str]]:
     """
     Gets a list of checkpoint paths.
 
-    If checkpoint_dir is provided, walks the directory and collects all checkpoints.
     If checkpoint_path is provided, only collects that one checkpoint.
+    If checkpoint_paths is provided, collects all of the provided checkpoints.
+    If checkpoint_dir is provided, walks the directory and collects all checkpoints.
     A checkpoint is any file ending in the extension ext.
 
-    :param checkpoint_dir: Path to a directory containing checkpoints.
     :param checkpoint_path: Path to a checkpoint.
+    :param checkpoint_paths: List of paths to checkpoints.
+    :param checkpoint_dir: Path to a directory containing checkpoints.
     :param ext: The extension which defines a checkpoint file.
-    :return: A list of paths to checkpoints or None if both checkpoint_dir and checkpoint_path are None.
+    :return: A list of paths to checkpoints or None if no checkpoint path(s)/dir are provided.
     """
-    if checkpoint_dir is not None and checkpoint_path is not None:
-        raise ValueError('Can only specify one of checkpoint_dir and checkpoint_path')
+    if sum(var is not None for var in [checkpoint_dir, checkpoint_path, checkpoint_paths]) > 1:
+        raise ValueError('Can only specify one of checkpoint_dir, checkpoint_path, and checkpoint_paths')
 
     if checkpoint_path is not None:
         return [checkpoint_path]
+
+    if checkpoint_paths is not None:
+        return checkpoint_paths
 
     if checkpoint_dir is not None:
         checkpoint_paths = []
@@ -53,6 +60,7 @@ class CommonArgs(Tap):
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     checkpoint_dir: str = None  # Directory from which to load model checkpoints (walks directory and ensembles all models that are found)
     checkpoint_path: str = None  # Path to model checkpoint (.pt file)
+    checkpoint_paths: List[str] = None  # List of paths to model checkpoints (.pt files)
     no_cuda: bool = False  # Turn off cuda (i.e. use CPU instead of GPU)
     gpu: int = None  # Which GPU to use
     features_generator: List[str] = None  # Method(s) of generating additional features
@@ -61,10 +69,6 @@ class CommonArgs(Tap):
     max_data_size: int = None  # Maximum number of data points to load
     num_workers: int = 8   # Number of workers for the parallel data loading (0 means sequential)
     batch_size: int = 50  # Batch size
-
-    def __init__(self, *args, **kwargs) -> None:
-        super(CommonArgs, self).__init__(*args, **kwargs)
-        self._checkpoint_paths = None
 
     @property
     def device(self) -> torch.device:
@@ -90,14 +94,6 @@ class CommonArgs(Tap):
     def features_scaling(self) -> bool:
         return not self.no_features_scaling
 
-    @property
-    def checkpoint_paths(self) -> List[str]:
-        return self._checkpoint_paths
-
-    @checkpoint_paths.setter
-    def checkpoint_paths(self, checkpoint_paths: str) -> None:
-        self._checkpoint_paths = checkpoint_paths
-
     def add_arguments(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
         self.add_argument('--features_generator', choices=get_available_features_generators())
@@ -105,8 +101,9 @@ class CommonArgs(Tap):
     def process_args(self) -> None:
         # Load checkpoint paths
         self.checkpoint_paths = get_checkpoint_paths(
+            checkpoint_path=self.checkpoint_path,
+            checkpoint_paths=self.checkpoint_paths,
             checkpoint_dir=self.checkpoint_dir,
-            checkpoint_path=self.checkpoint_path
         )
 
         # Validate features
@@ -170,7 +167,6 @@ class TrainArgs(CommonArgs):
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
         self._task_names = None
-        self._checkpoint_paths = None
         self._crossval_index_sets = None
         self._task_names = None
         self._num_tasks = None
@@ -306,7 +302,7 @@ class PredictArgs(CommonArgs):
 
     @property
     def ensemble_size(self) -> int:
-        return len(self._checkpoint_paths)
+        return len(self.checkpoint_paths)
 
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
@@ -369,26 +365,16 @@ class SklearnPredictArgs(Tap):
     model_type: Literal['random_forest', 'svm']  # scikit-learn model to use
     checkpoint_dir: str = None  # Path to directory containing model checkpoints (.pkl file)
     checkpoint_path: str = None  # Path to model checkpoint (.pkl file)
+    checkpoint_paths: List[str] = None  # List of paths to model checkpoints (.pkl files)
     radius: int = 2  # Morgan fingerprint radius
     num_bits: int = 2048  # Number of bits in morgan fingerprint
     num_tasks: int  # Number of tasks the trained model makes predictions for
 
-    def __init__(self, *args, **kwargs) -> None:
-        super(SklearnPredictArgs, self).__init__(*args, **kwargs)
-        self._checkpoint_paths = None
-
-    @property
-    def checkpoint_paths(self) -> List[str]:
-        return self._checkpoint_paths
-
-    @checkpoint_paths.setter
-    def checkpoint_paths(self, checkpoint_paths: str) -> None:
-        self._checkpoint_paths = checkpoint_paths
-
     def process_args(self) -> None:
         # Load checkpoint paths
         self.checkpoint_paths = get_checkpoint_paths(
-            checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.checkpoint_path,
+            checkpoint_paths=self.checkpoint_paths,
+            checkpoint_dir=self.checkpoint_dir,
             ext='.pkl'
         )

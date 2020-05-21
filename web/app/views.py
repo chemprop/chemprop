@@ -328,25 +328,29 @@ def predict():
     task_names = load_task_names(model_paths[0])
     num_tasks = len(task_names)
     gpu = request.form.get('gpu')
-
-    # Create and modify args
-    args = PredictArgs().parse_args([
-        '--test_path', 'None',
-        '--preds_path', os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'])
-    ])
-
-    args.checkpoint_paths = model_paths
-    if gpu is not None:
-        if gpu == 'None':
-            args.cuda = False
-        else:
-            args.gpu = int(gpu)
-
     train_args = load_args(model_paths[0])
 
+    # Build arguments
+    arguments = [
+        '--test_path', 'None',
+        '--preds_path', os.path.join(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME']),
+        '--checkpoint_paths', *model_paths
+    ]
+
+    if gpu is not None:
+        if gpu == 'None':
+            arguments.append('--no_cuda')
+        else:
+            arguments += ['--gpu', gpu]
+
     if train_args.features_path is not None:
-        args.features_generator = ['rdkit_2d_normalized']
-        args.features_path = None
+        arguments += [
+            '--features_generator', 'rdkit_2d_normalized',
+            '--no_features_scaling'
+        ]
+
+    # Parse arguments
+    args = PredictArgs().parse_args(arguments)
 
     # Run predictions
     preds = make_predictions(args=args, smiles=smiles)
