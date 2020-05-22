@@ -1,3 +1,5 @@
+import os
+import re
 import csv
 from typing import List, Optional, Union
 
@@ -5,18 +7,23 @@ import numpy as np
 from tqdm import tqdm
 
 from .predict import predict
+from .bayesgrad import bayes_predict
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.data.utils import get_data, get_data_from_smiles
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
+from chemprop.visuals.bayesgrad_visualizer import BayesEnsembleVisualizer
 
 
-def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Optional[List[float]]]:
+def make_predictions(args: PredictArgs,
+                     smiles: List[str] = None,
+                     bayes_ensemble_grad: bool = False) -> List[Optional[List[float]]]:
     """
     Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
 
     :param args: Arguments.
     :param smiles: Smiles to make predictions on.
+    :param bayes_ensemble_grad: Whether to perform local interpretation using BayesEnsembleGrad
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
@@ -54,6 +61,16 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
     test_data = MoleculeDataset([full_data[i] for i in sorted(full_to_valid_indices.keys())])
 
+    # Average gradients returned are defaulted to None for each SMILES for each target
+    avg_grads = {target_id: [None] * len(full_data) for target_id in range(num_tasks)}
+
+    # Explanation plots. First rows are SMILES, columns are targets
+    explanation_plots = np.full((len(full_data), num_tasks), fill_value=None)
+
+    # Initially we don't know the shape of the gradients;
+    # for each molecule, we expect the sum of gradients for each bond and atom
+    sum_grads = None
+
     # Edge case if empty list of smiles is provided
     if len(test_data) == 0:
         return [None] * len(full_data)
@@ -81,15 +98,39 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model
         model = load_checkpoint(checkpoint_path, device=args.device)
-        model_preds = predict(
-            model=model,
-            data_loader=test_data_loader,
-            scaler=scaler
-        )
+
+        if not bayes_ensemble_grad:
+            model_preds = predict(
+                model=model,
+                data_loader=test_data_loader,
+                scaler=scaler,
+            )
+        else:
+            model_preds, model_grads = bayes_predict(
+                model=model,
+                data_loader=test_data_loader,
+                scaler=scaler,
+                args=args
+            )
+
+            if sum_grads is None:
+                sum_grads = model_grads
+            else:
+                # First level in the returned dictionary maps each target to the gradients data
+                for target_id, batch_grad_agg in sum_grads.items():
+                    # Second level in the returned dictionary maps each molecule to the gradients data
+                    for molecule_id, molecule_grad_agg in enumerate(batch_grad_agg):
+                        # Add the aggregated gradients for each atom
+                        sum_grads[target_id][molecule_id]['atoms'] = {k: v + molecule_grad_agg['atoms'][k] for k, v in sum_grads[target_id][molecule_id]['atoms'].items()}
+                        # Add the aggregated gradients for each bond
+                        sum_grads[target_id][molecule_id]['bonds'] = {k: v + molecule_grad_agg['bonds'][k] for k, v in sum_grads[target_id][molecule_id]['bonds'].items()}
+
+        # Sum up the predictions for each model
         sum_preds += np.array(model_preds)
 
     # Ensemble predictions
-    avg_preds = sum_preds / len(args.checkpoint_paths)
+    total_evaluations = len(args.checkpoint_paths)
+    avg_preds = sum_preds / total_evaluations
     avg_preds = avg_preds.tolist()
 
     # Save predictions
@@ -110,6 +151,46 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
         for pred_name, pred in zip(task_names, preds):
             datapoint.row[pred_name] = pred
+
+    # Ensemble gradients - i.e. divide with the total number of models evaluated
+    if bayes_ensemble_grad:
+
+        # Get the valid indices
+        valid_indices = [i for i, datapoint in enumerate(full_data) if full_to_valid_indices.get(i, None) is not None]
+
+        # Get the target names
+        target_names = [re.sub('[\W_]+', '', name, flags=re.UNICODE) for name in list(full_data[0].row.keys())[1:]]
+
+        # First level in the returned dictionary maps each target to the gradients data
+        for target_id, batch_grad_agg in avg_grads.items():
+            # Second level in the returned dictionary maps each molecule to the gradients data
+            # Invalid SMILES entries are already None, so we only update the valid ones
+            for i, si in enumerate(valid_indices):
+                # if full_to_valid_indices.get(full_index, None) is
+                # This molecule is valid, so get average gradients
+                avg_grads[target_id][si] = {
+                    'atoms': {k: v / total_evaluations for k, v in sum_grads[target_id][i]['atoms'].items()},
+                    'bonds': {k: v / total_evaluations for k, v in sum_grads[target_id][i]['bonds'].items()}
+                }
+
+        # Object we'll use to generate the visuals
+        makedirs(args.bayes_path)
+        drawer = BayesEnsembleVisualizer()
+
+        # For each target we'll create separate images
+        for target_id, target_name in zip(range(num_tasks), target_names):
+
+            # Create folder for target
+            save_path = os.path.join(args.bayes_path, target_name)
+            makedirs(save_path)
+
+            # For each valid SMILES string we'll create a visual
+            smiles = full_data.smiles()
+            for i, si in enumerate(valid_indices):
+                svg = drawer.visualize(smiles[si], avg_grads[target_id][si])
+                if svg:
+                    with open(os.path.join(save_path, f'{si}.svg'), 'w') as f:
+                        f.write(svg)
 
     # Save
     with open(args.preds_path, 'w') as f:
