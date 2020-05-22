@@ -207,11 +207,11 @@ or
 python predict.py --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
 
-## Interpreting
+## Interpreting with Rationales
 
 It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command
 ```
-python interpret.py --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
+python interpret_rationale.py --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
 ```
 The output will be like the following:
 * The first column is a molecule and second column is its predicted property (in this case NR-AR toxicity). 
