@@ -231,13 +231,21 @@ or
 chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
 
+<<<<<<< HEAD
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
 ## Interpreting
+=======
+## Interpreting with Rationales
+>>>>>>> refactor/ rename rationale interpretation
 
 It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command:
 ```
+<<<<<<< HEAD
 chemprop_interpret --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
+=======
+python interpret_rationale.py --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
+>>>>>>> refactor/ rename rationale interpretation
 ```
 
 If installed from source, `chemprop_interpret` can be replaced with `python interpret.py`.
