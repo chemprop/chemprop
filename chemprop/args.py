@@ -312,6 +312,26 @@ class PredictArgs(CommonArgs):
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
 
 
+class LocalInterpretArgs(PredictArgs):
+    """LocalInterpretArgs includes PredictArgs along with checks that no featuers are included.
+    Used interpreting a trained chemprop model using BayesEnsembleGrad, i.e. a modification
+    of BayesGrad (https://arxiv.org/abs/1807.01985) where we sample P(W|D) from ensembles,
+    rather than from dropout."""
+
+    bayes_path: str  # Path to save .svg files visualizing heatmaps of gradient sums drawn on chemical structures
+
+    def process_args(self) -> None:
+        super(PredictArgs, self).process_args()
+
+        if self.features_path is not None or self.features_generator is not None:
+            raise ValueError('Cannot use features for interpretation since gradients '
+                             'belonging to these features are not easily attributable to local explanations.')
+
+        if len(self.checkpoint_paths) < 20:
+            raise ValueError('When using Bayes Ensemble Grad, we recommend using model with at least 20 models,'
+                             'since these are used to sample P(W|D).')
+
+
 class InterpretArgs(CommonArgs):
     """InterpretArgs includes CommonArgs along with additional arguments used for interpreting a trained chemprop model."""
     data_path: str  # Path to data CSV file
