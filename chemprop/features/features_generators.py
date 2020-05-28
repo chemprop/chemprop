@@ -119,8 +119,21 @@ try:
         features = generator.process(smiles)[1:]
 
         return features
-except ImportError:
-    pass
+
+except ImportError as e:
+    @register_features_generator('rdkit_2d')
+    def rdkit_2d_features_generator(mol: Molecule):
+        """
+        Raises ImportError
+        """
+        raise ImportError("Unable to import descriptastorus")
+
+    @register_features_generator('rdkit_2d_normalized')
+    def rdkit_2d_normalized_features_generator(mol: Molecule):
+        """
+        Raises ImportError
+        """
+        raise ImportError("Unable to import descriptastorus")
 
 
 """
