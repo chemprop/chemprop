@@ -343,11 +343,18 @@ def predict():
         else:
             arguments += ['--gpu', gpu]
 
+    # Handle additional features
     if train_args.features_path is not None:
+        # TODO: make it possible to specify the features generator if trained using features_path
         arguments += [
             '--features_generator', 'rdkit_2d_normalized',
             '--no_features_scaling'
         ]
+    elif train_args.features_generator is not None:
+        arguments += ['--features_generator', *train_args.features_generator]
+
+        if not train_args.features_scaling:
+            arguments.append('--no_features_scaling')
 
     # Parse arguments
     args = PredictArgs().parse_args(arguments)
