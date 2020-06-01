@@ -76,7 +76,7 @@ def grid_search(args: HyperoptArgs):
 
         return (1 if hyper_args.minimize_score else -1) * mean_score
 
-    fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_iters)
+    fmin(objective, SPACE, algo=tpe.suggest, max_evals=args.num_iters, rstate=np.random.RandomState(args.seed))
 
     # Report best result
     results = [result for result in results if not np.isnan(result['mean_score'])]
