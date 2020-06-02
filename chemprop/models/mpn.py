@@ -34,7 +34,6 @@ class MPNEncoder(nn.Module):
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.device = args.device
-        self.args = args
 
         if self.features_only:
             return
@@ -158,10 +157,9 @@ class MPN(nn.Module):
         :param bond_fdim: Bond features dimension.
         """
         super(MPN, self).__init__()
-        self.args = args
         self.atom_fdim = atom_fdim or get_atom_fdim()
         self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
-        self.encoder = MPNEncoder(self.args, self.atom_fdim, self.bond_fdim)
+        self.encoder = MPNEncoder(args, self.atom_fdim, self.bond_fdim)
 
     def forward(self,
                 batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
