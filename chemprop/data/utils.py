@@ -101,6 +101,7 @@ def get_data(path: str,
              skip_invalid_smiles: bool = True,
              args: Union[PredictArgs, TrainArgs] = None,
              features_path: List[str] = None,
+             target_features_path: List[str] = None,
              features_generator: List[str] = None,
              max_data_size: int = None,
              logger: Logger = None) -> MoleculeDataset:
@@ -113,6 +114,7 @@ def get_data(path: str,
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
     :param features_path: A list of paths to files containing features. If provided, it is used
+    :param target_features_path: A list of paths to files containing target features. If provided, it is used
     in place of args.features_path.
     :param features_generator: A list of features generators to use. If provided, it is used
     in place of args.features_generator.
@@ -128,6 +130,7 @@ def get_data(path: str,
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
         target_columns = target_columns if target_columns is not None else args.target_columns
         features_path = features_path if features_path is not None else args.features_path
+        target_features_path = target_features_path if target_features_path is not None else args.target_features_path
         features_generator = features_generator if features_generator is not None else args.features_generator
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
 
@@ -141,6 +144,16 @@ def get_data(path: str,
         features_data = np.concatenate(features_data, axis=1)
     else:
         features_data = None
+
+    # Load features
+    if target_features_path is not None:
+        target_features_data = []
+        for feat_path in target_features_path:
+            target_features_data.append(load_features(feat_path))  # each is num_data x num_features
+        target_features_data = np.concatenate(target_features_data, axis=1)
+    else:
+        target_features_data = None
+
 
     skip_smiles = set()
 
@@ -179,7 +192,8 @@ def get_data(path: str,
                 targets=targets,
                 row=row,
                 features_generator=features_generator,
-                features=features_data[i] if features_data is not None else None
+                features=features_data[i] if features_data is not None else None,
+                target_features=target_features_data[i] if target_features_data is not None else None
             ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)),
                                                     total=len(all_smiles))
         ])
@@ -259,7 +273,7 @@ def split_data(data: MoleculeDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
-    
+
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -271,7 +285,7 @@ def split_data(data: MoleculeDataset,
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-    
+
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
 
@@ -321,7 +335,7 @@ def split_data(data: MoleculeDataset,
             val = train_val[train_size:]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-    
+
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 

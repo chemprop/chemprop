@@ -20,6 +20,7 @@ class MoleculeModel(nn.Module):
 
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
+        self.use_auxiliary = args.target_features_size is not None
         self.featurizer = featurizer
 
         self.output_size = args.num_tasks
@@ -34,6 +35,8 @@ class MoleculeModel(nn.Module):
 
         self.create_encoder(args)
         self.create_ffn(args)
+        if self.use_auxiliary:
+            self.create_auxiliary_ffn(args)
 
         initialize_weights(self)
 
@@ -44,6 +47,48 @@ class MoleculeModel(nn.Module):
         :param args: Arguments.
         """
         self.encoder = MPN(args)
+
+    def create_auxiliary_ffn(self, args: TrainArgs):
+        """
+        Creates the auxiliary FFN for target features
+
+        :param args: Arguments.
+        """
+        if args.features_only:
+            first_linear_dim = args.features_size
+        else:
+            first_linear_dim = args.hidden_size
+            if args.use_input_features:
+                first_linear_dim += args.features_size
+
+        dropout = nn.Dropout(args.dropout)
+        activation = get_activation_function(args.activation)
+
+        # Create auxiliary FFN layers
+        if args.ffn_num_layers == 1:
+            ffn = [
+                dropout,
+                nn.Linear(first_linear_dim, args.target_features_size)
+            ]
+        else:
+            ffn = [
+                dropout,
+                nn.Linear(first_linear_dim, args.ffn_hidden_size)
+            ]
+            for _ in range(args.ffn_num_layers - 2):
+                ffn.extend([
+                    activation,
+                    dropout,
+                    nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
+                ])
+            ffn.extend([
+                activation,
+                dropout,
+                nn.Linear(args.ffn_hidden_size, args.target_features_size),
+            ])
+
+        # Create FFN model
+        self.auxiliary_ffn = nn.Sequential(*ffn)
 
     def create_ffn(self, args: TrainArgs):
         """
@@ -109,14 +154,25 @@ class MoleculeModel(nn.Module):
         if self.featurizer:
             return self.featurize(*input)
 
-        output = self.ffn(self.encoder(*input))
+        encoded = self.encoder(*input)
+
+        output = self.ffn(encoded)
+
+        output_dict = {
+            'logits': output
+        }
+
+        if self.use_auxiliary:
+            aux_preds = self.auxiliary_ffn(encoded)
+            output_dict['auxiliary'] = aux_preds
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if self.classification and not self.training:
             output = self.sigmoid(output)
+            output_dict['preds'] = output
         if self.multiclass:
             output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
             if not self.training:
                 output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
 
-        return output
+        return output, output_dict

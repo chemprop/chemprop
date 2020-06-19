@@ -119,6 +119,7 @@ class TrainArgs(CommonArgs):
     target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
     dataset_type: Literal['regression', 'classification', 'multiclass']  # Type of dataset. This determines the loss function used during training.
     multiclass_num_classes: int = 3  # Number of classes when running multiclass classification
+    target_features_path: List[str] = None  # Path(s) to target features to use in addition to main task
     separate_val_path: str = None  # Path to separate val set, optional
     separate_test_path: str = None  # Path to separate test set, optional
     split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'index_predetermined'] = 'random'  # Method of splitting the data into train/val/test
@@ -155,6 +156,7 @@ class TrainArgs(CommonArgs):
     separate_test_features_path: List[str] = None  # Path to file with features for separate test set
     config_path: str = None  # Path to a .json file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.
     ensemble_size: int = 1  # Number of models in ensemble
+    auxiliary_lambda: float = 0.1 # Lambda for auxiliary task
 
     # Training arguments
     epochs: int = 30  # Number of epochs to run
@@ -171,6 +173,7 @@ class TrainArgs(CommonArgs):
         self._task_names = None
         self._num_tasks = None
         self._features_size = None
+        self._target_features_size = None
         self._train_data_size = None
 
     @property
@@ -212,6 +215,14 @@ class TrainArgs(CommonArgs):
     @features_size.setter
     def features_size(self, features_size: int) -> None:
         self._features_size = features_size
+
+    @property
+    def target_features_size(self) -> int:
+        return self._target_features_size
+
+    @target_features_size.setter
+    def target_features_size(self, target_features_size: int) -> None:
+        self._target_features_size = target_features_size
 
     @property
     def train_data_size(self) -> int:
@@ -330,6 +341,9 @@ class InterpretArgs(CommonArgs):
             raise ValueError('Cannot use --features_path <path> for interpretation since features '
                              'need to be computed dynamically for molecular substructures. '
                              'Please specify --features_generator <generator>.')
+
+        if self.target_features_path is not None:
+            raise ValueError('Interpret not available for target_features_path')
 
         if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '

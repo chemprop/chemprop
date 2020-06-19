@@ -56,6 +56,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     data = get_data(path=args.data_path, args=args, logger=logger)
     args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
+    args.target_features_size = data.target_features_size()
     debug(f'Number of tasks = {args.num_tasks}')
 
     # Split data
@@ -98,7 +99,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         features_scaler = None
 
     args.train_data_size = len(train_data)
-    
+
     debug(f'Total size = {len(data):,} | '
           f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
 
@@ -231,12 +232,12 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
+                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), device=args.device, logger=logger)
-        
+
         test_preds = predict(
             model=model,
             data_loader=test_data_loader,

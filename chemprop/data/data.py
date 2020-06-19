@@ -23,6 +23,7 @@ class MoleculeDatapoint:
                  targets: List[float] = None,
                  row: OrderedDict = None,
                  features: np.ndarray = None,
+                 target_features: np.ndarray = None,
                  features_generator: List[str] = None):
         """
         Initializes a MoleculeDatapoint, which contains a single molecule.
@@ -32,6 +33,7 @@ class MoleculeDatapoint:
         :param row: The raw CSV row containing the information for this molecule.
         :param args: Arguments.
         :param features: A numpy array containing additional features (ex. Morgan fingerprint).
+        :param target_features: A numpy array containing target features.
         """
         if features is not None and features_generator is not None:
             raise ValueError('Cannot provide both loaded features and a features generator.')
@@ -40,6 +42,7 @@ class MoleculeDatapoint:
         self.targets = targets
         self.row = row or OrderedDict()
         self.features = features
+        self.target_features = target_features
         self.features_generator = features_generator
         self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
@@ -58,6 +61,11 @@ class MoleculeDatapoint:
         if self.features is not None:
             replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
+
+        # Fix nans in target_features
+        if self.features is not None:
+            replace_token = 0
+            self.target_features = np.where(np.isnan(self.target_features), replace_token, self.target_features)
 
     @property
     def mol(self) -> Chem.Mol:
@@ -155,6 +163,17 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self._data]
 
+    def target_features(self) -> List[np.ndarray]:
+        """
+        Returns the target_features associated with each molecule (if they exist).
+
+        :return: A list of 1D numpy arrays containing the target features for each molecule or None if there are no target features.
+        """
+        if len(self._data) == 0 or self._data[0].target_features is None:
+            return None
+
+        return [d.target_features for d in self._data]
+
     def targets(self) -> List[List[float]]:
         """
         Returns the targets associated with each molecule.
@@ -179,6 +198,14 @@ class MoleculeDataset(Dataset):
         """
         return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
 
+    def target_features_size(self) -> int:
+        """
+        Returns the size of the target features array associated with each molecule.
+
+        :return: The size of the features.
+        """
+        return len(self._data[0].target_features) if len(self._data) > 0 and self._data[0].target_features is not None else None
+
     def shuffle(self, seed: int = None):
         """
         Shuffles the dataset.
@@ -188,7 +215,7 @@ class MoleculeDataset(Dataset):
         if seed is not None:
             self._random.seed(seed)
         self._random.shuffle(self._data)
-    
+
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """
         Normalizes the features of the dataset using a StandardScaler (subtract mean, divide by standard deviation).
@@ -217,7 +244,7 @@ class MoleculeDataset(Dataset):
             d.set_features(self._scaler.transform(d.features.reshape(1, -1))[0])
 
         return self._scaler
-    
+
     def set_targets(self, targets: List[List[float]]):
         """
         Sets the targets for each molecule in the dataset. Assumes the targets are aligned with the datapoints.

@@ -32,7 +32,7 @@ def predict(model: nn.Module,
 
         # Make predictions
         with torch.no_grad():
-            batch_preds = model(mol_batch, features_batch)
+            batch_preds, _ = model(mol_batch, features_batch)
 
         batch_preds = batch_preds.data.cpu().numpy()
 
