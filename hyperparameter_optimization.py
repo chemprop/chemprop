@@ -45,8 +45,11 @@ def grid_search(args: HyperoptArgs):
         if args.save_dir is not None:
             folder_name = '_'.join(f'{key}_{value}' for key, value in hyperparams.items())
             hyper_args.save_dir = os.path.join(hyper_args.save_dir, folder_name)
+
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
+
+        hyper_args.ffn_hidden_size = hyper_args.hidden_size
 
         # Record hyperparameters
         logger.info(hyperparams)
