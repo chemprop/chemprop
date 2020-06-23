@@ -63,9 +63,9 @@ class MoleculeDatapoint:
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
         # Fix nans in target_features
-        if self.features is not None:
-            replace_token = 0
-            self.target_features = np.where(np.isnan(self.target_features), replace_token, self.target_features)
+        #  if self.target_features is not None:
+        #      replace_token = 0
+        #      self.target_features = np.where(np.isnan(self.target_features), replace_token, self.target_features)
 
     @property
     def mol(self) -> Chem.Mol:

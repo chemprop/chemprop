@@ -59,7 +59,9 @@ def train(model: nn.Module,
         targets = targets.to(preds.device)
         class_weights = torch.ones(targets.shape, device=preds.device)
         if model.use_auxiliary:
-            target_features_batch = torch.from_numpy(np.stack(target_features_batch)).float().to(preds.device)
+            target_features_mask = torch.Tensor([[x is not None for x in tb] for tb in target_features_batch]).to(preds.device)
+            target_features_batch = torch.Tensor([[0 if x != x else x for x in tb] for tb in target_features_batch]).to(preds.device)
+
 
         if args.dataset_type == 'multiclass':
             targets = targets.long()
@@ -71,9 +73,8 @@ def train(model: nn.Module,
 
         if model.use_auxiliary:
             mse_loss = torch.nn.MSELoss(reduction = 'none')
-            auxiliary_loss = mse_loss(output_dict['auxiliary'], target_features_batch).mean(axis=1).unsqueeze(1) * mask
-
-            auxiliary_loss = auxiliary_loss.sum() / mask.sum()
+            auxiliary_loss = mse_loss(output_dict['auxiliary'], target_features_batch).mean(axis=1).unsqueeze(1) * target_features_mask
+            auxiliary_loss = auxiliary_loss.sum() / target_features_mask.sum()
         else:
             auxiliary_loss = 0
 
