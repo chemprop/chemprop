@@ -5,7 +5,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='chemprop',
-    version='0.0.2',
+    version='0.0.3',
     author='Kyle Swanson, Kevin Yang, Wengong Jin',
     author_email='swansonk.14@gmail.com, yangk@mit.edu, wengong@csail.mit.edu',
     description='Molecular Property Prediction with Message Passing Neural Networks',
