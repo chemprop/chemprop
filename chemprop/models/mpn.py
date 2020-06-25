@@ -34,6 +34,8 @@ class MPNEncoder(nn.Module):
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.device = args.device
+        self.aggregation = args.aggregation
+        self.aggregation_norm = args.aggregation_norm
 
         if self.features_only:
             return
@@ -127,8 +129,12 @@ class MPNEncoder(nn.Module):
             else:
                 cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
                 mol_vec = cur_hiddens  # (num_atoms, hidden_size)
-
-                mol_vec = mol_vec.sum(dim=0) / a_size
+                if self.aggregation=='mean':
+                    mol_vec = mol_vec.sum(dim=0) / a_size
+                elif self.aggregation=='sum':
+                    mol_vec = mol_vec.sum(dim=0)
+                elif self.aggregation=='norm':
+                    mol_vec = mol_vec.sum(dim=0) / self.aggregation_norm
                 mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)

@@ -155,7 +155,9 @@ class TrainArgs(CommonArgs):
     separate_test_features_path: List[str] = None  # Path to file with features for separate test set
     config_path: str = None  # Path to a .json file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.
     ensemble_size: int = 1  # Number of models in ensemble
-
+    aggregation: Literal['mean', 'sum', 'norm'] = 'mean' # Aggregation scheme for atomic vectors into molecular vectors
+    aggregation_norm: int = 100 # For norm aggregation, number by which to divide summed up atomic features
+    
     # Training arguments
     epochs: int = 30  # Number of epochs to run
     warmup_epochs: float = 2.0  # Number of epochs during which learning rate increases linearly from init_lr to max_lr. Afterwards, learning rate decreases exponentially from max_lr to final_lr.
