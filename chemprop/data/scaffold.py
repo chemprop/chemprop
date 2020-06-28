@@ -54,7 +54,7 @@ def scaffold_split(data: MoleculeDataset,
                                                            MoleculeDataset,
                                                            MoleculeDataset]:
     """
-    Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
+    Split a dataset by scaffold so that no molecules sharing a scaffold are in different splits.
 
     :param data: A MoleculeDataset.
     :param sizes: A length-3 tuple with the proportions of data in the
