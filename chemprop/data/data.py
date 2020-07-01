@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from functools import partial
 from random import Random
 from typing import Callable, Dict, Iterator, List, Union
 
@@ -314,6 +315,20 @@ class MoleculeSampler(Sampler):
         return self.length
 
 
+def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False) -> MoleculeDataset:
+    """
+    Constructs a MoleculeDataset from a list of MoleculeDatapoints while also constructing the BatchMolGraph.
+
+    :param data: A list of MoleculeDatapoints.
+    :param cache: Whether to cache the graph featurizations of molecules for faster processing.
+    :return: A MoleculeDataset with all the MoleculeDatapoints and a BatchMolGraph graph featurization.
+    """
+    data = MoleculeDataset(data)
+    data.batch_graph(cache=cache)  # Forces computation and caching of the BatchMolGraph for the molecules
+
+    return data
+
+
 class MoleculeDataLoader(DataLoader):
     """A DataLoader for MoleculeDatasets."""
 
@@ -353,24 +368,12 @@ class MoleculeDataLoader(DataLoader):
             seed=self._seed
         )
 
-        def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
-            """
-            Constructs a MoleculeDataset from a list of MoleculeDatapoints while also constructing the BatchMolGraph.
-
-            :param data: A list of MoleculeDatapoints.
-            :return: A MoleculeDataset with all the MoleculeDatapoints and a BatchMolGraph graph featurization.
-            """
-            data = MoleculeDataset(data)
-            data.batch_graph(cache=self._cache)  # Forces computation and caching of the BatchMolGraph for the molecules
-
-            return data
-
         super(MoleculeDataLoader, self).__init__(
             dataset=self._dataset,
             batch_size=self._batch_size,
             sampler=self._sampler,
             num_workers=self._num_workers,
-            collate_fn=construct_molecule_batch
+            collate_fn=partial(construct_molecule_batch, cache=self._cache)
         )
 
     def targets(self) -> List[List[float]]:
