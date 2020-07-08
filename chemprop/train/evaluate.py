@@ -47,10 +47,10 @@ def evaluate_predictions(preds: List[List[float]],
             nan = False
             if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
                 nan = True
-                info('Warning: Found a task with targets all 0s or all 1s')
+                #  info('Warning: Found a task with targets all 0s or all 1s')
             if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
                 nan = True
-                info('Warning: Found a task with predictions all 0s or all 1s')
+                #  info('Warning: Found a task with predictions all 0s or all 1s')
 
             if nan:
                 results.append(float('nan'))

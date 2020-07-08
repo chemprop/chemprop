@@ -62,9 +62,9 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     # Split data
     debug(f'Splitting data with seed {args.seed}')
     if args.separate_test_path:
-        test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path, logger=logger)
+        test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path, logger=logger, target_features_path=args.separate_test_target_features_path)
     if args.separate_val_path:
-        val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path, logger=logger)
+        val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path, logger=logger, target_features_path=args.separate_val_target_features_path)
 
     if args.separate_val_path and args.separate_test_path:
         train_data = data
@@ -142,6 +142,12 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         shuffle=True,
         seed=args.seed
     )
+    eval_train_data_loader = MoleculeDataLoader(
+        dataset=train_data,
+        batch_size=args.batch_size,
+        num_workers=num_workers,
+        cache=cache
+    )
     val_data_loader = MoleculeDataLoader(
         dataset=val_data,
         batch_size=args.batch_size,
@@ -191,6 +197,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         # Run training
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch, n_iter = 0, 0
+        print(model)
         for epoch in trange(args.epochs):
             debug(f'Epoch {epoch}')
 
@@ -207,6 +214,17 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             )
             if isinstance(scheduler, ExponentialLR):
                 scheduler.step()
+
+            train_scores = evaluate(
+                model=model,
+                data_loader=eval_train_data_loader,
+                num_tasks=args.num_tasks,
+                metric_func=metric_func,
+                dataset_type=args.dataset_type,
+                scaler=scaler,
+                logger=logger
+            )
+
             val_scores = evaluate(
                 model=model,
                 data_loader=val_data_loader,
@@ -216,6 +234,11 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
                 scaler=scaler,
                 logger=logger
             )
+
+            #  Average train score
+            avg_train_score = np.nanmean(train_scores)
+            debug(f'train {args.metric} = {avg_train_score:.6f}')
+            writer.add_scalar(f'train {args.metric}', avg_train_score, n_iter)
 
             # Average validation score
             avg_val_score = np.nanmean(val_scores)

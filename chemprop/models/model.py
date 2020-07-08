@@ -3,6 +3,7 @@ import torch.nn as nn
 from .mpn import MPN
 from chemprop.args import TrainArgs
 from chemprop.nn_utils import get_activation_function, initialize_weights
+from chemprop.distill.factory import get_distill
 
 
 class MoleculeModel(nn.Module):
@@ -20,12 +21,18 @@ class MoleculeModel(nn.Module):
 
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
-        self.use_auxiliary = args.target_features_size is not None
+        self.use_distill = args.target_features_size is not None
         self.featurizer = featurizer
+
 
         self.output_size = args.num_tasks
         if self.multiclass:
             self.output_size *= args.multiclass_num_classes
+
+        args.output_size = self.output_size
+
+        if self.use_distill:
+            self.distill = get_distill(args)
 
         if self.classification:
             self.sigmoid = nn.Sigmoid()
@@ -35,8 +42,6 @@ class MoleculeModel(nn.Module):
 
         self.create_encoder(args)
         self.create_ffn(args)
-        if self.use_auxiliary:
-            self.create_auxiliary_ffn(args)
 
         initialize_weights(self)
 
@@ -47,48 +52,6 @@ class MoleculeModel(nn.Module):
         :param args: Arguments.
         """
         self.encoder = MPN(args)
-
-    def create_auxiliary_ffn(self, args: TrainArgs):
-        """
-        Creates the auxiliary FFN for target features
-
-        :param args: Arguments.
-        """
-        if args.features_only:
-            first_linear_dim = args.features_size
-        else:
-            first_linear_dim = args.hidden_size
-            if args.use_input_features:
-                first_linear_dim += args.features_size
-
-        dropout = nn.Dropout(args.dropout)
-        activation = get_activation_function(args.activation)
-
-        # Create auxiliary FFN layers
-        if args.ffn_num_layers == 1:
-            ffn = [
-                dropout,
-                nn.Linear(first_linear_dim, args.target_features_size)
-            ]
-        else:
-            ffn = [
-                dropout,
-                nn.Linear(first_linear_dim, args.ffn_hidden_size)
-            ]
-            for _ in range(args.ffn_num_layers - 2):
-                ffn.extend([
-                    activation,
-                    dropout,
-                    nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
-                ])
-            ffn.extend([
-                activation,
-                dropout,
-                nn.Linear(args.ffn_hidden_size, args.target_features_size),
-            ])
-
-        # Create FFN model
-        self.auxiliary_ffn = nn.Sequential(*ffn)
 
     def create_ffn(self, args: TrainArgs):
         """
@@ -156,15 +119,15 @@ class MoleculeModel(nn.Module):
 
         encoded = self.encoder(*input)
 
+        output_dict = {'encoded': encoded}
+
+        if self.use_distill:
+            encoded, partial_dict = self.distill(encoded)
+            output_dict.update(partial_dict)
+
         output = self.ffn(encoded)
 
-        output_dict = {
-            'logits': output
-        }
-
-        if self.use_auxiliary:
-            aux_preds = self.auxiliary_ffn(encoded)
-            output_dict['auxiliary'] = aux_preds
+        output_dict['logits'] = output
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if self.classification and not self.training:

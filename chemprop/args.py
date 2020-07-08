@@ -154,9 +154,13 @@ class TrainArgs(CommonArgs):
     features_only: bool = False  # Use only the additional features in an FFN, no graph network
     separate_val_features_path: List[str] = None  # Path to file with features for separate val set
     separate_test_features_path: List[str] = None  # Path to file with features for separate test set
+    separate_val_target_features_path: List[str] = None  # Path to file with target features for separate val set
+    separate_test_target_features_path: List[str] = None  # Path to file with target _features for separate test set
     config_path: str = None  # Path to a .json file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.
     ensemble_size: int = 1  # Number of models in ensemble
-    auxiliary_lambda: float = 0.1 # Lambda for auxiliary task
+    distill_lambda: float = 0.1 # Lambda for distlil task
+    distill: str = "base_distill"
+    main_loss_lambda: float = 1
 
     # Training arguments
     epochs: int = 30  # Number of epochs to run

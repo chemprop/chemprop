@@ -8,6 +8,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 import numpy as np
+from collections import Counter
 
 from chemprop.args import TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
@@ -41,7 +42,9 @@ def train(model: nn.Module,
 
     model.train()
     loss_sum, iter_count = 0, 0
-    main_loss_sum, auxiliary_loss_sum = 0, 0
+    main_loss_sum, distill_loss_sum = 0, 0
+
+    additional_losses_sum = Counter()
 
     for batch in tqdm(data_loader, total=len(data_loader)):
         # Prepare batch
@@ -58,27 +61,35 @@ def train(model: nn.Module,
         mask = mask.to(preds.device)
         targets = targets.to(preds.device)
         class_weights = torch.ones(targets.shape, device=preds.device)
-        if model.use_auxiliary:
+
+
+        if model.use_distill:
             target_features_mask = torch.Tensor([[x is not None for x in tb] for tb in target_features_batch]).to(preds.device)
             target_features_batch = torch.Tensor([[0 if x != x else x for x in tb] for tb in target_features_batch]).to(preds.device)
 
 
-        if args.dataset_type == 'multiclass':
-            targets = targets.long()
-            main_loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * class_weights * mask
+        def compute_loss(preds):
+            if args.dataset_type == 'multiclass':
+                targets_l = targets.long()
+                main_loss = torch.cat([loss_func(preds[:, target_index, :], targets_l[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * class_weights * mask
+            else:
+                main_loss = loss_func(preds, targets) * class_weights * mask
+
+            main_loss = main_loss.sum() / mask.sum()
+
+            return main_loss
+
+        main_loss = compute_loss(preds)
+
+        if model.use_distill:
+            output_dict['compute_loss_fn'] = compute_loss
+            distill_loss = model.distill.compute_loss(output_dict, target_features_batch).mean(axis=1).unsqueeze(1) * target_features_mask
+            distill_loss = distill_loss.sum() / target_features_mask.sum()
+            additional_losses_to_log = model.distill.additional_losses_to_log()
         else:
-            main_loss = loss_func(preds, targets) * class_weights * mask
+            distill_loss = 0
 
-        main_loss = main_loss.sum() / mask.sum()
-
-        if model.use_auxiliary:
-            mse_loss = torch.nn.MSELoss(reduction = 'none')
-            auxiliary_loss = mse_loss(output_dict['auxiliary'], target_features_batch).mean(axis=1).unsqueeze(1) * target_features_mask
-            auxiliary_loss = auxiliary_loss.sum() / target_features_mask.sum()
-        else:
-            auxiliary_loss = 0
-
-        loss = main_loss + args.auxiliary_lambda * auxiliary_loss
+        loss = args.main_loss_lambda * main_loss + distill_loss
 
         loss.backward()
         optimizer.step()
@@ -86,9 +97,11 @@ def train(model: nn.Module,
         loss_sum += loss.item()
         iter_count += len(batch)
 
-        if model.use_auxiliary:
+        if model.use_distill:
             main_loss_sum += main_loss.sum()
-            auxiliary_loss_sum += auxiliary_loss.sum()
+            distill_loss_sum += distill_loss.sum()
+            for key, value in additional_losses_to_log.items():
+                additional_losses_sum[key] += value
 
 
         if isinstance(scheduler, NoamLR):
@@ -103,18 +116,29 @@ def train(model: nn.Module,
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
             main_loss_avg = main_loss_sum / iter_count
-            auxiliary_loss_avg = main_loss_sum / iter_count
-            loss_sum, iter_count = 0, 0
+            distill_loss_avg = distill_loss_sum / iter_count
+
 
             lrs_str = ', '.join(f'lr_{i} = {lr:.4e}' for i, lr in enumerate(lrs))
-            aux_string = f'Main loss = {main_loss_avg:.4f}, Aux loss = {auxiliary_loss_avg:.4f}, ' if model.use_auxiliary else ''
-            debug(f'Loss = {loss_avg:.4e}, {aux_string}PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
+            if model.use_distill:
+                distill_string = f'Main loss = {main_loss_avg:.4f}, distill loss = {distill_loss_avg:.4f}, '
+                for key, val in additional_losses_sum.items():
+                    distill_string += f'{key} = {val / iter_count:.4f}'
+                    additional_losses_sum[key] = 0
+            else:
+                distill_string = ''
+
+            loss_sum, iter_count = 0, 0
+            distill_loss_sum = 0
+            main_loss_sum = 0
+
+            debug(f'Loss = {loss_avg:.4e}, {distill_string}PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
 
             if writer is not None:
                 writer.add_scalar('train_loss', loss_avg, n_iter)
-                if model.use_auxiliary:
+                if model.use_distill:
                     writer.add_scalar('main_loss', main_loss_avg, n_iter)
-                    writer.add_scalar('aux_loss', auxiliary_loss_avg, n_iter)
+                    writer.add_scalar('distill_loss', distill_loss_avg, n_iter)
 
                 writer.add_scalar('param_norm', pnorm, n_iter)
                 writer.add_scalar('gradient_norm', gnorm, n_iter)
