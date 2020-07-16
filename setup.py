@@ -22,8 +22,8 @@ with open('requirements.txt', encoding='utf-8') as f:
 setup(
     name='chemprop',
     version=__version__,
-    author='Kyle Swanson, Kevin Yang, Wengong Jin',
-    author_email='swansonk.14@gmail.com, yangk@mit.edu, wengong@csail.mit.edu',
+    author='Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld',
+    author_email='chemprop@mit.edu',
     description='Molecular Property Prediction with Message Passing Neural Networks',
     long_description=long_description,
     long_description_content_type='text/markdown',
