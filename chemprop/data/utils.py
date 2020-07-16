@@ -98,6 +98,7 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 def get_data(path: str,
              smiles_column: str = None,
              target_columns: List[str] = None,
+             ignore_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
              args: Union[PredictArgs, TrainArgs] = None,
              features_path: List[str] = None,
@@ -109,7 +110,8 @@ def get_data(path: str,
 
     :param path: Path to a CSV file.
     :param smiles_column: The name of the column containing SMILES strings. By default, uses the first column.
-    :param target_columns: Name of the columns containing target values. By default, uses all columns except the SMILES column.
+    :param target_columns: Name of the columns containing target values. By default, uses all columns except the SMILES column and the ignore columns.
+    :param ignore_columns: Name of the columns to ignore when target_columns is not provided.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
     :param features_path: A list of paths to files containing features. If provided, it is used
@@ -127,6 +129,7 @@ def get_data(path: str,
         # Prefer explicit function arguments but default to args if not provided
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
         target_columns = target_columns if target_columns is not None else args.target_columns
+        ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
         features_path = features_path if features_path is not None else args.features_path
         features_generator = features_generator if features_generator is not None else args.features_generator
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
@@ -155,7 +158,8 @@ def get_data(path: str,
 
         # By default, the targets columns are all the columns except the SMILES column
         if target_columns is None:
-            target_columns = [column for column in columns if column != smiles_column]
+            ignore_columns = set([smiles_column] + ([] if ignore_columns is None else ignore_columns))
+            target_columns = [column for column in columns if column not in ignore_columns]
 
         all_smiles, all_targets, all_rows = [], [], []
         for row in tqdm(reader):

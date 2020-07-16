@@ -116,7 +116,8 @@ class TrainArgs(CommonArgs):
 
     # General arguments
     data_path: str  # Path to data CSV file
-    target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
+    target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column and the ignore columns.
+    ignore_columns: List[str] = None  # Name of the columns to ignore when target_columns is not provided.
     dataset_type: Literal['regression', 'classification', 'multiclass']  # Type of dataset. This determines the loss function used during training.
     multiclass_num_classes: int = 3  # Number of classes when running multiclass classification
     separate_val_path: str = None  # Path to separate val set, optional
