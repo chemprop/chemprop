@@ -377,6 +377,26 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
     return class_sizes
 
 
+def validate_dataset_type(data: MoleculeDataset, dataset_type: str) -> None:
+    """
+    Validates the dataset type to ensure the data matches the provided type.
+
+    TODO: Validate multiclass dataset type.
+
+    :param data: A MoleculeDataset.
+    :param dataset_type: The dataset type to check.
+    """
+    target_set = {target for targets in data.targets() for target in targets} - {None}
+    classification_target_set = {0, 1}
+
+    if dataset_type == 'classification' and not (target_set <= classification_target_set):
+        raise ValueError('Classification data targets must only be 0 or 1 (or None). '
+                         'Please switch to regression.')
+    elif dataset_type == 'regression' and target_set <= classification_target_set:
+        raise ValueError('Regression data targets must be more than just 0 or 1 (or None). '
+                         'Please switch to classification.')
+
+
 def validate_data(data_path: str) -> Set[str]:
     """
     Validates a data CSV file, returning a set of errors.

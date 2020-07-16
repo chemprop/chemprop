@@ -1,3 +1,4 @@
+import csv
 from logging import Logger
 import os
 from typing import Tuple
@@ -50,6 +51,17 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
         for task_num, task_name in enumerate(task_names):
             info(f'Overall test {task_name} {args.metric} = '
                  f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
+
+    # Save scores
+    with open(os.path.join(save_dir, 'test_scores.csv'), 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Task', f'Mean {args.metric}', f'Standard deviation {args.metric}'] +
+                        [f'Fold {i} {args.metric}' for i in range(args.num_folds)])
+
+        for task_num, task_name in enumerate(task_names):
+            task_scores = all_scores[:, task_num]
+            mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
+            writer.writerow([task_name, mean, std] + task_scores.tolist())
 
     return mean_score, std_score
 
