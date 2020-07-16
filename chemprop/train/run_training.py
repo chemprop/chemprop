@@ -236,7 +236,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, 'model.pt'), device=args.device, logger=logger)
-        
+
         test_preds = predict(
             model=model,
             data_loader=test_data_loader,

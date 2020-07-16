@@ -54,6 +54,8 @@ Then proceed to either option below to complete the installation. Note that on m
 
 ### Option 1: Installing from PyPi
 
+**Coming soon**
+
 1. `pip install chemprop`
 
 ### Option 2: Installing from source

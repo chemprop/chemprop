@@ -40,7 +40,8 @@ setup(
     entry_points={
         'console_scripts': [
             'chemprop_train=chemprop.train.cross_validate:chemprop_train',
-            'chemprop_predict=chemprop.predict.make_predictions:chemprop_predict',
+            'chemprop_predict=chemprop.train.make_predictions:chemprop_predict',
+            'chemprop_hyperopt=chemprop.hyperparameter_optimization:chemprop_hyperopt',
             'chemprop_interpret=chemprop.interpret:chemprop_interpret',
             'chemprop_web=chemprop.web.run:chemprop_web',
             'sklearn_train=chemprop.sklearn_train:sklearn_train',
