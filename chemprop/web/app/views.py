@@ -16,7 +16,7 @@ import numpy as np
 from rdkit import Chem
 from werkzeug.utils import secure_filename
 
-from app import app, db
+from chemprop.web.app import app, db
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 

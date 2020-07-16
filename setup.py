@@ -42,6 +42,7 @@ setup(
             'chemprop_train=chemprop.train.cross_validate:chemprop_train',
             'chemprop_predict=chemprop.predict.make_predictions:chemprop_predict',
             'chemprop_interpret=chemprop.interpret:chemprop_interpret',
+            'chemprop_web=chemprop.web.run:chemprop_web',
             'sklearn_train=chemprop.sklearn_train:sklearn_train',
             'sklearn_predict=chemprop.sklearn_predict:sklearn_predict',
         ]

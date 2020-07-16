@@ -2,7 +2,8 @@
 Runs the web interface version of Chemprop.
 Designed to be used for production only, along with Gunicorn.
 """
-from app import app, db
+from chemprop.web.app import app, db
+
 
 def build_app(*args, **kwargs):
     db.init_app(app)
@@ -14,4 +15,3 @@ def build_app(*args, **kwargs):
     app.config['DEMO'] = kwargs.get('demo', False)
 
     return app
-    

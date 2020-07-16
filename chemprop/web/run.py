@@ -7,10 +7,10 @@ import os
 
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
-from app import app, db
+from chemprop.web.app import app, db
 
 
-class Args(Tap):
+class WebArgs(Tap):
     host: str = '127.0.0.1'  # Host IP address
     port: int = 5000  # Port
     debug: bool = False  # Whether to run in debug mode
@@ -18,9 +18,7 @@ class Args(Tap):
     initdb: bool = False  # Initialize Database
 
 
-if __name__ == "__main__":
-    args = Args().parse_args()
-
+def run_web(args: WebArgs) -> None:
     app.config['DEMO'] = args.demo
 
     db.init_app(app)
@@ -31,3 +29,8 @@ if __name__ == "__main__":
             print("-- INITIALIZED DATABASE --")
 
     app.run(host=args.host, port=args.port, debug=args.debug)
+
+
+def chemprop_web() -> None:
+    """Runs the chemprop website locally."""
+    run_web(WebArgs().parse_args())
