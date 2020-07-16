@@ -1,6 +1,7 @@
-from chemprop.args import SklearnPredictArgs
-from chemprop.sklearn_predict import predict_sklearn
+"""Loads a trained sklearn model checkpoint and makes predictions on a dataset."""
+
+from chemprop.sklearn_predict import sklearn_predict
 
 
 if __name__ == '__main__':
-    predict_sklearn(SklearnPredictArgs().parse_args())
+    sklearn_predict()

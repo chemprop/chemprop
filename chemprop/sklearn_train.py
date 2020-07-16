@@ -14,7 +14,7 @@ from chemprop.data import MoleculeDataset
 from chemprop.data.utils import get_data, split_data
 from chemprop.features import get_features_generator
 from chemprop.train.evaluate import evaluate_predictions
-from chemprop.utils import get_metric_func, makedirs
+from chemprop.utils import create_logger, get_metric_func, makedirs
 
 
 def predict(model,
@@ -231,3 +231,10 @@ def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tup
     info(f'Overall test {args.metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
     return mean_score, std_score
+
+
+def sklearn_train() -> None:
+    """Runs sklearn training."""
+    args = SklearnTrainArgs().parse_args()
+    logger = create_logger(name='sklearn-train', save_dir=args.save_dir, quiet=args.quiet)
+    cross_validate_sklearn(args, logger)

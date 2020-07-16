@@ -56,3 +56,8 @@ def predict_sklearn(args: SklearnPredictArgs):
 
         for datapoint in data:
             writer.writerow(datapoint.row)
+
+
+def sklearn_predict() -> None:
+    """Runs sklearn predicting."""
+    predict_sklearn(SklearnPredictArgs().parse_args())

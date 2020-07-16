@@ -120,3 +120,8 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
             writer.writerow(datapoint.row)
 
     return avg_preds
+
+
+def chemprop_predict() -> None:
+    """Runs chemprop predicting."""
+    make_predictions(PredictArgs().parse_args())

@@ -7,7 +7,7 @@ import numpy as np
 from .run_training import run_training
 from chemprop.args import TrainArgs
 from chemprop.data.utils import get_task_names
-from chemprop.utils import makedirs
+from chemprop.utils import create_logger, makedirs
 
 
 def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float]:
@@ -52,3 +52,10 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
                  f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
     return mean_score, std_score
+
+
+def chemprop_train() -> None:
+    """Runs chemprop training."""
+    args = TrainArgs().parse_args()
+    logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
+    cross_validate(args, logger)
