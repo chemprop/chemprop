@@ -1,5 +1,5 @@
 # Molecular Property Prediction
-This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approch to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
+This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
 
 **Website:** A web prediction interface with some trained chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
 
