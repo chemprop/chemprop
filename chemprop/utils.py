@@ -343,7 +343,8 @@ def save_smiles_splits(train_data: MoleculeDataset,
                        val_data: MoleculeDataset,
                        test_data: MoleculeDataset,
                        data_path: str,
-                       save_dir: str) -> None:
+                       save_dir: str,
+                       smiles_column: str = None) -> None:
     """
     Saves indices of train/val/test split as a pickle file.
 
@@ -359,10 +360,15 @@ def save_smiles_splits(train_data: MoleculeDataset,
         reader = csv.reader(f)
         header = next(reader)
 
+        if smiles_column is None:
+            smiles_column_index = 0
+        else:
+            smiles_column_index = header.index(smiles_column)
+
         lines_by_smiles = {}
         indices_by_smiles = {}
         for i, line in enumerate(reader):
-            smiles = line[0]
+            smiles = line[smiles_column_index]
             lines_by_smiles[smiles] = line
             indices_by_smiles[smiles] = i
 

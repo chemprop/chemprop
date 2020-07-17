@@ -84,7 +84,8 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             val_data=val_data,
             test_data=test_data,
             data_path=args.data_path,
-            save_dir=args.save_dir
+            save_dir=args.save_dir,
+            smiles_column=args.smiles_column
         )
 
     if args.features_scaling:
