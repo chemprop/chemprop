@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from random import Random
 from typing import Dict, List, Set, Tuple, Union
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
@@ -140,19 +141,27 @@ def log_scaffold_stats(data: MoleculeDataset,
     across the first num_labels labels and a list of the number of non-zero values for
     the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
     """
-    # print some statistics about scaffolds
-    target_avgs = []
-    counts = []
-    for index_set in index_sets:
-        data_set = [data[i] for i in index_set]
-        targets = [d.targets for d in data_set]
-        targets = np.array(targets, dtype=np.float)
-        target_avgs.append(np.nanmean(targets, axis=0))
-        counts.append(np.count_nonzero(~np.isnan(targets), axis=0))
-    stats = [(target_avgs[i][:num_labels], counts[i][:num_labels]) for i in range(min(num_scaffolds, len(target_avgs)))]
-
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
-                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels: {stats}')
+                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels:')
+
+    stats = []
+    index_sets = sorted(index_sets, key=lambda idx_set: len(idx_set), reverse=True)
+    for scaffold_num, index_set in enumerate(index_sets[:num_scaffolds]):
+        data_set = [data[i] for i in index_set]
+        targets = np.array([d.targets for d in data_set], dtype=np.float)
+
+        with warnings.catch_warnings():  # Likely warning of empty slice of target has no values besides NaN
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            target_avgs = np.nanmean(targets, axis=0)[:num_labels]
+
+        counts = np.count_nonzero(~np.isnan(targets), axis=0)[:num_labels]
+        stats.append((target_avgs, counts))
+
+        if logger is not None:
+            logger.debug(f'Scaffold {scaffold_num}')
+            for task_num, (target_avg, count) in enumerate(zip(target_avgs, counts)):
+                logger.debug(f'Task {task_num}: count = {count:,} | target average = {target_avg:.6f}')
+            logger.debug('\n')
 
     return stats
