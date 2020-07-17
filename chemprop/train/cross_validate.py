@@ -18,7 +18,12 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
     # Initialize relevant variables
     init_seed = args.seed
     save_dir = args.save_dir
-    task_names = args.target_columns or get_task_names(args.data_path)
+    args.task_names = get_task_names(
+        path=args.data_path,
+        smiles_column=args.smiles_column,
+        target_columns=args.target_columns,
+        ignore_columns=args.ignore_columns
+    )
 
     # Run training on different random seeds for each fold
     all_scores = []
@@ -39,7 +44,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
         info(f'Seed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
 
         if args.show_individual_scores:
-            for task_name, score in zip(task_names, scores):
+            for task_name, score in zip(args.task_names, scores):
                 info(f'Seed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
 
     # Report scores across models
@@ -48,7 +53,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
     info(f'Overall test {args.metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
     if args.show_individual_scores:
-        for task_num, task_name in enumerate(task_names):
+        for task_num, task_name in enumerate(args.task_names):
             info(f'Overall test {task_name} {args.metric} = '
                  f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
@@ -58,7 +63,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
         writer.writerow(['Task', f'Mean {args.metric}', f'Standard deviation {args.metric}'] +
                         [f'Fold {i} {args.metric}' for i in range(args.num_folds)])
 
-        for task_num, task_name in enumerate(task_names):
+        for task_num, task_name in enumerate(args.task_names):
             task_scores = all_scores[:, task_num]
             mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
             writer.writerow([task_name, mean, std] + task_scores.tolist())

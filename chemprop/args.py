@@ -200,11 +200,7 @@ class TrainArgs(CommonArgs):
 
     @property
     def num_tasks(self) -> int:
-        return self._num_tasks
-
-    @num_tasks.setter
-    def num_tasks(self, num_tasks: int) -> None:
-        self._num_tasks = num_tasks
+        return len(self.task_names) if self.task_names is not None else 0
 
     @property
     def features_size(self) -> int:
@@ -362,14 +358,9 @@ class SklearnPredictArgs(Tap):
     test_path: str  # Path to CSV file containing testing data for which predictions will be made
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     preds_path: str  # Path to CSV file where predictions will be saved
-    dataset_type: Literal['classification', 'regression']  # Type of dataset
-    model_type: Literal['random_forest', 'svm']  # scikit-learn model to use
     checkpoint_dir: str = None  # Path to directory containing model checkpoints (.pkl file)
     checkpoint_path: str = None  # Path to model checkpoint (.pkl file)
     checkpoint_paths: List[str] = None  # List of paths to model checkpoints (.pkl files)
-    radius: int = 2  # Morgan fingerprint radius
-    num_bits: int = 2048  # Number of bits in morgan fingerprint
-    num_tasks: int  # Number of tasks the trained model makes predictions for
 
     def process_args(self) -> None:
         # Load checkpoint paths

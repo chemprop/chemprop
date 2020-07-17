@@ -16,20 +16,30 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features
 
 
-def get_task_names(path: str, smiles_column: str = None) -> List[str]:
+def get_task_names(path: str,
+                   smiles_column: str = None,
+                   target_columns: List[str] = None,
+                   ignore_columns: List[str] = None) -> List[str]:
     """
     Gets the task names from a data CSV file (i.e. all column names except for the SMILES column).
 
     :param path: Path to a CSV file.
     :param smiles_column: The name of the column containing SMILES strings. By default, uses the first column.
+    :param target_columns: Name of the columns containing target values. By default, uses all columns except the SMILES column and the ignore columns.
+    :param ignore_columns: Name of the columns to ignore when target_columns is not provided.
     :return: A list of task names.
     """
+    if target_columns is not None:
+        return target_columns
+
     columns = get_header(path)
 
     if smiles_column is None:
         smiles_column = columns[0]
 
-    target_names = [name for name in columns if name != smiles_column]
+    ignore_columns = set([smiles_column] + ([] if ignore_columns is None else ignore_columns))
+
+    target_names = [column for column in columns if column not in ignore_columns]
 
     return target_names
 
@@ -45,16 +55,6 @@ def get_header(path: str) -> List[str]:
         header = next(csv.reader(f))
 
     return header
-
-
-def get_num_tasks(path: str) -> int:
-    """
-    Gets the number of tasks in a data CSV file.
-
-    :param path: Path to a CSV file.
-    :return: The number of tasks.
-    """
-    return len(get_header(path)) - 1
 
 
 def get_smiles(path: str, smiles_column: str = None, header: bool = True) -> List[str]:

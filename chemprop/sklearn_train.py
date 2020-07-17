@@ -11,7 +11,7 @@ from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
 from chemprop.data import MoleculeDataset
-from chemprop.data.utils import get_data, split_data
+from chemprop.data.utils import get_data, get_task_names, split_data
 from chemprop.features import get_features_generator
 from chemprop.train.evaluate import evaluate_predictions
 from chemprop.utils import create_logger, get_metric_func, makedirs
@@ -138,6 +138,12 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
 
     debug('Loading data')
     data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
+    args.task_names = get_task_names(
+        path=args.data_path,
+        smiles_column=args.smiles_column,
+        target_columns=args.target_columns,
+        ignore_columns=args.ignore_columns
+    )
 
     if args.model_type == 'svm' and data.num_tasks() != 1:
         raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')
@@ -179,6 +185,8 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
         raise ValueError(f'Dataset type "{args.dataset_type}" not supported')
 
     debug(model)
+
+    model.train_args = args.as_dict()
 
     debug('Training')
     if args.single_task:

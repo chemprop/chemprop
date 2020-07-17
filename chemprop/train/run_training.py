@@ -14,7 +14,7 @@ from .predict import predict
 from .train import train
 from chemprop.args import TrainArgs
 from chemprop.data import StandardScaler, MoleculeDataLoader
-from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data, validate_dataset_type
+from chemprop.data.utils import get_class_sizes, get_data, split_data, validate_dataset_type
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
@@ -50,10 +50,8 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
 
     # Get data
     debug('Loading data')
-    args.task_names = args.target_columns or get_task_names(args.data_path)
     data = get_data(path=args.data_path, args=args, logger=logger)
     validate_dataset_type(data, dataset_type=args.dataset_type)
-    args.num_tasks = data.num_tasks()
     args.features_size = data.features_size()
     debug(f'Number of tasks = {args.num_tasks}')
 
