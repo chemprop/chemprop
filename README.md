@@ -92,7 +92,6 @@ You can start the web interface on your local machine in two ways:
 
 ![Predicting with our web interface](chemprop/web/app/static/images/web_predict.png "Predicting with our web interface")
 
-
 ## Data
 
 In order to train a model, you must provide training data containing molecules (as SMILES strings) and known target values. Targets can either be real numbers, if performing regression, or binary (i.e. 0s and 1s), if performing classification. Target values which are unknown can be left as blanks.
