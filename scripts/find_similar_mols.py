@@ -66,24 +66,23 @@ def find_similar_mols(test_smiles: List[str],
         train_vecs = np.array([morgan_binary_features_generator(smiles) for smiles in tqdm(train_smiles, total=len(train_smiles))])
         metric = 'jaccard'
     elif distance_measure == 'tanimoto':
-        
-        # generate RDKit topological fingerprints
-        test_fps = [ Chem.RDKFingerprint(m.mol) for m in tqdm(test_data) ]
-        train_fps = [ Chem.RDKFingerprint(m.mol) for m in tqdm(train_data) ]
+        # Generate RDKit topological fingerprints
+        test_fps = [Chem.RDKFingerprint(m.mol) for m in tqdm(test_data)]
+        train_fps = [Chem.RDKFingerprint(m.mol) for m in tqdm(train_data)]
 
-        # compute pairwise similarity
+        # Compute pairwise similarity
+        print('Computing distances')
         similarity = np.zeros([len(test_fps), len(train_fps)])
-        for (x,y), _ in np.ndenumerate(similarity):
-            similarity[x,y] = DataStructs.FingerprintSimilarity(test_fps[x],train_fps[y])
+        for (x, y), _ in np.ndenumerate(similarity):
+            similarity[x, y] = DataStructs.FingerprintSimilarity(test_fps[x], train_fps[y])
 
-        # convert the tanimoto similarity to a distance 
+        # Convert the tanimoto similarity to a distance
         distances = 1 - similarity
         metric = 'tanimoto'
-
     else:
         raise ValueError(f'Distance measure "{distance_measure}" not supported.')
 
-    if distance_measure in ('embedding','morgan'):
+    if distance_measure in ('embedding', 'morgan'):
         print('Computing distances')
         distances = cdist(test_vecs, train_vecs, metric=metric)
 
