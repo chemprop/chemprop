@@ -24,7 +24,22 @@ SPACE = {
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
 
 
-def grid_search(args: HyperoptArgs):
+def hyperopt(args: HyperoptArgs) -> None:
+    """
+    Runs hyperparameter optimization on a Chemprop model.
+
+    Hyperparameter optimization optimizes the following parameters:
+
+    * :code:`hidden_size`: The hidden size of the neural network layers is selected from {300, 400, ..., 2400}
+    * :code:`depth`: The number of message passing iterations is selected from {2, 3, 4, 5, 6}
+    * :code:`dropout`: The dropout probability is selected from {0.0, 0.05, ..., 0.4}
+    * :code:`ffn_num_layers`: The number of feed-forward layers after message passing is selected from {1, 2, 3}
+
+    The best set of hyperparameters is saved as a JSON file to :code:`args.config_save_path`.
+
+    :param args: A :class:`~chemprop.args.HyperoptArgs` object containing arguments for hyperparameter
+                 optimization in addition to all arguments needed for training.
+    """
     # Create loggers
     logger = create_logger(name='hyperparameter_optimization', save_dir=args.log_dir, quiet=True)
     train_logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
@@ -97,5 +112,8 @@ def grid_search(args: HyperoptArgs):
 
 
 def chemprop_hyperopt() -> None:
-    """Runs hyperparameter optimization for chemprop model."""
-    grid_search(HyperoptArgs().parse_args())
+    """Runs hyperparameter optimization for a Chemprop model.
+
+    This is the entry point for the command line command :code:`chemprop_hyperopt`.
+    """
+    hyperopt(HyperoptArgs().parse_args())

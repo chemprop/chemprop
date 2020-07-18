@@ -15,7 +15,12 @@ C_PUCT = 10
 
 
 class ChempropModel:
+    """A :class:`ChempropModel` is a wrapper around a :class:`~chemprop.models.model.MoleculeModel` for interpretation."""
+
     def __init__(self, args: InterpretArgs) -> None:
+        """
+        :param args: A :class:`~chemprop.args.InterpretArgs` object containing arguments for interpretation.
+        """
         self.args = args
         self.train_args = load_args(args.checkpoint_paths[0])
 
@@ -30,6 +35,13 @@ class ChempropModel:
         self.checkpoints = [load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths]
 
     def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
+        """
+        Makes predictions on a list of SMILES.
+
+        :param smiles: A list of SMILES to make predictions on.
+        :param batch_size: The batch size.
+        :return: A list of lists of floats containing the predicted values.
+        """
         test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=self.args.features_generator)
         valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
         test_data = MoleculeDataset([test_data[i] for i in valid_indices])
@@ -57,7 +69,16 @@ class ChempropModel:
 
 
 class MCTSNode:
-    def __init__(self, smiles: str, atoms, W: float = 0, N: int = 0, P: float = 0) -> None:
+    """A :class:`MCTSNode` represents a node in a Monte Carlo Tree Search."""
+
+    def __init__(self, smiles: str, atoms: List[int], W: float = 0, N: int = 0, P: float = 0) -> None:
+        """
+        :param smiles: The SMILES for the substructure at this node.
+        :param atoms: A list of atom indices represented by this node.
+        :param W: The W value of this node.
+        :param N: The N value of this node.
+        :param P: The P value of this node.
+        """
         self.smiles = smiles
         self.atoms = set(atoms)
         self.children = []
@@ -73,6 +94,13 @@ class MCTSNode:
 
 
 def find_clusters(mol: Chem.Mol) -> Tuple[List[Tuple[int, ...]], List[List[int]]]:
+    """
+    Finds clusters within the molecule.
+
+    :param mol: An RDKit molecule.
+    :return: A tuple containing a list of atom tuples representing the clusters
+             and a list of lists of atoms in each cluster.
+    """
     n_atoms = mol.GetNumAtoms()
     if n_atoms == 1:  # special case
         return [(0,)], [[0]]
@@ -96,6 +124,14 @@ def find_clusters(mol: Chem.Mol) -> Tuple[List[Tuple[int, ...]], List[List[int]]
 
 
 def __extract_subgraph(mol: Chem.Mol, selected_atoms: Set[int]) -> Tuple[Chem.Mol, List[int]]:
+    """
+    Extracts a subgraph from an RDKit molecule given a set of atom indices.
+
+    :param mol: An RDKit molecule from which to extract a subgraph.
+    :param selected_atoms: The atoms which form the subgraph to be extracted.
+    :return: A tuple containing an RDKit molecule representing the subgraph
+             and a list of root atom indices from the selected indices.
+    """
     selected_atoms = set(selected_atoms)
     roots = []
     for idx in selected_atoms:
@@ -124,6 +160,14 @@ def __extract_subgraph(mol: Chem.Mol, selected_atoms: Set[int]) -> Tuple[Chem.Mo
 
 
 def extract_subgraph(smiles: str, selected_atoms: Set[int]) -> Tuple[str, List[int]]:
+    """
+    Extracts a subgraph from a SMILES given a set of atom indices.
+
+    :param smiles: A SMILES from which to extract a subgraph.
+    :param selected_atoms: The atoms which form the subgraph to be extracted.
+    :return: A tuple containing a SMILES representing the subgraph
+             and a list of root atom indices from the selected indices.
+    """
     # try with kekulization
     mol = Chem.MolFromSmiles(smiles)
     Chem.Kekulize(mol)
@@ -153,6 +197,18 @@ def mcts_rollout(node: MCTSNode,
                  atom_cls: List[Set[int]],
                  nei_cls: List[Set[int]],
                  scoring_function: Callable[[List[str]], List[float]]) -> float:
+    """
+    A Monte Carlo Tree Search rollout from a given :class:`MCTSNode`.
+
+    :param node: The :class:`MCTSNode` from which to begin the rollout.
+    :param state_map: A mapping from SMILES to :class:`MCTSNode`.
+    :param orig_smiles: The original SMILES of the molecule.
+    :param clusters: Clusters of atoms.
+    :param atom_cls: Atom indices in the clusters.
+    :param nei_cls: Neighboring clusters.
+    :param scoring_function: A function for scoring subgraph SMILES using a Chemprop model.
+    :return: The score of this MCTS rollout.
+    """
     cur_atoms = node.atoms
     if len(cur_atoms) <= MIN_ATOMS:
         return node.P
@@ -194,6 +250,16 @@ def mcts(smiles: str,
          n_rollout: int,
          max_atoms: int,
          prop_delta: float) -> List[MCTSNode]:
+    """
+    Runs the Monte Carlo Tree Search algorithm.
+
+    :param smiles: The SMILES of the molecule to perform the search on.
+    :param scoring_function: A function for scoring subgraph SMILES using a Chemprop model.
+    :param n_rollout: THe number of MCTS rollouts to perform.
+    :param max_atoms: The maximum number of atoms allowed in an extracted rationale.
+    :param prop_delta: The minimum required property value for a satisfactory rationale.
+    :return: A list of rationales each represented by a :class:`MCTSNode`.
+    """
     mol = Chem.MolFromSmiles(smiles)
     if mol.GetNumAtoms() > 50:
         n_rollout = 1
@@ -218,6 +284,11 @@ def mcts(smiles: str,
 
 
 def interpret(args: InterpretArgs) -> None:
+    """
+    Runs interpretation of a Chemprop model using the Monte Carlo Tree Search algorithm.
+
+    :param args: A :class:`~chemprop.args.InterpretArgs` object containing arguments for interpretation.
+    """
     global C_PUCT, MIN_ATOMS
 
     chemprop_model = ChempropModel(args)
@@ -257,5 +328,8 @@ def interpret(args: InterpretArgs) -> None:
 
 
 def chemprop_interpret() -> None:
-    """Runs interpretation of a chemprop model."""
+    """Runs interpretation of a Chemprop model.
+
+    This is the entry point for the command line command :code:`chemprop_hyperopt`.
+    """
     interpret(InterpretArgs().parse_args())
