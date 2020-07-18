@@ -3,7 +3,28 @@
 Features
 ========
 
-:code:`chemprop.features` contains functions for featurizing molecules. This includes both atom/bond features used in message passing and additional molecule-level features appended after message passing.
+`chemprop.features <https://github.com/chemprop/chemprop/tree/master/chemprop/features>`_ contains functions for featurizing molecules. This includes both atom/bond features used in message passing and additional molecule-level features appended after message passing.
 
-.. automodule:: chemprop.features
+Featurization
+-------------
+
+Classes and functions from `chemprop.features.featurization <https://github.com/chemprop/chemprop/tree/master/chemprop/features/featurization.py>`_. Featurization specifically includes computation of the atom and bond features used in message passing.
+
+.. automodule:: chemprop.features.featurization
+   :members:
+
+Features Generators
+-------------------
+
+Classes and functions from `chemprop.features.features_generators <https://github.com/chemprop/chemprop/tree/master/chemprop/features/features_generators.py>`_. Features generators are used for computing additional molecule-level features that are appended after message passing.
+
+.. automodule:: chemprop.features.features_generators
+   :members:
+
+Utils
+-----
+
+Classes and functions from `chemprop.features.utils <https://github.com/chemprop/chemprop/tree/master/chemprop/features/utils.py>`_.
+
+.. automodule:: chemprop.features.utils
    :members:
