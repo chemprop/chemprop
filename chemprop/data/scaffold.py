@@ -61,7 +61,7 @@ def scaffold_split(data: MoleculeDataset,
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param balanced: Whether to balance the sizes of scaffolds in each set rather than putting the smallest in test set.
     :param seed: Random seed for shuffling when doing balanced splitting.
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
@@ -136,7 +136,7 @@ def log_scaffold_stats(data: MoleculeDataset,
     :param index_sets: A list of sets of indices representing splits of the data.
     :param num_scaffolds: The number of scaffolds about which to display statistics.
     :param num_labels: The number of labels about which to display statistics.
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :return: A list of tuples where each tuple contains a list of average target values
              across the first :code:`num_labels` labels and a list of the number of non-zero values for
              the first :code:`num_scaffolds` scaffolds, sorted in decreasing order of scaffold frequency.

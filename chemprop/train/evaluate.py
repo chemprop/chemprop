@@ -5,6 +5,7 @@ import torch.nn as nn
 
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler
+from chemprop.models import MoleculeModel
 
 
 def evaluate_predictions(preds: List[List[float]],
@@ -14,15 +15,15 @@ def evaluate_predictions(preds: List[List[float]],
                          dataset_type: str,
                          logger: logging.Logger = None) -> List[float]:
     """
-    Evaluates predictions using a metric function and filtering out invalid targets.
+    Evaluates predictions using a metric function after filtering out invalid targets.
 
-    :param preds: A list of lists of shape (data_size, num_tasks) with model predictions.
-    :param targets: A list of lists of shape (data_size, num_tasks) with targets.
+    :param preds: A list of lists of shape :code:`(data_size, num_tasks)` with model predictions.
+    :param targets: A list of lists of shape :code:`(data_size, num_tasks)` with targets.
     :param num_tasks: Number of tasks.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param dataset_type: Dataset type.
-    :param logger: Logger.
-    :return: A list with the score for each task based on `metric_func`.
+    :param logger: A logger to record output.
+    :return: A list with the score for each task based on :code:`metric_func`.
     """
     info = logger.info if logger is not None else print
 
@@ -67,7 +68,7 @@ def evaluate_predictions(preds: List[List[float]],
     return results
 
 
-def evaluate(model: nn.Module,
+def evaluate(model: MoleculeModel,
              data_loader: MoleculeDataLoader,
              num_tasks: int,
              metric_func: Callable,
@@ -75,16 +76,16 @@ def evaluate(model: nn.Module,
              scaler: StandardScaler = None,
              logger: logging.Logger = None) -> List[float]:
     """
-    Evaluates an ensemble of models on a dataset.
+    Evaluates an ensemble of models on a dataset by making predictions and then evaluating the predictions.
 
-    :param model: A model.
-    :param data_loader: A MoleculeDataLoader.
+    :param model: A :class:`~chemprop.models.model.MoleculeModel`.
+    :param data_loader: A :class:`~chemprop.data.data.MoleculeDataLoader`.
     :param num_tasks: Number of tasks.
     :param metric_func: Metric function which takes in a list of targets and a list of predictions.
     :param dataset_type: Dataset type.
-    :param scaler: A StandardScaler object fit on the training targets.
-    :param logger: Logger.
-    :return: A list with the score for each task based on `metric_func`.
+    :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
+    :param logger: A logger to record output.
+    :return: A list with the score for each task based on :code:`metric_func`.
     """
     preds = predict(
         model=model,

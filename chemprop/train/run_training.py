@@ -22,11 +22,12 @@ from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, g
 
 def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     """
-    Trains a model and returns test scores on the model checkpoint with the highest validation score.
+    Loads data, trains a model, and returns test scores for the model checkpoint with the highest validation score.
 
-    :param args: Arguments.
-    :param logger: Logger.
-    :return: A list of ensemble scores for each task.
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for
+                 loading data and training the model.
+    :param logger: A logger to record output.
+    :return: A list of model scores for each task.
     """
     if logger is not None:
         debug, info = logger.debug, logger.info

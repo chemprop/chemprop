@@ -12,7 +12,17 @@ from chemprop.utils import create_logger, makedirs
 
 
 def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float]:
-    """k-fold cross validation"""
+    """
+    Runs k-fold cross-validation.
+
+    For each of k splits (folds) of the data, trains and tests a model on that split
+    and aggregates the performance across folds.
+
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for
+                 loading data and training the model.
+    :param logger: A logger for recording output.
+    :return: A tuple containing the mean and standard deviation performance across folds.
+    """
     info = logger.info if logger is not None else print
 
     # Initialize relevant variables
@@ -72,7 +82,10 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
 
 
 def chemprop_train() -> None:
-    """Runs chemprop training."""
+    """Parses training arguments and runs training (cross-validation).
+
+    This is the entry point for the command line command :code:`chemprop_train`.
+    """
     args = TrainArgs().parse_args()
     logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
     cross_validate(args, logger)

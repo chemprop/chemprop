@@ -76,7 +76,7 @@ def load_checkpoint(path: str,
 
     :param path: Path where checkpoint is saved.
     :param device: Device where the model will be moved.
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :return: The loaded MoleculeModel.
     """
     if logger is not None:

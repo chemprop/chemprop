@@ -18,7 +18,7 @@ Chemprop was later used in the paper `A Deep Learning Approach to Antibiotic Dis
    data
    features
    models
-   train_predict
+   train
    hyperopt
    interpret
    args

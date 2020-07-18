@@ -126,7 +126,7 @@ def get_data(path: str,
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
     :param max_data_size: The maximum number of data points to load.
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
@@ -215,7 +215,7 @@ def get_data_from_smiles(smiles: List[str],
 
     :param smiles: A list of SMILES.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles using :func:`filter_invalid_smiles`
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :param features_generator: List of features generators.
     :return: A :class:`~chemprop.data.MoleculeDataset` with all of the provided SMILES.
     """
@@ -256,7 +256,7 @@ def split_data(data: MoleculeDataset,
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
     :param args: A :class:`~chemprop.args.TrainArgs` object.
-    :param logger: A logger.
+    :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """

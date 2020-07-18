@@ -1,25 +1,24 @@
 from typing import List
 
 import torch
-import torch.nn as nn
 from tqdm import tqdm
 
 from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
+from chemprop.models import MoleculeModel
 
 
-def predict(model: nn.Module,
+def predict(model: MoleculeModel,
             data_loader: MoleculeDataLoader,
             disable_progress_bar: bool = False,
             scaler: StandardScaler = None) -> List[List[float]]:
     """
     Makes predictions on a dataset using an ensemble of models.
 
-    :param model: A model.
-    :param data_loader: A MoleculeDataLoader.
+    :param model: A :class:`~chemprop.models.model.MoleculeModel`.
+    :param data_loader: A :class:`~chemprop.data.data.MoleculeDataLoader`.
     :param disable_progress_bar: Whether to disable the progress bar.
-    :param scaler: A StandardScaler object fit on the training targets.
-    :return: A list of lists of predictions. The outer list is examples
-             while the inner list is tasks.
+    :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
+    :return: A list of lists of predictions. The outer list is molecules while the inner list is tasks.
     """
     model.eval()
 

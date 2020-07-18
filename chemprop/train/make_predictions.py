@@ -10,12 +10,16 @@ from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, Mo
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
 
 
-def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Optional[List[float]]]:
+def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
     """
-    Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
+    Loads data and a trained model and uses the model to make predictions on the data.
 
-    :param args: Arguments.
-    :param smiles: Smiles to make predictions on.
+    If SMILES are provided, then makes predictions on smiles.
+    Otherwise makes predictions on :code:`args.test_data`.
+
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param smiles: SMILES to make predictions on.
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
@@ -122,5 +126,8 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
 
 def chemprop_predict() -> None:
-    """Runs chemprop predicting."""
+    """Parses predicting arguments and runs prediction.
+
+    This is the entry point for the command line command :code:`chemprop_predict`.
+    """
     make_predictions(PredictArgs().parse_args())
