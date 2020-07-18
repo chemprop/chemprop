@@ -11,7 +11,9 @@ Chemprop was later used in the paper `A Deep Learning Approach to Antibiotic Dis
    :maxdepth: 2
    :caption: Contents:
 
+   requirements
    installation
+   tutorial
    web
    data
    train

@@ -1,8 +1,12 @@
+.. _web:
+
 Web Interface
 =============
 
+Overview
+--------
 
-For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: `<chemprop.csail.mit.edu>`_.
+For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: `<chemprop.csail.mit.edu>`_.
 
 .. image:: _static/images/web_train.png
    :alt: Training with our web interface
