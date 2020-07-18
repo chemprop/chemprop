@@ -40,8 +40,8 @@ def get_bond_fdim(atom_messages: bool = False) -> int:
     """
     Gets the dimensionality of bond features.
 
-    :param atom_messages whether atom messages are being used. If atom messages, only contains bond features.
-    Otherwise contains both atom and bond features.
+    :param atom_messages: Whether atom messages are being used. If atom messages, only contains bond features.
+                          Otherwise contains both atom and bond features.
     :return: The dimensionality of bond features.
     """
     return BOND_FDIM + (not atom_messages) * get_atom_fdim()
@@ -54,7 +54,7 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     :param value: The value for which the encoding should be one.
     :param choices: A list of possible values.
     :return: A one-hot encoding of the value in a list of length len(choices) + 1.
-    If value is not in the list of choices, then the final element in the encoding is 1.
+             If value is not in the list of choices, then the final element in the encoding is 1.
     """
     encoding = [0] * (len(choices) + 1)
     index = choices.index(value) if value in choices else -1
@@ -235,9 +235,9 @@ class BatchMolGraph:
         Returns the components of the BatchMolGraph.
 
         :param atom_messages: Whether to use atom messages instead of bond messages. This changes the bond features
-        to contain only bond features rather than a concatenation of atom and bond features.
+                              to contain only bond features rather than a concatenation of atom and bond features.
         :return: A tuple containing PyTorch tensors with the atom features, bond features, and graph structure
-        and two lists indicating the scope of the atoms and bonds (i.e. which molecules they belong to).
+                 and two lists indicating the scope of the atoms and bonds (i.e. which molecules they belong to).
         """
         if atom_messages:
             f_bonds = self.f_bonds[:, :get_bond_fdim(atom_messages=atom_messages)]

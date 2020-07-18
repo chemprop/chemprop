@@ -115,13 +115,13 @@ def get_data(path: str,
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles.
     :param args: Arguments.
     :param features_path: A list of paths to files containing features. If provided, it is used
-    in place of args.features_path.
+                          in place of args.features_path.
     :param features_generator: A list of features generators to use. If provided, it is used
-    in place of args.features_generator.
+                               in place of args.features_generator.
     :param max_data_size: The maximum number of data points to load.
     :param logger: Logger.
     :return: A MoleculeDataset containing smiles strings and target values along
-    with other info such as additional features and compound names when desired.
+             with other info such as additional features and compound names when desired.
     """
     debug = logger.debug if logger is not None else print
 
@@ -247,7 +247,7 @@ def split_data(data: MoleculeDataset,
     :param data: A MoleculeDataset.
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the
-    train, validation, and test sets.
+                  train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
     :param args: Arguments.
     :param logger: A logger.
@@ -351,7 +351,7 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
 
     :param data: A classification dataset
     :return: A list of lists of class proportions. Each inner list contains the class proportions
-    for a task.
+             for a task.
     """
     targets = data.targets()
 

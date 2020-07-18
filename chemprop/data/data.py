@@ -198,10 +198,10 @@ class MoleculeDataset(Dataset):
         features in the dataset and then performs the normalization.
 
         :param scaler: A fitted StandardScaler. Used if provided. Otherwise a StandardScaler is fit on
-        this dataset and is then used.
+                       this dataset and is then used.
         :param replace_nan_token: What to replace nans with.
         :return: A fitted StandardScaler. If a scaler is provided, this is the same scaler. Otherwise, this is
-        a scaler fit on this dataset.
+                 a scaler fit on this dataset.
         """
         if len(self._data) == 0 or self._data[0].features is None:
             return None
@@ -224,7 +224,7 @@ class MoleculeDataset(Dataset):
         Sets the targets for each molecule in the dataset. Assumes the targets are aligned with the datapoints.
 
         :param targets: A list of lists of floats containing targets for each molecule. This must be the
-        same length as the underlying dataset.
+                        same length as the underlying dataset.
         """
         assert len(self._data) == len(targets)
         for i in range(len(self._data)):

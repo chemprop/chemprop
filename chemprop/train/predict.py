@@ -19,7 +19,7 @@ def predict(model: nn.Module,
     :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A StandardScaler object fit on the training targets.
     :return: A list of lists of predictions. The outer list is examples
-    while the inner list is tasks.
+             while the inner list is tasks.
     """
     model.eval()
 

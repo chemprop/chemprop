@@ -16,9 +16,9 @@ def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False
     """
     Compute the Bemis-Murcko scaffold for a SMILES string.
 
-    :param mol: A smiles string or an RDKit molecule.
+    :param mol: A SMILES string or an RDKit molecule.
     :param include_chirality: Whether to include chirality.
-    :return:
+    :return: The Bemis-Murcko scaffold for the molecule.
     """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=include_chirality)
@@ -33,7 +33,7 @@ def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol]],
 
     :param mols: A list of smiles strings or RDKit molecules.
     :param use_indices: Whether to map to the smiles' index in all_smiles rather than mapping
-    to the smiles string itself. This is necessary if there are duplicate smiles.
+                        to the smiles string itself. This is necessary if there are duplicate smiles.
     :return: A dictionary mapping each unique scaffold to all smiles (or smiles indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
@@ -59,7 +59,7 @@ def scaffold_split(data: MoleculeDataset,
 
     :param data: A MoleculeDataset.
     :param sizes: A length-3 tuple with the proportions of data in the
-    train, validation, and test sets.
+                  train, validation, and test sets.
     :param balanced: Try to balance sizes of scaffolds in each set, rather than just putting smallest in test set.
     :param seed: Seed for shuffling when doing balanced splitting.
     :param logger: A logger.
@@ -138,8 +138,8 @@ def log_scaffold_stats(data: MoleculeDataset,
     :param num_labels: The number of labels about which to display statistics.
     :param logger: A Logger.
     :return: A list of tuples where each tuple contains a list of average target values
-    across the first num_labels labels and a list of the number of non-zero values for
-    the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
+             across the first num_labels labels and a list of the number of non-zero values for
+             the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
     """
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
