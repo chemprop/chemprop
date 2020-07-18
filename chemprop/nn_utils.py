@@ -92,10 +92,10 @@ def compute_molecule_vectors(model: nn.Module,
                              batch_size: int,
                              num_workers: int = 8) -> List[np.ndarray]:
     """
-    Computes the molecule vectors output from the last layer of a MoleculeModel.
+    Computes the molecule vectors output from the last layer of a :class:`~chemprop.models.MoleculeModel`.
 
-    :param model: A MoleculeModel.
-    :param data: A MoleculeDataset.
+    :param model: A :class:`~chemprop.models.MoleculeModel`.
+    :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param batch_size: Batch size.
     :param num_workers: Number of parallel data loading workers.
     :return: A list of 1D numpy arrays of length hidden_size containing
@@ -129,10 +129,10 @@ class NoamLR(_LRScheduler):
     Noam learning rate scheduler with piecewise linear increase and exponential decay.
 
     The learning rate increases linearly from init_lr to max_lr over the course of
-    the first warmup_steps (where warmup_steps = warmup_epochs * steps_per_epoch).
-    Then the learning rate decreases exponentially from max_lr to final_lr over the
-    course of the remaining total_steps - warmup_steps (where total_steps =
-    total_epochs * steps_per_epoch). This is roughly based on the learning rate
+    the first warmup_steps (where :code:`warmup_steps = warmup_epochs * steps_per_epoch`).
+    Then the learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr` over the
+    course of the remaining :code:`total_steps - warmup_steps` (where :code:`total_steps =
+    total_epochs * steps_per_epoch`). This is roughly based on the learning rate
     schedule from Attention is All You Need, section 5.3 (https://arxiv.org/abs/1706.03762).
     """
     def __init__(self,

@@ -113,13 +113,14 @@ class MolGraph:
     A MolGraph represents the graph structure and featurization of a single molecule.
 
     A MolGraph computes the following attributes:
-    - n_atoms: The number of atoms in the molecule.
-    - n_bonds: The number of bonds in the molecule.
-    - f_atoms: A mapping from an atom index to a list atom features.
-    - f_bonds: A mapping from a bond index to a list of bond features.
-    - a2b: A mapping from an atom index to a list of incoming bond indices.
-    - b2a: A mapping from a bond index to the index of the atom the bond originates from.
-    - b2revb: A mapping from a bond index to the index of the reverse bond.
+
+    * n_atoms: The number of atoms in the molecule.
+    * n_bonds: The number of bonds in the molecule.
+    * f_atoms: A mapping from an atom index to a list atom features.
+    * f_bonds: A mapping from a bond index to a list of bond features.
+    * a2b: A mapping from an atom index to a list of incoming bond indices.
+    * b2a: A mapping from a bond index to the index of the atom the bond originates from.
+    * b2revb: A mapping from a bond index to the index of the reverse bond.
     """
 
     def __init__(self, mol: Union[str, Chem.Mol]):
@@ -176,14 +177,15 @@ class BatchMolGraph:
     """
     A BatchMolGraph represents the graph structure and featurization of a batch of molecules.
 
-    A BatchMolGraph contains the attributes of a MolGraph plus:
-    - atom_fdim: The dimensionality of the atom features.
-    - bond_fdim: The dimensionality of the bond features (technically the combined atom/bond features).
-    - a_scope: A list of tuples indicating the start and end atom indices for each molecule.
-    - b_scope: A list of tuples indicating the start and end bond indices for each molecule.
-    - max_num_bonds: The maximum number of bonds neighboring an atom in this batch.
-    - b2b: (Optional) A mapping from a bond index to incoming bond indices.
-    - a2a: (Optional): A mapping from an atom index to neighboring atom indices.
+    A BatchMolGraph contains the attributes of a :class:`~chemprop.features.MolGraph` plus:
+
+    * atom_fdim: The dimensionality of the atom features.
+    * bond_fdim: The dimensionality of the bond features (technically the combined atom/bond features).
+    * a_scope: A list of tuples indicating the start and end atom indices for each molecule.
+    * b_scope: A list of tuples indicating the start and end bond indices for each molecule.
+    * max_num_bonds: The maximum number of bonds neighboring an atom in this batch.
+    * b2b: (Optional) A mapping from a bond index to incoming bond indices.
+    * a2a: (Optional): A mapping from an atom index to neighboring atom indices.
     """
 
     def __init__(self, mol_graphs: List[MolGraph]):
