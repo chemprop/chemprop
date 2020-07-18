@@ -1,7 +1,9 @@
+.. _utils:
+
 Utility Functions
 =================
 
-General purpose utility functions are in :code:`chemprop.utils`.
+:code:`chemprop.utils` contains general purpose utility functions.
 
 .. automodule:: chemprop.utils
    :members:

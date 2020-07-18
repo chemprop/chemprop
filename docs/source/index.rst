@@ -16,15 +16,16 @@ Chemprop was later used in the paper `A Deep Learning Approach to Antibiotic Dis
    tutorial
    web
    data
-   train
-   evaluate
-   predict
    features
+   models
+   train_predict
    hyperopt
-   ensemble
    interpret
    args
    utils
+   nn_utils
+   sklearn
+   scripts
 
 
 Indices and tables
