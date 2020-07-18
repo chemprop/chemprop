@@ -1,12 +1,12 @@
 Data
 ====
 
-:code:`chemprop.data` contains functions and classes for loading, containing, and splitting data.
+`chemprop.data <https://github.com/chemprop/chemprop/tree/master/chemprop/data>`_ contains functions and classes for loading, containing, and splitting data.
 
 Data
 ----
 
-Classes and functions from :code:`chemprop.data.data`.
+Classes and functions from `chemprop.data.data <https://github.com/chemprop/chemprop/tree/master/chemprop/data/data.py>`_.
 
 .. automodule:: chemprop.data.data
    :members:
@@ -14,7 +14,7 @@ Classes and functions from :code:`chemprop.data.data`.
 Scaffold
 --------
 
-Classes and functions from :code:`chemprop.data.scaffold`.
+Classes and functions from `chemprop.data.scaffold <https://github.com/chemprop/chemprop/tree/master/chemprop/data/scaffold.py>`_.
 
 .. automodule:: chemprop.data.scaffold
    :members:
@@ -22,7 +22,7 @@ Classes and functions from :code:`chemprop.data.scaffold`.
 Scaler
 ------
 
-Classes and functions from :code:`chemprop.data.scaler`.
+Classes and functions from `chemprop.data.scaler <https://github.com/chemprop/chemprop/tree/master/chemprop/data/scaler.py>`_.
 
 .. automodule:: chemprop.data.scaler
    :members:
@@ -30,7 +30,7 @@ Classes and functions from :code:`chemprop.data.scaler`.
 Utils
 -----
 
-Classes and functions from :code:`chemprop.data.utils`.
+Classes and functions from `chemprop.data.utils <https://github.com/chemprop/chemprop/tree/master/chemprop/data/utils.py>`_.
 
 .. automodule:: chemprop.data.utils
    :members:

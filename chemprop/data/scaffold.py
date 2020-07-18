@@ -14,10 +14,10 @@ from .data import MoleculeDataset
 
 def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False) -> str:
     """
-    Compute the Bemis-Murcko scaffold for a SMILES string.
+    Computes the Bemis-Murcko scaffold for a SMILES string.
 
-    :param mol: A SMILES string or an RDKit molecule.
-    :param include_chirality: Whether to include chirality.
+    :param mol: A SMILES or an RDKit molecule.
+    :param include_chirality: Whether to include chirality in the computed scaffold..
     :return: The Bemis-Murcko scaffold for the molecule.
     """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
@@ -29,12 +29,12 @@ def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False
 def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol]],
                        use_indices: bool = False) -> Dict[str, Union[Set[str], Set[int]]]:
     """
-    Computes scaffold for each smiles string and returns a mapping from scaffolds to sets of smiles.
+    Computes the scaffold for each SMILES and returns a mapping from scaffolds to sets of smiles (or indices).
 
-    :param mols: A list of smiles strings or RDKit molecules.
-    :param use_indices: Whether to map to the smiles' index in all_smiles rather than mapping
-                        to the smiles string itself. This is necessary if there are duplicate smiles.
-    :return: A dictionary mapping each unique scaffold to all smiles (or smiles indices) which have that scaffold.
+    :param mols: A list of SMILES or RDKit molecules.
+    :param use_indices: Whether to map to the SMILES's index in :code:`mols` rather than
+                        mapping to the smiles string itself. This is necessary if there are duplicate smiles.
+    :return: A dictionary mapping each unique scaffold to all SMILES (or indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
     for i, mol in tqdm(enumerate(mols), total=len(mols)):
@@ -54,16 +54,16 @@ def scaffold_split(data: MoleculeDataset,
                    logger: logging.Logger = None) -> Tuple[MoleculeDataset,
                                                            MoleculeDataset,
                                                            MoleculeDataset]:
-    """
-    Split a dataset by scaffold so that no molecules sharing a scaffold are in different splits.
+    r"""
+    Splits a :class:`~chemprop.data.MoleculeDataset` by scaffold so that no molecules sharing a scaffold are in different splits.
 
-    :param data: A MoleculeDataset.
-    :param sizes: A length-3 tuple with the proportions of data in the
-                  train, validation, and test sets.
-    :param balanced: Try to balance sizes of scaffolds in each set, rather than just putting smallest in test set.
-    :param seed: Seed for shuffling when doing balanced splitting.
+    :param data: A :class:`MoleculeDataset`.
+    :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
+    :param balanced: Whether to balance the sizes of scaffolds in each set rather than putting the smallest in test set.
+    :param seed: Random seed for shuffling when doing balanced splitting.
     :param logger: A logger.
-    :return: A tuple containing the train, validation, and test splits of the data.
+    :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
+             validation, and test splits of the data.
     """
     assert sum(sizes) == 1
 
@@ -132,14 +132,14 @@ def log_scaffold_stats(data: MoleculeDataset,
     """
     Logs and returns statistics about counts and average target values in molecular scaffolds.
 
-    :param data: A MoleculeDataset.
+    :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param index_sets: A list of sets of indices representing splits of the data.
     :param num_scaffolds: The number of scaffolds about which to display statistics.
     :param num_labels: The number of labels about which to display statistics.
-    :param logger: A Logger.
+    :param logger: A logger.
     :return: A list of tuples where each tuple contains a list of average target values
-             across the first num_labels labels and a list of the number of non-zero values for
-             the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
+             across the first :code:`num_labels` labels and a list of the number of non-zero values for
+             the first :code:`num_scaffolds` scaffolds, sorted in decreasing order of scaffold frequency.
     """
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'

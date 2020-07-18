@@ -328,7 +328,7 @@ def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False)
     r"""
     Constructs a :class:`MoleculeDataset` from a list of :class:`MoleculeDatapoint`\ s.
 
-    Additionally, pre-computes the :class:`~chemprop.features.BatchMolGraph` for the constructed
+    Additionally, precomputes the :class:`~chemprop.features.BatchMolGraph` for the constructed
     :class:`MoleculeDataset`.
 
     :param data: A list of :class:`MoleculeDatapoint`\ s.
