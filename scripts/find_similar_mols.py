@@ -17,8 +17,8 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data.utils import get_data_from_smiles, get_smiles
-from chemprop.features.features_generators import morgan_binary_features_generator
+from chemprop.data import get_data_from_smiles, get_smiles
+from chemprop.features import morgan_binary_features_generator
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_molecule_vectors
 from chemprop.utils import load_checkpoint, makedirs

@@ -39,8 +39,8 @@ setup(
     package_data={'chemprop': ['py.typed']},
     entry_points={
         'console_scripts': [
-            'chemprop_train=chemprop.train.cross_validate:chemprop_train',
-            'chemprop_predict=chemprop.train.make_predictions:chemprop_predict',
+            'chemprop_train=chemprop.train:chemprop_train',
+            'chemprop_predict=chemprop.train:chemprop_predict',
             'chemprop_hyperopt=chemprop.hyperparameter_optimization:chemprop_hyperopt',
             'chemprop_interpret=chemprop.interpret:chemprop_interpret',
             'chemprop_web=chemprop.web.run:chemprop_web',

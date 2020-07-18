@@ -21,9 +21,8 @@ from chemprop.web.app import app, db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data.utils import get_data, get_header, get_smiles, validate_data
-from chemprop.train.make_predictions import make_predictions
-from chemprop.train.run_training import run_training
+from chemprop.data import get_data, get_header, get_smiles, validate_data
+from chemprop.train import make_predictions, run_training
 from chemprop.utils import create_logger, load_task_names, load_args
 
 TRAINING = 0

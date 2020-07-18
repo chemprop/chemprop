@@ -10,10 +10,9 @@ from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
-from chemprop.data import MoleculeDataset
-from chemprop.data.utils import get_data, get_task_names, split_data
+from chemprop.data import get_data, get_task_names, MoleculeDataset, split_data
 from chemprop.features import get_features_generator
-from chemprop.train.evaluate import evaluate_predictions
+from chemprop.train import evaluate_predictions
 from chemprop.utils import create_logger, get_metric_func, makedirs
 
 

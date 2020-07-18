@@ -7,7 +7,7 @@ import numpy as np
 
 from .run_training import run_training
 from chemprop.args import TrainArgs
-from chemprop.data.utils import get_task_names
+from chemprop.data import get_task_names
 from chemprop.utils import create_logger, makedirs
 
 

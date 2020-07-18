@@ -6,8 +6,7 @@ from tqdm import tqdm
 
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.data.utils import get_data, get_data_from_smiles
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
 
 

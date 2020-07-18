@@ -11,8 +11,7 @@ from typing_extensions import Literal
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data import MoleculeDatapoint, MoleculeDataset
-from chemprop.data.utils import split_data, get_smiles
+from chemprop.data import get_smiles, MoleculeDatapoint, MoleculeDataset, split_data
 from chemprop.utils import makedirs
 
 

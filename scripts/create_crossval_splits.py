@@ -10,8 +10,7 @@ import numpy as np
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.data import MoleculeDataset
-from chemprop.data.scaffold import scaffold_to_smiles
-from chemprop.data.utils import get_data
+from chemprop.data import get_data, scaffold_to_smiles
 
 
 class Args(Tap):

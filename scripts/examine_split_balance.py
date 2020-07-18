@@ -9,8 +9,7 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from chemprop.data import MoleculeDataset
-from chemprop.data.utils import get_data
+from chemprop.data import get_data, MoleculeDataset
 
 
 BASE = '/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data'
