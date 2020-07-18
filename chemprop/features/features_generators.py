@@ -59,7 +59,7 @@ def morgan_binary_features_generator(mol: Molecule,
     :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
     :param radius: Morgan fingerprint radius.
     :param num_bits: Number of bits in Morgan fingerprint.
-    :return: A 1-D numpy array containing the binary Morgan fingerprint.
+    :return: A 1D numpy array containing the binary Morgan fingerprint.
     """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
