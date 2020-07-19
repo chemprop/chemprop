@@ -152,6 +152,9 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         cache=cache
     )
 
+    if args.class_balance:
+        debug(f'With class_balance, effective train size = {len(train_data_loader._sampler):,}')
+
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
