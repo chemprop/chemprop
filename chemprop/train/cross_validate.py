@@ -51,7 +51,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
 
     # Report scores for each fold
     for fold_num, scores in enumerate(all_scores):
-        info(f'Seed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
+        info(f'\tSeed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
 
         if args.show_individual_scores:
             for task_name, score in zip(args.task_names, scores):
@@ -64,7 +64,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
 
     if args.show_individual_scores:
         for task_num, task_name in enumerate(args.task_names):
-            info(f'Overall test {task_name} {args.metric} = '
+            info(f'\tOverall test {task_name} {args.metric} = '
                  f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
     # Save scores
