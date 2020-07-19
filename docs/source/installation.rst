@@ -11,7 +11,7 @@ Chemprop can either be installed from PyPi via pip or from source (i.e., directl
 Conda
 -----
 
-Both options require conda, so first install Miniconda from `https://conda.io/miniconda.html`_.
+Both options require conda, so first install Miniconda from `<https://conda.io/miniconda.html>`_.
 
 Then proceed to either option below to complete the installation. Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions `here <https://pytorch.org/get-started/locally/>`_.
 
