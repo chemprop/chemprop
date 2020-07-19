@@ -16,11 +16,11 @@ def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
                          checkpoint_dir: Optional[str] = None,
                          ext: str = '.pt') -> Optional[List[str]]:
     """
-    Gets a list of checkpoint paths.
+    Gets a list of checkpoint paths either from a single checkpoint path or from a directory of checkpoints.
 
-    If checkpoint_path is provided, only collects that one checkpoint.
-    If checkpoint_paths is provided, collects all of the provided checkpoints.
-    If checkpoint_dir is provided, walks the directory and collects all checkpoints.
+    If :code:`checkpoint_path` is provided, only collects that one checkpoint.
+    If :code:`checkpoint_paths` is provided, collects all of the provided checkpoints.
+    If :code:`checkpoint_dir` is provided, walks the directory and collects all checkpoints.
     A checkpoint is any file ending in the extension ext.
 
     :param checkpoint_path: Path to a checkpoint.
@@ -55,7 +55,7 @@ def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
 
 
 class CommonArgs(Tap):
-    """CommonArgs contains arguments that are used in both TrainArgs and PredictArgs."""
+    """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     checkpoint_dir: str = None  # Directory from which to load model checkpoints (walks directory and ensembles all models that are found)
@@ -72,6 +72,7 @@ class CommonArgs(Tap):
 
     @property
     def device(self) -> torch.device:
+        """The :code:`torch.device` on which to load and process data and models."""
         if not self.cuda:
             return torch.device('cpu')
 
@@ -84,6 +85,7 @@ class CommonArgs(Tap):
 
     @property
     def cuda(self) -> bool:
+        """Whether to use CUDA (i.e., GPUs) or not."""
         return not self.no_cuda and torch.cuda.is_available()
 
     @cuda.setter
@@ -92,6 +94,7 @@ class CommonArgs(Tap):
 
     @property
     def features_scaling(self) -> bool:
+        """Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler` to the additional molecule-level features."""
         return not self.no_features_scaling
 
     def add_arguments(self) -> None:
@@ -112,7 +115,7 @@ class CommonArgs(Tap):
 
 
 class TrainArgs(CommonArgs):
-    """TrainArgs includes CommonArgs along with additional arguments used for training a chemprop model."""
+    """:class:`TrainArgs` includes :class:`CommonArgs` along with additional arguments used for training a Chemprop model."""
 
     # General arguments
     data_path: str  # Path to data CSV file
@@ -176,22 +179,27 @@ class TrainArgs(CommonArgs):
 
     @property
     def minimize_score(self) -> bool:
+        """Whether the model should try to minimize the score metric or maximize it."""
         return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy'}
 
     @property
     def use_input_features(self) -> bool:
+        """Whether the model is using additional molecule-level features."""
         return self.features_generator is not None or self.features_path is not None
 
     @property
     def num_lrs(self) -> int:
-        return 1  # Number of learning rates
+        """The number of learning rates to use (currently hard-coded to 1)."""
+        return 1
 
     @property
     def crossval_index_sets(self) -> List[List[List[int]]]:
+        """Index sets used for splitting data into train/validation/test during cross-validation"""
         return self._crossval_index_sets
 
     @property
     def task_names(self) -> List[str]:
+        """A list of names of the tasks being trained on."""
         return self._task_names
 
     @task_names.setter
@@ -200,10 +208,12 @@ class TrainArgs(CommonArgs):
 
     @property
     def num_tasks(self) -> int:
+        """The number of tasks being trained on."""
         return len(self.task_names) if self.task_names is not None else 0
 
     @property
     def features_size(self) -> int:
+        """The dimensionality of the additional molecule-level features."""
         return self._features_size
 
     @features_size.setter
@@ -212,6 +222,7 @@ class TrainArgs(CommonArgs):
 
     @property
     def train_data_size(self) -> int:
+        """The size of the training data set."""
         return self._train_data_size
 
     @train_data_size.setter
@@ -292,13 +303,14 @@ class TrainArgs(CommonArgs):
 
 
 class PredictArgs(CommonArgs):
-    """PredictArgs includes CommonArgs along with additional arguments used for predicting with a chemprop model."""
+    """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
 
     test_path: str  # Path to CSV file containing testing data for which predictions will be made
     preds_path: str  # Path to CSV file where predictions will be saved
 
     @property
     def ensemble_size(self) -> int:
+        """The number of models in the ensemble."""
         return len(self.checkpoint_paths)
 
     def process_args(self) -> None:
@@ -310,7 +322,8 @@ class PredictArgs(CommonArgs):
 
 
 class InterpretArgs(CommonArgs):
-    """InterpretArgs includes CommonArgs along with additional arguments used for interpreting a trained chemprop model."""
+    """:class:`InterpretArgs` includes :class:`CommonArgs` along with additional arguments used for interpreting a trained Chemprop model."""
+
     data_path: str  # Path to data CSV file
     batch_size: int = 500  # Batch size
     property_id: int = 1  # Index of the property of interest in the trained model
@@ -334,7 +347,7 @@ class InterpretArgs(CommonArgs):
 
 
 class HyperoptArgs(TrainArgs):
-    """HyperoptArgs includes TrainArgs along with additional arguments used for optimizing chemprop hyperparameters."""
+    """:class:`HyperoptArgs` includes :class:`TrainArgs` along with additional arguments used for optimizing Chemprop hyperparameters."""
 
     num_iters: int = 20  # Number of hyperparameter choices to try
     config_save_path: str  # Path to .json file where best hyperparameter settings will be written
@@ -342,7 +355,7 @@ class HyperoptArgs(TrainArgs):
 
 
 class SklearnTrainArgs(TrainArgs):
-    """SklearnTrainArgs includes TrainArgs along with additional arguments for training a scikit-learn model."""
+    """:class:`SklearnTrainArgs` includes :class:`TrainArgs` along with additional arguments for training a scikit-learn model."""
 
     model_type: Literal['random_forest', 'svm']  # scikit-learn model to use
     class_weight: Literal['balanced'] = None  # How to weight classes (None means no class balance)
@@ -353,7 +366,7 @@ class SklearnTrainArgs(TrainArgs):
 
 
 class SklearnPredictArgs(Tap):
-    """SklearnPredictArgs contains arguments used for predicting with a trained scikit-learn model."""
+    """:class:`SklearnPredictArgs` contains arguments used for predicting with a trained scikit-learn model."""
 
     test_path: str  # Path to CSV file containing testing data for which predictions will be made
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
