@@ -238,6 +238,8 @@ class TrainArgs(CommonArgs):
     """Maximum learning rate."""
     final_lr: float = 1e-4
     """Final learning rate."""
+    grad_clip: float = None
+    """Maximum magnitude of gradient during training."""
     class_balance: bool = False
     """Trains with an equal number of positives and negatives in each batch (only for single task classification)."""
 
