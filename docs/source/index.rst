@@ -22,8 +22,8 @@ Chemprop was later used in the paper `A Deep Learning Approach to Antibiotic Dis
    hyperopt
    interpret
    args
-   utils
    nn_utils
+   utils
    sklearn
    scripts
 

@@ -19,11 +19,11 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
 
 
-def makedirs(path: str, isfile: bool = False):
+def makedirs(path: str, isfile: bool = False) -> None:
     """
     Creates a directory given a path to either a directory or file.
 
-    If a directory is provided, creates that directory. If a file is provided (i.e. isfile == True),
+    If a directory is provided, creates that directory. If a file is provided (i.e. :code:`isfile == True`),
     creates the parent directory for that file.
 
     :param path: Path to a directory or file.
@@ -39,14 +39,14 @@ def save_checkpoint(path: str,
                     model: MoleculeModel,
                     scaler: StandardScaler = None,
                     features_scaler: StandardScaler = None,
-                    args: TrainArgs = None):
+                    args: TrainArgs = None) -> None:
     """
     Saves a model checkpoint.
 
-    :param model: A MoleculeModel.
-    :param scaler: A StandardScaler fitted on the data.
-    :param features_scaler: A StandardScaler fitted on the features.
-    :param args: Arguments.
+    :param model: A :class:`~chemprop.models.model.MoleculeModel`.
+    :param scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the data.
+    :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
+    :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
     """
     # Convert args to namespace for backwards compatibility
@@ -77,7 +77,7 @@ def load_checkpoint(path: str,
     :param path: Path where checkpoint is saved.
     :param device: Device where the model will be moved.
     :param logger: A logger for recording output.
-    :return: The loaded MoleculeModel.
+    :return: The loaded :class:`~chemprop.models.model.MoleculeModel`.
     """
     if logger is not None:
         debug, info = logger.debug, logger.info
@@ -127,7 +127,8 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
     Loads the scalers a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: A tuple with the data scaler and the features scaler.
+    :return: A tuple with the data :class:`~chemprop.data.scaler.StandardScaler`
+             and features :class:`~chemprop.data.scaler.StandardScaler`.
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
 
@@ -145,7 +146,7 @@ def load_args(path: str) -> TrainArgs:
     Loads the arguments a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: The arguments that the model was trained with.
+    :return: The :class:`~chemprop.args.TrainArgs` object that the model was trained with.
     """
     args = TrainArgs()
     args.from_dict(vars(torch.load(path, map_location=lambda storage, loc: storage)['args']), skip_unsettable=True)
@@ -158,7 +159,7 @@ def load_task_names(path: str) -> List[str]:
     Loads the task names a model was trained with.
 
     :param path: Path where model checkpoint is saved.
-    :return: The task names that the model was trained with.
+    :return: A list of the task names that the model was trained with.
     """
     return load_args(path).task_names
 
@@ -167,7 +168,7 @@ def get_loss_func(args: TrainArgs) -> nn.Module:
     """
     Gets the loss function corresponding to a given dataset type.
 
-    :param args: Arguments containing the dataset type ("classification" or "regression").
+    :param args: Arguments containing the dataset type ("classification", "regression", or "multiclass").
     :return: A PyTorch loss function.
     """
     if args.dataset_type == 'classification':
@@ -216,26 +217,39 @@ def mse(targets: List[float], preds: List[float]) -> float:
     return mean_squared_error(targets, preds)
 
 
-def accuracy(targets: List[int], preds: List[float], threshold: float = 0.5) -> float:
+def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
     """
     Computes the accuracy of a binary prediction task using a given threshold for generating hard predictions.
-    Alternatively, compute accuracy for a multiclass prediction task by picking the largest probability. 
+
+    Alternatively, computes accuracy for a multiclass prediction task by picking the largest probability.
 
     :param targets: A list of binary targets.
     :param preds: A list of prediction probabilities.
-    :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0
+    :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
     :return: The computed accuracy.
     """
-    if type(preds[0]) == list: # multiclass
+    if type(preds[0]) == list:  # multiclass
         hard_preds = [p.index(max(p)) for p in preds]
     else:
-        hard_preds = [1 if p > threshold else 0 for p in preds] # binary prediction
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
     return accuracy_score(targets, hard_preds)
 
 
 def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], List[float]], float]:
-    """
+    r"""
     Gets the metric function corresponding to a given metric name.
+
+    Supports:
+
+    * :code:`auc`: Area under the receiver operating characteristic curve
+    * :code:`prc-auc`: Area under the precision recall curve
+    * :code:`rmse`: Root mean squared error
+    * :code:`mse`: Mean squared error
+    * :code:`mae`: Mean absolute error
+    * :code:`r2`: Coefficient of determination R\ :superscript:`2`
+    * :code:`accuracy`: Accuracy (using a threshold to binarize predictions)
+    * :code:`cross_entropy`: Cross entropy
 
     :param metric: Metric name.
     :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
@@ -249,7 +263,7 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     if metric == 'rmse':
         return rmse
     
-    if metric =='mse':
+    if metric == 'mse':
         return mse
 
     if metric == 'mae':
@@ -269,10 +283,10 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
 def build_optimizer(model: nn.Module, args: TrainArgs) -> Optimizer:
     """
-    Builds an Optimizer.
+    Builds a PyTorch Optimizer.
 
     :param model: The model to optimize.
-    :param args: Arguments.
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing optimizer arguments.
     :return: An initialized Optimizer.
     """
     params = [{'params': model.parameters(), 'lr': args.init_lr, 'weight_decay': 0}]
@@ -282,10 +296,10 @@ def build_optimizer(model: nn.Module, args: TrainArgs) -> Optimizer:
 
 def build_lr_scheduler(optimizer: Optimizer, args: TrainArgs, total_epochs: List[int] = None) -> _LRScheduler:
     """
-    Builds a learning rate scheduler.
+    Builds a PyTorch learning rate scheduler.
 
     :param optimizer: The Optimizer whose learning rate will be scheduled.
-    :param args: Arguments.
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing learning rate arguments.
     :param total_epochs: The total number of epochs for which the model will be run.
     :return: An initialized learning rate scheduler.
     """
@@ -305,12 +319,12 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
     """
     Creates a logger with a stream handler and two file handlers.
 
-    The stream handler prints to the screen depending on the value of `quiet`.
-    One file handler (verbose.log) saves all logs, the other (quiet.log) only saves important info.
+    The stream handler prints to the screen depending on the value of :code:`quiet`.
+    One file handler (:code:`verbose.log`) saves all logs, the other (:code:`quiet.log`) only saves important info.
 
     :param name: The name of the logger.
     :param save_dir: The directory in which to save the logs.
-    :param quiet: Whether the stream handler should be quiet (i.e. print only important info).
+    :param quiet: Whether the stream handler should be quiet (i.e., print only important info).
     :return: The logger.
     """
     logger = logging.getLogger(name)
@@ -348,10 +362,11 @@ def save_smiles_splits(train_data: MoleculeDataset,
     """
     Saves indices of train/val/test split as a pickle file.
 
-    :param train_data: Train data.
-    :param val_data: Validation data.
-    :param test_data: Test data.
+    :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
+    :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
+    :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
     :param data_path: Path to data CSV file.
+    :param smiles_column: The name of the column containing SMILES. By default, uses the first column.
     :param save_dir: Path where pickle files will be saved.
     """
     makedirs(save_dir)

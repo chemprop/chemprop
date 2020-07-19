@@ -3,7 +3,7 @@
 Utility Functions
 =================
 
-:code:`chemprop.utils` contains general purpose utility functions.
+`chemprop.utils.py <https://github.com/chemprop/chemprop/tree/master/chemprop/utils.py>`_ contains general purpose utility functions.
 
 .. automodule:: chemprop.utils
    :members:
