@@ -32,5 +32,8 @@ def run_web(args: WebArgs) -> None:
 
 
 def chemprop_web() -> None:
-    """Runs the chemprop website locally."""
+    """Runs the Chemprop website locally.
+
+    This is the entry point for the command line command :code:`chemprop_web`.
+    """
     run_web(WebArgs().parse_args())

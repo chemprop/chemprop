@@ -126,7 +126,7 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
 
 
 def chemprop_predict() -> None:
-    """Parses predicting arguments and runs prediction.
+    """Parses Chemprop predicting arguments and runs prediction using a trained Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_predict`.
     """

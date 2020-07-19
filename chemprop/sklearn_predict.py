@@ -11,7 +11,13 @@ from chemprop.sklearn_train import predict
 from chemprop.utils import makedirs
 
 
-def predict_sklearn(args: SklearnPredictArgs):
+def predict_sklearn(args: SklearnPredictArgs) -> None:
+    """
+    Loads data and a trained scikit-learn model and uses the model to make predictions on the data.
+
+   :param args: A :class:`~chemprop.args.SklearnPredictArgs` object containing arguments for
+                 loading data, loading a trained scikit-learn model, and making predictions with the model.
+    """
     print('Loading data')
     data = get_data(path=args.test_path, smiles_column=args.smiles_column, target_columns=[])
 
@@ -63,5 +69,8 @@ def predict_sklearn(args: SklearnPredictArgs):
 
 
 def sklearn_predict() -> None:
-    """Runs sklearn predicting."""
+    """Parses scikit-learn predicting arguments and runs prediction using a trained scikit-learn model.
+
+    This is the entry point for the command line command :code:`sklearn_predict`.
+    """
     predict_sklearn(SklearnPredictArgs().parse_args())
