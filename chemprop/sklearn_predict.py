@@ -19,7 +19,12 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
                  loading data, loading a trained scikit-learn model, and making predictions with the model.
     """
     print('Loading data')
-    data = get_data(path=args.test_path, smiles_column=args.smiles_column, target_columns=[])
+    data = get_data(
+        path=args.test_path,
+        smiles_column=args.smiles_column,
+        target_columns=[],
+        store_row=True
+    )
 
     print('Loading training arguments')
     with open(args.checkpoint_paths[0], 'rb') as f:

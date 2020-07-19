@@ -43,9 +43,19 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
 
     print('Loading data')
     if smiles is not None:
-        full_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=args.features_generator)
+        full_data = get_data_from_smiles(
+            smiles=smiles,
+            skip_invalid_smiles=False,
+            features_generator=args.features_generator
+        )
     else:
-        full_data = get_data(path=args.test_path, args=args, target_columns=[], skip_invalid_smiles=False)
+        full_data = get_data(
+            path=args.test_path,
+            args=args,
+            target_columns=[],
+            skip_invalid_smiles=False,
+            store_row=True
+        )
 
     print('Validating SMILES')
     full_to_valid_indices = {}

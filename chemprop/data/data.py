@@ -37,7 +37,7 @@ class MoleculeDatapoint:
 
         self.smiles = smiles
         self.targets = targets
-        self.row = row or OrderedDict()
+        self.row = row
         self.features = features
         self.features_generator = features_generator
         self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule

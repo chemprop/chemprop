@@ -110,6 +110,7 @@ def get_data(path: str,
              features_path: List[str] = None,
              features_generator: List[str] = None,
              max_data_size: int = None,
+             store_row: bool = False,
              logger: Logger = None) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
@@ -127,6 +128,7 @@ def get_data(path: str,
                                in place of :code:`args.features_generator`.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
+    :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
@@ -179,7 +181,9 @@ def get_data(path: str,
 
             all_smiles.append(smiles)
             all_targets.append(targets)
-            all_rows.append(row)
+
+            if store_row:
+                all_rows.append(row)
 
             if len(all_smiles) >= max_data_size:
                 break
@@ -188,11 +192,11 @@ def get_data(path: str,
             MoleculeDatapoint(
                 smiles=smiles,
                 targets=targets,
-                row=row,
+                row=all_rows[i] if store_row else None,
                 features_generator=features_generator,
                 features=features_data[i] if features_data is not None else None
-            ) for i, (smiles, targets, row) in tqdm(enumerate(zip(all_smiles, all_targets, all_rows)),
-                                                    total=len(all_smiles))
+            ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
+                                               total=len(all_smiles))
         ])
 
     # Filter out invalid SMILES
