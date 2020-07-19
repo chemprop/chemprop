@@ -30,7 +30,7 @@ setup(
     url='https://github.com/chemprop/chemprop',
     download_url=f'https://github.com/chemprop/chemprop/v_{__version__}.tar.gz',
     project_urls={
-        # 'Documentation': 'https://chemprop.readthedocs.io/en/latest/',
+        'Documentation': 'https://chemprop.readthedocs.io/en/latest/',
         'Source': 'https://github.com/chemprop/chemprop',
         'Demo': 'http://chemprop.csail.mit.edu/'
     },

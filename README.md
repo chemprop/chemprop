@@ -1,13 +1,15 @@
 # Molecular Property Prediction
 This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
 
-**Website:** A web prediction interface with some trained chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+**Documentation:** Full documentation of Chemprop is available at https://chemprop.readthedocs.io/en/latest/.
 
-**Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a chemprop tutorial and highlight recent additions as of April 28th, 2020.
+**Website:** A web prediction interface with some trained Chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+
+**Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a Chemprop tutorial and highlight recent additions as of April 28th, 2020.
 
 ## COVID-19 Update
 
-Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use chemprop to identify drug candidates for treating COVID-19.
+Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use Chemprop to identify drug candidates for treating COVID-19.
 
 ## Table of Contents
 
@@ -33,7 +35,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
 
 ## Requirements
 
-For small datasets (~1000 molecules), it is possible to train models within a few minutes on a standard laptop with CPUs only. However, for larger datasets and larger `chemprop` models, we recommend using a GPU for significantly faster training.
+For small datasets (~1000 molecules), it is possible to train models within a few minutes on a standard laptop with CPUs only. However, for larger datasets and larger Chemprop models, we recommend using a GPU for significantly faster training.
 
 To use `chemprop` with GPUs, you will need:
  * cuda >= 8.0
@@ -66,7 +68,7 @@ Then proceed to either option below to complete the installation. Note that on m
 
 ### Docker
 
-Chemprop can also be installed with Docker. Docker makes it possible to isolate the `chemprop` code and environment. To install and run our code in a Docker container, follow these steps:
+Chemprop can also be installed with Docker. Docker makes it possible to isolate the Chemprop code and environment. To install and run our code in a Docker container, follow these steps:
 
 1. `git clone https://github.com/chemprop/chemprop.git`
 2. `cd chemprop`
