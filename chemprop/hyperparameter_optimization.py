@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 from typing import Dict, Union
 import os
+import time
 
 from hyperopt import fmin, hp, tpe
 import numpy as np
@@ -116,4 +117,6 @@ def chemprop_hyperopt() -> None:
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
+    start = time.time()
     hyperopt(HyperoptArgs().parse_args())
+    print(f'Elapsed training time: {(time.time()-start)/3600: .2f} hrs')

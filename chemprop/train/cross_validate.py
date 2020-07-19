@@ -1,6 +1,7 @@
 import csv
 from logging import Logger
 import os
+import time
 from typing import Tuple
 
 import numpy as np
@@ -86,6 +87,9 @@ def chemprop_train() -> None:
 
     This is the entry point for the command line command :code:`chemprop_train`.
     """
+    start = time.time()
     args = TrainArgs().parse_args()
     logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
+
     cross_validate(args, logger)
+    print(f'Elapsed training time: {(time.time()-start)/3600: .2f} hrs')

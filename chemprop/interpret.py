@@ -1,4 +1,5 @@
 import math
+import time
 from typing import Callable, Dict, List, Set, Tuple
 
 import numpy as np
@@ -332,4 +333,6 @@ def chemprop_interpret() -> None:
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
+    start = time.time()
     interpret(InterpretArgs().parse_args())
+    print(f'Elapsed run time: {(time.time()-start)/3600: .2f} hrs')
