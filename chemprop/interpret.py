@@ -335,4 +335,4 @@ def chemprop_interpret() -> None:
     """
     start = time.time()
     interpret(InterpretArgs().parse_args())
-    print(f'Elapsed run time: {(time.time()-start)/3600: .2f} hrs')
+    print(f'Elapsed runtime: {(time.time()-start)/3600: .2f} hrs')

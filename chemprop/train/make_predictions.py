@@ -1,4 +1,5 @@
 import csv
+import time
 from typing import List, Optional, Union
 
 import numpy as np
@@ -140,4 +141,6 @@ def chemprop_predict() -> None:
 
     This is the entry point for the command line command :code:`chemprop_predict`.
     """
+    start = time.time()
     make_predictions(PredictArgs().parse_args())
+    print(f'Elapsed runtime: {(time.time()-start)/3600: .2f} hrs')
