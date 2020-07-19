@@ -6,17 +6,12 @@ Installation
 Overview
 --------
 
-Chemprop can either be installed from PyPi via pip or from source (i.e., directly from this git repo). The PyPi version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source.
+Chemprop can either be installed from PyPi via pip or from source (i.e., directly from the git repo). The PyPi version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source.
 
 Conda
 -----
 
-Both options require conda, so first set up a conda environment and install RDKit:
-
-1. Install Miniconda from `<https://conda.io/miniconda.html>`_
-2. :code:`conda env create -n chemprop python=3.7`
-3. :code:`conda activate chemprop`
-4. :code:`conda install -c conda-forge rdkit`
+Both options require conda, so first install Miniconda from `https://conda.io/miniconda.html`_.
 
 Then proceed to either option below to complete the installation. Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions `here <https://pytorch.org/get-started/locally/>`_.
 
@@ -25,14 +20,18 @@ Option 1: Installing from PyPi
 
 **Coming soon**
 
-1. :code:`pip install chemprop`
+1. :code:`conda env create -n chemprop python=3.7`
+2. :code:`conda activate chemprop`
+3. :code:`pip install chemprop`
 
 Option 2: Installing from source
 --------------------------------
 
 1. :code:`git clone https://github.com/chemprop/chemprop.git`
 2. :code:`cd chemprop`
-3. :code:`pip install -e .`
+3. :code:`conda env create -f environment.yml`
+4. :code:`conda activate chemprop`
+5. :code:`pip install -e .`
 
 Docker
 ------

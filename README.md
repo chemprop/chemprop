@@ -45,12 +45,7 @@ To use `chemprop` with GPUs, you will need:
 
 Chemprop can either be installed from PyPi via pip or from source (i.e., directly from this git repo). The PyPi version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source.
 
-Both options require conda, so first set up a conda environment and install RDKit:
-
-1. Install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-2. `conda env create -n chemprop python=3.7`
-3. `conda activate chemprop`
-4. `conda install -c conda-forge rdkit`
+Both options require conda, so first install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html).
 
 Then proceed to either option below to complete the installation. Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions [here](https://pytorch.org/get-started/locally/).
 
@@ -58,13 +53,17 @@ Then proceed to either option below to complete the installation. Note that on m
 
 **Coming soon**
 
-1. `pip install chemprop`
+1. `conda env create -n chemprop python=3.7`
+2. `conda activate chemprop`
+3. `pip install chemprop`
 
 ### Option 2: Installing from source
 
 1. `git clone https://github.com/chemprop/chemprop.git`
 2. `cd chemprop`
-3. `pip install -e .`
+3. `conda env create -f environment.yml`
+4. `conda activate chemprop`
+5. `pip install -e .`
 
 ### Docker
 
