@@ -12,4 +12,4 @@ tensorboardX>=2.0
 tensorflow>=1.13.1
 torch>=1.5.1
 tqdm>=4.45.0
-typed-argument-parser>=1.5.2
+typed-argument-parser>=1.5.3
