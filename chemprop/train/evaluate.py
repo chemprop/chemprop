@@ -1,8 +1,6 @@
 import logging
 from typing import Callable, List
 
-import torch.nn as nn
-
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler
 from chemprop.models import MoleculeModel
@@ -93,11 +91,9 @@ def evaluate(model: MoleculeModel,
         scaler=scaler
     )
 
-    targets = data_loader.targets()
-
     results = evaluate_predictions(
         preds=preds,
-        targets=targets,
+        targets=data_loader.targets,
         num_tasks=num_tasks,
         metric_func=metric_func,
         dataset_type=dataset_type,

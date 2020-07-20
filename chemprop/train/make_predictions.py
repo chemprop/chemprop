@@ -8,7 +8,7 @@ from tqdm import tqdm
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
+from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 
 
 def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
@@ -136,11 +136,10 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
     return avg_preds
 
 
+@timeit()
 def chemprop_predict() -> None:
     """Parses Chemprop predicting arguments and runs prediction using a trained Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_predict`.
     """
-    start = time.time()
     make_predictions(PredictArgs().parse_args())
-    print(f'Elapsed runtime: {(time.time()-start)/3600: .2f} hrs')

@@ -1,10 +1,13 @@
 from argparse import Namespace
 import csv
+from datetime import timedelta
+from functools import wraps
 import logging
 import math
 import os
 import pickle
-from typing import Callable, List, Tuple, Union
+from time import time
+from typing import Any, Callable, List, Tuple, Union
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score, log_loss
@@ -351,6 +354,35 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
         logger.addHandler(fh_q)
 
     return logger
+
+
+def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
+    """
+    Creates a decorator which wraps a function with a timer that prints the elapsed time.
+
+    :param logger_name: The name of the logger used to record output. If None, uses :code:`print` instead.
+    :return: A decorator which wraps a function with a timer that prints the elapsed time.
+    """
+    def timeit_decorator(func: Callable) -> Callable:
+        """
+        A decorator which wraps a function with a timer that prints the elapsed time.
+
+        :param func: The function to wrap with the timer.
+        :return: The function wrapped with the timer.
+        """
+        @wraps(func)
+        def wrap(*args, **kwargs) -> Any:
+            start_time = time()
+            result = func(*args, **kwargs)
+            delta = timedelta(seconds=round(time() - start_time))
+            info = logging.getLogger(logger_name).info if logger_name is not None else print
+            info(f'Elapsed time = {delta}')
+
+            return result
+
+        return wrap
+
+    return timeit_decorator
 
 
 def save_smiles_splits(train_data: MoleculeDataset,

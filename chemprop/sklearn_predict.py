@@ -8,7 +8,7 @@ from chemprop.args import SklearnPredictArgs, SklearnTrainArgs
 from chemprop.data import get_data
 from chemprop.features import get_features_generator
 from chemprop.sklearn_train import predict
-from chemprop.utils import makedirs
+from chemprop.utils import makedirs, timeit
 
 
 def predict_sklearn(args: SklearnPredictArgs) -> None:
@@ -73,6 +73,7 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
             writer.writerow(datapoint.row)
 
 
+@timeit()
 def sklearn_predict() -> None:
     """Parses scikit-learn predicting arguments and runs prediction using a trained scikit-learn model.
 

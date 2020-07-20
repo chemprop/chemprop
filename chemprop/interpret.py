@@ -1,5 +1,4 @@
 import math
-import time
 from typing import Callable, Dict, List, Set, Tuple
 
 import numpy as np
@@ -8,7 +7,7 @@ from rdkit import Chem
 from chemprop.args import InterpretArgs
 from chemprop.data import get_data_from_smiles, get_header, get_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.train import predict
-from chemprop.utils import load_args, load_checkpoint, load_scalers
+from chemprop.utils import load_args, load_checkpoint, load_scalers, timeit
 
 
 MIN_ATOMS = 15
@@ -328,11 +327,10 @@ def interpret(args: InterpretArgs) -> None:
             print(f'{smiles},{score:.3f},{rats[0].smiles},{rats[0].P:.3f}')
 
 
+@timeit()
 def chemprop_interpret() -> None:
     """Runs interpretation of a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
-    start = time.time()
     interpret(InterpretArgs().parse_args())
-    print(f'Elapsed runtime: {(time.time()-start)/3600: .2f} hrs')
