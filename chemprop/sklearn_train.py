@@ -307,4 +307,4 @@ def sklearn_train() -> None:
     """
     args = SklearnTrainArgs().parse_args()
     logger = create_logger(name=SKLEARN_TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-    cross_validate_sklearn(args, logger)
+    cross_validate_sklearn(args=args, logger=logger)

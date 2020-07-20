@@ -79,4 +79,4 @@ def sklearn_predict() -> None:
 
     This is the entry point for the command line command :code:`sklearn_predict`.
     """
-    predict_sklearn(SklearnPredictArgs().parse_args())
+    predict_sklearn(args=SklearnPredictArgs().parse_args())
