@@ -121,4 +121,4 @@ def chemprop_hyperopt() -> None:
     """
     args = HyperoptArgs().parse_args()
     logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
-    hyperopt(args, logger)
+    hyperopt(args=args, logger=logger)

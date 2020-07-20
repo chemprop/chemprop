@@ -142,4 +142,4 @@ def chemprop_predict() -> None:
 
     This is the entry point for the command line command :code:`chemprop_predict`.
     """
-    make_predictions(PredictArgs().parse_args())
+    make_predictions(args=PredictArgs().parse_args())
