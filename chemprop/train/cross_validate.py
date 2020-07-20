@@ -1,7 +1,6 @@
 import csv
 from logging import Logger
 import os
-import time
 from typing import Tuple
 
 import numpy as np
@@ -9,7 +8,10 @@ import numpy as np
 from .run_training import run_training
 from chemprop.args import TrainArgs
 from chemprop.data import get_task_names
-from chemprop.utils import create_logger, makedirs
+from chemprop.utils import create_logger, makedirs, timeit
+
+
+TRAIN_LOGGER_NAME = 'train'
 
 
 def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float]:
@@ -56,7 +58,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
 
         if args.show_individual_scores:
             for task_name, score in zip(args.task_names, scores):
-                info(f'Seed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
+                info(f'\t\tSeed {init_seed + fold_num} ==> test {task_name} {args.metric} = {score:.6f}')
 
     # Report scores across models
     avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
@@ -82,14 +84,12 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
     return mean_score, std_score
 
 
+@timeit(logger_name=TRAIN_LOGGER_NAME)
 def chemprop_train() -> None:
     """Parses Chemprop training arguments and trains (cross-validates) a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_train`.
     """
-    start = time.time()
     args = TrainArgs().parse_args()
-    logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
-
-    cross_validate(args, logger)
-    print(f'Elapsed training time: {(time.time()-start)/3600: .2f} hrs')
+    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
+    cross_validate(args=args, logger=logger)

@@ -13,7 +13,10 @@ from chemprop.args import SklearnTrainArgs
 from chemprop.data import get_data, get_task_names, MoleculeDataset, split_data
 from chemprop.features import get_features_generator
 from chemprop.train import evaluate_predictions
-from chemprop.utils import create_logger, get_metric_func, makedirs
+from chemprop.utils import create_logger, get_metric_func, makedirs, timeit
+
+
+SKLEARN_TRAIN_LOGGER_NAME = 'sklearn_train'
 
 
 def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -296,11 +299,12 @@ def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tup
     return mean_score, std_score
 
 
+@timeit(logger_name=SKLEARN_TRAIN_LOGGER_NAME)
 def sklearn_train() -> None:
     """Parses scikit-learn training arguments and trains a scikit-learn model.
 
     This is the entry point for the command line command :code:`sklearn_train`.
     """
     args = SklearnTrainArgs().parse_args()
-    logger = create_logger(name='sklearn-train', save_dir=args.save_dir, quiet=args.quiet)
+    logger = create_logger(name=SKLEARN_TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
     cross_validate_sklearn(args, logger)

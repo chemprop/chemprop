@@ -2,9 +2,9 @@
 
 from copy import deepcopy
 import json
+from logging import Logger
 from typing import Dict, Union
 import os
-import time
 
 from hyperopt import fmin, hp, tpe
 import numpy as np
@@ -12,8 +12,8 @@ import numpy as np
 from chemprop.args import HyperoptArgs
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.train import cross_validate
-from chemprop.utils import create_logger, makedirs
+from chemprop.train import cross_validate, TRAIN_LOGGER_NAME
+from chemprop.utils import create_logger, makedirs, timeit
 
 
 SPACE = {
@@ -23,9 +23,10 @@ SPACE = {
     'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
 }
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
+HYPEROPT_LOGGER_NAME = 'hyperparameter_optimization'
 
 
-def hyperopt(args: HyperoptArgs) -> None:
+def hyperopt(args: HyperoptArgs, logger: Logger) -> None:
     """
     Runs hyperparameter optimization on a Chemprop model.
 
@@ -40,10 +41,10 @@ def hyperopt(args: HyperoptArgs) -> None:
 
     :param args: A :class:`~chemprop.args.HyperoptArgs` object containing arguments for hyperparameter
                  optimization in addition to all arguments needed for training.
+    :param logger: A logger to record output.
     """
-    # Create loggers
-    logger = create_logger(name='hyperparameter_optimization', save_dir=args.log_dir, quiet=True)
-    train_logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
+    # Create logger
+    train_logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
 
     # Run grid search
     results = []
@@ -112,11 +113,12 @@ def hyperopt(args: HyperoptArgs) -> None:
         json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
 
 
+@timeit(logger_name=HYPEROPT_LOGGER_NAME)
 def chemprop_hyperopt() -> None:
     """Runs hyperparameter optimization for a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
-    start = time.time()
-    hyperopt(HyperoptArgs().parse_args())
-    print(f'Elapsed training time: {(time.time()-start)/3600: .2f} hrs')
+    args = HyperoptArgs().parse_args()
+    logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
+    hyperopt(args, logger)

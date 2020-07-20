@@ -153,7 +153,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     )
 
     if args.class_balance:
-        debug(f'With class_balance, effective train size = {len(train_data_loader._sampler):,}')
+        debug(f'With class_balance, effective train size = {train_data_loader.iter_size:,}')
 
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):

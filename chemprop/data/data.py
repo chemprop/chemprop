@@ -389,6 +389,7 @@ class MoleculeDataLoader(DataLoader):
             collate_fn=partial(construct_molecule_batch, cache=self._cache)
         )
 
+    @property
     def targets(self) -> List[List[Optional[float]]]:
         """
         Returns the targets associated with each molecule.
@@ -399,6 +400,11 @@ class MoleculeDataLoader(DataLoader):
             raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
 
         return [self._dataset[index].targets for index in self._sampler]
+
+    @property
+    def iter_size(self) -> int:
+        """Returns the number of data points included in each full iteration through the :class:`MoleculeDataLoader`."""
+        return len(self._sampler)
 
     def __iter__(self) -> Iterator[MoleculeDataset]:
         r"""Creates an iterator which returns :class:`MoleculeDataset`\ s"""
