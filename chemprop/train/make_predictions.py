@@ -54,6 +54,7 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
             path=args.test_path,
             args=args,
             target_columns=[],
+            ignore_columns=[],
             skip_invalid_smiles=False,
             store_row=True
         )

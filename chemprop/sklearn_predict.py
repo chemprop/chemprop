@@ -23,6 +23,7 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
         path=args.test_path,
         smiles_column=args.smiles_column,
         target_columns=[],
+        ignore_columns=[],
         store_row=True
     )
 
