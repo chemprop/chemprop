@@ -50,7 +50,7 @@ class MoleculeModel(nn.Module):
         """
         self.encoder = MPN(args)
 
-    def create_ffn(self, args: TrainArgs):
+    def create_ffn(self, args: TrainArgs) -> None:
         """
         Creates the feed-forward layers for the model.
 
