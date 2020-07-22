@@ -38,7 +38,7 @@ def compare_datasets_tsne(args: Args):
     # Random seed for random subsampling
     np.random.seed(0)
 
-    # Genenrate labels based on file name
+    # Generate labels based on file name
     labels = [os.path.basename(path).replace('.csv', '') for path in args.smiles_paths]
 
     # Load the smiles datasets
