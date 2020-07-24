@@ -49,10 +49,12 @@ setup(
         ]
     },
     install_requires=requirements,
+    tests_require=['pytest'],
     python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent'
     ],
