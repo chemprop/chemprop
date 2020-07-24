@@ -115,7 +115,7 @@ class ChempropTests(TestCase):
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, 0.064600, delta=0.02)
+            self.assertAlmostEqual(mse, 0.559111, delta=0.02)
 
     def test_chemprop_predict_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
