@@ -322,6 +322,9 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
     """
     Creates a logger with a stream handler and two file handlers.
 
+    If a logger with that name already exists, simply returns that logger.
+    Otherwise, creates a new logger with a stream handler and two file handlers.
+
     The stream handler prints to the screen depending on the value of :code:`quiet`.
     One file handler (:code:`verbose.log`) saves all logs, the other (:code:`quiet.log`) only saves important info.
 
@@ -331,6 +334,10 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
     :return: The logger.
     """
     logger = logging.getLogger(name)
+
+    if logging.getLogger().hasHandlers():
+        return logger
+
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
