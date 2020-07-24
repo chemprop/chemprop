@@ -12,8 +12,9 @@ install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda create -q -n chemprop python=$TRAVIS_PYTHON_VERSION -c conda-forge rdkit
+  - conda create -q -n chemprop python=$TRAVIS_PYTHON_VERSION
   - conda activate chemprop
+  - conda install -c conda-forge rdkit
   - pip install -e .
 script:
   - pytest
