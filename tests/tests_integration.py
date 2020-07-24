@@ -6,8 +6,8 @@ import unittest
 from unittest import TestCase
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_squared_error
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
 from chemprop.train import chemprop_train, chemprop_predict
@@ -65,7 +65,7 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 1)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, 1.500242, delta=0.1)
+            self.assertAlmostEqual(mean_score, 1.237620, delta=0.02)
 
     def test_chemprop_train_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
@@ -119,12 +119,12 @@ class ChempropTests(TestCase):
             # Check results
             pred = pd.read_csv(preds_path)
             true = pd.read_csv('data/test_true.csv')
-            self.assertEqual(pred.keys(), true.keys())
-            self.assertEqual(pred['smiles'], true['smiles'])
+            self.assertEqual(list(pred.keys()), list(true.keys()))
+            self.assertEqual(list(pred['smiles']), list(true['smiles']))
 
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
-            mse = mean_squared_error(true, pred)
+            mse = float(np.nanmean((pred - true) ** 2))
             print(f'MSE  = {mse}')
             self.assertAlmostEqual(mse, 0.1, delta=0.1)
 
