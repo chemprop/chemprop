@@ -35,11 +35,11 @@ class ChempropTests(TestCase):
         ]
 
     @staticmethod
-    def create_raw_predict_args(preds_path: str, checkpoint_dir: str) -> List[str]:
+    def create_raw_predict_args(dataset_type: str, preds_path: str, checkpoint_dir: str) -> List[str]:
         """Creates a list of raw command line arguments for predicting."""
         return [
             'chemprop_predict',  # Note: not actually used, just a placeholder
-            '--test_path', f'data/test_smiles.csv',
+            '--test_path', f'data/{dataset_type}_test_smiles.csv',
             '--preds_path', preds_path,
             '--checkpoint_dir', checkpoint_dir
         ]
@@ -56,9 +56,10 @@ class ChempropTests(TestCase):
         with patch('sys.argv', raw_train_args):
             chemprop_train()
 
-    def predict(self, preds_path: str, save_dir: str):
+    def predict(self, dataset_type: str, preds_path: str, save_dir: str):
         # Set up command line arguments for predicting
         raw_predict_args = self.create_raw_predict_args(
+            dataset_type=dataset_type,
             preds_path=preds_path,
             checkpoint_dir=save_dir
         )
@@ -98,15 +99,16 @@ class ChempropTests(TestCase):
     def test_chemprop_predict_single_task_regression(self):
         with TemporaryDirectory() as save_dir:
             # Train
-            self.train(dataset_type='regression', metric='rmse', save_dir=save_dir)
+            dataset_type = 'regression'
+            self.train(dataset_type=dataset_type, metric='rmse', save_dir=save_dir)
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(preds_path=preds_path, save_dir=save_dir)
+            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir)
 
             # Check results
             pred = pd.read_csv(preds_path)
-            true = pd.read_csv('data/test_true.csv')
+            true = pd.read_csv(f'data/{dataset_type}_test_true.csv')
             self.assertEqual(list(pred.keys()), list(true.keys()))
             self.assertEqual(list(pred['smiles']), list(true['smiles']))
 
@@ -118,15 +120,16 @@ class ChempropTests(TestCase):
     def test_chemprop_predict_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
             # Train
-            self.train(dataset_type='classification', metric='auc', save_dir=save_dir)
+            dataset_type = 'classification'
+            self.train(dataset_type=dataset_type, metric='auc', save_dir=save_dir)
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(preds_path=preds_path, save_dir=save_dir)
+            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir)
 
             # Check results
             pred = pd.read_csv(preds_path)
-            true = pd.read_csv('data/test_true.csv')
+            true = pd.read_csv(f'data/{dataset_type}_test_true.csv')
             self.assertEqual(list(pred.keys()), list(true.keys()))
             self.assertEqual(list(pred['smiles']), list(true['smiles']))
 
