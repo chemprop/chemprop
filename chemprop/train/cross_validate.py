@@ -1,5 +1,4 @@
 import csv
-from logging import Logger
 import os
 from typing import Tuple
 
@@ -7,14 +6,13 @@ import numpy as np
 
 from .run_training import run_training
 from chemprop.args import TrainArgs
+from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_task_names
 from chemprop.utils import create_logger, makedirs, timeit
 
 
-TRAIN_LOGGER_NAME = 'train'
-
-
-def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float]:
+@timeit(logger_name=TRAIN_LOGGER_NAME)
+def cross_validate(args: TrainArgs) -> Tuple[float, float]:
     """
     Runs k-fold cross-validation for a Chemprop model.
 
@@ -23,9 +21,9 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
 
     :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for
                  loading data and training the Chemprop model.
-    :param logger: A logger for recording output.
     :return: A tuple containing the mean and standard deviation performance across folds.
     """
+    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
     info = logger.info if logger is not None else print
 
     # Initialize relevant variables
@@ -71,7 +69,7 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
                  f'{np.nanmean(all_scores[:, task_num]):.6f} +/- {np.nanstd(all_scores[:, task_num]):.6f}')
 
     # Save scores
-    with open(os.path.join(save_dir, 'test_scores.csv'), 'w') as f:
+    with open(os.path.join(save_dir, TEST_SCORES_FILE_NAME), 'w') as f:
         writer = csv.writer(f)
         writer.writerow(['Task', f'Mean {args.metric}', f'Standard deviation {args.metric}'] +
                         [f'Fold {i} {args.metric}' for i in range(args.num_folds)])
@@ -84,12 +82,9 @@ def cross_validate(args: TrainArgs, logger: Logger = None) -> Tuple[float, float
     return mean_score, std_score
 
 
-@timeit(logger_name=TRAIN_LOGGER_NAME)
 def chemprop_train() -> None:
     """Parses Chemprop training arguments and trains (cross-validates) a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_train`.
     """
-    args = TrainArgs().parse_args()
-    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-    cross_validate(args=args, logger=logger)
+    cross_validate(args=TrainArgs().parse_args())

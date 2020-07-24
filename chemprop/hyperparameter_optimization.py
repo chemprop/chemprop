@@ -2,7 +2,6 @@
 
 from copy import deepcopy
 import json
-from logging import Logger
 from typing import Dict, Union
 import os
 
@@ -10,9 +9,10 @@ from hyperopt import fmin, hp, tpe
 import numpy as np
 
 from chemprop.args import HyperoptArgs
+from chemprop.constants import HYPEROPT_LOGGER_NAME
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.train import cross_validate, TRAIN_LOGGER_NAME
+from chemprop.train import cross_validate
 from chemprop.utils import create_logger, makedirs, timeit
 
 
@@ -23,10 +23,10 @@ SPACE = {
     'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
 }
 INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
-HYPEROPT_LOGGER_NAME = 'hyperparameter_optimization'
 
 
-def hyperopt(args: HyperoptArgs, logger: Logger) -> None:
+@timeit(logger_name=HYPEROPT_LOGGER_NAME)
+def hyperopt(args: HyperoptArgs) -> None:
     """
     Runs hyperparameter optimization on a Chemprop model.
 
@@ -41,10 +41,9 @@ def hyperopt(args: HyperoptArgs, logger: Logger) -> None:
 
     :param args: A :class:`~chemprop.args.HyperoptArgs` object containing arguments for hyperparameter
                  optimization in addition to all arguments needed for training.
-    :param logger: A logger to record output.
     """
     # Create logger
-    train_logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
+    logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
 
     # Run grid search
     results = []
@@ -72,7 +71,7 @@ def hyperopt(args: HyperoptArgs, logger: Logger) -> None:
         logger.info(hyperparams)
 
         # Cross validate
-        mean_score, std_score = cross_validate(hyper_args, train_logger)
+        mean_score, std_score = cross_validate(hyper_args)
 
         # Record results
         temp_model = MoleculeModel(hyper_args)
@@ -113,12 +112,9 @@ def hyperopt(args: HyperoptArgs, logger: Logger) -> None:
         json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
 
 
-@timeit(logger_name=HYPEROPT_LOGGER_NAME)
 def chemprop_hyperopt() -> None:
     """Runs hyperparameter optimization for a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
-    args = HyperoptArgs().parse_args()
-    logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
-    hyperopt(args=args, logger=logger)
+    hyperopt(args=HyperoptArgs().parse_args())

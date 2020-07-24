@@ -36,4 +36,4 @@ def chemprop_web() -> None:
 
     This is the entry point for the command line command :code:`chemprop_web`.
     """
-    run_web(WebArgs().parse_args())
+    run_web(args=WebArgs().parse_args())

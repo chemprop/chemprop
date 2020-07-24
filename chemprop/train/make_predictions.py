@@ -1,5 +1,4 @@
 import csv
-import time
 from typing import List, Optional, Union
 
 import numpy as np
@@ -11,6 +10,7 @@ from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, Mo
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 
 
+@timeit()
 def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to make predictions on the data.
@@ -137,7 +137,6 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
     return avg_preds
 
 
-@timeit()
 def chemprop_predict() -> None:
     """Parses Chemprop predicting arguments and runs prediction using a trained Chemprop model.
 

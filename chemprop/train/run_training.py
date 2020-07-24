@@ -13,6 +13,7 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from chemprop.args import TrainArgs
+from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, split_data, StandardScaler, validate_dataset_type
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
@@ -180,7 +181,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         model = model.to(args.device)
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
+        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -232,11 +233,11 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
+                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
-        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), device=args.device, logger=logger)
+        model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
 
         test_preds = predict(
             model=model,

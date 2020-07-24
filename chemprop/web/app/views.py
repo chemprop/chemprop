@@ -21,6 +21,7 @@ from chemprop.web.app import app, db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
 from chemprop.args import PredictArgs, TrainArgs
+from chemprop.constants import MODEL_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_header, get_smiles, validate_data
 from chemprop.train import make_predictions, run_training
 from chemprop.utils import create_logger, load_task_names, load_args
@@ -250,7 +251,7 @@ def train():
         TRAINING = 1
 
         # Run training
-        logger = create_logger(name='train', save_dir=args.save_dir, quiet=args.quiet)
+        logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
         task_scores = run_training(args, logger)
         process.join()
 
@@ -503,7 +504,7 @@ def upload_checkpoint(return_page: str):
     ckpt_paths = []
 
     if ckpt_ext.endswith('.pt'):
-        ckpt_path = os.path.join(temp_dir.name, 'model.pt')
+        ckpt_path = os.path.join(temp_dir.name, MODEL_FILE_NAME)
         ckpt.save(ckpt_path)
         ckpt_paths = [ckpt_path]
 

@@ -282,7 +282,7 @@ def mcts(smiles: str,
 
     return rationales
 
-
+@timeit()
 def interpret(args: InterpretArgs) -> None:
     """
     Runs interpretation of a Chemprop model using the Monte Carlo Tree Search algorithm.
@@ -327,10 +327,9 @@ def interpret(args: InterpretArgs) -> None:
             print(f'{smiles},{score:.3f},{rats[0].smiles},{rats[0].P:.3f}')
 
 
-@timeit()
 def chemprop_interpret() -> None:
     """Runs interpretation of a Chemprop model.
 
     This is the entry point for the command line command :code:`chemprop_hyperopt`.
     """
-    interpret(InterpretArgs().parse_args())
+    interpret(args=InterpretArgs().parse_args())

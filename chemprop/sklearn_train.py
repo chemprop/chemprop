@@ -10,13 +10,11 @@ from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
+from chemprop.constants import SKLEARN_TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_task_names, MoleculeDataset, split_data
 from chemprop.features import get_features_generator
 from chemprop.train import evaluate_predictions
 from chemprop.utils import create_logger, get_metric_func, makedirs, timeit
-
-
-SKLEARN_TRAIN_LOGGER_NAME = 'sklearn_train'
 
 
 def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -260,7 +258,8 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
     return scores
 
 
-def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tuple[float, float]:
+@timeit(logger_name=SKLEARN_TRAIN_LOGGER_NAME)
+def cross_validate_sklearn(args: SklearnTrainArgs) -> Tuple[float, float]:
     """
     Runs k-fold cross-validation for a scikit-learn model.
 
@@ -269,9 +268,9 @@ def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tup
 
     :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
                  loading data and training the scikit-learn model.
-    :param logger: A logger for recording output.
     :return: A tuple containing the mean and standard deviation performance across folds.
     """
+    logger = create_logger(name=SKLEARN_TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
     info = logger.info if logger is not None else print
     init_seed = args.seed
     save_dir = args.save_dir
@@ -299,12 +298,9 @@ def cross_validate_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Tup
     return mean_score, std_score
 
 
-@timeit(logger_name=SKLEARN_TRAIN_LOGGER_NAME)
 def sklearn_train() -> None:
     """Parses scikit-learn training arguments and trains a scikit-learn model.
 
     This is the entry point for the command line command :code:`sklearn_train`.
     """
-    args = SklearnTrainArgs().parse_args()
-    logger = create_logger(name=SKLEARN_TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-    cross_validate_sklearn(args=args, logger=logger)
+    cross_validate_sklearn(args=SklearnTrainArgs().parse_args())
