@@ -16,6 +16,7 @@ install:
   - conda activate chemprop
   - conda install -c conda-forge rdkit
   - conda install pytest
+  - pip install git+https://github.com/bp-kelley/descriptastorus
   - pip install -e .
 script:
   - pytest

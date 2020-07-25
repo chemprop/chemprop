@@ -21,7 +21,8 @@ Option 1: Installing from PyPi
 1. :code:`conda create -n chemprop python=3.8`
 2. :code:`conda activate chemprop`
 3. :code:`conda install -c conda-forge rdkit`
-4. :code:`pip install chemprop`
+4. :code:`pip install git+https://github.com/bp-kelley/descriptastorus`
+5. :code:`pip install chemprop`
 
 Option 2: Installing from source
 --------------------------------

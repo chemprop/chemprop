@@ -46,7 +46,6 @@ setup(
         ]
     },
     install_requires=[
-        'descriptastorus@git+https://github.com/bp-kelley/descriptastorus@master',
         'flask>=1.1.2',
         'hyperopt>=0.2.3',
         'matplotlib>=3.1.3',
