@@ -13,6 +13,7 @@ from chemprop.constants import TEST_SCORES_FILE_NAME
 from chemprop.train import chemprop_train, chemprop_predict
 
 
+TEST_DATA_DIR = 'tests/data'
 SEED = 0
 EPOCHS = 10
 NUM_FOLDS = 3
@@ -24,7 +25,7 @@ class ChempropTests(TestCase):
         """Creates a list of raw command line arguments for training."""
         return [
             'chemprop_train',  # Note: not actually used, just a placeholder
-            '--data_path', f'data/{dataset_type}.csv',
+            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
             '--dataset_type', dataset_type,
             '--epochs', str(EPOCHS),
             '--num_folds', str(NUM_FOLDS),
@@ -39,7 +40,7 @@ class ChempropTests(TestCase):
         """Creates a list of raw command line arguments for predicting."""
         return [
             'chemprop_predict',  # Note: not actually used, just a placeholder
-            '--test_path', f'data/{dataset_type}_test_smiles.csv',
+            '--test_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
             '--preds_path', preds_path,
             '--checkpoint_dir', checkpoint_dir
         ]
@@ -108,7 +109,7 @@ class ChempropTests(TestCase):
 
             # Check results
             pred = pd.read_csv(preds_path)
-            true = pd.read_csv(f'data/{dataset_type}_test_true.csv')
+            true = pd.read_csv(os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_true.csv'))
             self.assertEqual(list(pred.keys()), list(true.keys()))
             self.assertEqual(list(pred['smiles']), list(true['smiles']))
 
@@ -129,7 +130,7 @@ class ChempropTests(TestCase):
 
             # Check results
             pred = pd.read_csv(preds_path)
-            true = pd.read_csv(f'data/{dataset_type}_test_true.csv')
+            true = pd.read_csv(os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_true.csv'))
             self.assertEqual(list(pred.keys()), list(true.keys()))
             self.assertEqual(list(pred['smiles']), list(true['smiles']))
 
