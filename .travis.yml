@@ -15,6 +15,7 @@ install:
   - conda create -q -n chemprop python=$TRAVIS_PYTHON_VERSION
   - conda activate chemprop
   - conda install -c conda-forge rdkit
+  - conda install pytest
   - pip install -e .
 script:
   - pytest
