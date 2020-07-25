@@ -56,7 +56,7 @@ Then proceed to either option below to complete the installation. Note that on m
 
 ### Option 1: Installing from PyPi
 
-1. `conda env create -n chemprop python=3.8`
+1. `conda create -n chemprop python=3.8`
 2. `conda activate chemprop`
 3. `conda install -c conda-forge rdkit`
 4. `pip install chemprop`
@@ -85,9 +85,9 @@ Note that you will need to run the latter command with nvidia-docker if you are 
 
 For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
 
-![Training with our web interface](chemprop/web/app/static/images/web_train.png "Training with our web interface")
+![Training with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_train.png "Training with our web interface")
 
-![Predicting with our web interface](chemprop/web/app/static/images/web_predict.png "Predicting with our web interface")
+![Predicting with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_predict.png "Predicting with our web interface")
 
 You can start the web interface on your local machine in two ways. Flask is used for development mode while gunicorn is used for production mode.
 

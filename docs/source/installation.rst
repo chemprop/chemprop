@@ -18,7 +18,7 @@ Then proceed to either option below to complete the installation. Note that on m
 Option 1: Installing from PyPi
 ------------------------------
 
-1. :code:`conda env create -n chemprop python=3.7`
+1. :code:`conda create -n chemprop python=3.8`
 2. :code:`conda activate chemprop`
 3. :code:`conda install -c conda-forge rdkit`
 4. :code:`pip install chemprop`
