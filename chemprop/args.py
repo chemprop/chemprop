@@ -147,7 +147,7 @@ class TrainArgs(CommonArgs):
     """Path to separate val set, optional."""
     separate_test_path: str = None
     """Path to separate test set, optional."""
-    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'index_predetermined'] = 'random'
+    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'index_predetermined'] = 'random'
     """Method of splitting the data into train/val/test."""
     split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)
     """Split proportions for train/validation/test sets."""

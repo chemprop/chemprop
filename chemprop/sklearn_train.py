@@ -200,6 +200,7 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
         split_type=args.split_type,
         seed=args.seed,
         sizes=args.split_sizes,
+        num_folds=args.num_folds,
         args=args
     )
 
