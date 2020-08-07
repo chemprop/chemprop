@@ -179,6 +179,11 @@ def get_data(path: str,
 
             targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 
+            # Check whether all targets are None -- this is relevant when specifying target_columns
+            num_none = sum([x is not None for x in targets])
+            if num_none == len(targets):
+                continue # skip this example
+
             all_smiles.append(smiles)
             all_targets.append(targets)
 
