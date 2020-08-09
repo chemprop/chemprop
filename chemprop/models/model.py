@@ -37,6 +37,8 @@ class MoleculeModel(nn.Module):
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
 
+        self.atom_descriptors = args.atom_descriptors
+
         self.create_encoder(args)
         self.create_ffn(args)
 
@@ -65,6 +67,9 @@ class MoleculeModel(nn.Module):
             first_linear_dim = args.hidden_size
             if args.use_input_features:
                 first_linear_dim += args.features_size
+
+        if args.atom_descriptors == 'descriptors':
+            first_linear_dim += args.atom_descriptors_size
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
@@ -97,33 +102,37 @@ class MoleculeModel(nn.Module):
 
     def featurize(self,
                   batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
-                  features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                  features_batch: List[np.ndarray] = None,
+                  atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Computes feature vectors of the input by running the model except for the last layer.
 
         :param batch: A list of SMILES, a list of RDKit molecules, or a
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
+        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors
         :return: The feature vectors computed by the :class:`MoleculeModel`.
         """
-        return self.ffn[:-1](self.encoder(batch, features_batch))
+        return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch))
 
     def forward(self,
                 batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
-                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                features_batch: List[np.ndarray] = None,
+                atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Runs the :class:`MoleculeModel` on input.
 
         :param batch: A list of SMILES, a list of RDKit molecules, or a
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
+        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :return: The output of the :class:`MoleculeModel`, which is either property predictions
                  or molecule features if :code:`self.featurizer=True`.
         """
         if self.featurizer:
-            return self.featurize(batch, features_batch)
+            return self.featurize(batch, features_batch, atom_descriptors_batch)
 
-        output = self.ffn(self.encoder(batch, features_batch))
+        output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch))
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if self.classification and not self.training:

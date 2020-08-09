@@ -4,6 +4,7 @@ import pickle
 from typing import List
 
 import numpy as np
+import pandas as pd
 
 
 def save_features(path: str, features: List[np.ndarray]) -> None:
@@ -51,5 +52,23 @@ def load_features(path: str) -> np.ndarray:
             features = np.array([np.squeeze(np.array(feat.todense())) for feat in pickle.load(f)])
     else:
         raise ValueError(f'Features path extension {extension} not supported.')
+
+    return features
+
+
+def load_atom_features(path: str) -> List[np.ndarray]:
+    """
+    Loads features saved in a .pkl file
+    :param path: Path to file containing atomwise features
+    :return: A list of 2D array
+    """
+
+    features_df = pd.read_pickle(path)
+    if features_df.iloc[0, 0].ndim == 1:
+        features = features_df.apply(lambda x: np.stack(x.tolist(), axis=1), axis=1).tolist()
+    elif features_df.iloc[0, 0].ndim == 2:
+        features = features_df.apply(lambda x: np.concatenate(x.tolist(), axis=1), axis=1).tolist()
+    else:
+        raise ValueError(f'Atom descriptors input {path} format not supported')
 
     return features

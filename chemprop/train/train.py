@@ -45,13 +45,14 @@ def train(model: MoleculeModel,
     for batch in tqdm(data_loader, total=len(data_loader)):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch = batch.batch_graph(), batch.features(), batch.targets()
+        mol_batch, features_batch, target_batch, atom_descriptors_batch = \
+            batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors()
         mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
         # Run model
         model.zero_grad()
-        preds = model(mol_batch, features_batch)
+        preds = model(mol_batch, features_batch, atom_descriptors_batch)
 
         # Move tensors to correct device
         mask = mask.to(preds.device)

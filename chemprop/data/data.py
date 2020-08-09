@@ -24,7 +24,8 @@ class MoleculeDatapoint:
                  targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  features: np.ndarray = None,
-                 features_generator: List[str] = None):
+                 features_generator: List[str] = None,
+                 atom_descriptors: np.ndarray = None):
         """
         :param smiles: The SMILES string for the molecule.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
@@ -40,6 +41,7 @@ class MoleculeDatapoint:
         self.row = row
         self.features = features
         self.features_generator = features_generator
+        self.atom_descriptors = atom_descriptors
         self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
@@ -57,6 +59,11 @@ class MoleculeDatapoint:
         if self.features is not None:
             replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
+
+        # Fix nans in atom_descriptors
+        if self.atom_descriptors is not None:
+            replace_token = 0
+            self.atom_descriptors = np.where(np.isnan(self.atom_descriptors), replace_token, self.atom_descriptors)
 
     @property
     def mol(self) -> Chem.Mol:
@@ -159,6 +166,18 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self._data]
 
+    def atom_descriptors(self) -> List[np.ndarray]:
+        """
+        Returns the atom descriptors associated with each molecule (if they exit).
+
+        :return: A list of 2D numpy arrays containing the atom descriptors
+        for each molecule or None if there are no features.
+        """
+        if len(self._data) == 0 or self._data[0].atom_descriptors is None:
+            return None
+
+        return [d.atom_descriptors for d in self._data]
+
     def targets(self) -> List[List[Optional[float]]]:
         """
         Returns the targets associated with each molecule.
@@ -182,6 +201,15 @@ class MoleculeDataset(Dataset):
         :return: The size of the additional features vector.
         """
         return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
+
+    def atom_descriptors_size(self) -> int:
+        """
+        Returns the size of custom additional atom descriptors vector associated with the molecules.
+
+        :return: The size of the additional atom descriptor vector.
+        """
+        return len(self._data[0].atom_descriptors[0]) \
+            if len(self._data) > 0 and self._data[0].atom_descriptors is not None else None
 
     def shuffle(self, seed: int = None) -> None:
         """

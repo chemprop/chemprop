@@ -54,6 +54,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     data = get_data(path=args.data_path, args=args, logger=logger)
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
+    args.atom_descriptors_size = data.atom_descriptors_size()
     debug(f'Number of tasks = {args.num_tasks}')
 
     # Split data
