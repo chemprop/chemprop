@@ -111,7 +111,8 @@ def get_data(path: str,
              features_generator: List[str] = None,
              max_data_size: int = None,
              store_row: bool = False,
-             logger: Logger = None) -> MoleculeDataset:
+             logger: Logger = None,
+             skip_none_targets: bool = False) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -129,6 +130,8 @@ def get_data(path: str,
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
+    :param skip_none_targets: Whether to skip targets that are all 'None'. This is mostly relevant when --target_columns
+                              are passed in, so only a subset of tasks are examined.
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
@@ -179,8 +182,8 @@ def get_data(path: str,
 
             targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 
-            # Check whether all targets are None -- this is relevant when specifying target_columns
-            if all(x is None for x in targets):
+            if skip_none_targets and all(x is None for x in targets):
+            # Check whether all targets are None and skip if so
                 continue
 
             all_smiles.append(smiles)
