@@ -241,7 +241,7 @@ class TrainArgs(CommonArgs):
     grad_clip: float = None
     """Maximum magnitude of gradient during training."""
     class_balance: bool = False
-    """Trains with an equal number of positives and negatives in each batch (only for single task classification)."""
+    """Trains with an equal number of positives and negatives in each batch."""
 
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
