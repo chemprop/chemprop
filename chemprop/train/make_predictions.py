@@ -11,7 +11,7 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, t
 
 
 @timeit()
-def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
+def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to make predictions on the data.
 

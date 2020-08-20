@@ -221,7 +221,7 @@ def get_data(path: str,
     return data
 
 
-def get_data_from_smiles(smiles: List[str],
+def get_data_from_smiles(smiles: List[List[str]],
                          skip_invalid_smiles: bool = True,
                          logger: Logger = None,
                          features_generator: List[str] = None) -> MoleculeDataset:
