@@ -29,12 +29,9 @@ def cross_validate(args: TrainArgs) -> Tuple[float, float]:
     # Initialize relevant variables
     init_seed = args.seed
     save_dir = args.save_dir
-    args.task_names = get_task_names(
-        path=args.data_path,
-        smiles_column=args.smiles_column,
-        target_columns=args.target_columns,
-        ignore_columns=args.ignore_columns
-    )
+    args.task_names = get_task_names(path=args.data_path, smiles_columns=args.smiles_column,
+                                     number_of_molecules=args.number_of_molecules,
+                                     target_columns=args.target_columns, ignore_columns=args.ignore_columns)
 
     # Run training on different random seeds for each fold
     all_scores = []

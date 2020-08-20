@@ -29,12 +29,7 @@ class MPNEncoder(nn.Module):
         self.dropout = args.dropout
         self.layers_per_message = 1
         self.undirected = args.undirected
-        self.features_only = args.features_only
-        self.use_input_features = args.use_input_features
         self.device = args.device
-
-        if self.features_only:
-            return
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -60,8 +55,7 @@ class MPNEncoder(nn.Module):
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
     def forward(self,
-                mol_graph: BatchMolGraph,
-                features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                mol_graph: BatchMolGraph) -> torch.FloatTensor:
         """
         Encodes a batch of molecular graphs.
 
@@ -70,12 +64,6 @@ class MPNEncoder(nn.Module):
         :param features_batch: A list of numpy arrays containing additional features.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
-        if self.use_input_features:
-            features_batch = torch.from_numpy(np.stack(features_batch)).float().to(self.device)
-
-            if self.features_only:
-                return features_batch
-
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components(atom_messages=self.atom_messages)
         f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.to(self.device), f_bonds.to(self.device), a2b.to(self.device), b2a.to(self.device), b2revb.to(self.device)
 
@@ -131,12 +119,6 @@ class MPNEncoder(nn.Module):
                 mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)
-        
-        if self.use_input_features:
-            features_batch = features_batch.to(mol_vecs)
-            if len(features_batch.shape) == 1:
-                features_batch = features_batch.view([1, features_batch.shape[0]])
-            mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
 
         return mol_vecs  # num_molecules x hidden
 
@@ -156,10 +138,18 @@ class MPN(nn.Module):
         super(MPN, self).__init__()
         self.atom_fdim = atom_fdim or get_atom_fdim()
         self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
-        self.encoder = MPNEncoder(args, self.atom_fdim, self.bond_fdim)
+
+        self.features_only = args.features_only
+        self.use_input_features = args.use_input_features
+        self.device = args.device
+
+        if self.features_only:
+            return
+
+        self.encoder = [MPNEncoder(args, self.atom_fdim, self.bond_fdim) for i in range(args.number_of_molecules)]
 
     def forward(self,
-                batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                batch: List[Union[List[str], List[Chem.Mol], BatchMolGraph]],
                 features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecules.
@@ -169,9 +159,25 @@ class MPN(nn.Module):
         :param features_batch: A list of numpy arrays containing additional features.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
-        if type(batch) != BatchMolGraph:
-            batch = mol2graph(batch)
+        if type(batch[0]) != BatchMolGraph:
+            batch = [mol2graph(b) for b in batch]
 
-        output = self.encoder.forward(batch, features_batch)
+        if self.use_input_features:
+            features_batch = torch.from_numpy(np.stack(features_batch)).float().to(self.device)
+
+            if self.features_only:
+                return features_batch
+
+        output = None
+        for enc, ba in zip(self.encoder, batch):
+            _output = enc.forward(ba)
+            output = _output if output is None else torch.cat([output, _output], dim=1)
+
+        if self.use_input_features:
+            if len(features_batch.shape) == 1:
+                features_batch = features_batch.view([1, features_batch.shape[0]])
+            # todo not sure if this did anything
+            # features_batch = features_batch.to(mol_vecs)
+            output = torch.cat([output, features_batch], dim=1)
 
         return output

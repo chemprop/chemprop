@@ -20,7 +20,7 @@ class MoleculeDatapoint:
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
 
     def __init__(self,
-                 smiles: str,
+                 smiles: List[str],
                  targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  features: np.ndarray = None,
@@ -40,7 +40,7 @@ class MoleculeDatapoint:
         self.row = row
         self.features = features
         self.features_generator = features_generator
-        self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
+        self._mol = ['None' for s in self.smiles]  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -48,8 +48,12 @@ class MoleculeDatapoint:
 
             for fg in self.features_generator:
                 features_generator = get_features_generator(fg)
-                if self.mol is not None and self.mol.GetNumHeavyAtoms() > 0:
-                    self.features.extend(features_generator(self.mol))
+                for m in self.mol:
+                    if m is not None and m.GetNumHeavyAtoms() > 0:
+                        self.features.extend(features_generator(m))
+                    # for H2
+                    elif m is not None and m.GetNumHeavyAtoms() == 0:
+                        self.features.extend(np.zeros(200))
 
             self.features = np.array(self.features)
 
@@ -59,10 +63,10 @@ class MoleculeDatapoint:
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
     @property
-    def mol(self) -> Chem.Mol:
+    def mol(self) -> List[Chem.Mol]:
         """Gets the corresponding RDKit molecule for this molecule's SMILES (with lazy loading)."""
-        if self._mol == 'None':
-            self._mol = Chem.MolFromSmiles(self.smiles)
+        if 'None' in self._mol:
+            self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
 
         return self._mol
 
@@ -103,7 +107,7 @@ class MoleculeDataset(Dataset):
         self._batch_graph = None
         self._random = Random()
 
-    def smiles(self) -> List[str]:
+    def smiles(self) -> List[List[str]]:
         """
         Returns a list containing the SMILES associated with each molecule.
 
@@ -111,7 +115,7 @@ class MoleculeDataset(Dataset):
         """
         return [d.smiles for d in self._data]
 
-    def mols(self) -> List[Chem.Mol]:
+    def mols(self) -> List[List[Chem.Mol]]:
         """
         Returns the RDKit molecules associated with each molecule.
 
@@ -119,7 +123,7 @@ class MoleculeDataset(Dataset):
         """
         return [d.mol for d in self._data]
 
-    def batch_graph(self, cache: bool = False) -> BatchMolGraph:
+    def batch_graph(self, cache: bool = False) -> List[BatchMolGraph]:
         r"""
         Constructs a :class:`~chemprop.features.BatchMolGraph` with the graph featurization of all the molecules.
 
@@ -134,17 +138,22 @@ class MoleculeDataset(Dataset):
         :return: A :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
         """
         if self._batch_graph is None:
+            self._batch_graph = []
+
             mol_graphs = []
             for d in self._data:
-                if d.smiles in SMILES_TO_GRAPH:
-                    mol_graph = SMILES_TO_GRAPH[d.smiles]
-                else:
-                    mol_graph = MolGraph(d.mol)
-                    if cache:
-                        SMILES_TO_GRAPH[d.smiles] = mol_graph
-                mol_graphs.append(mol_graph)
+                mol_graphs_set = []
+                for s, m in zip(d.smiles, d.mol):
+                    if s in SMILES_TO_GRAPH:
+                        mol_graph = SMILES_TO_GRAPH[s]
+                    else:
+                        mol_graph = MolGraph(m)
+                        if cache:
+                            SMILES_TO_GRAPH[s] = mol_graph
+                    mol_graphs_set.append(mol_graph)
+                mol_graphs.append(mol_graphs_set)
 
-            self._batch_graph = BatchMolGraph(mol_graphs)
+            self._batch_graph = [BatchMolGraph([g[i] for g in mol_graphs]) for i in range(len(mol_graphs[0]))]
 
         return self._batch_graph
 

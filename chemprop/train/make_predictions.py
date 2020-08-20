@@ -50,14 +50,8 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
             features_generator=args.features_generator
         )
     else:
-        full_data = get_data(
-            path=args.test_path,
-            args=args,
-            target_columns=[],
-            ignore_columns=[],
-            skip_invalid_smiles=False,
-            store_row=True
-        )
+        full_data = get_data(path=args.test_path, target_columns=[], ignore_columns=[], skip_invalid_smiles=False,
+                             args=args, store_row=True)
 
     print('Validating SMILES')
     full_to_valid_indices = {}
