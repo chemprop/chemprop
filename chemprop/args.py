@@ -58,7 +58,8 @@ class CommonArgs(Tap):
     """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
     smiles_column: List[str] = None
-    """Name of the columns containing SMILES strings. By default, uses the first n (=number of molecules) columns."""
+    """List of names of the columns containing SMILES strings. 
+    By default, uses the first n (=number of molecules) columns."""
     number_of_molecules: int = 1
     """Number of molecules or smiles columns. By default, there is only one smiles column."""
     checkpoint_dir: str = None
