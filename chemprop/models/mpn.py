@@ -146,7 +146,9 @@ class MPN(nn.Module):
         if self.features_only:
             return
 
-        self.encoder = [MPNEncoder(args, self.atom_fdim, self.bond_fdim) for i in range(args.number_of_molecules)]
+        #self.encoder = [MPNEncoder(args, self.atom_fdim, self.bond_fdim) for i in range(args.number_of_molecules)]
+        self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
+                                      for i in range(args.number_of_molecules)])
 
     def forward(self,
                 batch: List[Union[List[str], List[Chem.Mol], BatchMolGraph]],
