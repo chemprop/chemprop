@@ -181,17 +181,21 @@ def get_data(path: str,
         for row in tqdm(reader):
             smiles = [row[c] for c in smiles_column]
 
+
             if smiles in skip_smiles:
                 continue
 
             targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 
-            if skip_none_targets and all(x is None for x in targets):
             # Check whether all targets are None and skip if so
+            if skip_none_targets and all(x is None for x in targets):
                 continue
 
             all_smiles.append(smiles)
             all_targets.append(targets)
+
+            if features_data is not None:
+                all_features.append(features_data[i])
 
             if store_row:
                 all_rows.append(row)
@@ -205,7 +209,7 @@ def get_data(path: str,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 features_generator=features_generator,
-                features=features_data[i] if features_data is not None else None
+                features=all_features[i] if features_data is not None else None
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])
