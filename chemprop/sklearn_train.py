@@ -182,14 +182,9 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
     metric_func = get_metric_func(args.metric)
 
     debug('Loading data')
-    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
-    args.task_names = get_task_names(
-        path=args.data_path,
-        smiles_column=args.smiles_column,
-        target_columns=args.target_columns,
-        ignore_columns=args.ignore_columns
-    )
-
+    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns, args=args)
+    args.task_names = get_task_names(path=args.data_path, smiles_columns=args.smiles_column,
+                                     target_columns=args.target_columns, ignore_columns=args.ignore_columns)
     if args.model_type == 'svm' and data.num_tasks() != 1:
         raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')
 
@@ -209,7 +204,8 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
     morgan_fingerprint = get_features_generator('morgan')
     for dataset in [train_data, test_data]:
         for datapoint in tqdm(dataset, total=len(dataset)):
-            datapoint.set_features(morgan_fingerprint(mol=datapoint.smiles, radius=args.radius, num_bits=args.num_bits))
+            [datapoint.extend_features(morgan_fingerprint(mol=s, radius=args.radius, num_bits=args.num_bits))
+             for s in datapoint.smiles]
 
     debug('Building model')
     if args.dataset_type == 'regression':

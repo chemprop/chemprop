@@ -64,7 +64,7 @@ def get_header(path: str) -> List[str]:
     return header
 
 
-def get_smiles(path: str, smiles_column: str = None, header: bool = True) -> List[str]:
+def get_smiles(path: str, smiles_column: str = None, number_of_molecules: int = 1, header: bool = True) -> List[str]:
     """
     Returns the SMILES from a data CSV file.
 
@@ -80,12 +80,12 @@ def get_smiles(path: str, smiles_column: str = None, header: bool = True) -> Lis
         if header:
             reader = csv.DictReader(f)
             if smiles_column is None:
-                smiles_column = reader.fieldnames[0]
+                smiles_column = reader.fieldnames[:number_of_molecules]
         else:
             reader = csv.reader(f)
             smiles_column = 0
 
-        smiles = [row[smiles_column] for row in reader]
+        smiles = [[row[c] for c in smiles_column] for row in reader]
 
     return smiles
 

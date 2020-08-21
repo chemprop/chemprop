@@ -78,6 +78,14 @@ class MoleculeDatapoint:
         """
         self.features = features
 
+    def extend_features(self, features: np.ndarray) -> None:
+        """
+        Extends the features of the molecule.
+
+        :param features: A 1D numpy array of extra features for the molecule.
+        """
+        self.features = np.append(self.features, features) if self.features is not None else features
+
     def num_tasks(self) -> int:
         """
         Returns the number of prediction tasks.
