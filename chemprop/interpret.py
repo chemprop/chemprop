@@ -34,7 +34,7 @@ class ChempropModel:
         self.scaler, self.features_scaler = load_scalers(args.checkpoint_paths[0])
         self.checkpoints = [load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths]
 
-    def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
+    def __call__(self, smiles: List[List[str]], batch_size: int = 500) -> List[List[float]]:
         """
         Makes predictions on a list of SMILES.
 
@@ -43,7 +43,7 @@ class ChempropModel:
         :return: A list of lists of floats containing the predicted values.
         """
         test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=self.args.features_generator)
-        valid_indices = [i for i in range(len(test_data)) if test_data[i].mol is not None]
+        valid_indices = [i for i in range(len(test_data)) if [m is not None for m in test_data[i].mol]]
         test_data = MoleculeDataset([test_data[i] for i in valid_indices])
 
         if self.train_args.features_scaling:
@@ -293,16 +293,17 @@ def interpret(args: InterpretArgs) -> None:
 
     chemprop_model = ChempropModel(args)
 
-    def scoring_function(smiles: List[str]) -> List[float]:
+    def scoring_function(smiles: List[List[str]]) -> List[float]:
         return chemprop_model(smiles)[:, args.property_id - 1]
 
     C_PUCT = args.c_puct
     MIN_ATOMS = args.min_atoms
 
-    all_smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column)
+    all_smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column,
+                            number_of_molecules=args.number_of_molecules)
     header = get_header(path=args.data_path)
 
-    property_name = header[args.property_id] if len(header) > args.property_id else 'score'
+    property_name = header[args.number_of_molecules + args.property_id -1] if len(header) > args.property_id else 'score'
     print(f'smiles,{property_name},rationale,rationale_score')
 
     for smiles in all_smiles:
@@ -321,8 +322,8 @@ def interpret(args: InterpretArgs) -> None:
         if len(rationales) == 0:
             print(f'{smiles},{score:.3f},,')
         else:
-            min_size = min(len(x.atoms) for x in rationales)
-            min_rationales = [x for x in rationales if len(x.atoms) == min_size]
+            min_size = min(len(x.atoms) for x in rat for rat in rationales)
+            min_rationales = [x for x in rat for rat in rationales if len(x.atoms) == min_size]
             rats = sorted(min_rationales, key=lambda x: x.P, reverse=True)
             print(f'{smiles},{score:.3f},{rats[0].smiles},{rats[0].P:.3f}')
 
