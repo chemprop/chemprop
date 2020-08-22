@@ -206,14 +206,14 @@ def train():
         '--data_path', data_path,
         '--dataset_type', dataset_type,
         '--epochs', str(epochs),
-        '--ensemble_size', str(ensemble_size)
+        '--ensemble_size', str(ensemble_size),
     ])
 
     # Get task names
     args.task_names = get_task_names(path=data_path)
 
     # Check if regression/classification selection matches data
-    data = get_data(path=data_path)
+    data = get_data(path=data_path, args=args)
     targets = data.targets()
     unique_targets = {target for row in targets for target in row if target is not None}
 
