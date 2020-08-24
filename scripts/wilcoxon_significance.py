@@ -15,25 +15,25 @@ from chemprop.utils import mean_absolute_error, rmse, roc_auc_score, prc_auc
 FAKE_LOGGER = namedtuple('FakeLogger', ['info'])(info=lambda x: None)
 
 DATASETS = OrderedDict()
-DATASETS['qm7'] = {'metric': mean_absolute_error, 'type': 'regression'}
-DATASETS['qm8'] = {'metric': mean_absolute_error, 'type': 'regression'}
-DATASETS['qm9'] = {'metric': mean_absolute_error, 'type': 'regression'}
-DATASETS['delaney'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['freesolv'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['lipo'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['pdbbind_full'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['pdbbind_core'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['pdbbind_refined'] = {'metric': rmse, 'type': 'regression'}
-DATASETS['pcba'] = {'metric': prc_auc, 'type': 'classification'}
-DATASETS['muv'] = {'metric': prc_auc, 'type': 'classification'}
-DATASETS['hiv'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['bace'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['bbbp'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['tox21'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['toxcast'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['sider'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['clintox'] = {'metric': roc_auc_score, 'type': 'classification'}
-DATASETS['chembl'] = {'metric': roc_auc_score, 'type': 'classification'}
+DATASETS['qm7'] = {'metric': 'mae', 'type': 'regression'}
+DATASETS['qm8'] = {'metric': 'mae', 'type': 'regression'}
+DATASETS['qm9'] = {'metric': 'mae', 'type': 'regression'}
+DATASETS['delaney'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['freesolv'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['lipo'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['pdbbind_full'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['pdbbind_core'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['pdbbind_refined'] = {'metric': 'rmse', 'type': 'regression'}
+DATASETS['pcba'] = {'metric': 'prc-auc', 'type': 'classification'}
+DATASETS['muv'] = {'metric': 'prc-auc', 'type': 'classification'}
+DATASETS['hiv'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['bace'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['bbbp'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['tox21'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['toxcast'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['sider'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['clintox'] = {'metric': 'auc', 'type': 'classification'}
+DATASETS['chembl'] = {'metric': 'auc', 'type': 'classification'}
 
 # test if 1 is better than 2 (less error, higher auc)
 COMPARISONS = [
@@ -102,7 +102,7 @@ def compute_values(dataset: str,
             preds=pred,
             targets=target,
             num_tasks=num_tasks,
-            metric_func=DATASETS[dataset]['metric'],
+            metrics=[DATASETS[dataset]['metric']],
             dataset_type=DATASETS[dataset]['type'],
             logger=FAKE_LOGGER
         )
