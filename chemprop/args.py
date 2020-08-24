@@ -190,6 +190,8 @@ class TrainArgs(CommonArgs):
     Below this number, caching is used and data loading is sequential.
     Above this number, caching is not used and data loading is parallel.
     """
+    save_preds: bool = False
+    """Whether to save test split predictions during training."""
 
     # Model arguments
     bias: bool = False
