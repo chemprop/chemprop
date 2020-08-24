@@ -161,12 +161,15 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     return scores
 
 
-def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Dict[str, List[float]]:
+def run_sklearn(args: SklearnTrainArgs,
+                data: MoleculeDataset,
+                logger: Logger = None) -> Dict[str, List[float]]:
     """
     Loads data, trains a scikit-learn model, and returns test scores for the model checkpoint with the highest validation score.
 
     :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
                  loading data and training the scikit-learn model.
+    :param data: A :class:`~chemprop.data.MoleculeDataset` containing the data.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
@@ -174,17 +177,6 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> Dict[str, List
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
-
-    debug(pformat(vars(args)))
-
-    debug('Loading data')
-    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
-    args.task_names = get_task_names(
-        path=args.data_path,
-        smiles_column=args.smiles_column,
-        target_columns=args.target_columns,
-        ignore_columns=args.ignore_columns
-    )
 
     if args.model_type == 'svm' and data.num_tasks() != 1:
         raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')

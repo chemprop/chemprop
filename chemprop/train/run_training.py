@@ -14,19 +14,22 @@ from .predict import predict
 from .train import train
 from chemprop.args import TrainArgs
 from chemprop.constants import MODEL_FILE_NAME
-from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, split_data, StandardScaler, validate_dataset_type
+from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, split_data, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint,makedirs, \
     save_checkpoint, save_smiles_splits
 
 
-def run_training(args: TrainArgs, logger: Logger = None) -> Dict[str, List[float]]:
+def run_training(args: TrainArgs,
+                 data: MoleculeDataset,
+                 logger: Logger = None) -> Dict[str, List[float]]:
     """
     Loads data, trains a Chemprop model, and returns test scores for the model checkpoint with the highest validation score.
 
     :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for
                  loading data and training the Chemprop model.
+    :param data: A :class:`~chemprop.data.MoleculeDataset` containing the data.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`args.metrics` to a list of values for each task.
 
@@ -35,27 +38,6 @@ def run_training(args: TrainArgs, logger: Logger = None) -> Dict[str, List[float
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
-
-    # Print command line
-    debug('Command line')
-    debug(f'python {" ".join(sys.argv)}')
-
-    # Print args
-    debug('Args')
-    debug(args)
-
-    # Save args
-    args.save(os.path.join(args.save_dir, 'args.json'))
-
-    # Set pytorch seed for random initial weights
-    torch.manual_seed(args.pytorch_seed)
-
-    # Get data
-    debug('Loading data')
-    data = get_data(path=args.data_path, args=args, logger=logger, skip_none_targets=True)
-    validate_dataset_type(data, dataset_type=args.dataset_type)
-    args.features_size = data.features_size()
-    debug(f'Number of tasks = {args.num_tasks}')
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')

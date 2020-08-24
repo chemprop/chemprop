@@ -2,20 +2,22 @@ from collections import defaultdict
 import csv
 from logging import Logger
 import os
+import sys
 from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
+import torch
 
 from .run_training import run_training
-from chemprop.args import SklearnTrainArgs, TrainArgs
+from chemprop.args import TrainArgs
 from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
-from chemprop.data import get_task_names
+from chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
 from chemprop.utils import create_logger, makedirs, timeit
 
 
 @timeit(logger_name=TRAIN_LOGGER_NAME)
-def cross_validate(args: Union[TrainArgs, SklearnTrainArgs],
-                   train_func: Callable[[Union[TrainArgs, SklearnTrainArgs], Logger], Dict[str, List[float]]]
+def cross_validate(args: TrainArgs,
+                   train_func: Callable[[TrainArgs, MoleculeDataset, Logger], Dict[str, List[float]]]
                    ) -> Tuple[float, float]:
     """
     Runs k-fold cross-validation.
@@ -29,7 +31,10 @@ def cross_validate(args: Union[TrainArgs, SklearnTrainArgs],
     :return: A tuple containing the mean and standard deviation performance across folds.
     """
     logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-    info = logger.info if logger is not None else print
+    if logger is not None:
+        debug, info = logger.debug, logger.info
+    else:
+        debug = info = print
 
     # Initialize relevant variables
     init_seed = args.seed
@@ -41,6 +46,27 @@ def cross_validate(args: Union[TrainArgs, SklearnTrainArgs],
         ignore_columns=args.ignore_columns
     )
 
+    # Print command line
+    debug('Command line')
+    debug(f'python {" ".join(sys.argv)}')
+
+    # Print args
+    debug('Args')
+    debug(args)
+
+    # Save args
+    args.save(os.path.join(args.save_dir, 'args.json'))
+
+    # Set pytorch seed for random initial weights
+    torch.manual_seed(args.pytorch_seed)
+
+    # Get data
+    debug('Loading data')
+    data = get_data(path=args.data_path, args=args, logger=logger, skip_none_targets=True)
+    validate_dataset_type(data, dataset_type=args.dataset_type)
+    args.features_size = data.features_size()
+    debug(f'Number of tasks = {args.num_tasks}')
+
     # Run training on different random seeds for each fold
     all_scores = defaultdict(list)
     for fold_num in range(args.num_folds):
@@ -48,7 +74,7 @@ def cross_validate(args: Union[TrainArgs, SklearnTrainArgs],
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
-        model_scores = train_func(args, logger)
+        model_scores = train_func(args, data, logger)
         for metric, scores in model_scores.items():
             all_scores[metric].append(scores)
     all_scores = dict(all_scores)
