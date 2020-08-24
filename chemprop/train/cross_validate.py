@@ -117,11 +117,11 @@ def cross_validate(args: TrainArgs,
         writer.writerow(header)
 
         for task_num, task_name in enumerate(args.task_names):
-            row = []
+            row = [task_name]
             for metric, scores in all_scores.items():
                 task_scores = scores[:, task_num]
                 mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
-                row += [task_name, mean, std] + task_scores.tolist()
+                row += [mean, std] + task_scores.tolist()
             writer.writerow(row)
 
     # Determine mean and std score of main metric
