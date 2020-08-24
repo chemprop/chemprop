@@ -111,7 +111,8 @@ def get_data(path: str,
              features_generator: List[str] = None,
              max_data_size: int = None,
              store_row: bool = False,
-             logger: Logger = None) -> MoleculeDataset:
+             logger: Logger = None,
+             skip_none_targets: bool = False) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -129,6 +130,8 @@ def get_data(path: str,
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
+    :param skip_none_targets: Whether to skip targets that are all 'None'. This is mostly relevant when --target_columns
+                              are passed in, so only a subset of tasks are examined.
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
@@ -170,8 +173,8 @@ def get_data(path: str,
             ignore_columns = set([smiles_column] + ([] if ignore_columns is None else ignore_columns))
             target_columns = [column for column in columns if column not in ignore_columns]
 
-        all_smiles, all_targets, all_rows = [], [], []
-        for row in tqdm(reader):
+        all_smiles, all_targets, all_rows, all_features = [], [], [], []
+        for i, row in tqdm(enumerate(reader)):
             smiles = row[smiles_column]
 
             if smiles in skip_smiles:
@@ -179,8 +182,15 @@ def get_data(path: str,
 
             targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 
+            # Check whether all targets are None and skip if so
+            if skip_none_targets and all(x is None for x in targets):
+                continue
+
             all_smiles.append(smiles)
             all_targets.append(targets)
+
+            if features_data is not None:
+                all_features.append(features_data[i])
 
             if store_row:
                 all_rows.append(row)
@@ -194,7 +204,7 @@ def get_data(path: str,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 features_generator=features_generator,
-                features=features_data[i] if features_data is not None else None
+                features=all_features[i] if features_data is not None else None
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])

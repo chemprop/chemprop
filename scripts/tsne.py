@@ -32,19 +32,19 @@ class Args(Tap):
 
 
 def compare_datasets_tsne(args: Args):
-    if len(args.smiles_paths) > len(args.colors):
+    if len(args.smiles_paths) > len(args.colors) or len(args.smiles_paths) > len(args.sizes):
         raise ValueError('Must have at least as many colors and sizes as datasets')
 
     # Random seed for random subsampling
     np.random.seed(0)
 
-    # Generate labels based on file name
-    labels = [os.path.basename(path).replace('.csv', '') for path in args.smiles_paths]
-
     # Load the smiles datasets
     print('Loading data')
-    smiles, slices = [], []
-    for smiles_path, color, label in zip(args.smiles_paths, args.colors, labels):
+    smiles, slices, labels = [], [], []
+    for smiles_path in args.smiles_paths:
+        # Get label
+        label = os.path.basename(smiles_path).replace('.csv', '')
+
         # Get SMILES
         new_smiles = get_smiles(path=smiles_path, smiles_column=args.smiles_column)
         print(f'{label}: {len(new_smiles):,}')
@@ -55,6 +55,7 @@ def compare_datasets_tsne(args: Args):
             new_smiles = np.random.choice(new_smiles, size=args.max_per_dataset, replace=False).tolist()
 
         slices.append(slice(len(smiles), len(smiles) + len(new_smiles)))
+        labels.append(label)
         smiles += new_smiles
 
     # Compute Morgan fingerprints

@@ -276,8 +276,7 @@ class MoleculeSampler(Sampler):
                  seed: int = 0):
         """
         :param class_balance: Whether to perform class balancing (i.e., use an equal number of positive
-                              and negative molecules). Class balance is only available for single task
-                              classification datasets. Set shuffle to True in order to get a random
+                              and negative molecules). Set shuffle to True in order to get a random
                               subset of the larger class.
         :param shuffle: Whether to shuffle the data.
         :param seed: Random seed. Only needed if :code:`shuffle` is True.
@@ -291,11 +290,11 @@ class MoleculeSampler(Sampler):
         self._random = Random(seed)
 
         if self.class_balance:
-            if self.dataset.num_tasks() != 1:
-                raise ValueError('Class balance can only be used on single-task classification datasets.')
+            indices = np.arange(len(dataset))
+            has_active = np.array([any(target == 1 for target in datapoint.targets) for datapoint in dataset])
 
-            self.positive_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 1]
-            self.negative_indices = [index for index, datapoint in enumerate(dataset) if datapoint.targets[0] == 0]
+            self.positive_indices = indices[has_active].tolist()
+            self.negative_indices = indices[~has_active].tolist()
 
             self.length = 2 * min(len(self.positive_indices), len(self.negative_indices))
         else:
