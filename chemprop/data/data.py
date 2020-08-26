@@ -119,7 +119,7 @@ class MoleculeDataset(Dataset):
         """
         Returns a list containing the SMILES associated with each molecule.
 
-        :return: A list of SMILES strings.
+        :return: A list of lists of SMILES strings.
         """
         return [d.smiles for d in self._data]
 
