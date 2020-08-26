@@ -143,7 +143,7 @@ class MoleculeDataset(Dataset):
 
         :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
                       for each molecule in a global cache.
-        :return: A :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
+        :return: A list of :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
         """
         if self._batch_graph is None:
             self._batch_graph = []
