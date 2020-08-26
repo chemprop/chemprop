@@ -127,7 +127,7 @@ class MoleculeDataset(Dataset):
         """
         Returns the RDKit molecules associated with each molecule.
 
-        :return: A list of RDKit molecules.
+        :return: A list of lists of RDKit molecules.
         """
         return [d.mol for d in self._data]
 
