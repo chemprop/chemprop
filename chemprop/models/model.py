@@ -68,7 +68,7 @@ class MoleculeModel(nn.Module):
             if args.use_input_features:
                 first_linear_dim += args.features_size
 
-        if args.atom_descriptors == 'descriptors':
+        if args.atom_descriptors == 'descriptor':
             first_linear_dim += args.atom_descriptors_size
 
         dropout = nn.Dropout(args.dropout)

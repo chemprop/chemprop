@@ -25,6 +25,7 @@ class MoleculeDatapoint:
                  row: OrderedDict = None,
                  features: np.ndarray = None,
                  features_generator: List[str] = None,
+                 atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None):
         """
         :param smiles: The SMILES string for the molecule.
@@ -42,6 +43,7 @@ class MoleculeDatapoint:
         self.features = features
         self.features_generator = features_generator
         self.atom_descriptors = atom_descriptors
+        self.atom_features = atom_features
         self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
@@ -64,6 +66,11 @@ class MoleculeDatapoint:
         if self.atom_descriptors is not None:
             replace_token = 0
             self.atom_descriptors = np.where(np.isnan(self.atom_descriptors), replace_token, self.atom_descriptors)
+
+        # Fix nans in atom_features
+        if self.atom_features is not None:
+            replace_token = 0
+            self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
     @property
     def mol(self) -> Chem.Mol:
@@ -146,7 +153,7 @@ class MoleculeDataset(Dataset):
                 if d.smiles in SMILES_TO_GRAPH:
                     mol_graph = SMILES_TO_GRAPH[d.smiles]
                 else:
-                    mol_graph = MolGraph(d.mol)
+                    mol_graph = MolGraph(d.mol, d.atom_features)
                     if cache:
                         SMILES_TO_GRAPH[d.smiles] = mol_graph
                 mol_graphs.append(mol_graph)

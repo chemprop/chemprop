@@ -27,11 +27,11 @@ def predict(model: MoleculeModel,
     for batch in tqdm(data_loader, disable=disable_progress_bar):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch = batch.batch_graph(), batch.features()
+        mol_batch, features_batch, atom_descriptors_batch = batch.batch_graph(), batch.features(), batch.atom_descriptors()
 
         # Make predictions
         with torch.no_grad():
-            batch_preds = model(mol_batch, features_batch)
+            batch_preds = model(mol_batch, features_batch, atom_descriptors_batch)
 
         batch_preds = batch_preds.data.cpu().numpy()
 

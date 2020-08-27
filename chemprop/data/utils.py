@@ -158,12 +158,6 @@ def get_data(path: str,
     else:
         features_data = None
 
-    # Load atomic descriptors
-    if atom_descriptors_path is not None:
-        atom_descriptors = load_atom_features(atom_descriptors_path)
-    else:
-        atom_descriptors = None
-
     skip_smiles = set()
 
     # Load data
@@ -198,14 +192,22 @@ def get_data(path: str,
             if len(all_smiles) >= max_data_size:
                 break
 
+        # Load atomic descriptors
+        atom_features = [None] * len(all_smiles)
+        atom_descriptors = [None] * len(all_smiles)
+        if args.atom_descriptors == 'feature':
+            atom_features = load_atom_features(atom_descriptors_path)
+        elif args.atom_descriptors == 'descriptor':
+            atom_descriptors = load_atom_features(atom_descriptors_path)
+
         data = MoleculeDataset([
             MoleculeDatapoint(
                 smiles=smiles,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 features_generator=features_generator,
-                features=features_data[i] if features_data is not None else None,
-                atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
+                features=atom_features[i] if features_data is not None else None,
+                atom_descriptors=atom_descriptors[i],
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])
