@@ -3,6 +3,7 @@ import os
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
 
 from .run_training import run_training
 from chemprop.args import TrainArgs
@@ -78,6 +79,12 @@ def cross_validate(args: TrainArgs) -> Tuple[float, float]:
             task_scores = all_scores[:, task_num]
             mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
             writer.writerow([task_name, mean, std] + task_scores.tolist())
+
+    # Optionally merge and save test preds
+    if args.save_preds:
+        all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
+                               for fold_num in range(args.num_folds)])
+        all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
 
     return mean_score, std_score
 
