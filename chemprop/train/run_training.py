@@ -19,6 +19,7 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
     makedirs, save_checkpoint, save_smiles_splits
+from chemprop.features import set_extra_atom_fdim
 
 
 def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
@@ -51,12 +52,17 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
 
     # Get data
     debug('Loading data')
-    data = get_data(path=args.data_path, args=args, logger=logger)
+    data = get_data(path=args.data_path, args=args, logger=logger, skip_none_targets=True)
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
-    args.atom_descriptors_size = data.atom_descriptors_size()
+
+    args.atom_features_size = 0
+
     if args.atom_descriptors == 'descriptor':
+        args.atom_descriptors_size = data.atom_descriptors_size()
         args.ffn_hidden_size += args.atom_descriptors_size
+    elif args.atom_descriptors == 'feature':
+        set_extra_atom_fdim(data.atom_features_size())
 
     debug(f'Number of tasks = {args.num_tasks}')
 

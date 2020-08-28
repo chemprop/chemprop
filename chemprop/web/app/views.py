@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.constants import MODEL_FILE_NAME, TRAIN_LOGGER_NAME
-from chemprop.data import get_data, get_header, get_smiles, validate_data
+from chemprop.data import get_data, get_header, get_smiles, get_task_names, validate_data
 from chemprop.train import make_predictions, run_training
 from chemprop.utils import create_logger, load_task_names, load_args
 
@@ -208,6 +208,9 @@ def train():
         '--epochs', str(epochs),
         '--ensemble_size', str(ensemble_size)
     ])
+
+    # Get task names
+    args.task_names = get_task_names(path=data_path)
 
     # Check if regression/classification selection matches data
     data = get_data(path=data_path)

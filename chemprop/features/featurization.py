@@ -29,12 +29,19 @@ THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE
 
 # len(choices) + 1 to include room for uncommon values; + 2 at end for IsAromatic and mass
 ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
+EXTRA_ATOM_FDIM = 0
 BOND_FDIM = 14
 
 
 def get_atom_fdim() -> int:
     """Gets the dimensionality of the atom feature vector."""
-    return ATOM_FDIM
+    return ATOM_FDIM + EXTRA_ATOM_FDIM
+
+
+def set_extra_atom_fdim(extra) -> int:
+    """Change the dimensionality of the atom feature vector."""
+    global EXTRA_ATOM_FDIM
+    EXTRA_ATOM_FDIM = extra
 
 
 def get_bond_fdim(atom_messages: bool = False) -> int:
@@ -143,7 +150,7 @@ class MolGraph:
 
         # Get atom features
         self.f_atoms = [atom_features(atom) for atom in mol.GetAtoms()]
-        if atom_descriptors:
+        if atom_descriptors is not None:
             self.f_atoms = [f_atoms + descs.tolist() for f_atoms, descs in zip(self.f_atoms, atom_descriptors)]
 
         self.n_atoms = len(self.f_atoms)

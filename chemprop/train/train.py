@@ -42,7 +42,7 @@ def train(model: MoleculeModel,
     model.train()
     loss_sum, iter_count = 0, 0
 
-    for batch in tqdm(data_loader, total=len(data_loader)):
+    for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
         mol_batch, features_batch, target_batch, atom_descriptors_batch = \

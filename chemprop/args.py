@@ -57,7 +57,7 @@ def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
 class CommonArgs(Tap):
     """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
-    smiles_column: str = None
+    smiles_column: str = 'smiles'
     """Name of the column containing SMILES strings. By default, uses the first column."""
     checkpoint_dir: str = None
     """Directory from which to load model checkpoints (walks directory and ensembles all models that are found)."""
@@ -84,7 +84,7 @@ class CommonArgs(Tap):
     atom_descriptors: Literal['None', 'feature', 'descriptor'] = 'None'
     """Custom extra atom descriptors. feature: used as atom features to featurize a given molecule. 
     descriptor: used as descriptor and concatenated to the machine learned atomic representation"""
-    atom_descriptors_path: str = None
+    atom_descriptors_path: str = 'features.pickle'
     """Path to the extra atom descriptors"""
 
     @property
@@ -139,9 +139,9 @@ class TrainArgs(CommonArgs):
     """:class:`TrainArgs` includes :class:`CommonArgs` along with additional arguments used for training a Chemprop model."""
 
     # General arguments
-    data_path: str
+    data_path: str = 'train.csv'
     """Path to data CSV file."""
-    target_columns: List[str] = None
+    target_columns: List[str] = ['GSH']
     """
     Name of the columns containing target values.
     By default, uses all columns except the SMILES column and the :code:`ignore_columns`.
@@ -250,7 +250,7 @@ class TrainArgs(CommonArgs):
     grad_clip: float = None
     """Maximum magnitude of gradient during training."""
     class_balance: bool = False
-    """Trains with an equal number of positives and negatives in each batch (only for single task classification)."""
+    """Trains with an equal number of positives and negatives in each batch."""
 
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
