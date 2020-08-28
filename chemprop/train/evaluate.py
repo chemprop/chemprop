@@ -30,7 +30,7 @@ def evaluate_predictions(preds: List[List[float]],
     metric_to_func = {metric: get_metric_func(metric) for metric in metrics}
 
     if len(preds) == 0:
-        raise ValueError('Length of predictions is zero.')
+        return {metric: [float('nan')] * num_tasks for metric in metrics}
 
     # Filter out empty targets
     # valid_preds and valid_targets have shape (num_tasks, data_size)
