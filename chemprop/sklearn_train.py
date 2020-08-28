@@ -2,7 +2,7 @@ from logging import Logger
 import os
 import pickle
 from pprint import pformat
-from typing import Callable, List, Tuple, Union
+from typing import Dict, List, Union
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -10,11 +10,9 @@ from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
-from chemprop.constants import SKLEARN_TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_task_names, MoleculeDataset, split_data
 from chemprop.features import get_features_generator
-from chemprop.train import evaluate_predictions
-from chemprop.utils import create_logger, get_metric_func, makedirs, timeit
+from chemprop.train import cross_validate, evaluate_predictions
 
 
 def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -60,7 +58,7 @@ def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC
 def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
                         train_data: MoleculeDataset,
                         test_data: MoleculeDataset,
-                        metric_func: Callable,
+                        metrics: List[str],
                         args: SklearnTrainArgs,
                         logger: Logger = None) -> List[float]:
     """
@@ -71,11 +69,11 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
     :param model: The scikit-learn model to train.
     :param train_data: The training data.
     :param test_data: The test data.
-    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
+    :param metrics: A list of names of metric functions.
     :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
                  training the scikit-learn model.
     :param logger: A logger to record output.
-    :return: A list of scores on the tasks.
+    :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
     scores = []
     num_tasks = train_data.num_tasks()
@@ -102,7 +100,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             preds=test_preds,
             targets=test_targets,
             num_tasks=1,
-            metric_func=metric_func,
+            metrics=metrics,
             dataset_type=args.dataset_type,
             logger=logger
         )
@@ -114,9 +112,9 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
 def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
                        train_data: MoleculeDataset,
                        test_data: MoleculeDataset,
-                       metric_func: Callable,
+                       metrics: List[str],
                        args: SklearnTrainArgs,
-                       logger: Logger = None) -> List[float]:
+                       logger: Logger = None) -> Dict[str, List[float]]:
     """
     Trains a multi-task scikit-learn model, meaning one model is trained simultaneously on all tasks.
 
@@ -125,11 +123,11 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     :param model: The scikit-learn model to train.
     :param train_data: The training data.
     :param test_data: The test data.
-    :param metric_func: Metric function which takes in a list of targets and a list of predictions.
+    :param metrics: A list of names of metric functions.
     :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
                  training the scikit-learn model.
     :param logger: A logger to record output.
-    :return: A list of scores on the tasks.
+    :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
     num_tasks = train_data.num_tasks()
 
@@ -155,7 +153,7 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
         preds=test_preds,
         targets=test_data.targets(),
         num_tasks=num_tasks,
-        metric_func=metric_func,
+        metrics=metrics,
         dataset_type=args.dataset_type,
         logger=logger
     )
@@ -163,32 +161,22 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     return scores
 
 
-def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
+def run_sklearn(args: SklearnTrainArgs,
+                data: MoleculeDataset,
+                logger: Logger = None) -> Dict[str, List[float]]:
     """
     Loads data, trains a scikit-learn model, and returns test scores for the model checkpoint with the highest validation score.
 
     :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
                  loading data and training the scikit-learn model.
+    :param data: A :class:`~chemprop.data.MoleculeDataset` containing the data.
     :param logger: A logger to record output.
-    :return: A list of model scores for each task.
+    :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
     if logger is not None:
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
-
-    debug(pformat(vars(args)))
-
-    metric_func = get_metric_func(args.metric)
-
-    debug('Loading data')
-    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
-    args.task_names = get_task_names(
-        path=args.data_path,
-        smiles_column=args.smiles_column,
-        target_columns=args.target_columns,
-        ignore_columns=args.ignore_columns
-    )
 
     if args.model_type == 'svm' and data.num_tasks() != 1:
         raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')
@@ -200,6 +188,7 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
         split_type=args.split_type,
         seed=args.seed,
         sizes=args.split_sizes,
+        num_folds=args.num_folds,
         args=args
     )
 
@@ -239,7 +228,7 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
             model=model,
             train_data=train_data,
             test_data=test_data,
-            metric_func=metric_func,
+            metrics=args.metrics,
             args=args,
             logger=logger
         )
@@ -248,54 +237,15 @@ def run_sklearn(args: SklearnTrainArgs, logger: Logger = None) -> List[float]:
             model=model,
             train_data=train_data,
             test_data=test_data,
-            metric_func=metric_func,
+            metrics=args.metrics,
             args=args,
             logger=logger
         )
 
-    info(f'Test {args.metric} = {np.nanmean(scores)}')
+    for metric in args.metrics:
+        info(f'Test {metric} = {np.nanmean(scores[metric])}')
 
     return scores
-
-
-@timeit(logger_name=SKLEARN_TRAIN_LOGGER_NAME)
-def cross_validate_sklearn(args: SklearnTrainArgs) -> Tuple[float, float]:
-    """
-    Runs k-fold cross-validation for a scikit-learn model.
-
-    For each of k splits (folds) of the data, trains and tests a model on that split
-    and aggregates the performance across folds.
-
-    :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
-                 loading data and training the scikit-learn model.
-    :return: A tuple containing the mean and standard deviation performance across folds.
-    """
-    logger = create_logger(name=SKLEARN_TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-    info = logger.info if logger is not None else print
-    init_seed = args.seed
-    save_dir = args.save_dir
-
-    # Run training on different random seeds for each fold
-    all_scores = []
-    for fold_num in range(args.num_folds):
-        info(f'Fold {fold_num}')
-        args.seed = init_seed + fold_num
-        args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
-        makedirs(args.save_dir)
-        model_scores = run_sklearn(args, logger)
-        all_scores.append(model_scores)
-    all_scores = np.array(all_scores)
-
-    # Report scores for each fold
-    for fold_num, scores in enumerate(all_scores):
-        info(f'Seed {init_seed + fold_num} ==> test {args.metric} = {np.nanmean(scores):.6f}')
-
-    # Report scores across folds
-    avg_scores = np.nanmean(all_scores, axis=1)  # average score for each model across tasks
-    mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
-    info(f'Overall test {args.metric} = {mean_score:.6f} +/- {std_score:.6f}')
-
-    return mean_score, std_score
 
 
 def sklearn_train() -> None:
@@ -303,4 +253,4 @@ def sklearn_train() -> None:
 
     This is the entry point for the command line command :code:`sklearn_train`.
     """
-    cross_validate_sklearn(args=SklearnTrainArgs().parse_args())
+    cross_validate(args=SklearnTrainArgs().parse_args(), train_func=run_sklearn)

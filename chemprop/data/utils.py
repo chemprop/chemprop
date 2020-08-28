@@ -272,6 +272,7 @@ def split_data(data: MoleculeDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                seed: int = 0,
+               num_folds: int = 1,
                args: TrainArgs = None,
                logger: Logger = None) -> Tuple[MoleculeDataset,
                                                MoleculeDataset,
@@ -283,6 +284,7 @@ def split_data(data: MoleculeDataset,
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
+    :param num_folds: Number of folds to create (only needed for "cv" split type).
     :param args: A :class:`~chemprop.args.TrainArgs` object.
     :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
@@ -310,7 +312,29 @@ def split_data(data: MoleculeDataset,
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-    
+
+    elif split_type == 'cv':
+        if num_folds <= 1 or num_folds > len(data):
+            raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
+
+        random = Random(0)
+
+        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
+        random.shuffle(indices)
+        test_index = seed % num_folds
+        val_index = (seed + 1) % num_folds
+
+        train, val, test = [], [], []
+        for d, index in zip(data, indices):
+            if index == test_index:
+                test.append(d)
+            elif index == val_index:
+                val.append(d)
+            else:
+                train.append(d)
+
+        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
 
