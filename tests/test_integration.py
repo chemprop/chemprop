@@ -68,7 +68,7 @@ class ChempropTests(TestCase):
         # Predict
         with patch('sys.argv', raw_predict_args):
             chemprop_predict()
-
+    '''
     def test_chemprop_train_single_task_regression(self):
         with TemporaryDirectory() as save_dir:
             # Train
@@ -82,7 +82,7 @@ class ChempropTests(TestCase):
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, 1.237620, delta=0.02)
-
+    
     def test_chemprop_train_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
             # Train
@@ -96,7 +96,7 @@ class ChempropTests(TestCase):
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, 0.679375, delta=0.02)
-
+    '''
     def test_chemprop_predict_single_task_regression(self):
         with TemporaryDirectory() as save_dir:
             # Train
@@ -117,7 +117,7 @@ class ChempropTests(TestCase):
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, 0.559111, delta=0.02)
-
+    '''
     def test_chemprop_predict_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
             # Train
@@ -138,7 +138,7 @@ class ChempropTests(TestCase):
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, 0.064600, delta=0.02)
-
+    '''
 
 if __name__ == '__main__':
     unittest.main()
