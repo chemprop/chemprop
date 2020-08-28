@@ -37,8 +37,6 @@ class MoleculeModel(nn.Module):
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
 
-        self.atom_descriptors = args.atom_descriptors
-
         self.create_encoder(args)
         self.create_ffn(args)
 

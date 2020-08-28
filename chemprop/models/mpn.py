@@ -143,7 +143,6 @@ class MPNEncoder(nn.Module):
                 mol_vecs.append(self.cached_zero_vector)
             else:
                 cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
-
                 mol_vec = cur_hiddens  # (num_atoms, hidden_size)
 
                 mol_vec = mol_vec.sum(dim=0) / a_size
@@ -156,6 +155,7 @@ class MPNEncoder(nn.Module):
             if len(features_batch.shape) == 1:
                 features_batch = features_batch.view([1, features_batch.shape[0]])
             mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)  # (num_molecules, hidden_size)
+
         return mol_vecs  # num_molecules x hidden
 
 
@@ -176,7 +176,6 @@ class MPN(nn.Module):
         self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
 
         self.atom_descriptors = args.atom_descriptors
-        self.atom_fdim
 
         self.encoder = MPNEncoder(args, self.atom_fdim, self.bond_fdim)
 

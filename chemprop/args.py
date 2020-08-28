@@ -151,7 +151,7 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
-    dataset_type: Literal['regression', 'classification', 'multiclass'] = 'classification'
+    dataset_type: Literal['regression', 'classification', 'multiclass']
     """Type of dataset. This determines the loss function used during training."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
