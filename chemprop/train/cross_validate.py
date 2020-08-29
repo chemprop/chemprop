@@ -8,7 +8,6 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
 
 from .run_training import run_training
 from chemprop.args import TrainArgs
