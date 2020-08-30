@@ -18,7 +18,6 @@ from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, split_data, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.features import set_extra_atom_fdim
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint,makedirs, \
     save_checkpoint, save_smiles_splits
 
