@@ -139,6 +139,10 @@ def get_data(path: str,
     """
     debug = logger.debug if logger is not None else print
 
+    # Load atomic descriptors
+    atom_features = None
+    atom_descriptors = None
+
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
@@ -149,6 +153,11 @@ def get_data(path: str,
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
+
+        if args.atom_descriptors == 'feature':
+            atom_features = load_atom_features(atom_descriptors_path)
+        elif args.atom_descriptors == 'descriptor':
+            atom_descriptors = load_atom_features(atom_descriptors_path)
 
     max_data_size = max_data_size or float('inf')
 
@@ -201,14 +210,6 @@ def get_data(path: str,
 
             if len(all_smiles) >= max_data_size:
                 break
-
-        # Load atomic descriptors
-        atom_features = None
-        atom_descriptors = None
-        if args.atom_descriptors == 'feature':
-            atom_features = load_atom_features(atom_descriptors_path)
-        elif args.atom_descriptors == 'descriptor':
-            atom_descriptors = load_atom_features(atom_descriptors_path)
 
         data = MoleculeDataset([
             MoleculeDatapoint(
