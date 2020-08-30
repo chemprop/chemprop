@@ -12,7 +12,7 @@ from chemprop.args import HyperoptArgs
 from chemprop.constants import HYPEROPT_LOGGER_NAME
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.train import cross_validate
+from chemprop.train import cross_validate, run_training
 from chemprop.utils import create_logger, makedirs, timeit
 
 
@@ -71,7 +71,7 @@ def hyperopt(args: HyperoptArgs) -> None:
         logger.info(hyperparams)
 
         # Cross validate
-        mean_score, std_score = cross_validate(hyper_args)
+        mean_score, std_score = cross_validate(args=hyper_args, train_func=run_training)
 
         # Record results
         temp_model = MoleculeModel(hyper_args)

@@ -8,7 +8,6 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
 
 from .run_training import run_training
 from chemprop.args import TrainArgs
@@ -59,9 +58,6 @@ def cross_validate(args: TrainArgs,
 
     # Save args
     args.save(os.path.join(args.save_dir, 'args.json'))
-
-    # Set pytorch seed for random initial weights
-    torch.manual_seed(args.pytorch_seed)
 
     # Get data
     debug('Loading data')
