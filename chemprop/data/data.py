@@ -1,3 +1,4 @@
+import threading
 from collections import OrderedDict
 from functools import partial
 from random import Random
@@ -384,6 +385,12 @@ class MoleculeDataLoader(DataLoader):
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
+        self._context = None
+        self._timeout = 0
+        is_main_thread = threading.current_thread() is threading.main_thread()
+        if not is_main_thread and self._num_workers > 0:
+            self._context = 'forkserver'  # In order to prevent a hanging
+            self._timeout = 3600  # Just for sure that the DataLoader won't hang
 
         self._sampler = MoleculeSampler(
             dataset=self._dataset,
@@ -397,7 +404,9 @@ class MoleculeDataLoader(DataLoader):
             batch_size=self._batch_size,
             sampler=self._sampler,
             num_workers=self._num_workers,
-            collate_fn=partial(construct_molecule_batch, cache=self._cache)
+            collate_fn=partial(construct_molecule_batch, cache=self._cache),
+            multiprocessing_context=self._context,
+            timeout=self._timeout
         )
 
     @property
