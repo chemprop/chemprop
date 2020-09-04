@@ -93,6 +93,10 @@ class MoleculeDatapoint:
         """
         self.targets = targets
 
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        self.features, self.targets = self.raw_features, self.raw_targets
+
 
 class MoleculeDataset(Dataset):
     r"""A :class:`MoleculeDataset` contains a list of :class:`MoleculeDatapoint`\ s with access to their attributes."""
@@ -250,13 +254,10 @@ class MoleculeDataset(Dataset):
         for i in range(len(self._data)):
             self._data[i].set_targets(targets[i])
 
-    def sort(self, key: Callable) -> None:
-        """
-        Sorts the dataset using the provided key.
-
-        :param key: A function on a :class:`MoleculeDatapoint` to determine the sorting order.
-        """
-        self._data.sort(key=key)
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        for d in self._data:
+            d.reset_features_and_targets()
 
     def __len__(self) -> int:
         """

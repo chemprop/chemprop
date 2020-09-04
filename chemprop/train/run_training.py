@@ -91,7 +91,6 @@ def run_training(args: TrainArgs,
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
         scaler = train_data.normalize_targets()
-        print(scaler.means, scaler.stds)
     else:
         scaler = None
 

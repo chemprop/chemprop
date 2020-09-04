@@ -1,5 +1,4 @@
 from collections import defaultdict
-from copy import deepcopy
 import csv
 from logging import Logger
 import os
@@ -72,6 +71,7 @@ def cross_validate(args: TrainArgs,
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
+        data.reset_features_and_targets()
         model_scores = train_func(args, data, logger)
         for metric, scores in model_scores.items():
             all_scores[metric].append(scores)
