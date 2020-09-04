@@ -72,7 +72,7 @@ def cross_validate(args: TrainArgs,
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
-        model_scores = train_func(args, deepcopy(data), logger)  # deepcopy since data may be modified
+        model_scores = train_func(args, data, logger)
         for metric, scores in model_scores.items():
             all_scores[metric].append(scores)
     all_scores = dict(all_scores)

@@ -375,14 +375,15 @@ def split_data(data: MoleculeDataset,
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
 
     elif split_type == 'random':
-        data.shuffle(seed=seed)
+        indices = list(range(len(data)))
+        random.shuffle(indices)
 
         train_size = int(sizes[0] * len(data))
         train_val_size = int((sizes[0] + sizes[1]) * len(data))
 
-        train = data[:train_size]
-        val = data[train_size:train_val_size]
-        test = data[train_val_size:]
+        train = [data[i] for i in indices[:train_size]]
+        val = [data[i] for i in indices[train_size:train_val_size]]
+        test = [data[i] for i in indices[train_val_size:]]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 

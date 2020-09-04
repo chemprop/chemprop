@@ -90,10 +90,8 @@ def run_training(args: TrainArgs,
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
-        train_smiles, train_targets = train_data.smiles(), train_data.targets()
-        scaler = StandardScaler().fit(train_targets)
-        scaled_targets = scaler.transform(train_targets).tolist()
-        train_data.set_targets(scaled_targets)
+        scaler = train_data.normalize_targets()
+        print(scaler.means, scaler.stds)
     else:
         scaler = None
 
