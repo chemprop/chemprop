@@ -17,8 +17,7 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data import scaffold_to_smiles
-from chemprop.data.utils import get_data
+from chemprop.data import get_data, scaffold_to_smiles
 
 
 class Args(Tap):

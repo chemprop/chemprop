@@ -10,10 +10,11 @@ from tqdm import tqdm
 
 from chemprop.args import TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
+from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
-def train(model: nn.Module,
+def train(model: MoleculeModel,
           data_loader: MoleculeDataLoader,
           loss_func: Callable,
           optimizer: Optimizer,
@@ -25,14 +26,14 @@ def train(model: nn.Module,
     """
     Trains a model for an epoch.
 
-    :param model: Model.
-    :param data_loader: A MoleculeDataLoader.
+    :param model: A :class:`~chemprop.models.model.MoleculeModel`.
+    :param data_loader: A :class:`~chemprop.data.data.MoleculeDataLoader`.
     :param loss_func: Loss function.
-    :param optimizer: An Optimizer.
+    :param optimizer: An optimizer.
     :param scheduler: A learning rate scheduler.
-    :param args: Arguments.
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for training the model.
     :param n_iter: The number of iterations (training examples) trained on so far.
-    :param logger: A logger for printing intermediate results.
+    :param logger: A logger for recording output.
     :param writer: A tensorboardX SummaryWriter.
     :return: The total number of iterations (training examples) trained on so far.
     """
@@ -41,7 +42,7 @@ def train(model: nn.Module,
     model.train()
     loss_sum, iter_count = 0, 0
 
-    for batch in tqdm(data_loader, total=len(data_loader)):
+    for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
         mol_batch, features_batch, target_batch = batch.batch_graph(), batch.features(), batch.targets()
@@ -68,6 +69,8 @@ def train(model: nn.Module,
         iter_count += len(batch)
 
         loss.backward()
+        if args.grad_clip:
+            nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()
 
         if isinstance(scheduler, NoamLR):

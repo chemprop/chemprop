@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from random import Random
 from typing import Dict, List, Set, Tuple, Union
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
@@ -13,11 +14,11 @@ from .data import MoleculeDataset
 
 def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False) -> str:
     """
-    Compute the Bemis-Murcko scaffold for a SMILES string.
+    Computes the Bemis-Murcko scaffold for a SMILES string.
 
-    :param mol: A smiles string or an RDKit molecule.
-    :param include_chirality: Whether to include chirality.
-    :return:
+    :param mol: A SMILES or an RDKit molecule.
+    :param include_chirality: Whether to include chirality in the computed scaffold..
+    :return: The Bemis-Murcko scaffold for the molecule.
     """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=include_chirality)
@@ -28,12 +29,12 @@ def generate_scaffold(mol: Union[str, Chem.Mol], include_chirality: bool = False
 def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol]],
                        use_indices: bool = False) -> Dict[str, Union[Set[str], Set[int]]]:
     """
-    Computes scaffold for each smiles string and returns a mapping from scaffolds to sets of smiles.
+    Computes the scaffold for each SMILES and returns a mapping from scaffolds to sets of smiles (or indices).
 
-    :param mols: A list of smiles strings or RDKit molecules.
-    :param use_indices: Whether to map to the smiles' index in all_smiles rather than mapping
-    to the smiles string itself. This is necessary if there are duplicate smiles.
-    :return: A dictionary mapping each unique scaffold to all smiles (or smiles indices) which have that scaffold.
+    :param mols: A list of SMILES or RDKit molecules.
+    :param use_indices: Whether to map to the SMILES's index in :code:`mols` rather than
+                        mapping to the smiles string itself. This is necessary if there are duplicate smiles.
+    :return: A dictionary mapping each unique scaffold to all SMILES (or indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
     for i, mol in tqdm(enumerate(mols), total=len(mols)):
@@ -53,16 +54,16 @@ def scaffold_split(data: MoleculeDataset,
                    logger: logging.Logger = None) -> Tuple[MoleculeDataset,
                                                            MoleculeDataset,
                                                            MoleculeDataset]:
-    """
-    Split a dataset by scaffold so that no molecules sharing a scaffold are in the same split.
+    r"""
+    Splits a :class:`~chemprop.data.MoleculeDataset` by scaffold so that no molecules sharing a scaffold are in different splits.
 
-    :param data: A MoleculeDataset.
-    :param sizes: A length-3 tuple with the proportions of data in the
-    train, validation, and test sets.
-    :param balanced: Try to balance sizes of scaffolds in each set, rather than just putting smallest in test set.
-    :param seed: Seed for shuffling when doing balanced splitting.
-    :param logger: A logger.
-    :return: A tuple containing the train, validation, and test splits of the data.
+    :param data: A :class:`MoleculeDataset`.
+    :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
+    :param balanced: Whether to balance the sizes of scaffolds in each set rather than putting the smallest in test set.
+    :param seed: Random seed for shuffling when doing balanced splitting.
+    :param logger: A logger for recording output.
+    :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
+             validation, and test splits of the data.
     """
     assert sum(sizes) == 1
 
@@ -131,28 +132,36 @@ def log_scaffold_stats(data: MoleculeDataset,
     """
     Logs and returns statistics about counts and average target values in molecular scaffolds.
 
-    :param data: A MoleculeDataset.
+    :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param index_sets: A list of sets of indices representing splits of the data.
     :param num_scaffolds: The number of scaffolds about which to display statistics.
     :param num_labels: The number of labels about which to display statistics.
-    :param logger: A Logger.
+    :param logger: A logger for recording output.
     :return: A list of tuples where each tuple contains a list of average target values
-    across the first num_labels labels and a list of the number of non-zero values for
-    the first num_scaffolds scaffolds, sorted in decreasing order of scaffold frequency.
+             across the first :code:`num_labels` labels and a list of the number of non-zero values for
+             the first :code:`num_scaffolds` scaffolds, sorted in decreasing order of scaffold frequency.
     """
-    # print some statistics about scaffolds
-    target_avgs = []
-    counts = []
-    for index_set in index_sets:
-        data_set = [data[i] for i in index_set]
-        targets = [d.targets for d in data_set]
-        targets = np.array(targets, dtype=np.float)
-        target_avgs.append(np.nanmean(targets, axis=0))
-        counts.append(np.count_nonzero(~np.isnan(targets), axis=0))
-    stats = [(target_avgs[i][:num_labels], counts[i][:num_labels]) for i in range(min(num_scaffolds, len(target_avgs)))]
-
     if logger is not None:
         logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
-                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels: {stats}')
+                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels:')
+
+    stats = []
+    index_sets = sorted(index_sets, key=lambda idx_set: len(idx_set), reverse=True)
+    for scaffold_num, index_set in enumerate(index_sets[:num_scaffolds]):
+        data_set = [data[i] for i in index_set]
+        targets = np.array([d.targets for d in data_set], dtype=np.float)
+
+        with warnings.catch_warnings():  # Likely warning of empty slice of target has no values besides NaN
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            target_avgs = np.nanmean(targets, axis=0)[:num_labels]
+
+        counts = np.count_nonzero(~np.isnan(targets), axis=0)[:num_labels]
+        stats.append((target_avgs, counts))
+
+        if logger is not None:
+            logger.debug(f'Scaffold {scaffold_num}')
+            for task_num, (target_avg, count) in enumerate(zip(target_avgs, counts)):
+                logger.debug(f'Task {task_num}: count = {count:,} | target average = {target_avg:.6f}')
+            logger.debug('\n')
 
     return stats

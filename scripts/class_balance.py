@@ -9,7 +9,7 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
+from chemprop.data import get_class_sizes, get_data, get_task_names, split_data
 
 
 class Args(Tap):

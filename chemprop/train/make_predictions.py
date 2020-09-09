@@ -6,17 +6,21 @@ from tqdm import tqdm
 
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.data.utils import get_data, get_data_from_smiles
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
+from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 
 
-def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Optional[List[float]]]:
+@timeit()
+def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
     """
-    Makes predictions. If smiles is provided, makes predictions on smiles. Otherwise makes predictions on args.test_data.
+    Loads data and a trained model and uses the model to make predictions on the data.
 
-    :param args: Arguments.
-    :param smiles: Smiles to make predictions on.
+    If SMILES are provided, then makes predictions on smiles.
+    Otherwise makes predictions on :code:`args.test_data`.
+
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param smiles: SMILES to make predictions on.
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
@@ -40,9 +44,20 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
 
     print('Loading data')
     if smiles is not None:
-        full_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False, features_generator=args.features_generator)
+        full_data = get_data_from_smiles(
+            smiles=smiles,
+            skip_invalid_smiles=False,
+            features_generator=args.features_generator
+        )
     else:
-        full_data = get_data(path=args.test_path, args=args, target_columns=[], skip_invalid_smiles=False)
+        full_data = get_data(
+            path=args.test_path,
+            args=args,
+            target_columns=[],
+            ignore_columns=[],
+            skip_invalid_smiles=False,
+            store_row=True
+        )
 
     print('Validating SMILES')
     full_to_valid_indices = {}
@@ -120,3 +135,11 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[Option
             writer.writerow(datapoint.row)
 
     return avg_preds
+
+
+def chemprop_predict() -> None:
+    """Parses Chemprop predicting arguments and runs prediction using a trained Chemprop model.
+
+    This is the entry point for the command line command :code:`chemprop_predict`.
+    """
+    make_predictions(args=PredictArgs().parse_args())

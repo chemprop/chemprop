@@ -1,62 +1,46 @@
-import csv
 from logging import Logger
 import os
-import sys
-from typing import List
+from typing import Dict, List
 
 import numpy as np
+import pandas as pd
 from tensorboardX import SummaryWriter
 import torch
 from tqdm import trange
-import pickle
 from torch.optim.lr_scheduler import ExponentialLR
 
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from chemprop.args import TrainArgs
-from chemprop.data import StandardScaler, MoleculeDataLoader
-from chemprop.data.utils import get_class_sizes, get_data, get_task_names, split_data
+from chemprop.constants import MODEL_FILE_NAME
+from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, split_data, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, get_metric_func, load_checkpoint,\
-    makedirs, save_checkpoint, save_smiles_splits
+from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint,makedirs, \
+    save_checkpoint, save_smiles_splits
 
 
-def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
+def run_training(args: TrainArgs,
+                 data: MoleculeDataset,
+                 logger: Logger = None) -> Dict[str, List[float]]:
     """
-    Trains a model and returns test scores on the model checkpoint with the highest validation score.
+    Loads data, trains a Chemprop model, and returns test scores for the model checkpoint with the highest validation score.
 
-    :param args: Arguments.
-    :param logger: Logger.
-    :return: A list of ensemble scores for each task.
+    :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for
+                 loading data and training the Chemprop model.
+    :param data: A :class:`~chemprop.data.MoleculeDataset` containing the data.
+    :param logger: A logger to record output.
+    :return: A dictionary mapping each metric in :code:`args.metrics` to a list of values for each task.
+
     """
     if logger is not None:
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
 
-    # Print command line
-    debug('Command line')
-    debug(f'python {" ".join(sys.argv)}')
-
-    # Print args
-    debug('Args')
-    debug(args)
-
-    # Save args
-    args.save(os.path.join(args.save_dir, 'args.json'))
-
     # Set pytorch seed for random initial weights
     torch.manual_seed(args.pytorch_seed)
-
-    # Get data
-    debug('Loading data')
-    args.task_names = args.target_columns or get_task_names(args.data_path)
-    data = get_data(path=args.data_path, args=args, logger=logger)
-    args.num_tasks = data.num_tasks()
-    args.features_size = data.features_size()
-    debug(f'Number of tasks = {args.num_tasks}')
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')
@@ -68,11 +52,11 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     if args.separate_val_path and args.separate_test_path:
         train_data = data
     elif args.separate_val_path:
-        train_data, _, test_data = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.0, 0.2), seed=args.seed, args=args, logger=logger)
+        train_data, _, test_data = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.0, 0.2), seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
     elif args.separate_test_path:
-        train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, args=args, logger=logger)
+        train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
     else:
-        train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, args=args, logger=logger)
+        train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
 
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(data)
@@ -87,7 +71,8 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             val_data=val_data,
             test_data=test_data,
             data_path=args.data_path,
-            save_dir=args.save_dir
+            save_dir=args.save_dir,
+            smiles_column=args.smiles_column
         )
 
     if args.features_scaling:
@@ -105,16 +90,12 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
-        train_smiles, train_targets = train_data.smiles(), train_data.targets()
-        scaler = StandardScaler().fit(train_targets)
-        scaled_targets = scaler.transform(train_targets).tolist()
-        train_data.set_targets(scaled_targets)
+        scaler = train_data.normalize_targets()
     else:
         scaler = None
 
-    # Get loss and metric functions
+    # Get loss function
     loss_func = get_loss_func(args)
-    metric_func = get_metric_func(metric=args.metric)
 
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
@@ -154,6 +135,9 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         cache=cache
     )
 
+    if args.class_balance:
+        debug(f'With class_balance, effective train size = {train_data_loader.iter_size:,}')
+
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
@@ -179,7 +163,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         model = model.to(args.device)
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
+        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -210,33 +194,35 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
                 model=model,
                 data_loader=val_data_loader,
                 num_tasks=args.num_tasks,
-                metric_func=metric_func,
+                metrics=args.metrics,
                 dataset_type=args.dataset_type,
                 scaler=scaler,
                 logger=logger
             )
 
-            # Average validation score
-            avg_val_score = np.nanmean(val_scores)
-            debug(f'Validation {args.metric} = {avg_val_score:.6f}')
-            writer.add_scalar(f'validation_{args.metric}', avg_val_score, n_iter)
+            for metric, scores in val_scores.items():
+                # Average validation score
+                avg_val_score = np.nanmean(scores)
+                debug(f'Validation {metric} = {avg_val_score:.6f}')
+                writer.add_scalar(f'validation_{metric}', avg_val_score, n_iter)
 
-            if args.show_individual_scores:
-                # Individual validation scores
-                for task_name, val_score in zip(args.task_names, val_scores):
-                    debug(f'Validation {task_name} {args.metric} = {val_score:.6f}')
-                    writer.add_scalar(f'validation_{task_name}_{args.metric}', val_score, n_iter)
+                if args.show_individual_scores:
+                    # Individual validation scores
+                    for task_name, val_score in zip(args.task_names, scores):
+                        debug(f'Validation {task_name} {metric} = {val_score:.6f}')
+                        writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
 
             # Save model checkpoint if improved validation score
+            avg_val_score = np.nanmean(val_scores[args.metric])
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)        
+                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
-        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), device=args.device, logger=logger)
-        
+        model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
+
         test_preds = predict(
             model=model,
             data_loader=test_data_loader,
@@ -246,7 +232,7 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             preds=test_preds,
             targets=test_targets,
             num_tasks=args.num_tasks,
-            metric_func=metric_func,
+            metrics=args.metrics,
             dataset_type=args.dataset_type,
             logger=logger
         )
@@ -255,15 +241,16 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
             sum_test_preds += np.array(test_preds)
 
         # Average test score
-        avg_test_score = np.nanmean(test_scores)
-        info(f'Model {model_idx} test {args.metric} = {avg_test_score:.6f}')
-        writer.add_scalar(f'test_{args.metric}', avg_test_score, 0)
+        for metric, scores in test_scores.items():
+            avg_test_score = np.nanmean(scores)
+            info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
+            writer.add_scalar(f'test_{metric}', avg_test_score, 0)
 
-        if args.show_individual_scores:
-            # Individual test scores
-            for task_name, test_score in zip(args.task_names, test_scores):
-                info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
-                writer.add_scalar(f'test_{task_name}_{args.metric}', test_score, n_iter)
+            if args.show_individual_scores:
+                # Individual test scores
+                for task_name, test_score in zip(args.task_names, scores):
+                    info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
+                    writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
         writer.close()
 
     # Evaluate ensemble on test set
@@ -273,18 +260,28 @@ def run_training(args: TrainArgs, logger: Logger = None) -> List[float]:
         preds=avg_test_preds,
         targets=test_targets,
         num_tasks=args.num_tasks,
-        metric_func=metric_func,
+        metrics=args.metrics,
         dataset_type=args.dataset_type,
         logger=logger
     )
 
-    # Average ensemble score
-    avg_ensemble_test_score = np.nanmean(ensemble_scores)
-    info(f'Ensemble test {args.metric} = {avg_ensemble_test_score:.6f}')
+    for metric, scores in ensemble_scores.items():
+        # Average ensemble score
+        avg_ensemble_test_score = np.nanmean(scores)
+        info(f'Ensemble test {metric} = {avg_ensemble_test_score:.6f}')
 
-    # Individual ensemble scores
-    if args.show_individual_scores:
-        for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
-            info(f'Ensemble test {task_name} {args.metric} = {ensemble_score:.6f}')
+        # Individual ensemble scores
+        if args.show_individual_scores:
+            for task_name, ensemble_score in zip(args.task_names, scores):
+                info(f'Ensemble test {task_name} {metric} = {ensemble_score:.6f}')
+
+    # Optionally save test preds
+    if args.save_preds:
+        test_preds_dataframe = pd.DataFrame(data={'smiles': test_data.smiles()})
+
+        for i, task_name in enumerate(args.task_names):
+            test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
+
+        test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
     return ensemble_scores

@@ -1,8 +1,6 @@
-"""Loads a trained model checkpoint and makes predictions on a dataset."""
+"""Loads a trained chemprop model checkpoint and makes predictions on a dataset."""
 
-from chemprop.args import PredictArgs
-from chemprop.train import make_predictions
+from chemprop.train import chemprop_predict
 
 if __name__ == '__main__':
-    args = PredictArgs().parse_args()
-    make_predictions(args)
+    chemprop_predict()

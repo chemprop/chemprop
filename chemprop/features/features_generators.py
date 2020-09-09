@@ -14,10 +14,10 @@ FEATURES_GENERATOR_REGISTRY = {}
 
 def register_features_generator(features_generator_name: str) -> Callable[[FeaturesGenerator], FeaturesGenerator]:
     """
-    Registers a features generator.
+    Creates a decorator which registers a features generator in a global dictionary to enable access by name.
 
-    :param features_generator_name: The name to call the FeaturesGenerator.
-    :return: A decorator which will add a FeaturesGenerator to the registry using the specified name.
+    :param features_generator_name: The name to use to access the features generator.
+    :return: A decorator which will add a features generator to the registry using the specified name.
     """
     def decorator(features_generator: FeaturesGenerator) -> FeaturesGenerator:
         FEATURES_GENERATOR_REGISTRY[features_generator_name] = features_generator
@@ -28,10 +28,10 @@ def register_features_generator(features_generator_name: str) -> Callable[[Featu
 
 def get_features_generator(features_generator_name: str) -> FeaturesGenerator:
     """
-    Gets a registered FeaturesGenerator by name.
+    Gets a registered features generator by name.
 
-    :param features_generator_name: The name of the FeaturesGenerator.
-    :return: The desired FeaturesGenerator.
+    :param features_generator_name: The name of the features generator.
+    :return: The desired features generator.
     """
     if features_generator_name not in FEATURES_GENERATOR_REGISTRY:
         raise ValueError(f'Features generator "{features_generator_name}" could not be found. '
@@ -41,7 +41,7 @@ def get_features_generator(features_generator_name: str) -> FeaturesGenerator:
 
 
 def get_available_features_generators() -> List[str]:
-    """Returns the names of available features generators."""
+    """Returns a list of names of available features generators."""
     return list(FEATURES_GENERATOR_REGISTRY.keys())
 
 
@@ -56,10 +56,10 @@ def morgan_binary_features_generator(mol: Molecule,
     """
     Generates a binary Morgan fingerprint for a molecule.
 
-    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+    :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
     :param radius: Morgan fingerprint radius.
     :param num_bits: Number of bits in Morgan fingerprint.
-    :return: A 1-D numpy array containing the binary Morgan fingerprint.
+    :return: A 1D numpy array containing the binary Morgan fingerprint.
     """
     mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
     features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
@@ -76,7 +76,7 @@ def morgan_counts_features_generator(mol: Molecule,
     """
     Generates a counts-based Morgan fingerprint for a molecule.
 
-    :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+    :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
     :param radius: Morgan fingerprint radius.
     :param num_bits: Number of bits in Morgan fingerprint.
     :return: A 1D numpy array containing the counts-based Morgan fingerprint.
@@ -89,6 +89,20 @@ def morgan_counts_features_generator(mol: Molecule,
     return features
 
 
+@register_features_generator('rdkit_2d')
+def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+    """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+    raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+                      '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
+
+
+@register_features_generator('rdkit_2d_normalized')
+def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
+    """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+    raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+                      '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
+
+
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
@@ -97,7 +111,7 @@ try:
         """
         Generates RDKit 2D features for a molecule.
 
-        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
         :return: A 1D numpy array containing the RDKit 2D features.
         """
         smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
@@ -111,7 +125,7 @@ try:
         """
         Generates RDKit 2D normalized features for a molecule.
 
-        :param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+        :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
         :return: A 1D numpy array containing the RDKit 2D normalized features.
         """
         smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol

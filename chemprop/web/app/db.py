@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from flask import current_app, Flask, g
 
-from app import app
+from chemprop.web.app import app
 
 
 def init_app(app: Flask):

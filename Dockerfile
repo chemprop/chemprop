@@ -17,8 +17,7 @@ ENV LD_LIBRARY_PATH /usr/local/cuda-8.0/lib64:/usr/local/cuda-8.0/extras/CUPTI/l
 WORKDIR /app
 COPY . /app
 
-RUN conda install pip
-RUN conda install -c rdkit nox
-RUN conda install cairo
-RUN conda env update -n base --file environment.yml
-RUN pip install git+https://github.com/bp-kelley/descriptastorus
+RUN conda create -n chemprop python=3.7
+RUN conda activate chemprop
+RUN conda install -c conda-forge rdkit
+RUN pip install -e .

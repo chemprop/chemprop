@@ -1,22 +1,28 @@
 # Molecular Property Prediction
-This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approch to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
 
-**Website:** A web prediction interface with some trained chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)
+[![PyPI version](https://badge.fury.io/py/chemprop.svg)](https://badge.fury.io/py/chemprop)
+[![Build Status](https://travis-ci.org/chemprop/chemprop.svg?branch=master)](https://travis-ci.org/chemprop/chemprop)
 
-**Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a chemprop tutorial and highlight recent additions as of April 28th, 2020.
+This repository contains message passing neural networks for molecular property prediction as described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1).
+
+**Documentation:** Full documentation of Chemprop is available at https://chemprop.readthedocs.io/en/latest/.
+
+**Website:** A web prediction interface with some trained Chemprop models is available at [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+
+**Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a Chemprop tutorial and highlight recent additions as of April 28th, 2020.
 
 ## COVID-19 Update
 
-Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use chemprop to identify drug candidates for treating COVID-19.
+Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use Chemprop to identify drug candidates for treating COVID-19.
 
 ## Table of Contents
 
 - [Requirements](#requirements)
 - [Installation](#installation)
-  * [Option 1: Conda](#option-1-conda)
-  * [Option 2: Docker](#option-2-docker)
-  * [(Optional) Installing `chemprop` as a Package](#optional-installing-chemprop-as-a-package)
-  * [Notes](#notes)
+  * [Option 1: Installing from PyPi](#option-1-installing-from-pypi)
+  * [Option 2: Installing from source](#option-2-installing-from-source)
+  * [Docker](#docker)
 - [Web Interface](#web-interface)
 - [Data](#data)
 - [Training](#training)
@@ -35,7 +41,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
 
 ## Requirements
 
-For small datasets (~1000 molecules), it is possible to train models within a few minutes on a standard laptop with CPUs only. However, for larger datasets and larger `chemprop` models, we recommend using a GPU for significantly faster training.
+For small datasets (~1000 molecules), it is possible to train models within a few minutes on a standard laptop with CPUs only. However, for larger datasets and larger Chemprop models, we recommend using a GPU for significantly faster training.
 
 To use `chemprop` with GPUs, you will need:
  * cuda >= 8.0
@@ -43,57 +49,66 @@ To use `chemprop` with GPUs, you will need:
 
 ## Installation
 
-### Option 1: Conda
+Chemprop can either be installed from PyPi via pip or from source (i.e., directly from this git repo). The PyPi version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source.
 
-The easiest way to install the `chemprop` dependencies is via conda. Here are the steps:
+Both options require conda, so first install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html).
 
-1. Install Miniconda from [https://conda.io/miniconda.html](https://conda.io/miniconda.html)
-2. `cd /path/to/chemprop`
+Then proceed to either option below to complete the installation. Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions [here](https://pytorch.org/get-started/locally/).
+
+### Option 1: Installing from PyPi
+
+1. `conda create -n chemprop python=3.8`
+2. `conda activate chemprop`
+3. `conda install -c conda-forge rdkit`
+4. `pip install git+https://github.com/bp-kelley/descriptastorus`
+5. `pip install chemprop`
+
+### Option 2: Installing from source
+
+1. `git clone https://github.com/chemprop/chemprop.git`
+2. `cd chemprop`
 3. `conda env create -f environment.yml`
-4. `conda activate chemprop` (or `source activate chemprop` for older versions of conda)
+4. `conda activate chemprop`
+5. `pip install -e .`
 
-Note that on machines with GPUs, you may need to manually install a GPU-enabled version of PyTorch by following the instructions [here](https://pytorch.org/get-started/locally/).
+### Docker
 
-### Option 2: Docker
+Chemprop can also be installed with Docker. Docker makes it possible to isolate the Chemprop code and environment. To install and run our code in a Docker container, follow these steps:
 
-Docker provides a nice way to isolate the `chemprop` code and environment. To install and run our code in a Docker container, follow these steps:
+1. `git clone https://github.com/chemprop/chemprop.git`
+2. `cd chemprop`
+3. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
+4. `docker build -t chemprop .`
+5. `docker run -it chemprop:latest /bin/bash`
 
-1. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
-2. `cd /path/to/chemprop`
-3. `docker build -t chemprop .`
-4. `docker run -it chemprop:latest /bin/bash`
-
-Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs. 
-
-### (Optional) Installing `chemprop` as a Package
-
-If you would like to use functions or classes from `chemprop` in your own code, you can install `chemprop` as a pip package as follows:
-
-1. `cd /path/to/chemprop`
-2. `pip install -e .`
-
-Then you can use `import chemprop` or `from chemprop import ...` in your other code.
-
-### Notes
-
-**PyTorch GPU:** Although PyTorch is installed automatically along with `chemprop`, you may need to install the GPU version manually. Instructions are available [here](https://pytorch.org/get-started/locally/).
+Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs.
 
 ## Web Interface
 
-For those less familiar with the command line, we also have a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
+For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](chemprop.csail.mit.edu).
 
-You can start the web interface on your local machine in two ways:
+![Training with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_train.png "Training with our web interface")
 
-1. Run `python web/run.py` and then navigate to [localhost:5000](http://localhost:5000) in a web browser. This will start the site in development mode.
-2. Run `gunicorn --bind {host}:{port} 'wsgi:build_app()'`. This will start the site in production mode.
+![Predicting with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_predict.png "Predicting with our web interface")
+
+You can start the web interface on your local machine in two ways. Flask is used for development mode while gunicorn is used for production mode.
+
+### Flask
+
+Run `chemprop_web` (or optionally `python web.py` if installed from source) and then navigate to [localhost:5000](http://localhost:5000) in a web browser.
+
+### Gunicorn
+
+Gunicorn is only available for a UNIX environment, meaning it will not work on Windows. It is not installed by default with the rest of Chemprop, so first run:
+
+```
+pip install gunicorn
+```
+
+Next, navigate to `chemprop/web` and run `gunicorn --bind {host}:{port} 'wsgi:build_app()'`. This will start the site in production mode.
    * To run this server in the background, add the `--daemon` flag.
    * Arguments including `init_db` and `demo` can be passed with this pattern: `'wsgi:build_app(init_db=True, demo=True)'` 
    * Gunicorn documentation can be found [here](http://docs.gunicorn.org/en/stable/index.html).
-
-![Training with our web interface](web/app/static/images/web_train.png "Training with our web interface")
-
-![Predicting with our web interface](web/app/static/images/web_predict.png "Predicting with our web interface")
-
 
 ## Data
 
@@ -117,16 +132,18 @@ Datasets from [MoleculeNet](http://moleculenet.ai/) and a 450K subset of ChEMBL 
 
 To train a model, run:
 ```
-python train.py --data_path <path> --dataset_type <type> --save_dir <dir>
+chemprop_train --data_path <path> --dataset_type <type> --save_dir <dir>
 ```
 where `<path>` is the path to a CSV file containing a dataset, `<type>` is either "classification" or "regression" depending on the type of the dataset, and `<dir>` is the directory where model checkpoints will be saved.
 
 For example:
 ```
-python train.py --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
+chemprop_train --data_path data/tox21.csv --dataset_type classification --save_dir tox21_checkpoints
 ```
 
 A full list of available command-line arguments can be found in [chemprop/args.py](https://github.com/chemprop/chemprop/blob/master/chemprop/args.py).
+
+If installed from source, `chemprop_train` can be replaced with `python train.py`.
 
 Notes:
 * The default metric for classification is AUC and the default metric for regression is RMSE. Other metrics may be specified with `--metric <metric>`.
@@ -155,13 +172,17 @@ To train an ensemble, specify the number of models in the ensemble with `--ensem
 
 ### Hyperparameter Optimization
 
-Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package) in `hyperparameter_optimization.py`. This script finds the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
+Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package), which will find the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
 ```
-python hyperparameter_optimization.py --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
+chemprop_hyperopt --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
 ```
-where `<n>` is the number of hyperparameter settings to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
+where `<n>` is the number of hyperparameter settings to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved.
+
+If installed from source, `chemprop_hyperopt` can be replaced with `python hyperparameter_optimization.py`.
+
+Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
 ```
-python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
+chemprop_train --data_path <data_path> --dataset_type <type> --config_path <config_path>
 ```
 
 Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run hyperparameter_optimization.py separately on each split's training and validation data with test held out.
@@ -178,8 +199,6 @@ While the model works very well on its own, especially after hyperparameter opti
 
 As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
 
-Note: In order to use the `rdkit_2d_normalized` features, you must have `descriptastorus` installed. If you installed via conda, you can install `descriptastorus` by running `pip install git+https://github.com/bp-kelley/descriptastorus`. If you installed via Docker, `descriptastorus` should already be installed.
-
 The full list of available features for `--features_generator` is as follows. 
 
 `morgan` is binary Morgan fingerprints, radius 2 and 2048 bits.
@@ -189,7 +208,7 @@ The full list of available features for `--features_generator` is as follows.
 
 #### Custom Features
 
-If you would like to load custom features, you can do so in two ways:
+If you install from source, you can modify the code to load custom features as follows:
 
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
 2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
@@ -205,19 +224,24 @@ To load a trained model and make predictions, run `predict.py` and specify:
 
 For example:
 ```
-python predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_preds.csv
+chemprop_predict --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_preds.csv
 ```
 or
 ```
-python predict.py --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
+chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
+
+If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
 ## Interpreting
 
-It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command
+It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command:
 ```
-python interpret.py --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
+chemprop_interpret --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
 ```
+
+If installed from source, `chemprop_interpret` can be replaced with `python interpret.py`.
+
 The output will be like the following:
 * The first column is a molecule and second column is its predicted property (in this case NR-AR toxicity). 
 * The third column is the smallest substructure that made this molecule classified as toxic (which we call rationale). 
@@ -232,7 +256,7 @@ CC1(C)O\[C@@H\]2C\[C@H\]3\[C@@H\]4C\[C@H\](F)C5=CC(=O)C=C\[C@\]5(C)\[C@H\]4\[C@@
 C\[C@\]12CC\[C@H\]3\[C@@H\](CC\[C@@\]45O\[C@@H\]4C(O)=C(C#N)C\[C@\]35C)\[C@@H\]1CC\[C@@H\]2O | 0.941 | C\[C@\]12C\[CH:1\]=\[CH:1\]\[C@H\]3O\[C@\]31CC\[C@@H\]1\[C@@H\]2CC\[C:1\]\[CH2:1\]1 | 0.808 |
 C\[C@\]12C\[C@H\](O)\[C@H\]3\[C@@H\](CCC4=CC(=O)CC\[C@@\]43C)\[C@@H\]1CC\[C@\]2(O)C(=O)COP(=O)(\[O-\])\[O-\] | 0.957 | C1C\[CH2:1\]\[C:1\]\[C@@H\]2\[C@@H\]1\[C@@H\]1CC\[C:1\]\[C:1\]1C\[CH2:1\]2</pre> | 0.532 | 
 
-Our interpretation script explains model prediction one property at a time. `--property_id 1` tells the script to provide explanation for the first property in the dataset (which is NR-AR). In a multi-task training setting, you will need to change `--property_id` to provide explanation for each property in the dataset.
+Chemprop's interpretation script explains model prediction one property at a time. `--property_id 1` tells the script to provide explanation for the first property in the dataset (which is NR-AR). In a multi-task training setting, you will need to change `--property_id` to provide explanation for each property in the dataset.
 
 For computational efficiency, we currently restricted the rationale to have maximum 20 atoms and minimum 8 atoms. You can adjust these constraints through `--max_atoms` and `--min_atoms` argument.
 
