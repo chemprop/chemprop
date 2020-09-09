@@ -163,7 +163,11 @@ where `<n>` is the number of hyperparameter settings to try and `<config_path>` 
 python train.py --data_path <data_path> --dataset_type <type> --config_path <config_path>
 ```
 
-Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run hyperparameter_optimization.py separately on each split's training and validation data with test held out. 
+Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run hyperparameter_optimization.py separately on each split's training and validation data with test held out.
+
+### Aggregation
+
+By default, the atom-level representations from the message passing network are averaged over all atoms of a molecule to yield a molecule-level representation. Alternatively, the atomic vectors can be summed up (by specifying `--aggregration sum`) or summed up and divided by a constant number N (by specifying `--aggregration sum --aggregation_norm <N>`).A reasonable value for N is usually the average number of atoms per molecule in the dataset of interest. The default is `--aggregation_norm 100`.
 
 ### Additional Features
 
