@@ -24,6 +24,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Cross validation](#cross-validation)
   * [Ensembling](#ensembling)
   * [Hyperparameter Optimization](#hyperparameter-optimization)
+  * [Aggregation](#aggregation)
   * [Additional Features](#additional-features)
     * [RDKit 2D Features](#rdkit-2d-features)
     * [Custom Features](#custom-features)
