@@ -26,7 +26,7 @@ class MoleculeDatapoint:
                  features: np.ndarray = None,
                  features_generator: List[str] = None):
         """
-        :param smiles: The SMILES string for the molecule.
+        :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
         :param row: The raw CSV row containing the information for this molecule.
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
@@ -40,7 +40,8 @@ class MoleculeDatapoint:
         self.row = row
         self.features = features
         self.features_generator = features_generator
-        self._mol = ['None' for s in self.smiles]  # Initialize with 'None' to distinguish between None returned by invalid molecule
+        self._mol = ['None' for s in self.smiles]
+        #Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -65,7 +66,7 @@ class MoleculeDatapoint:
 
     @property
     def mol(self) -> List[Chem.Mol]:
-        """Gets the corresponding RDKit molecule for this molecule's SMILES (with lazy loading)."""
+        """Gets the corresponding list of RDKit molecules for the SMILES list (with lazy loading)."""
         if 'None' in self._mol:
             self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
 
@@ -118,7 +119,7 @@ class MoleculeDataset(Dataset):
 
     def smiles(self) -> List[List[str]]:
         """
-        Returns a list containing the SMILES associated with each molecule.
+        Returns a list containing the SMILES list associated with each :class:`MoleculeDatapoint`.
 
         :return: A list of lists of SMILES strings.
         """
@@ -126,7 +127,7 @@ class MoleculeDataset(Dataset):
 
     def mols(self) -> List[List[Chem.Mol]]:
         """
-        Returns the RDKit molecules associated with each molecule.
+        Returns a list of the RDKit molecules associated with each :class:`MoleculeDatapoint`.
 
         :return: A list of lists of RDKit molecules.
         """
@@ -144,7 +145,8 @@ class MoleculeDataset(Dataset):
 
         :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
                       for each molecule in a global cache.
-        :return: A list of :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
+        :return: A list of :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the
+                 molecules in each :class:`MoleculeDatapoint`.
         """
         if self._batch_graph is None:
             self._batch_graph = []
