@@ -67,11 +67,11 @@ def run_training(args: TrainArgs,
 
     if args.save_smiles_splits:
         save_smiles_splits(
+            data_path=args.data_path,
+            save_dir=args.save_dir,
             train_data=train_data,
             val_data=val_data,
             test_data=test_data,
-            data_path=args.data_path,
-            save_dir=args.save_dir,
             smiles_column=args.smiles_column
         )
 
@@ -90,10 +90,7 @@ def run_training(args: TrainArgs,
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
-        train_smiles, train_targets = train_data.smiles(), train_data.targets()
-        scaler = StandardScaler().fit(train_targets)
-        scaled_targets = scaler.transform(train_targets).tolist()
-        train_data.set_targets(scaled_targets)
+        scaler = train_data.normalize_targets()
     else:
         scaler = None
 
@@ -203,15 +200,15 @@ def run_training(args: TrainArgs,
                 logger=logger
             )
 
-            for metric in args.metrics:
+            for metric, scores in val_scores.items():
                 # Average validation score
-                avg_val_score = np.nanmean(val_scores[metric])
+                avg_val_score = np.nanmean(scores)
                 debug(f'Validation {metric} = {avg_val_score:.6f}')
                 writer.add_scalar(f'validation_{metric}', avg_val_score, n_iter)
 
                 if args.show_individual_scores:
                     # Individual validation scores
-                    for task_name, val_score in zip(args.task_names, val_scores[metric]):
+                    for task_name, val_score in zip(args.task_names, scores):
                         debug(f'Validation {task_name} {metric} = {val_score:.6f}')
                         writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
 
@@ -244,14 +241,14 @@ def run_training(args: TrainArgs,
             sum_test_preds += np.array(test_preds)
 
         # Average test score
-        for metric in args.metrics:
-            avg_test_score = np.nanmean(test_scores[metric])
+        for metric, scores in test_scores.items():
+            avg_test_score = np.nanmean(scores)
             info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
             writer.add_scalar(f'test_{metric}', avg_test_score, 0)
 
             if args.show_individual_scores:
                 # Individual test scores
-                for task_name, test_score in zip(args.task_names, test_scores[metric]):
+                for task_name, test_score in zip(args.task_names, scores):
                     info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
                     writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
         writer.close()
@@ -268,14 +265,14 @@ def run_training(args: TrainArgs,
         logger=logger
     )
 
-    for metric in args.metrics:
+    for metric, scores in ensemble_scores.items():
         # Average ensemble score
-        avg_ensemble_test_score = np.nanmean(ensemble_scores[metric])
+        avg_ensemble_test_score = np.nanmean(scores)
         info(f'Ensemble test {metric} = {avg_ensemble_test_score:.6f}')
 
         # Individual ensemble scores
         if args.show_individual_scores:
-            for task_name, ensemble_score in zip(args.task_names, ensemble_scores[metric]):
+            for task_name, ensemble_score in zip(args.task_names, scores):
                 info(f'Ensemble test {task_name} {metric} = {ensemble_score:.6f}')
 
     # Optionally save test preds

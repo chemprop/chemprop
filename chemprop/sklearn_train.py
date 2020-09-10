@@ -1,7 +1,6 @@
 from logging import Logger
 import os
 import pickle
-from pprint import pformat
 from typing import Dict, List, Union
 
 import numpy as np
@@ -10,9 +9,10 @@ from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
-from chemprop.data import get_data, get_task_names, MoleculeDataset, split_data
+from chemprop.data import MoleculeDataset, split_data
 from chemprop.features import get_features_generator
 from chemprop.train import cross_validate, evaluate_predictions
+from chemprop.utils import save_smiles_splits
 
 
 def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -191,6 +191,15 @@ def run_sklearn(args: SklearnTrainArgs,
         num_folds=args.num_folds,
         args=args
     )
+
+    if args.save_smiles_splits:
+        save_smiles_splits(
+            data_path=args.data_path,
+            save_dir=args.save_dir,
+            train_data=train_data,
+            test_data=test_data,
+            smiles_column=args.smiles_column
+        )
 
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
 

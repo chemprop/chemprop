@@ -1,3 +1,4 @@
+import threading
 from collections import OrderedDict
 from functools import partial
 from random import Random
@@ -70,6 +71,9 @@ class MoleculeDatapoint:
         if self.atom_features is not None:
             self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
+        # Save a copy of the raw features and targets to enable different scaling later on
+        self.raw_features, self.raw_targets = features, targets
+
     @property
     def mol(self) -> Chem.Mol:
         """Gets the corresponding RDKit molecule for this molecule's SMILES (with lazy loading)."""
@@ -101,6 +105,10 @@ class MoleculeDatapoint:
         :param targets: A list of floats containing the targets.
         """
         self.targets = targets
+
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        self.features, self.targets = self.raw_features, self.raw_targets
 
 
 class MoleculeDataset(Dataset):
@@ -207,6 +215,7 @@ class MoleculeDataset(Dataset):
         """
         return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
 
+<<<<<<< HEAD
     def atom_descriptors_size(self) -> int:
         """
         Returns the size of custom additional atom descriptors vector associated with the molecules.
@@ -235,6 +244,8 @@ class MoleculeDataset(Dataset):
             self._random.seed(seed)
         self._random.shuffle(self._data)
     
+=======
+>>>>>>> master
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """
         Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
@@ -261,15 +272,33 @@ class MoleculeDataset(Dataset):
             self._scaler = scaler
 
         elif self._scaler is None:
-            features = np.vstack([d.features for d in self._data])
+            features = np.vstack([d.raw_features for d in self._data])
             self._scaler = StandardScaler(replace_nan_token=replace_nan_token)
             self._scaler.fit(features)
 
         for d in self._data:
-            d.set_features(self._scaler.transform(d.features.reshape(1, -1))[0])
+            d.set_features(self._scaler.transform(d.raw_features.reshape(1, -1))[0])
 
         return self._scaler
-    
+
+    def normalize_targets(self) -> StandardScaler:
+        """
+        Normalizes the targets of the dataset using a :class:`~chemprop.data.StandardScaler`.
+
+        The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard deviation
+        for each task independently.
+
+        This should only be used for regression datasets.
+
+        :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
+        """
+        targets = [d.raw_targets for d in self._data]
+        scaler = StandardScaler().fit(targets)
+        scaled_targets = scaler.transform(targets).tolist()
+        self.set_targets(scaled_targets)
+
+        return scaler
+
     def set_targets(self, targets: List[List[Optional[float]]]) -> None:
         """
         Sets the targets for each molecule in the dataset. Assumes the targets are aligned with the datapoints.
@@ -281,13 +310,10 @@ class MoleculeDataset(Dataset):
         for i in range(len(self._data)):
             self._data[i].set_targets(targets[i])
 
-    def sort(self, key: Callable) -> None:
-        """
-        Sorts the dataset using the provided key.
-
-        :param key: A function on a :class:`MoleculeDatapoint` to determine the sorting order.
-        """
-        self._data.sort(key=key)
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        for d in self._data:
+            d.reset_features_and_targets()
 
     def __len__(self) -> int:
         """
@@ -414,6 +440,12 @@ class MoleculeDataLoader(DataLoader):
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
+        self._context = None
+        self._timeout = 0
+        is_main_thread = threading.current_thread() is threading.main_thread()
+        if not is_main_thread and self._num_workers > 0:
+            self._context = 'forkserver'  # In order to prevent a hanging
+            self._timeout = 3600  # Just for sure that the DataLoader won't hang
 
         self._sampler = MoleculeSampler(
             dataset=self._dataset,
@@ -427,7 +459,9 @@ class MoleculeDataLoader(DataLoader):
             batch_size=self._batch_size,
             sampler=self._sampler,
             num_workers=self._num_workers,
-            collate_fn=partial(construct_molecule_batch, cache=self._cache)
+            collate_fn=partial(construct_molecule_batch, cache=self._cache),
+            multiprocessing_context=self._context,
+            timeout=self._timeout
         )
 
     @property
