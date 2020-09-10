@@ -233,6 +233,10 @@ class TrainArgs(CommonArgs):
     """
     ensemble_size: int = 1
     """Number of models in ensemble."""
+    aggregation: Literal['mean', 'sum', 'norm'] = 'mean'
+    """Aggregation scheme for atomic vectors into molecular vectors"""
+    aggregation_norm: int = 100
+    """For norm aggregation, number by which to divide summed up atomic features"""
 
     # Training arguments
     epochs: int = 30
