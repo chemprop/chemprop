@@ -1,4 +1,5 @@
 from typing import List, Union
+from functools import reduce
 
 import numpy as np
 from rdkit import Chem
@@ -171,9 +172,8 @@ class MPN(nn.Module):
                 return features_batch
 
         output = None
-        for enc, ba in zip(self.encoder, batch):
-            _output = enc.forward(ba)
-            output = _output if output is None else torch.cat([output, _output], dim=1)
+        encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
+        output = reduce(lambda x, y: torch.cat((x, y), dim=1), encodings)
 
         if self.use_input_features:
             if len(features_batch.shape) == 1:
