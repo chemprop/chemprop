@@ -168,7 +168,7 @@ def get_data(path: str,
         columns = reader.fieldnames
 
         # By default, the SMILES column is the first column
-        if smiles_columns is None:
+        if None in smiles_columns:
             smiles_columns = columns[:len(smiles_columns)]
 
         # By default, the targets columns are all the columns except the SMILES column
