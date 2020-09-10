@@ -30,7 +30,8 @@ def get_task_names(path: str,
     the :code:`ignore_columns`.
 
     :param path: Path to a CSV file.
-    :param smiles_columns: The name of the columns containing SMILES. By default, uses the first column.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
     :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_column` and the :code:`ignore_columns`.
@@ -45,7 +46,7 @@ def get_task_names(path: str,
     if smiles_columns is None:
         smiles_columns = columns[:number_of_molecules]
 
-    ignore_columns = set([c for c in smiles_columns] + ([] if ignore_columns is None else ignore_columns))
+    ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
 
     target_names = [column for column in columns if column not in ignore_columns]
 
@@ -65,22 +66,24 @@ def get_header(path: str) -> List[str]:
     return header
 
 
-def get_smiles(path: str, smiles_column: str = None, number_of_molecules: int = 1, header: bool = True) -> List[str]:
+def get_smiles(path: str, smiles_columns: str = None, number_of_molecules: int = 1, header: bool = True) -> List[str]:
     """
     Returns the SMILES from a data CSV file.
 
     :param path: Path to a CSV file.
-    :param smiles_column: The name of the column containing SMILES. By default, uses the first column.
-    :param header: Whether the CSV file contains a header.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
+        :param header: Whether the CSV file contains a header.
     :return: A list of SMILES.
     """
-    if smiles_column is not None and not header:
+    if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
     with open(path) as f:
         if header:
             reader = csv.DictReader(f)
-            if smiles_column is None:
+            if smiles_columns is None:
                 smiles_column = reader.fieldnames[:number_of_molecules]
         else:
             reader = csv.reader(f)
@@ -104,7 +107,7 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 
 def get_data(path: str,
-             smiles_column: List[str] = None,
+             smiles_columns: List[str] = None,
              number_of_molecules: int = None,
              target_columns: List[str] = None,
              ignore_columns: List[str] = None,
@@ -120,8 +123,9 @@ def get_data(path: str,
     Gets SMILES and target values from a CSV file.
 
     :param path: Path to a CSV file.
-    :param smiles_column: The name of the column containing SMILES. By default, uses the first number_of_molecules columns.
-    :param number_of_molecules: The number of molecules in the input file. By default, uses the first columns.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_column` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
@@ -143,7 +147,7 @@ def get_data(path: str,
 
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
-        smiles_column = smiles_column if smiles_column is not None else args.smiles_column
+        smiles_columns = smiles_columns if smiles_columns is not None else args.smiles_columns
         number_of_molecules = number_of_molecules if number_of_molecules is not None else args.number_of_molecules
         target_columns = target_columns if target_columns is not None else args.target_columns
         ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
@@ -170,18 +174,17 @@ def get_data(path: str,
         columns = reader.fieldnames
 
         # By default, the SMILES column is the first column
-        if smiles_column is None:
-            smiles_column = columns[:number_of_molecules]
+        if smiles_columns is None:
+            smiles_columns = columns[:number_of_molecules]
 
         # By default, the targets columns are all the columns except the SMILES column
         if target_columns is None:
-            ignore_columns = set([c for c in smiles_column] + ([] if ignore_columns is None else ignore_columns))
+            ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
             target_columns = [column for column in columns if column not in ignore_columns]
 
         all_smiles, all_targets, all_rows = [], [], []
         for row in tqdm(reader):
-            smiles = [row[c] for c in smiles_column]
-
+            smiles = [row[c] for c in smiles_columns]
 
             if smiles in skip_smiles:
                 continue
