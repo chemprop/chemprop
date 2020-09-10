@@ -57,7 +57,7 @@ def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
 class CommonArgs(Tap):
     """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
-    smiles_column: List[str] = None
+    smiles_columns: List[str] = None
     """List of names of the columns containing SMILES strings. 
     By default, uses the first n (=number of molecules) columns."""
     number_of_molecules: int = 1
