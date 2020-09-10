@@ -129,9 +129,9 @@ class CommonArgs(Tap):
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
-        if self.smiles_column is None:
+        if self.smiles_columns is None:
             self.smiles_columns = [None] * self.number_of_molecules
-        elif len(self.smiles_column) != self.number_of_molecules:
+        elif len(self.smiles_columns) != self.number_of_molecules:
             raise ValueError('Length of smiles_columns must match number_of_molecules.')
 
 
