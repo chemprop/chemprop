@@ -31,6 +31,8 @@ class MPNEncoder(nn.Module):
         self.layers_per_message = 1
         self.undirected = args.undirected
         self.device = args.device
+        self.aggregation = args.aggregation
+        self.aggregation_norm = args.aggregation_norm
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -115,8 +117,12 @@ class MPNEncoder(nn.Module):
             else:
                 cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
                 mol_vec = cur_hiddens  # (num_atoms, hidden_size)
-
-                mol_vec = mol_vec.sum(dim=0) / a_size
+                if self.aggregation=='mean':
+                    mol_vec = mol_vec.sum(dim=0) / a_size
+                elif self.aggregation=='sum':
+                    mol_vec = mol_vec.sum(dim=0)
+                elif self.aggregation=='norm':
+                    mol_vec = mol_vec.sum(dim=0) / self.aggregation_norm
                 mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)  # (num_molecules, hidden_size)

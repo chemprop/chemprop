@@ -24,7 +24,7 @@ def predict(model: MoleculeModel,
 
     preds = []
 
-    for batch in tqdm(data_loader, disable=disable_progress_bar):
+    for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
         batch: MoleculeDataset
         mol_batch, features_batch = batch.batch_graph(), batch.features()

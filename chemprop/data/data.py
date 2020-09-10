@@ -1,7 +1,7 @@
+import threading
 from collections import OrderedDict
-from functools import partial
 from random import Random
-from typing import Callable, Dict, Iterator, List, Optional, Union
+from typing import Dict, Iterator, List, Optional, Union
 
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, Sampler
@@ -13,7 +13,35 @@ from chemprop.features import BatchMolGraph, MolGraph
 
 
 # Cache of graph featurizations
+CACHE_GRAPH = True
 SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
+
+
+def cache_graph() -> bool:
+    r"""Returns whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
+    return CACHE_GRAPH
+
+
+def set_cache_graph(cache_graph: bool) -> None:
+    r"""Sets whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
+    global CACHE_GRAPH
+    CACHE_GRAPH = cache_graph
+
+
+# Cache of RDKit molecules
+CACHE_MOL = True
+SMILES_TO_MOL: Dict[str, Chem.Mol] = {}
+
+
+def cache_mol() -> bool:
+    r"""Returns whether RDKit molecules will be cached."""
+    return CACHE_MOL
+
+
+def set_cache_mol(cache_mol: bool) -> None:
+    r"""Sets whether RDKit molecules will be cached."""
+    global CACHE_MOL
+    CACHE_MOL = cache_mol
 
 
 class MoleculeDatapoint:
@@ -64,13 +92,19 @@ class MoleculeDatapoint:
             replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
+        # Save a copy of the raw features and targets to enable different scaling later on
+        self.raw_features, self.raw_targets = features, targets
+
     @property
     def mol(self) -> List[Chem.Mol]:
-        """Gets the corresponding list of RDKit molecules for the SMILES list (with lazy loading)."""
-        if 'None' in self._mol:
-            self._mol = [Chem.MolFromSmiles(s) for s in self.smiles]
+        """Gets the corresponding list of RDKit molecules for the corresponding SMILES list."""
+        mol = [SMILES_TO_MOL.get(s, Chem.MolFromSmiles(s)) for s in self.smiles]
+        
+        if cache_mol():
+            for s, m in zip(self.smiles, mol):
+                SMILES_TO_MOL[s] = m
 
-        return self._mol
+        return mol
 
     def set_features(self, features: np.ndarray) -> None:
         """
@@ -104,6 +138,10 @@ class MoleculeDatapoint:
         """
         self.targets = targets
 
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        self.features, self.targets = self.raw_features, self.raw_targets
+
 
 class MoleculeDataset(Dataset):
     r"""A :class:`MoleculeDataset` contains a list of :class:`MoleculeDatapoint`\ s with access to their attributes."""
@@ -133,7 +171,7 @@ class MoleculeDataset(Dataset):
         """
         return [d.mol for d in self._data]
 
-    def batch_graph(self, cache: bool = False) -> List[BatchMolGraph]:
+    def batch_graph(self) -> List[BatchMolGraph]:
         r"""
         Constructs a :class:`~chemprop.features.BatchMolGraph` with the graph featurization of all the molecules.
 
@@ -143,8 +181,6 @@ class MoleculeDataset(Dataset):
            set of :class:`MoleculeDatapoint`\ s changes, then the returned :class:`~chemprop.features.BatchMolGraph`
            will be incorrect for the underlying data.
 
-        :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                      for each molecule in a global cache.
         :return: A list of :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the
                  molecules in each :class:`MoleculeDatapoint`.
         """
@@ -159,7 +195,7 @@ class MoleculeDataset(Dataset):
                         mol_graph = SMILES_TO_GRAPH[s]
                     else:
                         mol_graph = MolGraph(m)
-                        if cache:
+                        if cache_graph():
                             SMILES_TO_GRAPH[s] = mol_graph
                     mol_graphs_set.append(mol_graph)
                 mol_graphs.append(mol_graphs_set)
@@ -203,16 +239,6 @@ class MoleculeDataset(Dataset):
         """
         return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
 
-    def shuffle(self, seed: int = None) -> None:
-        """
-        Shuffles the dataset.
-
-        :param seed: Optional random seed.
-        """
-        if seed is not None:
-            self._random.seed(seed)
-        self._random.shuffle(self._data)
-    
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """
         Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
@@ -239,15 +265,33 @@ class MoleculeDataset(Dataset):
             self._scaler = scaler
 
         elif self._scaler is None:
-            features = np.vstack([d.features for d in self._data])
+            features = np.vstack([d.raw_features for d in self._data])
             self._scaler = StandardScaler(replace_nan_token=replace_nan_token)
             self._scaler.fit(features)
 
         for d in self._data:
-            d.set_features(self._scaler.transform(d.features.reshape(1, -1))[0])
+            d.set_features(self._scaler.transform(d.raw_features.reshape(1, -1))[0])
 
         return self._scaler
-    
+
+    def normalize_targets(self) -> StandardScaler:
+        """
+        Normalizes the targets of the dataset using a :class:`~chemprop.data.StandardScaler`.
+
+        The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard deviation
+        for each task independently.
+
+        This should only be used for regression datasets.
+
+        :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
+        """
+        targets = [d.raw_targets for d in self._data]
+        scaler = StandardScaler().fit(targets)
+        scaled_targets = scaler.transform(targets).tolist()
+        self.set_targets(scaled_targets)
+
+        return scaler
+
     def set_targets(self, targets: List[List[Optional[float]]]) -> None:
         """
         Sets the targets for each molecule in the dataset. Assumes the targets are aligned with the datapoints.
@@ -259,13 +303,10 @@ class MoleculeDataset(Dataset):
         for i in range(len(self._data)):
             self._data[i].set_targets(targets[i])
 
-    def sort(self, key: Callable) -> None:
-        """
-        Sorts the dataset using the provided key.
-
-        :param key: A function on a :class:`MoleculeDatapoint` to determine the sorting order.
-        """
-        self._data.sort(key=key)
+    def reset_features_and_targets(self) -> None:
+        """Resets the features and targets to their raw values."""
+        for d in self._data:
+            d.reset_features_and_targets()
 
     def __len__(self) -> int:
         """
@@ -343,7 +384,7 @@ class MoleculeSampler(Sampler):
         return self.length
 
 
-def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False) -> MoleculeDataset:
+def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
     r"""
     Constructs a :class:`MoleculeDataset` from a list of :class:`MoleculeDatapoint`\ s.
 
@@ -351,12 +392,10 @@ def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False)
     :class:`MoleculeDataset`.
 
     :param data: A list of :class:`MoleculeDatapoint`\ s.
-    :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                  for each molecule in a global cache.
     :return: A :class:`MoleculeDataset` containing all the :class:`MoleculeDatapoint`\ s.
     """
     data = MoleculeDataset(data)
-    data.batch_graph(cache=cache)  # Forces computation and caching of the BatchMolGraph for the molecules
+    data.batch_graph()  # Forces computation and caching of the BatchMolGraph for the molecules
 
     return data
 
@@ -368,7 +407,6 @@ class MoleculeDataLoader(DataLoader):
                  dataset: MoleculeDataset,
                  batch_size: int = 50,
                  num_workers: int = 8,
-                 cache: bool = False,
                  class_balance: bool = False,
                  shuffle: bool = False,
                  seed: int = 0):
@@ -376,8 +414,6 @@ class MoleculeDataLoader(DataLoader):
         :param dataset: The :class:`MoleculeDataset` containing the molecules to load.
         :param batch_size: Batch size.
         :param num_workers: Number of workers used to build batches.
-        :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                      for each molecule in a global cache.
         :param class_balance: Whether to perform class balancing (i.e., use an equal number of positive
                               and negative molecules). Class balance is only available for single task
                               classification datasets. Set shuffle to True in order to get a random
@@ -388,10 +424,15 @@ class MoleculeDataLoader(DataLoader):
         self._dataset = dataset
         self._batch_size = batch_size
         self._num_workers = num_workers
-        self._cache = cache
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
+        self._context = None
+        self._timeout = 0
+        is_main_thread = threading.current_thread() is threading.main_thread()
+        if not is_main_thread and self._num_workers > 0:
+            self._context = 'forkserver'  # In order to prevent a hanging
+            self._timeout = 3600  # Just for sure that the DataLoader won't hang
 
         self._sampler = MoleculeSampler(
             dataset=self._dataset,
@@ -405,7 +446,9 @@ class MoleculeDataLoader(DataLoader):
             batch_size=self._batch_size,
             sampler=self._sampler,
             num_workers=self._num_workers,
-            collate_fn=partial(construct_molecule_batch, cache=self._cache)
+            collate_fn=construct_molecule_batch,
+            multiprocessing_context=self._context,
+            timeout=self._timeout
         )
 
     @property

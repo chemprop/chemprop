@@ -392,21 +392,21 @@ def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
     return timeit_decorator
 
 
-def save_smiles_splits(train_data: MoleculeDataset,
-                       val_data: MoleculeDataset,
-                       test_data: MoleculeDataset,
-                       data_path: str,
+def save_smiles_splits(data_path: str,
                        save_dir: str,
+                       train_data: MoleculeDataset = None,
+                       val_data: MoleculeDataset = None,
+                       test_data: MoleculeDataset = None,
                        smiles_column: str = None) -> None:
     """
     Saves indices of train/val/test split as a pickle file.
 
+    :param data_path: Path to data CSV file.
+    :param save_dir: Path where pickle files will be saved.
     :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
-    :param data_path: Path to data CSV file.
     :param smiles_column: The name of the column containing SMILES. By default, uses the first column.
-    :param save_dir: Path where pickle files will be saved.
     """
     makedirs(save_dir)
 
@@ -428,6 +428,9 @@ def save_smiles_splits(train_data: MoleculeDataset,
 
     all_split_indices = []
     for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
+        if dataset is None:
+            continue
+
         with open(os.path.join(save_dir, f'{name}_smiles.csv'), 'w') as f:
             writer = csv.writer(f)
             writer.writerow(['smiles'])
