@@ -2,7 +2,7 @@ import threading
 from collections import OrderedDict
 from functools import partial
 from random import Random
-from typing import Callable, Dict, Iterator, List, Optional, Union
+from typing import Dict, Iterator, List, Optional, Union
 
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, Sampler
@@ -14,7 +14,35 @@ from chemprop.features import BatchMolGraph, MolGraph
 
 
 # Cache of graph featurizations
+CACHE_GRAPH = True
 SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
+
+
+def get_cache_graph() -> bool:
+    r"""Returns whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
+    return CACHE_GRAPH
+
+
+def set_cache_graph(cache_graph: bool) -> None:
+    r"""Sets whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
+    global CACHE_GRAPH
+    CACHE_GRAPH = cache_graph
+
+
+# Cache of RDKit molecules
+CACHE_MOL = True
+SMILES_TO_MOL: Dict[str, Chem.Mol] = {}
+
+
+def get_cache_mol() -> bool:
+    r"""Returns whether RDKit molecules will be cached."""
+    return CACHE_MOL
+
+
+def set_cache_mol(cache_mol: bool) -> None:
+    r"""Sets whether RDKit molecules will be cached."""
+    global CACHE_MOL
+    CACHE_MOL = cache_mol
 
 
 class MoleculeDatapoint:
@@ -41,7 +69,6 @@ class MoleculeDatapoint:
         self.row = row
         self.features = features
         self.features_generator = features_generator
-        self._mol = 'None'  # Initialize with 'None' to distinguish between None returned by invalid molecule
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -64,11 +91,14 @@ class MoleculeDatapoint:
 
     @property
     def mol(self) -> Chem.Mol:
-        """Gets the corresponding RDKit molecule for this molecule's SMILES (with lazy loading)."""
-        if self._mol == 'None':
-            self._mol = Chem.MolFromSmiles(self.smiles)
+        """Gets the corresponding RDKit molecule for this molecule's SMILES."""
+        mol = SMILES_TO_MOL.get(self.smiles, Chem.MolFromSmiles(self.smiles))
 
-        return self._mol
+        if CACHE_MOL:
+            print('cache')
+            SMILES_TO_MOL[self.smiles] = mol
+
+        return mol
 
     def set_features(self, features: np.ndarray) -> None:
         """

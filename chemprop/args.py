@@ -8,6 +8,7 @@ from typing_extensions import Literal
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
+from chemprop.data import set_cache_mol
 from chemprop.features import get_available_features_generators
 
 
@@ -84,6 +85,10 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
+    no_cache_mol: bool = False
+    """
+    Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
+    """
 
     @property
     def device(self) -> torch.device:
@@ -127,6 +132,8 @@ class CommonArgs(Tap):
         # Validate features
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
+
+        set_cache_mol(not self.no_cache_mol)
 
 
 class TrainArgs(CommonArgs):
