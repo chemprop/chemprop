@@ -62,7 +62,7 @@ class MoleculeModel(nn.Module):
         if args.features_only:
             first_linear_dim = args.features_size
         else:
-            first_linear_dim = args.hidden_size*args.number_of_molecules
+            first_linear_dim = args.hidden_size * args.number_of_molecules
             if args.use_input_features:
                 first_linear_dim += args.features_size
 
