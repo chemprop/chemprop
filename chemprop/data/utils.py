@@ -30,7 +30,8 @@ def get_task_names(path: str,
     the :code:`ignore_columns`.
 
     :param path: Path to a CSV file.
-    :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
+    :param smiles_columns: The name of the columns containing SMILES. By default, uses the first column.
+    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_column` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
