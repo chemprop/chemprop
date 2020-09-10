@@ -8,6 +8,7 @@ from typing_extensions import Literal
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
+from chemprop.data import set_cache_mol
 from chemprop.features import get_available_features_generators
 
 
@@ -92,6 +93,10 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
+    no_cache_mol: bool = False
+    """
+    Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
+    """
 
     @property
     def device(self) -> torch.device:
@@ -139,6 +144,8 @@ class CommonArgs(Tap):
         # Validate atom descriptors
         if self.atom_descriptors is not None and self.atom_descriptors_path is None:
             raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
+
+        set_cache_mol(not self.no_cache_mol)
 
 
 class TrainArgs(CommonArgs):
@@ -204,11 +211,12 @@ class TrainArgs(CommonArgs):
     """The number of batches between each logging of the training loss."""
     show_individual_scores: bool = False
     """Show all scores for individual targets, not just average, at the end."""
-    cache_cutoff: int = 10000
+    cache_cutoff: float = 10000
     """
     Maximum number of molecules in dataset to allow caching.
     Below this number, caching is used and data loading is sequential.
     Above this number, caching is not used and data loading is parallel.
+    Use "inf" to always cache.
     """
     save_preds: bool = False
     """Whether to save test split predictions during training."""

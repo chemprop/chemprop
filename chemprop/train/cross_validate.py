@@ -60,7 +60,12 @@ def cross_validate(args: TrainArgs,
 
     # Get data
     debug('Loading data')
-    data = get_data(path=args.data_path, args=args, logger=logger, skip_none_targets=True)
+    data = get_data(
+        path=args.data_path,
+        args=args,
+        logger=logger,
+        skip_none_targets=True
+    )
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
     args.atom_features_size = 0
