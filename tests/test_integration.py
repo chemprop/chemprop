@@ -82,7 +82,7 @@ class ChempropTests(TestCase):
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, 1.237620, delta=0.02)
-
+    
     def test_chemprop_train_multi_task_classification(self):
         with TemporaryDirectory() as save_dir:
             # Train

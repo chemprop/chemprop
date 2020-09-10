@@ -85,6 +85,14 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
+    atom_descriptors: Literal['feature', 'descriptor'] = None
+    """
+    Custom extra atom descriptors.
+    :code:`feature`: used as atom features to featurize a given molecule. 
+    :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
+    """
+    atom_descriptors_path: str = None
+    """Path to the extra atom descriptors."""
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
@@ -132,6 +140,10 @@ class CommonArgs(Tap):
         # Validate features
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
+
+        # Validate atom descriptors
+        if self.atom_descriptors is not None and self.atom_descriptors_path is None:
+            raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
 
         set_cache_mol(not self.no_cache_mol)
 

@@ -52,7 +52,9 @@ class MoleculeDatapoint:
                  targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  features: np.ndarray = None,
-                 features_generator: List[str] = None):
+                 features_generator: List[str] = None,
+                 atom_features: np.ndarray = None,
+                 atom_descriptors: np.ndarray = None):
         """
         :param smiles: The SMILES string for the molecule.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
@@ -68,6 +70,8 @@ class MoleculeDatapoint:
         self.row = row
         self.features = features
         self.features_generator = features_generator
+        self.atom_descriptors = atom_descriptors
+        self.atom_features = atom_features
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -81,9 +85,17 @@ class MoleculeDatapoint:
             self.features = np.array(self.features)
 
         # Fix nans in features
+        replace_token = 0
         if self.features is not None:
-            replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
+
+        # Fix nans in atom_descriptors
+        if self.atom_descriptors is not None:
+            self.atom_descriptors = np.where(np.isnan(self.atom_descriptors), replace_token, self.atom_descriptors)
+
+        # Fix nans in atom_features
+        if self.atom_features is not None:
+            self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
         # Save a copy of the raw features and targets to enable different scaling later on
         self.raw_features, self.raw_targets = features, targets
@@ -173,7 +185,7 @@ class MoleculeDataset(Dataset):
                 if d.smiles in SMILES_TO_GRAPH:
                     mol_graph = SMILES_TO_GRAPH[d.smiles]
                 else:
-                    mol_graph = MolGraph(d.mol)
+                    mol_graph = MolGraph(d.mol, d.atom_features)
                     if cache_graph():
                         SMILES_TO_GRAPH[d.smiles] = mol_graph
                 mol_graphs.append(mol_graph)
@@ -192,6 +204,18 @@ class MoleculeDataset(Dataset):
             return None
 
         return [d.features for d in self._data]
+
+    def atom_descriptors(self) -> List[np.ndarray]:
+        """
+        Returns the atom descriptors associated with each molecule (if they exit).
+
+        :return: A list of 2D numpy arrays containing the atom descriptors
+                 for each molecule or None if there are no features.
+        """
+        if len(self._data) == 0 or self._data[0].atom_descriptors is None:
+            return None
+
+        return [d.atom_descriptors for d in self._data]
 
     def targets(self) -> List[List[Optional[float]]]:
         """
@@ -216,6 +240,24 @@ class MoleculeDataset(Dataset):
         :return: The size of the additional features vector.
         """
         return len(self._data[0].features) if len(self._data) > 0 and self._data[0].features is not None else None
+
+    def atom_descriptors_size(self) -> int:
+        """
+        Returns the size of custom additional atom descriptors vector associated with the molecules.
+
+        :return: The size of the additional atom descriptor vector.
+        """
+        return len(self._data[0].atom_descriptors[0]) \
+            if len(self._data) > 0 and self._data[0].atom_descriptors is not None else None
+
+    def atom_features_size(self) -> int:
+        """
+        Returns the size of custom additional atom features vector associated with the molecules.
+
+        :return: The size of the additional atom feature vector.
+        """
+        return len(self._data[0].atom_features[0]) \
+            if len(self._data) > 0 and self._data[0].atom_features is not None else None
 
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """

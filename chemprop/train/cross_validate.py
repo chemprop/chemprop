@@ -13,6 +13,7 @@ from chemprop.args import TrainArgs
 from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
 from chemprop.utils import create_logger, makedirs, timeit
+from chemprop.features import set_extra_atom_fdim
 
 
 @timeit(logger_name=TRAIN_LOGGER_NAME)
@@ -67,6 +68,14 @@ def cross_validate(args: TrainArgs,
     )
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
+    args.atom_features_size = 0
+
+    if args.atom_descriptors == 'descriptor':
+        args.atom_descriptors_size = data.atom_descriptors_size()
+        args.ffn_hidden_size += args.atom_descriptors_size
+    elif args.atom_descriptors == 'feature':
+        set_extra_atom_fdim(data.atom_features_size())
+
     debug(f'Number of tasks = {args.num_tasks}')
 
     # Run training on different random seeds for each fold

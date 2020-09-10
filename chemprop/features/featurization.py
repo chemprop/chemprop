@@ -2,6 +2,7 @@ from typing import List, Tuple, Union
 
 from rdkit import Chem
 import torch
+import numpy as np
 
 # Atom feature sizes
 MAX_ATOMIC_NUM = 100
@@ -28,12 +29,19 @@ THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE
 
 # len(choices) + 1 to include room for uncommon values; + 2 at end for IsAromatic and mass
 ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
+EXTRA_ATOM_FDIM = 0
 BOND_FDIM = 14
 
 
 def get_atom_fdim() -> int:
     """Gets the dimensionality of the atom feature vector."""
-    return ATOM_FDIM
+    return ATOM_FDIM + EXTRA_ATOM_FDIM
+
+
+def set_extra_atom_fdim(extra) -> int:
+    """Change the dimensionality of the atom feature vector."""
+    global EXTRA_ATOM_FDIM
+    EXTRA_ATOM_FDIM = extra
 
 
 def get_bond_fdim(atom_messages: bool = False) -> int:
@@ -124,7 +132,7 @@ class MolGraph:
     * :code:`b2revb`: A mapping from a bond index to the index of the reverse bond.
     """
 
-    def __init__(self, mol: Union[str, Chem.Mol]):
+    def __init__(self, mol: Union[str, Chem.Mol], atom_descriptors: np.ndarray = None):
         """
         :param mol: A SMILES or an RDKit molecule.
         """
@@ -142,6 +150,9 @@ class MolGraph:
 
         # Get atom features
         self.f_atoms = [atom_features(atom) for atom in mol.GetAtoms()]
+        if atom_descriptors is not None:
+            self.f_atoms = [f_atoms + descs.tolist() for f_atoms, descs in zip(self.f_atoms, atom_descriptors)]
+
         self.n_atoms = len(self.f_atoms)
 
         # Initialize atom to bond mapping for each atom
@@ -290,11 +301,15 @@ class BatchMolGraph:
         return self.a2a
 
 
-def mol2graph(mols: Union[List[str], List[Chem.Mol]]) -> BatchMolGraph:
+def mol2graph(mols: Union[List[str], List[Chem.Mol]], atom_descriptors_batch: List[np.array] = None) -> BatchMolGraph:
     """
     Converts a list of SMILES or RDKit molecules to a :class:`BatchMolGraph` containing the batch of molecular graphs.
 
     :param mols: A list of SMILES or a list of RDKit molecules.
+    :param atom_descriptors_batch: A list of 2D numpy array containing additional atom descriptors to featurize the molecule
     :return: A :class:`BatchMolGraph` containing the combined molecular graph for the molecules.
     """
-    return BatchMolGraph([MolGraph(mol) for mol in mols])
+    if atom_descriptors_batch is not None:
+        return BatchMolGraph([MolGraph(mol, atom_descriptors) for mol, atom_descriptors in zip(mols, atom_descriptors_batch)])
+    else:
+        return BatchMolGraph([MolGraph(mol) for mol in mols])

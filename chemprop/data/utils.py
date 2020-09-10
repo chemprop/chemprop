@@ -13,7 +13,7 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features
+from chemprop.features import load_features, load_atom_features
 
 
 def get_task_names(path: str,
@@ -109,6 +109,7 @@ def get_data(path: str,
              args: Union[TrainArgs, PredictArgs] = None,
              features_path: List[str] = None,
              features_generator: List[str] = None,
+             atom_descriptors_path: str = None,
              max_data_size: int = None,
              store_row: bool = False,
              logger: Logger = None,
@@ -127,6 +128,7 @@ def get_data(path: str,
                           in place of :code:`args.features_path`.
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
+    :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
@@ -137,6 +139,10 @@ def get_data(path: str,
     """
     debug = logger.debug if logger is not None else print
 
+    # Load atomic descriptors
+    atom_features = None
+    atom_descriptors = None
+
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
         smiles_column = smiles_column if smiles_column is not None else args.smiles_column
@@ -144,7 +150,14 @@ def get_data(path: str,
         ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
         features_path = features_path if features_path is not None else args.features_path
         features_generator = features_generator if features_generator is not None else args.features_generator
+        atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
+            else args.atom_descriptors_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
+
+        if args.atom_descriptors == 'feature':
+            atom_features = load_atom_features(atom_descriptors_path)
+        elif args.atom_descriptors == 'descriptor':
+            atom_descriptors = load_atom_features(atom_descriptors_path)
 
     max_data_size = max_data_size or float('inf')
 
@@ -204,7 +217,9 @@ def get_data(path: str,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 features_generator=features_generator,
-                features=all_features[i] if features_data is not None else None
+                features=all_features[i] if features_data is not None else None,
+                atom_features=atom_features[i] if atom_features is not None else None,
+                atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])
