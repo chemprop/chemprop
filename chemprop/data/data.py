@@ -53,7 +53,8 @@ class MoleculeDatapoint:
                         self.features.extend(features_generator(m))
                     # for H2
                     elif m is not None and m.GetNumHeavyAtoms() == 0:
-                        self.features.extend(np.zeros(200))
+                        # not all features are equally long, so use methane as dummy molecule to determine length
+                        self.features.extend(np.zeros(len(features_generator(Chem.MolFromSmiles('C')))))
 
             self.features = np.array(self.features)
 
