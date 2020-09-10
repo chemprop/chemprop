@@ -207,6 +207,9 @@ class TrainArgs(CommonArgs):
     """Dimensionality of hidden layers in MPN."""
     depth: int = 3
     """Number of message passing steps."""
+    mpn_shared: bool = False
+    """Whether to use the same message passing neural network for all input molecules
+    Only relevant if :code:'number_of_molecules > 1'"""
     dropout: float = 0.0
     """Dropout probability."""
     activation: Literal['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'] = 'ReLU'

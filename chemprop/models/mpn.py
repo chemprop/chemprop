@@ -147,7 +147,10 @@ class MPN(nn.Module):
         if self.features_only:
             return
 
-        self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
+        if args.mpn_shared:
+            self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)] * args.number_of_molecules)
+        else:
+            self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
                                       for _ in range(args.number_of_molecules)])
 
     def forward(self,
