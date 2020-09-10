@@ -85,7 +85,7 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
-    atom_descriptors: Literal[None, 'feature', 'descriptor'] = None
+    atom_descriptors: Literal['feature', 'descriptor'] = None
     """
     Custom extra atom descriptors.
     :code:`feature`: used as atom features to featurize a given molecule. 
