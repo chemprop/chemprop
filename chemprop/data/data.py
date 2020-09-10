@@ -58,18 +58,16 @@ class MoleculeDatapoint:
             self.features = np.array(self.features)
 
         # Fix nans in features
+        replace_token = 0
         if self.features is not None:
-            replace_token = 0
             self.features = np.where(np.isnan(self.features), replace_token, self.features)
 
         # Fix nans in atom_descriptors
         if self.atom_descriptors is not None:
-            replace_token = 0
             self.atom_descriptors = np.where(np.isnan(self.atom_descriptors), replace_token, self.atom_descriptors)
 
         # Fix nans in atom_features
         if self.atom_features is not None:
-            replace_token = 0
             self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
     @property
@@ -178,7 +176,7 @@ class MoleculeDataset(Dataset):
         Returns the atom descriptors associated with each molecule (if they exit).
 
         :return: A list of 2D numpy arrays containing the atom descriptors
-        for each molecule or None if there are no features.
+                 for each molecule or None if there are no features.
         """
         if len(self._data) == 0 or self._data[0].atom_descriptors is None:
             return None
@@ -220,9 +218,9 @@ class MoleculeDataset(Dataset):
 
     def atom_features_size(self) -> int:
         """
-        Returns the size of custom additional atom descriptors vector associated with the molecules.
+        Returns the size of custom additional atom features vector associated with the molecules.
 
-        :return: The size of the additional atom descriptor vector.
+        :return: The size of the additional atom feature vector.
         """
         return len(self._data[0].atom_features[0]) \
             if len(self._data) > 0 and self._data[0].atom_features is not None else None

@@ -58,9 +58,10 @@ def load_features(path: str) -> np.ndarray:
 
 def load_atom_features(path: str) -> List[np.ndarray]:
     """
-    Loads features saved in a .pkl file
-    :param path: Path to file containing atomwise features
-    :return: A list of 2D array
+    Loads features saved in a .pkl file.
+
+    :param path: Path to file containing atomwise features.
+    :return: A list of 2D array.
     """
 
     features_df = pd.read_pickle(path)

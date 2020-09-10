@@ -108,7 +108,7 @@ class MoleculeModel(nn.Module):
         :param batch: A list of SMILES, a list of RDKit molecules, or a
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
-        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors
+        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :return: The feature vectors computed by the :class:`MoleculeModel`.
         """
         return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch))

@@ -84,11 +84,14 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
-    atom_descriptors: Literal['None', 'feature', 'descriptor'] = 'None'
-    """Custom extra atom descriptors. feature: used as atom features to featurize a given molecule. 
-    descriptor: used as descriptor and concatenated to the machine learned atomic representation"""
+    atom_descriptors: Literal[None, 'feature', 'descriptor'] = None
+    """
+    Custom extra atom descriptors.
+    :code:`feature`: used as atom features to featurize a given molecule. 
+    :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
+    """
     atom_descriptors_path: str = None
-    """Path to the extra atom descriptors"""
+    """Path to the extra atom descriptors."""
 
     @property
     def device(self) -> torch.device:
@@ -134,7 +137,7 @@ class CommonArgs(Tap):
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
         # Validate atom descriptors
-        if self.atom_descriptors != 'None' and self.atom_descriptors_path is None:
+        if self.atom_descriptors is not None and self.atom_descriptors_path is None:
             raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
 
 

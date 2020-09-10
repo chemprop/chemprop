@@ -128,7 +128,7 @@ def get_data(path: str,
                           in place of :code:`args.features_path`.
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
-    :param atom_descriptors_path: The path to the file containing the custom atom descriptors
+    :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
