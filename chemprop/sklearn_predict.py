@@ -20,7 +20,7 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
     """
     print('Loading data')
     data = get_data(path=args.test_path,
-                    smiles_column=args.smiles_column,
+                    smiles_columns=args.smiles_columns,
                     target_columns=[],
                     ignore_columns=[],
                     store_row=True)
