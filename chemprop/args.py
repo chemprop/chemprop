@@ -137,7 +137,6 @@ class CommonArgs(Tap):
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
-
         if self.smiles_columns is None:
             self.smiles_columns = [None] * self.number_of_molecules
         elif len(self.smiles_columns) != self.number_of_molecules:
@@ -505,13 +504,17 @@ class SklearnTrainArgs(TrainArgs):
     """Number of random forest trees."""
 
 
-class SklearnPredictArgs(CommonArgs):
+class SklearnPredictArgs(Tap):
     """:class:`SklearnPredictArgs` contains arguments used for predicting with a trained scikit-learn model."""
 
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
-    smiles_column: str = None
-    """Name of the column containing SMILES strings. By default, uses the first column."""
+    smiles_columns: List[str] = None
+    """List of names of the columns containing SMILES strings. 
+    By default, uses the first :code:`number_of_molecules` columns."""
+    number_of_molecules: int = 1
+    """Number of molecules in each input to the model.
+    This must equal the length of :code:`smiles_column` (if not :code:`None`)."""
     preds_path: str
     """Path to CSV file where predictions will be saved."""
     checkpoint_dir: str = None
@@ -522,6 +525,12 @@ class SklearnPredictArgs(CommonArgs):
     """List of paths to model checkpoints (:code:`.pkl` files)"""
 
     def process_args(self) -> None:
+
+        if self.smiles_columns is None:
+            self.smiles_columns = [None] * self.number_of_molecules
+        elif len(self.smiles_columns) != self.number_of_molecules:
+            raise ValueError('Length of smiles_columns must match number_of_molecules.')
+
         # Load checkpoint paths
         self.checkpoint_paths = get_checkpoint_paths(
             checkpoint_path=self.checkpoint_path,
