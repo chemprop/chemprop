@@ -2,6 +2,7 @@ from logging import Logger
 import os
 import pickle
 from typing import Dict, List, Union
+from pprint import pformat
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -9,10 +10,10 @@ from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
-from chemprop.data import MoleculeDataset, split_data
+from chemprop.data import MoleculeDataset, split_data, get_task_names, get_data
 from chemprop.features import get_features_generator
 from chemprop.train import cross_validate, evaluate_predictions
-from chemprop.utils import save_smiles_splits
+from chemprop.utils import save_smiles_splits, get_metric_func
 
 
 def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -184,10 +185,10 @@ def run_sklearn(args: SklearnTrainArgs,
 
     debug('Loading data')
     data = get_data(path=args.data_path,
-                    smiles_column=args.smiles_column,
+                    smiles_columns=args.smiles_columns,
                     target_columns=args.target_columns)
     args.task_names = get_task_names(path=args.data_path,
-                                     smiles_columns=args.smiles_column,
+                                     smiles_columns=args.smiles_columns,
                                      target_columns=args.target_columns,
                                      ignore_columns=args.ignore_columns)
 
