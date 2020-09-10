@@ -210,7 +210,7 @@ def train():
     ])
 
     # Get task names
-    args.task_names = get_task_names(path=data_path)
+    args.task_names = get_task_names(path=data_path, smiles_columns=[None])
 
     # Check if regression/classification selection matches data
     data = get_data(path=data_path, smiles_columns=[None])
