@@ -177,7 +177,7 @@ class MPN(nn.Module):
 
         if self.use_input_features:
             if len(features_batch.shape) == 1:
-                features_batch = features_batch.view([1, features_batch.shape[0]])
+                features_batch = features_batch.view(1, -1)
             # todo not sure if this did anything
             # features_batch = features_batch.to(mol_vecs)
             output = torch.cat([output, features_batch], dim=1)
