@@ -19,8 +19,11 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
                  loading data, loading a trained scikit-learn model, and making predictions with the model.
     """
     print('Loading data')
-    data = get_data(path=args.test_path, smiles_column=args.smiles_column, target_columns=[], ignore_columns=[],
-                    store_row=True, args=args)
+    data = get_data(path=args.test_path,
+                    smiles_column=args.smiles_column,
+                    target_columns=[],
+                    ignore_columns=[],
+                    store_row=True)
 
     print('Loading training arguments')
     with open(args.checkpoint_paths[0], 'rb') as f:
@@ -30,8 +33,9 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
     print('Computing morgan fingerprints')
     morgan_fingerprint = get_features_generator('morgan')
     for datapoint in tqdm(data, total=len(data)):
-        [datapoint.extend_features(morgan_fingerprint(mol=s, radius=train_args.radius, num_bits=train_args.num_bits))
-         for s in datapoint.smiles]
+        for s in datapoint.smiles:
+            datapoint.extend_features(morgan_fingerprint(mol=s, radius=train_args.radius, num_bits=train_args.num_bits))
+
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     sum_preds = np.zeros((len(data), train_args.num_tasks))
 
