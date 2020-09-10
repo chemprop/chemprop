@@ -147,9 +147,8 @@ class MPN(nn.Module):
         if self.features_only:
             return
 
-        #self.encoder = [MPNEncoder(args, self.atom_fdim, self.bond_fdim) for i in range(args.number_of_molecules)]
         self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
-                                      for i in range(args.number_of_molecules)])
+                                      for _ in range(args.number_of_molecules)])
 
     def forward(self,
                 batch: List[Union[List[str], List[Chem.Mol], BatchMolGraph]],
@@ -157,7 +156,7 @@ class MPN(nn.Module):
         """
         Encodes a batch of molecules.
 
-        :param batch: A list of SMILES, a list of RDKit molecules, or a
+        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
@@ -178,8 +177,7 @@ class MPN(nn.Module):
         if self.use_input_features:
             if len(features_batch.shape) == 1:
                 features_batch = features_batch.view(1, -1)
-            # todo not sure if this did anything
-            # features_batch = features_batch.to(mol_vecs)
+
             output = torch.cat([output, features_batch], dim=1)
 
         return output
