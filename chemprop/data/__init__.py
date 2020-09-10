@@ -1,6 +1,6 @@
 from .data import (
-    get_cache_graph,
-    get_cache_mol,
+    cache_graph,
+    cache_mol,
     MoleculeDatapoint,
     MoleculeDataset,
     MoleculeDataLoader,
@@ -24,8 +24,8 @@ from .utils import (
 )
 
 __all__ = [
-    'get_cache_graph',
-    'get_cache_mol',
+    'cache_graph',
+    'cache_mol',
     'MoleculeDatapoint',
     'MoleculeDataset',
     'MoleculeDataLoader',

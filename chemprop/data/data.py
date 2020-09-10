@@ -1,6 +1,5 @@
 import threading
 from collections import OrderedDict
-from functools import partial
 from random import Random
 from typing import Dict, Iterator, List, Optional, Union
 
@@ -18,7 +17,7 @@ CACHE_GRAPH = True
 SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
 
 
-def get_cache_graph() -> bool:
+def cache_graph() -> bool:
     r"""Returns whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
     return CACHE_GRAPH
 
@@ -34,7 +33,7 @@ CACHE_MOL = True
 SMILES_TO_MOL: Dict[str, Chem.Mol] = {}
 
 
-def get_cache_mol() -> bool:
+def cache_mol() -> bool:
     r"""Returns whether RDKit molecules will be cached."""
     return CACHE_MOL
 
@@ -94,8 +93,7 @@ class MoleculeDatapoint:
         """Gets the corresponding RDKit molecule for this molecule's SMILES."""
         mol = SMILES_TO_MOL.get(self.smiles, Chem.MolFromSmiles(self.smiles))
 
-        if CACHE_MOL:
-            print('cache')
+        if cache_mol():
             SMILES_TO_MOL[self.smiles] = mol
 
         return mol
@@ -157,7 +155,7 @@ class MoleculeDataset(Dataset):
         """
         return [d.mol for d in self._data]
 
-    def batch_graph(self, cache: bool = False) -> BatchMolGraph:
+    def batch_graph(self) -> BatchMolGraph:
         r"""
         Constructs a :class:`~chemprop.features.BatchMolGraph` with the graph featurization of all the molecules.
 
@@ -167,8 +165,6 @@ class MoleculeDataset(Dataset):
            set of :class:`MoleculeDatapoint`\ s changes, then the returned :class:`~chemprop.features.BatchMolGraph`
            will be incorrect for the underlying data.
 
-        :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                      for each molecule in a global cache.
         :return: A :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
         """
         if self._batch_graph is None:
@@ -178,7 +174,7 @@ class MoleculeDataset(Dataset):
                     mol_graph = SMILES_TO_GRAPH[d.smiles]
                 else:
                     mol_graph = MolGraph(d.mol)
-                    if cache:
+                    if cache_graph():
                         SMILES_TO_GRAPH[d.smiles] = mol_graph
                 mol_graphs.append(mol_graph)
 
@@ -366,7 +362,7 @@ class MoleculeSampler(Sampler):
         return self.length
 
 
-def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False) -> MoleculeDataset:
+def construct_molecule_batch(data: List[MoleculeDatapoint]) -> MoleculeDataset:
     r"""
     Constructs a :class:`MoleculeDataset` from a list of :class:`MoleculeDatapoint`\ s.
 
@@ -374,12 +370,10 @@ def construct_molecule_batch(data: List[MoleculeDatapoint], cache: bool = False)
     :class:`MoleculeDataset`.
 
     :param data: A list of :class:`MoleculeDatapoint`\ s.
-    :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                  for each molecule in a global cache.
     :return: A :class:`MoleculeDataset` containing all the :class:`MoleculeDatapoint`\ s.
     """
     data = MoleculeDataset(data)
-    data.batch_graph(cache=cache)  # Forces computation and caching of the BatchMolGraph for the molecules
+    data.batch_graph()  # Forces computation and caching of the BatchMolGraph for the molecules
 
     return data
 
@@ -391,7 +385,6 @@ class MoleculeDataLoader(DataLoader):
                  dataset: MoleculeDataset,
                  batch_size: int = 50,
                  num_workers: int = 8,
-                 cache: bool = False,
                  class_balance: bool = False,
                  shuffle: bool = False,
                  seed: int = 0):
@@ -399,8 +392,6 @@ class MoleculeDataLoader(DataLoader):
         :param dataset: The :class:`MoleculeDataset` containing the molecules to load.
         :param batch_size: Batch size.
         :param num_workers: Number of workers used to build batches.
-        :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
-                      for each molecule in a global cache.
         :param class_balance: Whether to perform class balancing (i.e., use an equal number of positive
                               and negative molecules). Class balance is only available for single task
                               classification datasets. Set shuffle to True in order to get a random
@@ -411,7 +402,6 @@ class MoleculeDataLoader(DataLoader):
         self._dataset = dataset
         self._batch_size = batch_size
         self._num_workers = num_workers
-        self._cache = cache
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
@@ -434,7 +424,7 @@ class MoleculeDataLoader(DataLoader):
             batch_size=self._batch_size,
             sampler=self._sampler,
             num_workers=self._num_workers,
-            collate_fn=partial(construct_molecule_batch, cache=self._cache),
+            collate_fn=construct_molecule_batch,
             multiprocessing_context=self._context,
             timeout=self._timeout
         )

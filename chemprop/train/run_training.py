@@ -14,7 +14,7 @@ from .predict import predict
 from .train import train
 from chemprop.args import TrainArgs
 from chemprop.constants import MODEL_FILE_NAME
-from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, split_data, StandardScaler
+from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint,makedirs, \
@@ -106,10 +106,10 @@ def run_training(args: TrainArgs,
 
     # Automatically determine whether to cache
     if len(data) <= args.cache_cutoff:
-        cache = True
+        set_cache_graph(True)
         num_workers = 0
     else:
-        cache = False
+        set_cache_graph(False)
         num_workers = args.num_workers
 
     # Create data loaders
@@ -117,7 +117,6 @@ def run_training(args: TrainArgs,
         dataset=train_data,
         batch_size=args.batch_size,
         num_workers=num_workers,
-        cache=cache,
         class_balance=args.class_balance,
         shuffle=True,
         seed=args.seed
@@ -125,14 +124,12 @@ def run_training(args: TrainArgs,
     val_data_loader = MoleculeDataLoader(
         dataset=val_data,
         batch_size=args.batch_size,
-        num_workers=num_workers,
-        cache=cache
+        num_workers=num_workers
     )
     test_data_loader = MoleculeDataLoader(
         dataset=test_data,
         batch_size=args.batch_size,
-        num_workers=num_workers,
-        cache=cache
+        num_workers=num_workers
     )
 
     if args.class_balance:
