@@ -120,7 +120,7 @@ class MoleculeDataset(Dataset):
         """
         Returns a list containing the SMILES associated with each molecule.
 
-        :return: A list of SMILES strings.
+        :return: A list of lists of SMILES strings.
         """
         return [d.smiles for d in self._data]
 
@@ -128,7 +128,7 @@ class MoleculeDataset(Dataset):
         """
         Returns the RDKit molecules associated with each molecule.
 
-        :return: A list of RDKit molecules.
+        :return: A list of lists of RDKit molecules.
         """
         return [d.mol for d in self._data]
 
@@ -144,7 +144,7 @@ class MoleculeDataset(Dataset):
 
         :param cache: Whether to store the individual :class:`~chemprop.features.MolGraph` featurizations
                       for each molecule in a global cache.
-        :return: A :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
+        :return: A list of :class:`~chemprop.features.BatchMolGraph` containing the graph featurization of all the molecules.
         """
         if self._batch_graph is None:
             self._batch_graph = []
