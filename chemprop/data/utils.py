@@ -18,7 +18,6 @@ from chemprop.features import load_features
 
 def get_task_names(path: str,
                    smiles_columns: List[str] = None,
-                   number_of_molecules: int = 1,
                    target_columns: List[str] = None,
                    ignore_columns: List[str] = None) -> List[str]:
     """
@@ -32,7 +31,6 @@ def get_task_names(path: str,
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
-    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_column` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
@@ -43,8 +41,8 @@ def get_task_names(path: str,
 
     columns = get_header(path)
 
-    if smiles_columns is None:
-        smiles_columns = columns[:number_of_molecules]
+    if None in smiles_columns:
+        smiles_columns = columns[:len(smiles_columns)]
 
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
 
@@ -66,15 +64,14 @@ def get_header(path: str) -> List[str]:
     return header
 
 
-def get_smiles(path: str, smiles_columns: str = None, number_of_molecules: int = 1, header: bool = True) -> List[str]:
+def get_smiles(path: str, smiles_columns: str = None, header: bool = True) -> List[str]:
     """
     Returns the SMILES from a data CSV file.
 
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
-    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
-        :param header: Whether the CSV file contains a header.
+    :param header: Whether the CSV file contains a header.
     :return: A list of SMILES.
     """
     if smiles_columns is not None and not header:
@@ -84,12 +81,12 @@ def get_smiles(path: str, smiles_columns: str = None, number_of_molecules: int =
         if header:
             reader = csv.DictReader(f)
             if smiles_columns is None:
-                smiles_column = reader.fieldnames[:number_of_molecules]
+                smiles_columns = reader.fieldnames[:len(smiles_columns)]
         else:
             reader = csv.reader(f)
-            smiles_column = 0
+            smiles_columns = 0
 
-        smiles = [[row[c] for c in smiles_column] for row in reader]
+        smiles = [[row[c] for c in smiles_columns] for row in reader]
 
     return smiles
 
@@ -108,7 +105,6 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 def get_data(path: str,
              smiles_columns: List[str] = None,
-             number_of_molecules: int = None,
              target_columns: List[str] = None,
              ignore_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
@@ -125,7 +121,6 @@ def get_data(path: str,
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
-    :param number_of_molecules: The number of molecules in the input file. By default, uses one molecule.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_column` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
@@ -148,7 +143,6 @@ def get_data(path: str,
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
         smiles_columns = smiles_columns if smiles_columns is not None else args.smiles_columns
-        number_of_molecules = number_of_molecules if number_of_molecules is not None else args.number_of_molecules
         target_columns = target_columns if target_columns is not None else args.target_columns
         ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
         features_path = features_path if features_path is not None else args.features_path
@@ -166,7 +160,7 @@ def get_data(path: str,
     else:
         features_data = None
 
-    skip_smiles = [set() for c in range(number_of_molecules)]
+    skip_smiles = [set() for c in range(len(smiles_columns))]
 
     # Load data
     with open(path) as f:
@@ -175,15 +169,15 @@ def get_data(path: str,
 
         # By default, the SMILES column is the first column
         if smiles_columns is None:
-            smiles_columns = columns[:number_of_molecules]
+            smiles_columns = columns[:len(smiles_columns)]
 
         # By default, the targets columns are all the columns except the SMILES column
         if target_columns is None:
             ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
             target_columns = [column for column in columns if column not in ignore_columns]
 
-        all_smiles, all_targets, all_rows = [], [], []
-        for row in tqdm(reader):
+        all_smiles, all_targets, all_rows, all_features = [], [], [], []
+        for i, row in tqdm(enumerate(reader)):
             smiles = [row[c] for c in smiles_columns]
 
             if smiles in skip_smiles:
@@ -236,7 +230,7 @@ def get_data_from_smiles(smiles: List[List[str]],
     """
     Converts a list of SMILES to a :class:`~chemprop.data.MoleculeDataset`.
 
-    :param smiles: A list of SMILES.
+    :param smiles: A list of a list SMILES with length depending on the number of molecules.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles using :func:`filter_invalid_smiles`
     :param logger: A logger for recording output.
     :param features_generator: List of features generators.
