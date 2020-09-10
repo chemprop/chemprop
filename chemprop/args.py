@@ -462,7 +462,7 @@ class SklearnTrainArgs(TrainArgs):
     """Number of random forest trees."""
 
 
-class SklearnPredictArgs(Tap):
+class SklearnPredictArgs(CommonArgs):
     """:class:`SklearnPredictArgs` contains arguments used for predicting with a trained scikit-learn model."""
 
     test_path: str
