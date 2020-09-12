@@ -98,6 +98,10 @@ class CommonArgs(Tap):
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
     """
 
+    def __init__(self, *args, **kwargs):
+        super(CommonArgs, self).__init__(*args, **kwargs)
+        self._atom_descriptors_size = 0
+
     @property
     def device(self) -> torch.device:
         """The :code:`torch.device` on which to load and process data and models."""
@@ -124,6 +128,15 @@ class CommonArgs(Tap):
     def features_scaling(self) -> bool:
         """Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler` to the additional molecule-level features."""
         return not self.no_features_scaling
+
+    @property
+    def atom_descriptors_size(self) -> int:
+        """The size of the atom descriptors."""
+        return self._atom_descriptors_size
+
+    @atom_descriptors_size.setter
+    def atom_descriptors_size(self, atom_descriptors_size: int) -> None:
+        self._atom_descriptors_size = atom_descriptors_size
 
     def add_arguments(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
