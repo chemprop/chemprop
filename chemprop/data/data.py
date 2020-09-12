@@ -98,7 +98,7 @@ class MoleculeDatapoint:
             self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
         # Save a copy of the raw features and targets to enable different scaling later on
-        self.raw_features, self.raw_targets = features, targets
+        self.raw_features, self.raw_targets = self.features, self.targets
 
     @property
     def mol(self) -> Chem.Mol:
