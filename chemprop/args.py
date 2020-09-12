@@ -100,6 +100,7 @@ class CommonArgs(Tap):
 
     def __init__(self, *args, **kwargs):
         super(CommonArgs, self).__init__(*args, **kwargs)
+        self._atom_features_size = 0
         self._atom_descriptors_size = 0
 
     @property
@@ -128,6 +129,15 @@ class CommonArgs(Tap):
     def features_scaling(self) -> bool:
         """Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler` to the additional molecule-level features."""
         return not self.no_features_scaling
+
+    @property
+    def atom_features_size(self) -> int:
+        """The size of the atom features."""
+        return self._atom_features_size
+
+    @atom_features_size.setter
+    def atom_features_size(self, atom_features_size: int) -> None:
+        self._atom_features_size = atom_features_size
 
     @property
     def atom_descriptors_size(self) -> int:

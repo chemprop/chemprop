@@ -68,13 +68,13 @@ def cross_validate(args: TrainArgs,
     )
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
-    args.atom_features_size = 0
 
     if args.atom_descriptors == 'descriptor':
         args.atom_descriptors_size = data.atom_descriptors_size()
         args.ffn_hidden_size += args.atom_descriptors_size
     elif args.atom_descriptors == 'feature':
-        set_extra_atom_fdim(data.atom_features_size())
+        args.atom_features_size = data.atom_features_size()
+        set_extra_atom_fdim(args.atom_features_size)
 
     debug(f'Number of tasks = {args.num_tasks}')
 
