@@ -257,6 +257,8 @@ class TrainArgs(CommonArgs):
     """Aggregation scheme for atomic vectors into molecular vectors"""
     aggregation_norm: int = 100
     """For norm aggregation, number by which to divide summed up atomic features"""
+    num_iters: int = None 
+    """Number of hyperparameter choices to try. Should be None for training, any integer for hyperopt"""
 
     # Training arguments
     epochs: int = 30
