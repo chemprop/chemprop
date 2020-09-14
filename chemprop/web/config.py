@@ -11,7 +11,12 @@ import torch
 _TEMP_FOLDER_OBJECT = TemporaryDirectory()
 
 DEFAULT_USER_ID = 1
-ROOT_FOLDER = os.path.dirname(os.path.realpath(__file__))
+if os.access(os.path.dirname(os.path.realpath(__file__)), os.W_OK):
+    ROOT_FOLDER = os.path.dirname(os.path.realpath(__file__))
+elif os.access(os.getcwd(), os.W_OK):
+    ROOT_FOLDER = os.path.join(os.getcwd(), "chemprop_web_app")
+else :
+    raise ValueError("Failed to find a writable ROOT_FOLDER for web app data and checkpoints.")
 DATA_FOLDER = os.path.join(ROOT_FOLDER, 'app/web_data')
 CHECKPOINT_FOLDER = os.path.join(ROOT_FOLDER, 'app/web_checkpoints')
 TEMP_FOLDER = os.path.join(ROOT_FOLDER, _TEMP_FOLDER_OBJECT.name)
