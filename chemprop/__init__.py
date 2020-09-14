@@ -2,7 +2,7 @@ import chemprop.data
 import chemprop.features
 import chemprop.models
 import chemprop.train
-import chemprop.web
+# import chemprop.web
 
 import chemprop.args
 import chemprop.constants
