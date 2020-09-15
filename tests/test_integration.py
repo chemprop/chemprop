@@ -128,27 +128,29 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 12)
 
             mean_score = test_scores.mean()
-            print(mean_score)
             self.assertAlmostEqual(mean_score, expected_score, delta=0.02)
 
-    # TODO: Fix features
     @parameterized.expand([
-        ('default', [], 0.559111),
-        # ('morgan_features_generator', ['--features_generator', 'morgan'], 0.559111),
-        # ('rdkit_features_path', ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'], 0.559111)
+        ('default', [], [], 0.561477),
+        ('morgan_features_generator', ['--features_generator', 'morgan'], ['--features_generator', 'morgan'], 3.905965),
+        ('rdkit_features_path',
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling'],
+         0.693359)
     ])
     def test_chemprop_predict_single_task_regression(self,
                                                      name: str,
-                                                     flags: List[str],
+                                                     train_flags: List[str],
+                                                     predict_flags: List[str],
                                                      expected_score: float):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            self.train(dataset_type=dataset_type, metric='rmse', save_dir=save_dir, flags=flags)
+            self.train(dataset_type=dataset_type, metric='rmse', save_dir=save_dir, flags=train_flags)
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=flags)
+            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=predict_flags)
 
             # Check results
             pred = pd.read_csv(preds_path)
@@ -161,24 +163,27 @@ class ChempropTests(TestCase):
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=0.02)
 
-    # TODO: Fix features
     @parameterized.expand([
-        ('default', [], 0.064600),
-        # ('morgan_features_generator', ['--features_generator', 'morgan'], 0.559111),
-        # ('rdkit_features_path', ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'], 0.559111)
+        ('default', [], [], 0.064605),
+        ('morgan_features_generator', ['--features_generator', 'morgan'], ['--features_generator', 'morgan'], 0.083170),
+        ('rdkit_features_path',
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling'],
+         0.064972)
     ])
     def test_chemprop_predict_multi_task_classification(self,
                                                         name: str,
-                                                        flags: List[str],
+                                                        train_flags: List[str],
+                                                        predict_flags: List[str],
                                                         expected_score: float):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            self.train(dataset_type=dataset_type, metric='auc', save_dir=save_dir, flags=flags)
+            self.train(dataset_type=dataset_type, metric='auc', save_dir=save_dir, flags=train_flags)
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=flags)
+            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=predict_flags)
 
             # Check results
             pred = pd.read_csv(preds_path)
