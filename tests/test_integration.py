@@ -18,7 +18,7 @@ from chemprop.hyperparameter_optimization import chemprop_hyperopt
 from chemprop.sklearn_predict import sklearn_predict
 from chemprop.sklearn_train import sklearn_train
 from chemprop.train import chemprop_train, chemprop_predict
-# from chemprop.web.wsgi import build_app
+from chemprop.web.wsgi import build_app
 
 
 TEST_DATA_DIR = 'tests/data'

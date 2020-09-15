@@ -1,6 +1,6 @@
 from collections import defaultdict
 import logging
-from typing import Callable, Dict, List
+from typing import Dict, List
 
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler
