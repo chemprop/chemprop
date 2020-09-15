@@ -60,7 +60,7 @@ setup(
         'tqdm>=4.45.0',
         'typed-argument-parser>=1.5.4'
     ],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'parameterized'],
     python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python :: 3',
