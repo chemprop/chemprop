@@ -56,6 +56,7 @@ def cross_validate(args: TrainArgs,
     debug(args)
 
     # Save args
+    makedirs(args.save_dir)
     args.save(os.path.join(args.save_dir, 'args.json'))
 
     # Get data

@@ -1,6 +1,6 @@
 """Chemprop integration tests."""
-# from flask import url_for
-# from io import BytesIO
+from flask import url_for
+from io import BytesIO
 import json
 import os
 from tempfile import TemporaryDirectory
@@ -149,7 +149,7 @@ class ChempropTests(TestCase):
                                           name: str,
                                           model_type: str,
                                           expected_score: float,
-                                          train_flags: List[str]):
+                                          train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
@@ -178,7 +178,7 @@ class ChempropTests(TestCase):
                                              name: str,
                                              model_type: str,
                                              expected_score: float,
-                                             train_flags: List[str]):
+                                             train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'auc'
@@ -259,8 +259,8 @@ class ChempropTests(TestCase):
                                                name: str,
                                                model_type: str,
                                                expected_score: float,
-                                               train_flags: List[str],
-                                               predict_flags: List[str]):
+                                               train_flags: List[str] = None,
+                                               predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
