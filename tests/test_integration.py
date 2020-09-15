@@ -15,6 +15,8 @@ from parameterized import parameterized
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
 from chemprop.hyperparameter_optimization import chemprop_hyperopt
+from chemprop.sklearn_predict import sklearn_predict
+from chemprop.sklearn_train import sklearn_train
 from chemprop.train import chemprop_train, chemprop_predict
 from chemprop.web.wsgi import build_app
 
@@ -31,10 +33,11 @@ class ChempropTests(TestCase):
     def create_raw_train_args(dataset_type: str,
                               metric: str,
                               save_dir: str,
+                              model_type: str = 'chemprop',
                               flags: List[str] = None) -> List[str]:
         """Creates a list of raw command line arguments for training."""
         return [
-            'chemprop_train',  # Note: not actually used, just a placeholder
+            'train',  # Note: not actually used, just a placeholder
             '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
             '--dataset_type', dataset_type,
             '--epochs', str(EPOCHS),
@@ -43,7 +46,7 @@ class ChempropTests(TestCase):
             '--metric', metric,
             '--save_dir', save_dir,
             '--quiet'
-        ] + (flags if flags is not None else [])
+        ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
 
     @staticmethod
     def create_raw_predict_args(dataset_type: str,
@@ -52,7 +55,7 @@ class ChempropTests(TestCase):
                                 flags: List[str] = None) -> List[str]:
         """Creates a list of raw command line arguments for predicting."""
         return [
-            'chemprop_predict',  # Note: not actually used, just a placeholder
+            'predict',  # Note: not actually used, just a placeholder
             '--test_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
             '--preds_path', preds_path,
             '--checkpoint_dir', checkpoint_dir
@@ -65,7 +68,7 @@ class ChempropTests(TestCase):
                                  flags: List[str] = None) -> List[str]:
         """Creates a list of raw command line arguments for hyperparameter optimization."""
         return [
-            'chemprop_hyperopt',  # Note: not actually used, just a placeholder
+            'hyperopt',  # Note: not actually used, just a placeholder
             '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
             '--dataset_type', dataset_type,
             '--epochs', str(EPOCHS),
@@ -79,23 +82,29 @@ class ChempropTests(TestCase):
               dataset_type: str,
               metric: str,
               save_dir: str,
+              model_type: str = 'chemprop',
               flags: List[str] = None):
         # Set up command line arguments for training
         raw_train_args = self.create_raw_train_args(
             dataset_type=dataset_type,
             metric=metric,
             save_dir=save_dir,
+            model_type=model_type,
             flags=flags
         )
 
         # Train
         with patch('sys.argv', raw_train_args):
-            chemprop_train()
+            if model_type == 'chemprop':
+                chemprop_train()
+            else:
+                sklearn_train()
 
     def predict(self,
                 dataset_type: str,
                 preds_path: str,
                 save_dir: str,
+                model_type: str = 'chemprop',
                 flags: List[str] = None):
         # Set up command line arguments for predicting
         raw_predict_args = self.create_raw_predict_args(
@@ -107,7 +116,10 @@ class ChempropTests(TestCase):
 
         # Predict
         with patch('sys.argv', raw_predict_args):
-            chemprop_predict()
+            if model_type == 'chemprop':
+                chemprop_predict()
+            else:
+                sklearn_predict()
 
     def hyperopt(self,
                  dataset_type: str,
@@ -127,18 +139,27 @@ class ChempropTests(TestCase):
             chemprop_hyperopt()
 
     @parameterized.expand([
-        ('default', [], 1.237620),
-        ('morgan_features_generator', ['--features_generator', 'morgan'], 1.834947),
-        ('rdkit_features_path', ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'], 0.807828)
+        ('sklearn_random_forest', 'random_forest', 1.575406),
+        ('sklearn_svm', 'svm', 1.698937),
+        ('chemprop', 'chemprop', 1.237620),
+        ('chemprop_morgan_features_generator', 'chemprop', 1.834947, ['--features_generator', 'morgan']),
+        ('chemprop_rdkit_features_path', 'chemprop', 0.807828, ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'])
     ])
-    def test_chemprop_train_single_task_regression(self,
-                                                   name: str,
-                                                   train_flags: List[str],
-                                                   expected_score: float):
+    def test_train_single_task_regression(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str]):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            self.train(dataset_type='regression', metric=metric, save_dir=save_dir, flags=train_flags)
+            self.train(
+                dataset_type='regression',
+                metric=metric,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
@@ -149,18 +170,24 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mean_score, expected_score, delta=0.02)
 
     @parameterized.expand([
-        ('default', [], 0.691205),
-        ('morgan_features_generator', ['--features_generator', 'morgan'], 0.619021),
-        ('rdkit_features_path', ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'], 0.659145)
+        ('chemprop', 'chemprop', 0.691205),
+        ('chemprop_morgan_features_generator', 'chemprop', 0.619021, ['--features_generator', 'morgan']),
+        ('chemprop_rdkit_features_path', 'chemprop', 0.659145, ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'])
     ])
-    def test_chemprop_train_multi_task_classification(self,
-                                                      name: str,
-                                                      train_flags: List[str],
-                                                      expected_score: float):
+    def test_train_multi_task_classification(self,
+                                             name: str,
+                                             model_type: str,
+                                             expected_score: float,
+                                             train_flags: List[str]):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'auc'
-            self.train(dataset_type='classification', metric=metric, save_dir=save_dir, flags=train_flags)
+            self.train(
+                dataset_type='classification',
+                metric=metric,
+                save_dir=save_dir,
+                flags=train_flags
+            )
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
@@ -171,26 +198,42 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mean_score, expected_score, delta=0.02)
 
     @parameterized.expand([
-        ('default', [], [], 0.561477),
-        ('morgan_features_generator', ['--features_generator', 'morgan'], ['--features_generator', 'morgan'], 3.905965),
-        ('rdkit_features_path',
+        ('sklearn_random_forest', 'random_forest', 0.915988),
+        ('sklearn_svm', 'svm', 1.015136),
+        ('chemprop', 'chemprop', 0.561477),
+        ('chemprop_morgan_features_generator', 'chemprop', 3.905965, ['--features_generator', 'morgan'], ['--features_generator', 'morgan']),
+        ('chemprop_rdkit_features_path',
+         'chemprop',
+         0.693359,
          ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling'],
-         0.693359)
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling'])
     ])
-    def test_chemprop_predict_single_task_regression(self,
-                                                     name: str,
-                                                     train_flags: List[str],
-                                                     predict_flags: List[str],
-                                                     expected_score: float):
+    def test_predict_single_task_regression(self,
+                                            name: str,
+                                            model_type: str,
+                                            expected_score: float,
+                                            train_flags: List[str] = None,
+                                            predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            self.train(dataset_type=dataset_type, metric='rmse', save_dir=save_dir, flags=train_flags)
+            self.train(
+                dataset_type=dataset_type,
+                metric='rmse',
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=predict_flags)
+            self.predict(
+                dataset_type=dataset_type,
+                preds_path=preds_path,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=predict_flags
+            )
 
             # Check results
             pred = pd.read_csv(preds_path)
@@ -204,26 +247,38 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mse, expected_score, delta=0.02)
 
     @parameterized.expand([
-        ('default', [], [], 0.064605),
-        ('morgan_features_generator', ['--features_generator', 'morgan'], ['--features_generator', 'morgan'], 0.083170),
-        ('rdkit_features_path',
+        ('chemmprop', 'chemprop', 0.064605),
+        ('chemmprop_morgan_features_generator', 'chemprop', 0.083170, ['--features_generator', 'morgan'], ['--features_generator', 'morgan']),
+        ('chemmprop_rdkit_features_path',
+         'chemprop',
+         0.064972,
          ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling'],
-         0.064972)
+         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling'])
     ])
-    def test_chemprop_predict_multi_task_classification(self,
-                                                        name: str,
-                                                        train_flags: List[str],
-                                                        predict_flags: List[str],
-                                                        expected_score: float):
+    def test_predict_multi_task_classification(self,
+                                               name: str,
+                                               model_type: str,
+                                               expected_score: float,
+                                               train_flags: List[str],
+                                               predict_flags: List[str]):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            self.train(dataset_type=dataset_type, metric='auc', save_dir=save_dir, flags=train_flags)
+            self.train(
+                dataset_type=dataset_type,
+                metric='auc',
+                save_dir=save_dir,
+                flags=train_flags
+            )
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(dataset_type=dataset_type, preds_path=preds_path, save_dir=save_dir, flags=predict_flags)
+            self.predict(
+                dataset_type=dataset_type,
+                preds_path=preds_path,
+                save_dir=save_dir,
+                flags=predict_flags
+            )
 
             # Check results
             pred = pd.read_csv(preds_path)
@@ -240,7 +295,11 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
-            self.hyperopt(dataset_type='regression', config_save_path=config_save_path, save_dir=save_dir)
+            self.hyperopt(
+                dataset_type='regression',
+                config_save_path=config_save_path,
+                save_dir=save_dir
+            )
 
             # Check results
             with open(config_save_path) as f:
