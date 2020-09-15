@@ -1,4 +1,5 @@
 """Chemprop integration tests."""
+import json
 import os
 from tempfile import TemporaryDirectory
 from typing import List
@@ -12,12 +13,14 @@ from parameterized import parameterized
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
 from chemprop.train import chemprop_train, chemprop_predict
+from chemprop.hyperparameter_optimization import chemprop_hyperopt
 
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
 EPOCHS = 10
 NUM_FOLDS = 3
+NUM_ITER = 2
 
 
 class ChempropTests(TestCase):
@@ -50,6 +53,21 @@ class ChempropTests(TestCase):
             '--test_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
             '--preds_path', preds_path,
             '--checkpoint_dir', checkpoint_dir
+        ] + (flags if flags is not None else [])
+
+    @staticmethod
+    def create_raw_hyperopt_args(dataset_type: str,
+                                 config_save_path: str,
+                                 flags: List[str] = None) -> List[str]:
+        """Creates a list of raw command line arguments for hyperparameter optimization."""
+        return [
+            'chemprop_hyperopt',  # Note: not actually used, just a placeholder
+            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
+            '--dataset_type', dataset_type,
+            '--epochs', str(EPOCHS),
+            '--num_iter', str(NUM_ITER),
+            '--config_save_path', config_save_path,
+            '--quiet'
         ] + (flags if flags is not None else [])
 
     def train(self,
@@ -86,6 +104,21 @@ class ChempropTests(TestCase):
         with patch('sys.argv', raw_predict_args):
             chemprop_predict()
 
+    def hyperopt(self,
+                 dataset_type: str,
+                 config_save_path: str,
+                 flags: List[str] = None):
+        # Set up command line arguments for training
+        raw_hyperopt_args = self.create_raw_hyperopt_args(
+            dataset_type=dataset_type,
+            config_save_path=config_save_path,
+            flags=flags
+        )
+
+        # Predict
+        with patch('sys.argv', raw_hyperopt_args):
+            chemprop_hyperopt()
+
     @parameterized.expand([
         ('default', [], 1.237620),
         ('morgan_features_generator', ['--features_generator', 'morgan'], 1.834947),
@@ -93,12 +126,12 @@ class ChempropTests(TestCase):
     ])
     def test_chemprop_train_single_task_regression(self,
                                                    name: str,
-                                                   flags: List[str],
+                                                   train_flags: List[str],
                                                    expected_score: float):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            self.train(dataset_type='regression', metric=metric, save_dir=save_dir, flags=flags)
+            self.train(dataset_type='regression', metric=metric, save_dir=save_dir, flags=train_flags)
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
@@ -115,12 +148,12 @@ class ChempropTests(TestCase):
     ])
     def test_chemprop_train_multi_task_classification(self,
                                                       name: str,
-                                                      flags: List[str],
+                                                      train_flags: List[str],
                                                       expected_score: float):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'auc'
-            self.train(dataset_type='classification', metric=metric, save_dir=save_dir, flags=flags)
+            self.train(dataset_type='classification', metric=metric, save_dir=save_dir, flags=train_flags)
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
@@ -195,6 +228,23 @@ class ChempropTests(TestCase):
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=0.02)
+
+    def test_chemprop_hyperopt(self):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            config_save_path = os.path.join(save_dir, 'config.json')
+            self.hyperopt(dataset_type='regression', config_save_path=config_save_path)
+
+            # Check results
+            with open(config_save_path) as f:
+                config = json.load(f)
+
+            parameters = {'depth': (2, 6), 'hidden_size': (300, 2400), 'ffn_num_layers': (1, 3), 'dropout': (0.0, 0.4)}
+
+            self.assertEqual(set(config.keys()), set(parameters.keys()))
+
+            for parameter, (min_value, max_value) in parameters.items():
+                self.assertTrue(min_value <= config[parameter] <= max_value)
 
 
 if __name__ == '__main__':
