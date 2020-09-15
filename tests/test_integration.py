@@ -58,6 +58,7 @@ class ChempropTests(TestCase):
     @staticmethod
     def create_raw_hyperopt_args(dataset_type: str,
                                  config_save_path: str,
+                                 save_dir: str,
                                  flags: List[str] = None) -> List[str]:
         """Creates a list of raw command line arguments for hyperparameter optimization."""
         return [
@@ -67,6 +68,7 @@ class ChempropTests(TestCase):
             '--epochs', str(EPOCHS),
             '--num_iter', str(NUM_ITER),
             '--config_save_path', config_save_path,
+            '--save_dir', save_dir,
             '--quiet'
         ] + (flags if flags is not None else [])
 
@@ -107,11 +109,13 @@ class ChempropTests(TestCase):
     def hyperopt(self,
                  dataset_type: str,
                  config_save_path: str,
+                 save_dir: str,
                  flags: List[str] = None):
         # Set up command line arguments for training
         raw_hyperopt_args = self.create_raw_hyperopt_args(
             dataset_type=dataset_type,
             config_save_path=config_save_path,
+            save_dir=save_dir,
             flags=flags
         )
 
@@ -233,7 +237,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
-            self.hyperopt(dataset_type='regression', config_save_path=config_save_path)
+            self.hyperopt(dataset_type='regression', config_save_path=config_save_path, save_dir=save_dir)
 
             # Check results
             with open(config_save_path) as f:
