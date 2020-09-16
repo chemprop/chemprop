@@ -480,9 +480,8 @@ class ChempropTests(TestCase):
             test_smiles = f.read()
 
         with app.test_client() as client:
-            print('hello')
-        #     response = client.get('/')
-        #     self.assertEqual(response.status_code, 200)
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
         #
         #     # Upload data
         #     response = client.post(
