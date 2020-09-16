@@ -396,62 +396,62 @@ class ChempropTests(TestCase):
             for parameter, (min_value, max_value) in parameters.items():
                 self.assertTrue(min_value <= config[parameter] <= max_value)
 
-    # def test_chemprop_web(self):
-    #     app = build_app(init_db=True)
-    #     app.config['TESTING'] = True
-    #
-    #     data_path = 'regression.csv'
-    #     test_path = 'regression_test_smiles.csv'
-    #     dataset_name = 'regression_data'
-    #     dataset_type = 'regression'
-    #     checkpoint_name = 'regression_ckpt'
-    #     ckpt_name = data_name = '1'
-    #     epochs = 3
-    #     ensemble_size = 1
-    #
-    #     with open(os.path.join(TEST_DATA_DIR, data_path)) as f:
-    #         train_data = BytesIO(f.read().encode('utf-8'))
-    #
-    #     with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
-    #         test_smiles = f.read()
-    #
-    #     with app.test_client() as client:
-    #         response = client.get('/')
-    #         self.assertEqual(response.status_code, 200)
-    #
-    #         # Upload data
-    #         response = client.post(
-    #             url_for('upload_data', return_page='home'),
-    #             data={
-    #                 'dataset': (train_data, data_path),
-    #                 'datasetName': dataset_name
-    #             }
-    #         )
-    #         self.assertEqual(response.status_code, 302)
-    #
-    #         # Train
-    #         response = client.post(
-    #             url_for('train'),
-    #             data={
-    #                 'dataName': data_name,
-    #                 'epochs': epochs,
-    #                 'ensembleSize': ensemble_size,
-    #                 'checkpointName': checkpoint_name,
-    #                 'datasetType': dataset_type
-    #             }
-    #         )
-    #
-    #         self.assertEqual(response.status_code, 200)
-    #
-    #         # Predict
-    #         response = client.post(
-    #             url_for('predict'),
-    #             data={
-    #                 'checkpointName': ckpt_name,
-    #                 'textSmiles': test_smiles
-    #             }
-    #         )
-    #         self.assertEqual(response.status_code, 200)
+    def test_chemprop_web(self):
+        app = build_app(init_db=True)
+        app.config['TESTING'] = True
+
+        data_path = 'regression.csv'
+        test_path = 'regression_test_smiles.csv'
+        dataset_name = 'regression_data'
+        dataset_type = 'regression'
+        checkpoint_name = 'regression_ckpt'
+        ckpt_name = data_name = '1'
+        epochs = 3
+        ensemble_size = 1
+
+        with open(os.path.join(TEST_DATA_DIR, data_path)) as f:
+            train_data = BytesIO(f.read().encode('utf-8'))
+
+        with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
+            test_smiles = f.read()
+
+        with app.test_client() as client:
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+
+            # Upload data
+            response = client.post(
+                url_for('upload_data', return_page='home'),
+                data={
+                    'dataset': (train_data, data_path),
+                    'datasetName': dataset_name
+                }
+            )
+            self.assertEqual(response.status_code, 302)
+
+            # Train
+            response = client.post(
+                url_for('train'),
+                data={
+                    'dataName': data_name,
+                    'epochs': epochs,
+                    'ensembleSize': ensemble_size,
+                    'checkpointName': checkpoint_name,
+                    'datasetType': dataset_type
+                }
+            )
+
+            self.assertEqual(response.status_code, 200)
+
+            # Predict
+            response = client.post(
+                url_for('predict'),
+                data={
+                    'checkpointName': ckpt_name,
+                    'textSmiles': test_smiles
+                }
+            )
+            self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':
