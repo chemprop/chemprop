@@ -461,26 +461,26 @@ class ChempropTests(TestCase):
 
     def test_chemprop_web(self):
         app = build_app(init_db=True)
-        print('hello')
 
-        # app.config['TESTING'] = True
-        #
-        # data_path = 'regression.csv'
-        # test_path = 'regression_test_smiles.csv'
-        # dataset_name = 'regression_data'
-        # dataset_type = 'regression'
-        # checkpoint_name = 'regression_ckpt'
-        # ckpt_name = data_name = '1'
-        # epochs = 3
-        # ensemble_size = 1
-        #
-        # with open(os.path.join(TEST_DATA_DIR, data_path)) as f:
-        #     train_data = BytesIO(f.read().encode('utf-8'))
-        #
-        # with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
-        #     test_smiles = f.read()
-        #
-        # with app.test_client() as client:
+        app.config['TESTING'] = True
+
+        data_path = 'regression.csv'
+        test_path = 'regression_test_smiles.csv'
+        dataset_name = 'regression_data'
+        dataset_type = 'regression'
+        checkpoint_name = 'regression_ckpt'
+        ckpt_name = data_name = '1'
+        epochs = 3
+        ensemble_size = 1
+
+        with open(os.path.join(TEST_DATA_DIR, data_path)) as f:
+            train_data = BytesIO(f.read().encode('utf-8'))
+
+        with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
+            test_smiles = f.read()
+
+        with app.test_client() as client:
+            print('hello')
         #     response = client.get('/')
         #     self.assertEqual(response.status_code, 200)
         #
