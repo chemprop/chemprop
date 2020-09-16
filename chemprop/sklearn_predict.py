@@ -10,6 +10,7 @@ from chemprop.features import get_features_generator
 from chemprop.sklearn_train import predict
 from chemprop.utils import makedirs, timeit
 
+
 @timeit()
 def predict_sklearn(args: SklearnPredictArgs) -> None:
     """

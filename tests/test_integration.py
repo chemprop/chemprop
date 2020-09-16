@@ -15,6 +15,7 @@ from parameterized import parameterized
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
 from chemprop.hyperparameter_optimization import chemprop_hyperopt
+from chemprop.interpret import chemprop_interpret
 from chemprop.sklearn_predict import sklearn_predict
 from chemprop.sklearn_train import sklearn_train
 from chemprop.train import chemprop_train, chemprop_predict
@@ -79,14 +80,25 @@ class ChempropTests(TestCase):
             '--quiet'
         ] + (flags if flags is not None else [])
 
+    @staticmethod
+    def create_raw_interpret_args(dataset_type: str,
+                                  checkpoint_dir: str,
+                                  flags: List[str] = None) -> List[str]:
+        """Creates a list of raw command line arguments for interpretation."""
+        return [
+            'interpret',  # Note: not actually used, just a placeholder
+            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
+            '--checkpoint_dir', checkpoint_dir
+        ] + (flags if flags is not None else [])
+
     def train(self,
               dataset_type: str,
               metric: str,
               save_dir: str,
               model_type: str = 'chemprop',
               flags: List[str] = None):
-        # Set up command line arguments for training
-        raw_train_args = self.create_raw_train_args(
+        # Set up command line arguments
+        raw_args = self.create_raw_train_args(
             dataset_type=dataset_type,
             metric=metric,
             save_dir=save_dir,
@@ -95,8 +107,8 @@ class ChempropTests(TestCase):
         )
 
         # Train
-        with patch('sys.argv', raw_train_args):
-            command_line = ' '.join(raw_train_args[1:])
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
 
             if model_type == 'chemprop':
                 print(f'python train.py {command_line}')
@@ -111,8 +123,8 @@ class ChempropTests(TestCase):
                 save_dir: str,
                 model_type: str = 'chemprop',
                 flags: List[str] = None):
-        # Set up command line arguments for predicting
-        raw_predict_args = self.create_raw_predict_args(
+        # Set up command line arguments
+        raw_args = self.create_raw_predict_args(
             dataset_type=dataset_type,
             preds_path=preds_path,
             checkpoint_dir=save_dir,
@@ -120,8 +132,8 @@ class ChempropTests(TestCase):
         )
 
         # Predict
-        with patch('sys.argv', raw_predict_args):
-            command_line = ' '.join(raw_predict_args[1:])
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
 
             if model_type == 'chemprop':
                 print(f'python predict.py {command_line}')
@@ -135,19 +147,36 @@ class ChempropTests(TestCase):
                  config_save_path: str,
                  save_dir: str,
                  flags: List[str] = None):
-        # Set up command line arguments for training
-        raw_hyperopt_args = self.create_raw_hyperopt_args(
+        # Set up command line arguments
+        raw_args = self.create_raw_hyperopt_args(
             dataset_type=dataset_type,
             config_save_path=config_save_path,
             save_dir=save_dir,
             flags=flags
         )
 
-        # Predict
-        with patch('sys.argv', raw_hyperopt_args):
-            command_line = ' '.join(raw_hyperopt_args[1:])
+        # Hyperopt
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
             print(f'python hyperparameter_optimization.py {command_line}')
             chemprop_hyperopt()
+
+    def interpret(self,
+                  dataset_type: str,
+                  checkpoint_dir: str,
+                  flags: List[str] = None):
+        # Set up command line arguments
+        raw_args = self.create_raw_interpret_args(
+            dataset_type=dataset_type,
+            checkpoint_dir=checkpoint_dir,
+            flags=flags
+        )
+
+        # Interpret
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
+            print(f'python interpret.py {command_line}')
+            chemprop_interpret()
 
     @parameterized.expand([
         (
@@ -396,9 +425,44 @@ class ChempropTests(TestCase):
             for parameter, (min_value, max_value) in parameters.items():
                 self.assertTrue(min_value <= config[parameter] <= max_value)
 
+    @parameterized.expand([
+        (
+                'chemprop',
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                ['--features_generator', 'morgan'],
+                ['--features_generator', 'morgan']
+        ),
+    ])
+    def test_interpret_single_task_regression(self,
+                                              name: str,
+                                              train_flags: List[str] = None,
+                                              interpret_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            dataset_type = 'regression'
+            self.train(
+                dataset_type=dataset_type,
+                metric='rmse',
+                save_dir=save_dir,
+                flags=train_flags
+            )
+
+            # Interpret
+            try:
+                self.interpret(
+                    dataset_type=dataset_type,
+                    checkpoint_dir=save_dir,
+                    flags=interpret_flags
+                )
+            except Exception as e:
+                self.fail(f'Interpretation failed with error: {e}')
+
     def test_chemprop_web(self):
+        app = build_app(init_db=True)
         print('hello')
-        # app = build_app(init_db=True)
+
         # app.config['TESTING'] = True
         #
         # data_path = 'regression.csv'
