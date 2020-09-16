@@ -26,6 +26,7 @@ SEED = 0
 EPOCHS = 10
 NUM_FOLDS = 3
 NUM_ITER = 2
+DELTA = 0.03
 
 
 class ChempropTests(TestCase):
@@ -95,9 +96,13 @@ class ChempropTests(TestCase):
 
         # Train
         with patch('sys.argv', raw_train_args):
+            command_line = ' '.join(raw_train_args[1:])
+
             if model_type == 'chemprop':
+                print(f'python train.py {command_line}')
                 chemprop_train()
             else:
+                print(f'python sklearn_train.py {command_line}')
                 sklearn_train()
 
     def predict(self,
@@ -116,9 +121,13 @@ class ChempropTests(TestCase):
 
         # Predict
         with patch('sys.argv', raw_predict_args):
+            command_line = ' '.join(raw_predict_args[1:])
+
             if model_type == 'chemprop':
+                print(f'python predict.py {command_line}')
                 chemprop_predict()
             else:
+                print(f'python sklearn_predict.py {command_line}')
                 sklearn_predict()
 
     def hyperopt(self,
@@ -136,14 +145,38 @@ class ChempropTests(TestCase):
 
         # Predict
         with patch('sys.argv', raw_hyperopt_args):
+            command_line = ' '.join(raw_hyperopt_args[1:])
+            print(f'python hyperparameter_optimization.py {command_line}')
             chemprop_hyperopt()
 
     @parameterized.expand([
-        ('sklearn_random_forest', 'random_forest', 1.575406),
-        ('sklearn_svm', 'svm', 1.698937),
-        ('chemprop', 'chemprop', 1.237620),
-        ('chemprop_morgan_features_generator', 'chemprop', 1.834947, ['--features_generator', 'morgan']),
-        ('chemprop_rdkit_features_path', 'chemprop', 0.807828, ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'])
+        (
+                'sklearn_random_forest',
+                'random_forest',
+                1.575406
+        ),
+        (
+                'sklearn_svm',
+                'svm',
+                1.698937
+        ),
+        (
+                'chemprop',
+                'chemprop',
+                1.237620
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                1.834947,
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                0.807828,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        )
     ])
     def test_train_single_task_regression(self,
                                           name: str,
@@ -167,12 +200,26 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 1)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, expected_score, delta=0.02)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
 
     @parameterized.expand([
-        ('chemprop', 'chemprop', 0.691205),
-        ('chemprop_morgan_features_generator', 'chemprop', 0.619021, ['--features_generator', 'morgan']),
-        ('chemprop_rdkit_features_path', 'chemprop', 0.659145, ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'])
+        (
+                'chemprop',
+                'chemprop',
+                0.691205
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                0.619021,
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                0.659145,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling']
+        )
     ])
     def test_train_multi_task_classification(self,
                                              name: str,
@@ -186,6 +233,7 @@ class ChempropTests(TestCase):
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
+                model_type=model_type,
                 flags=train_flags
             )
 
@@ -195,18 +243,38 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 12)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, expected_score, delta=0.02)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
 
     @parameterized.expand([
-        ('sklearn_random_forest', 'random_forest', 0.915988),
-        ('sklearn_svm', 'svm', 1.015136),
-        ('chemprop', 'chemprop', 0.561477),
-        ('chemprop_morgan_features_generator', 'chemprop', 3.905965, ['--features_generator', 'morgan'], ['--features_generator', 'morgan']),
-        ('chemprop_rdkit_features_path',
-         'chemprop',
-         0.693359,
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling'])
+        (
+                'sklearn_random_forest',
+                'random_forest',
+                0.915988
+        ),
+        (
+                'sklearn_svm',
+                'svm',
+                1.015136
+        ),
+        (
+                'chemprop',
+                'chemprop',
+                0.561477
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                3.825271,
+                ['--features_generator', 'morgan'],
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                0.693359,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        )
     ])
     def test_predict_single_task_regression(self,
                                             name: str,
@@ -243,17 +311,31 @@ class ChempropTests(TestCase):
 
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
+            print(pred)
+            print(true)
             mse = float(np.nanmean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, expected_score, delta=0.02)
+            self.assertAlmostEqual(mse, expected_score, delta=DELTA)
 
     @parameterized.expand([
-        ('chemmprop', 'chemprop', 0.064605),
-        ('chemmprop_morgan_features_generator', 'chemprop', 0.083170, ['--features_generator', 'morgan'], ['--features_generator', 'morgan']),
-        ('chemmprop_rdkit_features_path',
-         'chemprop',
-         0.064972,
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
-         ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling'])
+        (
+                'chemprop',
+                'chemprop',
+                0.064605
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                0.083170,
+                ['--features_generator', 'morgan'],
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                0.064972,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
+        )
     ])
     def test_predict_multi_task_classification(self,
                                                name: str,
@@ -268,6 +350,7 @@ class ChempropTests(TestCase):
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
+                model_type=model_type,
                 flags=train_flags
             )
 
@@ -277,6 +360,7 @@ class ChempropTests(TestCase):
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
+                model_type=model_type,
                 flags=predict_flags
             )
 
@@ -289,7 +373,7 @@ class ChempropTests(TestCase):
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, expected_score, delta=0.02)
+            self.assertAlmostEqual(mse, expected_score, delta=DELTA)
 
     def test_chemprop_hyperopt(self):
         with TemporaryDirectory() as save_dir:

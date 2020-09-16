@@ -24,7 +24,6 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
-    scaler, features_scaler = load_scalers(args.checkpoint_paths[0])
     train_args = load_args(args.checkpoint_paths[0])
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
@@ -75,10 +74,6 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
 
     print(f'Test size = {len(test_data):,}')
 
-    # Normalize features
-    if args.features_scaling:
-        test_data.normalize_features(features_scaler)
-
     # Predict with each model individually and sum predictions
     if args.dataset_type == 'multiclass':
         sum_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes))
@@ -94,8 +89,16 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
 
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
-        # Load model
+        # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
+        scaler, features_scaler = load_scalers(checkpoint_path)
+
+        # Normalize features
+        if args.features_scaling:
+            test_data.reset_features_and_targets()
+            test_data.normalize_features(features_scaler)
+
+        # Make predictions
         model_preds = predict(
             model=model,
             data_loader=test_data_loader,
