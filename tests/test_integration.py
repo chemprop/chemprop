@@ -340,8 +340,6 @@ class ChempropTests(TestCase):
 
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
-            print(pred)
-            print(true)
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=DELTA)
 
