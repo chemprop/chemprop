@@ -480,16 +480,16 @@ class ChempropTests(TestCase):
         with app.test_client() as client:
             response = client.get('/')
             self.assertEqual(response.status_code, 200)
-        #
-        #     # Upload data
-        #     response = client.post(
-        #         url_for('upload_data', return_page='home'),
-        #         data={
-        #             'dataset': (train_data, data_path),
-        #             'datasetName': dataset_name
-        #         }
-        #     )
-        #     self.assertEqual(response.status_code, 302)
+
+            # Upload data
+            response = client.post(
+                url_for('upload_data', return_page='home'),
+                data={
+                    'dataset': (train_data, data_path),
+                    'datasetName': dataset_name
+                }
+            )
+            self.assertEqual(response.status_code, 302)
         #
         #     # Train
         #     response = client.post(
