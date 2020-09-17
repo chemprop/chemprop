@@ -499,20 +499,21 @@ class ChempropTests(TestCase):
                     'epochs': epochs,
                     'ensembleSize': ensemble_size,
                     'checkpointName': checkpoint_name,
-                    'datasetType': dataset_type
+                    'datasetType': dataset_type,
+                    'useProgressBar': False
                 }
             )
             self.assertEqual(response.status_code, 200)
-        #
-        #     # Predict
-        #     response = client.post(
-        #         url_for('predict'),
-        #         data={
-        #             'checkpointName': ckpt_name,
-        #             'textSmiles': test_smiles
-        #         }
-        #     )
-        #     self.assertEqual(response.status_code, 200)
+
+            # Predict
+            response = client.post(
+                url_for('predict'),
+                data={
+                    'checkpointName': ckpt_name,
+                    'textSmiles': test_smiles
+                }
+            )
+            self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':

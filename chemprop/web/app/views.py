@@ -200,6 +200,7 @@ def train():
     gpu = request.form.get('gpu')
     data_path = os.path.join(app.config['DATA_FOLDER'], f'{data_name}.csv')
     dataset_type = request.form.get('datasetType', 'regression')
+    use_progress_bar = request.form.get('useProgressBar', True)
 
     # Create and modify args
     args = TrainArgs().parse_args([
@@ -249,15 +250,18 @@ def train():
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
 
-        process = mp.Process(target=progress_bar, args=(args, PROGRESS))
-        process.start()
+        if use_progress_bar:
+            process = mp.Process(target=progress_bar, args=(args, PROGRESS))
+            process.start()
+
         TRAINING = 1
 
         # Run training
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
         task_scores = run_training(args, data, logger)[args.metrics[0]]
-        return render_train()
-        process.join()
+
+        if use_progress_bar:
+            process.join()
 
         # Reset globals
         TRAINING = 0
