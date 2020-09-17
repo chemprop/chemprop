@@ -201,8 +201,6 @@ def train():
     data_path = os.path.join(app.config['DATA_FOLDER'], f'{data_name}.csv')
     dataset_type = request.form.get('datasetType', 'regression')
 
-    return render_train()
-
     # Create and modify args
     args = TrainArgs().parse_args([
         '--data_path', data_path,
@@ -247,6 +245,8 @@ def train():
                                         args.epochs,
                                         args.ensemble_size,
                                         len(targets))
+
+    return render_train()
 
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
