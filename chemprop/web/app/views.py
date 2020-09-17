@@ -248,7 +248,6 @@ def train():
                                         len(targets))
 
     with TemporaryDirectory() as temp_dir:
-
         args.save_dir = temp_dir
 
         if use_progress_bar:
