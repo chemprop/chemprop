@@ -248,6 +248,8 @@ def train():
                                         len(targets))
 
     with TemporaryDirectory() as temp_dir:
+        return render_train()
+
         args.save_dir = temp_dir
 
         if use_progress_bar:
@@ -256,7 +258,6 @@ def train():
             TRAINING = 1
 
         # Run training
-        return render_train()
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
         task_scores = run_training(args, data, logger)[args.metrics[0]]
 
