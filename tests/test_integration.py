@@ -505,15 +505,15 @@ class ChempropTests(TestCase):
             )
             self.assertEqual(response.status_code, 200)
 
-            # # Predict
-            # response = client.post(
-            #     url_for('predict'),
-            #     data={
-            #         'checkpointName': ckpt_name,
-            #         'textSmiles': test_smiles
-            #     }
-            # )
-            # self.assertEqual(response.status_code, 200)
+            # Predict
+            response = client.post(
+                url_for('predict'),
+                data={
+                    'checkpointName': ckpt_name,
+                    'textSmiles': test_smiles
+                }
+            )
+            self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':
