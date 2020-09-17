@@ -458,6 +458,7 @@ class ChempropTests(TestCase):
                 self.fail(f'Interpretation failed with error: {e}')
 
     def test_chemprop_web(self):
+        print('test chemprop web')
         app = build_app(init_db=True)
 
         app.config['TESTING'] = True
@@ -480,6 +481,7 @@ class ChempropTests(TestCase):
         with app.test_client() as client:
             response = client.get('/')
             self.assertEqual(response.status_code, 200)
+            print('got home page')
 
             # Upload data
             response = client.post(
@@ -490,21 +492,22 @@ class ChempropTests(TestCase):
                 }
             )
             self.assertEqual(response.status_code, 302)
+            print('upload data')
 
             # Train
             print('before train')
-            response = client.post(
-                url_for('train'),
-                data={
-                    'dataName': data_name,
-                    'epochs': epochs,
-                    'ensembleSize': ensemble_size,
-                    'checkpointName': checkpoint_name,
-                    'datasetType': dataset_type
-                }
-            )
-            print('after train')
-            self.assertEqual(response.status_code, 200)
+            # response = client.post(
+            #     url_for('train'),
+            #     data={
+            #         'dataName': data_name,
+            #         'epochs': epochs,
+            #         'ensembleSize': ensemble_size,
+            #         'checkpointName': checkpoint_name,
+            #         'datasetType': dataset_type
+            #     }
+            # )
+            # print('after train')
+            # self.assertEqual(response.status_code, 200)
         #
         #     # Predict
         #     response = client.post(
