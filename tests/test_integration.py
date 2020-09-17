@@ -491,18 +491,20 @@ class ChempropTests(TestCase):
             )
             self.assertEqual(response.status_code, 302)
 
-            # # Train
-            # response = client.post(
-            #     url_for('train'),
-            #     data={
-            #         'dataName': data_name,
-            #         'epochs': epochs,
-            #         'ensembleSize': ensemble_size,
-            #         'checkpointName': checkpoint_name,
-            #         'datasetType': dataset_type
-            #     }
-            # )
-            # self.assertEqual(response.status_code, 200)
+            # Train
+            print('before train')
+            response = client.post(
+                url_for('train'),
+                data={
+                    'dataName': data_name,
+                    'epochs': epochs,
+                    'ensembleSize': ensemble_size,
+                    'checkpointName': checkpoint_name,
+                    'datasetType': dataset_type
+                }
+            )
+            print('after train')
+            self.assertEqual(response.status_code, 200)
         #
         #     # Predict
         #     response = client.post(
