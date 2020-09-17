@@ -255,8 +255,8 @@ def train():
 
         # Run training
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-        return render_train()
         task_scores = run_training(args, data, logger)[args.metrics[0]]
+        return render_train()
         process.join()
 
         # Reset globals
