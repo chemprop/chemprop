@@ -188,8 +188,6 @@ def train():
     """Renders the train page and performs training if request method is POST."""
     global PROGRESS, TRAINING
 
-    print('in train')
-
     warnings, errors = [], []
 
     if request.method == 'GET':
@@ -203,6 +201,8 @@ def train():
     data_path = os.path.join(app.config['DATA_FOLDER'], f'{data_name}.csv')
     dataset_type = request.form.get('datasetType', 'regression')
 
+    return render_train()
+
     # Create and modify args
     args = TrainArgs().parse_args([
         '--data_path', data_path,
@@ -210,8 +210,6 @@ def train():
         '--epochs', str(epochs),
         '--ensemble_size', str(ensemble_size)
     ])
-
-    print('args')
 
     # Get task names
     args.task_names = get_task_names(path=data_path)
@@ -259,9 +257,7 @@ def train():
 
         # Run training
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
-        print('before run_training')
         task_scores = run_training(args, data, logger)[args.metrics[0]]
-        print('after run_training')
         process.join()
 
         # Reset globals
@@ -279,8 +275,6 @@ def train():
                     model_id = db.insert_model(ckpt_id)
                     save_path = os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model_id}.pt')
                     shutil.move(os.path.join(args.save_dir, root, fname), save_path)
-
-    print('prior to exit')
 
     return render_train(trained=True,
                         metric=args.metric,
