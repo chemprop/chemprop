@@ -253,8 +253,7 @@ def train():
         if use_progress_bar:
             process = mp.Process(target=progress_bar, args=(args, PROGRESS))
             process.start()
-
-        TRAINING = 1
+            TRAINING = 1
 
         # Run training
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
@@ -263,9 +262,9 @@ def train():
         if use_progress_bar:
             process.join()
 
-        # Reset globals
-        TRAINING = 0
-        PROGRESS = mp.Value('d', 0.0)
+            # Reset globals
+            TRAINING = 0
+            PROGRESS = mp.Value('d', 0.0)
 
         # Check if name overlap
         if checkpoint_name != ckpt_name:
