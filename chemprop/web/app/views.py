@@ -200,7 +200,7 @@ def train():
     gpu = request.form.get('gpu')
     data_path = os.path.join(app.config['DATA_FOLDER'], f'{data_name}.csv')
     dataset_type = request.form.get('datasetType', 'regression')
-    use_progress_bar = request.form.get('useProgressBar', False)
+    use_progress_bar = False  # request.form.get('useProgressBar', False)
 
     # Create and modify args
     args = TrainArgs().parse_args([
