@@ -246,8 +246,6 @@ def train():
                                         args.ensemble_size,
                                         len(targets))
 
-    return render_train()
-
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
 
@@ -259,6 +257,8 @@ def train():
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
         task_scores = run_training(args, data, logger)[args.metrics[0]]
         process.join()
+
+        return render_train()
 
         # Reset globals
         TRAINING = 0
