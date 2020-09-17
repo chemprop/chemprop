@@ -248,14 +248,15 @@ def train():
                                         len(targets))
 
     with TemporaryDirectory() as temp_dir:
-        return render_train()
 
         args.save_dir = temp_dir
 
-        if use_progress_bar:
+        if False:
             process = mp.Process(target=progress_bar, args=(args, PROGRESS))
             process.start()
             TRAINING = 1
+
+        return render_train()
 
         # Run training
         logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=args.save_dir, quiet=args.quiet)
