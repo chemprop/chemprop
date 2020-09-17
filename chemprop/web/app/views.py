@@ -247,6 +247,8 @@ def train():
                                         args.ensemble_size,
                                         len(targets))
 
+    return render_train()
+
     with TemporaryDirectory() as temp_dir:
         args.save_dir = temp_dir
 
