@@ -40,7 +40,7 @@ def train(model: MoleculeModel,
     debug = logger.debug if logger is not None else print
     
     model.train()
-    loss_sum, iter_count = 0, 0
+    loss_sum = iter_count = 0
 
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
@@ -67,7 +67,7 @@ def train(model: MoleculeModel,
         loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
-        iter_count += len(batch)
+        iter_count += 1
 
         loss.backward()
         if args.grad_clip:
@@ -85,7 +85,7 @@ def train(model: MoleculeModel,
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
-            loss_sum, iter_count = 0, 0
+            loss_sum = iter_count = 0
 
             lrs_str = ', '.join(f'lr_{i} = {lr:.4e}' for i, lr in enumerate(lrs))
             debug(f'Loss = {loss_avg:.4e}, PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
