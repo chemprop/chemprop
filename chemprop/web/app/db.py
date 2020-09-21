@@ -10,8 +10,14 @@ from flask import current_app, Flask, g
 from chemprop.web.app import app
 
 
+DB_PATH = 'chemprop.sqlite3'
+
+
 def init_app(app: Flask):
+    global DB_PATH
+
     app.teardown_appcontext(close_db)
+    DB_PATH = app.config['DB_PATH']
 
 
 def init_db():
@@ -38,7 +44,7 @@ def get_db():
     """
     if 'db' not in g:
         g.db = sqlite3.connect(
-            'chemprop.sqlite3',
+            DB_PATH,
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.row_factory = sqlite3.Row
