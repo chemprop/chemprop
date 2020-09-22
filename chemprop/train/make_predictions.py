@@ -20,7 +20,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
-    :param smiles: list of list of SMILES to make predictions on.
+    :param smiles: List of list of SMILES to make predictions on.
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
