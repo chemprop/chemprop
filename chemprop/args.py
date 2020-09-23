@@ -174,8 +174,13 @@ class CommonArgs(Tap):
             raise ValueError('Length of smiles_columns must match number_of_molecules.')
 
         # Validate atom descriptors
-        if self.atom_descriptors is not None and self.atom_descriptors_path is None:
-            raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
+        if (self.atom_descriptors is None) != (self.atom_descriptors_path is None):
+            raise ValueError('If atom_descriptors is specified, then an atom_descriptors_path must be provided '
+                             'and vice versa.')
+
+        if self.atom_descriptors is not None and self.number_of_molecules > 1:
+            raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                                      'per input (i.e., number_of_molecules = 1).')
 
         set_cache_mol(not self.no_cache_mol)
 
