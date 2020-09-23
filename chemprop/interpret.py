@@ -330,6 +330,6 @@ def interpret(args: InterpretArgs) -> None:
 def chemprop_interpret() -> None:
     """Runs interpretation of a Chemprop model.
 
-    This is the entry point for the command line command :code:`chemprop_hyperopt`.
+    This is the entry point for the command line command :code:`chemprop_interpret`.
     """
     interpret(args=InterpretArgs().parse_args())

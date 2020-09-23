@@ -17,6 +17,7 @@ install:
   - conda install -c conda-forge rdkit
   - conda install pytest
   - pip install git+https://github.com/bp-kelley/descriptastorus
+  - pip install parameterized  # For testing
   - pip install -e .
 script:
   - pytest

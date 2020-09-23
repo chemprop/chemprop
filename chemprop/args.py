@@ -89,10 +89,23 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
+    atom_descriptors: Literal['feature', 'descriptor'] = None
+    """
+    Custom extra atom descriptors.
+    :code:`feature`: used as atom features to featurize a given molecule. 
+    :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
+    """
+    atom_descriptors_path: str = None
+    """Path to the extra atom descriptors."""
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
     """
+
+    def __init__(self, *args, **kwargs):
+        super(CommonArgs, self).__init__(*args, **kwargs)
+        self._atom_features_size = 0
+        self._atom_descriptors_size = 0
 
     @property
     def device(self) -> torch.device:
@@ -121,6 +134,24 @@ class CommonArgs(Tap):
         """Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler` to the additional molecule-level features."""
         return not self.no_features_scaling
 
+    @property
+    def atom_features_size(self) -> int:
+        """The size of the atom features."""
+        return self._atom_features_size
+
+    @atom_features_size.setter
+    def atom_features_size(self, atom_features_size: int) -> None:
+        self._atom_features_size = atom_features_size
+
+    @property
+    def atom_descriptors_size(self) -> int:
+        """The size of the atom descriptors."""
+        return self._atom_descriptors_size
+
+    @atom_descriptors_size.setter
+    def atom_descriptors_size(self, atom_descriptors_size: int) -> None:
+        self._atom_descriptors_size = atom_descriptors_size
+
     def add_arguments(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
         self.add_argument('--features_generator', choices=get_available_features_generators())
@@ -141,6 +172,10 @@ class CommonArgs(Tap):
             self.smiles_columns = [None] * self.number_of_molecules
         elif len(self.smiles_columns) != self.number_of_molecules:
             raise ValueError('Length of smiles_columns must match number_of_molecules.')
+
+        # Validate atom descriptors
+        if self.atom_descriptors is not None and self.atom_descriptors_path is None:
+            raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
 
         set_cache_mol(not self.no_cache_mol)
 

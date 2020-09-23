@@ -56,12 +56,11 @@ setup(
         'scipy==1.4.1',
         'sphinx>=3.1.2',
         'tensorboardX>=2.0',
-        'tensorflow>=1.13.1',
         'torch>=1.5.1',
         'tqdm>=4.45.0',
         'typed-argument-parser>=1.5.4'
     ],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'parameterized'],
     python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python :: 3',

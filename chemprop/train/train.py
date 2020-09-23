@@ -40,18 +40,19 @@ def train(model: MoleculeModel,
     debug = logger.debug if logger is not None else print
     
     model.train()
-    loss_sum, iter_count = 0, 0
+    loss_sum = iter_count = 0
 
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch = batch.batch_graph(), batch.features(), batch.targets()
+        mol_batch, features_batch, target_batch, atom_descriptors_batch = \
+            batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors()
         mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
         # Run model
         model.zero_grad()
-        preds = model(mol_batch, features_batch)
+        preds = model(mol_batch, features_batch, atom_descriptors_batch)
 
         # Move tensors to correct device
         mask = mask.to(preds.device)
@@ -66,7 +67,7 @@ def train(model: MoleculeModel,
         loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
-        iter_count += len(batch)
+        iter_count += 1
 
         loss.backward()
         if args.grad_clip:
@@ -84,7 +85,7 @@ def train(model: MoleculeModel,
             pnorm = compute_pnorm(model)
             gnorm = compute_gnorm(model)
             loss_avg = loss_sum / iter_count
-            loss_sum, iter_count = 0, 0
+            loss_sum = iter_count = 0
 
             lrs_str = ', '.join(f'lr_{i} = {lr:.4e}' for i, lr in enumerate(lrs))
             debug(f'Loss = {loss_avg:.4e}, PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
