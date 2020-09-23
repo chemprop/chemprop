@@ -41,6 +41,8 @@ def get_task_names(path: str,
 
     columns = get_header(path)
 
+    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+
     if None in smiles_columns:
         smiles_columns = columns[:len(smiles_columns)]
 
@@ -64,12 +66,12 @@ def get_header(path: str) -> List[str]:
     return header
 
 
-def get_smiles(path: str, smiles_columns: str = None, header: bool = True) -> List[str]:
+def get_smiles(path: str, smiles_columns: List[str] = None, header: bool = True) -> List[str]:
     """
     Returns the SMILES from a data CSV file.
 
     :param path: Path to a CSV file.
-    :param smiles_columns: The names of the columns containing SMILES.
+    :param smiles_columns: A list of the names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
     :param header: Whether the CSV file contains a header.
     :return: A list of SMILES.
@@ -77,10 +79,12 @@ def get_smiles(path: str, smiles_columns: str = None, header: bool = True) -> Li
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
+    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+
     with open(path) as f:
         if header:
             reader = csv.DictReader(f)
-            if smiles_columns is None:
+            if None in smiles_columns:
                 smiles_columns = reader.fieldnames[:len(smiles_columns)]
         else:
             reader = csv.reader(f)
@@ -161,6 +165,8 @@ def get_data(path: str,
             atom_features = load_atom_features(atom_descriptors_path)
         elif args.atom_descriptors == 'descriptor':
             atom_descriptors = load_atom_features(atom_descriptors_path)
+
+    smiles_columns = smiles_columns if smiles_columns is not None else [None]
 
     max_data_size = max_data_size or float('inf')
 
