@@ -331,6 +331,8 @@ def predict():
         # Get remaining smiles
         smiles.extend(get_smiles(data_path))
 
+    smiles = [[s] for s in smiles]
+
     models = db.get_models(ckpt_id)
     model_paths = [os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model["id"]}.pt') for model in models]
 

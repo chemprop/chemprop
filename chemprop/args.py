@@ -180,7 +180,6 @@ class CommonArgs(Tap):
         set_cache_mol(not self.no_cache_mol)
 
 
-
 class TrainArgs(CommonArgs):
     """:class:`TrainArgs` includes :class:`CommonArgs` along with additional arguments used for training a Chemprop model."""
 

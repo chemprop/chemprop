@@ -173,7 +173,7 @@ def get_data(path: str,
     else:
         features_data = None
 
-    skip_smiles = [set() for c in range(len(smiles_columns))]
+    skip_smiles = [set() for _ in range(len(smiles_columns))]
 
     # Load data
     with open(path) as f:
@@ -245,7 +245,7 @@ def get_data_from_smiles(smiles: List[List[str]],
     """
     Converts a list of SMILES to a :class:`~chemprop.data.MoleculeDataset`.
 
-    :param smiles: A list of a list SMILES with length depending on the number of molecules.
+    :param smiles: A list of lists of SMILES with length depending on the number of molecules.
     :param skip_invalid_smiles: Whether to skip and filter out invalid smiles using :func:`filter_invalid_smiles`
     :param logger: A logger for recording output.
     :param features_generator: List of features generators.

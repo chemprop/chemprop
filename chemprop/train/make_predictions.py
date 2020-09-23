@@ -56,7 +56,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     full_to_valid_indices = {}
     valid_index = 0
     for full_index in range(len(full_data)):
-        if full_data[full_index].mol is not None:
+        if all(mol is not None for mol in full_data[full_index].mol):
             full_to_valid_indices[full_index] = valid_index
             valid_index += 1
 
