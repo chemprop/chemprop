@@ -299,7 +299,7 @@ def interpret(args: InterpretArgs) -> None:
     C_PUCT = args.c_puct
     MIN_ATOMS = args.min_atoms
 
-    all_smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column)
+    all_smiles = get_smiles(path=args.data_path, smiles_columns=args.smiles_columns)
     header = get_header(path=args.data_path)
 
     property_name = header[args.property_id] if len(header) > args.property_id else 'score'

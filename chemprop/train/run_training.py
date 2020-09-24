@@ -45,9 +45,11 @@ def run_training(args: TrainArgs,
     # Split data
     debug(f'Splitting data with seed {args.seed}')
     if args.separate_test_path:
-        test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path, logger=logger)
+        test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path,
+                             logger=logger)
     if args.separate_val_path:
-        val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path, logger=logger)
+        val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path,
+                            logger=logger)
 
     if args.separate_val_path and args.separate_test_path:
         train_data = data

@@ -11,7 +11,7 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, t
 
 
 @timeit()
-def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[Optional[float]]]:
+def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to make predictions on the data.
 
@@ -20,7 +20,7 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
-    :param smiles: SMILES to make predictions on.
+    :param smiles: List of list of SMILES to make predictions on.
     :return: A list of lists of target predictions.
     """
     print('Loading training args')
@@ -49,20 +49,14 @@ def make_predictions(args: PredictArgs, smiles: List[str] = None) -> List[List[O
             features_generator=args.features_generator
         )
     else:
-        full_data = get_data(
-            path=args.test_path,
-            args=args,
-            target_columns=[],
-            ignore_columns=[],
-            skip_invalid_smiles=False,
-            store_row=True
-        )
+        full_data = get_data(path=args.test_path, target_columns=[], ignore_columns=[], skip_invalid_smiles=False,
+                             args=args, store_row=True)
 
     print('Validating SMILES')
     full_to_valid_indices = {}
     valid_index = 0
     for full_index in range(len(full_data)):
-        if full_data[full_index].mol is not None:
+        if all(mol is not None for mol in full_data[full_index].mol):
             full_to_valid_indices[full_index] = valid_index
             valid_index += 1
 

@@ -61,8 +61,12 @@ def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
 class CommonArgs(Tap):
     """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
-    smiles_column: str = None
-    """Name of the column containing SMILES strings. By default, uses the first column."""
+    smiles_columns: List[str] = None
+    """List of names of the columns containing SMILES strings. 
+    By default, uses the first :code:`number_of_molecules` columns."""
+    number_of_molecules: int = 1
+    """Number of molecules in each input to the model.
+    This must equal the length of :code:`smiles_column` (if not :code:`None`)."""
     checkpoint_dir: str = None
     """Directory from which to load model checkpoints (walks directory and ensembles all models that are found)."""
     checkpoint_path: str = None
@@ -164,9 +168,19 @@ class CommonArgs(Tap):
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
+        if self.smiles_columns is None:
+            self.smiles_columns = [None] * self.number_of_molecules
+        elif len(self.smiles_columns) != self.number_of_molecules:
+            raise ValueError('Length of smiles_columns must match number_of_molecules.')
+
         # Validate atom descriptors
-        if self.atom_descriptors is not None and self.atom_descriptors_path is None:
-            raise ValueError('When using atom_descriptors, --atom_descriptors_path must be specified')
+        if (self.atom_descriptors is None) != (self.atom_descriptors_path is None):
+            raise ValueError('If atom_descriptors is specified, then an atom_descriptors_path must be provided '
+                             'and vice versa.')
+
+        if self.atom_descriptors is not None and self.number_of_molecules > 1:
+            raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                                      'per input (i.e., number_of_molecules = 1).')
 
         set_cache_mol(not self.no_cache_mol)
 
@@ -251,6 +265,9 @@ class TrainArgs(CommonArgs):
     """Dimensionality of hidden layers in MPN."""
     depth: int = 3
     """Number of message passing steps."""
+    mpn_shared: bool = False
+    """Whether to use the same message passing neural network for all input molecules
+    Only relevant if :code:`number_of_molecules > 1`"""
     dropout: float = 0.0
     """Dropout probability."""
     activation: Literal['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'] = 'ReLU'
@@ -531,8 +548,12 @@ class SklearnPredictArgs(Tap):
 
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
-    smiles_column: str = None
-    """Name of the column containing SMILES strings. By default, uses the first column."""
+    smiles_columns: List[str] = None
+    """List of names of the columns containing SMILES strings. 
+    By default, uses the first :code:`number_of_molecules` columns."""
+    number_of_molecules: int = 1
+    """Number of molecules in each input to the model.
+    This must equal the length of :code:`smiles_column` (if not :code:`None`)."""
     preds_path: str
     """Path to CSV file where predictions will be saved."""
     checkpoint_dir: str = None
@@ -543,6 +564,12 @@ class SklearnPredictArgs(Tap):
     """List of paths to model checkpoints (:code:`.pkl` files)"""
 
     def process_args(self) -> None:
+
+        if self.smiles_columns is None:
+            self.smiles_columns = [None] * self.number_of_molecules
+        elif len(self.smiles_columns) != self.number_of_molecules:
+            raise ValueError('Length of smiles_columns must match number_of_molecules.')
+
         # Load checkpoint paths
         self.checkpoint_paths = get_checkpoint_paths(
             checkpoint_path=self.checkpoint_path,

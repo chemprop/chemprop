@@ -207,14 +207,16 @@ def train():
         '--data_path', data_path,
         '--dataset_type', dataset_type,
         '--epochs', str(epochs),
-        '--ensemble_size', str(ensemble_size)
+        '--ensemble_size', str(ensemble_size),
     ])
 
     # Get task names
-    args.task_names = get_task_names(path=data_path)
+    args.task_names = get_task_names(path=data_path, smiles_columns=[None])
 
     # Check if regression/classification selection matches data
-    data = get_data(path=data_path)
+    data = get_data(path=data_path, smiles_columns=[None])
+    #set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
+
     targets = data.targets()
     unique_targets = {target for row in targets for target in row if target is not None}
 
@@ -328,6 +330,8 @@ def predict():
 
         # Get remaining smiles
         smiles.extend(get_smiles(data_path))
+
+    smiles = [[s] for s in smiles]
 
     models = db.get_models(ckpt_id)
     model_paths = [os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model["id"]}.pt') for model in models]
