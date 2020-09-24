@@ -182,12 +182,12 @@ class ChempropTests(TestCase):
         (
                 'sklearn_random_forest',
                 'random_forest',
-                1.575406
+                1.582733
         ),
         (
                 'sklearn_svm',
                 'svm',
-                1.698937
+                1.698927
         ),
         (
                 'chemprop',
@@ -278,7 +278,7 @@ class ChempropTests(TestCase):
         (
                 'sklearn_random_forest',
                 'random_forest',
-                0.915988
+                0.945589
         ),
         (
                 'sklearn_svm',

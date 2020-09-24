@@ -227,7 +227,7 @@ def run_sklearn(args: SklearnTrainArgs,
     debug('Building model')
     if args.dataset_type == 'regression':
         if args.model_type == 'random_forest':
-            model = RandomForestRegressor(n_estimators=args.num_trees, n_jobs=-1)
+            model = RandomForestRegressor(n_estimators=args.num_trees, n_jobs=-1, random_state=args.seed)
         elif args.model_type == 'svm':
             model = SVR()
         else:
