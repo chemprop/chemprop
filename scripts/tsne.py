@@ -46,7 +46,7 @@ def compare_datasets_tsne(args: Args):
         label = os.path.basename(smiles_path).replace('.csv', '')
 
         # Get SMILES
-        new_smiles = get_smiles(path=smiles_path, smiles_column=args.smiles_column)
+        new_smiles = get_smiles(path=smiles_path, smiles_columns=args.smiles_column, flatten=True)
         print(f'{label}: {len(new_smiles):,}')
 
         # Subsample if dataset is too large

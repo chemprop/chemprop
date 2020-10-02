@@ -24,13 +24,13 @@ def average_duplicates(args: Args):
     """Averages duplicate data points in a dataset."""
     print('Loading data')
     header = get_header(args.data_path)
-    data = get_data(path=args.data_path, smiles_column=args.smiles_column, target_columns=args.target_columns)
+    data = get_data(path=args.data_path, smiles_columns=args.smiles_column, target_columns=args.target_columns)
     print(f'Data size = {len(data):,}')
 
     # Map SMILES string to lists of targets
     smiles_in_order = []
     smiles_to_targets = defaultdict(list)
-    for smiles, targets in zip(data.smiles(), data.targets()):
+    for smiles, targets in zip(data.smiles(flatten=True), data.targets()):
         smiles_to_targets[smiles].append(targets)
         if len(smiles_to_targets[smiles]) == 1:
             smiles_in_order.append(smiles)

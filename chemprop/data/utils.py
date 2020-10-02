@@ -3,7 +3,7 @@ import csv
 from logging import Logger
 import pickle
 from random import Random
-from typing import List, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 import os
 
 from rdkit import Chem
@@ -16,8 +16,22 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_atom_features
 
 
+def preprocess_smiles_columns(smiles_columns: Optional[Union[str, List[Optional[str]]]]) -> List[Optional[str]]:
+    """
+    Preprocesses the :code:`smiles_column` variable to ensure that it is a list.
+
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :return: The preprocessed version of :code:`smiles_column` which is guaranteed to be a list.
+    """
+    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+    smiles_columns = [smiles_columns] if type(smiles_columns) != list else smiles_columns
+
+    return smiles_columns
+
+
 def get_task_names(path: str,
-                   smiles_columns: List[str] = None,
+                   smiles_columns: Union[str, List[str]] = None,
                    target_columns: List[str] = None,
                    ignore_columns: List[str] = None) -> List[str]:
     """
@@ -41,7 +55,7 @@ def get_task_names(path: str,
 
     columns = get_header(path)
 
-    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+    smiles_columns = preprocess_smiles_columns(smiles_columns)
 
     if None in smiles_columns:
         smiles_columns = columns[:len(smiles_columns)]
@@ -66,7 +80,11 @@ def get_header(path: str) -> List[str]:
     return header
 
 
-def get_smiles(path: str, smiles_columns: List[str] = None, header: bool = True) -> List[str]:
+def get_smiles(path: str,
+               smiles_columns: Union[str, List[str]] = None,
+               header: bool = True,
+               flatten: bool = False
+               ) -> Union[List[str], List[List[str]]]:
     """
     Returns the SMILES from a data CSV file.
 
@@ -74,12 +92,13 @@ def get_smiles(path: str, smiles_columns: List[str] = None, header: bool = True)
     :param smiles_columns: A list of the names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
     :param header: Whether the CSV file contains a header.
-    :return: A list of SMILES.
+    :param flatten: Whether to flatten the returned SMILES to a list instead of a list of lists.
+    :return: A list of SMILES or a list of lists of SMILES, depending on :code:`flatten`.
     """
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+    smiles_columns = preprocess_smiles_columns(smiles_columns)
 
     with open(path) as f:
         if header:
@@ -91,6 +110,9 @@ def get_smiles(path: str, smiles_columns: List[str] = None, header: bool = True)
             smiles_columns = 0
 
         smiles = [[row[c] for c in smiles_columns] for row in reader]
+
+    if flatten:
+        smiles = [smile for smiles_list in smiles for smile in smiles_list]
 
     return smiles
 
@@ -108,7 +130,7 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 
 def get_data(path: str,
-             smiles_columns: List[str] = None,
+             smiles_columns: Union[str, List[str]] = None,
              target_columns: List[str] = None,
              ignore_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
@@ -166,7 +188,7 @@ def get_data(path: str,
         elif args.atom_descriptors == 'descriptor':
             atom_descriptors = load_atom_features(atom_descriptors_path)
 
-    smiles_columns = smiles_columns if smiles_columns is not None else [None]
+    smiles_columns = preprocess_smiles_columns(smiles_columns)
 
     max_data_size = max_data_size or float('inf')
 

@@ -116,6 +116,15 @@ class MoleculeDatapoint:
 
         return mol
 
+    @property
+    def number_of_molecules(self) -> int:
+        """
+        Gets the number of molecules in the :class:`MoleculeDatapoint`.
+
+        :return: The number of molecules.
+        """
+        return len(self.smiles)
+
     def set_features(self, features: np.ndarray) -> None:
         """
         Sets the features of the molecule.
@@ -165,21 +174,38 @@ class MoleculeDataset(Dataset):
         self._batch_graph = None
         self._random = Random()
 
-    def smiles(self) -> List[List[str]]:
+    def smiles(self, flatten: bool = False) -> Union[List[str], List[List[str]]]:
         """
         Returns a list containing the SMILES list associated with each :class:`MoleculeDatapoint`.
 
-        :return: A list of lists of SMILES strings.
+        :param flatten: Whether to flatten the returned SMILES to a list instead of a list of lists.
+        :return: A list of SMILES or a list of lists of SMILES, depending on :code:`flatten`.
         """
+        if flatten:
+            return [smiles for d in self._data for smiles in d.smiles]
+
         return [d.smiles for d in self._data]
 
-    def mols(self) -> List[List[Chem.Mol]]:
+    def mols(self, flatten: bool = False) -> Union[List[Chem.Mol], List[List[Chem.Mol]]]:
         """
         Returns a list of the RDKit molecules associated with each :class:`MoleculeDatapoint`.
 
-        :return: A list of lists of RDKit molecules.
+        :param flatten: Whether to flatten the returned RDKit molecules to a list instead of a list of lists.
+        :return: A list of SMILES or a list of lists of RDKit molecules, depending on :code:`flatten`.
         """
+        if flatten:
+            return [mol for d in self._data for mol in d.mol]
+
         return [d.mol for d in self._data]
+
+    @property
+    def number_of_molecules(self) -> int:
+        """
+        Gets the number of molecules in each :class:`MoleculeDatapoint`.
+
+        :return: The number of molecules.
+        """
+        return self._data[0].number_of_molecules if len(self._data) > 0 else None
 
     def batch_graph(self) -> List[BatchMolGraph]:
         r"""

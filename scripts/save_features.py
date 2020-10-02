@@ -61,7 +61,7 @@ def generate_and_save_features(args: Args):
     makedirs(args.save_path, isfile=True)
 
     # Get data and features function
-    smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column)
+    smiles = get_smiles(path=args.data_path, smiles_columns=args.smiles_column, flatten=True)
     features_generator = get_features_generator(args.features_generator)
     temp_save_dir = args.save_path + '_temp'
 

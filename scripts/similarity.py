@@ -17,7 +17,7 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data import get_data, scaffold_to_smiles
+from chemprop.data import get_smiles, scaffold_to_smiles
 
 
 class Args(Tap):
@@ -46,7 +46,6 @@ def scaffold_similarity(smiles_1: List[str], smiles_2: List[str]):
 
     smiles_to_scaffold = {smiles: scaffold for scaffold, smiles_set in scaffold_to_smiles_1.items() for smiles in smiles_set}
     smiles_to_scaffold.update({smiles: scaffold for scaffold, smiles_set in scaffold_to_smiles_2.items() for smiles in smiles_set})
-
 
     # Determine similarity
     scaffolds_1, scaffolds_2 = set(scaffolds_1), set(scaffolds_2)
@@ -144,12 +143,12 @@ def morgan_similarity(smiles_1: List[str], smiles_2: List[str], radius: int, sam
 if __name__ == '__main__':
     args = Args().parse_args()
 
-    data_1 = get_data(path=args.data_path_1, smiles_column=args.smiles_column_1)
-    data_2 = get_data(path=args.data_path_2, smiles_column=args.smiles_column_2)
+    smiles_1 = get_smiles(path=args.data_path_1, smiles_columns=args.smiles_column_1, flatten=True)
+    smiles_2 = get_smiles(path=args.data_path_2, smiles_columns=args.smiles_column_2, flatten=True)
 
     if args.similarity_measure == 'scaffold':
-        scaffold_similarity(data_1.smiles(), data_2.smiles())
+        scaffold_similarity(smiles_1, smiles_2)
     elif args.similarity_measure == 'morgan':
-        morgan_similarity(data_1.smiles(), data_2.smiles(), args.radius, args.sample_rate)
+        morgan_similarity(smiles_1, smiles_2, args.radius, args.sample_rate)
     else:
         raise ValueError(f'Similarity measure "{args.similarity_measure}" not supported.')

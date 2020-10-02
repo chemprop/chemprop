@@ -9,7 +9,6 @@ from tqdm import tqdm
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.train import evaluate_predictions
-from chemprop.utils import mean_absolute_error, rmse, roc_auc_score, prc_auc
 
 
 FAKE_LOGGER = namedtuple('FakeLogger', ['info'])(info=lambda x: None)

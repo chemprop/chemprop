@@ -195,6 +195,12 @@ class ChempropTests(TestCase):
                 1.237620
         ),
         (
+                'chemprop_scaffold_split',
+                'chemprop',
+                1.433300,
+                ['--split_type', 'scaffold_balanced']
+        ),
+        (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 1.834947,

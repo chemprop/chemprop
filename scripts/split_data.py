@@ -32,11 +32,11 @@ def run_split_data(args: Args):
         lines = list(reader)
 
     # Load SMILES
-    smiles = get_smiles(path=args.data_path, smiles_column=args.smiles_column)
+    smiles = get_smiles(path=args.data_path, smiles_columns=args.smiles_column)
 
     # Make sure lines and smiles line up
     assert len(lines) == len(smiles)
-    assert all(smile in line for smile, line in zip(smiles, lines))
+    assert all(s in line for smile, line in zip(smiles, lines) for s in smile)
 
     # Create data
     data = []

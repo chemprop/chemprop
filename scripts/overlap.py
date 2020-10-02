@@ -8,7 +8,7 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data import get_data
+from chemprop.data import get_smiles
 
 
 class Args(Tap):
@@ -21,13 +21,12 @@ class Args(Tap):
 
 
 def overlap(args: Args):
-    data_1 = get_data(path=args.data_path_1, smiles_column=args.smiles_column_1)
-    data_2 = get_data(path=args.data_path_2, smiles_column=args.smiles_column_2)
+    smiles_1 = get_smiles(path=args.data_path_1, smiles_columns=args.smiles_column_1, flatten=True)
+    smiles_2 = get_smiles(path=args.data_path_2, smiles_columns=args.smiles_column_2, flatten=True)
 
-    smiles1 = set(data_1.smiles())
-    smiles2 = set(data_2.smiles())
-    size_1, size_2 = len(smiles1), len(smiles2)
-    intersection = smiles1.intersection(smiles2)
+    smiles_1, smiles_2 = set(smiles_1), set(smiles_2)
+    size_1, size_2 = len(smiles_1), len(smiles_2)
+    intersection = smiles_1.intersection(smiles_2)
     size_intersect = len(intersection)
     print(f'Size of dataset 1: {size_1}')
     print(f'Size of dataset 2: {size_2}')
