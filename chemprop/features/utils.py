@@ -59,7 +59,12 @@ def load_features(path: str) -> np.ndarray:
 
 def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
     """
-    Loads features saved in a .pkl file.
+    Loads features saved in a variety of formats.
+
+    Supported formats:
+
+    * :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns
+    * :code:'.sdf' containing all mol blocks with descriptors as entries
 
     :param path: Path to file containing atomwise features.
     :return: A list of 2D array.
