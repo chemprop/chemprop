@@ -13,7 +13,7 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_atom_features
+from chemprop.features import load_features, load_valid_atom_features
 
 
 def preprocess_smiles_columns(smiles_columns: Optional[Union[str, List[Optional[str]]]]) -> List[Optional[str]]:
@@ -168,10 +168,6 @@ def get_data(path: str,
     """
     debug = logger.debug if logger is not None else print
 
-    # Load atomic descriptors
-    atom_features = None
-    atom_descriptors = None
-
     if args is not None:
         # Prefer explicit function arguments but default to args if not provided
         smiles_columns = smiles_columns if smiles_columns is not None else args.smiles_columns
@@ -182,11 +178,6 @@ def get_data(path: str,
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
-
-        if args.atom_descriptors == 'feature':
-            atom_features = load_atom_features(atom_descriptors_path)
-        elif args.atom_descriptors == 'descriptor':
-            atom_descriptors = load_atom_features(atom_descriptors_path)
 
     smiles_columns = preprocess_smiles_columns(smiles_columns)
 
@@ -241,6 +232,19 @@ def get_data(path: str,
 
             if len(all_smiles) >= max_data_size:
                 break
+
+        atom_features = None
+        atom_descriptors = None
+        if args is not None and args.atom_descriptors is not None:
+            try:
+                descriptors = load_valid_atom_features(atom_descriptors_path, [x[0] for x in all_smiles])
+            except Exception as e:
+                print('Error: failed to load or valid custom atomic descriptors: {}'.format(e))
+
+            if args.atom_descriptors == 'feature':
+                atom_features = descriptors
+            elif args.atom_descriptors == 'descriptor':
+                atom_descriptors = descriptors
 
         data = MoleculeDataset([
             MoleculeDatapoint(
