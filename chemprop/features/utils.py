@@ -63,6 +63,7 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
 
     Supported formats:
 
+    * :code:`.npz` descriptors are saved as 2D array for each molecule in the order of that in the data.csv
     * :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns
     * :code:'.sdf' containing all mol blocks with descriptors as entries
 
@@ -72,7 +73,11 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
 
     extension = os.path.splitext(path)[1]
 
-    if extension in ['.pkl', '.pckl', '.pickle']:
+    if extension == '.npz':
+        container = np.load(path)
+        features = [container[key] for key in container]
+
+    elif extension in ['.pkl', '.pckl', '.pickle']:
         features_df = pd.read_pickle(path)
         if features_df.iloc[0, 0].ndim == 1:
             features = features_df.apply(lambda x: np.stack(x.tolist(), axis=1), axis=1).tolist()
@@ -81,7 +86,7 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
         else:
             raise ValueError(f'Atom descriptors input {path} format not supported')
 
-    if extension == '.sdf':
+    elif extension == '.sdf':
         from rdkit.Chem import PandasTools
         features_df = PandasTools.LoadSDF(path).drop(['ID', 'ROMol'], axis=1).set_index('SMILES')
 
