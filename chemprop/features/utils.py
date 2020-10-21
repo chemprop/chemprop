@@ -94,9 +94,7 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
 
         # locate atomic descriptors columns
         features_df = features_df.iloc[:, features_df.iloc[0, :].apply(lambda x: isinstance(x, str) and ',' in x).to_list()]
-
         features_df = features_df.reindex(smiles)
-        print(features_df)
         if features_df.isnull().any().any():
             raise ValueError(f'Invalid custom atomic descriptors file, Nan found in data')
 
