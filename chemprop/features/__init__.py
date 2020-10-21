@@ -23,5 +23,5 @@ __all__ = [
     'onek_encoding_unk',
     'load_features',
     'save_features',
-    'load_atom_features'
+    'load_valid_atom_features'
 ]
