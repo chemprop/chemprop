@@ -12,7 +12,7 @@ from chemprop.data import set_cache_mol
 from chemprop.features import get_available_features_generators
 
 
-Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy']
+Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy']
 
 
 def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
@@ -334,7 +334,7 @@ class TrainArgs(CommonArgs):
     @property
     def minimize_score(self) -> bool:
         """Whether the model should try to minimize the score metric or maximize it."""
-        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy'}
+        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy'}
 
     @property
     def use_input_features(self) -> bool:
@@ -418,7 +418,7 @@ class TrainArgs(CommonArgs):
                              f'Please only include it once.')
 
         for metric in self.metrics:
-            if not ((self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy']) or
+            if not ((self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy']) or
                     (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2']) or
                     (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy'])):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')

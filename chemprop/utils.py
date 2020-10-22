@@ -179,7 +179,7 @@ def get_loss_func(args: TrainArgs) -> nn.Module:
 
     if args.dataset_type == 'regression':
         return nn.MSELoss(reduction='none')
-    
+
     if args.dataset_type == 'multiclass':
         return nn.CrossEntropyLoss(reduction='none')
 
@@ -196,6 +196,23 @@ def prc_auc(targets: List[int], preds: List[float]) -> float:
     """
     precision, recall, _ = precision_recall_curve(targets, preds)
     return auc(recall, precision)
+
+def bce(targets: List[int], preds: List[float]) -> float:
+    """
+    Computes the binary cross entropy loss.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :return: The computed prc-auc.
+    """
+
+    # don't use logits because the sigmoid is added in all places
+    # except training itself
+
+    bce_func = nn.BCELoss(reduction='mean')
+    loss = bce_func(target=torch.Tensor(targets),
+                    input=torch.Tensor(preds)).item()
+    return loss
 
 
 def rmse(targets: List[float], preds: List[float]) -> float:
@@ -265,7 +282,7 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'rmse':
         return rmse
-    
+
     if metric == 'mse':
         return mse
 
@@ -274,12 +291,15 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'r2':
         return r2_score
-    
+
     if metric == 'accuracy':
         return accuracy
-    
+
     if metric == 'cross_entropy':
         return log_loss
+
+    if metric == 'binary_cross_entropy':
+        return bce
 
     raise ValueError(f'Metric "{metric}" not supported.')
 
