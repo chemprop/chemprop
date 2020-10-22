@@ -270,6 +270,7 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     * :code:`r2`: Coefficient of determination R\ :superscript:`2`
     * :code:`accuracy`: Accuracy (using a threshold to binarize predictions)
     * :code:`cross_entropy`: Cross entropy
+    * :code:`binary_cross_entropy`: Binary cross entropy
 
     :param metric: Metric name.
     :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
