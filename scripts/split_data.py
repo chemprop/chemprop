@@ -20,7 +20,7 @@ class Args(Tap):
     save_dir: str  # Directory where train, validation, and test sets will be saved
     smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
     split_type: Literal['random', 'scaffold_balanced'] = 'random'  # Split type
-    split_sizes: Tuple[int, int, int] = (0.8, 0.1, 0.1)  # Split sizes
+    split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)  # Split sizes
     seed: int = 0  # Random seed
 
 
