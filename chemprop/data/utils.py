@@ -239,7 +239,7 @@ def get_data(path: str,
             try:
                 descriptors = load_valid_atom_features(atom_descriptors_path, [x[0] for x in all_smiles])
             except Exception as e:
-                raise ValueError('Failed to load or valid custom atomic descriptors: {}'.format(e))
+                raise ValueError(f'Failed to load or valid custom atomic descriptors: {e}')
 
             if args.atom_descriptors == 'feature':
                 atom_features = descriptors

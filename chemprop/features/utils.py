@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 from rdkit import Chem
+from rdkit.Chem import PandasTools
 
 
 def save_features(path: str, features: List[np.ndarray]) -> None:
@@ -87,7 +88,6 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
             raise ValueError(f'Atom descriptors input {path} format not supported')
 
     elif extension == '.sdf':
-        from rdkit.Chem import PandasTools
         features_df = PandasTools.LoadSDF(path).drop(['ID', 'ROMol'], axis=1).set_index('SMILES')
 
         features_df = features_df[~features_df.index.duplicated()]
@@ -96,7 +96,7 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
         features_df = features_df.iloc[:, features_df.iloc[0, :].apply(lambda x: isinstance(x, str) and ',' in x).to_list()]
         features_df = features_df.reindex(smiles)
         if features_df.isnull().any().any():
-            raise ValueError(f'Invalid custom atomic descriptors file, Nan found in data')
+            raise ValueError('Invalid custom atomic descriptors file, Nan found in data')
 
         features_df = features_df.applymap(lambda x: np.array(x.replace('\r', '').replace('\n', '').split(',')).astype(float))
 
@@ -110,9 +110,7 @@ def load_valid_atom_features(path: str, smiles: List[str]) -> List[np.ndarray]:
 
         features = features_df.apply(lambda x: np.stack(x.tolist(), axis=1), axis=1).tolist()
 
+    else:
+        raise ValueError(f'Extension "{extension}" is not supported.')
+
     return features
-
-
-
-
-
