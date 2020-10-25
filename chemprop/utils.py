@@ -197,21 +197,19 @@ def prc_auc(targets: List[int], preds: List[float]) -> float:
     precision, recall, _ = precision_recall_curve(targets, preds)
     return auc(recall, precision)
 
+
 def bce(targets: List[int], preds: List[float]) -> float:
     """
     Computes the binary cross entropy loss.
 
     :param targets: A list of binary targets.
     :param preds: A list of prediction probabilities.
-    :return: The computed prc-auc.
+    :return: The computed binary cross entropy.
     """
-
-    # don't use logits because the sigmoid is added in all places
-    # except training itself
-
+    # Don't use logits because the sigmoid is added in all places except training itself
     bce_func = nn.BCELoss(reduction='mean')
-    loss = bce_func(target=torch.Tensor(targets),
-                    input=torch.Tensor(preds)).item()
+    loss = bce_func(target=torch.Tensor(targets), input=torch.Tensor(preds)).item()
+
     return loss
 
 
