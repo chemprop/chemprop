@@ -52,7 +52,8 @@ def find_similar_mols(test_smiles: List[str],
     :return: A list of OrderedDicts containing the test smiles, the num_neighbors nearest training smiles,
     and other relevant distance info.
     """
-    test_data, train_data = get_data_from_smiles(test_smiles), get_data_from_smiles(train_smiles)
+    test_data = get_data_from_smiles(smiles=[[smiles] for smiles in test_smiles])
+    train_data = get_data_from_smiles(smiles=[[smiles] for smiles in train_smiles])
     train_smiles_set = set(train_smiles)
 
     print(f'Computing {distance_measure} vectors')
@@ -126,7 +127,7 @@ def find_similar_mols_from_file(test_path: str,
     and other relevant distance info.
     """
     print('Loading data')
-    test_smiles, train_smiles = get_smiles(test_path), get_smiles(train_path)
+    test_smiles, train_smiles = get_smiles(test_path, flatten=True), get_smiles(train_path, flatten=True)
 
     if checkpoint_path is not None:
         print('Loading model')

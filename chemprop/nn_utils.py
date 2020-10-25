@@ -132,7 +132,7 @@ def compute_molecule_vectors(model: nn.Module,
     for batch in tqdm(data_loader, total=len(data_loader)):
         # Apply model to batch
         with torch.no_grad():
-            batch_vecs = model.featurize(batch.mols(), batch.features())
+            batch_vecs = model.featurize(batch.batch_graph(), batch.features())
 
         # Collect vectors
         vecs.extend(batch_vecs.data.cpu().numpy())
