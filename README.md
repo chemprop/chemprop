@@ -107,7 +107,7 @@ pip install gunicorn
 
 Next, navigate to `chemprop/web` and run `gunicorn --bind {host}:{port} 'wsgi:build_app()'`. This will start the site in production mode.
    * To run this server in the background, add the `--daemon` flag.
-   * Arguments including `init_db` and `demo` can be passed with this pattern: `'wsgi:build_app(init_db=True, demo=True)'` 
+   * Arguments including `init_db` and `demo` can be passed with this pattern: `'wsgi:build_app(init_db=True, demo=True)'`
    * Gunicorn documentation can be found [here](http://docs.gunicorn.org/en/stable/index.html).
 
 ## Data
@@ -199,7 +199,7 @@ While the model works very well on its own, especially after hyperparameter opti
 
 As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
 
-The full list of available features for `--features_generator` is as follows. 
+The full list of available features for `--features_generator` is as follows.
 
 `morgan` is binary Morgan fingerprints, radius 2 and 2048 bits.
 `morgan_count` is count-based Morgan, radius 2 and 2048 bits.
@@ -212,7 +212,7 @@ If you install from source, you can modify the code to load custom features as f
 
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
 2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule.
- 
+
 ## Predicting
 
 To load a trained model and make predictions, run `predict.py` and specify:
@@ -231,42 +231,54 @@ or
 chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
 
-<<<<<<< HEAD
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
 ## Interpreting
-=======
-## Interpreting with Rationales
->>>>>>> refactor/ rename rationale interpretation
+
 
 It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command:
 ```
-<<<<<<< HEAD
 chemprop_interpret --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
-=======
-python interpret_rationale.py --data_path data/tox21.csv --checkpoint_dir tox21_checkpoints/fold_0/ --property_id 1
->>>>>>> refactor/ rename rationale interpretation
 ```
 
 If installed from source, `chemprop_interpret` can be replaced with `python interpret.py`.
 
 The output will be like the following:
-* The first column is a molecule and second column is its predicted property (in this case NR-AR toxicity). 
-* The third column is the smallest substructure that made this molecule classified as toxic (which we call rationale). 
-* The fourth column is the predicted toxicity of that substructure. 
+* The first column is a molecule and second column is its predicted property (in this case NR-AR toxicity).
+* The third column is the smallest substructure that made this molecule classified as toxic (which we call rationale).
+* The fourth column is the predicted toxicity of that substructure.
 
-As shown in the first row, when a molecule is predicted to be non-toxic, we will not provide any rationale for its prediction. 
+As shown in the first row, when a molecule is predicted to be non-toxic, we will not provide any rationale for its prediction.
 
 smiles | NR-AR | rationale | rationale_score
 | :---: | :---: | :---: | :---: |
-O=\[N+\](\[O-\])c1cc(C(F)(F)F)cc(\[N+\](=O)\[O-\])c1Cl | 0.014 | | | 
+O=\[N+\](\[O-\])c1cc(C(F)(F)F)cc(\[N+\](=O)\[O-\])c1Cl | 0.014 | | |
 CC1(C)O\[C@@H\]2C\[C@H\]3\[C@@H\]4C\[C@H\](F)C5=CC(=O)C=C\[C@\]5(C)\[C@H\]4\[C@@H\](O)C\[C@\]3(C)\[C@\]2(C(=O)CO)O1 | 0.896 | C\[C@\]12C=CC(=O)C=C1\[CH2:1\]C\[CH2:1\]\[CH2:1\]2 | 0.769 |
 C\[C@\]12CC\[C@H\]3\[C@@H\](CC\[C@@\]45O\[C@@H\]4C(O)=C(C#N)C\[C@\]35C)\[C@@H\]1CC\[C@@H\]2O | 0.941 | C\[C@\]12C\[CH:1\]=\[CH:1\]\[C@H\]3O\[C@\]31CC\[C@@H\]1\[C@@H\]2CC\[C:1\]\[CH2:1\]1 | 0.808 |
-C\[C@\]12C\[C@H\](O)\[C@H\]3\[C@@H\](CCC4=CC(=O)CC\[C@@\]43C)\[C@@H\]1CC\[C@\]2(O)C(=O)COP(=O)(\[O-\])\[O-\] | 0.957 | C1C\[CH2:1\]\[C:1\]\[C@@H\]2\[C@@H\]1\[C@@H\]1CC\[C:1\]\[C:1\]1C\[CH2:1\]2</pre> | 0.532 | 
+C\[C@\]12C\[C@H\](O)\[C@H\]3\[C@@H\](CCC4=CC(=O)CC\[C@@\]43C)\[C@@H\]1CC\[C@\]2(O)C(=O)COP(=O)(\[O-\])\[O-\] | 0.957 | C1C\[CH2:1\]\[C:1\]\[C@@H\]2\[C@@H\]1\[C@@H\]1CC\[C:1\]\[C:1\]1C\[CH2:1\]2</pre> | 0.532 |
 
 Chemprop's interpretation script explains model prediction one property at a time. `--property_id 1` tells the script to provide explanation for the first property in the dataset (which is NR-AR). In a multi-task training setting, you will need to change `--property_id` to provide explanation for each property in the dataset.
 
 For computational efficiency, we currently restricted the rationale to have maximum 20 atoms and minimum 8 atoms. You can adjust these constraints through `--max_atoms` and `--min_atoms` argument.
+
+## Interpreting with BayesEnsembleGrad
+
+We can interpret the chemprop predictions using the framework described in [[BayesGrad](https://arxiv.org/pdf/1807.01985.pdf)]. In this framework, the "importance score" of a given atom or bond in a molecule is calculated as the gradient of the predicted target with respect to features from that atom or bond; i.e. the larger the absolute sum of gradients attributable to a given bond/atom, the more important for the prediction that bond/atom is assumed to be. Sensitivity maps generated directly in this fashion are known to be very noisy, and therefore BayesGrad proposes using dropout as a way to sample the posterior distribution p(W|D) of the network parameters W, allowing us to instead calculate an average of the gradients from all these sampled networks, and thus smoothing the results. Rather than relying on the inclusion of dropout in ChemProp, we're instead sampling p(W|D) by simply using the weights W from cross-validation folds and ensemble models - i.e. for a set of at least 20 models, we calculate the average sum of gradients on each atom and bond.
+
+The following is an example of training a logSolubility predictor, and using bayes ensemble grad on a subset of smiles in `delaney_subset.csv`:
+
+```
+# Train a logSolubility model
+python train.py --data_path data/delaney.csv --dataset_type regression --save_dir delaney_checkpoints --ensemble 10 --num_folds 10 --epochs 50
+
+# Get bayes ensemble grad results
+python interpret_local.py --test_path data/delaney_subset.csv --checkpoint_dir delaney_checkpoints --preds_path delaney_preds/delaney_preds.csv --bayes_path delaney_preds
+```
+
+Results are saved to the folder specified by `--bayes_path`, and look as follow for a few example molecules, where red indicates gradients pushing the final prediction towards higher values, and blue indicates gradients pushing the prediction towards lower values.
+
+![OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O](/images/0.png "Hydrophilic compound")
+![Cc1cc2c3ccccc3ccc2c4ccccc14](/images/1.png "Hydrophobic compound")
 
 ## TensorBoard
 
@@ -285,9 +297,9 @@ QM9 | 133,885 | MAE | 2.666 ± 0.006 | 2.4 ± 1.1 |
 ESOL | 1,128 | RMSE | 0.555 ± 0.047 | 0.58 ± 0.03 |
 FreeSolv | 642 | RMSE | 1.075 ± 0.054 | 1.15 ± 0.12 |
 Lipophilicity | 4,200 | RMSE | 0.555 ± 0.023 | 0.655 ± 0.036 |
-PDBbind (full) | 9,880 | RMSE | 1.391 ± 0.012 | 1.25 ± 0 | 
-PDBbind (core) | 168 | RMSE | 2.173 ± 0.090 | 1.92 ± 0.07 | 
-PDBbind (refined) | 3,040 | RMSE | 1.486 ± 0.026 | 1.38 ± 0 | 
+PDBbind (full) | 9,880 | RMSE | 1.391 ± 0.012 | 1.25 ± 0 |
+PDBbind (core) | 168 | RMSE | 2.173 ± 0.090 | 1.92 ± 0.07 |
+PDBbind (refined) | 3,040 | RMSE | 1.486 ± 0.026 | 1.38 ± 0 |
 
 Results on classification datasets (higher is better)
 
@@ -301,4 +313,4 @@ Results on classification datasets (higher is better)
 | SIDER | 1,427 | ROC-AUC | 0.676 ± 0.014 | 0.648 ± 0.009 |
 | ClinTox | 1,478 | ROC-AUC | 0.864 ± 0.017 | 0.832 ± 0.037 |
 
-Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments . 
+Lastly, you can find the code to our original repo at https://github.com/wengong-jin/chemprop and for the Mayr et al. baseline at https://github.com/yangkevin2/lsc_experiments .
