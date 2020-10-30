@@ -468,6 +468,8 @@ class PredictArgs(CommonArgs):
     """Path to CSV file containing testing data for which predictions will be made."""
     preds_path: str
     """Path to CSV file where predictions will be saved."""
+    as_featurizer: bool = False
+    """Use model to create fingerprint instead of predictions"""
 
     @property
     def ensemble_size(self) -> int:

@@ -11,7 +11,8 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, t
 
 
 @timeit()
-def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
+def make_predictions(args: PredictArgs,
+                     smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to make predictions on the data.
 
@@ -25,7 +26,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     """
     print('Loading training args')
     train_args = load_args(args.checkpoint_paths[0])
-    num_tasks, task_names = train_args.num_tasks, train_args.task_names
+    task_names = train_args.task_names
 
     # If features were used during training, they must be used when predicting
     if ((train_args.features_path is not None or train_args.features_generator is not None)
@@ -60,7 +61,8 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             full_to_valid_indices[full_index] = valid_index
             valid_index += 1
 
-    test_data = MoleculeDataset([full_data[i] for i in sorted(full_to_valid_indices.keys())])
+    test_data = MoleculeDataset([full_data[i]
+                                 for i in sorted(full_to_valid_indices.keys())])
 
     # Edge case if empty list of smiles is provided
     if len(test_data) == 0:
@@ -69,10 +71,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     print(f'Test size = {len(test_data):,}')
 
     # Predict with each model individually and sum predictions
-    if args.dataset_type == 'multiclass':
-        sum_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes))
-    else:
-        sum_preds = np.zeros((len(test_data), num_tasks))
+    sum_preds = 0
 
     # Create data loader
     test_data_loader = MoleculeDataLoader(
@@ -82,9 +81,11 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     )
 
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
+
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
+        model.featurizer = args.as_featurizer
         scaler, features_scaler = load_scalers(checkpoint_path)
 
         # Normalize features
@@ -110,7 +111,9 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     makedirs(args.preds_path, isfile=True)
 
     # Get prediction column names
-    if args.dataset_type == 'multiclass':
+    if args.as_featurizer:
+        task_names = [str(i) for i in range(sum_preds.shape[1])]
+    elif args.dataset_type == 'multiclass':
         task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
     else:
         task_names = task_names
@@ -118,7 +121,8 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     # Copy predictions over to full_data
     for full_index, datapoint in enumerate(full_data):
         valid_index = full_to_valid_indices.get(full_index, None)
-        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
+        preds = avg_preds[valid_index] if valid_index is not None else [
+            'Invalid SMILES'] * len(task_names)
 
         for pred_name, pred in zip(task_names, preds):
             datapoint.row[pred_name] = pred
