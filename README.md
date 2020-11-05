@@ -269,7 +269,7 @@ The following is an example of training a logSolubility predictor, and using bay
 
 ```
 # Train a logSolubility model
-python train.py --data_path data/delaney.csv --dataset_type regression --save_dir delaney_checkpoints --ensemble 10 --num_folds 10 --epochs 50
+python train.py --data_path data/delaney.csv --dataset_type regression --save_dir delaney_checkpoints --ensemble 3 --num_folds 10 --epochs 50
 
 # Get bayes ensemble grad results
 python interpret_local.py --test_path data/delaney_subset.csv --checkpoint_dir delaney_checkpoints --preds_path delaney_preds/delaney_preds.csv --bayes_path delaney_preds
@@ -277,8 +277,8 @@ python interpret_local.py --test_path data/delaney_subset.csv --checkpoint_dir d
 
 Results are saved to the folder specified by `--bayes_path`, and look as follow for a few example molecules, where red indicates gradients pushing the final prediction towards higher values, and blue indicates gradients pushing the prediction towards lower values.
 
-![OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O](/images/0.png "Hydrophilic compound")
-![Cc1cc2c3ccccc3ccc2c4ccccc14](/images/1.png "Hydrophobic compound")
+![OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O](/images/0-0.png "Hydrophilic compound")
+![Cc1cc2c3ccccc3ccc2c4ccccc14](/images/1-0.png "Hydrophobic compound")
 
 ## TensorBoard
 
