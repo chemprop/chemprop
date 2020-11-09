@@ -152,7 +152,7 @@ class CommonArgs(Tap):
     def atom_descriptors_size(self, atom_descriptors_size: int) -> None:
         self._atom_descriptors_size = atom_descriptors_size
 
-    def add_arguments(self) -> None:
+    def configure(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
         self.add_argument('--features_generator', choices=get_available_features_generators())
 

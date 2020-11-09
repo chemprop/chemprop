@@ -58,7 +58,7 @@ setup(
         'tensorboardX>=2.0',
         'torch>=1.5.1',
         'tqdm>=4.45.0',
-        'typed-argument-parser>=1.5.4'
+        'typed-argument-parser>=1.6.0'
     ],
     tests_require=['pytest', 'parameterized'],
     python_requires='>=3.6',

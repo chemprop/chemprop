@@ -25,7 +25,7 @@ class Args(Tap):
     restart: bool = False  # Whether to not load partially complete featurization and instead start from scratch
     sequential: bool = False  # Whether to run sequentially rather than in parallel
 
-    def add_arguments(self) -> None:
+    def configure(self) -> None:
         self.add_argument('--features_generator', choices=get_available_features_generators())
 
 
