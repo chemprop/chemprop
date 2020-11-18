@@ -73,7 +73,8 @@ def save_checkpoint(path: str,
 
 def load_checkpoint(path: str,
                     device: torch.device = None,
-                    logger: logging.Logger = None) -> MoleculeModel:
+                    logger: logging.Logger = None,
+                    cur_args: TrainArgs = None) -> MoleculeModel:
     """
     Loads a model checkpoint.
 
@@ -90,7 +91,10 @@ def load_checkpoint(path: str,
     # Load model and args
     state = torch.load(path, map_location=lambda storage, loc: storage)
     args = TrainArgs()
-    args.from_dict(vars(state['args']), skip_unsettable=True)
+    if cur_args is None:
+        args.from_dict(vars(state['args']), skip_unsettable=True)
+    else:
+        args = cur_args
     loaded_state_dict = state['state_dict']
 
     if device is not None:

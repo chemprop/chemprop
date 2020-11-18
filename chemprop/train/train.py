@@ -59,6 +59,7 @@ def train(model: MoleculeModel,
         targets = targets.to(preds.device)
         class_weights = torch.ones(targets.shape, device=preds.device)
 
+
         if args.dataset_type == 'multiclass':
             targets = targets.long()
             loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * class_weights * mask

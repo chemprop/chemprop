@@ -68,13 +68,14 @@ def run_training(args: TrainArgs,
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
 
     if args.save_smiles_splits:
+        assert len(args.smiles_columns) == 1
         save_smiles_splits(
             data_path=args.data_path,
             save_dir=args.save_dir,
             train_data=train_data,
             val_data=val_data,
             test_data=test_data,
-            smiles_column=args.smiles_column
+            smiles_column=args.smiles_columns[0]
         )
 
     if args.features_scaling:
@@ -150,7 +151,7 @@ def run_training(args: TrainArgs,
         # Load/build model
         if args.checkpoint_paths is not None:
             debug(f'Loading model {model_idx} from {args.checkpoint_paths[model_idx]}')
-            model = load_checkpoint(args.checkpoint_paths[model_idx], logger=logger)
+            model = load_checkpoint(args.checkpoint_paths[model_idx], logger=logger, cur_args=args)
         else:
             debug(f'Building model {model_idx}')
             model = MoleculeModel(args)
