@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.svm import SVC, SVR
 from tqdm import trange, tqdm
+from collections import defaultdict
 
 from chemprop.args import SklearnTrainArgs
 from chemprop.data import MoleculeDataset, split_data, get_task_names, get_data
@@ -76,7 +77,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
-    scores = []
+    scores = defaultdict(list)
     num_tasks = train_data.num_tasks()
     for task_num in trange(num_tasks):
         # Only get features and targets for molecules where target is not None
@@ -105,7 +106,8 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             dataset_type=args.dataset_type,
             logger=logger
         )
-        scores.append(score[0])
+        for metric in metrics:
+            scores[metric].append(score[metric][0])
 
     return scores
 
@@ -186,7 +188,8 @@ def run_sklearn(args: SklearnTrainArgs,
     debug('Loading data')
     data = get_data(path=args.data_path,
                     smiles_columns=args.smiles_columns,
-                    target_columns=args.target_columns)
+                    target_columns=args.target_columns,
+                    ignore_columns=args.ignore_columns)
     args.task_names = get_task_names(path=args.data_path,
                                      smiles_columns=args.smiles_columns,
                                      target_columns=args.target_columns,
