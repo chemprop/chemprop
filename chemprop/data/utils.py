@@ -349,7 +349,7 @@ def split_data(data: MoleculeDataset,
         train, val, test = tuple(data_split)
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
-    elif split_type == 'cv':
+    elif split_type in {'cv', 'cv-no-test'}:
         if num_folds <= 1 or num_folds > len(data):
             raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
 
@@ -362,7 +362,7 @@ def split_data(data: MoleculeDataset,
 
         train, val, test = [], [], []
         for d, index in zip(data, indices):
-            if index == test_index:
+            if index == test_index and split_type != 'cv-no-test':
                 test.append(d)
             elif index == val_index:
                 val.append(d)
