@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import pickle
+import re
 from time import time
 from typing import Any, Callable, List, Tuple, Union
 
@@ -103,10 +104,9 @@ def load_checkpoint(path: str,
     # Skip missing parameters and parameters of mismatched size
     pretrained_state_dict = {}
     for loaded_param_name in loaded_state_dict.keys():
-
         # Backward compatibility for parameter names
-        if loaded_param_name.startswith('encoder.encoder.W'):
-            param_name = loaded_param_name.replace('encoder.encoder.W', 'encoder.encoder.0.W')
+        if re.match(r'(encoder\.encoder\.)([Wc])', loaded_param_name):
+            param_name = loaded_param_name.replace('encoder.encoder', 'encoder.encoder.0')
         else:
             param_name = loaded_param_name
 
