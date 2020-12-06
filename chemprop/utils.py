@@ -102,17 +102,24 @@ def load_checkpoint(path: str,
 
     # Skip missing parameters and parameters of mismatched size
     pretrained_state_dict = {}
-    for param_name in loaded_state_dict.keys():
+    for loaded_param_name in loaded_state_dict.keys():
 
+        # Backward compatibility for parameter names
+        if loaded_param_name.startswith('encoder.encoder.W'):
+            param_name = loaded_param_name.replace('encoder.encoder.W', 'encoder.encoder.0.W')
+        else:
+            param_name = loaded_param_name
+
+        # Load pretrained parameter, skipping unmatched parameters
         if param_name not in model_state_dict:
-            info(f'Warning: Pretrained parameter "{param_name}" cannot be found in model parameters.')
-        elif model_state_dict[param_name].shape != loaded_state_dict[param_name].shape:
-            info(f'Warning: Pretrained parameter "{param_name}" '
-                 f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
+            info(f'Warning: Pretrained parameter "{loaded_param_name}" cannot be found in model parameters.')
+        elif model_state_dict[param_name].shape != loaded_state_dict[loaded_param_name].shape:
+            info(f'Warning: Pretrained parameter "{loaded_param_name}" '
+                 f'of shape {loaded_state_dict[loaded_param_name].shape} does not match corresponding '
                  f'model parameter of shape {model_state_dict[param_name].shape}.')
         else:
-            debug(f'Loading pretrained parameter "{param_name}".')
-            pretrained_state_dict[param_name] = loaded_state_dict[param_name]
+            debug(f'Loading pretrained parameter "{loaded_param_name}".')
+            pretrained_state_dict[param_name] = loaded_state_dict[loaded_param_name]
 
     # Load pretrained weights
     model_state_dict.update(pretrained_state_dict)
