@@ -45,7 +45,11 @@ def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC
                 preds = [[preds[i][j, 1] for i in range(num_tasks)] for j in range(num_preds)]
             else:
                 # One task
-                preds = [[preds[i, 1]] for i in range(len(preds))]
+                try:
+                    preds = [[preds[i, 1]] for i in range(len(preds))]
+                except IndexError:
+                    # Only one type of training data
+                    preds = [[preds[i, 0]] for i in range(len(preds))]
         elif model_type == 'svm':
             preds = model.decision_function(features)
             preds = [[pred] for pred in preds]
