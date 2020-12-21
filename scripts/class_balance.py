@@ -14,7 +14,7 @@ from chemprop.data import get_class_sizes, get_data, get_task_names, split_data
 
 class Args(Tap):
     data_path: str  # Path to data CSV file
-    smiles_columns: str = None  # Name of the columns containing SMILES strings. By default, uses the first column.
+    smiles_columns: List[str] = None  # Name of the columns containing SMILES strings. By default, uses the first column.
     target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
     split_type: Literal['random', 'scaffold'] = 'scaffold'  # Split type, either "random" or "scaffold"
 
