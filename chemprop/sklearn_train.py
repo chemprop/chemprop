@@ -214,7 +214,7 @@ def run_sklearn(args: SklearnTrainArgs,
             features_path=args.features_path,
             train_data=train_data,
             test_data=test_data,
-            smiles_column=args.smiles_column
+            smiles_columns=args.smiles_columns
         )
 
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
