@@ -499,10 +499,7 @@ def save_smiles_splits(data_path: str,
 
         split_indices = []
         for smiles in dataset.smiles():
-            try:
-                split_indices.append(indices_by_smiles[tuple(smiles)])
-            except KeyError:
-                split_indices.append(None)
+            split_indices.append(indices_by_smiles.get(tuple(smiles)))
             split_indices = sorted(split_indices)
         all_split_indices.append(split_indices)
 
