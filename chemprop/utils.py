@@ -490,7 +490,7 @@ def save_smiles_splits(data_path: str,
                 writer.writerow(smiles+dataset_targets[i])
 
         dataset_features=dataset.features()
-        if dataset_features is not None:
+        if features_path is not None:
             with open(os.path.join(save_dir, f'{name}_features.csv'), 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(features_header)
