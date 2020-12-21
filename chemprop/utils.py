@@ -427,17 +427,18 @@ def save_smiles_splits(data_path: str,
                        test_data: MoleculeDataset = None,
                        smiles_columns: str = None) -> None:
     """
-    smiles_columns, num_smiles,data_path, features_path
-    data_path, save_dir, features_path, smiles_column, data
-
-    Saves indices of train/val/test split as a pickle file.
+    Saves a csv file with train/val/test splits of target data and additional features.
+    Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries with same SMILES.
 
     :param data_path: Path to data CSV file.
     :param save_dir: Path where pickle files will be saved.
+    :param task_names: List of target names for the model as from the function get_task_names().
+        If not provided, will use datafile header entries.
+    :param features_path: List of path(s) to files with additional molecule features.
     :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
-    :param smiles_column: The name of the column containing SMILES. By default, uses the first column.
+    :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
     """
     makedirs(save_dir)
 
