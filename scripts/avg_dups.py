@@ -15,7 +15,7 @@ from chemprop.data import get_data, get_header
 
 class Args(Tap):
     data_path: str  # Path to data CSV file
-    smiles_columns: str = None  # Name of the columns containing SMILES strings. By default, uses the first column.
+    smiles_columns: List[str] = None  # Name of the columns containing SMILES strings. By default, uses the first column.
     target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
     save_path: str  # Path where average data CSV file will be saved
 
