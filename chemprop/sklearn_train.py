@@ -210,6 +210,8 @@ def run_sklearn(args: SklearnTrainArgs,
         save_smiles_splits(
             data_path=args.data_path,
             save_dir=args.save_dir,
+            task_names=args.task_names,
+            features_path=args.features_path,
             train_data=train_data,
             test_data=test_data,
             smiles_column=args.smiles_column

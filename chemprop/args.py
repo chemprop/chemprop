@@ -66,7 +66,7 @@ class CommonArgs(Tap):
     By default, uses the first :code:`number_of_molecules` columns."""
     number_of_molecules: int = 1
     """Number of molecules in each input to the model.
-    This must equal the length of :code:`smiles_column` (if not :code:`None`)."""
+    This must equal the length of :code:`smiles_columns` (if not :code:`None`)."""
     checkpoint_dir: str = None
     """Directory from which to load model checkpoints (walks directory and ensembles all models that are found)."""
     checkpoint_path: str = None
@@ -553,7 +553,7 @@ class SklearnPredictArgs(Tap):
     By default, uses the first :code:`number_of_molecules` columns."""
     number_of_molecules: int = 1
     """Number of molecules in each input to the model.
-    This must equal the length of :code:`smiles_column` (if not :code:`None`)."""
+    This must equal the length of :code:`smiles_columns` (if not :code:`None`)."""
     preds_path: str
     """Path to CSV file where predictions will be saved."""
     checkpoint_dir: str = None
