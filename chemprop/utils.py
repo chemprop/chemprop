@@ -457,6 +457,9 @@ def save_smiles_splits(data_path: str,
             smiles = tuple(line[j] for j in smiles_columns_index)
             indices_by_smiles[smiles] = i
 
+    if task_names is None:
+        task_names = [i for i in header if i not in smiles_columns]
+
     features_header = []
     if features_path is not None:
         for feat_path in features_path:
@@ -481,7 +484,7 @@ def save_smiles_splits(data_path: str,
 
         with open(os.path.join(save_dir, f'{name}_full.csv'), 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(smiles_columns+task_names if task_names is not None else smiles_columns)
+            writer.writerow(smiles_columns+task_names)
             dataset_targets=dataset.targets()
             for i,smiles in enumerate(dataset.smiles()):
                 writer.writerow(smiles+dataset_targets[i])
