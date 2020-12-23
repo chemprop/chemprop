@@ -18,11 +18,11 @@ from chemprop.features import load_features, load_valid_atom_features
 
 def preprocess_smiles_columns(smiles_columns: Optional[Union[str, List[Optional[str]]]]) -> List[Optional[str]]:
     """
-    Preprocesses the :code:`smiles_column` variable to ensure that it is a list.
+    Preprocesses the :code:`smiles_columns` variable to ensure that it is a list.
 
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
-    :return: The preprocessed version of :code:`smiles_column` which is guaranteed to be a list.
+    :return: The preprocessed version of :code:`smiles_columns` which is guaranteed to be a list.
     """
     smiles_columns = smiles_columns if smiles_columns is not None else [None]
     smiles_columns = [smiles_columns] if type(smiles_columns) != list else smiles_columns
@@ -38,15 +38,15 @@ def get_task_names(path: str,
     Gets the task names from a data CSV file.
 
     If :code:`target_columns` is provided, returns `target_columns`.
-    Otherwise, returns all columns except the :code:`smiles_column`
-    (or the first column, if the :code:`smiles_column` is None) and
+    Otherwise, returns all columns except the :code:`smiles_columns`
+    (or the first column, if the :code:`smiles_columns` is None) and
     the :code:`ignore_columns`.
 
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
-                           except the :code:`smiles_column` and the :code:`ignore_columns`.
+                           except the :code:`smiles_columns` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
     :return: A list of task names.
     """
