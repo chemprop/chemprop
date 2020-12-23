@@ -359,10 +359,11 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
     :param quiet: Whether the stream handler should be quiet (i.e., print only important info).
     :return: The logger.
     """
-    logger = logging.getLogger(name)
 
-    if logging.getLogger().hasHandlers():
-        return logger
+    if name in logging.root.manager.loggerDict:
+        return logging.getLogger(name)
+    
+    logger = logging.getLogger(name)
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
