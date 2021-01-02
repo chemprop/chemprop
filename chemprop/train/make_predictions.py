@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import csv
 from typing import List, Optional, Union
 
@@ -50,7 +51,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         )
     else:
         full_data = get_data(path=args.test_path, target_columns=[], ignore_columns=[], skip_invalid_smiles=False,
-                             args=args, store_row=True)
+                             args=args, store_row=not args.drop_extra_columns)
 
     print('Validating SMILES')
     full_to_valid_indices = {}
@@ -120,6 +121,17 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         valid_index = full_to_valid_indices.get(full_index, None)
         preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
 
+        # If extra columns have been dropped, add back in SMILES columns
+        if args.drop_extra_columns:
+            datapoint.row = OrderedDict()
+
+            if len(datapoint.smiles) == 1:
+                datapoint.row['smiles'] = datapoint.smiles[0]
+            else:
+                for i, smiles in enumerate(datapoint.smiles):
+                    datapoint.row[f'smiles_{i}'] = smiles
+
+        # Add predictions columns
         for pred_name, pred in zip(task_names, preds):
             datapoint.row[pred_name] = pred
 

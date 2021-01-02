@@ -468,6 +468,8 @@ class PredictArgs(CommonArgs):
     """Path to CSV file containing testing data for which predictions will be made."""
     preds_path: str
     """Path to CSV file where predictions will be saved."""
+    drop_extra_columns: bool = False
+    """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
 
     @property
     def ensemble_size(self) -> int:
