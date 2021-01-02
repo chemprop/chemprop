@@ -20,7 +20,8 @@ from .utils import (
     get_task_names,
     split_data,
     validate_data,
-    validate_dataset_type
+    validate_dataset_type,
+    preprocess_smiles_columns
 )
 
 __all__ = [

@@ -15,7 +15,7 @@ from chemprop.data import get_data, get_header
 
 class Args(Tap):
     data_path: str  # Path to data CSV file
-    smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
+    smiles_columns: List[str] = None  # Name of the columns containing SMILES strings. By default, uses the first column.
     target_columns: List[str] = None  # Name of the columns containing target values. By default, uses all columns except the SMILES column.
     save_path: str  # Path where average data CSV file will be saved
 
@@ -24,7 +24,7 @@ def average_duplicates(args: Args):
     """Averages duplicate data points in a dataset."""
     print('Loading data')
     header = get_header(args.data_path)
-    data = get_data(path=args.data_path, smiles_columns=args.smiles_column, target_columns=args.target_columns)
+    data = get_data(path=args.data_path, smiles_columns=args.smiles_columns, target_columns=args.target_columns)
     print(f'Data size = {len(data):,}')
 
     # Map SMILES string to lists of targets

@@ -18,7 +18,7 @@ from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 from chemprop.args import TrainArgs
-from chemprop.data import StandardScaler, MoleculeDataset
+from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
 
@@ -420,19 +420,25 @@ def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
 
 def save_smiles_splits(data_path: str,
                        save_dir: str,
+                       task_names: list = None,
+                       features_path: list = None,
                        train_data: MoleculeDataset = None,
                        val_data: MoleculeDataset = None,
                        test_data: MoleculeDataset = None,
-                       smiles_column: str = None) -> None:
+                       smiles_columns: str = None) -> None:
     """
-    Saves indices of train/val/test split as a pickle file.
+    Saves a csv file with train/val/test splits of target data and additional features.
+    Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries with same SMILES.
 
     :param data_path: Path to data CSV file.
     :param save_dir: Path where pickle files will be saved.
+    :param task_names: List of target names for the model as from the function get_task_names().
+        If not provided, will use datafile header entries.
+    :param features_path: List of path(s) to files with additional molecule features.
     :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
-    :param smiles_column: The name of the column containing SMILES. By default, uses the first column.
+    :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
     """
     makedirs(save_dir)
 
@@ -440,17 +446,28 @@ def save_smiles_splits(data_path: str,
         reader = csv.reader(f)
         header = next(reader)
 
-        if smiles_column is None:
-            smiles_column_index = 0
+        smiles_columns = preprocess_smiles_columns(smiles_columns)
+        if None in smiles_columns:
+            smiles_columns = header[:len(smiles_columns)]
+            smiles_columns_index = list(range(len(smiles_columns)))
         else:
-            smiles_column_index = header.index(smiles_column)
+            smiles_columns_index = [header.index(i) for i in smiles_columns]
 
-        lines_by_smiles = {}
         indices_by_smiles = {}
         for i, line in enumerate(reader):
-            smiles = line[smiles_column_index]
-            lines_by_smiles[smiles] = line
+            smiles = tuple(line[j] for j in smiles_columns_index)
             indices_by_smiles[smiles] = i
+
+    if task_names is None:
+        task_names = [i for i in header if i not in smiles_columns]
+
+    features_header = []
+    if features_path is not None:
+        for feat_path in features_path:
+            with open(feat_path, 'r') as f:
+                reader = csv.reader(f)
+                feat_header=next(reader)
+                features_header.extend(feat_header)
 
     all_split_indices = []
     for dataset, name in [(train_data, 'train'), (val_data, 'val'), (test_data, 'test')]:
@@ -459,19 +476,30 @@ def save_smiles_splits(data_path: str,
 
         with open(os.path.join(save_dir, f'{name}_smiles.csv'), 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(['smiles'])
+            if smiles_columns[0]=='':
+                writer.writerow(['smiles'])
+            else:
+                writer.writerow(smiles_columns)
             for smiles in dataset.smiles():
-                writer.writerow([smiles])
+                writer.writerow(smiles)
 
         with open(os.path.join(save_dir, f'{name}_full.csv'), 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(header)
-            for smiles in dataset.smiles():
-                writer.writerow(lines_by_smiles[smiles])
+            writer.writerow(smiles_columns+task_names)
+            dataset_targets=dataset.targets()
+            for i,smiles in enumerate(dataset.smiles()):
+                writer.writerow(smiles+dataset_targets[i])
+
+        dataset_features=dataset.features()
+        if features_path is not None:
+            with open(os.path.join(save_dir, f'{name}_features.csv'), 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(features_header)
+                writer.writerows(dataset_features)
 
         split_indices = []
         for smiles in dataset.smiles():
-            split_indices.append(indices_by_smiles[smiles])
+            split_indices.append(indices_by_smiles.get(tuple(smiles)))
             split_indices = sorted(split_indices)
         all_split_indices.append(split_indices)
 
