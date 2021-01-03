@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
+from chemprop.data import get_data, get_data_from_smiles, get_header, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 
 
@@ -125,11 +125,13 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         if args.drop_extra_columns:
             datapoint.row = OrderedDict()
 
-            if len(datapoint.smiles) == 1:
-                datapoint.row['smiles'] = datapoint.smiles[0]
-            else:
-                for i, smiles in enumerate(datapoint.smiles):
-                    datapoint.row[f'smiles_{i}'] = smiles
+            smiles_columns = args.smiles_columns
+
+            if None in smiles_columns:
+                smiles_columns = get_header(args.test_path)[:len(smiles_columns)]
+
+            for column, smiles in zip(smiles_columns, datapoint.smiles):
+                datapoint.row[column] = smiles
 
         # Add predictions columns
         for pred_name, pred in zip(task_names, preds):
