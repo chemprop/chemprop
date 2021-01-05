@@ -38,7 +38,7 @@ def get_atom_fdim() -> int:
     return ATOM_FDIM + EXTRA_ATOM_FDIM
 
 
-def set_extra_atom_fdim(extra) -> int:
+def set_extra_atom_fdim(extra):
     """Change the dimensionality of the atom feature vector."""
     global EXTRA_ATOM_FDIM
     EXTRA_ATOM_FDIM = extra
