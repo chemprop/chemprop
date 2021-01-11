@@ -105,7 +105,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             dataset_type=args.dataset_type,
             logger=logger
         )
-        scores.append(score[0])
+        scores.append(score)
 
     return scores
 
