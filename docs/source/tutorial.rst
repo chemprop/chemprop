@@ -129,8 +129,9 @@ Similar to the additional molecular features described above, you can also provi
 * :code:`.npz` file, where descriptors are saved as 2D array for each molecule in the exact same order as the SMILES strings in your data file.
 * :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns.
 * :code:`.sdf` containing all mol blocks with descriptors as entries.
+
+The order of the descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. Further information on supplying atomic descriptors can be found `here <https://github.com/chemprop/chemprop/releases/tag/v1.1.0>`_. Users must select in which way atom descriptors are used, where the command line option `--atom_descriptors descriptor` concatenates the new features to the embedded atomic features after the D-MPNN, or the option `--atom_descriptors feature` concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing.
   
-The features can either be used via concatenating the new features to the embedded atomic features after the MPNN via :code:`--atom_descriptors descriptor`, or as additional features used during message passing via :code:`--atom_descriptors feature`.
    
 Predicting
 ----------

@@ -218,10 +218,10 @@ If you install from source, you can modify the code to load custom features as f
 
 Similar to the additional molecular features described above, you can also provide additional atomic features via `--atom_descriptors_path /path/to/features` with valid file formats:
 * `.npz` file, where descriptors are saved as 2D array for each molecule in the exact same order as the SMILES strings in your data file.
-* `.pkl` / `.pckl` / `.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns.
+* `.pkl` / `.pckl` / `.pickle` containing a pandas dataframe with smiles as index and a numpy array of descriptors as columns.
 * `.sdf` containing all mol blocks with descriptors as entries.
 
-The features can either be used via concatenating the new features to the embedded atomic features after the MPNN via `--atom_descriptors descriptor`, or as additional features used during message passing via `--atom_descriptors feature`.
+The order of the descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. Further information on supplying atomic descriptors can be found [here](https://github.com/chemprop/chemprop/releases/tag/v1.1.0). Users must select in which way atom descriptors are used, where the command line option `--atom_descriptors descriptor` concatenates the new features to the embedded atomic features after the D-MPNN, or the option `--atom_descriptors feature` concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing.
 
 
 ## Predicting
