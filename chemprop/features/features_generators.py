@@ -126,7 +126,6 @@ except ImportError:
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
 
-
     @register_features_generator('rdkit_2d_normalized')
     def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""

@@ -249,7 +249,7 @@ def insert_dataset(dataset_name: str,
     :param dataset_name: The desired name for the new dataset.
     :param associated_user: The user to be associated with the new dataset.
     :param dataset_class: The class of the new dataset.
-    :return A tuple containing the id and name of the new dataset.   
+    :return A tuple containing the id and name of the new dataset.
     """
     db = get_db()
 

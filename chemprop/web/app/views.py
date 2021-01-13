@@ -153,16 +153,16 @@ def home():
 @app.route('/create_user', methods=['GET', 'POST'])
 @check_not_demo
 def create_user():
-    """    
+    """
     If a POST request is made, creates a new user.
     Renders the create_user page.
     """
-    if request.method == 'GET':   
+    if request.method == 'GET':
         return render_template('create_user.html', users=db.get_all_users())
 
     new_name = request.form['newUserName']
 
-    if new_name != None:
+    if new_name is not None:
         db.insert_user(new_name)
 
     return redirect(url_for('create_user'))
