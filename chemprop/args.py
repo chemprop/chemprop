@@ -551,7 +551,7 @@ class SklearnPredictArgs(Tap):
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
     smiles_columns: List[str] = None
-    """List of names of the columns containing SMILES strings. 
+    """List of names of the columns containing SMILES strings.
     By default, uses the first :code:`number_of_molecules` columns."""
     number_of_molecules: int = 1
     """Number of molecules in each input to the model.

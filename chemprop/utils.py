@@ -362,7 +362,7 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
 
     if name in logging.root.manager.loggerDict:
         return logging.getLogger(name)
-    
+
     logger = logging.getLogger(name)
 
     logger.setLevel(logging.DEBUG)
@@ -467,7 +467,7 @@ def save_smiles_splits(data_path: str,
         for feat_path in features_path:
             with open(feat_path, 'r') as f:
                 reader = csv.reader(f)
-                feat_header=next(reader)
+                feat_header = next(reader)
                 features_header.extend(feat_header)
 
     all_split_indices = []
@@ -477,7 +477,7 @@ def save_smiles_splits(data_path: str,
 
         with open(os.path.join(save_dir, f'{name}_smiles.csv'), 'w') as f:
             writer = csv.writer(f)
-            if smiles_columns[0]=='':
+            if smiles_columns[0] == '':
                 writer.writerow(['smiles'])
             else:
                 writer.writerow(smiles_columns)
@@ -486,12 +486,12 @@ def save_smiles_splits(data_path: str,
 
         with open(os.path.join(save_dir, f'{name}_full.csv'), 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(smiles_columns+task_names)
-            dataset_targets=dataset.targets()
-            for i,smiles in enumerate(dataset.smiles()):
-                writer.writerow(smiles+dataset_targets[i])
+            writer.writerow(smiles_columns + task_names)
+            dataset_targets = dataset.targets()
+            for i, smiles in enumerate(dataset.smiles()):
+                writer.writerow(smiles + dataset_targets[i])
 
-        dataset_features=dataset.features()
+        dataset_features = dataset.features()
         if features_path is not None:
             with open(os.path.join(save_dir, f'{name}_features.csv'), 'w') as f:
                 writer = csv.writer(f)

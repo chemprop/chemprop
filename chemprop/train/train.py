@@ -38,7 +38,7 @@ def train(model: MoleculeModel,
     :return: The total number of iterations (training examples) trained on so far.
     """
     debug = logger.debug if logger is not None else print
-    
+
     model.train()
     loss_sum = iter_count = 0
 

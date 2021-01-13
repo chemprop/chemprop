@@ -11,6 +11,7 @@ from chemprop.data import get_data, get_data_from_smiles, get_header, MoleculeDa
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 from chemprop.features import set_extra_atom_fdim
 
+
 @timeit()
 def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
     """
@@ -42,7 +43,6 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                          ' were used during training, they must be specified again during prediction using the same type of '
                          ' descriptors as before. If they were not used during training, they cannot be specified during prediction.')
 
-
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
         if not hasattr(args, key):
@@ -51,7 +51,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
-        
+
     print('Loading data')
     if smiles is not None:
         full_data = get_data_from_smiles(

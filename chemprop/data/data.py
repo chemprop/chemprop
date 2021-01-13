@@ -109,7 +109,7 @@ class MoleculeDatapoint:
     def mol(self) -> List[Chem.Mol]:
         """Gets the corresponding list of RDKit molecules for the corresponding SMILES list."""
         mol = [SMILES_TO_MOL.get(s, Chem.MolFromSmiles(s)) for s in self.smiles]
-        
+
         if cache_mol():
             for s, m in zip(self.smiles, mol):
                 SMILES_TO_MOL[s] = m

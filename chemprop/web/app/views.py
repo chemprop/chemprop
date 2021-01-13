@@ -215,7 +215,7 @@ def train():
 
     # Check if regression/classification selection matches data
     data = get_data(path=data_path, smiles_columns=[None])
-    #set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
+    # Set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
 
     targets = data.targets()
     unique_targets = {target for row in targets for target in row if target is not None}
