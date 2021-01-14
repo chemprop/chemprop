@@ -99,7 +99,7 @@ Note that the hyperparameter optimization script sees all the data given to it. 
 Additional Features
 ^^^^^^^^^^^^^^^^^^^
 
-While the model works very well on its own, especially after hyperparameter optimization, we have seen that adding computed molecule-level features can further improve performance on certain datasets. Features can be added to the model using the :code:`--features_generator <generator>` flag.
+While the model works very well on its own, especially after hyperparameter optimization, we have seen that adding computed molecule-level features can further improve performance on certain datasets. Features can be added to the model using the :code:`--features_generator <generator>` flag for molecule-level features, or :code:`--atom_descriptors <mode>` for atom-level features, or both.
 
 RDKit 2D Features
 """""""""""""""""
@@ -121,6 +121,18 @@ If you install from source, you can modify the code to load custom features as f
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in :code:`chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
 2. **Load features:** If you have features saved as a numpy :code:`.npy` file or as a :code:`.csv` file, you can load the features by using :code:`--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that :code:`.csv` files must have a header row and the features should be comma-separated with one line per molecule.
 
+Atomic Features
+"""""""""""""""
+
+Similar to the additional molecular features described above, you can also provide additional atomic features via :code:`--atom_descriptors_path /path/to/features` with valid file formats:
+
+* :code:`.npz` file, where descriptors are saved as 2D array for each molecule in the exact same order as the SMILES strings in your data file.
+* :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns.
+* :code:`.sdf` containing all mol blocks with descriptors as entries.
+
+The order of the descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. Further information on supplying atomic descriptors can be found `here <https://github.com/chemprop/chemprop/releases/tag/v1.1.0>`_. Users must select in which way atom descriptors are used, where the command line option `--atom_descriptors descriptor` concatenates the new features to the embedded atomic features after the D-MPNN, or the option `--atom_descriptors feature` concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing.
+  
+   
 Predicting
 ----------
 
