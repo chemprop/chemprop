@@ -1,23 +1,20 @@
-FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
+FROM continuumio/miniconda3:4.9.2
 
-# conda install code from https://hub.docker.com/r/kundajelab/cuda-anaconda-base/dockerfile, modified for python3
+COPY environment.yml /tmp/environment.yml
 
-RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
-libglib2.0-0 libxext6 libsm6 libxrender1 \
-git mercurial subversion libbz2-dev libz-dev libpng-dev
+RUN /opt/conda/bin/conda env update -n base --file /tmp/environment.yml && \
+    find /opt/conda/ -follow -type f -name '*.a' -delete && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    /opt/conda/bin/conda clean -afy && \
+    rm /tmp/environment.yml
 
-RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
-wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-/bin/bash ~/miniconda.sh -b -p /opt/conda && \
-rm ~/miniconda.sh
+COPY . /opt/chemprop
 
-ENV PATH /opt/conda/bin:$PATH
-ENV LD_LIBRARY_PATH /usr/local/cuda-8.0/lib64:/usr/local/cuda-8.0/extras/CUPTI/lib64:$LD_LIBRARY_PATH
+WORKDIR /opt/chemprop
 
-WORKDIR /app
-COPY . /app
+RUN /opt/conda/bin/pip install -e .
 
-RUN conda create -n chemprop python=3.7
-RUN conda activate chemprop
-RUN conda install -c conda-forge rdkit
-RUN pip install -e .
+ENV PATH /opt/conda/bin${PATH:+:${PATH}}
+
+ENTRYPOINT ["/bin/bash"]
+CMD ["-l"]
