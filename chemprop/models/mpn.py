@@ -134,11 +134,11 @@ class MPNEncoder(nn.Module):
             else:
                 cur_hiddens = atom_hiddens.narrow(0, a_start, a_size)
                 mol_vec = cur_hiddens  # (num_atoms, hidden_size)
-                if self.aggregation=='mean':
+                if self.aggregation == 'mean':
                     mol_vec = mol_vec.sum(dim=0) / a_size
-                elif self.aggregation=='sum':
+                elif self.aggregation == 'sum':
                     mol_vec = mol_vec.sum(dim=0)
-                elif self.aggregation=='norm':
+                elif self.aggregation == 'norm':
                     mol_vec = mol_vec.sum(dim=0) / self.aggregation_norm
                 mol_vecs.append(mol_vec)
 

@@ -55,10 +55,10 @@ def get_db():
 def query_db(query: str, args: Tuple[Any] = (), one: bool = False) -> Union[Optional[sqlite3.Row], List[sqlite3.Row]]:
     """
     Helper function to allow for easy queries.
-    
+
     :param query: The query to be executed.
     :param args: The arguments to be passed into the query.
-    :param one: Whether the query should return all results or just the first. 
+    :param one: Whether the query should return all results or just the first.
     :return The results of the query.
     """
     cur = get_db().execute(query, args)
@@ -93,7 +93,7 @@ def get_all_users() -> Dict[int, Dict[str, Any]]:
 
 def insert_user(username: str) -> Tuple[int, str]:
     """
-    Inserts a new user. If the desired username is already taken,  
+    Inserts a new user. If the desired username is already taken,
     appends integers incrementally until an open name is found.
 
     :param username: The desired username for the new user.
@@ -105,7 +105,7 @@ def insert_user(username: str) -> Tuple[int, str]:
     count = 0
     while new_user_id is None:
         temp_name = username
-        
+
         if count != 0:
             temp_name += str(count)
         try:
@@ -135,15 +135,15 @@ def get_ckpts(user_id: int) -> List[sqlite3.Row]:
     return query_db(f'SELECT * FROM ckpt WHERE associated_user = {user_id}')
 
 
-def insert_ckpt(ckpt_name: str, 
-                associated_user: str, 
-                model_class: str, 
+def insert_ckpt(ckpt_name: str,
+                associated_user: str,
+                model_class: str,
                 num_epochs: int,
                 ensemble_size: int,
                 training_size: int) -> Tuple[int, str]:
     """
-    Inserts a new checkpoint. If the desired name is already taken,  
-    appends integers incrementally until an open name is found.   
+    Inserts a new checkpoint. If the desired name is already taken,
+    appends integers incrementally until an open name is found.
 
     :param ckpt_name: The desired name for the new checkpoint.
     :param associated_user: The user that should be associated with the new checkpoint.
@@ -151,7 +151,7 @@ def insert_ckpt(ckpt_name: str,
     :param num_epochs: The number of epochs the new checkpoint will run for.
     :param ensemble_size: The number of models included in the ensemble.
     :param training_size: The number of molecules used for training.
-    :return A tuple containing the id and name of the new checkpoint.   
+    :return A tuple containing the id and name of the new checkpoint.
     """
     db = get_db()
 
@@ -168,10 +168,10 @@ def insert_ckpt(ckpt_name: str,
                              'VALUES (?, ?, ?, ?, ?, ?)',
                              [temp_name, associated_user, model_class, num_epochs, ensemble_size, training_size])
             new_ckpt_id = cur.lastrowid
-        except sqlite3.IntegrityError as e:
+        except sqlite3.IntegrityError:
             count += 1
             continue
-    
+
     db.commit()
     cur.close()
 
@@ -197,6 +197,7 @@ def delete_ckpt(ckpt_id: int):
     db.commit()
     cur.close()
 
+
 def get_models(ckpt_id: int) -> List[sqlite3.Row]:
     """
     Returns the models associated with the given ckpt.
@@ -205,6 +206,7 @@ def get_models(ckpt_id: int) -> List[sqlite3.Row]:
     :return A list of models.
     """
     return query_db(f'SELECT * FROM model WHERE associated_ckpt = {ckpt_id}')
+
 
 def insert_model(ckpt_id: int) -> str:
     """
@@ -221,6 +223,7 @@ def insert_model(ckpt_id: int) -> str:
 
     return new_model_id
 
+
 def get_datasets(user_id: int) -> List[sqlite3.Row]:
     """
     Returns the datasets associated with the given user.
@@ -236,23 +239,23 @@ def get_datasets(user_id: int) -> List[sqlite3.Row]:
     return query_db(f'SELECT * FROM dataset WHERE associated_user = {user_id}')
 
 
-def insert_dataset(dataset_name: str, 
-                   associated_user: str, 
+def insert_dataset(dataset_name: str,
+                   associated_user: str,
                    dataset_class: str) -> Tuple[int, str]:
     """
-    Inserts a new dataset. If the desired name is already taken,  
-    appends integers incrementally until an open name is found.   
+    Inserts a new dataset. If the desired name is already taken,
+    appends integers incrementally until an open name is found.
 
     :param dataset_name: The desired name for the new dataset.
     :param associated_user: The user to be associated with the new dataset.
     :param dataset_class: The class of the new dataset.
-    :return A tuple containing the id and name of the new dataset.   
+    :return A tuple containing the id and name of the new dataset.
     """
     db = get_db()
 
     new_dataset_id = None
     count = 0
-    while new_dataset_id == None:
+    while new_dataset_id is None:
         temp_name = dataset_name
 
         if count != 0:
@@ -261,10 +264,10 @@ def insert_dataset(dataset_name: str,
             cur = db.execute('INSERT INTO dataset (dataset_name, associated_user, class) VALUES (?, ?, ?)',
                              [temp_name, associated_user, dataset_class])
             new_dataset_id = cur.lastrowid
-        except sqlite3.IntegrityError as e:
+        except sqlite3.IntegrityError:
             count += 1
             continue
-    
+
     db.commit()
     cur.close()
 

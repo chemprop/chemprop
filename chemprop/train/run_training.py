@@ -17,7 +17,7 @@ from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
-from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint,makedirs, \
+from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits
 
 
@@ -87,7 +87,7 @@ def run_training(args: TrainArgs,
         features_scaler = None
 
     args.train_data_size = len(train_data)
-    
+
     debug(f'Total size = {len(data):,} | '
           f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
 

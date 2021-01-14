@@ -62,7 +62,7 @@ class CommonArgs(Tap):
     """:class:`CommonArgs` contains arguments that are used in both :class:`TrainArgs` and :class:`PredictArgs`."""
 
     smiles_columns: List[str] = None
-    """List of names of the columns containing SMILES strings. 
+    """List of names of the columns containing SMILES strings.
     By default, uses the first :code:`number_of_molecules` columns."""
     number_of_molecules: int = 1
     """Number of molecules in each input to the model.
@@ -85,14 +85,14 @@ class CommonArgs(Tap):
     """Turn off scaling of features."""
     max_data_size: int = None
     """Maximum number of data points to load."""
-    num_workers: int = 8 
+    num_workers: int = 8
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
     atom_descriptors: Literal['feature', 'descriptor'] = None
     """
     Custom extra atom descriptors.
-    :code:`feature`: used as atom features to featurize a given molecule. 
+    :code:`feature`: used as atom features to featurize a given molecule.
     :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
     """
     atom_descriptors_path: str = None
@@ -551,7 +551,7 @@ class SklearnPredictArgs(Tap):
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
     smiles_columns: List[str] = None
-    """List of names of the columns containing SMILES strings. 
+    """List of names of the columns containing SMILES strings.
     By default, uses the first :code:`number_of_molecules` columns."""
     number_of_molecules: int = 1
     """Number of molecules in each input to the model.

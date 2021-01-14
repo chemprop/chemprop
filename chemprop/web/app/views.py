@@ -153,16 +153,16 @@ def home():
 @app.route('/create_user', methods=['GET', 'POST'])
 @check_not_demo
 def create_user():
-    """    
+    """
     If a POST request is made, creates a new user.
     Renders the create_user page.
     """
-    if request.method == 'GET':   
+    if request.method == 'GET':
         return render_template('create_user.html', users=db.get_all_users())
 
     new_name = request.form['newUserName']
 
-    if new_name != None:
+    if new_name is not None:
         db.insert_user(new_name)
 
     return redirect(url_for('create_user'))
@@ -215,7 +215,7 @@ def train():
 
     # Check if regression/classification selection matches data
     data = get_data(path=data_path, smiles_columns=[None])
-    #set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
+    # Set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
 
     targets = data.targets()
     unique_targets = {target for row in targets for target in row if target is not None}

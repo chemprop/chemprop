@@ -89,20 +89,6 @@ def morgan_counts_features_generator(mol: Molecule,
     return features
 
 
-@register_features_generator('rdkit_2d')
-def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
-    """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
-    raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
-                      '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
-
-
-@register_features_generator('rdkit_2d_normalized')
-def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
-    """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
-    raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
-                      '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
-
-
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
@@ -134,7 +120,17 @@ try:
 
         return features
 except ImportError:
-    pass
+    @register_features_generator('rdkit_2d')
+    def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+        """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+        raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+                          '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
+
+    @register_features_generator('rdkit_2d_normalized')
+    def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
+        """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+        raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+                          '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
 
 
 """

@@ -43,7 +43,7 @@ def class_balance(data_path: str, split_type: str):
         args.folds_file = f'/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/{data_name}/{split_type}/fold_{i}/0/split_indices.pckl'
 
         if not os.path.exists(args.folds_file):
-            print(f'Fold indices do not exist')
+            print('Fold indices do not exist')
             continue
 
         # Split data
