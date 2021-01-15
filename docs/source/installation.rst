@@ -42,6 +42,11 @@ Chemprop can also be installed with Docker. Docker makes it possible to isolate 
 2. :code:`cd chemprop`
 3. Install Docker from `<https://docs.docker.com/install/>`_
 4. :code:`docker build -t chemprop .`
-5. :code:`docker run -it chemprop:latest /bin/bash`
+5. :code:`docker run -it chemprop:latest`
 
 Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs.
+Alternatively, with Docker 19.03+, you can specify the :code:`--gpus` command line option instead.
+
+In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine.
+Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions.
+To set a specific CUDA toolkit version, add :code:`cudatoolkit=X.Y` to :code:`environment.yml` before building the Docker image.
