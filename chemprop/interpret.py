@@ -232,7 +232,7 @@ def mcts_rollout(node: MCTSNode,
         if len(node.children) == 0:
             return node.P  # cannot find leaves
 
-        scores = scoring_function([x.smiles for x in node.children])
+        scores = scoring_function([[x.smiles] for x in node.children])
         for child, score in zip(node.children, scores):
             child.P = score
 
@@ -260,6 +260,7 @@ def mcts(smiles: str,
     :param prop_delta: The minimum required property value for a satisfactory rationale.
     :return: A list of rationales each represented by a :class:`MCTSNode`.
     """
+            
     mol = Chem.MolFromSmiles(smiles)
     if mol.GetNumAtoms() > 50:
         n_rollout = 1
@@ -282,7 +283,6 @@ def mcts(smiles: str,
 
     return rationales
 
-
 @timeit()
 def interpret(args: InterpretArgs) -> None:
     """
@@ -290,6 +290,10 @@ def interpret(args: InterpretArgs) -> None:
 
     :param args: A :class:`~chemprop.args.InterpretArgs` object containing arguments for interpretation.
     """
+
+    if args.number_of_molecules != 1:
+        raise ValueError("Interpreting is currently only available for single-molecule models.")
+    
     global C_PUCT, MIN_ATOMS
 
     chemprop_model = ChempropModel(args)
@@ -310,7 +314,7 @@ def interpret(args: InterpretArgs) -> None:
         score = scoring_function([smiles])[0]
         if score > args.prop_delta:
             rationales = mcts(
-                smiles=smiles,
+                smiles=smiles[0],
                 scoring_function=scoring_function,
                 n_rollout=args.rollout,
                 max_atoms=args.max_atoms,

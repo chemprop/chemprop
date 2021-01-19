@@ -192,6 +192,8 @@ Chemprop's interpretation script explains model prediction one property at a tim
 
 For computational efficiency, we currently restricted the rationale to have maximum 20 atoms and minimum 8 atoms. You can adjust these constraints through :code:`--max_atoms` and :code:`--min_atoms` argument.
 
+Please note that the interpreting framework is currently only available for models trained on properties of single molecules, that is, multi-molecule models generated via the :code:`--number_of_molecules` command are not supported.
+
 TensorBoard
 ^^^^^^^^^^^
 
