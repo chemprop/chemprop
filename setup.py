@@ -53,14 +53,19 @@ setup(
         'pandas>=1.0.3',
         'pandas-flavor>=0.2.0',
         'scikit-learn>=0.22.2.post1',
-        'scipy==1.4.1',
+        'scipy>=1.4.1',
         'sphinx>=3.1.2',
         'tensorboardX>=2.0',
         'torch>=1.5.1',
         'tqdm>=4.45.0',
-        'typed-argument-parser>=1.6.0'
+        'typed-argument-parser>=1.6.1'
     ],
-    tests_require=['pytest', 'parameterized'],
+    extras_require={
+        'test': [
+            'pytest>=6.2.2',
+            'parameterized>=0.8.1'
+        ]
+    },
     python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python :: 3',
