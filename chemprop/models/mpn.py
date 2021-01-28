@@ -122,6 +122,9 @@ class MPNEncoder(nn.Module):
 
         # concatenate the atom descriptors
         if atom_descriptors_batch is not None:
+            if len(atom_hiddens) != len(atom_descriptors_batch):
+                raise ValueError(f'The number of atoms is different from the length of the extra atom features')
+
             atom_hiddens = torch.cat([atom_hiddens, atom_descriptors_batch], dim=1)     # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.atom_descriptors_layer(atom_hiddens)                    # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.dropout_layer(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
