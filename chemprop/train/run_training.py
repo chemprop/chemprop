@@ -45,20 +45,48 @@ def run_training(args: TrainArgs,
     # Split data
     debug(f'Splitting data with seed {args.seed}')
     if args.separate_test_path:
-        test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path,
-                             logger=logger, smiles_columns=args.smiles_columns)
+        test_data = get_data(path=args.separate_test_path,
+                             args=args,
+                             features_path=args.separate_test_features_path,
+                             atom_descriptors_path=args.separate_test_atom_descriptors_path,
+                             bond_descriptors_path=args.separate_test_bond_descriptors_path,
+                             smiles_columns=args.smiles_columns,
+                             logger=logger)
     if args.separate_val_path:
-        val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path,
-                            logger=logger, smiles_columns=args.smiles_columns)
+        val_data = get_data(path=args.separate_val_path,
+                            args=args,
+                            features_path=args.separate_val_features_path,
+                            atom_descriptors_path=args.separate_val_atom_descriptors_path,
+                            bond_descriptors_path=args.separate_val_bond_descriptors_path,
+                            smiles_columns = args.smiles_columns,
+                            logger=logger)
 
     if args.separate_val_path and args.separate_test_path:
         train_data = data
     elif args.separate_val_path:
-        train_data, _, test_data = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.0, 0.2), seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
+        train_data, _, test_data = split_data(data=data,
+                                              split_type=args.split_type,
+                                              sizes=(0.8, 0.0, 0.2),
+                                              seed=args.seed,
+                                              num_folds=args.num_folds,
+                                              args=args,
+                                              logger=logger)
     elif args.separate_test_path:
-        train_data, val_data, _ = split_data(data=data, split_type=args.split_type, sizes=(0.8, 0.2, 0.0), seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
+        train_data, val_data, _ = split_data(data=data,
+                                             split_type=args.split_type,
+                                             sizes=(0.8, 0.2, 0.0),
+                                             seed=args.seed,
+                                             num_folds=args.num_folds,
+                                             args=args,
+                                             logger=logger)
     else:
-        train_data, val_data, test_data = split_data(data=data, split_type=args.split_type, sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds, args=args, logger=logger)
+        train_data, val_data, test_data = split_data(data=data,
+                                                     split_type=args.split_type,
+                                                     sizes=args.split_sizes,
+                                                     seed=args.seed,
+                                                     num_folds=args.num_folds,
+                                                     args=args,
+                                                     logger=logger)
 
     if args.dataset_type == 'classification':
         class_sizes = get_class_sizes(data)

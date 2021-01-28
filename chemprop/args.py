@@ -98,6 +98,8 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
+    bond_descriptors_path: str = None
+    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
@@ -106,6 +108,7 @@ class CommonArgs(Tap):
     def __init__(self, *args, **kwargs):
         super(CommonArgs, self).__init__(*args, **kwargs)
         self._atom_features_size = 0
+        self._bond_features_size = 0
         self._atom_descriptors_size = 0
 
     @property
@@ -153,6 +156,15 @@ class CommonArgs(Tap):
     def atom_descriptors_size(self, atom_descriptors_size: int) -> None:
         self._atom_descriptors_size = atom_descriptors_size
 
+    @property
+    def bond_features_size(self) -> int:
+        """The size of the atom features."""
+        return self._bond_features_size
+
+    @bond_features_size.setter
+    def bond_features_size(self, bond_features_size: int) -> None:
+        self._bond_features_size = bond_features_size
+
     def configure(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
         self.add_argument('--features_generator', choices=get_available_features_generators())
@@ -176,6 +188,10 @@ class CommonArgs(Tap):
 
         if self.atom_descriptors is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                                      'per input (i.e., number_of_molecules = 1).')
+
+        if self.bond_descriptors_path is not None and self.number_of_molecules > 1:
+            raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
         set_cache_mol(not self.no_cache_mol)
@@ -282,6 +298,14 @@ class TrainArgs(CommonArgs):
     """Path to file with features for separate val set."""
     separate_test_features_path: List[str] = None
     """Path to file with features for separate test set."""
+    separate_val_atom_descriptors_path: str = None
+    """Path to file with extra atom descriptors for separate val set."""
+    separate_test_atom_descriptors_path: str = None
+    """Path to file with extra atom descriptors for separate test set."""
+    separate_val_bond_descriptors_path: str = None
+    """Path to file with extra atom descriptors for separate val set."""
+    separate_test_bond_descriptors_path: str = None
+    """Path to file with extra atom descriptors for separate test set."""
     config_path: str = None
     """
     Path to a :code:`.json` file containing arguments. Any arguments present in the config file
