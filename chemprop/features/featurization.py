@@ -165,11 +165,14 @@ class MolGraph:
             self.f_atoms = [f_atoms + descs.tolist() for f_atoms, descs in zip(self.f_atoms, atom_descriptors)]
 
         self.n_atoms = len(self.f_atoms)
+        if atom_descriptors is not None and len(atom_descriptors) != self.n_atoms:
+            raise ValueError(f'The number of atoms in {Chem.MolToSmiles(mol)} is different from the length of '
+                             f'the extra atom features')
 
         # Initialize atom to bond mapping for each atom
         for _ in range(self.n_atoms):
             self.a2b.append([])
-        smiles = Chem.MolToSmiles(mol)
+
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
@@ -196,6 +199,10 @@ class MolGraph:
                 self.b2revb.append(b2)
                 self.b2revb.append(b1)
                 self.n_bonds += 2
+
+        if bond_descriptors is not None and len(bond_descriptors) != self.n_bonds/2:
+            raise ValueError(f'The number of bonds in {Chem.MolToSmiles(mol)} is different from the length of '
+                             f'the extra bond features')
 
 
 class BatchMolGraph:
