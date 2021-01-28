@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union
-
+from itertools import zip_longest
 from rdkit import Chem
 import torch
 import numpy as np
@@ -31,6 +31,7 @@ THREE_D_DISTANCE_BINS = list(range(0, THREE_D_DISTANCE_MAX + 1, THREE_D_DISTANCE
 ATOM_FDIM = sum(len(choices) + 1 for choices in ATOM_FEATURES.values()) + 2
 EXTRA_ATOM_FDIM = 0
 BOND_FDIM = 14
+EXTRA_BOND_FDIM = 0
 
 
 def get_atom_fdim() -> int:
@@ -53,7 +54,13 @@ def get_bond_fdim(atom_messages: bool = False) -> int:
                           Otherwise it contains both atom and bond features.
     :return: The dimensionality of the bond feature vector.
     """
-    return BOND_FDIM + (not atom_messages) * get_atom_fdim()
+    return BOND_FDIM + EXTRA_BOND_FDIM + (not atom_messages) * get_atom_fdim()
+
+
+def set_extra_bond_fdim(extra):
+    """Change the dimensionality of the bond feature vector."""
+    global EXTRA_BOND_FDIM
+    EXTRA_BOND_FDIM = extra
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -132,9 +139,13 @@ class MolGraph:
     * :code:`b2revb`: A mapping from a bond index to the index of the reverse bond.
     """
 
-    def __init__(self, mol: Union[str, Chem.Mol], atom_descriptors: np.ndarray = None):
+    def __init__(self, mol: Union[str, Chem.Mol],
+                 atom_descriptors: np.ndarray = None,
+                 bond_descriptors: np.ndarray = None):
         """
         :param mol: A SMILES or an RDKit molecule.
+        :param atom_descriptors_batch: A list of 2D numpy array containing additional atom descriptors to featurize the molecule
+        :param bond_descriptors_batch: A list of 2D numpy array containing additional bond descriptors to featurize the molecule
         """
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
@@ -158,7 +169,7 @@ class MolGraph:
         # Initialize atom to bond mapping for each atom
         for _ in range(self.n_atoms):
             self.a2b.append([])
-
+        smiles = Chem.MolToSmiles(mol)
         # Get bond features
         for a1 in range(self.n_atoms):
             for a2 in range(a1 + 1, self.n_atoms):
@@ -168,6 +179,10 @@ class MolGraph:
                     continue
 
                 f_bond = bond_features(bond)
+                if bond_descriptors is not None:
+                    descr = bond_descriptors[bond.GetIdx()].tolist()
+                    f_bond += descr
+
                 self.f_bonds.append(self.f_atoms[a1] + f_bond)
                 self.f_bonds.append(self.f_atoms[a2] + f_bond)
 
@@ -301,15 +316,18 @@ class BatchMolGraph:
         return self.a2a
 
 
-def mol2graph(mols: Union[List[str], List[Chem.Mol]], atom_descriptors_batch: List[np.array] = None) -> BatchMolGraph:
+def mol2graph(mols: Union[List[str], List[Chem.Mol]],
+              atom_descriptors_batch: List[np.array] = None,
+              bond_descriptors_batch: List[np.array] = None) -> BatchMolGraph:
     """
     Converts a list of SMILES or RDKit molecules to a :class:`BatchMolGraph` containing the batch of molecular graphs.
 
     :param mols: A list of SMILES or a list of RDKit molecules.
     :param atom_descriptors_batch: A list of 2D numpy array containing additional atom descriptors to featurize the molecule
+    :param bond_descriptors_batch: A list of 2D numpy array containing additional bond descriptors to featurize the molecule
     :return: A :class:`BatchMolGraph` containing the combined molecular graph for the molecules.
     """
-    if atom_descriptors_batch is not None:
-        return BatchMolGraph([MolGraph(mol, atom_descriptors) for mol, atom_descriptors in zip(mols, atom_descriptors_batch)])
-    else:
-        return BatchMolGraph([MolGraph(mol) for mol in mols])
+    return BatchMolGraph([MolGraph(mol, atom_descriptors, bond_descriptors)
+                          for mol, atom_descriptors, bond_descriptors
+                          in zip_longest(mols, atom_descriptors_batch, bond_descriptors_batch)])
+

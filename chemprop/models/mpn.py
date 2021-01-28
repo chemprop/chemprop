@@ -180,7 +180,8 @@ class MPN(nn.Module):
     def forward(self,
                 batch: Union[List[List[str]], List[List[Chem.Mol]], BatchMolGraph],
                 features_batch: List[np.ndarray] = None,
-                atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                atom_descriptors_batch: List[np.ndarray] = None,
+                bond_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecules.
 
@@ -188,16 +189,23 @@ class MPN(nn.Module):
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
+        :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
         if type(batch[0]) != BatchMolGraph:
             # TODO: handle atom_descriptors_batch with multiple molecules per input
             if self.atom_descriptors == 'feature':
                 if len(batch[0]) > 1:
-                    raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                    raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
-                batch = [mol2graph(b, atom_descriptors_batch) for b in batch]
+                batch = [mol2graph(b, atom_descriptors_batch, bond_descriptors_batch) for b in batch]
+            elif bond_descriptors_batch is not None:
+                if len(batch[0]) > 1:
+                    raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
+                                              'per input (i.e., number_of_molecules = 1).')
+
+                batch = [mol2graph(b, None, bond_descriptors_batch) for b in batch]
             else:
                 batch = [mol2graph(b) for b in batch]
 
