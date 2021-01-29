@@ -9,7 +9,7 @@ from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
-from chemprop.features import set_extra_atom_fdim
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim
 
 
 @timeit()
@@ -51,6 +51,9 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
+
+    if args.bond_descriptors_path is not None:
+        set_extra_bond_fdim(train_args.bond_features_size)
 
     print('Loading data')
     if smiles is not None:
