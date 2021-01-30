@@ -55,7 +55,7 @@ class MoleculeDatapoint:
                  features_generator: List[str] = None,
                  atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None,
-                 bond_features: np.ndarray = None):
+                 bond_descriptors: np.ndarray = None):
         """
         :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
@@ -73,7 +73,7 @@ class MoleculeDatapoint:
         self.features_generator = features_generator
         self.atom_descriptors = atom_descriptors
         self.atom_features = atom_features
-        self.bond_features = bond_features
+        self.bond_descriptors = bond_descriptors
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -104,9 +104,9 @@ class MoleculeDatapoint:
         if self.atom_features is not None:
             self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
-        # Fix nans in bond_features
-        if self.bond_features is not None:
-            self.bond_features = np.where(np.isnan(self.bond_features), replace_token, self.bond_features)
+        # Fix nans in bond_descriptors
+        if self.bond_descriptors is not None:
+            self.bond_descriptors = np.where(np.isnan(self.bond_descriptors), replace_token, self.bond_descriptors)
 
         # Save a copy of the raw features and targets to enable different scaling later on
         self.raw_features, self.raw_targets = self.features, self.targets
@@ -236,11 +236,11 @@ class MoleculeDataset(Dataset):
                     if s in SMILES_TO_GRAPH:
                         mol_graph = SMILES_TO_GRAPH[s]
                     else:
-                        if len(d.smiles) > 1 and (d.atom_features is not None or d.bond_features is not None):
+                        if len(d.smiles) > 1 and (d.atom_features is not None or d.bond_descriptors is not None):
                             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
                                                       'per input (i.e., number_of_molecules = 1).')
 
-                        mol_graph = MolGraph(m, d.atom_features, d.bond_features)
+                        mol_graph = MolGraph(m, d.atom_features, d.bond_descriptors)
                         if cache_graph():
                             SMILES_TO_GRAPH[s] = mol_graph
                     mol_graphs_list.append(mol_graph)
@@ -280,10 +280,10 @@ class MoleculeDataset(Dataset):
         :return: A list of 2D numpy arrays containing the atom descriptors
                  for each molecule or None if there are no features.
         """
-        if len(self._data) == 0 or self._data[0].bond_features is None:
+        if len(self._data) == 0 or self._data[0].bond_descriptors is None:
             return None
 
-        return [d.bond_features for d in self._data]
+        return [d.bond_descriptors for d in self._data]
 
     def targets(self) -> List[List[Optional[float]]]:
         """
@@ -327,14 +327,14 @@ class MoleculeDataset(Dataset):
         return len(self._data[0].atom_features[0]) \
             if len(self._data) > 0 and self._data[0].atom_features is not None else None
 
-    def bond_features_size(self) -> int:
+    def bond_descriptor_size(self) -> int:
         """
         Returns the size of custom additional atom features vector associated with the molecules.
 
         :return: The size of the additional atom feature vector.
         """
-        return len(self._data[0].bond_features[0]) \
-            if len(self._data) > 0 and self._data[0].bond_features is not None else None
+        return len(self._data[0].bond_descriptors[0]) \
+            if len(self._data) > 0 and self._data[0].bond_descriptors is not None else None
 
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
         """

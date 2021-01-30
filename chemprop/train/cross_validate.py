@@ -74,7 +74,7 @@ def cross_validate(args: TrainArgs,
         args.atom_features_size = data.atom_features_size()
         set_extra_atom_fdim(args.atom_features_size)
     if args.bond_descriptors_path is not None:
-        args.bond_features_size = data.bond_features_size()
+        args.bond_features_size = data.bond_descriptor_size()
         set_extra_bond_fdim(args.bond_features_size)
 
     debug(f'Number of tasks = {args.num_tasks}')

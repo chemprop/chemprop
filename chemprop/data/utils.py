@@ -262,10 +262,10 @@ def get_data(path: str,
             elif args.atom_descriptors == 'descriptor':
                 atom_descriptors = descriptors
 
-        bond_features = None
+        bond_descriptors = None
         if args is not None and args.bond_descriptors_path is not None:
             try:
-                bond_features = load_valid_atom_or_bond_features(bond_descriptors_path, [x[0] for x in all_smiles])
+                bond_descriptors = load_valid_atom_or_bond_features(bond_descriptors_path, [x[0] for x in all_smiles])
             except Exception as e:
                 raise ValueError(f'Failed to load or valid custom bond descriptors: {e}')
 
@@ -278,7 +278,7 @@ def get_data(path: str,
                 features=all_features[i] if features_data is not None else None,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
-                bond_features=bond_features[i] if bond_features is not None else None,
+                bond_descriptors=bond_descriptors[i] if bond_descriptors is not None else None,
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])
