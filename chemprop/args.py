@@ -98,8 +98,15 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
+    overwrite_default_atom_descriptors: bool = False
+    """
+    Overwrites the default atom descriptors with the new ones instead of concatenating them.
+    Can only be used if atom_descriptors are used as a feature.
+    """
     bond_descriptors_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
+    overwrite_default_bond_descriptors: bool = False
+    """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
@@ -190,9 +197,18 @@ class CommonArgs(Tap):
             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
+        if self.overwrite_default_atom_descriptors and self.atom_descriptors != 'feature':
+            raise NotImplementedError('Overwriting of the default atom descriptors can only be used if the'
+                                      'provided atom descriptors are features.')
+
+        # Validate bond descriptors
         if self.bond_descriptors_path is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
+
+        if self.overwrite_default_bond_descriptors and self.bond_descriptors_path is None:
+            raise ValueError('If you want to overwrite the default bond descriptors, '
+                             'a bond_descriptor_path must be provided.')
 
         set_cache_mol(not self.no_cache_mol)
 
