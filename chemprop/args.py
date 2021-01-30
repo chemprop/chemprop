@@ -503,6 +503,23 @@ class TrainArgs(CommonArgs):
         if self.test:
             self.epochs = 0
 
+        # Validate extra atom or bond features for separate validation or test set
+        if self.separate_val_path is not None and self.atom_descriptors is not None \
+                and self.separate_val_atom_descriptors_path is None:
+            raise ValueError('Atom descriptors are required for the separate validation set.')
+
+        if self.separate_test_path is not None and self.atom_descriptors is not None \
+                and self.separate_test_atom_descriptors_path is None:
+            raise ValueError('Atom descriptors are required for the separate test set.')
+
+        if self.separate_val_path is not None and self.bond_descriptors_path is not None \
+                and self.separate_val_bond_descriptors_path is None:
+            raise ValueError('Bond descriptors are required for the separate validation set.')
+
+        if self.separate_test_path is not None and self.bond_descriptors_path is not None \
+                and self.separate_test_bond_descriptors_path is None:
+            raise ValueError('Bond descriptors are required for the separate test set.')
+
 
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
