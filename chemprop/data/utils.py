@@ -279,6 +279,8 @@ def get_data(path: str,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_descriptors=bond_descriptors[i] if bond_descriptors is not None else None,
+                overwrite_default_atom_descriptors=args.overwrite_default_atom_descriptors,
+                overwrite_default_bond_descriptors=args.overwrite_default_bond_descriptors
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])

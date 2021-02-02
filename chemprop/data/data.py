@@ -55,13 +55,20 @@ class MoleculeDatapoint:
                  features_generator: List[str] = None,
                  atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None,
-                 bond_descriptors: np.ndarray = None):
+                 bond_descriptors: np.ndarray = None,
+                 overwrite_default_atom_descriptors: bool = False,
+                 overwrite_default_bond_descriptors: bool = False):
         """
         :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
         :param row: The raw CSV row containing the information for this molecule.
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
+        :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
+        :param bond_descriptors: A numpy array containing additional bond descriptors to featurize the molecule
+        :param overwrite_default_atom_descriptors: Boolean to overwrite default atom descriptors by atom_descriptors
+        :param overwrite_default_bond_descriptors: Boolean to overwrite default bond descriptors by bond_descriptors
+
         """
         if features is not None and features_generator is not None:
             raise ValueError('Cannot provide both loaded features and a features generator.')
@@ -74,6 +81,8 @@ class MoleculeDatapoint:
         self.atom_descriptors = atom_descriptors
         self.atom_features = atom_features
         self.bond_descriptors = bond_descriptors
+        self.overwrite_default_atom_descriptors = overwrite_default_atom_descriptors
+        self.overwrite_default_bond_descriptors = overwrite_default_bond_descriptors
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -240,7 +249,9 @@ class MoleculeDataset(Dataset):
                             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
                                                       'per input (i.e., number_of_molecules = 1).')
 
-                        mol_graph = MolGraph(m, d.atom_features, d.bond_descriptors)
+                        mol_graph = MolGraph(m, d.atom_features, d.bond_descriptors,
+                                             overwrite_default_atom_descriptors=d.overwrite_default_atom_descriptors,
+                                             overwrite_default_bond_descriptors=d.overwrite_default_bond_descriptors)
                         if cache_graph():
                             SMILES_TO_GRAPH[s] = mol_graph
                     mol_graphs_list.append(mol_graph)

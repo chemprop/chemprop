@@ -39,9 +39,22 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     # If atom-descriptors were used during training, they must be used when predicting and vice-versa
     if train_args.atom_descriptors != args.atom_descriptors:
-        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. If atom descriptors '
-                         ' were used during training, they must be specified again during prediction using the same type of '
-                         ' descriptors as before. If they were not used during training, they cannot be specified during prediction.')
+        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. '
+                         'If atom descriptors were used during training, they must be specified again '
+                         'during prediction using the same type of descriptors as before. '
+                         'If they were not used during training, they cannot be specified during prediction.')
+
+    # If bond-descriptors were used during training, they must be used when predicting and vice-versa
+    if (train_args.bond_descriptors_path is None) != (args.bond_descriptors_path is None):
+        raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
+                         'descriptors for training, please specify a path to new bond descriptors for prediction.')
+
+    # if atom or bond descriptors were used to overwrite the defaults, the same must be done during prediction
+    if train_args.overwrite_default_atom_descriptors != args.overwrite_default_atom_descriptors or \
+            train_args.overwrite_default_bond_descriptors != args.overwrite_default_bond_descriptors:
+        raise ValueError('The use of overwriting atom or bond descriptors is inconsistent between training and '
+                         'prediction. If you chose to overwrite atom or bond descriptors during training, please'
+                         'use the argument again for prediction.')
 
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():

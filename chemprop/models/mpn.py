@@ -163,13 +163,17 @@ class MPN(nn.Module):
         :param bond_fdim: Bond feature vector dimension.
         """
         super(MPN, self).__init__()
-        self.atom_fdim = atom_fdim or get_atom_fdim()
-        self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
+        self.atom_fdim = atom_fdim or get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_descriptors)
+        self.bond_fdim = bond_fdim or get_bond_fdim(overwrite_default_atom=args.overwrite_default_atom_descriptors,
+                                                    overwrite_default_bond=args.overwrite_default_bond_descriptors,
+                                                    atom_messages=args.atom_messages)
 
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.device = args.device
         self.atom_descriptors = args.atom_descriptors
+        self.overwrite_default_atom_descriptors = args.overwrite_default_atom_descriptors
+        self.overwrite_default_bond_descriptors = args.overwrite_default_bond_descriptors
 
         if self.features_only:
             return
@@ -202,13 +206,19 @@ class MPN(nn.Module):
                     raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
-                batch = [mol2graph(b, atom_descriptors_batch, bond_descriptors_batch) for b in batch]
+                batch = [mol2graph(b, atom_descriptors_batch, bond_descriptors_batch,
+                                   overwrite_default_atom_descriptors=self.overwrite_default_atom_descriptors,
+                                   overwrite_default_bond_descriptors=self.overwrite_default_bond_descriptors)
+                         for b in batch]
             elif bond_descriptors_batch is not None:
                 if len(batch[0]) > 1:
                     raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
-                batch = [mol2graph(b, None, bond_descriptors_batch) for b in batch]
+                batch = [mol2graph(b, None, bond_descriptors_batch,
+                                   overwrite_default_atom_descriptors=self.overwrite_default_atom_descriptors,
+                                   overwrite_default_bond_descriptors=self.overwrite_default_bond_descriptors)
+                         for b in batch]
             else:
                 batch = [mol2graph(b) for b in batch]
 
