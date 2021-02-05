@@ -188,6 +188,7 @@ class MPN(nn.Module):
                 batch: Union[List[List[str]], List[List[Chem.Mol]], BatchMolGraph],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
+                atom_features_batch: List[np.ndarray] = None,
                 bond_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecules.
@@ -196,6 +197,7 @@ class MPN(nn.Module):
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
+        :param atom_features_batch: A list of numpy arrays containing additional atom features.
         :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
@@ -206,7 +208,7 @@ class MPN(nn.Module):
                     raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
-                batch = [mol2graph(b, atom_descriptors_batch, bond_descriptors_batch,
+                batch = [mol2graph(b, atom_features_batch, bond_descriptors_batch,
                                    overwrite_default_atom_descriptors=self.overwrite_default_atom_descriptors,
                                    overwrite_default_bond_descriptors=self.overwrite_default_bond_descriptors)
                          for b in batch]

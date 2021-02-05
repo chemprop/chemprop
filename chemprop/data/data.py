@@ -302,9 +302,9 @@ class MoleculeDataset(Dataset):
 
     def atom_features(self) -> List[np.ndarray]:
         """
-        Returns the atom features associated with each molecule (if they exit).
+        Returns the atom descriptors associated with each molecule (if they exit).
 
-        :return: A list of 2D numpy arrays containing the atom features
+        :return: A list of 2D numpy arrays containing the atom descriptors
                  for each molecule or None if there are no features.
         """
         if len(self._data) == 0 or self._data[0].atom_features is None:
