@@ -45,13 +45,13 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                          'If they were not used during training, they cannot be specified during prediction.')
 
     # If bond-descriptors were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_descriptors_path is None) != (args.bond_descriptors_path is None):
+    if (train_args.bond_features_path is None) != (args.bond_features_path is None):
         raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
                          'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
     # if atom or bond descriptors were used to overwrite the defaults, the same must be done during prediction
-    if train_args.overwrite_default_atom_descriptors != args.overwrite_default_atom_descriptors or \
-            train_args.overwrite_default_bond_descriptors != args.overwrite_default_bond_descriptors:
+    if train_args.overwrite_default_atom_features != args.overwrite_default_atom_features or \
+            train_args.overwrite_default_bond_features != args.overwrite_default_bond_features:
         raise ValueError('The use of overwriting atom or bond descriptors is inconsistent between training and '
                          'prediction. If you chose to overwrite atom or bond descriptors during training, please'
                          'use the argument again for prediction.')
@@ -65,7 +65,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
 
-    if args.bond_descriptors_path is not None:
+    if args.bond_features_path is not None:
         set_extra_bond_fdim(train_args.bond_features_size)
 
     print('Loading data')
@@ -112,17 +112,17 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
-        scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler = load_scalers(checkpoint_path)
+        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(checkpoint_path)
 
         # Normalize features
-        if args.features_scaling or args.atom_descriptor_scaling or args.bond_descriptor_scaling:
+        if args.features_scaling or args.atom_descriptor_scaling or args.bond_feature_scaling:
             test_data.reset_features_and_targets()
             if args.features_scaling:
                 test_data.normalize_features(features_scaler)
             if args.atom_descriptor_scaling and args.atom_descriptors is not None:
                 test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
-            if args.bond_descriptor_scaling and args.bond_features_size > 0:
-                test_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
+            if args.bond_feature_scaling and args.bond_features_size > 0:
+                test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
 
         # Make predictions
         model_preds = predict(

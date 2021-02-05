@@ -45,7 +45,7 @@ def save_checkpoint(path: str,
                     scaler: StandardScaler = None,
                     features_scaler: StandardScaler = None,
                     atom_descriptor_scaler: StandardScaler = None,
-                    bond_descriptor_scaler: StandardScaler = None,
+                    bond_feature_scaler: StandardScaler = None,
                     args: TrainArgs = None) -> None:
     """
     Saves a model checkpoint.
@@ -54,7 +54,7 @@ def save_checkpoint(path: str,
     :param scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the data.
     :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
     :param atom_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the atom descriptors.
-    :param bond_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_descriptors.
+    :param bond_feature_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_fetaures.
     :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
     """
@@ -77,10 +77,10 @@ def save_checkpoint(path: str,
             'means': atom_descriptor_scaler.means,
             'stds': atom_descriptor_scaler.stds
         } if atom_descriptor_scaler is not None else None,
-        'bond_descriptor_scaler': {
-            'means': bond_descriptor_scaler.means,
-            'stds': bond_descriptor_scaler.stds
-        } if bond_descriptor_scaler is not None else None
+        'bond_feature_scaler': {
+            'means': bond_feature_scaler.means,
+            'stds': bond_feature_scaler.stds
+        } if bond_feature_scaler is not None else None
     }
     torch.save(state, path)
 
@@ -163,10 +163,10 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler, StandardSca
     atom_descriptor_scaler = StandardScaler(state['atom_descriptor_scaler']['means'],
                                             state['atom_descriptor_scaler']['stds'],
                                             replace_nan_token=0) if state['atom_descriptor_scaler'] is not None else None
-    bond_descriptor_scaler = StandardScaler(state['bond_descriptor_scaler']['means'],
-                                            state['bond_descriptor_scaler']['stds'],
-                                            replace_nan_token=0) if state['bond_descriptor_scaler'] is not None else None
-    return scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler
+    bond_feature_scaler = StandardScaler(state['bond_feature_scaler']['means'],
+                                         state['bond_feature_scaler']['stds'],
+                                         replace_nan_token=0) if state['bond_feature_scaler'] is not None else None
+    return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler
 
 
 def load_args(path: str) -> TrainArgs:

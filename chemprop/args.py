@@ -98,18 +98,18 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
-    overwrite_default_atom_descriptors: bool = False
+    overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
     Can only be used if atom_descriptors are used as a feature.
     """
     no_atom_descriptor_scaling: bool = False
     """Turn off atom feature scaling."""
-    bond_descriptors_path: str = None
+    bond_features_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
-    overwrite_default_bond_descriptors: bool = False
+    overwrite_default_bond_features: bool = False
     """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
-    no_bond_descriptor_scaling: bool = False
+    no_bond_features_scaling: bool = False
     """Turn off atom feature scaling."""
     no_cache_mol: bool = False
     """
@@ -188,12 +188,12 @@ class CommonArgs(Tap):
         self._bond_features_size = bond_features_size
 
     @property
-    def bond_descriptor_scaling(self) -> bool:
+    def bond_feature_scaling(self) -> bool:
         """
         Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
         to the additional bond features."
         """
-        return not self.no_bond_descriptor_scaling
+        return not self.no_bond_features_scaling
 
     def configure(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
@@ -220,7 +220,7 @@ class CommonArgs(Tap):
             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
-        if self.overwrite_default_atom_descriptors and self.atom_descriptors != 'feature':
+        if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
             raise NotImplementedError('Overwriting of the default atom descriptors can only be used if the'
                                       'provided atom descriptors are features.')
 
@@ -228,15 +228,15 @@ class CommonArgs(Tap):
             raise ValueError('Atom descriptor scaling is only possible if additional atom features are provided.')
 
         # Validate bond descriptors
-        if self.bond_descriptors_path is not None and self.number_of_molecules > 1:
+        if self.bond_features_path is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
-        if self.overwrite_default_bond_descriptors and self.bond_descriptors_path is None:
+        if self.overwrite_default_bond_features and self.bond_features_path is None:
             raise ValueError('If you want to overwrite the default bond descriptors, '
                              'a bond_descriptor_path must be provided.')
 
-        if not self.bond_descriptor_scaling and self.bond_descriptors_path is None:
+        if not self.bond_feature_scaling and self.bond_features_path is None:
             raise ValueError('Bond descriptor scaling is only possible if additional bond features are provided.')
 
         set_cache_mol(not self.no_cache_mol)
@@ -347,9 +347,9 @@ class TrainArgs(CommonArgs):
     """Path to file with extra atom descriptors for separate val set."""
     separate_test_atom_descriptors_path: str = None
     """Path to file with extra atom descriptors for separate test set."""
-    separate_val_bond_descriptors_path: str = None
+    separate_val_bond_features_path: str = None
     """Path to file with extra atom descriptors for separate val set."""
-    separate_test_bond_descriptors_path: str = None
+    separate_test_bond_features_path: str = None
     """Path to file with extra atom descriptors for separate test set."""
     config_path: str = None
     """
@@ -541,12 +541,12 @@ class TrainArgs(CommonArgs):
                 and self.separate_test_atom_descriptors_path is None:
             raise ValueError('Atom descriptors are required for the separate test set.')
 
-        if self.separate_val_path is not None and self.bond_descriptors_path is not None \
-                and self.separate_val_bond_descriptors_path is None:
+        if self.separate_val_path is not None and self.bond_features_path is not None \
+                and self.separate_val_bond_features_path is None:
             raise ValueError('Bond descriptors are required for the separate validation set.')
 
-        if self.separate_test_path is not None and self.bond_descriptors_path is not None \
-                and self.separate_test_bond_descriptors_path is None:
+        if self.separate_test_path is not None and self.bond_features_path is not None \
+                and self.separate_test_bond_features_path is None:
             raise ValueError('Bond descriptors are required for the separate test set.')
 
 

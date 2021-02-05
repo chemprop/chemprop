@@ -34,7 +34,7 @@ class ChempropModel:
         if self.train_args.atom_descriptors_size > 0 or self.train_args.atom_features_size > 0 or self.train_args.bond_features_size > 0:
             raise NotImplementedError('The interpret function does not yet work with additional atom or bond features')
 
-        self.scaler, self.features_scaler, self.atom_descriptor_scaler, self.bond_descriptor_scaler = load_scalers(args.checkpoint_paths[0])
+        self.scaler, self.features_scaler, self.atom_descriptor_scaler, self.bond_feature_scaler = load_scalers(args.checkpoint_paths[0])
         self.checkpoints = [load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths]
 
     def __call__(self, smiles: List[str], batch_size: int = 500) -> List[List[float]]:
@@ -53,8 +53,8 @@ class ChempropModel:
             test_data.normalize_features(self.features_scaler)
         if self.train_args.atom_descriptor_scaling and self.args.atom_descriptors is not None:
             test_data.normalize_features(self.atom_descriptor_scaler, scale_atom_descriptors=True)
-        if self.train_args.bond_descriptor_scaling and self.args.bond_features_size > 0:
-            test_data.normalize_features(self.bond_descriptor_scaler, scale_bond_descriptors=True)
+        if self.train_args.bond_feature_scaling and self.args.bond_features_size > 0:
+            test_data.normalize_features(self.bond_feature_scaler, scale_bond_features=True)
 
         test_data_loader = MoleculeDataLoader(dataset=test_data, batch_size=batch_size)
 

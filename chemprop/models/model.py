@@ -103,7 +103,7 @@ class MoleculeModel(nn.Module):
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None,
                   atom_features_batch: List[np.ndarray] = None,
-                  bond_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                  bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Computes feature vectors of the input by running the model except for the last layer.
 
@@ -112,18 +112,18 @@ class MoleculeModel(nn.Module):
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
-        :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
+        :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :return: The feature vectors computed by the :class:`MoleculeModel`.
         """
         return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
-                                          atom_features_batch, bond_descriptors_batch))
+                                          atom_features_batch, bond_features_batch))
 
     def forward(self,
                 batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
-                bond_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Runs the :class:`MoleculeModel` on input.
 
@@ -132,16 +132,16 @@ class MoleculeModel(nn.Module):
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
-        :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
+        :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :return: The output of the :class:`MoleculeModel`, which is either property predictions
                  or molecule features if :code:`self.featurizer=True`.
         """
         if self.featurizer:
             return self.featurize(batch, features_batch, atom_descriptors_batch,
-                                  atom_features_batch, bond_descriptors_batch)
+                                  atom_features_batch, bond_features_batch)
 
         output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch,
-                                       atom_features_batch, bond_descriptors_batch))
+                                       atom_features_batch, bond_features_batch))
 
         # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
         if self.classification and not self.training:

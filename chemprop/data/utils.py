@@ -155,7 +155,7 @@ def get_data(path: str,
              features_path: List[str] = None,
              features_generator: List[str] = None,
              atom_descriptors_path: str = None,
-             bond_descriptors_path: str = None,
+             bond_features_path: str = None,
              max_data_size: int = None,
              store_row: bool = False,
              logger: Logger = None,
@@ -176,7 +176,7 @@ def get_data(path: str,
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
-    :param bond_descriptors_path: The path to the file containing the custom bond descriptors.
+    :param bond_features_path: The path to the file containing the custom bond features.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
@@ -196,8 +196,8 @@ def get_data(path: str,
         features_generator = features_generator if features_generator is not None else args.features_generator
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
-        bond_descriptors_path = bond_descriptors_path if bond_descriptors_path is not None \
-            else args.bond_descriptors_path
+        bond_features_path = bond_features_path if bond_features_path is not None \
+            else args.bond_features_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
 
     if not isinstance(smiles_columns, list):
@@ -262,10 +262,10 @@ def get_data(path: str,
             elif args.atom_descriptors == 'descriptor':
                 atom_descriptors = descriptors
 
-        bond_descriptors = None
-        if args is not None and args.bond_descriptors_path is not None:
+        bond_features = None
+        if args is not None and args.bond_features_path is not None:
             try:
-                bond_descriptors = load_valid_atom_or_bond_features(bond_descriptors_path, [x[0] for x in all_smiles])
+                bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
             except Exception as e:
                 raise ValueError(f'Failed to load or valid custom bond descriptors: {e}')
 
@@ -278,9 +278,9 @@ def get_data(path: str,
                 features=all_features[i] if features_data is not None else None,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
-                bond_descriptors=bond_descriptors[i] if bond_descriptors is not None else None,
-                overwrite_default_atom_descriptors=args.overwrite_default_atom_descriptors,
-                overwrite_default_bond_descriptors=args.overwrite_default_bond_descriptors
+                bond_features=bond_features[i] if bond_features is not None else None,
+                overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
+                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])

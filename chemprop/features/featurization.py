@@ -147,21 +147,21 @@ class MolGraph:
     * :code:`f_bonds`: A mapping from a bond index to a list of bond features.
     * :code:`a2b`: A mapping from an atom index to a list of incoming bond indices.
     * :code:`b2a`: A mapping from a bond index to the index of the atom the bond originates from.
-    * :code:`overwrite_default_atom_descriptors`: A boolean to overwrite default atom descriptors.
-    * :code:`overwrite_default_bond_descriptors`: A boolean to overwrite default bond descriptors.
+    * :code:`overwrite_default_atom_features`: A boolean to overwrite default atom descriptors.
+    * :code:`overwrite_default_bond_features`: A boolean to overwrite default bond descriptors.
     """
 
     def __init__(self, mol: Union[str, Chem.Mol],
-                 atom_descriptors: np.ndarray = None,
-                 bond_descriptors: np.ndarray = None,
-                 overwrite_default_atom_descriptors: bool = False,
-                 overwrite_default_bond_descriptors: bool = False):
+                 atom_features_extra: np.ndarray = None,
+                 bond_features_extra: np.ndarray = None,
+                 overwrite_default_atom_features: bool = False,
+                 overwrite_default_bond_features: bool = False):
         """
         :param mol: A SMILES or an RDKit molecule.
-        :param atom_descriptors_batch: A list of 2D numpy array containing additional atom descriptors to featurize the molecule
-        :param bond_descriptors_batch: A list of 2D numpy array containing additional bond descriptors to featurize the molecule
-        :param overwrite_default_atom_descriptors: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating
-        :param overwrite_default_bond_descriptors: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating
+        :param atom_features_extra: A list of 2D numpy array containing additional atom features to featurize the molecule
+        :param bond_features_extra: A list of 2D numpy array containing additional bond features to featurize the molecule
+        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating
+        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating
         """
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
@@ -174,19 +174,19 @@ class MolGraph:
         self.a2b = []  # mapping from atom index to incoming bond indices
         self.b2a = []  # mapping from bond index to the index of the atom the bond is coming from
         self.b2revb = []  # mapping from bond index to the index of the reverse bond
-        self.overwrite_default_atom_descriptors = overwrite_default_atom_descriptors
-        self.overwrite_default_bond_descriptors = overwrite_default_bond_descriptors
+        self.overwrite_default_atom_features = overwrite_default_atom_features
+        self.overwrite_default_bond_features = overwrite_default_bond_features
 
         # Get atom features
         self.f_atoms = [atom_features(atom) for atom in mol.GetAtoms()]
-        if atom_descriptors is not None:
-            if overwrite_default_atom_descriptors:
-                self.f_atoms = [descs.tolist() for descs in atom_descriptors]
+        if atom_features_extra is not None:
+            if overwrite_default_atom_features:
+                self.f_atoms = [descs.tolist() for descs in atom_features_extra]
             else:
-                self.f_atoms = [f_atoms + descs.tolist() for f_atoms, descs in zip(self.f_atoms, atom_descriptors)]
+                self.f_atoms = [f_atoms + descs.tolist() for f_atoms, descs in zip(self.f_atoms, atom_features_extra)]
 
         self.n_atoms = len(self.f_atoms)
-        if atom_descriptors is not None and len(atom_descriptors) != self.n_atoms:
+        if atom_features_extra is not None and len(atom_features_extra) != self.n_atoms:
             raise ValueError(f'The number of atoms in {Chem.MolToSmiles(mol)} is different from the length of '
                              f'the extra atom features')
 
@@ -203,9 +203,9 @@ class MolGraph:
                     continue
 
                 f_bond = bond_features(bond)
-                if bond_descriptors is not None:
-                    descr = bond_descriptors[bond.GetIdx()].tolist()
-                    if overwrite_default_bond_descriptors:
+                if bond_features_extra is not None:
+                    descr = bond_features_extra[bond.GetIdx()].tolist()
+                    if overwrite_default_bond_features:
                         f_bond = descr
                     else:
                         f_bond += descr
@@ -224,7 +224,7 @@ class MolGraph:
                 self.b2revb.append(b1)
                 self.n_bonds += 2
 
-        if bond_descriptors is not None and len(bond_descriptors) != self.n_bonds / 2:
+        if bond_features_extra is not None and len(bond_features_extra) != self.n_bonds / 2:
             raise ValueError(f'The number of bonds in {Chem.MolToSmiles(mol)} is different from the length of '
                              f'the extra bond features')
 
@@ -248,9 +248,9 @@ class BatchMolGraph:
         r"""
         :param mol_graphs: A list of :class:`MolGraph`\ s from which to construct the :class:`BatchMolGraph`.
         """
-        self.atom_fdim = get_atom_fdim(overwrite_default_atom=mol_graphs[0].overwrite_default_atom_descriptors)
-        self.bond_fdim = get_bond_fdim(overwrite_default_bond=mol_graphs[0].overwrite_default_bond_descriptors,
-                                       overwrite_default_atom=mol_graphs[0].overwrite_default_atom_descriptors)
+        self.atom_fdim = get_atom_fdim(overwrite_default_atom=mol_graphs[0].overwrite_default_atom_features)
+        self.bond_fdim = get_bond_fdim(overwrite_default_bond=mol_graphs[0].overwrite_default_bond_features,
+                                       overwrite_default_atom=mol_graphs[0].overwrite_default_atom_features)
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
@@ -350,23 +350,23 @@ class BatchMolGraph:
 
 
 def mol2graph(mols: Union[List[str], List[Chem.Mol]],
-              atom_descriptors_batch: List[np.array] = None,
-              bond_descriptors_batch: List[np.array] = None,
-              overwrite_default_atom_descriptors: bool = False,
-              overwrite_default_bond_descriptors: bool = False
+              atom_features_batch: List[np.array] = None,
+              bond_features_batch: List[np.array] = None,
+              overwrite_default_atom_features: bool = False,
+              overwrite_default_bond_features: bool = False
               ) -> BatchMolGraph:
     """
     Converts a list of SMILES or RDKit molecules to a :class:`BatchMolGraph` containing the batch of molecular graphs.
 
     :param mols: A list of SMILES or a list of RDKit molecules.
-    :param atom_descriptors_batch: A list of 2D numpy array containing additional atom descriptors to featurize the molecule
-    :param bond_descriptors_batch: A list of 2D numpy array containing additional bond descriptors to featurize the molecule
-    :param overwrite_default_atom_descriptors: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating
-    :param overwrite_default_bond_descriptors: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating
+    :param atom_features_batch: A list of 2D numpy array containing additional atom features to featurize the molecule
+    :param bond_features_batch: A list of 2D numpy array containing additional bond features to featurize the molecule
+    :param overwrite_default_atom_features: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating
+    :param overwrite_default_bond_features: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating
     :return: A :class:`BatchMolGraph` containing the combined molecular graph for the molecules.
     """
-    return BatchMolGraph([MolGraph(mol, atom_descriptors, bond_descriptors,
-                                   overwrite_default_atom_descriptors=overwrite_default_atom_descriptors,
-                                   overwrite_default_bond_descriptors=overwrite_default_bond_descriptors)
-                          for mol, atom_descriptors, bond_descriptors
-                          in zip_longest(mols, atom_descriptors_batch, bond_descriptors_batch)])
+    return BatchMolGraph([MolGraph(mol, af, bf,
+                                   overwrite_default_atom_features=overwrite_default_atom_features,
+                                   overwrite_default_bond_features=overwrite_default_bond_features)
+                          for mol, af, bf
+                          in zip_longest(mols, atom_features_batch, bond_features_batch)])
