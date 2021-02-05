@@ -112,12 +112,17 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
-        scaler, features_scaler = load_scalers(checkpoint_path)
+        scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler = load_scalers(checkpoint_path)
 
         # Normalize features
-        if args.features_scaling:
+        if args.features_scaling or args.atom_descriptor_scaling or args.bond_descriptor_scaling:
             test_data.reset_features_and_targets()
-            test_data.normalize_features(features_scaler)
+            if args.features_scaling:
+                test_data.normalize_features(features_scaler)
+            if args.atom_descriptor_scaling and args.atom_descriptors is not None:
+                test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+            if args.bond_descriptor_scaling and args.bond_features_size > 0:
+                test_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
 
         # Make predictions
         model_preds = predict(

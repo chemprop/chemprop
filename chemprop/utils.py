@@ -44,6 +44,8 @@ def save_checkpoint(path: str,
                     model: MoleculeModel,
                     scaler: StandardScaler = None,
                     features_scaler: StandardScaler = None,
+                    atom_descriptor_scaler: StandardScaler = None,
+                    bond_descriptor_scaler: StandardScaler = None,
                     args: TrainArgs = None) -> None:
     """
     Saves a model checkpoint.
@@ -51,6 +53,8 @@ def save_checkpoint(path: str,
     :param model: A :class:`~chemprop.models.model.MoleculeModel`.
     :param scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the data.
     :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
+    :param atom_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the atom descriptors.
+    :param bond_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_descriptors.
     :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
     """
@@ -68,7 +72,15 @@ def save_checkpoint(path: str,
         'features_scaler': {
             'means': features_scaler.means,
             'stds': features_scaler.stds
-        } if features_scaler is not None else None
+        } if features_scaler is not None else None,
+        'atom_descriptor_scaler': {
+            'means': atom_descriptor_scaler.means,
+            'stds': atom_descriptor_scaler.stds
+        } if atom_descriptor_scaler is not None else None,
+        'bond_descriptor_scaler': {
+            'means': bond_descriptor_scaler.means,
+            'stds': bond_descriptor_scaler.stds
+        } if bond_descriptor_scaler is not None else None
     }
     torch.save(state, path)
 
@@ -133,7 +145,7 @@ def load_checkpoint(path: str,
     return model
 
 
-def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
+def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]:
     """
     Loads the scalers a model was trained with.
 
@@ -148,8 +160,13 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler]:
     features_scaler = StandardScaler(state['features_scaler']['means'],
                                      state['features_scaler']['stds'],
                                      replace_nan_token=0) if state['features_scaler'] is not None else None
-
-    return scaler, features_scaler
+    atom_descriptor_scaler = StandardScaler(state['atom_descriptor_scaler']['means'],
+                                            state['atom_descriptor_scaler']['stds'],
+                                            replace_nan_token=0) if state['atom_descriptor_scaler'] is not None else None
+    bond_descriptor_scaler = StandardScaler(state['bond_descriptor_scaler']['means'],
+                                            state['bond_descriptor_scaler']['stds'],
+                                            replace_nan_token=0) if state['bond_descriptor_scaler'] is not None else None
+    return scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler
 
 
 def load_args(path: str) -> TrainArgs:

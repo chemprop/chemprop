@@ -119,6 +119,8 @@ class MoleculeDatapoint:
 
         # Save a copy of the raw features and targets to enable different scaling later on
         self.raw_features, self.raw_targets = self.features, self.targets
+        self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_descriptors = \
+            self.atom_descriptors, self.atom_features, self.bond_descriptors
 
     @property
     def mol(self) -> List[Chem.Mol]:
@@ -148,6 +150,30 @@ class MoleculeDatapoint:
         """
         self.features = features
 
+    def set_atom_descriptors(self, atom_descriptors: np.ndarray) -> None:
+        """
+        Sets the atom descriptors of the molecule.
+
+        :param atom_descriptors: A 1D numpy array of features for the molecule.
+        """
+        self.atom_descriptors = atom_descriptors
+
+    def set_atom_features(self, atom_features: np.ndarray) -> None:
+        """
+        Sets the atom features of the molecule.
+
+        :param atom_features: A 1D numpy array of features for the molecule.
+        """
+        self.atom_features = atom_features
+
+    def set_bond_descriptors(self, bond_descriptors: np.ndarray) -> None:
+        """
+        Sets the bond descriptors of the molecule.
+
+        :param bond_descriptors: A 1D numpy array of features for the molecule.
+        """
+        self.bond_descriptors = bond_descriptors
+
     def extend_features(self, features: np.ndarray) -> None:
         """
         Extends the features of the molecule.
@@ -173,8 +199,10 @@ class MoleculeDatapoint:
         self.targets = targets
 
     def reset_features_and_targets(self) -> None:
-        """Resets the features and targets to their raw values."""
+        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
         self.features, self.targets = self.raw_features, self.raw_targets
+        self.atom_descriptors, self.atom_features, self.bond_descriptors = \
+            self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_descriptors
 
 
 class MoleculeDataset(Dataset):
@@ -272,6 +300,18 @@ class MoleculeDataset(Dataset):
 
         return [d.features for d in self._data]
 
+    def atom_features(self) -> List[np.ndarray]:
+        """
+        Returns the atom features associated with each molecule (if they exit).
+
+        :return: A list of 2D numpy arrays containing the atom features
+                 for each molecule or None if there are no features.
+        """
+        if len(self._data) == 0 or self._data[0].atom_features is None:
+            return None
+
+        return [d.atom_features for d in self._data]
+
     def atom_descriptors(self) -> List[np.ndarray]:
         """
         Returns the atom descriptors associated with each molecule (if they exit).
@@ -347,7 +387,8 @@ class MoleculeDataset(Dataset):
         return len(self._data[0].bond_descriptors[0]) \
             if len(self._data) > 0 and self._data[0].bond_descriptors is not None else None
 
-    def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0) -> StandardScaler:
+    def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0,
+                           scale_atom_descriptors: bool = False, scale_bond_descriptors: bool = False) -> StandardScaler:
         """
         Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
 
@@ -362,23 +403,43 @@ class MoleculeDataset(Dataset):
                        otherwise a new :class:`~chemprop.data.StandardScaler` is first fitted to this
                        data and is then used.
         :param replace_nan_token: A token to use to replace NaN entries in the features.
+        :param scale_atom_descriptors: If the features that need to be scaled are atom features rather than molecule.
+        :param scale_bond_descriptors: If the features that need to be scaled are bond descriptors rather than molecule.
         :return: A fitted :class:`~chemprop.data.StandardScaler`. If a :class:`~chemprop.data.StandardScaler`
                  is provided as a parameter, this is the same :class:`~chemprop.data.StandardScaler`. Otherwise,
                  this is a new :class:`~chemprop.data.StandardScaler` that has been fit on this dataset.
         """
-        if len(self._data) == 0 or self._data[0].features is None:
+        if len(self._data) == 0 or \
+                (self._data[0].features is None and not scale_bond_descriptors and not scale_atom_descriptors):
             return None
 
         if scaler is not None:
             self._scaler = scaler
 
         elif self._scaler is None:
-            features = np.vstack([d.raw_features for d in self._data])
+            if scale_atom_descriptors and not self._data[0].atom_descriptors is None:
+                features = np.vstack([d.raw_atom_descriptors for d in self._data])
+            elif scale_atom_descriptors and not self._data[0].atom_features is None:
+                features = np.vstack([d.raw_atom_features for d in self._data])
+            elif scale_bond_descriptors:
+                features = np.vstack([d.raw_bond_descriptors for d in self._data])
+            else:
+                features = np.vstack([d.raw_features for d in self._data])
             self._scaler = StandardScaler(replace_nan_token=replace_nan_token)
             self._scaler.fit(features)
 
-        for d in self._data:
-            d.set_features(self._scaler.transform(d.raw_features.reshape(1, -1))[0])
+        if scale_atom_descriptors and not self._data[0].atom_descriptors is None:
+            for d in self._data:
+                d.set_atom_descriptors(self._scaler.transform(d.raw_atom_descriptors))
+        elif scale_atom_descriptors and not self._data[0].atom_features is None:
+            for d in self._data:
+                d.set_atom_features(self._scaler.transform(d.raw_atom_features))
+        elif scale_bond_descriptors:
+            for d in self._data:
+                d.set_bond_descriptors(self._scaler.transform(d.raw_bond_descriptors))
+        else:
+            for d in self._data:
+                d.set_features(self._scaler.transform(d.raw_features.reshape(1, -1))[0])
 
         return self._scaler
 
@@ -412,7 +473,7 @@ class MoleculeDataset(Dataset):
             self._data[i].set_targets(targets[i])
 
     def reset_features_and_targets(self) -> None:
-        """Resets the features and targets to their raw values."""
+        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
         for d in self._data:
             d.reset_features_and_targets()
 

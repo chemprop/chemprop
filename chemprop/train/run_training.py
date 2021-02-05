@@ -114,6 +114,20 @@ def run_training(args: TrainArgs,
     else:
         features_scaler = None
 
+    if args.atom_descriptor_scaling and args.atom_descriptors is not None:
+        atom_descriptor_scaler = train_data.normalize_features(replace_nan_token=0, scale_atom_descriptors=True)
+        val_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+        test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+    else:
+        atom_descriptor_scaler = None
+
+    if args.bond_descriptor_scaling and args.bond_features_size > 0:
+        bond_descriptor_scaler = train_data.normalize_features(replace_nan_token=0, scale_bond_descriptors=True)
+        val_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
+        test_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
+    else:
+        bond_descriptor_scaler = None
+
     args.train_data_size = len(train_data)
 
     debug(f'Total size = {len(data):,} | '
@@ -192,7 +206,8 @@ def run_training(args: TrainArgs,
         model = model.to(args.device)
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
+        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
+                        features_scaler, atom_descriptor_scaler, bond_descriptor_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -246,7 +261,8 @@ def run_training(args: TrainArgs,
             if args.minimize_score and avg_val_score < best_score or \
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
-                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler, args)
+                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
+                                atom_descriptor_scaler, bond_descriptor_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
