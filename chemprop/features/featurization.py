@@ -265,7 +265,7 @@ class BatchMolGraph:
                  and scope of the atoms and bonds (i.e., the indices of the molecules they belong to).
         """
         if atom_messages:
-            f_bonds = self.f_bonds[:, :get_bond_fdim(atom_messages=atom_messages)]
+            f_bonds = self.f_bonds[:, -get_bond_fdim(atom_messages=atom_messages):]
         else:
             f_bonds = self.f_bonds
 
