@@ -37,24 +37,35 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                          'using the same type of features as before (with either --features_generator or '
                          '--features_path and using --no_features_scaling if applicable).')
 
-    # If atom-descriptors were used during training, they must be used when predicting and vice-versa
+    # if atom or bond features were scaled, the same must be done during prediction
+    if train_args.features_scaling != args.features_scaling:
+        raise ValueError('If scaling of the additional features was done during training, the'
+                         'same must be done during prediction.')
+
+    # If atom descriptors were used during training, they must be used when predicting and vice-versa
     if train_args.atom_descriptors != args.atom_descriptors:
         raise ValueError('The use of atom descriptors is inconsistent between training and prediction. '
                          'If atom descriptors were used during training, they must be specified again '
                          'during prediction using the same type of descriptors as before. '
                          'If they were not used during training, they cannot be specified during prediction.')
 
-    # If bond-descriptors were used during training, they must be used when predicting and vice-versa
+    # If bond features were used during training, they must be used when predicting and vice-versa
     if (train_args.bond_features_path is None) != (args.bond_features_path is None):
         raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
                          'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
-    # if atom or bond descriptors were used to overwrite the defaults, the same must be done during prediction
+    # if atom or bond features were used to overwrite the defaults, the same must be done during prediction
     if train_args.overwrite_default_atom_features != args.overwrite_default_atom_features or \
             train_args.overwrite_default_bond_features != args.overwrite_default_bond_features:
         raise ValueError('The use of overwriting atom or bond descriptors is inconsistent between training and '
                          'prediction. If you chose to overwrite atom or bond descriptors during training, please'
                          'use the argument again for prediction.')
+
+    # if atom or bond features were scaled, the same must be done during prediction
+    if train_args.atom_descriptor_scaling != args.atom_descriptor_scaling or \
+            train_args.bond_feature_scaling != args.bond_feature_scaling:
+        raise ValueError('If scaling of the atom or bond descriptors or features was done during training, the'
+                         'same must be done during prediction.')
 
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
