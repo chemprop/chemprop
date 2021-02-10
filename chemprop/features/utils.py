@@ -5,7 +5,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from rdkit import Chem
 from rdkit.Chem import PandasTools
 
 
@@ -99,15 +98,6 @@ def load_valid_atom_or_bond_features(path: str, smiles: List[str]) -> List[np.nd
             raise ValueError('Invalid custom atomic descriptors file, Nan found in data')
 
         features_df = features_df.applymap(lambda x: np.array(x.replace('\r', '').replace('\n', '').split(',')).astype(float))
-
-        # Truncate by number of atoms
-        # FV and EH, probably to get rid of H atoms, but not the right way to do it!
-        # num_atoms = {x: Chem.MolFromSmiles(x).GetNumAtoms() for x in features_df.index.to_list()}
-
-        # def truncate_arrays(r):
-        #     return r.apply(lambda x: x[:num_atoms[r.name]])
-
-        # features_df = features_df.apply(lambda x: truncate_arrays(x), axis=1)
 
         features = features_df.apply(lambda x: np.stack(x.tolist(), axis=1), axis=1).tolist()
 
