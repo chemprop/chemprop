@@ -249,9 +249,11 @@ class BatchMolGraph:
         r"""
         :param mol_graphs: A list of :class:`MolGraph`\ s from which to construct the :class:`BatchMolGraph`.
         """
-        self.atom_fdim = get_atom_fdim(overwrite_default_atom=mol_graphs[0].overwrite_default_atom_features)
-        self.bond_fdim = get_bond_fdim(overwrite_default_bond=mol_graphs[0].overwrite_default_bond_features,
-                                       overwrite_default_atom=mol_graphs[0].overwrite_default_atom_features)
+        self.overwrite_default_atom_features = mol_graphs[0].overwrite_default_atom_features
+        self.overwrite_default_bond_features = mol_graphs[0].overwrite_default_bond_features
+        self.atom_fdim = get_atom_fdim(overwrite_default_atom=self.overwrite_default_atom_features)
+        self.bond_fdim = get_bond_fdim(overwrite_default_bond=self.overwrite_default_bond_features,
+                                       overwrite_default_atom=self.overwrite_default_atom_features)
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
@@ -314,7 +316,9 @@ class BatchMolGraph:
                  and scope of the atoms and bonds (i.e., the indices of the molecules they belong to).
         """
         if atom_messages:
-            f_bonds = self.f_bonds[:, -get_bond_fdim(atom_messages=atom_messages):]
+            f_bonds = self.f_bonds[:, -get_bond_fdim(atom_messages=atom_messages,
+                                                     overwrite_default_atom=self.overwrite_default_atom_features,
+                                                     overwrite_default_bond=self.overwrite_default_bond_features):]
         else:
             f_bonds = self.f_bonds
 
