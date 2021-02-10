@@ -54,19 +54,6 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
                          'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
-    # if atom or bond features were used to overwrite the defaults, the same must be done during prediction
-    if train_args.overwrite_default_atom_features != args.overwrite_default_atom_features or \
-            train_args.overwrite_default_bond_features != args.overwrite_default_bond_features:
-        raise ValueError('The use of overwriting atom or bond descriptors is inconsistent between training and '
-                         'prediction. If you chose to overwrite atom or bond descriptors during training, please'
-                         'use the argument again for prediction.')
-
-    # if atom or bond features were scaled, the same must be done during prediction
-    if train_args.atom_descriptor_scaling != args.atom_descriptor_scaling or \
-            train_args.bond_feature_scaling != args.bond_feature_scaling:
-        raise ValueError('If scaling of the atom or bond descriptors or features was done during training, the'
-                         'same must be done during prediction.')
-
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
         if not hasattr(args, key):
@@ -126,13 +113,13 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(checkpoint_path)
 
         # Normalize features
-        if args.features_scaling or args.atom_descriptor_scaling or args.bond_feature_scaling:
+        if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_feature_scaling:
             test_data.reset_features_and_targets()
             if args.features_scaling:
                 test_data.normalize_features(features_scaler)
-            if args.atom_descriptor_scaling and args.atom_descriptors is not None:
+            if train_args.atom_descriptor_scaling and args.atom_descriptors is not None:
                 test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
-            if args.bond_feature_scaling and args.bond_features_size > 0:
+            if train_args.bond_feature_scaling and args.bond_features_size > 0:
                 test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
 
         # Make predictions

@@ -98,19 +98,8 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
-    overwrite_default_atom_features: bool = False
-    """
-    Overwrites the default atom descriptors with the new ones instead of concatenating them.
-    Can only be used if atom_descriptors are used as a feature.
-    """
-    no_atom_descriptor_scaling: bool = False
-    """Turn off atom feature scaling."""
     bond_features_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
-    overwrite_default_bond_features: bool = False
-    """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
-    no_bond_features_scaling: bool = False
-    """Turn off atom feature scaling."""
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
@@ -171,14 +160,6 @@ class CommonArgs(Tap):
         self._atom_descriptors_size = atom_descriptors_size
 
     @property
-    def atom_descriptor_scaling(self) -> bool:
-        """
-        Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
-        to the additional atom features."
-        """
-        return not self.no_atom_descriptor_scaling
-
-    @property
     def bond_features_size(self) -> int:
         """The size of the atom features."""
         return self._bond_features_size
@@ -186,14 +167,6 @@ class CommonArgs(Tap):
     @bond_features_size.setter
     def bond_features_size(self, bond_features_size: int) -> None:
         self._bond_features_size = bond_features_size
-
-    @property
-    def bond_feature_scaling(self) -> bool:
-        """
-        Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
-        to the additional bond features."
-        """
-        return not self.no_bond_features_scaling
 
     def configure(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
@@ -220,24 +193,10 @@ class CommonArgs(Tap):
             raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
-        if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
-            raise NotImplementedError('Overwriting of the default atom descriptors can only be used if the'
-                                      'provided atom descriptors are features.')
-
-        if not self.atom_descriptor_scaling and self.atom_descriptors is None:
-            raise ValueError('Atom descriptor scaling is only possible if additional atom features are provided.')
-
         # Validate bond descriptors
         if self.bond_features_path is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
-
-        if self.overwrite_default_bond_features and self.bond_features_path is None:
-            raise ValueError('If you want to overwrite the default bond descriptors, '
-                             'a bond_descriptor_path must be provided.')
-
-        if not self.bond_feature_scaling and self.bond_features_path is None:
-            raise ValueError('Bond descriptor scaling is only possible if additional bond features are provided.')
 
         set_cache_mol(not self.no_cache_mol)
 
@@ -382,6 +341,18 @@ class TrainArgs(CommonArgs):
     class_balance: bool = False
     """Trains with an equal number of positives and negatives in each batch."""
 
+    overwrite_default_atom_features: bool = False
+    """
+    Overwrites the default atom descriptors with the new ones instead of concatenating them.
+    Can only be used if atom_descriptors are used as a feature.
+    """
+    no_atom_descriptor_scaling: bool = False
+    """Turn off atom feature scaling."""
+    overwrite_default_bond_features: bool = False
+    """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
+    no_bond_features_scaling: bool = False
+    """Turn off atom feature scaling."""
+
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
         self._task_names = None
@@ -447,6 +418,22 @@ class TrainArgs(CommonArgs):
     @train_data_size.setter
     def train_data_size(self, train_data_size: int) -> None:
         self._train_data_size = train_data_size
+
+    @property
+    def atom_descriptor_scaling(self) -> bool:
+        """
+        Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
+        to the additional atom features."
+        """
+        return not self.no_atom_descriptor_scaling
+
+    @property
+    def bond_feature_scaling(self) -> bool:
+        """
+        Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
+        to the additional bond features."
+        """
+        return not self.no_bond_features_scaling
 
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
@@ -548,6 +535,22 @@ class TrainArgs(CommonArgs):
         if self.separate_test_path is not None and self.bond_features_path is not None \
                 and self.separate_test_bond_features_path is None:
             raise ValueError('Bond descriptors are required for the separate test set.')
+
+        # validate extra atom descriptor options
+        if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
+            raise NotImplementedError('Overwriting of the default atom descriptors can only be used if the'
+                                      'provided atom descriptors are features.')
+
+        if not self.atom_descriptor_scaling and self.atom_descriptors is None:
+            raise ValueError('Atom descriptor scaling is only possible if additional atom features are provided.')
+
+        # validate extra bond feature options
+        if self.overwrite_default_bond_features and self.bond_features_path is None:
+            raise ValueError('If you want to overwrite the default bond descriptors, '
+                             'a bond_descriptor_path must be provided.')
+
+        if not self.bond_feature_scaling and self.bond_features_path is None:
+            raise ValueError('Bond descriptor scaling is only possible if additional bond features are provided.')
 
 
 class PredictArgs(CommonArgs):
