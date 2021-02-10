@@ -160,12 +160,21 @@ def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler, StandardSca
     features_scaler = StandardScaler(state['features_scaler']['means'],
                                      state['features_scaler']['stds'],
                                      replace_nan_token=0) if state['features_scaler'] is not None else None
-    atom_descriptor_scaler = StandardScaler(state['atom_descriptor_scaler']['means'],
-                                            state['atom_descriptor_scaler']['stds'],
-                                            replace_nan_token=0) if state['atom_descriptor_scaler'] is not None else None
-    bond_feature_scaler = StandardScaler(state['bond_feature_scaler']['means'],
-                                         state['bond_feature_scaler']['stds'],
-                                         replace_nan_token=0) if state['bond_feature_scaler'] is not None else None
+
+    if 'atom_descriptor_scaler' in state.keys():
+        atom_descriptor_scaler = StandardScaler(state['atom_descriptor_scaler']['means'],
+                                                state['atom_descriptor_scaler']['stds'],
+                                                replace_nan_token=0) if state['atom_descriptor_scaler'] is not None else None
+    else:
+        atom_descriptor_scaler = None
+
+    if 'bond_feature_scaler' in state.keys():
+        bond_feature_scaler = StandardScaler(state['bond_feature_scaler']['means'],
+                                            state['bond_feature_scaler']['stds'],
+                                            replace_nan_token=0) if state['bond_feature_scaler'] is not None else None
+    else:
+        bond_feature_scaler = None
+
     return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler
 
 
