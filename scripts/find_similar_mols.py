@@ -32,6 +32,7 @@ class Args(Tap):
     checkpoint_path: str = None  # Path to .pt file containing a model checkpoint (only needed for distance_measure == "embedding")
     num_neighbors: int = 5  # Number of neighbors to search for each molecule
     batch_size: int = 50  # Batch size when making predictions
+    smiles_column: str = None # Columns in dataset CSV file containing SMILES
 
 
 def find_similar_mols(test_smiles: List[str],
@@ -112,7 +113,8 @@ def find_similar_mols_from_file(test_path: str,
                                 distance_measure: str,
                                 checkpoint_path: str = None,
                                 num_neighbors: int = -1,
-                                batch_size: int = 50) -> List[OrderedDict]:
+                                batch_size: int = 50,
+                                smiles_column: str = None) -> List[OrderedDict]:
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
     Loads molecules and model from file.
@@ -127,7 +129,7 @@ def find_similar_mols_from_file(test_path: str,
     and other relevant distance info.
     """
     print('Loading data')
-    test_smiles, train_smiles = get_smiles(test_path, flatten=True), get_smiles(train_path, flatten=True)
+    test_smiles, train_smiles = get_smiles(test_path, flatten=True, smiles_columns=smiles_column), get_smiles(train_path, flatten=True, smiles_columns=smiles_column)
 
     if checkpoint_path is not None:
         print('Loading model')
@@ -151,7 +153,8 @@ def save_similar_mols(test_path: str,
                       distance_measure: str,
                       checkpoint_path: str = None,
                       num_neighbors: int = None,
-                      batch_size: int = 50):
+                      batch_size: int = 50,
+                      smiles_column: str = None):
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
     Loads molecules and model from file and saves results to file.
@@ -173,7 +176,8 @@ def save_similar_mols(test_path: str,
         checkpoint_path=checkpoint_path,
         distance_measure=distance_measure,
         num_neighbors=num_neighbors,
-        batch_size=batch_size
+        batch_size=batch_size,
+        smiles_column=smiles_column,
     )
 
     # Save results
@@ -196,5 +200,6 @@ if __name__ == '__main__':
         distance_measure=args.distance_measure,
         checkpoint_path=args.checkpoint_path,
         num_neighbors=args.num_neighbors,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        smiles_column=args.smiles_column,
     )

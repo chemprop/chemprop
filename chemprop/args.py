@@ -8,6 +8,7 @@ from typing_extensions import Literal
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
+import chemprop.data.utils
 from chemprop.data import set_cache_mol
 from chemprop.features import get_available_features_generators
 
@@ -167,11 +168,6 @@ class CommonArgs(Tap):
         # Validate features
         if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
             raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
-
-        if self.smiles_columns is None:
-            self.smiles_columns = [None] * self.number_of_molecules
-        elif len(self.smiles_columns) != self.number_of_molecules:
-            raise ValueError('Length of smiles_columns must match number_of_molecules.')
 
         # Validate atom descriptors
         if (self.atom_descriptors is None) != (self.atom_descriptors_path is None):
@@ -388,6 +384,13 @@ class TrainArgs(CommonArgs):
 
         global temp_dir  # Prevents the temporary directory from being deleted upon function return
 
+        # Process SMILES columns
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
+            path=self.data_path,
+            smiles_columns=self.smiles_columns,
+            number_of_molecules=self.number_of_molecules,
+        )
+
         # Load config file
         if self.config_path is not None:
             with open(self.config_path) as f:
@@ -479,6 +482,12 @@ class PredictArgs(CommonArgs):
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
 
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
+            path=self.test_path,
+            smiles_columns=self.smiles_columns,
+            number_of_molecules=self.number_of_molecules,
+        )
+
         if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
@@ -506,6 +515,13 @@ class InterpretArgs(CommonArgs):
 
     def process_args(self) -> None:
         super(InterpretArgs, self).process_args()
+
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
+            path=self.data_path,
+            smiles_columns=self.smiles_columns,
+            number_of_molecules=self.number_of_molecules,
+        )
+
 
         if self.features_path is not None:
             raise ValueError('Cannot use --features_path <path> for interpretation since features '
@@ -567,10 +583,11 @@ class SklearnPredictArgs(Tap):
 
     def process_args(self) -> None:
 
-        if self.smiles_columns is None:
-            self.smiles_columns = [None] * self.number_of_molecules
-        elif len(self.smiles_columns) != self.number_of_molecules:
-            raise ValueError('Length of smiles_columns must match number_of_molecules.')
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
+            path=self.test_path,
+            smiles_columns=self.smiles_columns,
+            number_of_molecules=self.number_of_molecules,
+        )
 
         # Load checkpoint paths
         self.checkpoint_paths = get_checkpoint_paths(

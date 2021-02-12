@@ -211,10 +211,10 @@ def train():
     ])
 
     # Get task names
-    args.task_names = get_task_names(path=data_path, smiles_columns=[None])
+    args.task_names = get_task_names(path=data_path, smiles_columns=args.smiles_columns)
 
     # Check if regression/classification selection matches data
-    data = get_data(path=data_path, smiles_columns=[None])
+    data = get_data(path=data_path, smiles_columns=args.smiles_columns)
     # Set the number of molecules through the length of the smiles_columns for now, we need to add an option to the site later
 
     targets = data.targets()

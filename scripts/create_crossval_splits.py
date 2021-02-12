@@ -21,6 +21,7 @@ class Args(Tap):
     test_folds_to_test: int = 3  # Number of test folds
     val_folds_per_test: int = 3  # Number of val folds
     time_folds_per_train_set: int = 3  # X:1:1 train:val:test for time split sliding window
+    smiles_columns: List[str] = None # columns in CSV dataset file containing SMILES
 
 
 def split_indices(all_indices: List[int],
@@ -54,7 +55,7 @@ def split_indices(all_indices: List[int],
 def create_time_splits(args: Args):
     # ASSUME DATA GIVEN IN CHRONOLOGICAL ORDER.
     # this will dump a very different format of indices, with all in one file; TODO modify as convenient later.
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path, smiles_columns=args.smiles_columns)
     num_data = len(data)
     all_indices = list(range(num_data))
     fold_indices = {'random': [], 'scaffold': [], 'time': []}
@@ -86,7 +87,7 @@ def create_time_splits(args: Args):
 
 
 def create_crossval_splits(args: Args):
-    data = get_data(args.data_path)
+    data = get_data(path=args.data_path, smiles_columns=args.smiles_columns)
     num_data = len(data)
     if args.split_type == 'random':
         all_indices = list(range(num_data))

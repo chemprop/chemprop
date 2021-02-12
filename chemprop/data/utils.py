@@ -16,16 +16,36 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_features
 
 
-def preprocess_smiles_columns(smiles_columns: Optional[Union[str, List[Optional[str]]]]) -> List[Optional[str]]:
+def preprocess_smiles_columns(path: str,
+                              smiles_columns: Optional[Union[str, List[Optional[str]]]],
+                              number_of_molecules: int = 1) -> List[Optional[str]]:
     """
-    Preprocesses the :code:`smiles_columns` variable to ensure that it is a list.
+    Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
+    headings corresponding to the columns in the data file holding SMILES.
 
+    :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules with associated SMILES for each
+                           data point.
     :return: The preprocessed version of :code:`smiles_columns` which is guaranteed to be a list.
     """
-    smiles_columns = smiles_columns if smiles_columns is not None else [None]
-    smiles_columns = [smiles_columns] if type(smiles_columns) != list else smiles_columns
+
+    if smiles_columns is None:
+        if os.path.isfile(path):
+            columns = get_header(path)
+            smiles_columns = columns[:number_of_molecules]
+        else:
+            smiles_columns = [None]*number_of_molecules
+    else:
+        if not isinstance(smiles_columns,list):
+            smiles_columns=[smiles_columns]
+        if os.path.isfile(path):
+            columns = get_header(path)
+            if len(smiles_columns) != number_of_molecules:
+                raise ValueError('Length of smiles_columns must match number_of_molecules.')
+            if any([smiles not in columns for smiles in smiles_columns]):
+                raise ValueError('Provided smiles_columns do not match the header of data file.')
 
     return smiles_columns
 
@@ -55,10 +75,8 @@ def get_task_names(path: str,
 
     columns = get_header(path)
 
-    smiles_columns = preprocess_smiles_columns(smiles_columns)
-
-    if None in smiles_columns:
-        smiles_columns = columns[:len(smiles_columns)]
+    if not isinstance(smiles_columns, list):
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
 
@@ -98,13 +116,12 @@ def get_smiles(path: str,
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    smiles_columns = preprocess_smiles_columns(smiles_columns)
+    if not isinstance(smiles_columns, list):
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     with open(path) as f:
         if header:
             reader = csv.DictReader(f)
-            if None in smiles_columns:
-                smiles_columns = reader.fieldnames[:len(smiles_columns)]
         else:
             reader = csv.reader(f)
             smiles_columns = 0
@@ -179,7 +196,8 @@ def get_data(path: str,
             else args.atom_descriptors_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
 
-    smiles_columns = preprocess_smiles_columns(smiles_columns)
+    if not isinstance(smiles_columns, list):
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     max_data_size = max_data_size or float('inf')
 
@@ -192,28 +210,22 @@ def get_data(path: str,
     else:
         features_data = None
 
-    skip_smiles = [set() for _ in range(len(smiles_columns))]
-
     # Load data
     with open(path) as f:
         reader = csv.DictReader(f)
-        columns = reader.fieldnames
-
-        # By default, the SMILES column is the first column
-        if None in smiles_columns:
-            smiles_columns = columns[:len(smiles_columns)]
 
         # By default, the targets columns are all the columns except the SMILES column
         if target_columns is None:
-            ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
-            target_columns = [column for column in columns if column not in ignore_columns]
+            target_columns = get_task_names(
+                path=path,
+                smiles_columns=smiles_columns,
+                target_columns=target_columns,
+                ignore_columns=ignore_columns,
+            )
 
         all_smiles, all_targets, all_rows, all_features = [], [], [], []
-        for i, row in tqdm(enumerate(reader)):
+        for i, row in enumerate(tqdm(reader)):
             smiles = [row[c] for c in smiles_columns]
-
-            if smiles in skip_smiles:
-                continue
 
             targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
 

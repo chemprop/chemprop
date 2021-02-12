@@ -19,14 +19,14 @@ class Args(Tap):
     split_type: Literal['random', 'scaffold'] = 'scaffold'  # Split type, either "random" or "scaffold"
 
 
-def class_balance(data_path: str, split_type: str):
+def class_balance(args: Args):
     # Update args
     args.val_fold_index, args.test_fold_index = 1, 2
     args.split_type = 'predetermined'
 
     # Load data
-    data = get_data(path=args.data_path, smiles_columns=args.smiles_column, target_columns=args.target_columns)
-    args.task_names = args.target_columns or get_task_names(path=args.data_path, smiles_columns=args.smiles_column)
+    data = get_data(path=args.data_path, smiles_columns=args.smiles_columns, target_columns=args.target_columns)
+    args.task_names = get_task_names(path=args.data_path, smiles_columns=args.smiles_columns, target_columns=args.target_columns)
 
     # Average class sizes
     all_class_sizes = {
@@ -39,8 +39,8 @@ def class_balance(data_path: str, split_type: str):
         print(f'Fold {i}')
 
         # Update args
-        data_name = os.path.splitext(os.path.basename(data_path))[0]
-        args.folds_file = f'/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/{data_name}/{split_type}/fold_{i}/0/split_indices.pckl'
+        data_name = os.path.splitext(os.path.basename(args.data_path))[0]
+        args.folds_file = f'/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data/{data_name}/{args.split_type}/fold_{i}/0/split_indices.pckl'
 
         if not os.path.exists(args.folds_file):
             print('Fold indices do not exist')
@@ -78,9 +78,4 @@ def class_balance(data_path: str, split_type: str):
 
 
 if __name__ == '__main__':
-    args = Args().parse_args()
-
-    class_balance(
-        data_path=args.data_path,
-        split_type=args.split_type
-    )
+    class_balance(args=Args().parse_args())

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, get_header, MoleculeDataLoader, MoleculeDataset
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 from chemprop.features import set_extra_atom_fdim
 
@@ -60,8 +60,8 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             features_generator=args.features_generator
         )
     else:
-        full_data = get_data(path=args.test_path, target_columns=[], ignore_columns=[], skip_invalid_smiles=False,
-                             args=args, store_row=not args.drop_extra_columns)
+        full_data = get_data(path=args.test_path, smiles_columns=args.smiles_columns, target_columns=[], ignore_columns=[],
+                             skip_invalid_smiles=False, args=args, store_row=not args.drop_extra_columns)
 
     print('Validating SMILES')
     full_to_valid_indices = {}
@@ -136,9 +136,6 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             datapoint.row = OrderedDict()
 
             smiles_columns = args.smiles_columns
-
-            if None in smiles_columns:
-                smiles_columns = get_header(args.test_path)[:len(smiles_columns)]
 
             for column, smiles in zip(smiles_columns, datapoint.smiles):
                 datapoint.row[column] = smiles
