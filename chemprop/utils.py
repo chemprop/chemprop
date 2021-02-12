@@ -16,9 +16,10 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
+from tqdm import tqdm
 
 from chemprop.args import TrainArgs
-from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns
+from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
 
@@ -421,12 +422,12 @@ def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
 
 def save_smiles_splits(data_path: str,
                        save_dir: str,
-                       task_names: list = None,
-                       features_path: list = None,
+                       task_names: List[str] = None,
+                       features_path: List[str] = None,
                        train_data: MoleculeDataset = None,
                        val_data: MoleculeDataset = None,
                        test_data: MoleculeDataset = None,
-                       smiles_columns: str = None) -> None:
+                       smiles_columns: List[str] = None) -> None:
     """
     Saves a csv file with train/val/test splits of target data and additional features.
     Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries with same SMILES.
@@ -442,25 +443,20 @@ def save_smiles_splits(data_path: str,
     :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
     """
     makedirs(save_dir)
+    
+    if not isinstance(smiles_columns, list):
+        smiles_columns = preprocess_smiles_columns(path=data_path, smiles_columns=smiles_columns)
 
     with open(data_path) as f:
-        reader = csv.reader(f)
-        header = next(reader)
-
-        smiles_columns = preprocess_smiles_columns(smiles_columns)
-        if None in smiles_columns:
-            smiles_columns = header[:len(smiles_columns)]
-            smiles_columns_index = list(range(len(smiles_columns)))
-        else:
-            smiles_columns_index = [header.index(i) for i in smiles_columns]
+        reader = csv.DictReader(f)
 
         indices_by_smiles = {}
-        for i, line in enumerate(reader):
-            smiles = tuple(line[j] for j in smiles_columns_index)
+        for i, row in enumerate(tqdm(reader)):
+            smiles = tuple([row[column] for column in smiles_columns])
             indices_by_smiles[smiles] = i
 
     if task_names is None:
-        task_names = [i for i in header if i not in smiles_columns]
+        task_names = get_task_names(path=data_path, smiles_columns=smiles_columns)
 
     features_header = []
     if features_path is not None:

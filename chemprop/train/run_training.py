@@ -46,10 +46,10 @@ def run_training(args: TrainArgs,
     debug(f'Splitting data with seed {args.seed}')
     if args.separate_test_path:
         test_data = get_data(path=args.separate_test_path, args=args, features_path=args.separate_test_features_path,
-                             logger=logger)
+                             logger=logger, smiles_columns=args.smiles_columns)
     if args.separate_val_path:
         val_data = get_data(path=args.separate_val_path, args=args, features_path=args.separate_val_features_path,
-                            logger=logger)
+                            logger=logger, smiles_columns=args.smiles_columns)
 
     if args.separate_val_path and args.separate_test_path:
         train_data = data
@@ -76,7 +76,7 @@ def run_training(args: TrainArgs,
             train_data=train_data,
             val_data=val_data,
             test_data=test_data,
-            smiles_columns=args.smiles_columns
+            smiles_columns=args.smiles_columns,
         )
 
     if args.features_scaling:

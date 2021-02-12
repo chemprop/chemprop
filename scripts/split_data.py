@@ -3,7 +3,7 @@
 import csv
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, List
 
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 from tqdm import tqdm
@@ -18,7 +18,7 @@ from chemprop.utils import makedirs
 class Args(Tap):
     data_path: str  # Path to data CSV file
     save_dir: str  # Directory where train, validation, and test sets will be saved
-    smiles_column: str = None  # Name of the column containing SMILES strings. By default, uses the first column.
+    smiles_columns: List[str] = None  # Name of the column containing SMILES strings. By default, uses the first column.
     split_type: Literal['random', 'scaffold_balanced'] = 'random'  # Split type
     split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)  # Split sizes
     seed: int = 0  # Random seed
@@ -32,7 +32,7 @@ def run_split_data(args: Args):
         lines = list(reader)
 
     # Load SMILES
-    smiles = get_smiles(path=args.data_path, smiles_columns=args.smiles_column)
+    smiles = get_smiles(path=args.data_path, smiles_columns=args.smiles_columns)
 
     # Make sure lines and smiles line up
     assert len(lines) == len(smiles)

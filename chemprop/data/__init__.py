@@ -18,10 +18,10 @@ from .utils import (
     get_header,
     get_smiles,
     get_task_names,
+    preprocess_smiles_columns,
     split_data,
     validate_data,
     validate_dataset_type,
-    preprocess_smiles_columns
 )
 
 __all__ = [
@@ -45,7 +45,8 @@ __all__ = [
     'get_header',
     'get_smiles',
     'get_task_names',
+    'preprocess_smiles_columns',
     'split_data',
     'validate_data',
-    'validate_dataset_type'
+    'validate_dataset_type',
 ]
