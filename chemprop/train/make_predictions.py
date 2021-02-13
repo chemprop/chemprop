@@ -36,6 +36,12 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         raise ValueError('Features were used during training so they must be specified again during prediction '
                          'using the same type of features as before (with either --features_generator or '
                          '--features_path and using --no_features_scaling if applicable).')
+    
+    # Same number of molecules must be used in training as in making predictions
+    if train_args.number_of_molecules != args.number_of_molecules:
+        raise ValueError('A different number of molecules was used in training '
+                        f'model than is specified for prediction, {train_args.number_of_molecules} '
+                         'smiles fields must be provided')
 
     # if atom or bond features were scaled, the same must be done during prediction
     if train_args.features_scaling != args.features_scaling:
