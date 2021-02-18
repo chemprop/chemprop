@@ -17,7 +17,7 @@ def sanitize(data_path: str, save_path: str):
         header = next(reader)
         lines = [line for line in reader if line[0] != '' and Chem.MolFromSmiles(line[0]) is not None]
 
-    with open(save_path) as f:
+    with open(save_path, 'w') as f:
         writer = csv.writer(f)
         writer.writerow(header)
         for line in lines:
