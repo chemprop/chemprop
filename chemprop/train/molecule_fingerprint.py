@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
-from chemprop.utils import load_args, load_checkpoint, makedirs, timeit
+from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.models import MoleculeModel
 
@@ -42,6 +42,11 @@ def molecule_fingerprint(args: PredictArgs, smiles: List[List[str]] = None) -> L
         raise ValueError('The use of atom descriptors is inconsistent between training and prediction. If atom descriptors '
                          ' were used during training, they must be specified again during prediction using the same type of '
                          ' descriptors as before. If they were not used during training, they cannot be specified during prediction.')
+
+    # If bond features were used during training, they must be used when predicting and vice-versa
+    if (train_args.bond_features_path is None) != (args.bond_features_path is None):
+        raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
+                         'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
     print('Loading data')
     if smiles is not None:
@@ -83,7 +88,19 @@ def molecule_fingerprint(args: PredictArgs, smiles: List[List[str]] = None) -> L
         raise ValueError("Fingerprint generation only supports one model, cannot use an ensemble")
 
     model = load_checkpoint(args.checkpoint_paths[0], device=args.device)
+    scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(args.checkpoint_paths[0])
 
+    # Normalize features
+    if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_feature_scaling:
+        test_data.reset_features_and_targets()
+        if args.features_scaling:
+            test_data.normalize_features(features_scaler)
+        if train_args.atom_descriptor_scaling and args.atom_descriptors is not None:
+            test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+        if train_args.bond_feature_scaling and args.bond_features_size > 0:
+            test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+
+    # Make fingerprints
     model_preds = model_fingerprint(
         model=model,
         data_loader=test_data_loader
