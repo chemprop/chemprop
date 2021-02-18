@@ -9,7 +9,7 @@ from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
-from chemprop.features import set_extra_atom_fdim
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim
 
 
 @timeit()
@@ -37,11 +37,22 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                          'using the same type of features as before (with either --features_generator or '
                          '--features_path and using --no_features_scaling if applicable).')
 
-    # If atom-descriptors were used during training, they must be used when predicting and vice-versa
+    # if atom or bond features were scaled, the same must be done during prediction
+    if train_args.features_scaling != args.features_scaling:
+        raise ValueError('If scaling of the additional features was done during training, the'
+                         'same must be done during prediction.')
+
+    # If atom descriptors were used during training, they must be used when predicting and vice-versa
     if train_args.atom_descriptors != args.atom_descriptors:
-        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. If atom descriptors '
-                         ' were used during training, they must be specified again during prediction using the same type of '
-                         ' descriptors as before. If they were not used during training, they cannot be specified during prediction.')
+        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. '
+                         'If atom descriptors were used during training, they must be specified again '
+                         'during prediction using the same type of descriptors as before. '
+                         'If they were not used during training, they cannot be specified during prediction.')
+
+    # If bond features were used during training, they must be used when predicting and vice-versa
+    if (train_args.bond_features_path is None) != (args.bond_features_path is None):
+        raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
+                         'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
     # Update predict args with training arguments to create a merged args object
     for key, value in vars(train_args).items():
@@ -51,6 +62,9 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
+
+    if args.bond_features_path is not None:
+        set_extra_bond_fdim(train_args.bond_features_size)
 
     print('Loading data')
     if smiles is not None:
@@ -96,12 +110,17 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
         # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
-        scaler, features_scaler = load_scalers(checkpoint_path)
+        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(checkpoint_path)
 
         # Normalize features
-        if args.features_scaling:
+        if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_feature_scaling:
             test_data.reset_features_and_targets()
-            test_data.normalize_features(features_scaler)
+            if args.features_scaling:
+                test_data.normalize_features(features_scaler)
+            if train_args.atom_descriptor_scaling and args.atom_descriptors is not None:
+                test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+            if train_args.bond_feature_scaling and args.bond_features_size > 0:
+                test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
 
         # Make predictions
         model_preds = predict(

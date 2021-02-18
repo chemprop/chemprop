@@ -122,6 +122,9 @@ class MPNEncoder(nn.Module):
 
         # concatenate the atom descriptors
         if atom_descriptors_batch is not None:
+            if len(atom_hiddens) != len(atom_descriptors_batch):
+                raise ValueError(f'The number of atoms is different from the length of the extra atom features')
+
             atom_hiddens = torch.cat([atom_hiddens, atom_descriptors_batch], dim=1)     # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.atom_descriptors_layer(atom_hiddens)                    # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.dropout_layer(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
@@ -160,13 +163,17 @@ class MPN(nn.Module):
         :param bond_fdim: Bond feature vector dimension.
         """
         super(MPN, self).__init__()
-        self.atom_fdim = atom_fdim or get_atom_fdim()
-        self.bond_fdim = bond_fdim or get_bond_fdim(atom_messages=args.atom_messages)
+        self.atom_fdim = atom_fdim or get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_features)
+        self.bond_fdim = bond_fdim or get_bond_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
+                                                    overwrite_default_bond=args.overwrite_default_bond_features,
+                                                    atom_messages=args.atom_messages)
 
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.device = args.device
         self.atom_descriptors = args.atom_descriptors
+        self.overwrite_default_atom_features = args.overwrite_default_atom_features
+        self.overwrite_default_bond_features = args.overwrite_default_bond_features
 
         if self.features_only:
             return
@@ -180,7 +187,9 @@ class MPN(nn.Module):
     def forward(self,
                 batch: Union[List[List[str]], List[List[Chem.Mol]], BatchMolGraph],
                 features_batch: List[np.ndarray] = None,
-                atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                atom_descriptors_batch: List[np.ndarray] = None,
+                atom_features_batch: List[np.ndarray] = None,
+                bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes a batch of molecules.
 
@@ -188,16 +197,30 @@ class MPN(nn.Module):
                       :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
+        :param atom_features_batch: A list of numpy arrays containing additional atom features.
+        :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
         if type(batch[0]) != BatchMolGraph:
             # TODO: handle atom_descriptors_batch with multiple molecules per input
             if self.atom_descriptors == 'feature':
                 if len(batch[0]) > 1:
-                    raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                    raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
-                batch = [mol2graph(b, atom_descriptors_batch) for b in batch]
+                batch = [mol2graph(b, atom_features_batch, bond_features_batch,
+                                   overwrite_default_atom_features=self.overwrite_default_atom_features,
+                                   overwrite_default_bond_features=self.overwrite_default_bond_features)
+                         for b in batch]
+            elif bond_features_batch is not None:
+                if len(batch[0]) > 1:
+                    raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
+                                              'per input (i.e., number_of_molecules = 1).')
+
+                batch = [mol2graph(b, None, bond_features_batch,
+                                   overwrite_default_atom_features=self.overwrite_default_atom_features,
+                                   overwrite_default_bond_features=self.overwrite_default_bond_features)
+                         for b in batch]
             else:
                 batch = [mol2graph(b) for b in batch]
 
