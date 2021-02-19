@@ -260,6 +260,28 @@ chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/
 
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
+## Encode Fingerprint Latent Representation
+
+To load a trained model and encode the fingerprint latent representation of molecules, run `fingerprint.py` and specify:
+* `--test_path <path>` Path to the data to predict on.
+* A checkpoint by using either:
+  * `--checkpoint_dir <dir>` Directory where the model checkpoint is saved (i.e. `--save_dir` during training).
+  * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
+* `--preds_path` Path where a CSV file containing the encoded fingerprint vectors will be saved.
+
+SMILES from the provided file are encoded using the MPNN weights loaded from a trained checkpoint file. Fingerprint encoding uses the same set of arguments as making predictions. Unlike making predictions, fingerprint encoding only supports a single saved checkpoint file.
+
+For example:
+```
+chemprop_fingerprint --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_fingerprint.csv
+```
+or
+```
+chemprop_fingerprint --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_fingerprint.csv
+```
+
+If installed from source, `chemprop_fingerprint` can be replaced with `python fingerprint.py`.
+
 ## Interpreting
 
 It is often helpful to provide explanation of model prediction (i.e., this molecule is toxic because of this substructure). Given a trained model, you can interpret the model prediction using the following command:
