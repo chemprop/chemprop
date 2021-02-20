@@ -31,12 +31,12 @@ class Args(Tap):
     distance_measure: Literal['embedding', 'morgan', 'tanimoto'] = 'embedding'  # Distance measure to use to find nearest neighbors in train set
     checkpoint_path: str = None  # Path to .pt file containing a model checkpoint (only needed for distance_measure == "embedding")
     num_neighbors: int = 5  # Number of neighbors to search for each molecule
-    batch_size: int = 50  # Batch size when making prediction
+    batch_size: int = 50  # Batch size when making predictions
     smiles_column: str = None # Columns in dataset CSV file containing SMILES
 
 
-def find_similar_mols(test_smiles: List[List[str]],
-                      train_smiles: List[List[str]],
+def find_similar_mols(test_smiles: List[str],
+                      train_smiles: List[str],
                       distance_measure: str,
                       model: MoleculeModel = None,
                       num_neighbors: int = None,
