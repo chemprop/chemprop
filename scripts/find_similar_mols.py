@@ -69,8 +69,8 @@ def find_similar_mols(test_smiles: List[str],
         metric = 'jaccard'
     elif distance_measure == 'tanimoto':
         # Generate RDKit topological fingerprints
-        test_fps = [Chem.RDKFingerprint(m.mol) for m in tqdm(test_data)]
-        train_fps = [Chem.RDKFingerprint(m.mol) for m in tqdm(train_data)]
+        test_fps = [Chem.RDKFingerprint(m.mol[0]) for m in tqdm(test_data)]
+        train_fps = [Chem.RDKFingerprint(m.mol[0]) for m in tqdm(train_data)]
 
         # Compute pairwise similarity
         print('Computing distances')
@@ -169,6 +169,7 @@ def save_similar_mols(test_path: str,
     :return: A list of OrderedDicts containing the test smiles, the num_neighbors nearest training smiles,
     and other relevant distance info.
     """
+
     # Find similar molecules
     similar_mols = find_similar_mols_from_file(
         test_path=test_path,
