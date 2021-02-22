@@ -562,6 +562,8 @@ class PredictArgs(CommonArgs):
     """Path to CSV file where predictions will be saved."""
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
+    ensemble_variance: bool = False
+    """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
 
     @property
     def ensemble_size(self) -> int:
