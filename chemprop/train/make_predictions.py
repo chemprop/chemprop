@@ -11,7 +11,6 @@ from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, Mo
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim
 
-
 @timeit()
 def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
     """
@@ -112,8 +111,12 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         num_workers=args.num_workers
     )
 
+    # Partial results for variance robust calculation.
+    if args.ensemble_variance:
+        all_preds = np.zeros((len(test_data), num_tasks, len(args.checkpoint_paths)))
+
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
-    for checkpoint_path in tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths)):
+    for index, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
         # Load model and scalers
         model = load_checkpoint(checkpoint_path, device=args.device)
         scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(checkpoint_path)
@@ -135,14 +138,22 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             scaler=scaler
         )
         sum_preds += np.array(model_preds)
+        if args.ensemble_variance:
+            all_preds[:, :, index] = model_preds
 
     # Ensemble predictions
     avg_preds = sum_preds / len(args.checkpoint_paths)
     avg_preds = avg_preds.tolist()
 
+    if args.ensemble_variance:
+        all_epi_uncs = np.var(all_preds, axis=2)
+        all_epi_uncs = all_epi_uncs.tolist()
+
     # Save predictions
     print(f'Saving predictions to {args.preds_path}')
     assert len(test_data) == len(avg_preds)
+    if args.ensemble_variance:
+        assert len(test_data) == len(all_epi_uncs)
     makedirs(args.preds_path, isfile=True)
 
     # Get prediction column names
@@ -155,6 +166,8 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     for full_index, datapoint in enumerate(full_data):
         valid_index = full_to_valid_indices.get(full_index, None)
         preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
+        if args.ensemble_variance:
+            epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
 
         # If extra columns have been dropped, add back in SMILES columns
         if args.drop_extra_columns:
@@ -166,8 +179,13 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                 datapoint.row[column] = smiles
 
         # Add predictions columns
-        for pred_name, pred in zip(task_names, preds):
-            datapoint.row[pred_name] = pred
+        if args.ensemble_variance:
+            for pred_name, pred, epi_unc in zip(task_names, preds, epi_uncs):
+                datapoint.row[pred_name] = pred
+                datapoint.row[pred_name+'_epi_unc'] = epi_unc
+        else:
+            for pred_name, pred in zip(task_names, preds):
+                datapoint.row[pred_name] = pred
 
     # Save
     with open(args.preds_path, 'w') as f:

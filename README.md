@@ -26,7 +26,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
 - [Web Interface](#web-interface)
 - [Data](#data)
 - [Training](#training)
-  * [Train/Validation/Test Splits](#train-validation-test-splits)
+  * [Train/Validation/Test Splits](#trainvalidationtest-splits)
   * [Cross validation](#cross-validation)
   * [Ensembling](#ensembling)
   * [Hyperparameter Optimization](#hyperparameter-optimization)
@@ -36,7 +36,9 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
     * [Custom Features](#custom-features)
     * [Atomic Features](#atomic-features)
 - [Predicting](#predicting)
-- [Interpreting Model Prediction](#Interpreting)
+  * [Epistemic Uncertainty](#epistemic-uncertainty)
+- [Encode Fingerprint Latent Representation](encode-fingerprint-latent-representation)
+- [Interpreting Model Prediction](#interpreting)
 - [TensorBoard](#tensorboard)
 - [Results](#results)
 
@@ -259,6 +261,10 @@ chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/
 ```
 
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
+
+### Epistemic Uncertainty
+
+One method of obtaining the epistemic uncertainty of a prediction is to calculate the variance of an ensemble of models. To calculate these variances and write them as an additional column in the `--preds_path` file, use `--ensemble_variance`.
 
 ## Encode Fingerprint Latent Representation
 
