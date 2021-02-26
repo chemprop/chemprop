@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
-from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers
+from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers, update_prediction_args
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.models import MoleculeModel
 
@@ -23,30 +23,10 @@ def molecule_fingerprint(args: PredictArgs, smiles: List[List[str]] = None) -> L
 
     print('Loading training args')
     train_args = load_args(args.checkpoint_paths[0])
-    num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
     # Update args with training arguments
-    for key, value in vars(train_args).items():
-        if not hasattr(args, key):
-            setattr(args, key, value)
+    update_prediction_args(predict_args=args, train_args=train_args, validate_feature_sources=False)
     args: Union[PredictArgs, TrainArgs]
-
-    # Same number of molecules must be used in training as in making predictions
-    if train_args.number_of_molecules != args.number_of_molecules:
-        raise ValueError('A different number of molecules was used in training '
-                        f'model than is specified for prediction, {train_args.number_of_molecules} '
-                         'smiles fields must be provided')
-
-    # If atom-descriptors were used during training, they must be used when predicting and vice-versa
-    if train_args.atom_descriptors != args.atom_descriptors:
-        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. If atom descriptors '
-                         ' were used during training, they must be specified again during prediction using the same type of '
-                         ' descriptors as before. If they were not used during training, they cannot be specified during prediction.')
-
-    # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (args.bond_features_path is None):
-        raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
-                         'descriptors for training, please specify a path to new bond descriptors for prediction.')
 
     print('Loading data')
     if smiles is not None:
