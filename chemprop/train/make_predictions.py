@@ -8,7 +8,7 @@ from tqdm import tqdm
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit
+from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim
 
 @timeit()
@@ -28,41 +28,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     train_args = load_args(args.checkpoint_paths[0])
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
-    # If features were used during training, they must be used when predicting
-    if ((train_args.features_path is not None or train_args.features_generator is not None)
-            and args.features_path is None
-            and args.features_generator is None):
-        raise ValueError('Features were used during training so they must be specified again during prediction '
-                         'using the same type of features as before (with either --features_generator or '
-                         '--features_path and using --no_features_scaling if applicable).')
-    
-    # Same number of molecules must be used in training as in making predictions
-    if train_args.number_of_molecules != args.number_of_molecules:
-        raise ValueError('A different number of molecules was used in training '
-                        f'model than is specified for prediction, {train_args.number_of_molecules} '
-                         'smiles fields must be provided')
-
-    # if atom or bond features were scaled, the same must be done during prediction
-    if train_args.features_scaling != args.features_scaling:
-        raise ValueError('If scaling of the additional features was done during training, the'
-                         'same must be done during prediction.')
-
-    # If atom descriptors were used during training, they must be used when predicting and vice-versa
-    if train_args.atom_descriptors != args.atom_descriptors:
-        raise ValueError('The use of atom descriptors is inconsistent between training and prediction. '
-                         'If atom descriptors were used during training, they must be specified again '
-                         'during prediction using the same type of descriptors as before. '
-                         'If they were not used during training, they cannot be specified during prediction.')
-
-    # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (args.bond_features_path is None):
-        raise ValueError('The use of bond descriptors is different between training and prediction. If you used bond'
-                         'descriptors for training, please specify a path to new bond descriptors for prediction.')
-
-    # Update predict args with training arguments to create a merged args object
-    for key, value in vars(train_args).items():
-        if not hasattr(args, key):
-            setattr(args, key, value)
+    update_prediction_args(predict_args=args, train_args=train_args)
     args: Union[PredictArgs, TrainArgs]
 
     if args.atom_descriptors == 'feature':
