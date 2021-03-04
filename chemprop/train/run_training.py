@@ -1,3 +1,4 @@
+import json
 from logging import Logger
 import os
 from typing import Dict, List
@@ -319,6 +320,10 @@ def run_training(args: TrainArgs,
         if args.show_individual_scores:
             for task_name, ensemble_score in zip(args.task_names, scores):
                 info(f'Ensemble test {task_name} {metric} = {ensemble_score:.6f}')
+
+    # Save scores
+    with open(os.path.join(args.save_dir, 'test_scores.json'), 'w') as f:
+        json.dump(ensemble_scores, f, indent=4, sort_keys=True)
 
     # Optionally save test preds
     if args.save_preds:

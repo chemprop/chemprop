@@ -273,6 +273,11 @@ class TrainArgs(CommonArgs):
     """
     save_preds: bool = False
     """Whether to save test split predictions during training."""
+    resume_experiment: bool = False
+    """
+    Whether to resume the experiment.
+    Loads test results from any folds that have already been completed and skips training those folds.
+    """
 
     # Model arguments
     bias: bool = False
