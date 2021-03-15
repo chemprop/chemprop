@@ -185,7 +185,7 @@ class MPN(nn.Module):
                                           for _ in range(args.number_of_molecules)])
 
     def forward(self,
-                batch: Union[List[List[str]], List[List[Chem.Mol]], BatchMolGraph],
+                batch: Union[List[List[str]], List[List[Chem.Mol]], List[BatchMolGraph]],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
@@ -194,7 +194,7 @@ class MPN(nn.Module):
         Encodes a batch of molecules.
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
-                      :class:`~chemprop.features.featurization.BatchMolGraph`.
+                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
