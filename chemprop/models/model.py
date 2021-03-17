@@ -135,7 +135,7 @@ class MoleculeModel(nn.Module):
         return self.encoder(batch, features_batch, atom_descriptors_batch)
 
     def forward(self,
-                batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                batch: Union[List[List[str]], List[List[Chem.Mol]], List[BatchMolGraph]],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
@@ -143,8 +143,8 @@ class MoleculeModel(nn.Module):
         """
         Runs the :class:`MoleculeModel` on input.
 
-        :param batch: A list of SMILES, a list of RDKit molecules, or a
-                      :class:`~chemprop.features.featurization.BatchMolGraph`.
+        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
+                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
