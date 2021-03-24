@@ -195,6 +195,8 @@ class MPN(nn.Module):
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       list of :class:`~chemprop.features.featurization.BatchMolGraph`.
+                      The outer list is of length :code:`number_of_molecules` (number of molecules per datapoint), 
+                      the inner list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
@@ -204,7 +206,7 @@ class MPN(nn.Module):
         if type(batch[0]) != BatchMolGraph:
             # TODO: handle atom_descriptors_batch with multiple molecules per input
             if self.atom_descriptors == 'feature':
-                if len(batch[0]) > 1:
+                if len(batch) > 1:
                     raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
@@ -213,7 +215,7 @@ class MPN(nn.Module):
                                    overwrite_default_bond_features=self.overwrite_default_bond_features)
                          for b in batch]
             elif bond_features_batch is not None:
-                if len(batch[0]) > 1:
+                if len(batch) > 1:
                     raise NotImplementedError('Atom/bond descriptors are currently only supported with one molecule '
                                               'per input (i.e., number_of_molecules = 1).')
 
