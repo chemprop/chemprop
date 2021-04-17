@@ -522,6 +522,55 @@ class ChempropTests(TestCase):
                 )
                 self.assertEqual(response.status_code, 200)
 
+    @parameterized.expand([
+        (
+                'chemprop_reaction',
+                'chemprop',
+                2.025709,
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv')]
+        ),
+        (
+                'chemprop_scaffold_split',
+                'chemprop',
+                1.890371,
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--split_type', 'scaffold_balanced']
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                2.848752,
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_reaction_explicit_h',
+                'chemprop',
+                2.139865,
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h', '--empty_cache']
+         )
+    ])
+    def test_train_single_task_regression_reaction(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'rmse'
+            self.train(
+                dataset_type = 'regression',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 1)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
 
 if __name__ == '__main__':
     unittest.main()
