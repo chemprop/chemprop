@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import numpy as np
 from rdkit import Chem
@@ -99,7 +99,7 @@ class MoleculeModel(nn.Module):
         self.ffn = nn.Sequential(*ffn)
 
     def featurize(self,
-                  batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                  batch: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]], BatchMolGraph],
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None,
                   atom_features_batch: List[np.ndarray] = None,
@@ -119,7 +119,7 @@ class MoleculeModel(nn.Module):
                                           atom_features_batch, bond_features_batch))
 
     def fingerprint(self,
-                  batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                  batch: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]], BatchMolGraph],
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
@@ -135,7 +135,7 @@ class MoleculeModel(nn.Module):
         return self.encoder(batch, features_batch, atom_descriptors_batch)
 
     def forward(self,
-                batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                batch: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]], BatchMolGraph],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
