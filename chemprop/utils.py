@@ -453,10 +453,12 @@ def save_smiles_splits(data_path: str,
                        train_data: MoleculeDataset = None,
                        val_data: MoleculeDataset = None,
                        test_data: MoleculeDataset = None,
+                       logger: logging.Logger = None,
                        smiles_columns: List[str] = None) -> None:
     """
     Saves a csv file with train/val/test splits of target data and additional features.
-    Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries with same SMILES.
+    Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries 
+    with the same SMILES or entries entered from a path other than the main data path, such as a separate test path.
 
     :param data_path: Path to data CSV file.
     :param save_dir: Path where pickle files will be saved.
@@ -467,9 +469,13 @@ def save_smiles_splits(data_path: str,
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
     :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
+    :param logger: A logger for recording output.
     """
     makedirs(save_dir)
     
+    info = logger.info if logger is not None else print
+    save_split_indices = True
+
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=data_path, smiles_columns=smiles_columns)
 
@@ -479,6 +485,10 @@ def save_smiles_splits(data_path: str,
         indices_by_smiles = {}
         for i, row in enumerate(tqdm(reader)):
             smiles = tuple([row[column] for column in smiles_columns])
+            if smiles in indices_by_smiles:
+                save_split_indices = False
+                info('Warning: Repeated SMILES found in data, pickle file of split indices cannot distinguish entries and will not be generated.')
+                break
             indices_by_smiles[smiles] = i
 
     if task_names is None:
@@ -520,14 +530,23 @@ def save_smiles_splits(data_path: str,
                 writer.writerow(features_header)
                 writer.writerows(dataset_features)
 
-        split_indices = []
-        for smiles in dataset.smiles():
-            split_indices.append(indices_by_smiles.get(tuple(smiles)))
-            split_indices = sorted(split_indices)
-        all_split_indices.append(split_indices)
+        if save_split_indices:
+            split_indices = []
+            for smiles in dataset.smiles():
+                index = indices_by_smiles.get(tuple(smiles))
+                if index is None:
+                    save_split_indices = False
+                    info(f'Warning: SMILES string in {name} could not be found in data file, and likely came from a secondary data file. '
+                    'The pickle file of split indices can only indicate indices for a single file and will not be generated.')
+                    break
+                split_indices.append(index)
+            else:
+                split_indices.sort()
+                all_split_indices.append(split_indices)
 
-    with open(os.path.join(save_dir, 'split_indices.pckl'), 'wb') as f:
-        pickle.dump(all_split_indices, f)
+    if save_split_indices:
+        with open(os.path.join(save_dir, 'split_indices.pckl'), 'wb') as f:
+            pickle.dump(all_split_indices, f)
 
 
 def update_prediction_args(predict_args: PredictArgs,
