@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import numpy as np
 from rdkit import Chem
@@ -99,7 +99,7 @@ class MoleculeModel(nn.Module):
         self.ffn = nn.Sequential(*ffn)
 
     def featurize(self,
-                  batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                  batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None,
                   atom_features_batch: List[np.ndarray] = None,
@@ -107,8 +107,10 @@ class MoleculeModel(nn.Module):
         """
         Computes feature vectors of the input by running the model except for the last layer.
 
-        :param batch: A list of SMILES, a list of RDKit molecules, or a
-                      :class:`~chemprop.features.featurization.BatchMolGraph`.
+        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
+                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
+                      The outer list is of length :code:`number_of_molecules` (number of molecules per datapoint),
+                      the inner list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
@@ -119,15 +121,17 @@ class MoleculeModel(nn.Module):
                                           atom_features_batch, bond_features_batch))
 
     def fingerprint(self,
-                  batch: Union[List[str], List[Chem.Mol], BatchMolGraph],
+                  batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
         """
         Encodes the fingerprint vectors of the input molecules by passing the inputs through the MPNN and returning
         the latent representation before the FFNN.
 
-        :param batch: A list of SMILES, a list of RDKit molecules, or a
-                      :class:`~chemprop.features.featurization.BatchMolGraph`.
+        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
+                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
+                      The outer list is of length :code:`number_of_molecules` (number of molecules per datapoint),
+                      the inner list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :return: The fingerprint vectors calculated through the MPNN.
@@ -135,7 +139,7 @@ class MoleculeModel(nn.Module):
         return self.encoder(batch, features_batch, atom_descriptors_batch)
 
     def forward(self,
-                batch: Union[List[List[str]], List[List[Chem.Mol]], List[BatchMolGraph]],
+                batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
@@ -145,6 +149,8 @@ class MoleculeModel(nn.Module):
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       list of :class:`~chemprop.features.featurization.BatchMolGraph`.
+                      The outer list is of length :code:`number_of_molecules` (number of molecules per datapoint),
+                      the inner list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.

@@ -31,7 +31,9 @@ def split_indices(all_indices: List[int],
                   shuffle: bool = True) -> List[List[int]]:
     num_data = len(all_indices)
     if scaffold:
-        scaffold_to_indices = scaffold_to_smiles(data.mols(), use_indices=True)
+        if data.number_of_molecules > 1:
+            raise ValueError('Cannot perform a scaffold split with more than one molecule per datapoint.')
+        scaffold_to_indices = scaffold_to_smiles(data.mols(flatten=True), use_indices=True)
         index_sets = sorted(list(scaffold_to_indices.values()),
                             key=lambda index_set: len(index_set),
                             reverse=True)

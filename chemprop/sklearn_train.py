@@ -76,7 +76,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
-    scores = []
+    scores = {}
     num_tasks = train_data.num_tasks()
     for task_num in trange(num_tasks):
         # Only get features and targets for molecules where target is not None
@@ -105,7 +105,10 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             dataset_type=args.dataset_type,
             logger=logger
         )
-        scores.append(score[0])
+        for metric in metrics:
+            if metric not in scores:
+                scores[metric] = []
+            scores[metric].append(score[metric][0])
 
     return scores
 

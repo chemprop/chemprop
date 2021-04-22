@@ -106,6 +106,7 @@ def run_training(args: TrainArgs,
             val_data=val_data,
             test_data=test_data,
             smiles_columns=args.smiles_columns,
+            logger=logger,
         )
 
     if args.features_scaling:
