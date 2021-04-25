@@ -145,6 +145,10 @@ class CommonArgs(Tap):
         """
         return not self.no_features_scaling
 
+    @features_scaling.setter
+    def features_scaling(self, features_scaling: bool) -> None:
+        self.no_features_scaling = not features_scaling
+
     @property
     def atom_features_size(self) -> int:
         """The size of the atom features."""
