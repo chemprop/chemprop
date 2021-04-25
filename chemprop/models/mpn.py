@@ -195,8 +195,8 @@ class MPN(nn.Module):
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       list of :class:`~chemprop.features.featurization.BatchMolGraph`.
-                      The outer list is of length :code:`number_of_molecules` (number of molecules per datapoint), 
-                      the inner list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch).
+                      The outer list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch),
+                      the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
