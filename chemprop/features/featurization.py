@@ -523,8 +523,8 @@ class BatchMolGraph:
 
 
 def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]]],
-              atom_features_batch: List[np.array] = None,
-              bond_features_batch: List[np.array] = None,
+              atom_features_batch: List[np.array] = (None,),
+              bond_features_batch: List[np.array] = (None,),
               overwrite_default_atom_features: bool = False,
               overwrite_default_bond_features: bool = False
               ) -> BatchMolGraph:
