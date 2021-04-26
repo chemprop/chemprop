@@ -1,5 +1,6 @@
 from collections import defaultdict
 import csv
+import json
 from logging import Logger
 import os
 import sys
@@ -91,7 +92,17 @@ def cross_validate(args: TrainArgs,
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
         data.reset_features_and_targets()
-        model_scores = train_func(args, data, logger)
+
+        # If resuming experiment, load results from trained models
+        test_scores_path = os.path.join(args.save_dir, 'test_scores.json')
+        if args.resume_experiment and os.path.exists(test_scores_path):
+            print('Loading scores')
+            with open(test_scores_path) as f:
+                model_scores = json.load(f)
+        # Otherwise, train the models
+        else:
+            model_scores = train_func(args, data, logger)
+
         for metric, scores in model_scores.items():
             all_scores[metric].append(scores)
     all_scores = dict(all_scores)
