@@ -64,7 +64,7 @@ def evaluate_predictions(preds: List[List[float]],
             continue
 
         for metric, metric_func in metric_to_func.items():
-            if dataset_type == 'multiclass':
+            if dataset_type == 'multiclass' and metric == 'cross_entropy':
                 results[metric].append(metric_func(valid_targets[i], valid_preds[i],
                                                    labels=list(range(len(valid_preds[i][0])))))
             else:
