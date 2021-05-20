@@ -49,7 +49,15 @@ class MoleculeModel(nn.Module):
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
         """
         self.encoder = MPN(args)
-
+              
+        if args.checkpoint_frzn is not None:
+            if args.freeze_first_only: # Freeze only the first encoder
+                for param in list(self.encoder.encoder.children())[0].parameters():
+                    param.requires_grad=False
+            else: # Freeze all encoders
+                for param in self.encoder.parameters():
+                    param.requires_grad=False                   
+                        
     def create_ffn(self, args: TrainArgs) -> None:
         """
         Creates the feed-forward layers for the model.
@@ -94,9 +102,16 @@ class MoleculeModel(nn.Module):
                 dropout,
                 nn.Linear(args.ffn_hidden_size, self.output_size),
             ])
+            
 
         # Create FFN model
         self.ffn = nn.Sequential(*ffn)
+        
+        if args.checkpoint_frzn is not None:
+            if args.frzn_ffn_layers >0:
+                for param in list(self.ffn.parameters())[0:2*args.frzn_ffn_layers]: # Freeze weights and bias for given number of layers
+                    param.requires_grad=False
+
 
     def featurize(self,
                   batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],

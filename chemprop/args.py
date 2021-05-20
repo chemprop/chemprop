@@ -265,6 +265,8 @@ class TrainArgs(CommonArgs):
     """Additional metrics to use to evaluate the model. Not used for early stopping."""
     save_dir: str = None
     """Directory where model checkpoints will be saved."""
+    checkpoint_frzn: str = None
+    """Path to model checkpoint file to be loaded for overwriting and freezing weights."""
     save_smiles_splits: bool = False
     """Save smiles for each train/val/test splits for prediction convenience later."""
     test: bool = False
@@ -383,6 +385,18 @@ class TrainArgs(CommonArgs):
     """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
     no_bond_features_scaling: bool = False
     """Turn off atom feature scaling."""
+    frzn_ffn_layers: int = 0
+    """
+    Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), 
+    where n is specified in the input.
+    Automatically also freezes mpnn weights. 
+    """
+    freeze_first_only: bool = False
+    """
+    Determines whether or not to use checkpoint_frzn for just the first encoder.
+    Default (False) is to use the checkpoint to freeze all encoders.
+    (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)
+    """
 
     def __init__(self, *args, **kwargs) -> None:
         super(TrainArgs, self).__init__(*args, **kwargs)
