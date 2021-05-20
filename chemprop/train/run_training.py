@@ -17,9 +17,9 @@ from chemprop.args import TrainArgs
 from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
-from chemprop.nn_utils import param_count
+from chemprop.nn_utils import param_count, param_count_all
 from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint, makedirs, \
-    save_checkpoint, save_smiles_splits
+    save_checkpoint, save_smiles_splits, load_frzn_model
 
 
 def run_training(args: TrainArgs,
@@ -200,9 +200,20 @@ def run_training(args: TrainArgs,
         else:
             debug(f'Building model {model_idx}')
             model = MoleculeModel(args)
-
+            
+        # Optionally, overwrite weights:
+        if args.checkpoint_frzn is not None:
+            debug(f'Loading and freezing parameters from {args.checkpoint_frzn}.')
+            model = load_frzn_model(model=model,path=args.checkpoint_frzn, current_args=args, logger=logger)     
+        
         debug(model)
-        debug(f'Number of parameters = {param_count(model):,}')
+        
+        if args.checkpoint_frzn is not None:
+            debug(f'Number of unfrozen parameters = {param_count(model):,}')
+            debug(f'Total number of parameters = {param_count_all(model):,}')
+        else:
+            debug(f'Number of parameters = {param_count_all(model):,}')
+        
         if args.cuda:
             debug('Moving model to cuda')
         model = model.to(args.device)

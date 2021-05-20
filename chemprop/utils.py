@@ -9,6 +9,7 @@ import pickle
 import re
 from time import time
 from typing import Any, Callable, List, Tuple, Union
+import collections
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
     roc_auc_score, accuracy_score, log_loss
@@ -145,6 +146,125 @@ def load_checkpoint(path: str,
     return model
 
 
+def overwrite_state_dict(loaded_param_name: str,
+                        model_param_name: str,
+                        loaded_state_dict: collections.OrderedDict,
+                        model_state_dict: collections.OrderedDict,
+                        logger: logging.Logger = None) -> collections.OrderedDict:
+    """
+    Overwrites a given parameter in the current model with the loaded model.
+    :param loaded_param_name: name of parameter in checkpoint model.
+    :param model_param_name: name of parameter in current model.
+    :param loaded_state_dict: state_dict for checkpoint model.
+    :param model_state_dict: state_dict for current model.
+    :param logger: A logger.
+    :return: The updated state_dict for the current model. 
+    """
+    debug = logger.debug if logger is not None else print
+
+    
+    if model_param_name not in model_state_dict:
+        debug(f'Pretrained parameter "{model_param_name}" cannot be found in model parameters.')
+        
+    elif model_state_dict[model_param_name].shape != loaded_state_dict[loaded_param_name].shape:
+        debug(f'Pretrained parameter "{loaded_param_name}" '
+              f'of shape {loaded_state_dict[loaded_param_name].shape} does not match corresponding '
+              f'model parameter of shape {model_state_dict[model_param_name].shape}.')
+    
+    else:
+        debug(f'Loading pretrained parameter "{model_param_name}".')
+        model_state_dict[model_param_name] = loaded_state_dict[loaded_param_name]    
+    
+    return model_state_dict
+
+def load_frzn_model(model: torch.nn,
+                    path: str,
+                    current_args: Namespace = None,
+                    cuda: bool = None,
+                    logger: logging.Logger = None) -> MoleculeModel:
+    """
+    Loads a model checkpoint.
+    :param path: Path where checkpoint is saved.
+    :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
+    :param cuda: Whether to move model to cuda.
+    :param logger: A logger.
+    :return: The loaded MoleculeModel.
+    """
+    debug = logger.debug if logger is not None else print
+
+    loaded_mpnn_model = torch.load(path, map_location=lambda storage, loc: storage)
+    loaded_state_dict = loaded_mpnn_model['state_dict']
+    loaded_args = loaded_mpnn_model['args']
+
+    model_state_dict = model.state_dict()
+    
+    if loaded_args.number_of_molecules==1 & current_args.number_of_molecules==1:      
+        encoder_param_names = ['encoder.encoder.0.W_i.weight', 'encoder.encoder.0.W_h.weight', 'encoder.encoder.0.W_o.weight', 'encoder.encoder.0.W_o.bias']
+        if current_args.checkpoint_frzn is not None:
+            # Freeze the MPNN
+            for param_name in encoder_param_names:
+                model_state_dict = overwrite_state_dict(param_name,param_name,loaded_state_dict,model_state_dict)
+            
+        if current_args.frzn_ffn_layers > 0:         
+            ffn_param_names = [['ffn.'+str(i*3+1)+'.weight','ffn.'+str(i*3+1)+'.bias'] for i in range(current_args.frzn_ffn_layers)]
+            ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
+            
+            # Freeze MPNN and FFN layers
+            for param_name in encoder_param_names+ffn_param_names:
+                model_state_dict = overwrite_state_dict(param_name,param_name,loaded_state_dict,model_state_dict)               
+            
+        if current_args.freeze_first_only:
+            debug(f'WARNING: --freeze_first_only flag cannot be used with number_of_molecules=1 (flag is ignored)')
+            
+    elif (loaded_args.number_of_molecules==1) & (current_args.number_of_molecules>1):
+        
+        if (current_args.checkpoint_frzn is not None) & (current_args.freeze_first_only) & (not (current_args.frzn_ffn_layers > 0)): # Only freeze first MPNN
+            encoder_param_names = ['encoder.encoder.0.W_i.weight', 'encoder.encoder.0.W_h.weight', 'encoder.encoder.0.W_o.weight', 'encoder.encoder.0.W_o.bias']
+            for param_name in encoder_param_names:
+                model_state_dict = overwrite_state_dict(param_name,param_name,loaded_state_dict,model_state_dict)
+                
+        if (current_args.checkpoint_frzn is not None) & (not current_args.freeze_first_only) & (not (current_args.frzn_ffn_layers > 0)): # Duplicate encoder from frozen checkpoint and overwrite all encoders
+            loaded_encoder_param_names = ['encoder.encoder.0.W_i.weight', 'encoder.encoder.0.W_h.weight', 'encoder.encoder.0.W_o.weight', 'encoder.encoder.0.W_o.bias']*current_args.number_of_molecules
+            model_encoder_param_names = [['encoder.encoder.'+str(mol_num)+'.W_i.weight', 'encoder.encoder.'+str(mol_num)+'.W_h.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.bias'] for mol_num in range(current_args.number_of_molecules)]
+            model_encoder_param_names = [item for sublist in model_encoder_param_names for item in sublist]
+            for loaded_param_name,model_param_name in zip(loaded_encoder_param_names,model_encoder_param_names):
+                model_state_dict = overwrite_state_dict(loaded_param_name,model_param_name,loaded_state_dict,model_state_dict)
+        
+        if current_args.frzn_ffn_layers > 0: # Duplicate encoder from frozen checkpoint and overwrite all encoders + FFN layers
+            raise Exception ('Number of molecules in checkpoint_frzn must be equal to current model for ffn layers to be frozen')
+            
+    elif (loaded_args.number_of_molecules>1 )& (current_args.number_of_molecules>1):
+        if (loaded_args.number_of_molecules) !=( current_args.number_of_molecules):
+            raise Exception('Number of molecules in checkpoint_frzn ({}) must match current model ({}) OR equal to 1.'.format(loaded_args.number_of_molecules,current_args.number_of_molecules))
+        
+        if current_args.freeze_first_only:
+            raise Exception('Number of molecules in checkpoint_frzn ({}) must be equal to 1 for freeze_first_only to be used.'.format(loaded_args.number_of_molecules))
+       
+        if (current_args.checkpoint_frzn is not None) & (not (current_args.frzn_ffn_layers > 0)):
+            encoder_param_names = [['encoder.encoder.'+str(mol_num)+'.W_i.weight', 'encoder.encoder.'+str(mol_num)+'.W_h.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.bias'] for mol_num in range(current_args.number_of_molecules)]
+            encoder_param_names = [item for sublist in encoder_param_names for item in sublist]
+            
+            for param_name in encoder_param_names:
+                model_state_dict = overwrite_state_dict(param_name,param_name,loaded_state_dict,model_state_dict)
+        
+        if current_args.frzn_ffn_layers > 0:
+                
+            encoder_param_names = [['encoder.encoder.'+str(mol_num)+'.W_i.weight', 'encoder.encoder.'+str(mol_num)+'.W_h.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.weight', 'encoder.encoder.'+str(mol_num)+'.W_o.bias'] for mol_num in range(current_args.number_of_molecules)]
+            encoder_param_names = [item for sublist in encoder_param_names for item in sublist]            
+            ffn_param_names = [['ffn.'+str(i*3+1)+'.weight','ffn.'+str(i*3+1)+'.bias'] for i in range(current_args.frzn_ffn_layers)]
+            ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
+            
+            for param_name in encoder_param_names + ffn_param_names:
+                model_state_dict = overwrite_state_dict(param_name,param_name,loaded_state_dict,model_state_dict)    
+        
+        if current_args.frzn_ffn_layers >= current_args.ffn_num_layers:
+            raise Exception('Number of frozen FFN layers must be less than the number of FFN layers')
+    
+    # Load pretrained weights
+    model.load_state_dict(model_state_dict)
+    
+    return model
+    
 def load_scalers(path: str) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]:
     """
     Loads the scalers a model was trained with.

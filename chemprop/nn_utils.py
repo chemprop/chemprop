@@ -40,6 +40,15 @@ def param_count(model: nn.Module) -> int:
     """
     return sum(param.numel() for param in model.parameters() if param.requires_grad)
 
+def param_count_all(model: nn.Module) -> int:
+    """
+    Determines number of trainable parameters.
+
+    :param model: An PyTorch model.
+    :return: The number of trainable parameters in the model.
+    """
+    return sum(param.numel() for param in model.parameters())
+
 
 def index_select_ND(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     """
