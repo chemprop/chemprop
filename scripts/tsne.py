@@ -29,6 +29,7 @@ class Args(Tap):
     plot_molecules: bool = False  # Whether to plot images of molecules instead of points
     max_per_dataset: int = 10000  # Maximum number of molecules per dataset; larger datasets will be subsampled to this size
     save_path: str  # Path to a .png file where the t-SNE plot will be saved
+    cluster: bool = False  # Whether to create new clusters from all smiles, ignoring original csv groupings
 
 
 def compare_datasets_tsne(args: Args):
@@ -69,6 +70,14 @@ def compare_datasets_tsne(args: Args):
     X = tsne.fit_transform(morgans)
     print(f'time = {time.time() - start:.2f} seconds')
 
+    if args.cluster:
+        import hdbscan  # pip install hdbscan
+        print('Running HDBSCAN')
+        start = time.time()
+        clusterer = hdbscan.HDBSCAN(min_cluster_size=5, gen_min_span_tree=True)
+        colors = clusterer.fit_predict(X)
+        print(f'time = {time.time() - start:.2f} seconds')
+
     print('Plotting t-SNE')
     x_min, x_max = np.min(X, axis=0), np.max(X, axis=0)
     X = (X - x_min) / (x_max - x_min)
@@ -83,21 +92,24 @@ def compare_datasets_tsne(args: Args):
     handles = []
     legend_kwargs = dict(loc='upper right', fontsize=fontsize)
 
-    for slc, color, label, size in zip(slices, args.colors, labels, args.sizes):
+    if args.cluster:
+        plt.scatter(X[:, 0], X[:, 1], s=150 * np.mean(args.sizes), c=colors, cmap='nipy_spectral')
+    else:
+        for slc, color, label, size in zip(slices, args.colors, labels, args.sizes):
+            if args.plot_molecules:
+                # Plots molecules
+                handles.append(mpatches.Patch(color=color, label=label))
+
+                for smile, (x, y) in zip(smiles[slc], X[slc]):
+                    img = Draw.MolsToGridImage([Chem.MolFromSmiles(smile)], molsPerRow=1, subImgSize=(200, 200))
+                    imagebox = offsetbox.AnnotationBbox(offsetbox.OffsetImage(img), (x, y), bboxprops=dict(color=color))
+                    ax.add_artist(imagebox)
+            else:
+                # Plots points
+                plt.scatter(X[slc, 0], X[slc, 1], s=150 * size, color=color, label=label)
+
         if args.plot_molecules:
-            # Plots molecules
-            handles.append(mpatches.Patch(color=color, label=label))
-
-            for smile, (x, y) in zip(smiles[slc], X[slc]):
-                img = Draw.MolsToGridImage([Chem.MolFromSmiles(smile)], molsPerRow=1, subImgSize=(200, 200))
-                imagebox = offsetbox.AnnotationBbox(offsetbox.OffsetImage(img), (x, y), bboxprops=dict(color=color))
-                ax.add_artist(imagebox)
-        else:
-            # Plots points
-            plt.scatter(X[slc, 0], X[slc, 1], s=150 * size, color=color, label=label)
-
-    if args.plot_molecules:
-        legend_kwargs['handles'] = handles
+            legend_kwargs['handles'] = handles
 
     plt.legend(**legend_kwargs)
     plt.xticks([]), plt.yticks([])
