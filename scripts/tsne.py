@@ -23,8 +23,7 @@ from chemprop.utils import makedirs
 class Args(Tap):
     smiles_paths: List[str]  # Path to .csv files containing smiles strings (with header)
     smiles_column: str = None  # Name of the column containing SMILES strings for the first data. By default, uses the first column.
-    colors: List[str] = ['red', 'green', 'orange', 'purple',
-                         'blue']  # Colors of the points associated with each dataset
+    colors: List[str] = ['red', 'green', 'orange', 'purple', 'blue']  # Colors of the points associated with each dataset
     sizes: List[float] = [1, 1, 1, 1, 1]  # Sizes of the points associated with each molecule
     scale: int = 1  # Scale of figure
     plot_molecules: bool = False  # Whether to plot images of molecules instead of points
