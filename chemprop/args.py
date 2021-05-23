@@ -233,6 +233,10 @@ class TrainArgs(CommonArgs):
     """Path to separate val set, optional."""
     separate_test_path: str = None
     """Path to separate test set, optional."""
+    data_weights_path: str = None
+    """Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function"""
+    target_weights: List[float] = None
+    """Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns."""
     split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined'] = 'random'
     """Method of splitting the data into train/val/test."""
     split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)

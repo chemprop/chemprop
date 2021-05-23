@@ -84,6 +84,9 @@ def cross_validate(args: TrainArgs,
 
     debug(f'Number of tasks = {args.num_tasks}')
 
+    if args.target_weights is not None and len(args.target_weights) != args.num_tasks:
+        raise ValueError('The number of provided target weights must match the number and order of the prediction tasks')
+
     # Run training on different random seeds for each fold
     all_scores = defaultdict(list)
     for fold_num in range(args.num_folds):

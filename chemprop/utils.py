@@ -643,8 +643,8 @@ def save_smiles_splits(data_path: str,
             for i, smiles in enumerate(dataset.smiles()):
                 writer.writerow(smiles + dataset_targets[i])
 
-        dataset_features = dataset.features()
         if features_path is not None:
+            dataset_features = dataset.features()
             with open(os.path.join(save_dir, f'{name}_features.csv'), 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(features_header)
@@ -663,6 +663,15 @@ def save_smiles_splits(data_path: str,
             else:
                 split_indices.sort()
                 all_split_indices.append(split_indices)
+
+        if name == 'train':
+            data_weights = dataset.data_weights()
+            if any([w != 1 for w in data_weights]):
+                with open(os.path.join(save_dir, f'{name}_weights.csv'),'w') as f:
+                    writer=csv.writer(f)
+                    writer.writerow(['data weights'])
+                    for weight in data_weights:
+                        writer.writerow([weight])
 
     if save_split_indices:
         with open(os.path.join(save_dir, 'split_indices.pckl'), 'wb') as f:

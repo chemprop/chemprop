@@ -45,12 +45,18 @@ def train(model: MoleculeModel,
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch = \
+        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, data_weights_batch = \
             batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
-            batch.atom_features(), batch.bond_features()
+            batch.atom_features(), batch.bond_features(), batch.data_weights()
 
         mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
         targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+
+        if args.target_weights is not None:
+            target_weights = torch.Tensor(args.target_weights)
+        else:
+            target_weights = torch.ones_like(targets)
+        data_weights = torch.Tensor(data_weights_batch).unsqueeze(1)
 
         # Run model
         model.zero_grad()
@@ -59,13 +65,13 @@ def train(model: MoleculeModel,
         # Move tensors to correct device
         mask = mask.to(preds.device)
         targets = targets.to(preds.device)
-        class_weights = torch.ones(targets.shape, device=preds.device)
+        target_weights = target_weights.to(preds.device)
 
         if args.dataset_type == 'multiclass':
             targets = targets.long()
-            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * class_weights * mask
+            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * target_weights * data_weights * mask
         else:
-            loss = loss_func(preds, targets) * class_weights * mask
+            loss = loss_func(preds, targets) * target_weights * data_weights * mask
         loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
