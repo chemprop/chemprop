@@ -66,6 +66,7 @@ def train(model: MoleculeModel,
         mask = mask.to(preds.device)
         targets = targets.to(preds.device)
         target_weights = target_weights.to(preds.device)
+        data_weights = data_weights.to(preds.device)
 
         if args.dataset_type == 'multiclass':
             targets = targets.long()
