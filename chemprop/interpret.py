@@ -179,8 +179,11 @@ def extract_subgraph(smiles: str, selected_atoms: Set[int]) -> Tuple[str, List[i
     mol = Chem.MolFromSmiles(smiles)
     Chem.Kekulize(mol)
     subgraph, roots = __extract_subgraph(mol, selected_atoms)
-    subgraph = Chem.MolToSmiles(subgraph, kekuleSmiles=True)
-    subgraph = Chem.MolFromSmiles(subgraph)
+    try:
+        subgraph = Chem.MolToSmiles(subgraph, kekuleSmiles=True)
+        subgraph = Chem.MolFromSmiles(subgraph)
+    except Exception:
+        subgraph = None
 
     mol = Chem.MolFromSmiles(smiles)  # de-kekulize
     if subgraph is not None and mol.HasSubstructMatch(subgraph):
