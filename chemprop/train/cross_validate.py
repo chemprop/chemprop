@@ -5,7 +5,7 @@ from logging import Logger
 import os
 import sys
 from typing import Callable, Dict, List, Tuple
-
+import subprocess
 import numpy as np
 import pandas as pd
 
@@ -54,7 +54,11 @@ def cross_validate(args: TrainArgs,
 
     # Save args
     makedirs(args.save_dir)
-    args.save(os.path.join(args.save_dir, 'args.json'))
+    try:
+        args.save(os.path.join(args.save_dir, 'args.json'))
+    except subprocess.CalledProcessError:
+        debug('Could not write the reproducibility section of the arguments to file, thus omitting this section.')
+        args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
 
     #set explicit H option and reaction option
     set_explicit_h(args.explicit_h)
