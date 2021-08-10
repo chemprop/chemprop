@@ -601,6 +601,13 @@ class TrainArgs(CommonArgs):
         if not self.bond_feature_scaling and self.bond_features_path is None:
             raise ValueError('Bond descriptor scaling is only possible if additional bond features are provided.')
 
+        # normalize target weights
+        if self.target_weights is not None:
+            avg_weight = sum(self.target_weights)/len(self.target_weights)
+            self.target_weights = [w/avg_weight for w in self.target_weights]
+            if min(self.target_weights) < 0:
+                raise ValueError('Provided target weights must be non-negative.')
+
 
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""

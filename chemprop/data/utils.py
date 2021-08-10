@@ -111,6 +111,11 @@ def get_data_weights(path: str) -> List[float]:
         next(reader) #skip header row
         for line in reader:
             weights.append(float(line[0]))
+    # normalize the data weights
+    avg_weight=sum(weights)/len(weights)
+    weights = [w/avg_weight for w in weights]
+    if min(weights) < 0:
+        raise ValueError('Data weights must be non-negative for each datapoint.')
     return weights
 
 
