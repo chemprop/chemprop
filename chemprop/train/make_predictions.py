@@ -73,6 +73,11 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         sum_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes))
     else:
         sum_preds = np.zeros((len(test_data), num_tasks))
+    if args.ensemble_variance or args.individual_ensemble_predictions:
+        if args.dataset_type == 'multiclass':
+            all_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes, len(args.checkpoint_paths)))
+        else:
+            all_preds = np.zeros((len(test_data), num_tasks, len(args.checkpoint_paths)))
 
     # Create data loader
     test_data_loader = MoleculeDataLoader(
@@ -82,9 +87,6 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     )
 
     # Partial results for variance robust calculation.
-    if args.ensemble_variance:
-        all_preds = np.zeros((len(test_data), num_tasks, len(args.checkpoint_paths)))
-
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
     for index, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
         # Load model and scalers
@@ -108,12 +110,14 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             scaler=scaler
         )
         sum_preds += np.array(model_preds)
-        if args.ensemble_variance:
-            all_preds[:, :, index] = model_preds
+        if args.ensemble_variance or args.individual_ensemble_predictions:
+            if args.dataset_type == 'multiclass':
+                all_preds[:,:,:,index] = model_preds
+            else:
+                all_preds[:,:,index] = model_preds
 
     # Ensemble predictions
     avg_preds = sum_preds / len(args.checkpoint_paths)
-    avg_preds = avg_preds.tolist()
 
     if args.ensemble_variance:
         all_epi_uncs = np.var(all_preds, axis=2)
@@ -126,18 +130,25 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         assert len(test_data) == len(all_epi_uncs)
     makedirs(args.preds_path, isfile=True)
 
-    # Get prediction column names
+    # Set multiclass column names, update num_tasks definition for multiclass
     if args.dataset_type == 'multiclass':
         task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
-    else:
-        task_names = task_names
+        num_tasks = num_tasks * args.multiclass_num_classes
 
     # Copy predictions over to full_data
     for full_index, datapoint in enumerate(full_data):
         valid_index = full_to_valid_indices.get(full_index, None)
-        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
+        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
         if args.ensemble_variance:
-            epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * len(task_names)
+            epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+        if args.individual_ensemble_predictions:
+            ind_preds = all_preds[valid_index] if valid_index is not None else [['Invalid SMILES'] * len(args.checkpoint_paths)] * num_tasks
+
+        # Reshape multiclass to merge task and class dimension, with updated num_tasks
+        if args.dataset_type == 'multiclass':
+            preds = preds.reshape((num_tasks))
+            if args.ensemble_variance or args. individual_ensemble_predictions:
+                ind_preds = ind_preds.reshape((num_tasks, len(args.checkpoint_paths)))
 
         # If extra columns have been dropped, add back in SMILES columns
         if args.drop_extra_columns:
@@ -149,13 +160,15 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
                 datapoint.row[column] = smiles
 
         # Add predictions columns
+        for pred_name, pred in zip(task_names, preds):
+            datapoint.row[pred_name] = pred
+        if args.individual_ensemble_predictions:
+            for pred_name, model_preds in zip(task_names,ind_preds):
+                for idx, pred in enumerate(model_preds):
+                    datapoint.row[pred_name+f'_model_{idx}'] = pred
         if args.ensemble_variance:
-            for pred_name, pred, epi_unc in zip(task_names, preds, epi_uncs):
-                datapoint.row[pred_name] = pred
+            for pred_name, epi_unc in zip(task_names, epi_uncs):
                 datapoint.row[pred_name+'_epi_unc'] = epi_unc
-        else:
-            for pred_name, pred in zip(task_names, preds):
-                datapoint.row[pred_name] = pred
 
     # Save
     with open(args.preds_path, 'w') as f:
@@ -165,6 +178,7 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         for datapoint in full_data:
             writer.writerow(datapoint.row)
 
+    avg_preds = avg_preds.tolist()
     return avg_preds
 
 

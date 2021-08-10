@@ -298,6 +298,8 @@ or
 chemprop_predict --test_path data/tox21.csv --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt --preds_path tox21_preds.csv
 ```
 
+Predictions made on an ensemble of models will return the average of the individual model predictions. To return the individual model predictions as well, include the `--individual_ensemble_predictions` argument.
+
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
 ### Epistemic Uncertainty
