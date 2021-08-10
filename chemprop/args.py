@@ -620,6 +620,8 @@ class PredictArgs(CommonArgs):
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False
     """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
+    individual_ensemble_predictions: bool = False
+    """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
 
     @property
     def ensemble_size(self) -> int:
