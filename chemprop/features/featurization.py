@@ -510,7 +510,7 @@ class BatchMolGraph:
         """
         Computes (if necessary) and returns a mapping from each atom index to all neighboring atom indices.
 
-        :return: A PyTorch tensor containing the mapping from each bond index to all the incoming bond indices.
+        :return: A PyTorch tensor containing the mapping from each atom index to all the neighboring atom indices.
         """
         if self.a2a is None:
             # b = a1 --> a2
