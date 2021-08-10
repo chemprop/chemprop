@@ -17,11 +17,11 @@ from tap import Tap  # pip install typed-argument-parser (https://github.com/swa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from chemprop.data import get_data_from_smiles, get_smiles
+from chemprop.data import get_data_from_smiles, get_smiles, MoleculeDataLoader
 from chemprop.features import morgan_binary_features_generator
 from chemprop.models import MoleculeModel
-from chemprop.nn_utils import compute_molecule_vectors
 from chemprop.utils import load_checkpoint, makedirs
+from chemprop.train import model_fingerprint
 
 
 class Args(Tap):
@@ -33,6 +33,7 @@ class Args(Tap):
     num_neighbors: int = 5  # Number of neighbors to search for each molecule
     batch_size: int = 50  # Batch size when making predictions
     smiles_column: str = None # Columns in dataset CSV file containing SMILES
+    num_workers: int = 8 # Number of workers used to build batches.
 
 
 def find_similar_mols(test_smiles: List[str],
@@ -57,11 +58,23 @@ def find_similar_mols(test_smiles: List[str],
     train_data = get_data_from_smiles(smiles=[[smiles] for smiles in train_smiles])
     train_smiles_set = set(train_smiles)
 
+    # Create data loader
+    test_data_loader = MoleculeDataLoader(
+        dataset=test_data,
+        batch_size=batch_size,
+        num_workers=args.num_workers
+    )
+    train_data_loader = MoleculeDataLoader(
+        dataset=train_data,
+        batch_size=batch_size,
+        num_workers=args.num_workers
+    )
+
     print(f'Computing {distance_measure} vectors')
     if distance_measure == 'embedding':
         assert model is not None
-        test_vecs = np.array(compute_molecule_vectors(model=model, data=test_data, batch_size=batch_size))
-        train_vecs = np.array(compute_molecule_vectors(model=model, data=train_data, batch_size=batch_size))
+        test_vecs = np.array(model_fingerprint(model=model, data_loader=test_data_loader, fingerprint_type='last_FFN'))
+        train_vecs = np.array(model_fingerprint(model=model, data_loader=train_data_loader, fingerprint_type='last_FFN'))
         metric = 'cosine'
     elif distance_measure == 'morgan':
         test_vecs = np.array([morgan_binary_features_generator(smiles) for smiles in tqdm(test_smiles, total=len(test_smiles))])

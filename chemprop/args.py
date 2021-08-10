@@ -682,6 +682,13 @@ class InterpretArgs(CommonArgs):
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
 
 
+class FingerprintArgs(PredictArgs):
+    """:class:`FingerprintArgs` includes :class:`PredictArgs` with additional arguments for the generation of latent fingerprint vectors."""
+
+    fingerprint_type: Literal['MPN','last_FFN'] = 'MPN'
+    """Choice of which type of latent fingerprint vector to use. Default is the output of the MPNN, excluding molecular features"""
+
+
 class HyperoptArgs(TrainArgs):
     """:class:`HyperoptArgs` includes :class:`TrainArgs` along with additional arguments used for optimizing Chemprop hyperparameters."""
 
