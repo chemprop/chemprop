@@ -14,18 +14,14 @@ from chemprop.nn_utils import get_activation_function, initialize_weights
 class MoleculeModel(nn.Module):
     """A :class:`MoleculeModel` is a model which contains a message passing network following by feed-forward layers."""
 
-    def __init__(self, args: TrainArgs, featurizer: bool = False):
+    def __init__(self, args: TrainArgs):
         """
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
-        :param featurizer: Whether the model should act as a featurizer, i.e., outputting the
-                           learned features from the last layer prior to prediction rather than
-                           outputting the actual property predictions.
         """
         super(MoleculeModel, self).__init__()
 
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
-        self.featurizer = featurizer
 
         self.output_size = args.num_tasks
         if self.multiclass:
@@ -112,15 +108,15 @@ class MoleculeModel(nn.Module):
                 for param in list(self.ffn.parameters())[0:2*args.frzn_ffn_layers]: # Freeze weights and bias for given number of layers
                     param.requires_grad=False
 
-
-    def featurize(self,
+    def fingerprint(self,
                   batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
                   features_batch: List[np.ndarray] = None,
                   atom_descriptors_batch: List[np.ndarray] = None,
                   atom_features_batch: List[np.ndarray] = None,
-                  bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                  bond_features_batch: List[np.ndarray] = None,
+                  fingerprint_type = 'MPN') -> torch.FloatTensor:
         """
-        Computes feature vectors of the input by running the model except for the last layer.
+        Encodes the latent representations of the input molecules from intermediate stages of the model. 
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       list of :class:`~chemprop.features.featurization.BatchMolGraph`.
@@ -128,30 +124,18 @@ class MoleculeModel(nn.Module):
                       the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
-        :param atom_features_batch: A list of numpy arrays containing additional atom features.
-        :param bond_features_batch: A list of numpy arrays containing additional bond features.
-        :return: The feature vectors computed by the :class:`MoleculeModel`.
+        :param fingerprint_type: The choice of which type of latent representation to return as the molecular fingerprint. Currently 
+                                 supported MPN for the output of the MPNN portion of the model or last_FFN for the input to the final readout layer.
+        :return: The latent fingerprint vectors.
         """
-        return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
-                                          atom_features_batch, bond_features_batch))
-
-    def fingerprint(self,
-                  batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
-                  features_batch: List[np.ndarray] = None,
-                  atom_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
-        """
-        Encodes the fingerprint vectors of the input molecules by passing the inputs through the MPNN and returning
-        the latent representation before the FFNN.
-
-        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
-                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
-                      The outer list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch),
-                      the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
-        :param features_batch: A list of numpy arrays containing additional features.
-        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
-        :return: The fingerprint vectors calculated through the MPNN.
-        """
-        return self.encoder(batch, features_batch, atom_descriptors_batch)
+        if fingerprint_type == 'MPN':
+            return self.encoder(batch, features_batch, atom_descriptors_batch,
+                                      atom_features_batch, bond_features_batch)
+        elif fingerprint_type == 'last_FFN':
+            return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
+                                            atom_features_batch, bond_features_batch))
+        else:
+            raise ValueError(f'Unsupported fingerprint type {fingerprint_type}.')
 
     def forward(self,
                 batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
@@ -170,12 +154,8 @@ class MoleculeModel(nn.Module):
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
-        :return: The output of the :class:`MoleculeModel`, which is either property predictions
-                 or molecule features if :code:`self.featurizer=True`.
+        :return: The output of the :class:`MoleculeModel`, containing a list of property predictions
         """
-        if self.featurizer:
-            return self.featurize(batch, features_batch, atom_descriptors_batch,
-                                  atom_features_batch, bond_features_batch)
 
         output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch,
                                        atom_features_batch, bond_features_batch))

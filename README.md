@@ -314,10 +314,11 @@ To load a trained model and encode the fingerprint latent representation of mole
   * `--checkpoint_dir <dir>` Directory where the model checkpoint is saved (i.e. `--save_dir` during training).
   * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
 * `--preds_path` Path where a CSV file containing the encoded fingerprint vectors will be saved.
+* Any other arguments that you would supply for a prediction, such as atom or bond features.
 
-SMILES from the provided file are encoded using the MPNN weights loaded from a trained checkpoint file. Fingerprint encoding uses the same set of arguments as making predictions. Unlike making predictions, fingerprint encoding only supports a single saved checkpoint file.
+Latent representations of molecules are taken from intermediate stages of the prediction model. This latent representation can be taken at the output of the MPNN (default) or from the last input layer of the FFNN, specified using `--fingerprint_type <MPN or last_FFN>`. Fingerprint encoding uses the same set of arguments as making predictions. If multiple checkpoint files are supplied through `--checkpoint_dir`, then the fingerprint encodings for each of the models will be provided concatenated together as a longer vector.
 
-For example:
+Example input:
 ```
 chemprop_fingerprint --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints --preds_path tox21_fingerprint.csv
 ```
