@@ -1,28 +1,27 @@
 from collections import OrderedDict
 import csv
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import numpy as np
 from tqdm import tqdm
 
 from .predict import predict
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h
+from chemprop.models import MoleculeModel
 
-@timeit()
-def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
+def load_model(args: PredictArgs, generator: bool = False):
     """
-    Loads data and a trained model and uses the model to make predictions on the data.
-
-    If SMILES are provided, then makes predictions on smiles.
-    Otherwise makes predictions on :code:`args.test_data`.
+    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler 
+    objects is returned (memory efficient), else the full list (holding all models in memory, necessary for preloading).
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
-    :param smiles: List of list of SMILES to make predictions on.
-    :return: A list of lists of target predictions.
+    :param generator: A boolean to return a generator instead of a list of models and scalers.
+    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or 
+                 generator object of scalers, the number of tasks and their respective names.
     """
     print('Loading training args')
     train_args = load_args(args.checkpoint_paths[0])
@@ -31,16 +30,25 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
     update_prediction_args(predict_args=args, train_args=train_args)
     args: Union[PredictArgs, TrainArgs]
 
-    if args.atom_descriptors == 'feature':
-        set_extra_atom_fdim(train_args.atom_features_size)
+    # Load model and scalers
+    models = (load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths)
+    scalers = (load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths)
+    if not generator:
+        models = list(models)
+        scalers = list(scalers)
 
-    if args.bond_features_path is not None:
-        set_extra_bond_fdim(train_args.bond_features_size)
+    return args, train_args, models, scalers, num_tasks, task_names
+                      
+def load_data(args: PredictArgs, smiles: List[List[str]]):
+    """
+    Function to load data from a list of smiles or a file.
 
-    #set explicit H option and reaction option
-    set_explicit_h(train_args.explicit_h)
-    set_reaction(train_args.reaction, train_args.reaction_mode)
-
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param smiles: A list of list of smiles, or None if data is to be read from file
+    :return: A tuple of a :class:`~chemprop.data.MoleculeDataset` containing all datapoints, a :class:`~chemprop.data.MoleculeDataset` containing only valid datapoints,
+                 a :class:`~chemprop.data.MoleculeDataLoader` and a dictionary mapping full to valid indices. 
+    """
     print('Loading data')
     if smiles is not None:
         full_data = get_data_from_smiles(
@@ -62,12 +70,56 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
 
     test_data = MoleculeDataset([full_data[i] for i in sorted(full_to_valid_indices.keys())])
 
-    # Edge case if empty list of smiles is provided
-    if len(test_data) == 0:
-        return [None] * len(full_data)
-
     print(f'Test size = {len(test_data):,}')
 
+    # Create data loader
+    test_data_loader = MoleculeDataLoader(
+        dataset=test_data,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers
+    )
+
+    return full_data, test_data, test_data_loader, full_to_valid_indices
+
+
+def set_features(args: PredictArgs, train_args: TrainArgs):
+    """
+    Function to set extra options.
+
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param train_args: A :class:`~chemprop.args.TrainArgs` object containing arguments for training the model.
+    """
+    if args.atom_descriptors == 'feature':
+        set_extra_atom_fdim(train_args.atom_features_size)
+
+    if args.bond_features_path is not None:
+        set_extra_bond_fdim(train_args.bond_features_size)
+
+    #set explicit H option and reaction option
+    set_explicit_h(train_args.explicit_h)
+    set_reaction(train_args.reaction, train_args.reaction_mode)
+
+
+def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: MoleculeDataset,
+                     task_names: List[str], num_tasks: int, test_data_loader: MoleculeDataLoader, full_data: MoleculeDataset,
+                     full_to_valid_indices: dict, models: List[MoleculeModel], scalers: List[List[StandardScaler]]):
+    """
+    Function to predict with a model and save the predictions to file.
+
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param train_args: A :class:`~chemprop.args.TrainArgs` object containing arguments for training the model.
+    :param test_data: A :class:`~chemprop.data.MoleculeDataset` containing valid datapoints.
+    :param task_names: A list of task names.
+    :param num_tasks: Number of tasks.
+    :param test_data_loader: A :class:`~chemprop.data.MoleculeDataLoader` to load the test data.
+    :param full_data:  A :class:`~chemprop.data.MoleculeDataset` containing all (valid and invalid) datapoints.
+    :param full_to_valid_indices: A dictionary dictionary mapping full to valid indices.
+    :param models: A list or generator object of :class:`~chemprop.models.MoleculeModel`\ s.
+    :param scalers: A list or generator object of :class:`~chemprop.features.scaler.StandardScaler` objects.
+    :return:  A list of lists of target predictions.
+    """
     # Predict with each model individually and sum predictions
     if args.dataset_type == 'multiclass':
         sum_preds = np.zeros((len(test_data), num_tasks, args.multiclass_num_classes))
@@ -79,19 +131,10 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
         else:
             all_preds = np.zeros((len(test_data), num_tasks, len(args.checkpoint_paths)))
 
-    # Create data loader
-    test_data_loader = MoleculeDataLoader(
-        dataset=test_data,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers
-    )
-
     # Partial results for variance robust calculation.
     print(f'Predicting with an ensemble of {len(args.checkpoint_paths)} models')
-    for index, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
-        # Load model and scalers
-        model = load_checkpoint(checkpoint_path, device=args.device)
-        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(checkpoint_path)
+    for index, (model, scaler_list) in enumerate(tqdm(zip(models, scalers), total=len(args.checkpoint_paths))):
+        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = scaler_list
 
         # Normalize features
         if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_feature_scaling:
@@ -179,6 +222,40 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None) -> List[
             writer.writerow(datapoint.row)
 
     avg_preds = avg_preds.tolist()
+    
+    return avg_preds
+
+            
+@timeit()
+def make_predictions(args: PredictArgs, smiles: List[List[str]] = None,
+                     model_objects: Tuple[PredictArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str]] = None) -> List[List[Optional[float]]]:
+    """
+    Loads data and a trained model and uses the model to make predictions on the data.
+
+    If SMILES are provided, then makes predictions on smiles.
+    Otherwise makes predictions on :code:`args.test_data`.
+
+    :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
+                 loading data and a model and making predictions.
+    :param smiles: List of list of SMILES to make predictions on.
+    :param model_objects: Tuple of output of load_model function which can be called separately.
+    :return: A list of lists of target predictions.
+    """
+    if model_objects:
+        args, train_args, models, scalers, num_tasks, task_names = model_objects
+    else:
+        args, train_args, models, scalers, num_tasks, task_names = load_model(args, generator=True)
+        
+    set_features(args, train_args)
+    
+    full_data, test_data, test_data_loader, full_to_valid_indices = load_data(args, smiles)
+    
+    # Edge case if empty list of smiles is provided
+    if len(test_data) == 0:
+        return [None] * len(full_data)
+    
+    avg_preds = predict_and_save(args, train_args, test_data, task_names, num_tasks, test_data_loader, full_data, full_to_valid_indices, models, scalers)
+    
     return avg_preds
 
 

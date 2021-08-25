@@ -149,6 +149,7 @@ Reaction
 ^^^^^^^^
 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html>`_ for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option :code:`--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option :code:`--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option :code:`--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option :code:`--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option :code:`--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: :code:`[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: :code:`[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
+For further details and benchmarking, as well as a citable reference, please see `DOI 10.33774/chemrxiv-2021-frfhz <https://doi.org/10.33774/chemrxiv-2021-frfhz>`_.
 
 Pretraining
 ^^^^^^^^^^^
@@ -242,3 +243,68 @@ Web Interface
 -------------
 
 For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. See :ref:`web` for more details.
+
+Within a python script
+----------------------
+
+Model training and predicting can also be embedded within a python script. To train a model, provide arguments as a list of strings (arguments are identical to command line mode),
+parse the arguments, and then call :code:`chemprop.train.cross_validate()`::
+
+  import chemprop
+
+  arguments = [
+      '--data_path', 'data/tox21.csv',
+      '--dataset_type', 'classification',
+      '--save_dir', 'tox21_checkpoints'
+  ]
+
+  args = chemprop.args.TrainArgs().parse_args(arguments)
+  mean_score, std_score = chemprop.train.cross_validate(args=args, train_func=chemprop.train.run_training)
+
+For predicting with a given model, either a list of smiles or a csv file can be used as input. To use a csv file ::
+
+  import chemprop
+
+  arguments = [
+      '--test_path', 'data/tox21.csv',
+      '--preds_path', 'tox21_preds.csv',
+      '--checkpoint_dir', 'tox21_checkpoints'
+  ]
+  
+  args = chemprop.args.PredictArgs().parse_args(arguments)
+  preds = chemprop.train.make_predictions(args=args)
+
+If you only want to use the predictions :code:`preds` within the script, and not save the file, set :code:`preds_path` to :code:`/dev/null`. To predict on a list of smiles, run::
+
+  import chemprop
+
+  smiles = [['CCC', 'CCCC', 'OCC']]
+  arguments = [
+      '--test_path', '/dev/null',
+      '--preds_path', '/dev/null',
+      '--checkpoint_dir', 'tox21_checkpoints'
+  ]
+
+  args = chemprop.args.PredictArgs().parse_args(arguments)
+  preds = chemprop.train.make_predictions(args=args, smiles=smiles)
+
+where the given :code:`test_path` will be discarded if a list of smiles is provided. If you want to predict multiple sets of molecules consecutively, it is more efficient to
+only load the chemprop model once, and then predict with the preloaded model (instead of loading the model for every prediction)::
+
+  import chemprop
+
+  arguments = [
+      '--test_path', '/dev/null',
+      '--preds_path', '/dev/null',
+      '--checkpoint_dir', 'tox21_checkpoints'
+  ]
+
+  args = chemprop.args.PredictArgs().parse_args(arguments)
+
+  model_objects = chemprop.train.load_model(args=args)
+  
+  smiles = [['CCC', 'CCCC', 'OCC']]
+  preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)
+
+  smiles = [['CCCC', 'CCCCC', 'COCC']]
+  preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)

@@ -24,6 +24,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Option 2: Installing from source](#option-2-installing-from-source)
   * [Docker](#docker)
 - [Web Interface](#web-interface)
+- [Within Python](#within-python)
 - [Data](#data)
 - [Training](#training)
   * [Train/Validation/Test Splits](#trainvalidationtest-splits)
@@ -121,6 +122,12 @@ Next, navigate to `chemprop/web` and run `gunicorn --bind {host}:{port} 'wsgi:bu
    * To run this server in the background, add the `--daemon` flag.
    * Arguments including `init_db` and `demo` can be passed with this pattern: `'wsgi:build_app(init_db=True, demo=True)'` 
    * Gunicorn documentation can be found [here](http://docs.gunicorn.org/en/stable/index.html).
+
+## Within Python
+
+For information on the use of Chemprop within a python script, refer to the [Within a python script](https://chemprop.readthedocs.io/en/latest/tutorial.html#within-a-python-script)
+section of the documentation.
+
 
 ## Data
 
@@ -249,6 +256,7 @@ Similar to molecule-, and atom-level features, the bond-level features are scale
 ### Reaction
 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see [Daylight manual](https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html) for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option `--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option `--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option `--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option `--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option `--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via `--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: `[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: `[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
+For further details and benchmarking, as well as a citable reference, please see [DOI 10.33774/chemrxiv-2021-frfhz](https://doi.org/10.33774/chemrxiv-2021-frfhz).
 
 ### Pretraining, With and Without Frozen Parameters
 
