@@ -61,6 +61,7 @@ class MoleculeDatapoint:
                  data_weight: float = 1,
                  features: np.ndarray = None,
                  features_generator: List[str] = None,
+                 phase_features: List[float] = None,
                  atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None,
                  bond_features: np.ndarray = None,
@@ -73,6 +74,7 @@ class MoleculeDatapoint:
         :param data_weight: Weighting of the datapoint for the loss function.
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
+        :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
         :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
         :param bond_features: A numpy array containing additional bond features to featurize the molecule
         :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features
@@ -88,6 +90,7 @@ class MoleculeDatapoint:
         self.data_weight = data_weight
         self.features = features
         self.features_generator = features_generator
+        self.phase_features = phase_features
         self.atom_descriptors = atom_descriptors
         self.atom_features = atom_features
         self.bond_features = bond_features
@@ -319,6 +322,17 @@ class MoleculeDataset(Dataset):
             return None
 
         return [d.features for d in self._data]
+
+    def phase_features(self) -> List[np.ndarray]:
+        """
+        Returns the phase features associated with each molecule (if they exist).
+
+        :return: A list of 1D numpy arrays containing the phase features for each molecule or None if there are no features.
+        """
+        if len(self._data) == 0 or self._data[0].phase_features is None:
+            return None
+
+        return [d.phase_features for d in self._data]
 
     def atom_features(self) -> List[np.ndarray]:
         """

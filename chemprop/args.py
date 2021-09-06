@@ -13,7 +13,7 @@ from chemprop.data import set_cache_mol, empty_cache
 from chemprop.features import get_available_features_generators
 
 
-Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy']
+Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein']
 
 
 def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
@@ -82,6 +82,8 @@ class CommonArgs(Tap):
     """Method(s) of generating additional features."""
     features_path: List[str] = None
     """Path(s) to features to use in FNN (instead of features_generator)."""
+    phase_features_path: str = None
+    """Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype."""
     no_features_scaling: bool = False
     """Turn off scaling of features."""
     max_data_size: int = None
@@ -225,7 +227,7 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
-    dataset_type: Literal['regression', 'classification', 'multiclass']
+    dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the loss function used during training."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -233,11 +235,13 @@ class TrainArgs(CommonArgs):
     """Path to separate val set, optional."""
     separate_test_path: str = None
     """Path to separate test set, optional."""
+    spectra_phase_mask_path: str = None
+    """Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions."""
     data_weights_path: str = None
     """Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function"""
     target_weights: List[float] = None
     """Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns."""
-    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined'] = 'random'
+    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'] = 'random'
     """Method of splitting the data into train/val/test."""
     split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)
     """Split proportions for train/validation/test sets."""
@@ -263,7 +267,7 @@ class TrainArgs(CommonArgs):
     metric: Metric = None
     """
     Metric to use during evaluation. It is also used with the validation set for early stopping.
-    Defaults to "auc" for classification and "rmse" for regression.
+    Defaults to "auc" for classification, "rmse" for regression, and "sid" for spectra.
     """
     extra_metrics: List[Metric] = []
     """Additional metrics to use to evaluate the model. Not used for early stopping."""
@@ -324,6 +328,10 @@ class TrainArgs(CommonArgs):
     """Path to file with features for separate val set."""
     separate_test_features_path: List[str] = None
     """Path to file with features for separate test set."""
+    separate_val_phase_features_path: str = None
+    """Path to file with phase features for separate val set."""
+    separate_test_phase_features_path: str = None
+    """Path to file with phase features for separate test set."""
     separate_val_atom_descriptors_path: str = None
     """Path to file with extra atom descriptors for separate val set."""
     separate_test_atom_descriptors_path: str = None
@@ -377,7 +385,12 @@ class TrainArgs(CommonArgs):
     """Maximum magnitude of gradient during training."""
     class_balance: bool = False
     """Trains with an equal number of positives and negatives in each batch."""
-
+    spectra_activation: Literal['exp', 'softplus'] = 'exp'
+    """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
+    spectra_target_floor: float = 1e-8
+    """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
+    alternative_loss_function: Literal['wasserstein'] = None
+    """Option to replace the default loss function, with an alternative. Only currently applied for spectra data type and wasserstein loss."""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
@@ -419,12 +432,12 @@ class TrainArgs(CommonArgs):
     @property
     def minimize_score(self) -> bool:
         """Whether the model should try to minimize the score metric or maximize it."""
-        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy'}
+        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein'}
 
     @property
     def use_input_features(self) -> bool:
         """Whether the model is using additional molecule-level features."""
-        return self.features_generator is not None or self.features_path is not None
+        return self.features_generator is not None or self.features_path is not None or self.phase_features_path is not None
 
     @property
     def num_lrs(self) -> int:
@@ -518,6 +531,8 @@ class TrainArgs(CommonArgs):
                 self.metric = 'auc'
             elif self.dataset_type == 'multiclass':
                 self.metric = 'cross_entropy'
+            elif self.dataset_type == 'spectra':
+                self.metric = 'sid'
             else:
                 self.metric = 'rmse'
 
@@ -526,9 +541,10 @@ class TrainArgs(CommonArgs):
                              f'Please only include it once.')
 
         for metric in self.metrics:
-            if not ((self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy']) or
-                    (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2']) or
-                    (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy'])):
+            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy']), 
+                    (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2']), 
+                    (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy']),
+                    (self.dataset_type == 'spectra' and metric in ['sid','wasserstein'])]):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
 
         # Validate class balance

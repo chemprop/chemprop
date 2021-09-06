@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import csv
 from logging import Logger
 import pickle
@@ -177,6 +177,7 @@ def get_data(path: str,
              data_weights_path: str = None,
              features_path: List[str] = None,
              features_generator: List[str] = None,
+             phase_features_path: str = None,
              atom_descriptors_path: str = None,
              bond_features_path: str = None,
              max_data_size: int = None,
@@ -199,6 +200,7 @@ def get_data(path: str,
                           in place of :code:`args.features_path`.
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
+    :param phase_features_path: A path to a file containing phase features as applicable to spectra.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
     :param bond_features_path: The path to the file containing the custom bond features.
     :param max_data_size: The maximum number of data points to load.
@@ -216,9 +218,9 @@ def get_data(path: str,
         smiles_columns = smiles_columns if smiles_columns is not None else args.smiles_columns
         target_columns = target_columns if target_columns is not None else args.target_columns
         ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
-        data_weights_path = data_weights_path if data_weights_path is not None else args.data_weights_path
         features_path = features_path if features_path is not None else args.features_path
         features_generator = features_generator if features_generator is not None else args.features_generator
+        phase_features_path = phase_features_path if phase_features_path is not None else args.phase_features_path
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
         bond_features_path = bond_features_path if bond_features_path is not None \
@@ -238,6 +240,18 @@ def get_data(path: str,
         features_data = np.concatenate(features_data, axis=1)
     else:
         features_data = None
+        
+    if phase_features_path is not None:
+        phase_features = load_features(phase_features_path)
+        for d_phase in phase_features:
+            if not (d_phase.sum() == 1 and np.count_nonzero(d_phase) == 1):
+                raise ValueError('Phase features must be one-hot encoded.')
+        if features_data is not None:
+            features_data = np.concatenate((features_data,phase_features), axis=1)
+        else: # if there are no other molecular features, phase features become the only molecular features
+            features_data = np.array(phase_features)
+    else:
+        phase_features = None
 
     # Load data weights
     if data_weights_path is not None:
@@ -258,11 +272,11 @@ def get_data(path: str,
                 ignore_columns=ignore_columns,
             )
 
-        all_smiles, all_targets, all_rows, all_features, all_weights = [], [], [], [], []
+        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights = [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
             smiles = [row[c] for c in smiles_columns]
 
-            targets = [float(row[column]) if row[column] != '' else None for column in target_columns]
+            targets = [float(row[column]) if row[column] not in ['','nan'] else None for column in target_columns]
 
             # Check whether all targets are None and skip if so
             if skip_none_targets and all(x is None for x in targets):
@@ -273,6 +287,9 @@ def get_data(path: str,
 
             if features_data is not None:
                 all_features.append(features_data[i])
+            
+            if phase_features is not None:
+                all_phase_features.append(phase_features[i])
 
             if data_weights is not None:
                 all_weights.append(data_weights[i])
@@ -311,6 +328,7 @@ def get_data(path: str,
                 data_weight=all_weights[i] if data_weights is not None else 1.,
                 features_generator=features_generator,
                 features=all_features[i] if features_data is not None else None,
+                phase_features=all_phase_features[i] if phase_features is not None else None,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_features=bond_features[i] if bond_features is not None else None,
@@ -484,6 +502,29 @@ def split_data(data: MoleculeDataset,
 
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
+
+    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split. Considers first molecule only.
+        smiles_dict=defaultdict(set)
+        for i,smiles in enumerate(data.smiles()):
+            smiles_dict[smiles[0]].add(i)
+        index_sets=list(smiles_dict.values())
+        random.seed(seed)
+        random.shuffle(index_sets)
+        train,val,test=[],[],[]
+        train_size = int(sizes[0] * len(data))
+        val_size = int(sizes[1] * len(data))
+        for index_set in index_sets:
+            if len(train)+len(index_set) <= train_size:
+                train += index_set
+            elif len(val) + len(index_set) <= val_size:
+                val += index_set
+            else:
+                test += index_set
+        train = [data[i] for i in train]
+        val = [data[i] for i in val]
+        test = [data[i] for i in test]
+
+        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type == 'random':
         indices = list(range(len(data)))

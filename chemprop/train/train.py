@@ -49,8 +49,8 @@ def train(model: MoleculeModel,
             batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
             batch.atom_features(), batch.bond_features(), batch.data_weights()
 
-        mask = torch.Tensor([[x is not None for x in tb] for tb in target_batch])
-        targets = torch.Tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+        mask = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool)
+        targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])
 
         if args.target_weights is not None:
             target_weights = torch.Tensor(args.target_weights)
@@ -63,14 +63,18 @@ def train(model: MoleculeModel,
         preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch)
 
         # Move tensors to correct device
-        mask = mask.to(preds.device)
-        targets = targets.to(preds.device)
-        target_weights = target_weights.to(preds.device)
-        data_weights = data_weights.to(preds.device)
+        torch_device = preds.device
+        mask = mask.to(torch_device)
+        targets = targets.to(torch_device)
+        target_weights = target_weights.to(torch_device)
+        data_weights = data_weights.to(torch_device)
 
+        # Calculate losses
         if args.dataset_type == 'multiclass':
             targets = targets.long()
             loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * target_weights * data_weights * mask
+        elif args.dataset_type == 'spectra':
+            loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
         loss = loss.sum() / mask.sum()

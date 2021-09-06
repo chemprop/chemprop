@@ -98,7 +98,19 @@ class MoleculeModel(nn.Module):
                 dropout,
                 nn.Linear(args.ffn_hidden_size, self.output_size),
             ])
-            
+
+        # If spectra model, also include spectra activation
+        if args.dataset_type == 'spectra':
+            if args.spectra_activation == 'softplus':
+                spectra_activation = nn.Softplus()
+            else: # default exponential activation which must be made into a custom nn module
+                class nn_exp(torch.nn.Module):
+                    def __init__(self):
+                        super(nn_exp, self).__init__()
+                    def forward(self, x):
+                        return torch.exp(x)
+                spectra_activation = nn_exp()
+            ffn.append(spectra_activation)
 
         # Create FFN model
         self.ffn = nn.Sequential(*ffn)

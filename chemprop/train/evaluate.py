@@ -32,43 +32,48 @@ def evaluate_predictions(preds: List[List[float]],
     if len(preds) == 0:
         return {metric: [float('nan')] * num_tasks for metric in metrics}
 
-    # Filter out empty targets
+    # Filter out empty targets for most data types, excluding dataset_type spectra
     # valid_preds and valid_targets have shape (num_tasks, data_size)
-    valid_preds = [[] for _ in range(num_tasks)]
-    valid_targets = [[] for _ in range(num_tasks)]
-    for i in range(num_tasks):
-        for j in range(len(preds)):
-            if targets[j][i] is not None:  # Skip those without targets
-                valid_preds[i].append(preds[j][i])
-                valid_targets[i].append(targets[j][i])
+    if dataset_type != 'spectra':
+        valid_preds = [[] for _ in range(num_tasks)]
+        valid_targets = [[] for _ in range(num_tasks)]
+        for i in range(num_tasks):
+            for j in range(len(preds)):
+                if targets[j][i] is not None:  # Skip those without targets
+                    valid_preds[i].append(preds[j][i])
+                    valid_targets[i].append(targets[j][i])
 
-    # Compute metric
+    # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
-    for i in range(num_tasks):
-        # # Skip if all targets or preds are identical, otherwise we'll crash during classification
-        if dataset_type == 'classification':
-            nan = False
-            if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
-                nan = True
-                info('Warning: Found a task with targets all 0s or all 1s')
-            if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
-                nan = True
-                info('Warning: Found a task with predictions all 0s or all 1s')
+    if dataset_type == 'spectra':
+        for metric, metric_func in metric_to_func.items():
+            results[metric].append(metric_func(preds, targets))
+    else:
+        for i in range(num_tasks):
+            # # Skip if all targets or preds are identical, otherwise we'll crash during classification
+            if dataset_type == 'classification':
+                nan = False
+                if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+                    nan = True
+                    info('Warning: Found a task with targets all 0s or all 1s')
+                if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
+                    nan = True
+                    info('Warning: Found a task with predictions all 0s or all 1s')
 
-            if nan:
-                for metric in metrics:
-                    results[metric].append(float('nan'))
+                if nan:
+                    for metric in metrics:
+                        results[metric].append(float('nan'))
+                    continue
+
+            if len(valid_targets[i]) == 0:
                 continue
 
-        if len(valid_targets[i]) == 0:
-            continue
-
-        for metric, metric_func in metric_to_func.items():
-            if dataset_type == 'multiclass' and metric == 'cross_entropy':
-                results[metric].append(metric_func(valid_targets[i], valid_preds[i],
-                                                   labels=list(range(len(valid_preds[i][0])))))
-            else:
-                results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
+            for metric, metric_func in metric_to_func.items():
+                if dataset_type == 'multiclass' and metric == 'cross_entropy':
+                    results[metric].append(metric_func(valid_targets[i], valid_preds[i],
+                                                    labels=list(range(len(valid_preds[i][0])))))
+                else:
+                    results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
 
     results = dict(results)
 
