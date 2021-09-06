@@ -6,6 +6,9 @@ import numpy as np
 from chemprop.rdkit import make_mol
 
 class Featurization_parameters:
+    """
+    A class holding molecule featurization parameters as attributes.
+    """
     def __init__(self) -> None:
 
         # Atom feature sizes
