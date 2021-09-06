@@ -9,7 +9,7 @@ from chemprop.args import FingerprintArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers, update_prediction_args
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.features import set_reaction, set_explicit_h
+from chemprop.features import set_reaction, set_explicit_h, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 
 @timeit()
@@ -35,6 +35,7 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
     args: Union[FingerprintArgs, TrainArgs]
 
     #set explicit H option and reaction option
+    reset_featurization_parameters()
     set_explicit_h(train_args.explicit_h)
     set_reaction(train_args.reaction, train_args.reaction_mode)
 
