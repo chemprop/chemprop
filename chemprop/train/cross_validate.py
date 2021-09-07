@@ -69,9 +69,9 @@ def cross_validate(args: TrainArgs,
     data = get_data(
         path=args.data_path,
         args=args,
-        smiles_columns=args.smiles_columns,
         logger=logger,
-        skip_none_targets=True
+        skip_none_targets=True,
+        data_weights_path=args.data_weights_path
     )
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
@@ -151,13 +151,21 @@ def cross_validate(args: TrainArgs,
                       [f'Fold {i} {metric}' for i in range(args.num_folds)]
         writer.writerow(header)
 
-        for task_num, task_name in enumerate(args.task_names):
-            row = [task_name]
+        if args.dataset_type == 'spectra': # spectra data type has only one score to report
+            row = ['spectra']
             for metric, scores in all_scores.items():
-                task_scores = scores[:, task_num]
+                task_scores = scores[:,0]
                 mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
                 row += [mean, std] + task_scores.tolist()
             writer.writerow(row)
+        else: # all other data types, separate scores by task
+            for task_num, task_name in enumerate(args.task_names):
+                row = [task_name]
+                for metric, scores in all_scores.items():
+                    task_scores = scores[:, task_num]
+                    mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
+                    row += [mean, std] + task_scores.tolist()
+                writer.writerow(row)
 
     # Determine mean and std score of main metric
     avg_scores = np.nanmean(all_scores[args.metric], axis=1)

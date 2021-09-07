@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .predict import predict
+from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
@@ -152,6 +153,13 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
             data_loader=test_data_loader,
             scaler=scaler
         )
+        if args.dataset_type == 'spectra':
+            model_preds = normalize_spectra(
+                spectra=model_preds,
+                phase_features=test_data.phase_features(),
+                phase_mask=args.spectra_phase_mask,
+                excluded_sub_value=float('nan')
+            )
         sum_preds += np.array(model_preds)
         if args.ensemble_variance or args.individual_ensemble_predictions:
             if args.dataset_type == 'multiclass':
@@ -163,8 +171,11 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
     avg_preds = sum_preds / len(args.checkpoint_paths)
 
     if args.ensemble_variance:
-        all_epi_uncs = np.var(all_preds, axis=2)
-        all_epi_uncs = all_epi_uncs.tolist()
+        if args.dataset_type == 'spectra':
+            all_epi_uncs = roundrobin_sid(all_preds)
+        else:
+            all_epi_uncs = np.var(all_preds, axis=2)
+            all_epi_uncs = all_epi_uncs.tolist()
 
     # Save predictions
     print(f'Saving predictions to {args.preds_path}')
@@ -183,7 +194,10 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
         valid_index = full_to_valid_indices.get(full_index, None)
         preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
         if args.ensemble_variance:
-            epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+            if args.dataset_type == 'spectra':
+                epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES']
+            else:
+                epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
         if args.individual_ensemble_predictions:
             ind_preds = all_preds[valid_index] if valid_index is not None else [['Invalid SMILES'] * len(args.checkpoint_paths)] * num_tasks
 
@@ -210,8 +224,11 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
                 for idx, pred in enumerate(model_preds):
                     datapoint.row[pred_name+f'_model_{idx}'] = pred
         if args.ensemble_variance:
-            for pred_name, epi_unc in zip(task_names, epi_uncs):
-                datapoint.row[pred_name+'_epi_unc'] = epi_unc
+            if args.dataset_type == 'spectra':
+                datapoint.row['epi_unc'] = epi_uncs
+            else:
+                for pred_name, epi_unc in zip(task_names, epi_uncs):
+                    datapoint.row[pred_name+'_epi_unc'] = epi_unc
 
     # Save
     with open(args.preds_path, 'w') as f:

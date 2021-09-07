@@ -18,8 +18,10 @@ from chemprop.hyperparameter_optimization import chemprop_hyperopt
 from chemprop.interpret import chemprop_interpret
 from chemprop.sklearn_predict import sklearn_predict
 from chemprop.sklearn_train import sklearn_train
-from chemprop.train import chemprop_train, chemprop_predict
+from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions
 from chemprop.web.wsgi import build_app
+from chemprop.spectra_utils import normalize_spectra, load_phase_mask
+from chemprop.features import load_features
 
 
 TEST_DATA_DIR = 'tests/data'
@@ -47,7 +49,8 @@ class ChempropTests(TestCase):
             '--seed', str(SEED),
             '--metric', metric,
             '--save_dir', save_dir,
-            '--quiet'
+            '--quiet',
+            '--empty_cache'
         ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
 
     @staticmethod
@@ -77,7 +80,8 @@ class ChempropTests(TestCase):
             '--num_iter', str(NUM_ITER),
             '--config_save_path', config_save_path,
             '--save_dir', save_dir,
-            '--quiet'
+            '--quiet',
+            '--empty_cache'
         ] + (flags if flags is not None else [])
 
     @staticmethod
@@ -235,7 +239,7 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 1)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
         (
@@ -278,7 +282,7 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 12)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
         (
@@ -347,7 +351,7 @@ class ChempropTests(TestCase):
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, expected_score, delta=DELTA)
+            self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
         (
@@ -406,7 +410,7 @@ class ChempropTests(TestCase):
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, expected_score, delta=DELTA)
+            self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
 
     def test_chemprop_hyperopt(self):
         with TemporaryDirectory() as save_dir:
@@ -524,6 +528,172 @@ class ChempropTests(TestCase):
 
     @parameterized.expand([
         (
+            'spectra',
+            'chemprop',
+            0.001737553471704,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type',
+                'random_with_repeated_smiles'
+            ]
+        ),
+        (
+            'spectra_scaffold_split',
+            'chemprop',
+            0.001323929967969,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type',
+                'scaffold_balanced'
+            ]
+        ),
+        (
+            'spectra_excluded_targets',
+            'chemprop',
+            0.001617717412785,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type',
+                'random_with_repeated_smiles'
+            ]
+        ),
+        (
+            'spectra_phase_features',
+            'chemprop',
+            0.001421314775383,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type',
+                'random_with_repeated_smiles'
+            ]
+        ),
+    ])
+    def test_train_spectra(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'sid'
+            self.train(
+                dataset_type = 'spectra',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 1)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
+
+    @parameterized.expand([
+        (
+            'spectra',
+            'chemprop',
+            0.0014090729236303759,
+            0,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type',
+                'random_with_repeated_smiles'
+            ],
+            [
+                '--features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+            ]
+        ),
+        (
+            'spectra_phase_features',
+            'chemprop',
+            0.0009571740389124222,
+            284,
+            [
+                '--data_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type',
+                'random_with_repeated_smiles'
+            ],
+            [
+                '--phase_features_path',
+                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+            ]
+        ),
+    ])
+    def test_predict_spectra(self,
+                                            name: str,
+                                            model_type: str,
+                                            expected_score: float,
+                                            expected_nans: int,
+                                            train_flags: List[str] = None,
+                                            predict_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            dataset_type = 'spectra'
+            self.train(
+                dataset_type=dataset_type,
+                metric='sid',
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
+
+            # Predict
+            preds_path = os.path.join(save_dir, 'preds.csv')
+            self.predict(
+                dataset_type=dataset_type,
+                preds_path=preds_path,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=predict_flags
+            )
+
+            # Check results
+            pred = pd.read_csv(preds_path)
+            true = pd.read_csv(os.path.join(TEST_DATA_DIR, 'spectra.csv'))
+            self.assertEqual(list(pred.keys()), list(true.keys()))
+            self.assertEqual(list(pred['smiles']), list(true['smiles']))
+
+            pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
+            pred, true = pred.to_numpy(), true.to_numpy()
+            phase_features = load_features(predict_flags[1])
+            if '--spectra_phase_mask_path' in train_flags:
+                mask = load_phase_mask(train_flags[5])
+            else:
+                mask = None
+            true = normalize_spectra(true,phase_features,mask)
+            sid = evaluate_predictions(preds=pred, targets=true, num_tasks=len(true[0]), metrics=['sid'], dataset_type='spectra')['sid'][0]
+            self.assertAlmostEqual(sid, expected_score, delta=DELTA*expected_score)
+            self.assertEqual(np.sum(np.isnan(pred)),expected_nans)
+
+    @parameterized.expand([
+        (
                 'chemprop_reaction',
                 'chemprop',
                 2.025709,
@@ -545,10 +715,10 @@ class ChempropTests(TestCase):
                 'chemprop_reaction_explicit_h',
                 'chemprop',
                 2.139865,
-                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h', '--empty_cache']
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h']
          )
     ])
-    def test_train_single_task_regression_reaction(self,
+    def test_z_train_single_task_regression_reaction(self,
                                           name: str,
                                           model_type: str,
                                           expected_score: float,
@@ -570,7 +740,7 @@ class ChempropTests(TestCase):
             self.assertEqual(len(test_scores), 1)
 
             mean_score = test_scores.mean()
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
 if __name__ == '__main__':
     unittest.main()

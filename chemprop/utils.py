@@ -23,6 +23,7 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
+from chemprop.spectra_utils import sid_loss, sid_metric, wasserstein_loss, wasserstein_metric
 
 
 def makedirs(path: str, isfile: bool = False) -> None:
@@ -328,6 +329,13 @@ def get_loss_func(args: TrainArgs) -> nn.Module:
     :param args: Arguments containing the dataset type ("classification", "regression", or "multiclass").
     :return: A PyTorch loss function.
     """
+    if args.alternative_loss_function is not None:
+        if args.dataset_type == 'spectra' and args.alternative_loss_function == 'wasserstein':
+            return wasserstein_loss
+        else:
+            raise ValueError(f'Alternative loss function {args.alternative_loss_function} not '
+                                'supported with dataset type {args.dataset_type}.')
+
     if args.dataset_type == 'classification':
         return nn.BCEWithLogitsLoss(reduction='none')
 
@@ -336,6 +344,9 @@ def get_loss_func(args: TrainArgs) -> nn.Module:
 
     if args.dataset_type == 'multiclass':
         return nn.CrossEntropyLoss(reduction='none')
+
+    if args.dataset_type == 'spectra':
+        return sid_loss
 
     raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
 
@@ -453,6 +464,12 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'binary_cross_entropy':
         return bce
+    
+    if metric == 'sid':
+        return sid_metric
+    
+    if metric == 'wasserstein':
+        return wasserstein_metric
 
     raise ValueError(f'Metric "{metric}" not supported.')
 

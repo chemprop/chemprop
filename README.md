@@ -36,6 +36,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
     * [RDKit 2D Features](#rdkit-2d-features)
     * [Custom Features](#custom-features)
     * [Atomic Features](#atomic-features)
+  * [Spectra](#spectra)
   * [Reaction](#reaction)
   * [Pretraining](#pretraining)
   * [Missing target values](#missing-target-values)
@@ -153,7 +154,7 @@ To train a model, run:
 ```
 chemprop_train --data_path <path> --dataset_type <type> --save_dir <dir>
 ```
-where `<path>` is the path to a CSV file containing a dataset, `<type>` is either "classification" or "regression" depending on the type of the dataset, and `<dir>` is the directory where model checkpoints will be saved.
+where `<path>` is the path to a CSV file containing a dataset, `<type>` is one of [classification, regression, multiclass, spectra] depending on the type of the dataset, and `<dir>` is the directory where model checkpoints will be saved.
 
 For example:
 ```
@@ -176,6 +177,8 @@ Our code supports several methods of splitting data into train, validation, and 
 **Random:** By default, the data will be split randomly into train, validation, and test sets.
 
 **Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
+
+**Random With Repeated SMILES** Some datasets have multiple entries with the same SMILES. To constrain splitting so the repeated SMILES are in the same split, use the argument `--split_type random_with_repeated_smiles`.
 
 **Separate val/test:** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`. If both are provided, then the data specified by `--data_path` is used entirely as the training data. If only one separate path is provided, the `--data_path` data is split between train data and either val or test data, whichever is not provided separately.
 
@@ -253,12 +256,20 @@ The bond-level features are concatenated with the bond feature vectors before th
 
 Similar to molecule-, and atom-level features, the bond-level features are scaled by default. This can be disabled with the option `--no_bond_features_scaling`.
 
+### Spectra
+
+One of the data types that can be trained with Chemprop is "spectra". Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. The loss function for spectra is SID, spectral information divergence. Alternatively, Wasserstein distance (earthmover's distance) can be used for both loss function and metric with input arguments `--metric wasserstein --alternative_loss_function wasserstein`.
+
+Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. Activation to enforce positivity is an exponential function by default but can also be set as a Softplus function, according to the argument `--spectra_activation <exp or softplus>`. Value positivity is enforced on input targets as well using a floor value that replaces negative or smaller target values with the floor value (default 1e-8), customizable with the argument `--spectra_target_floor <float>`.
+
+In absorption spectra, sometimes the phase of collection will create regions in the spectrum where data collection or prediction would be unreliable. To exclude these regions, include paths to phase features for your data (`--phase_features_path <path>`) and a mask indicating the spectrum regions that are supported (`--spectra_phase_mask_path <path>`). The format for the mask file is a `.csv` file with columns for the spectrum positions and rows for the phases, with column and row labels in the same order as they appear in the targets and features files.
+
 ### Reaction
 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see [Daylight manual](https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html) for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option `--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option `--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option `--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option `--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option `--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via `--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: `[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: `[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
 For further details and benchmarking, as well as a citable reference, please see [DOI 10.33774/chemrxiv-2021-frfhz](https://doi.org/10.33774/chemrxiv-2021-frfhz).
 
-### Pretraining, With and Without Frozen Parameters
+### Pretraining
 
 Pretraining can be carried out using previously trained checkpoint files to set some or all of the initial values of a model for training. Additionally, some model parameters from the previous model can be frozen in place, so that they will not be updated during training.
 
@@ -312,7 +323,7 @@ If installed from source, `chemprop_predict` can be replaced with `python predic
 
 ### Epistemic Uncertainty
 
-One method of obtaining the epistemic uncertainty of a prediction is to calculate the variance of an ensemble of models. To calculate these variances and write them as an additional column in the `--preds_path` file, use `--ensemble_variance`.
+One method of obtaining the epistemic uncertainty of a prediction is to calculate the variance of an ensemble of models. To calculate these variances and write them as an additional column in the `--preds_path` file, use `--ensemble_variance`. If this flag is used with a spectra prediction, it will instead return the average pairwise SID comparison of the different ensemble predictions.
 
 ## Encode Fingerprint Latent Representation
 
