@@ -61,7 +61,7 @@ def cross_validate(args: TrainArgs,
         args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
 
     #set explicit H option and reaction option
-    reset_featurization_parameters()
+    reset_featurization_parameters(logger=logger)
     set_explicit_h(args.explicit_h)
     set_reaction(args.reaction, args.reaction_mode)
         

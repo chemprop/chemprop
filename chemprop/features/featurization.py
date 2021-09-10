@@ -1,8 +1,11 @@
 from typing import List, Tuple, Union
 from itertools import zip_longest
+import logging
+
 from rdkit import Chem
 import torch
 import numpy as np
+
 from chemprop.rdkit import make_mol
 
 class Featurization_parameters:
@@ -47,10 +50,15 @@ class Featurization_parameters:
 PARAMS = Featurization_parameters()
 
 
-def reset_featurization_parameters() -> None:
+def reset_featurization_parameters(logger: logging.Logger = None) -> None:
     """
     Function resets feature parameter values to defaults by replacing the parameters instance.
     """
+    if logger is not None:
+        debug = logger.debug
+    else:
+        debug = print
+    debug('Setting molecule featurization parameters to default.')
     global PARAMS
     PARAMS = Featurization_parameters()
 
