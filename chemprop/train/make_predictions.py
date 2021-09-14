@@ -10,7 +10,7 @@ from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -91,6 +91,8 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
                  loading data and a model and making predictions.
     :param train_args: A :class:`~chemprop.args.TrainArgs` object containing arguments for training the model.
     """
+    reset_featurization_parameters()
+
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
 
