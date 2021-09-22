@@ -196,11 +196,22 @@ To train an ensemble, specify the number of models in the ensemble with `--ensem
 
 Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package), which will find the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
 ```
-chemprop_hyperopt --data_path <data_path> --dataset_type <type> --num_iters <n> --config_save_path <config_path>
+chemprop_hyperopt --data_path <data_path> --dataset_type <type> --num_iters <int> --config_save_path <config_path>
 ```
-where `<n>` is the number of hyperparameter settings to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved.
+where `<int>` is the number of hyperparameter trial configurations to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. If installed from source, `chemprop_hyperopt` can be replaced with `python hyperparameter_optimization.py`. Additional training arguments can also be supplied during submission, and they will be applied to all included training iterations (`--epochs`, `--aggregation`, `--num_folds`, `--gpu`, `--seed`, etc.). The argument `--log_dir <dir_path>` can optionally be provided to set a location for the hyperparameter optimization log.
 
-If installed from source, `chemprop_hyperopt` can be replaced with `python hyperparameter_optimization.py`.
+Results of completed trial configurations will be stored there and may serve as checkpoints for other instances of hyperparameter optimization if the directory for hyperopt checkpoint files has been specified, `--hyperopt_checkpoint_dir <path>`. If `--hyperopt_checkpoint_dir` is not specified, then checkpoints will default to being stored with the hyperparame. Interrupted hyperparameter optimizations can be restarted by specifying the same directory. Previously completed hyperparameter optimizations can be used as the starting point for new optimizations with a larger selected number of iterations. Note that the `--num_iters <int>` argument will count all previous checkpoints saved in the directory towards the total number of iterations, and if the existing number of checkpoints exceeds this argment then no new trials will be carried out.
+
+Manual training instances outside of hyperparameter optimization may also be considered in the history of attempted trials. The paths to the save_dirs for these training instances can be specified with `--manual_trial_dirs <list-of-directories>`. These directories must contain the files `test_scores.csv` and `args.json` as generated during training. To work appropriately, these training instances must be consistent with the parameter space being searched in hyperparameter optimization (including the hyperparameter optimization default of ffn_hidden_size being set equal to hidden_size). Manual trials considered with this argument are not added to the checkpoint directory.
+
+As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int, default=10>`. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
+
+Parallel instances of hyperparameter optimization that share a checkpoint directory will have access to the shared results of hyperparameter optimization trials, allowing them to arrive at the desired total number of iterations collectively more quickly. In this way multiple GPUs or other computing resources can be applied to the search. Each instance of hyperparameter optimization is unaware of parallel trials that have not yet completed. This has several implications when running `n` parallel instances:
+* A parallel search will have different information and search different parameters than a single instance sequential search.
+* New trials will not consider the parameters in currently running trials, in rare cases leading to duplication.
+* Up to `n-1` extra random search iterations may occur above the number specified with `--startup_random_iters`.
+* Up to `n-1` extra total trials will be run above the chosen `num_iters`, though each instance will be exposed to at least that number of iterations.
+* The last parallel instance to complete is the only one that is aware of all the trials when reporting results.
 
 Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
 ```
