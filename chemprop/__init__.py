@@ -13,5 +13,7 @@ import chemprop.utils
 import chemprop.rdkit
 import chemprop.sklearn_predict
 import chemprop.sklearn_train
+import chemprop.spectra_utils
+import chemprop.hyperopt_utils
 
 from chemprop._version import __version__

@@ -500,7 +500,7 @@ class TrainArgs(CommonArgs):
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
 
-        global temp_dir  # Prevents the temporary directory from being deleted upon function return
+        global temp_save_dir  # Prevents the temporary directory from being deleted upon function return
 
         # Process SMILES columns
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
@@ -518,8 +518,8 @@ class TrainArgs(CommonArgs):
 
         # Create temporary directory as save directory if not provided
         if self.save_dir is None:
-            temp_dir = TemporaryDirectory()
-            self.save_dir = temp_dir.name
+            temp_save_dir = TemporaryDirectory()
+            self.save_dir = temp_save_dir.name
 
         # Fix ensemble size if loading checkpoints
         if self.checkpoint_paths is not None and len(self.checkpoint_paths) > 0:
@@ -714,6 +714,24 @@ class HyperoptArgs(TrainArgs):
     """Path to :code:`.json` file where best hyperparameter settings will be written."""
     log_dir: str = None
     """(Optional) Path to a directory where all results of the hyperparameter optimization will be written."""
+    hyperopt_checkpoint_dir: str = None
+    """Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted.
+    Can also be used to run multiple instances in parallel if they share the same checkpoint directory."""
+    startup_random_iters: int = 10
+    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest."""
+    manual_trial_dirs: List[str] = None
+    """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
+    Results will be considered as part of the trial history of the hyperparameter search."""
+
+
+    def process_args(self) -> None:
+        super(HyperoptArgs, self).process_args()
+
+        # Assign log and checkpoint directories if none provided
+        if self.log_dir is None:
+            self.log_dir = self.save_dir
+        if self.hyperopt_checkpoint_dir is None:
+            self.hyperopt_checkpoint_dir = self.log_dir
 
 
 class SklearnTrainArgs(TrainArgs):
