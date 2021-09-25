@@ -749,6 +749,8 @@ class SklearnTrainArgs(TrainArgs):
     """Number of bits in morgan fingerprint."""
     num_trees: int = 500
     """Number of random forest trees."""
+    impute_mode: Literal['single_task', 'median', 'mean', 'linear','frequent'] = None
+    """How to impute missing data (None means no imputation)."""
 
 
 class SklearnPredictArgs(Tap):
