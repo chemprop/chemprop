@@ -2,11 +2,12 @@ from logging import Logger
 import os
 import pickle
 from typing import Dict, List, Union
-from pprint import pformat
+from copy import deepcopy
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.svm import SVC, SVR
+from sklearn.linear_model import SGDClassifier, SGDRegressor
 from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
@@ -54,6 +55,76 @@ def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC
         raise ValueError(f'Dataset type "{dataset_type}" not supported')
 
     return preds
+
+def impute_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
+                   train_data: MoleculeDataset,
+                   args: SklearnTrainArgs,
+                   logger: Logger = None,
+                   threshold: float = 0.5) -> List[float]:
+    """
+    Trains a single-task scikit-learn model, meaning a separate model is trained for each task.
+
+    This is necessary if some tasks have None (unknown) values.
+
+    :param model: The scikit-learn model to train.
+    :param train_data: The training data.
+    :param args: A :class:`~chemprop.args.SklearnTrainArgs` object containing arguments for
+                 training the scikit-learn model.
+    :param logger: A logger to record output.
+    :param theshold: Threshold for classification tasks.
+    :return: A list of list of target values.
+    """
+    num_tasks = train_data.num_tasks()
+    new_targets=deepcopy(train_data.targets())
+    
+    if logger is not None:
+        debug = logger.debug
+    else:
+        debug = print
+        
+    debug('Imputation')
+    
+    for task_num in trange(num_tasks):
+        impute_train_features = [features for features, targets in zip(train_data.features(), train_data.targets()) if targets[task_num] is None]
+        if len(impute_train_features) > 0:
+            train_features, train_targets = zip(*[(features, targets[task_num])
+                                              for features, targets in zip(train_data.features(), train_data.targets())
+                                              if targets[task_num] is not None])
+            if args.impute_mode == 'single_task':
+                model.fit(train_features, train_targets)
+                impute_train_preds = predict(
+                    model=model,
+                    model_type=args.model_type,
+                    dataset_type=args.dataset_type,
+                    features=impute_train_features
+                )
+                impute_train_preds = [pred[0] for pred in impute_train_preds]
+            elif args.impute_mode == 'median' and args.dataset_type == 'regression':
+                impute_train_preds = [np.median(train_targets)] * len(new_targets)
+            elif args.impute_mode == 'mean' and args.dataset_type == 'regression':
+                impute_train_preds = [np.mean(train_targets)] * len(new_targets)
+            elif args.impute_mode == 'frequent' and args.dataset_type == 'classification':
+                impute_train_preds = [np.argmax(np.bincount(train_targets))] * len(new_targets)
+            elif args.impute_mode == 'linear' and args.dataset_type == 'regression':
+                reg = SGDRegressor(alpha=0.01).fit(train_features, train_targets)
+                impute_train_preds = reg.predict(impute_train_features)
+            elif args.impute_mode == 'linear' and args.dataset_type == 'classification':
+                cls = SGDClassifier().fit(train_features, train_targets)
+                impute_train_preds = cls.predict(impute_train_features)
+            else:
+                raise ValueError("Invalid combination of imputation mode and dataset type.")   
+
+            #Replace targets
+            ctr = 0
+            for i in range(len(new_targets)):
+                if new_targets[i][task_num] is None:
+                    value = impute_train_preds[ctr]
+                    if args.dataset_type == 'classification':
+                        value = int(value > threshold)
+                    new_targets[i][task_num] = value
+                    ctr += 1
+                    
+    return new_targets
 
 
 def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
@@ -136,6 +207,17 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     num_tasks = train_data.num_tasks()
 
     train_targets = train_data.targets()
+
+    if args.impute_mode:
+        train_targets = impute_sklearn(model=model,
+                                       train_data=train_data,
+                                       args=args,
+                                       logger=logger)
+    elif any(None in sublist for sublist in train_targets):
+        raise ValueError("Missing target values not tolerated for multi-task sklearn models." 
+                         "Use either --single_task to train multiple single-task models or impute"
+                         " targets via --impute_mode  <model/linear/median/mean/frequent>.")
+        
     if train_data.num_tasks() == 1:
         train_targets = [targets[0] for targets in train_targets]
 
@@ -181,8 +263,6 @@ def run_sklearn(args: SklearnTrainArgs,
         debug, info = logger.debug, logger.info
     else:
         debug = info = print
-
-    debug(pformat(vars(args)))
 
     debug('Loading data')
     data = get_data(path=args.data_path,
@@ -237,7 +317,7 @@ def run_sklearn(args: SklearnTrainArgs,
             raise ValueError(f'Model type "{args.model_type}" not supported')
     elif args.dataset_type == 'classification':
         if args.model_type == 'random_forest':
-            model = RandomForestClassifier(n_estimators=args.num_trees, n_jobs=-1, class_weight=args.class_weight)
+            model = RandomForestClassifier(n_estimators=args.num_trees, n_jobs=-1, class_weight=args.class_weight, random_state=args.seed)
         elif args.model_type == 'svm':
             model = SVC()
         else:
