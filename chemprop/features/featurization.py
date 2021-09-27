@@ -180,6 +180,21 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
     return features
 
 
+def atom_features_zeros(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]:
+    """
+    Builds a feature vector for an atom containing only the atom number information.
+
+    :param atom: An RDKit atom.
+    :return: A list containing the atom features.
+    """
+    if atom is None:
+        features = [0] * PARAMS.ATOM_FDIM
+    else:
+        features = onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.ATOM_FEATURES['atomic_num']) + \
+            [0] * (PARAMS.ATOM_FDIM - PARAMS.MAX_ATOMIC_NUM - 1) #set other features to zero
+    return features
+
+
 def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for a bond.
@@ -350,17 +365,30 @@ class MolGraph:
             ri2pi, pio, rio = map_reac_to_prod(mol_reac, mol_prod)
            
             # Get atom features
-            f_atoms_reac = [atom_features(atom) for atom in mol_reac.GetAtoms()] + [atom_features(None) for index in pio]
-            f_atoms_prod = [atom_features(mol_prod.GetAtomWithIdx(ri2pi[atom.GetIdx()])) if atom.GetIdx() not in rio else
-                            atom_features(None) for atom in mol_reac.GetAtoms()] + [atom_features(mol_prod.GetAtomWithIdx(index)) for index in pio]
-            
-            if self.reaction_mode in ['reac_diff','prod_diff']:
+            if self.reaction_mode in ['reac_diff','prod_diff', 'reac_prod']:
+                #Reactant: regular atom features for each atom in the reactants, as well as zero features for atoms that are only in the products (indices in pio)
+                f_atoms_reac = [atom_features(atom) for atom in mol_reac.GetAtoms()] + [atom_features_zeros(mol_prod.GetAtomWithIdx(index)) for index in pio]
+                
+                #Product: regular atom features for each atom that is in both reactants and products (not in rio), other atom features zero,
+                #regular features for atoms that are only in the products (indices in pio)
+                f_atoms_prod = [atom_features(mol_prod.GetAtomWithIdx(ri2pi[atom.GetIdx()])) if atom.GetIdx() not in rio else
+                                atom_features_zeros(atom) for atom in mol_reac.GetAtoms()] + [atom_features(mol_prod.GetAtomWithIdx(index)) for index in pio]
+            else: #balance
+                #Reactant: regular atom features for each atom in the reactants, copy features from product side for atoms that are only in the products (indices in pio)
+                f_atoms_reac = [atom_features(atom) for atom in mol_reac.GetAtoms()] + [atom_features(mol_prod.GetAtomWithIdx(index)) for index in pio]
+                
+                #Product: regular atom features for each atom that is in both reactants and products (not in rio), copy features from reactant side for
+                #other atoms, regular features for atoms that are only in the products (indices in pio)
+                f_atoms_prod = [atom_features(mol_prod.GetAtomWithIdx(ri2pi[atom.GetIdx()])) if atom.GetIdx() not in rio else
+                                atom_features(atom) for atom in mol_reac.GetAtoms()] + [atom_features(mol_prod.GetAtomWithIdx(index)) for index in pio]
+
+            if self.reaction_mode in ['reac_diff', 'prod_diff', 'reac_diff_balance', 'prod_diff_balance']:
                 f_atoms_diff = [list(map(lambda x, y: x - y, ii, jj)) for ii, jj in zip(f_atoms_prod, f_atoms_reac)]
-            if self.reaction_mode == 'reac_prod':
+            if self.reaction_mode in ['reac_prod', 'reac_prod_balance']:
                 self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_reac, f_atoms_prod)]
-            elif self.reaction_mode == 'reac_diff':
+            elif self.reaction_mode in ['reac_diff', 'reac_diff_balance']:
                 self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_reac, f_atoms_diff)]
-            elif self.reaction_mode == 'prod_diff':
+            elif self.reaction_mode in ['prod_diff', 'prod_diff_balance']:
                 self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_prod, f_atoms_diff)]
             self.n_atoms = len(self.f_atoms)
             n_atoms_reac = mol_reac.GetNumAtoms()
@@ -373,8 +401,11 @@ class MolGraph:
             for a1 in range(self.n_atoms):
                 for a2 in range(a1 + 1, self.n_atoms):
                     if a1 >= n_atoms_reac and a2 >= n_atoms_reac: # Both atoms only in product
-                        bond_reac = None
                         bond_prod = mol_prod.GetBondBetweenAtoms(pio[a1 - n_atoms_reac], pio[a2 - n_atoms_reac])
+                        if self.reaction_mode in ['reac_prod_balance', 'reac_diff_balance', 'prod_diff_balance']:
+                            bond_reac = bond_prod
+                        else:
+                            bond_reac = None
                     elif a1 < n_atoms_reac and a2 >= n_atoms_reac: # One atom only in product
                         bond_reac = None
                         if a1 in ri2pi.keys():
@@ -386,20 +417,26 @@ class MolGraph:
                         if a1 in ri2pi.keys() and a2 in ri2pi.keys():
                             bond_prod = mol_prod.GetBondBetweenAtoms(ri2pi[a1], ri2pi[a2]) #Both atoms in both reactant and product
                         else:
-                            bond_prod = None # One or both atoms only in reactant
+                            if self.reaction_mode in ['reac_prod_balance', 'reac_diff_balance', 'prod_diff_balance']:
+                                if a1 in ri2pi.keys() or a2 in ri2pi.keys():
+                                    bond_prod = None # One atom only in reactant
+                                else:
+                                    bond_prod = bond_reac # Both atoms only in reactant
+                            else:    
+                                bond_prod = None # One or both atoms only in reactant
 
                     if bond_reac is None and bond_prod is None:
                         continue
 
                     f_bond_reac = bond_features(bond_reac)
                     f_bond_prod = bond_features(bond_prod)
-                    if self.reaction_mode in ['reac_diff', 'prod_diff']:
+                    if self.reaction_mode in ['reac_diff', 'prod_diff', 'reac_diff_balance', 'prod_diff_balance']:
                         f_bond_diff = [y - x for x, y in zip(f_bond_reac, f_bond_prod)]
-                    if self.reaction_mode == 'reac_prod':
+                    if self.reaction_mode in ['reac_prod', 'reac_prod_balance']:
                         f_bond = f_bond_reac + f_bond_prod
-                    elif self.reaction_mode == 'reac_diff':
+                    elif self.reaction_mode in ['reac_diff', 'reac_diff_balance']:
                         f_bond = f_bond_reac + f_bond_diff
-                    elif self.reaction_mode == 'prod_diff':
+                    elif self.reaction_mode in ['prod_diff', 'prod_diff_balance']:
                         f_bond = f_bond_prod + f_bond_diff
                     self.f_bonds.append(self.f_atoms[a1] + f_bond)
                     self.f_bonds.append(self.f_atoms[a2] + f_bond)

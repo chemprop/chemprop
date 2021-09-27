@@ -355,12 +355,15 @@ class TrainArgs(CommonArgs):
     """
     Whether to adjust MPNN layer to take reactions as input instead of molecules.
     """
-    reaction_mode: Literal['reac_prod', 'reac_diff', 'prod_diff'] = 'reac_diff'
+    reaction_mode: Literal['reac_prod', 'reac_diff', 'prod_diff', 'reac_prod_balance', 'reac_diff_balance', 'prod_diff_balance'] = 'reac_diff'
     """
     Choices for construction of atom and bond features for reactions
     :code:`reac_prod`: concatenates the reactants feature with the products feature.
     :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products. 
     :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products. 
+    :code:`reac_prod_balance`: concatenates the reactants feature with the products feature, balances imbalanced reactions.
+    :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions. 
+    :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions. 
     """
     explicit_h: bool = False
     """
