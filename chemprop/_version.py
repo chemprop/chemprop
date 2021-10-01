@@ -1,7 +1,7 @@
 __all__ = ['__version__']
 
 # major, minor, patch
-version_info = 1, 3, 1
+version_info = 1, 4, 0
 
 # suffix
 suffix = None
