@@ -41,7 +41,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest parameterized
         python -m pip install git+https://github.com/bp-kelley/descriptastorus
-        python -m pip install -e .
+        python -m pip install  --ignore-installed -e .
     - name: Lint with flake8
       shell: bash -l {0}
       run: |
