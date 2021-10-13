@@ -27,12 +27,12 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
-	environment-file: environment.yml
+        environment-file: environment.yml
 
-	channels: conda-forge, defaults
+        channels: conda-forge, defaults
 
-	activate-environment: chemprop
-	
+        activate-environment: chemprop
+
     - name: Set temp directories on Windows
       shell: bash -l {0}
       if: matrix.os == 'windows-latest'
