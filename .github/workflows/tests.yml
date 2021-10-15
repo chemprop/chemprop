@@ -27,7 +27,7 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
-	mamba-version: "*"
+        mamba-version: "*"
         environment-file: environment.yml
 
         channels: conda-forge, defaults
