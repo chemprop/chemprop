@@ -236,7 +236,6 @@ class MoleculeDataset(Dataset):
         :param data: A list of :class:`MoleculeDatapoint`\ s.
         """
         self._data = data
-        self._scaler = None
         self._batch_graph = None
         self._random = Random()
 
@@ -453,10 +452,7 @@ class MoleculeDataset(Dataset):
                 (self._data[0].features is None and not scale_bond_features and not scale_atom_descriptors):
             return None
 
-        if scaler is not None:
-            self._scaler = scaler
-
-        elif self._scaler is None:
+        if scaler is None:
             if scale_atom_descriptors and not self._data[0].atom_descriptors is None:
                 features = np.vstack([d.raw_atom_descriptors for d in self._data])
             elif scale_atom_descriptors and not self._data[0].atom_features is None:
@@ -465,23 +461,23 @@ class MoleculeDataset(Dataset):
                 features = np.vstack([d.raw_bond_features for d in self._data])
             else:
                 features = np.vstack([d.raw_features for d in self._data])
-            self._scaler = StandardScaler(replace_nan_token=replace_nan_token)
-            self._scaler.fit(features)
+            scaler = StandardScaler(replace_nan_token=replace_nan_token)
+            scaler.fit(features)
 
         if scale_atom_descriptors and not self._data[0].atom_descriptors is None:
             for d in self._data:
-                d.set_atom_descriptors(self._scaler.transform(d.raw_atom_descriptors))
+                d.set_atom_descriptors(scaler.transform(d.raw_atom_descriptors))
         elif scale_atom_descriptors and not self._data[0].atom_features is None:
             for d in self._data:
-                d.set_atom_features(self._scaler.transform(d.raw_atom_features))
+                d.set_atom_features(scaler.transform(d.raw_atom_features))
         elif scale_bond_features:
             for d in self._data:
-                d.set_bond_features(self._scaler.transform(d.raw_bond_features))
+                d.set_bond_features(scaler.transform(d.raw_bond_features))
         else:
             for d in self._data:
-                d.set_features(self._scaler.transform(d.raw_features.reshape(1, -1))[0])
+                d.set_features(scaler.transform(d.raw_features.reshape(1, -1))[0])
 
-        return self._scaler
+        return scaler
 
     def normalize_targets(self) -> StandardScaler:
         """

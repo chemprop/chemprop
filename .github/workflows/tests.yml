@@ -27,6 +27,11 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+        environment-file: environment.yml
+        channels: conda-forge, defaults
+        activate-environment: chemprop
+
     - name: Set temp directories on Windows
       shell: bash -l {0}
       if: matrix.os == 'windows-latest'
@@ -37,10 +42,7 @@ jobs:
     - name: Install dependencies
       shell: bash -l {0}
       run: |
-        conda install -c conda-forge rdkit
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest parameterized
-        python -m pip install git+https://github.com/bp-kelley/descriptastorus
+        mamba install flake8 pytest parameterized
         python -m pip install -e .
     - name: Lint with flake8
       shell: bash -l {0}
