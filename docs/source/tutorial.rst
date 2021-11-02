@@ -278,7 +278,7 @@ If you only want to use the predictions :code:`preds` within the script, and not
 
   import chemprop
 
-  smiles = [['CCC', 'CCCC', 'OCC']]
+  smiles = [['CCC'], ['CCCC'], ['OCC']]
   arguments = [
       '--test_path', '/dev/null',
       '--preds_path', '/dev/null',
@@ -303,8 +303,8 @@ only load the chemprop model once, and then predict with the preloaded model (in
 
   model_objects = chemprop.train.load_model(args=args)
   
-  smiles = [['CCC', 'CCCC', 'OCC']]
+  smiles = [['CCC'], ['CCCC'], ['OCC']]
   preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)
 
-  smiles = [['CCCC', 'CCCCC', 'COCC']]
+  smiles = [['CCCC'], ['CCCCC'], ['COCC']]
   preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)
