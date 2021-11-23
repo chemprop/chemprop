@@ -12,6 +12,12 @@ from chemprop.features import BatchMolGraph
 from chemprop.nn_utils import get_activation_function, initialize_weights
 from chemprop.models.mpn import MPN
 
+class nn_exp(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.exp(x)
 
 class _MoleculeModel(nn.Module):
     """A :class:`MoleculeModel` is a model which contains a message passing network following by feed-forward layers."""
@@ -30,16 +36,19 @@ class _MoleculeModel(nn.Module):
         device: Union[str, torch.device] = "cpu",
         aggregation: str = "mean",
         aggregation_norm: int = 100,
+        activation: str = "ReLU",
+        atom_descriptors: Optional[str] = None,
+        atom_descriptors_size: int = 0,
+        features_only: bool = False,
+        use_input_features: bool = False,
+        overwrite_default_atom_features: bool = False,
+        overwrite_default_bond_features: bool = False,
+        mpn_shared: bool = False,
+        number_of_molecules: int = 1,
         checkpoint_frzn: Optional[str] = None,
         freeze_first_only: bool = False,
         frzn_ffn_layers: int = 0,
-        features_only: bool = False,
         features_size: Optional[int] = None,
-        number_of_molecules: int = 1,
-        use_input_features: int = False,
-        atom_descriptors: Optional[str] = None,
-        atom_descriptors_size: int = 0,
-        activation: str = "ReLU",
         ffn_num_layers: int = 2,
         ffn_hidden_size: Optional[int] = None,
         spectra_activation: str = "exp",
@@ -69,6 +78,15 @@ class _MoleculeModel(nn.Module):
             device,
             aggregation,
             aggregation_norm,
+            activation,
+            atom_descriptors,
+            atom_descriptors_size,
+            features_only,
+            use_input_features,
+            overwrite_default_atom_features,
+            overwrite_default_bond_features,
+            mpn_shared,
+            number_of_molecules,
             checkpoint_frzn,
             freeze_first_only,
         )
@@ -104,15 +122,20 @@ class _MoleculeModel(nn.Module):
         device: Union[str, torch.device] = "cpu",
         aggregation: str = "mean",
         aggregation_norm: int = 100,
+        activation: str = "ReLU",
+        atom_descriptors: Optional[str] = None,
+        atom_descriptors_size: int = 0,
+        features_only: bool = False,
+        use_input_features: bool = False,
+        overwrite_default_atom_features: bool = False,
+        overwrite_default_bond_features: bool = False,
+        mpn_shared: bool = False,
+        number_of_molecules: int = 1,
         checkpoint_frzn: Optional[str] = None,
         freeze_first_only: bool = False,
     ):
         """
         Creates the message passing encoder for the model.
-
-        :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
-        :param checkpoint_frzn:
-        :param freezer_first_only:
         """
         self.encoder = MPN(
             Namespace(
@@ -126,6 +149,15 @@ class _MoleculeModel(nn.Module):
                 device=device,
                 aggregation=aggregation,
                 aggregation_norm=aggregation_norm,
+                activation=activation,
+                atom_descriptors=atom_descriptors,
+                atom_descriptors_size=atom_descriptors_size,
+                features_only=features_only,
+                use_input_features=use_input_features,
+                overwrite_default_atom_features=overwrite_default_atom_features,
+                overwrite_default_bond_features=overwrite_default_bond_features,
+                mpn_shared=mpn_shared,
+                number_of_molecules=number_of_molecules
             )
         )
 
@@ -209,7 +241,6 @@ class _MoleculeModel(nn.Module):
         dropout = nn.Dropout(dropout)
         activation = get_activation_function(activation)
 
-        # Create FFN layers
         if ffn_num_layers == 1:
             ffn = [dropout, nn.Linear(first_linear_dim, self.output_size)]
         else:
@@ -234,19 +265,10 @@ class _MoleculeModel(nn.Module):
         if dataset_type == "spectra":
             if spectra_activation == "softplus":
                 spectra_activation = nn.Softplus()
-            else:  # default exponential activation which must be made into a custom nn module
-
-                class nn_exp(torch.nn.Module):
-                    def __init__(self):
-                        super(nn_exp, self).__init__()
-
-                    def forward(self, x):
-                        return torch.exp(x)
-
+            else:
                 spectra_activation = nn_exp()
             ffn.append(spectra_activation)
 
-        # Create FFN model
         self.ffn = nn.Sequential(*ffn)
 
         if checkpoint_frzn is not None and frzn_ffn_layers > 0:

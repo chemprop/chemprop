@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Optional, Union, Tuple
 from functools import reduce
 
 import numpy as np
@@ -14,33 +14,45 @@ from chemprop.nn_utils import index_select_ND, get_activation_function
 class MPNEncoder(nn.Module):
     """An :class:`MPNEncoder` is a message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int):
+    def __init__(
+        self, 
+        atom_fdim: int,
+        bond_fdim: int,
+        atom_messages: bool = False,
+        hidden_size: int = 300,
+        bias: bool = False,
+        depth: int = 3,
+        dropout: float = 0.0,
+        undirected: bool = False,
+        device: Union[str, torch.device] = "cpu",
+        aggregation: str = "mean",
+        aggregation_norm: int = 100,
+        activation: str = "ReLU",
+        atom_descriptors: Optional[str] = None,
+        atom_descriptors_size: int = 0,
+    ):
         """
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
         :param atom_fdim: Atom feature vector dimension.
         :param bond_fdim: Bond feature vector dimension.
         """
-        super(MPNEncoder, self).__init__()
+        super().__init__()
+
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
-        self.atom_messages = args.atom_messages
-        self.hidden_size = args.hidden_size
-        self.bias = args.bias
-        self.depth = args.depth
-        self.dropout = args.dropout
+        self.atom_messages = atom_messages
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.depth = depth
+        self.dropout = dropout
         self.layers_per_message = 1
-        self.undirected = args.undirected
-        self.device = args.device
-        self.aggregation = args.aggregation
-        self.aggregation_norm = args.aggregation_norm
+        self.undirected = undirected
+        self.device = device
+        self.aggregation = aggregation
+        self.aggregation_norm = aggregation_norm
 
-        # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
-
-        # Activation
-        self.act_func = get_activation_function(args.activation)
-
-        # Cached zeros
+        self.act_func = get_activation_function(activation)
         self.cached_zero_vector = nn.Parameter(torch.zeros(self.hidden_size), requires_grad=False)
 
         # Input
@@ -58,8 +70,8 @@ class MPNEncoder(nn.Module):
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
         # layer after concatenating the descriptors if args.atom_descriptors == descriptors
-        if args.atom_descriptors == 'descriptor':
-            self.atom_descriptors_size = args.atom_descriptors_size
+        if atom_descriptors == 'descriptor':
+            self.atom_descriptors_size = atom_descriptors_size
             self.atom_descriptors_layer = nn.Linear(self.hidden_size + self.atom_descriptors_size,
                                                     self.hidden_size + self.atom_descriptors_size,)
 
@@ -92,7 +104,7 @@ class MPNEncoder(nn.Module):
         message = self.act_func(input)  # num_bonds x hidden_size
 
         # Message passing
-        for depth in range(self.depth - 1):
+        for _ in range(self.depth - 1):
             if self.undirected:
                 message = (message + message[b2revb]) / 2
 
