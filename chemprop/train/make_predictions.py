@@ -10,7 +10,7 @@ from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, reset_featurization_parameters
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -101,6 +101,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 
     #set explicit H option and reaction option
     set_explicit_h(train_args.explicit_h)
+    set_adding_hs(args.adding_h)
     set_reaction(train_args.reaction, train_args.reaction_mode)
 
 

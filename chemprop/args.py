@@ -369,6 +369,10 @@ class TrainArgs(CommonArgs):
     """
     Whether H are explicitly specified in input (and should be kept this way).
     """
+    adding_h: bool = False
+    """
+    Whether RDKit molecules will be constructed with adding the Hs to them.
+    """
 
     # Training arguments
     epochs: int = 30
