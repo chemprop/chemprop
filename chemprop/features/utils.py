@@ -67,7 +67,8 @@ def load_valid_atom_or_bond_features(path: str, smiles: List[str]) -> List[np.nd
     * :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns
     * :code:'.sdf' containing all mol blocks with descriptors as entries
 
-    :param path: Path to file containing atomwise features.
+    :param path: Path to file containing atomwise or bondwise features.
+    :param smiles: List of smiles strings associated with features to be loaded. May be only a subset of the molecules stored in the features file.
     :return: A list of 2D array.
     """
 
@@ -76,6 +77,8 @@ def load_valid_atom_or_bond_features(path: str, smiles: List[str]) -> List[np.nd
     if extension == '.npz':
         container = np.load(path)
         features = [container[key] for key in container]
+        if len(features) != len(smiles):
+            raise ValueError(f'Different number of valid smiles than features in {path}. Features saved in npz files cannot be filtered to include only valid molecules. When using npz, all molecule datapoints must be valid and in the order corresponding to the features file.')
 
     elif extension in ['.pkl', '.pckl', '.pickle']:
         features_df = pd.read_pickle(path)
