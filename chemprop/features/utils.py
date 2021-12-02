@@ -79,6 +79,7 @@ def load_valid_atom_or_bond_features(path: str, smiles: List[str]) -> List[np.nd
 
     elif extension in ['.pkl', '.pckl', '.pickle']:
         features_df = pd.read_pickle(path)
+        features_df = features_df.loc[smiles]
         if features_df.iloc[0, 0].ndim == 1:
             features = features_df.apply(lambda x: np.stack(x.tolist(), axis=1), axis=1).tolist()
         elif features_df.iloc[0, 0].ndim == 2:
