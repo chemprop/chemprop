@@ -530,6 +530,7 @@ class ChempropTests(TestCase):
             app = build_app(root_folder=root_dir, init_db=True)
 
             app.config['TESTING'] = True
+            app.config['SERVER_NAME'] = 'localhost'
 
             data_path = 'regression.csv'
             test_path = 'regression_test_smiles.csv'
@@ -546,43 +547,44 @@ class ChempropTests(TestCase):
             with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
                 test_smiles = f.read()
 
-            with app.test_client() as client:
-                response = client.get('/')
-                self.assertEqual(response.status_code, 200)
+            with app.app_context():
+                with app.test_client() as client:
+                    response = client.get('/')
+                    self.assertEqual(response.status_code, 200)
 
-                # Upload data
-                response = client.post(
-                    url_for('upload_data', return_page='home'),
-                    data={
-                        'dataset': (train_data, data_path),
-                        'datasetName': dataset_name
-                    }
-                )
-                self.assertEqual(response.status_code, 302)
+                    # Upload data
+                    response = client.post(
+                        url_for('upload_data', return_page='home'),
+                        data={
+                            'dataset': (train_data, data_path),
+                            'datasetName': dataset_name
+                        }
+                    )
+                    self.assertEqual(response.status_code, 302)
 
-                # Train
-                response = client.post(
-                    url_for('train'),
-                    data={
-                        'dataName': data_name,
-                        'epochs': epochs,
-                        'ensembleSize': ensemble_size,
-                        'checkpointName': checkpoint_name,
-                        'datasetType': dataset_type,
-                        'useProgressBar': False
-                    }
-                )
-                self.assertEqual(response.status_code, 200)
+                    # Train
+                    response = client.post(
+                        url_for('train'),
+                        data={
+                            'dataName': data_name,
+                            'epochs': epochs,
+                            'ensembleSize': ensemble_size,
+                            'checkpointName': checkpoint_name,
+                            'datasetType': dataset_type,
+                            'useProgressBar': False
+                        }
+                    )
+                    self.assertEqual(response.status_code, 200)
 
-                # Predict
-                response = client.post(
-                    url_for('predict'),
-                    data={
-                        'checkpointName': ckpt_name,
-                        'textSmiles': test_smiles
-                    }
-                )
-                self.assertEqual(response.status_code, 200)
+                    # Predict
+                    response = client.post(
+                        url_for('predict'),
+                        data={
+                            'checkpointName': ckpt_name,
+                            'textSmiles': test_smiles
+                        }
+                    )
+                    self.assertEqual(response.status_code, 200)
 
     @parameterized.expand([
         (
