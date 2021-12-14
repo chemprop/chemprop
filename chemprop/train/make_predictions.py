@@ -206,7 +206,8 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
 
         # Reshape multiclass to merge task and class dimension, with updated num_tasks
         if args.dataset_type == 'multiclass':
-            preds = preds.reshape((num_tasks))
+            if isinstance(preds, np.ndarray) and preds.ndim > 1:
+                preds = preds.reshape((num_tasks))
             if args.ensemble_variance or args. individual_ensemble_predictions:
                 ind_preds = ind_preds.reshape((num_tasks, len(args.checkpoint_paths)))
 
