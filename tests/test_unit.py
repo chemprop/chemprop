@@ -8,13 +8,16 @@ class DataUtilsTests(TestCase):
     """
     Tests related to the loading and handling of data and features.
     """
+    def test_preprocess_smiles_columns(self):
+        pass
+
     @patch(
         "chemprop.data.utils.get_header",
         lambda x : [f'column{i}' for i in range(5)]
     )
     @patch(
         "chemprop.data.utils.preprocess_smiles_columns",
-        lambda x0, x1 : ['column0','column1'] # default smiles columns if unspecified
+        lambda *args, **kwargs : ['column0','column1'] # default smiles columns if unspecified
     )
     def test_get_task_names(self):
         # default behavior no arguments
