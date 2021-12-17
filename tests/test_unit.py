@@ -1,19 +1,94 @@
 """Chemprop unit tests."""
+import os
 from unittest import TestCase
 from unittest.mock import patch
+from tempfile import TemporaryDirectory
 
-from chemprop.data import get_task_names
+from chemprop.data import get_header, preprocess_smiles_columns, get_task_names
 
 class DataUtilsTests(TestCase):
     """
     Tests related to the loading and handling of data and features.
     """
-    def test_preprocess_smiles_columns(self):
-        pass
+    def test_get_header(self):
+        # dummy data file
+        with TemporaryDirectory() as temp_dir:
+            dummy_path=os.path.join(temp_dir,'dummy_data.csv')
+            with open(dummy_path,'w') as f:
+                data = 'column0,column1\nCC,10\nCCC,15'
+                f.write(data)
+        
+            # correct output
+            header = get_header(dummy_path)
+            self.assertEqual(header,['column0','column1'])
+
+            # with path that doesn't exist
+            bad_path=os.path.join(temp_dir,'bad_path.csv')
+            self.assertRaises(
+                FileNotFoundError,
+                get_header(bad_path)
+            )
 
     @patch(
         "chemprop.data.utils.get_header",
-        lambda x : [f'column{i}' for i in range(5)]
+        lambda *args : [f'column{i}' for i in range(5)]
+    )
+    def test_preprocess_smiles_columns(self):
+        # base case 1 molecule
+        smiles_columns = preprocess_smiles_columns(
+            path='dummy_path.txt',
+            smiles_columns=None,
+            number_of_molecules=1,
+        )
+        self.assertEqual(smiles_columns, ['column0'])
+
+        # 2 molecules
+        smiles_columns = preprocess_smiles_columns(
+            path='dummy_path.txt',
+            smiles_columns=None,
+            number_of_molecules=2,
+        )
+        self.assertEqual(smiles_columns, ['column0','column1'])
+
+        # already specified columns
+        smiles_columns = preprocess_smiles_columns(
+            path='dummy_path.txt',
+            smiles_columns=['column3'],
+            number_of_molecules=1,
+        )
+        self.assertEqual(smiles_columns, ['column3'])
+
+        # input not a list
+        smiles_columns = preprocess_smiles_columns(
+            path='dummy_path.txt',
+            smiles_columns='column3',
+            number_of_molecules=1,
+        )
+        self.assertEqual(smiles_columns, ['column3'])
+
+        # wrong number of molecules
+        self.assertRaises(
+            ValueError,
+            smiles_columns = preprocess_smiles_columns(
+                path='dummy_path.txt',
+                smiles_columns=['column3'],
+                number_of_molecules=2,
+            )
+        )
+
+        # smiles columns not in file
+        self.assertRaises(
+            ValueError,
+            smiles_columns = preprocess_smiles_columns(
+                path='dummy_path.txt',
+                smiles_columns=['column3','not_in_file'],
+                number_of_molecules=2,
+            )
+        )
+
+    @patch(
+        "chemprop.data.utils.get_header",
+        lambda *args : [f'column{i}' for i in range(5)]
     )
     @patch(
         "chemprop.data.utils.preprocess_smiles_columns",

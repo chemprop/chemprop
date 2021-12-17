@@ -3,7 +3,7 @@ import csv
 from logging import Logger
 import pickle
 from random import Random
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Set, Tuple, Union
 import os
 
 from rdkit import Chem
@@ -15,9 +15,22 @@ from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
 
+def get_header(path: str) -> List[str]:
+    """
+    Returns the header of a data CSV file.
+
+    :param path: Path to a CSV file.
+    :return: A list of strings containing the strings in the comma-separated header.
+    """
+    with open(path) as f:
+        header = next(csv.reader(f))
+
+    return header
+
+
 def preprocess_smiles_columns(path: str,
-                              smiles_columns: Optional[Union[str, List[Optional[str]]]],
-                              number_of_molecules: int = 1) -> List[Optional[str]]:
+                              smiles_columns: Union[str, List[str]] = None,
+                              number_of_molecules: int = 1) -> List[str]:
     """
     Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
     headings corresponding to the columns in the data file holding SMILES.
@@ -82,19 +95,6 @@ def get_task_names(path: str,
     target_names = [column for column in columns if column not in ignore_columns]
 
     return target_names
-
-
-def get_header(path: str) -> List[str]:
-    """
-    Returns the header of a data CSV file.
-
-    :param path: Path to a CSV file.
-    :return: A list of strings containing the strings in the comma-separated header.
-    """
-    with open(path) as f:
-        header = next(csv.reader(f))
-
-    return header
 
 
 def get_data_weights(path: str) -> List[float]:
