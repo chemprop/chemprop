@@ -24,10 +24,8 @@ class DataUtilsTests(TestCase):
 
             # with path that doesn't exist
             bad_path=os.path.join(temp_dir,'bad_path.csv')
-            self.assertRaises(
-                FileNotFoundError,
+            with self.assertRaises(FileNotFoundError):
                 get_header(bad_path)
-            )
 
     @patch(
         "chemprop.data.utils.get_header",
@@ -67,24 +65,20 @@ class DataUtilsTests(TestCase):
         self.assertEqual(smiles_columns, ['column3'])
 
         # wrong number of molecules
-        self.assertRaises(
-            ValueError,
+        with self.assertRaises(ValueError):
             smiles_columns = preprocess_smiles_columns(
                 path='dummy_path.txt',
                 smiles_columns=['column3'],
                 number_of_molecules=2,
             )
-        )
 
         # smiles columns not in file
-        self.assertRaises(
-            ValueError,
+        with self.assertRaises(ValueError):
             smiles_columns = preprocess_smiles_columns(
                 path='dummy_path.txt',
                 smiles_columns=['column3','not_in_file'],
                 number_of_molecules=2,
             )
-        )
 
     @patch(
         "chemprop.data.utils.get_header",
