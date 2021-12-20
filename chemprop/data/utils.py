@@ -33,7 +33,7 @@ def preprocess_smiles_columns(path: str,
                               number_of_molecules: int = 1) -> List[str]:
     """
     Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
-    headings corresponding to the columns in the data file holding SMILES.
+    headings corresponding to the columns in the data file holding SMILES. Assumes file has a header.
 
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
@@ -120,6 +120,7 @@ def get_data_weights(path: str) -> List[float]:
 
 def get_smiles(path: str,
                smiles_columns: Union[str, List[str]] = None,
+               number_of_molecules: int = 1,
                header: bool = True,
                flatten: bool = False
                ) -> Union[List[str], List[List[str]]]:
@@ -129,6 +130,8 @@ def get_smiles(path: str,
     :param path: Path to a CSV file.
     :param smiles_columns: A list of the names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules for each data point. Not necessary if
+                                the names of smiles columns are previously processed.
     :param header: Whether the CSV file contains a header.
     :param flatten: Whether to flatten the returned SMILES to a list instead of a list of lists.
     :return: A list of SMILES or a list of lists of SMILES, depending on :code:`flatten`.
@@ -136,15 +139,15 @@ def get_smiles(path: str,
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    if not isinstance(smiles_columns, list):
-        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
+    if not isinstance(smiles_columns, list) and header:
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns, number_of_molecules=number_of_molecules)
 
     with open(path) as f:
         if header:
             reader = csv.DictReader(f)
         else:
             reader = csv.reader(f)
-            smiles_columns = 0
+            smiles_columns = list(range(number_of_molecules))
 
         smiles = [[row[c] for c in smiles_columns] for row in reader]
 

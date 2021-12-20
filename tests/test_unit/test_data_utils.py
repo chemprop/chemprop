@@ -4,7 +4,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from tempfile import TemporaryDirectory, TemporaryFile
 
-from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights \
+from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights , get_smiles\
 
 
 class TestGetHeader(TestCase):
@@ -195,8 +195,77 @@ class TestGetDataWeights(TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+
+@patch(
+    "chemprop.data.utils.preprocess_smiles_columns",
+    lambda *args, **kwargs : ['column0','column1'] # default smiles columns if unspecified
+)
 class TestGetSmiles(TestCase):
     """
     Test for the get_smiles function.
     """
-    
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.smiles_path = os.path.join(self.temp_dir.name,'smiles.csv')
+        with open(self.smiles_path,'w') as f:
+            f.write('column0,column1\nC,CC\nCC,CN\nO,CO')
+        self.no_header_path = os.path.join(self.temp_dir.name,'no_header.csv')
+        with open(self.no_header_path,'w') as f:
+            f.write('C,CC\nCC,CN\nO,CO')
+
+    def test_default_inputs(self):
+        """Testing with no optional arguments."""
+        smiles = get_smiles(
+            path=self.smiles_path
+        )
+        self.assertEqual(smiles,[['C', 'CC'], ['CC', 'CN'], ['O', 'CO']])
+
+    def test_specified_column_inputs(self):
+        """Testing with a specified smiles column argument."""
+        smiles = get_smiles(
+            path=self.smiles_path,
+            smiles_columns=['column1']
+        )
+        self.assertEqual(smiles,[['CC'], ['CN'], ['CO']])
+
+    def test_specified_columns_changed_order(self):
+        """Testing with no optional arguments."""
+        smiles = get_smiles(
+            path=self.smiles_path,
+            smiles_columns=['column1','column0']
+        )
+        self.assertEqual(smiles,[['CC', 'C'], ['CN', 'CC'], ['CO', 'O']])
+
+    def test_noheader_1mol(self):
+        """Testing with no header"""
+        smiles = get_smiles(
+            path=self.no_header_path,
+            header=False
+        )
+        self.assertEqual(smiles,[['C'], ['CC'], ['O']])
+
+    def test_noheader_2mol(self):
+        """Testing with no header and 2 molecules."""
+        smiles = get_smiles(
+            path=self.no_header_path,
+            number_of_molecules=2,
+            header=False
+        )
+        self.assertEqual(smiles,[['C', 'CC'], ['CC', 'CN'], ['O', 'CO']])
+
+    def test_flatten(self):
+        """Testing with flattened output"""
+        smiles = get_smiles(
+            path=self.smiles_path,
+            flatten=True,
+        )
+        self.assertEqual(smiles,['C', 'CC', 'CC', 'CN', 'O', 'CO'])
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+class TestFilterInvalidSmiles(TestCase):
+    """
+    Tests for the filter_invalid_smiles function.
+    """
+    pass
