@@ -2,9 +2,12 @@
 import os
 from unittest import TestCase
 from unittest.mock import patch
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryDirectory
 
-from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights , get_smiles\
+import numpy as np
+
+from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights, \
+    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint
 
 
 class TestGetHeader(TestCase):
@@ -264,8 +267,56 @@ class TestGetSmiles(TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+
 class TestFilterInvalidSmiles(TestCase):
     """
     Tests for the filter_invalid_smiles function.
     """
-    pass
+    def test_filter_good_smiles(self):
+        """Test pass through for all good smiles"""
+        smiles_list = [['C'],['CC'],['CN'],['O']]
+        dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+        filtered_dataset = filter_invalid_smiles(dataset)
+        self.assertEqual(len(filtered_dataset),4)
+
+    def test_filter_empty_smiles(self):
+        """Test filter out empty smiles"""
+        smiles_list = [['C'],['CC'],[''],['O']]
+        dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+        filtered_dataset = filter_invalid_smiles(dataset)
+        self.assertEqual(len(filtered_dataset),3)
+
+    def test_no_heavy_smiles(self):
+        """Test filter out smiles with no heavy atoms"""
+        smiles_list = [['C'],['CC'],['[HH]'],['O']]
+        dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+        filtered_dataset = filter_invalid_smiles(dataset)
+        self.assertEqual(len(filtered_dataset),3)
+
+    def test_invalid_smiles(self):
+        """Test filter out smiles with an invalid smiles"""
+        smiles_list = [['C'],['CC'],['cccXc'],['O']]
+        dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+        filtered_dataset = filter_invalid_smiles(dataset)
+        self.assertEqual(len(filtered_dataset),3)
+
+
+# @patch(
+#     "chemprop.features.utils.load_features",
+#     lambda *args, **kwargs : np.array([[0,1][2,3][4,5]]) # default smiles columns if unspecified
+# )
+# class TestGetData(TestCase):
+#     """
+#     Tests for the get_data function. Note, not including testing for args input because that may be removed.
+#     """
+#     def setUp(self):
+#         self.temp_dir = TemporaryDirectory()
+#         self.data_path = os.path.join(self.temp_dir.name,'data.csv')
+#         with open(self.data_path,'w') as f:
+#             f.write('column0,column1,column2,column3\nC,CC,0,1\nCC,CN,2,3\nO,CO,4,5')
+
+#     def test_base_case(self):
+#         """Testing base case"""
+
+#     def tearDown(self):
+#         self.temp_dir.cleanup()
