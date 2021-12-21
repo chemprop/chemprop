@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights, \
-    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint
+    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data
 
 
 class TestGetHeader(TestCase):
@@ -277,46 +277,127 @@ class TestFilterInvalidSmiles(TestCase):
         smiles_list = [['C'],['CC'],['CN'],['O']]
         dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
         filtered_dataset = filter_invalid_smiles(dataset)
-        self.assertEqual(len(filtered_dataset),4)
+        self.assertEqual(filtered_dataset.smiles(),[['C'],['CC'],['CN'],['O']])
 
     def test_filter_empty_smiles(self):
         """Test filter out empty smiles"""
         smiles_list = [['C'],['CC'],[''],['O']]
         dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
         filtered_dataset = filter_invalid_smiles(dataset)
-        self.assertEqual(len(filtered_dataset),3)
+        self.assertEqual(filtered_dataset.smiles(),[['C'],['CC'],['O']])
 
     def test_no_heavy_smiles(self):
         """Test filter out smiles with no heavy atoms"""
         smiles_list = [['C'],['CC'],['[HH]'],['O']]
         dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
         filtered_dataset = filter_invalid_smiles(dataset)
-        self.assertEqual(len(filtered_dataset),3)
+        self.assertEqual(filtered_dataset.smiles(),[['C'],['CC'],['O']])
 
     def test_invalid_smiles(self):
         """Test filter out smiles with an invalid smiles"""
         smiles_list = [['C'],['CC'],['cccXc'],['O']]
         dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
         filtered_dataset = filter_invalid_smiles(dataset)
-        self.assertEqual(len(filtered_dataset),3)
+        self.assertEqual(filtered_dataset.smiles(),[['C'],['CC'],['O']])
 
 
-# @patch(
-#     "chemprop.features.utils.load_features",
-#     lambda *args, **kwargs : np.array([[0,1][2,3][4,5]]) # default smiles columns if unspecified
-# )
-# class TestGetData(TestCase):
-#     """
-#     Tests for the get_data function. Note, not including testing for args input because that may be removed.
-#     """
-#     def setUp(self):
-#         self.temp_dir = TemporaryDirectory()
-#         self.data_path = os.path.join(self.temp_dir.name,'data.csv')
-#         with open(self.data_path,'w') as f:
-#             f.write('column0,column1,column2,column3\nC,CC,0,1\nCC,CN,2,3\nO,CO,4,5')
+@patch(
+    "chemprop.data.utils.get_data_weights",
+    lambda *args, **kwargs : np.array([1,1.5,0.5])
+)
+@patch(
+    "chemprop.data.utils.preprocess_smiles_columns",
+    lambda *args, **kwargs : ['column0','column1'] # default smiles columns if unspecified
+)
+class TestGetData(TestCase):
+    """
+    Tests for the get_data function. Note, not including testing for args input because that may be removed.
+    """
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.data_path = os.path.join(self.temp_dir.name,'data.csv')
+        with open(self.data_path,'w') as f:
+            f.write('column0,column1,column2,column3\nC,CC,0,1\nCC,CN,2,3\nO,CO,4,5')
 
-#     def test_base_case(self):
-#         """Testing base case"""
+    def test_return_dataset(self):
+        """Testing the return type"""
+        data = get_data(
+            path=self.data_path
+        )
+        self.assertIsInstance(data,MoleculeDataset)
 
-#     def tearDown(self):
-#         self.temp_dir.cleanup()
+    def test_smiles(self):
+        """Testing the base case smiles"""
+        data = get_data(
+            path=self.data_path
+        )
+        self.assertEqual(data.smiles(),[['C','CC'],['CC','CN'],['O','CO']])
+
+    def test_targets(self):
+        """Testing the base case targets"""
+        data = get_data(
+            path=self.data_path
+        )
+        self.assertEqual(data.targets(),[[0,1],[2,3],[4,5]])
+
+    @patch(
+        "chemprop.data.utils.load_features",
+        lambda *args, **kwargs : np.array([[0,1],[2,3],[4,5]])
+    )
+    def test_features(self):
+        """Testing the features return"""
+        data = get_data(
+            path=self.data_path,
+            features_path=['dummy_path.csv'],
+        )
+        print(data.features())
+        self.assertTrue(np.array_equal(data.features(),[[0,1],[2,3],[4,5]]))
+
+    @patch(
+        "chemprop.data.utils.load_features",
+        lambda *args, **kwargs : np.array([[0,1],[2,3],[4,5]])
+    )
+    def test_2features(self):
+        """Testing the features return for two features paths"""
+        data = get_data(
+            path=self.data_path,
+            features_path=['dummy_path.csv', 'also_dummy_path.csv'],
+        )
+        print(data.features())
+        self.assertTrue(np.array_equal(data.features(),[[0,1,0,1],[2,3,2,3],[4,5,4,5]]))
+
+    def test_dataweights(self):
+        """Testing the handling of data weights"""
+        data = get_data(
+            path=self.data_path,
+            data_weights_path='dummy_path.csv'
+        )
+        self.assertEqual(data.data_weights(),[1,1.5,0.5])
+
+    @patch(
+        "chemprop.data.utils.load_features",
+        lambda *args, **kwargs : np.array([[0,1],[1,0],[1,0]])
+    )
+    def test_phase_features(self):
+        """Testing the handling of phase features"""
+        data = get_data(
+            path=self.data_path,
+            phase_features_path='dummy_path.csv'
+        )
+        self.assertTrue(np.array_equal(data.phase_features(),[[0,1],[1,0],[1,0]]))
+
+    @patch(
+        "chemprop.data.utils.load_features",
+        lambda *args, **kwargs : np.array([[0,1],[1,0],[1,0]])
+    )
+    def test_features_and_phase_features(self):
+        """Testing the handling of phase features"""
+        data = get_data(
+            path=self.data_path,
+            features_path=['dummy_path.csv'],
+            phase_features_path='dummy_path.csv'
+        )
+        self.assertTrue(np.array_equal(data.features(),[[0,1,0,1],[1,0,1,0],[1,0,1,0]]))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
