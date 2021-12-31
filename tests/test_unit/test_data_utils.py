@@ -7,8 +7,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights, \
-    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data
-
+    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data, split_data
 
 class TestGetHeader(TestCase):
     """
@@ -399,5 +398,81 @@ class TestGetData(TestCase):
         )
         self.assertTrue(np.array_equal(data.features(),[[0,1,0,1],[1,0,1,0],[1,0,1,0]]))
 
+    @patch(
+        "chemprop.data.utils.load_features",
+        lambda *args, **kwargs : np.array([[0,2],[1,0],[1,0]])
+    )
+    def test_features_and_phase_features(self):
+        """Testing the handling of phase features"""
+        with self.assertRaises(ValueError):
+            data = get_data(
+                path=self.data_path,
+                features_path=['dummy_path.csv'],
+                phase_features_path='dummy_path.csv'
+            )
+
     def tearDown(self):
         self.temp_dir.cleanup()
+
+
+class TestSplitData(TestCase):
+    """
+    Testing of the split_data function. Excludes the scaffold_split case.
+    """
+    def setUp(self):
+        smiles_list = [['C','CC'],['CC','CCC'],['CCC','CN'],['CN','CCN'],['CCN','CCCN'],['CCCN','CCCCN'],['CCCCN','CO'],['CO','CCO'],['CO','CCCO'],['CN','CCC']]
+        self.dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+
+    def test_random_split(self):
+        """Testing the random split with seed 0"""
+        train, val, test = split_data(
+            data=self.dataset
+        )
+        self.assertEqual(train.smiles(),[['CO', 'CCO'], ['CO', 'CCCO'], ['CC', 'CCC'], ['CCCN', 'CCCCN'], ['CN', 'CCN'], ['CCN', 'CCCN'], ['CCC', 'CN'], ['C', 'CC']])
+
+    def test_seed1(self):
+        """Testing the random split with seed 1"""
+        train, val, test = split_data(
+            data=self.dataset,
+            seed=1,
+        )
+        self.assertEqual(train.smiles(),[['CCCCN', 'CO'], ['CO', 'CCCO'], ['CN', 'CCC'], ['CO', 'CCO'], ['CCCN', 'CCCCN'], ['CN', 'CCN'], ['C', 'CC'], ['CCN', 'CCCN']])
+
+    def test_split_4_4_2(self):
+        """Testing the random split with changed sizes"""
+        train, val, test = split_data(
+            data=self.dataset,
+            sizes=(0.4,0.4,0.2)
+        )
+        self.assertEqual(train.smiles(),[['CO', 'CCO'], ['CO', 'CCCO'], ['CC', 'CCC'], ['CCCN', 'CCCCN']])
+
+    def test_split_4_0_6(self):
+        """Testing the random split with an empty set"""
+        train, val, test = split_data(
+            data=self.dataset,
+            sizes=(0.4,0,0.6)
+        )
+        self.assertEqual(val.smiles(),[])
+
+    def test_repeated_smiles(self):
+        """Testing the random split with repeated smiles"""
+        train, val, test = split_data(
+            data=self.dataset,
+            sizes=(0.4,0.4,0.2),
+            split_type='random_with_repeated_smiles'
+        )
+        self.assertEqual(test.smiles(),[['CO', 'CCCO'], ['CO', 'CCO']])
+
+    def test_cv(self):
+        """Testing the cv split"""
+        train, val, test = split_data(
+            data=self.dataset,
+            split_type='cv',
+            num_folds=5,
+            seed=4
+        )
+        print(len(train), len(val), len(test))
+        self.assertTrue(False)
+
+    def tearDown(self):
+        pass
