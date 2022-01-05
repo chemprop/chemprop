@@ -22,18 +22,19 @@ class Args(Tap):
     val_folds_per_test: int = 3  # Number of val folds
     time_folds_per_train_set: int = 3  # X:1:1 train:val:test for time split sliding window
     smiles_columns: List[str] = None # columns in CSV dataset file containing SMILES
+    split_key_molecule: int = 0 # index of the molecule to use for splitting in muli-molecule data
 
 
 def split_indices(all_indices: List[int],
                   num_folds: int,
                   scaffold: bool = False,
+                  split_key_molecule: int = 0,
                   data: MoleculeDataset = None,
                   shuffle: bool = True) -> List[List[int]]:
     num_data = len(all_indices)
     if scaffold:
-        if data.number_of_molecules > 1:
-            raise ValueError('Cannot perform a scaffold split with more than one molecule per datapoint.')
-        scaffold_to_indices = scaffold_to_smiles(data.mols(flatten=True), use_indices=True)
+        key_mols = [m[split_key_molecule] for m in data.mols(flatten=False)]
+        scaffold_to_indices = scaffold_to_smiles(key_mols, use_indices=True)
         index_sets = sorted(list(scaffold_to_indices.values()),
                             key=lambda index_set: len(index_set),
                             reverse=True)
@@ -68,7 +69,7 @@ def create_time_splits(args: Args):
         subset_data = MoleculeDataset(data[begin:end])
         fold_indices['random'].append(split_indices(deepcopy(subset_indices), args.time_folds_per_train_set + 2))
         fold_indices['scaffold'].append(
-            split_indices(subset_indices, args.time_folds_per_train_set + 2, scaffold=True, data=subset_data))
+            split_indices(subset_indices, args.time_folds_per_train_set + 2, scaffold=True, split_key_molecule=args.split_key_molecule ,data=subset_data))
         fold_indices['time'].append(split_indices(subset_indices, args.time_folds_per_train_set + 2, shuffle=False))
     for split_type in ['random', 'scaffold', 'time']:
         all_splits = []
@@ -96,7 +97,7 @@ def create_crossval_splits(args: Args):
         fold_indices = split_indices(all_indices, args.num_folds, scaffold=False)
     elif args.split_type == 'scaffold':
         all_indices = list(range(num_data))
-        fold_indices = split_indices(all_indices, args.num_folds, scaffold=True, data=data)
+        fold_indices = split_indices(all_indices, args.num_folds, scaffold=True, split_key_molecule=args.split_key_molecule, data=data)
     else:
         raise ValueError
     random.shuffle(fold_indices)

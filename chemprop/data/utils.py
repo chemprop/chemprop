@@ -386,6 +386,7 @@ def get_data_from_smiles(smiles: List[List[str]],
 def split_data(data: MoleculeDataset,
                split_type: str = 'random',
                sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+               key_molecule_index: int = 0,
                seed: int = 0,
                num_folds: int = 1,
                args: TrainArgs = None,
@@ -398,6 +399,7 @@ def split_data(data: MoleculeDataset,
     :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
+    :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
     :param args: A :class:`~chemprop.args.TrainArgs` object.
@@ -415,6 +417,9 @@ def split_data(data: MoleculeDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
+    
+    if key_molecule_index >= args.number_of_molecules:
+        raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
 
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
@@ -501,12 +506,12 @@ def split_data(data: MoleculeDataset,
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type == 'scaffold_balanced':
-        return scaffold_split(data, sizes=sizes, balanced=True, seed=seed, logger=logger)
+        return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
 
-    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split. Considers first molecule only.
+    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split.
         smiles_dict=defaultdict(set)
         for i,smiles in enumerate(data.smiles()):
-            smiles_dict[smiles[0]].add(i)
+            smiles_dict[smiles[key_molecule_index]].add(i)
         index_sets=list(smiles_dict.values())
         random.seed(seed)
         random.shuffle(index_sets)
