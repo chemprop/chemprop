@@ -2,7 +2,7 @@ import json
 import os
 from tempfile import TemporaryDirectory
 import pickle
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from typing_extensions import Literal
 
 import torch
@@ -243,8 +243,10 @@ class TrainArgs(CommonArgs):
     """Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns."""
     split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'] = 'random'
     """Method of splitting the data into train/val/test."""
-    split_sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)
+    split_sizes: List[float] = None
     """Split proportions for train/validation/test sets."""
+    split_key_molecule: int = 0
+    """The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles."""
     num_folds: int = 1
     """Number of folds when performing cross validation."""
     folds_file: str = None
@@ -586,27 +588,73 @@ class TrainArgs(CommonArgs):
                 self._crossval_index_sets = pickle.load(rf)
             self.num_folds = len(self.crossval_index_sets)
             self.seed = 0
+        
+        # Validate split size entry and set default values
+        if self.split_sizes is None:
+            if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
+                self.split_sizes = (0.8, 0.1, 0.1)
+            elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
+                self.split_sizes = (0.8, 0., 0.2)
+            elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
+                self.split_sizes = (0.8, 0.2, 0.)
+            else: # both separate data paths are provided
+                self.split_sizes = (1., 0., 0.)
+
+        else:
+            if sum(self.split_sizes) != 1.:
+                raise ValueError(f'Provided split sizes of {self.split_sizes} do not sum to 1.')
+
+            if len(self.split_sizes) not in [2,3]:
+                raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
+
+            if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
+                if len(self.split_sizes) != 3:
+                    raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
+                if 0. in self.split_sizes:
+                    raise ValueError(f'Provided split sizes must be nonzero if no separate data files are provided. Received split sizes of {self.split_sizes}.')
+
+            elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
+                if len(self.split_sizes) == 2: # allow input of just 2 values
+                    self.split_sizes = (self.split_sizes[0], 0., self.split_sizes[1])
+                if self.split_sizes[0] == 0.:
+                    raise ValueError('Provided split size for train split must be nonzero.')
+                if self.split_sizes[1] != 0.:
+                    raise ValueError('Provided split size for validation split must be 0 because validation set is provided separately.')
+                if self.split_sizes[2] == 0.:
+                    raise ValueError('Provided split size for test split must be nonzero.')
+
+            elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
+                if len(self.split_sizes) == 2: # allow input of just 2 values
+                    self.split_sizes = (self.split_sizes[0], self.split_sizes[1], 0.)
+                if self.split_sizes[0] == 0.:
+                    raise ValueError('Provided split size for train split must be nonzero.')
+                if self.split_sizes[1] == 0.:
+                    raise ValueError('Provided split size for validation split must be nonzero.')
+                if self.split_sizes[2] != 0.:
+                    raise ValueError('Provided split size for test split must be 0 because test set is provided separately.')
+
+
+            else: # both separate data paths are provided
+                if self.split_sizes != (1., 0., 0.):
+                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided.')
 
         # Test settings
         if self.test:
             self.epochs = 0
 
-        # Validate extra atom or bond features for separate validation or test set
-        if self.separate_val_path is not None and self.atom_descriptors is not None \
-                and self.separate_val_atom_descriptors_path is None:
-            raise ValueError('Atom descriptors are required for the separate validation set.')
-
-        if self.separate_test_path is not None and self.atom_descriptors is not None \
-                and self.separate_test_atom_descriptors_path is None:
-            raise ValueError('Atom descriptors are required for the separate test set.')
-
-        if self.separate_val_path is not None and self.bond_features_path is not None \
-                and self.separate_val_bond_features_path is None:
-            raise ValueError('Bond descriptors are required for the separate validation set.')
-
-        if self.separate_test_path is not None and self.bond_features_path is not None \
-                and self.separate_test_bond_features_path is None:
-            raise ValueError('Bond descriptors are required for the separate test set.')
+        # Validate features are provided for separate validation or test set for each of the kinds of additional features
+        for (features_argument, base_features_path, val_features_path, test_features_path) in [
+            ('`--features_path`', self.features_path, self.separate_val_features_path, self.separate_test_features_path),
+            ('`--phase_features_path`', self.phase_features_path, self.separate_val_phase_features_path, self.separate_test_phase_features_path),
+            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.separate_val_atom_descriptors_path, self.separate_test_atom_descriptors_path),
+            ('`--bond_features_path`', self.bond_features_path, self.separate_val_bond_features_path, self.separate_test_bond_features_path)
+        ]:
+            if base_features_path is not None:
+                if self.separate_val_path is not None and val_features_path is None:
+                    raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the separate validation set.')
+                if self.separate_test_path is not None and test_features_path is None:
+                    raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the separate test set.')
+                
 
         # validate extra atom descriptor options
         if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
