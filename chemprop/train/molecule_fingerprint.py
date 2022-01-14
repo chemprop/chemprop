@@ -9,7 +9,7 @@ from chemprop.args import FingerprintArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers, update_prediction_args
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.features import set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
+from chemprop.features import set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters, set_extra_atom_fdim
 from chemprop.models import MoleculeModel
 
 @timeit()
@@ -76,7 +76,11 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
 
     # Set fingerprint size
     if args.fingerprint_type == 'MPN':
-        total_fp_size = args.hidden_size * args.number_of_molecules
+        if args.atom_descriptors == "descriptor":
+            total_fp_size = (args.hidden_size + test_data.atom_descriptors_size()) * args.number_of_molecules
+        elif args.atom_descriptors == "feature":
+                total_fp_size = args.hidden_size * args.number_of_molecules
+                set_extra_atom_fdim(test_data.atom_features_size())
         if args.features_only:
             raise ValueError('With features_only models, there is no latent MPN representation. Use last_FFN fingerprint type instead.')
     elif args.fingerprint_type == 'last_FFN':
