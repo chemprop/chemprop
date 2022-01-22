@@ -5,7 +5,7 @@ from typing import Dict, List
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler
 from chemprop.models import MoleculeModel
-from chemprop.utils import get_metric_func
+from chemprop.metrics import get_metric_func
 
 
 def evaluate_predictions(preds: List[List[float]],

@@ -19,8 +19,9 @@ from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
-from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint, makedirs, \
+from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits, load_frzn_model
+from chemprop.loss_functions import get_loss_func
 
 
 def run_training(args: TrainArgs,
