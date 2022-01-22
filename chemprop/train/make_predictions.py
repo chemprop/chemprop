@@ -13,6 +13,7 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, t
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 
+
 def load_model(args: PredictArgs, generator: bool = False):
     """
     Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler 
@@ -39,7 +40,8 @@ def load_model(args: PredictArgs, generator: bool = False):
         scalers = list(scalers)
 
     return args, train_args, models, scalers, num_tasks, task_names
-                      
+
+
 def load_data(args: PredictArgs, smiles: List[List[str]]):
     """
     Function to load data from a list of smiles or a file.
@@ -245,7 +247,7 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
     
     return avg_preds
 
-            
+
 @timeit()
 def make_predictions(args: PredictArgs, smiles: List[List[str]] = None,
                      model_objects: Tuple[PredictArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str]] = None) -> List[List[Optional[float]]]:
