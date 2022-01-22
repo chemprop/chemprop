@@ -6,7 +6,7 @@ import numpy as np
 import torch.nn as nn
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
-    roc_auc_score, accuracy_score, log_loss
+    roc_auc_score, accuracy_score, log_loss, f1_score, matthews_corrcoef
 
 
 def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], List[float]], float]:
@@ -24,6 +24,8 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     * :code:`accuracy`: Accuracy (using a threshold to binarize predictions)
     * :code:`cross_entropy`: Cross entropy
     * :code:`binary_cross_entropy`: Binary cross entropy
+    * :code:`sid`: Spectral information divergence
+    * :code:`wasserstein`: Wasserstein loss for spectra
 
     :param metric: Metric name.
     :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
@@ -51,6 +53,12 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'cross_entropy':
         return log_loss
+    
+    # if metric == 'f1':
+    #     return log_loss
+
+    # if metric == 'mcc':
+    #     return log_loss
 
     if metric == 'binary_cross_entropy':
         return bce
@@ -119,6 +127,44 @@ def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], t
         hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
 
     return accuracy_score(targets, hard_preds)
+
+
+def f1(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+    """
+    Computes the f1 score of a binary prediction task using a given threshold for generating hard predictions.
+
+    Will calculate for a multiclass prediction task by picking the largest probability.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
+    :return: The computed f1 score.
+    """
+    if type(preds[0]) == list:  # multiclass
+        hard_preds = [p.index(max(p)) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
+    return f1_score(targets, hard_preds)
+
+
+def mcc(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+    """
+    Computes the Matthews Correlation Coefficient of a binary prediction task using a given threshold for generating hard predictions.
+
+    Will calculate for a multiclass prediction task by picking the largest probability.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
+    :return: The computed accuracy.
+    """
+    if type(preds[0]) == list:  # multiclass
+        hard_preds = [p.index(max(p)) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
+    return matthews_corrcoef(targets, hard_preds)
 
 
 def sid_metric(model_spectra: List[List[float]], target_spectra: List[List[float]], threshold: float = None, batch_size: int = 50) -> float:
