@@ -109,7 +109,8 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 
 def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: MoleculeDataset,
                      task_names: List[str], num_tasks: int, test_data_loader: MoleculeDataLoader, full_data: MoleculeDataset,
-                     full_to_valid_indices: dict, models: List[MoleculeModel], scalers: List[List[StandardScaler]]):
+                     full_to_valid_indices: dict, models: List[MoleculeModel], scalers: List[List[StandardScaler]],
+                     return_invalid_smiles: bool = False):
     """
     Function to predict with a model and save the predictions to file.
 
@@ -124,6 +125,7 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
     :param full_to_valid_indices: A dictionary dictionary mapping full to valid indices.
     :param models: A list or generator object of :class:`~chemprop.models.MoleculeModel`\ s.
     :param scalers: A list or generator object of :class:`~chemprop.features.scaler.StandardScaler` objects.
+    :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :return:  A list of lists of target predictions.
     """
     # Predict with each model individually and sum predictions
@@ -244,14 +246,25 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
         for datapoint in full_data:
             writer.writerow(datapoint.row)
 
+    # Return predicted values
     avg_preds = avg_preds.tolist()
     
-    return avg_preds
+    if return_invalid_smiles:
+        full_preds = []
+        for full_index in range(len(full_data)):
+            valid_index = full_to_valid_indices.get(full_index, None)
+            preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+            full_preds.append(preds)
+        return full_preds
+    else:
+        return avg_preds
 
 
 @timeit()
 def make_predictions(args: PredictArgs, smiles: List[List[str]] = None,
-                     model_objects: Tuple[PredictArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str]] = None) -> List[List[Optional[float]]]:
+                     model_objects: Tuple[PredictArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str]] = None,
+                     return_invalid_smiles: bool = True,
+                     return_index_dict: bool = False) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to make predictions on the data.
 
@@ -262,6 +275,8 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None,
                  loading data and a model and making predictions.
     :param smiles: List of list of SMILES to make predictions on.
     :param model_objects: Tuple of output of load_model function which can be called separately.
+    :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
+    :param return_index_dict: Whether to return the prediction results as a dictionary keyed from the initial data indexes.
     :return: A list of lists of target predictions.
     """
     if model_objects:
@@ -271,15 +286,39 @@ def make_predictions(args: PredictArgs, smiles: List[List[str]] = None,
         
     set_features(args, train_args)
     
+    # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
     full_data, test_data, test_data_loader, full_to_valid_indices = load_data(args, smiles)
     
     # Edge case if empty list of smiles is provided
     if len(test_data) == 0:
-        return [None] * len(full_data)
+        avg_preds = [None] * len(full_data)
+    else:
+        avg_preds = predict_and_save(
+            args=args,
+            train_args=train_args,
+            test_data=test_data,
+            task_names=task_names,
+            num_tasks=num_tasks,
+            test_data_loader=test_data_loader,
+            full_data=full_data,
+            full_to_valid_indices=full_to_valid_indices,
+            models=models,
+            scalers=scalers,
+            return_invalid_smiles=return_invalid_smiles,
+        )
     
-    avg_preds = predict_and_save(args, train_args, test_data, task_names, num_tasks, test_data_loader, full_data, full_to_valid_indices, models, scalers)
-    
-    return avg_preds
+    if return_index_dict:
+        preds_dict = {}
+        for i in range(len(full_data)):
+            if return_invalid_smiles:
+                preds_dict[i] = avg_preds[i]
+            else:
+                valid_index = full_to_valid_indices.get(i, None)
+                if valid_index is not None:
+                    preds_dict[i] = avg_preds[valid_index]
+        return preds_dict
+    else:
+        return avg_preds
 
 
 def chemprop_predict() -> None:

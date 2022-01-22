@@ -10,7 +10,7 @@ from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
-from .data import MoleculeDatapoint, MoleculeDataset
+from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_or_bond_features
@@ -166,6 +166,50 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
                             if all(s != '' for s in datapoint.smiles) and all(m is not None for m in datapoint.mol)
                             and all(m.GetNumHeavyAtoms() > 0 for m in datapoint.mol if not isinstance(m, tuple))
                             and all(m[0].GetNumHeavyAtoms() + m[1].GetNumHeavyAtoms() > 0 for m in datapoint.mol if isinstance(m, tuple))])
+
+
+def get_invalid_smiles_from_file(path: str = None,
+               smiles_columns: Union[str, List[str]] = None,
+               header: bool = True,
+               reaction: bool = False,
+               ) -> Union[List[str], List[List[str]]]:
+    """
+    Returns the invalid SMILES from a data CSV file.
+
+    :param path: Path to a CSV file.
+    :param smiles_columns: A list of the names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param header: Whether the CSV file contains a header.
+    :param reaction: Boolean whether the SMILES strings are to be treated as a reaction.
+    :return: A list of lists of SMILES, for the invalid SMILES in the file.
+    """
+    smiles = get_smiles(path=path, smiles_columns=smiles_columns, header=header)
+
+    invalid_smiles = get_invalid_smiles_from_list(smiles=smiles, reaction=reaction)
+
+    return invalid_smiles
+
+
+def get_invalid_smiles_from_list(smiles: List[List[str]], reaction: bool = False) -> List[List[str]]:
+    """
+    Returns the invalid SMILES from a list of lists of SMILES strings.
+
+    :param smiles: A list of list of SMILES.
+    :param reaction: Boolean whether the SMILES strings are to be treated as a reaction.
+    :return: A list of lists of SMILES, for the invalid SMILES among the lists provided.
+    """
+    invalid_smiles = []
+
+    for mol_smiles in smiles:
+        mols = make_mols(smiles=mol_smiles, reaction=reaction, keep_h=False, add_h=False)
+        if any(s == '' for s in mol_smiles) or \
+           any(m is None for m in mols) or \
+           any(m.GetNumHeavyAtoms() == 0 for m in mols if not isinstance(m, tuple)) or \
+           any(m[0].GetNumHeavyAtoms() + m[1].GetNumHeavyAtoms() == 0 for m in mols if isinstance(m, tuple)):
+
+            invalid_smiles.append(mol_smiles)
+
+    return invalid_smiles
 
 
 def get_data(path: str,
