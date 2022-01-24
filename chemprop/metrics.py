@@ -54,11 +54,11 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     if metric == 'cross_entropy':
         return log_loss
     
-    # if metric == 'f1':
-    #     return log_loss
+    if metric == 'f1':
+        return f1
 
-    # if metric == 'mcc':
-    #     return log_loss
+    if metric == 'mcc':
+        return mcc
 
     if metric == 'binary_cross_entropy':
         return bce
@@ -142,10 +142,12 @@ def f1(targets: List[int], preds: Union[List[float], List[List[float]]], thresho
     """
     if type(preds[0]) == list:  # multiclass
         hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+        score = f1_score(targets, hard_preds, average='micro')
+    else: # binary prediction
+        hard_preds = [1 if p > threshold else 0 for p in preds]  
+        score = f1_score(targets, hard_preds)
 
-    return f1_score(targets, hard_preds)
+    return score
 
 
 def mcc(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
