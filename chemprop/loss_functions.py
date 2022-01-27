@@ -120,18 +120,16 @@ def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_w
     """
     # targets shape (batch)
     # preds shape(batch, classes)
-    # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
-    # FP = P - TP, TN = N - FN
-
-    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
-    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1))
-    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
-    N = torch.sum((1 - predictions) * data_weights.unsqueeze(1) * mask.unsqueeze(1))
-
-    FP = P - TP
-    TN = N - FN
-
-    return (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    data_weights = data_weights.unsqueeze(1)
+    mask = mask.unsqueeze(1)
+    bin_targets = torch.zeros_like(predictions, device=predictions.device)
+    bin_targets[torch.arange(predictions.shape[0]), targets] = 1
+    c = torch.sum(predictions * bin_targets * data_weights * mask)
+    s = torch.sum(predictions * data_weights * mask)
+    pt = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) * torch.sum(bin_targets * data_weights * mask, axis=0))
+    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0)**2)
+    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0)**2)
+    return (c * s - pt) / torch.sqrt((s**2 - p2)*(s**2 - t2))
 
 
 def sid_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, mask: torch.tensor, threshold: float = None) -> torch.tensor:
