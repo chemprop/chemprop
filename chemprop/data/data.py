@@ -58,7 +58,7 @@ class MoleculeDatapoint:
                  smiles: List[str],
                  targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
-                 data_weight: float = 1,
+                 data_weight: float = None,
                  features: np.ndarray = None,
                  features_generator: List[str] = None,
                  phase_features: List[float] = None,
@@ -87,7 +87,6 @@ class MoleculeDatapoint:
         self.smiles = smiles
         self.targets = targets
         self.row = row
-        self.data_weight = data_weight
         self.features = features
         self.features_generator = features_generator
         self.phase_features = phase_features
@@ -99,7 +98,9 @@ class MoleculeDatapoint:
         self.is_reaction = is_reaction()
         self.is_explicit_h = is_explicit_h()
         self.is_adding_hs = is_adding_hs()
-        
+
+        if data_weight is not None:
+            self.data_weight = data_weight
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -372,8 +373,11 @@ class MoleculeDataset(Dataset):
 
     def data_weights(self) -> List[float]:
         """
-        Returns the loss weighting associated with each molecule
+        Returns the loss weighting associated with each datapoint.
         """
+        if not hasattr(self._data[0], 'data_weight'):
+            return [1. for d in self._data]
+
         return [d.data_weight for d in self._data]
 
     def targets(self) -> List[List[Optional[float]]]:
