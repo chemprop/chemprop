@@ -55,10 +55,10 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
         return log_loss
     
     if metric == 'f1':
-        return f1
+        return f1_metric
 
     if metric == 'mcc':
-        return mcc
+        return mcc_metric
 
     if metric == 'binary_cross_entropy':
         return bce
@@ -129,7 +129,7 @@ def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], t
     return accuracy_score(targets, hard_preds)
 
 
-def f1(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+def f1_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
     """
     Computes the f1 score of a binary prediction task using a given threshold for generating hard predictions.
 
@@ -150,7 +150,7 @@ def f1(targets: List[int], preds: Union[List[float], List[List[float]]], thresho
     return score
 
 
-def mcc(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+def mcc_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
     """
     Computes the Matthews Correlation Coefficient of a binary prediction task using a given threshold for generating hard predictions.
 

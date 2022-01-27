@@ -59,6 +59,8 @@ class MoleculeDatapoint:
                  targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  data_weight: float = None,
+                 gt_targets: List[bool] = None,
+                 lt_targets: List[bool] = None,
                  features: np.ndarray = None,
                  features_generator: List[str] = None,
                  phase_features: List[float] = None,
@@ -72,6 +74,8 @@ class MoleculeDatapoint:
         :param targets: A list of targets for the molecule (contains None for unknown target values).
         :param row: The raw CSV row containing the information for this molecule.
         :param data_weight: Weighting of the datapoint for the loss function.
+        :param gt_targets: Indicates whether the targets are an inequality regression target of the form ">x".
+        :param lt_targets: Indicates whether the targets are an inequality regression target of the form "<x".
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
         :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
@@ -101,6 +105,10 @@ class MoleculeDatapoint:
 
         if data_weight is not None:
             self.data_weight = data_weight
+        if gt_targets is not None:
+            self.gt_targets = gt_targets
+        if lt_targets is not None:
+            self.lt_targets = lt_targets
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
@@ -387,6 +395,24 @@ class MoleculeDataset(Dataset):
         :return: A list of lists of floats (or None) containing the targets.
         """
         return [d.targets for d in self._data]
+
+    def gt_targets(self) -> List[np.ndarray]:
+        """
+
+        """
+        if not hasattr(self._data[0], 'gt_targets'):
+            return None
+
+        return [d.gt_targets for d in self._data]
+
+    def lt_targets(self) -> List[np.ndarray]:
+        """
+
+        """
+        if not hasattr(self._data[0], 'lt_targets'):
+            return None
+
+        return [d.lt_targets for d in self._data]
 
     def num_tasks(self) -> int:
         """

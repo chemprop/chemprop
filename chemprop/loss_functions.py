@@ -19,14 +19,19 @@ def get_loss_func(args: TrainArgs) -> Callable:
         'regression':{
             None: nn.MSELoss(reduction='none'),
             'mse': nn.MSELoss(reduction='none'),
+            'bounded_mse': bounded_mse
         },
         'classification':{
             None: nn.BCEWithLogitsLoss(reduction='none'),
             'cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
+            'f1': f1_class_loss,
+            'mcc': mcc_class_loss,
         },
         'multiclass':{
             None: nn.CrossEntropyLoss(reduction='none'),
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
+            'f1': f1_multiclass_loss,
+            'mcc': mcc_multiclass_loss,
         },
         'spectra':{
             None: sid_loss,
@@ -50,6 +55,83 @@ def get_loss_func(args: TrainArgs) -> Callable:
     
     else: # loss_function is None
         raise ValueError(f'Default loss function not configured for dataset type {args.dataset_type}.')
+
+
+def bounded_mse(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:
+    """
+    
+    """
+    predictions = torch.where(
+        torch.logical_and(predictions < targets, less_than_target),
+        targets,
+        predictions
+    )
+
+    predictions = torch.where(
+        torch.logical_and(predictions > targets, greater_than_target),
+        targets,
+        predictions
+    )
+    
+    return nn.functional.mseloss(predictions, targets, reduction='none')
+
+
+def f1_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
+    """
+    
+    """
+    # shape(batch, tasks)
+    # 2*TP/(2*TP + FN + FP)
+    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0)
+    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0)
+    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0)
+    return 2 * TP / (2 * TP + FN + FP)
+
+
+def f1_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
+    """
+    
+    """
+    # targets shape (batch)
+    # preds shape(batch, classes)
+    # 2*TP/(2*TP + FN + FP), FP = P - TP
+    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
+    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1))
+    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
+    return 2 * TP / (TP + FN + P)
+
+
+def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
+    """
+    
+    """
+    # shape(batch, tasks)
+    # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0)
+    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0)
+    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0)
+    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis = 0)
+    return (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+
+
+def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
+    """
+    
+    """
+    # targets shape (batch)
+    # preds shape(batch, classes)
+    # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    # FP = P - TP, TN = N - FN
+
+    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
+    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1))
+    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
+    N = torch.sum((1 - predictions) * data_weights.unsqueeze(1) * mask.unsqueeze(1))
+
+    FP = P - TP
+    TN = N - FN
+
+    return (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
 
 
 def sid_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, mask: torch.tensor, threshold: float = None) -> torch.tensor:

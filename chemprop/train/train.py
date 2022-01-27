@@ -49,14 +49,20 @@ def train(model: MoleculeModel,
             batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
             batch.atom_features(), batch.bond_features(), batch.data_weights()
 
-        mask = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool)
-        targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])
+        mask = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool) # shape(batch, tasks)
+        targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch]) # shape(batch, tasks)
 
         if args.target_weights is not None:
-            target_weights = torch.Tensor(args.target_weights)
+            target_weights = torch.tensor(args.target_weights).unsqeeze(0) # shape(1,tasks)
         else:
-            target_weights = torch.ones_like(targets)
-        data_weights = torch.Tensor(data_weights_batch).unsqueeze(1)
+            target_weights = torch.ones(targets.shape[1]).unsqeeze(0)
+        data_weights = torch.tensor(data_weights_batch).unsqueeze(1) # shape(batch,1)
+
+        if args.loss_function == 'bounded_mse':
+            lt_target_batch = batch.lt_targets() # shape(batch, tasks)
+            gt_target_batch = batch.gt_targets() # shape(batch, tasks)
+            lt_target_batch = torch.tensor(lt_target_batch)
+            gt_target_batch = torch.tensor(gt_target_batch)
 
         # Run model
         model.zero_grad()
@@ -68,13 +74,23 @@ def train(model: MoleculeModel,
         targets = targets.to(torch_device)
         target_weights = target_weights.to(torch_device)
         data_weights = data_weights.to(torch_device)
+        if args.loss_function == 'bounded_mse':
+            lt_target_batch = lt_target_batch.to(torch_device)
+            gt_target_batch = gt_target_batch.to(torch_device)
 
         # Calculate losses
-        if args.dataset_type == 'multiclass':
+        if args.loss_function in ['f1', 'mcc'] and args.dataset_type == 'classification':
+            loss = loss_func(preds, targets, data_weights, mask) *target_weights.squeeze(0)
+        elif args.loss_function in ['f1', 'mcc']: # multiclass dataset type
+            targets = targets.long()
+            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index], data_weights[:, target_index], mask[:, target_index]) for target_index in range(preds.size(1))], dim=1) * target_weights.squeeze(0)
+        elif args.dataset_type == 'multiclass':
             targets = targets.long()
             loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * target_weights * data_weights * mask
         elif args.dataset_type == 'spectra':
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
+        elif args.loss_function == 'bounded_mse':
+            loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
         loss = loss.sum() / mask.sum()
