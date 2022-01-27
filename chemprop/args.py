@@ -228,7 +228,9 @@ class TrainArgs(CommonArgs):
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
-    """Type of dataset. This determines the loss function used during training."""
+    """Type of dataset. This determines the default loss function used during training."""
+    loss_function: Literal['mse', 'bounded_mse', 'cross_entropy', 'f1', 'mcc', 'sid', 'wasserstein'] = None
+    """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
     separate_val_path: str = None
@@ -398,8 +400,6 @@ class TrainArgs(CommonArgs):
     """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
-    alternative_loss_function: Literal['wasserstein'] = None
-    """Option to replace the default loss function, with an alternative. Only currently applied for spectra data type and wasserstein loss."""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.

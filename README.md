@@ -271,7 +271,7 @@ Similar to molecule-, and atom-level features, the bond-level features are scale
 
 ### Spectra
 
-One of the data types that can be trained with Chemprop is "spectra". Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. The loss function for spectra is SID, spectral information divergence. Alternatively, Wasserstein distance (earthmover's distance) can be used for both loss function and metric with input arguments `--metric wasserstein --alternative_loss_function wasserstein`.
+One of the data types that can be trained with Chemprop is "spectra". Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. The loss function for spectra is SID, spectral information divergence. Alternatively, Wasserstein distance (earthmover's distance) can be used for both loss function and metric with input arguments `--metric wasserstein --loss_function wasserstein`.
 
 Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. Activation to enforce positivity is an exponential function by default but can also be set as a Softplus function, according to the argument `--spectra_activation <exp or softplus>`. Value positivity is enforced on input targets as well using a floor value that replaces negative or smaller target values with the floor value (default 1e-8), customizable with the argument `--spectra_target_floor <float>`.
 
