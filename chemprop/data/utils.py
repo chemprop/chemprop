@@ -303,24 +303,41 @@ def get_data(path: str,
     else:
         data_weights = None
 
+    # By default, the targets columns are all the columns except the SMILES column
+    if target_columns is None:
+        target_columns = get_task_names(
+            path=path,
+            smiles_columns=smiles_columns,
+            target_columns=target_columns,
+            ignore_columns=ignore_columns,
+        )
+
+    # Find targets provided as inequalities
+    if args.loss_function == 'bounded_mse':
+        gt_targets, lt_targets = get_inequality_targets(path=path, target_columns=target_columns)
+    else:
+        gt_targets, lt_targets = None, None
+
     # Load data
     with open(path) as f:
         reader = csv.DictReader(f)
 
-        # By default, the targets columns are all the columns except the SMILES column
-        if target_columns is None:
-            target_columns = get_task_names(
-                path=path,
-                smiles_columns=smiles_columns,
-                target_columns=target_columns,
-                ignore_columns=ignore_columns,
-            )
-
-        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights = [], [], [], [], [], []
+        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
             smiles = [row[c] for c in smiles_columns]
 
-            targets = [float(row[column]) if row[column] not in ['','nan'] else None for column in target_columns]
+            targets = []
+            for column in target_columns:
+                value = row[column]
+                if value in ['','nan']:
+                    targets.append(None)
+                elif '>' in value or '<' in value:
+                    if args.loss_function == 'bounded_mse':
+                        targets.append(float(value.strip('<>')))
+                    else:
+                        raise ValueError('Inequality found in target data. To use inequality targets (> or <), the loss function bounded_mse must be used.')
+                else:
+                    targets.append(float(value))
 
             # Check whether all targets are None and skip if so
             if skip_none_targets and all(x is None for x in targets):
@@ -337,6 +354,12 @@ def get_data(path: str,
 
             if data_weights is not None:
                 all_weights.append(data_weights[i])
+
+            if gt_targets is not None:
+                all_gt.append(gt_targets[i])
+
+            if lt_targets is not None:
+                all_lt.append(lt_targets[i])
 
             if store_row:
                 all_rows.append(row)
@@ -370,6 +393,8 @@ def get_data(path: str,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 data_weight=all_weights[i] if data_weights is not None else None,
+                gt_targets=all_gt[i] if gt_targets is not None else None,
+                lt_targets=all_lt[i] if lt_targets is not None else None,
                 features_generator=features_generator,
                 features=all_features[i] if features_data is not None else None,
                 phase_features=all_phase_features[i] if phase_features is not None else None,
@@ -425,6 +450,25 @@ def get_data_from_smiles(smiles: List[List[str]],
             debug(f'Warning: {original_data_len - len(data)} SMILES are invalid.')
 
     return data
+
+
+def get_inequality_targets(path: str, target_columns: List[str] = None) -> List[str]:
+    """
+
+    """
+    gt_targets = []
+    lt_targets = []
+
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        for line in reader:
+            values = [line[col] for col in target_columns]
+            gt_targets.append(['>' in val for val in values])
+            lt_targets.append(['<' in val for val in values])
+            if any(['<' in val and '>' in val for val in values]):
+                raise ValueError(f'A target value in csv file {path} contains both ">" and "<" symbols. Inequality targets must be on one edge and not express a range.')
+
+    return gt_targets, lt_targets
 
 
 def split_data(data: MoleculeDataset,
