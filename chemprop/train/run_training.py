@@ -311,6 +311,8 @@ def run_training(args: TrainArgs,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
             dataset_type=args.dataset_type,
+            gt_targets=test_data.gt_targets(),
+            lt_targets=test_data.lt_targets(),
             logger=logger
         )
 
@@ -339,6 +341,8 @@ def run_training(args: TrainArgs,
         num_tasks=args.num_tasks,
         metrics=args.metrics,
         dataset_type=args.dataset_type,
+        gt_targets=test_data.gt_targets(),
+        lt_targets=test_data.lt_targets(),
         logger=logger
     )
 

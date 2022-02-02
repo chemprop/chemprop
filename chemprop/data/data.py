@@ -700,6 +700,37 @@ class MoleculeDataLoader(DataLoader):
         return [self._dataset[index].targets for index in self._sampler]
 
     @property
+    def gt_targets(self) -> List[List[Optional[bool]]]:
+        """
+        Returns booleans for whether each target is an inequality rather than a value target, associated with each molecule.
+
+        :return: A list of lists of booleans (or None) containing the targets.
+        """
+        if self._class_balance or self._shuffle:
+            raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
+        
+        if not hasattr(self._dataset[0],'gt_targets'):
+            return None
+
+        return [self._dataset[index].gt_targets for index in self._sampler]
+
+    @property
+    def lt_targets(self) -> List[List[Optional[bool]]]:
+        """
+        Returns booleans for whether each target is an inequality rather than a value target, associated with each molecule.
+
+        :return: A list of lists of booleans (or None) containing the targets.
+        """
+        if self._class_balance or self._shuffle:
+            raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
+
+        if not hasattr(self._dataset[0],'lt_targets'):
+            return None
+
+        return [self._dataset[index].lt_targets for index in self._sampler]
+
+
+    @property
     def iter_size(self) -> int:
         """Returns the number of data points included in each full iteration through the :class:`MoleculeDataLoader`."""
         return len(self._sampler)

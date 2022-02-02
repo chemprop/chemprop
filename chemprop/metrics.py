@@ -45,6 +45,15 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     if metric == 'mae':
         return mean_absolute_error
 
+    if metric == 'bounded_rmse':
+        return bounded_rmse
+
+    if metric == 'bounded_mse':
+        return bounded_mse
+
+    if metric == 'bounded_mae':
+        return bounded_mae
+
     if metric == 'r2':
         return r2_score
 
@@ -108,6 +117,81 @@ def rmse(targets: List[float], preds: List[float]) -> float:
     :return: The computed rmse.
     """
     return mean_squared_error(targets, preds, squared=False)
+
+
+def bounded_rmse(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+    """
+    Computes the root mean squared error, considering targets with inequalities.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :param gt_targets: A list of booleans indicating whether the target is a >target inequality.
+    :param lt_targets: A list of booleans indicating whether the target is a <target inequality.
+    :return: The computed rmse.
+    """
+    # When the target is a greater-than-inequality and the prediction is greater than the target,
+    # replace the prediction with the target. Analogous for less-than-inequalities.
+    preds = np.where(
+        np.logical_and(np.greater(preds, targets),gt_targets),
+        targets,
+        preds,
+    )
+    preds = np.where(
+        np.logical_and(np.less(preds, targets),lt_targets),
+        targets,
+        preds,
+    )
+    return mean_squared_error(targets, preds, squared=False)
+
+
+def bounded_mse(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+    """
+    Computes the mean squared error, considering targets with inequalities.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :param gt_targets: A list of booleans indicating whether the target is a >target inequality.
+    :param lt_targets: A list of booleans indicating whether the target is a <target inequality.
+    :return: The computed mse.
+    """
+    # When the target is a greater-than-inequality and the prediction is greater than the target,
+    # replace the prediction with the target. Analogous for less-than-inequalities.
+    preds = np.where(
+        np.logical_and(np.greater(preds, targets),gt_targets),
+        targets,
+        preds,
+    )
+    preds = np.where(
+        np.logical_and(np.less(preds, targets),lt_targets),
+        targets,
+        preds,
+    )
+    return mean_squared_error(targets, preds, squared=True)
+
+
+def bounded_mae(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+    """
+    Computes the mean absolute error, considering targets with inequalities.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :param gt_targets: A list of booleans indicating whether the target is a >target inequality.
+    :param lt_targets: A list of booleans indicating whether the target is a <target inequality.
+    :return: The computed mse.
+    """
+    # When the target is a greater-than-inequality and the prediction is greater than the target,
+    # replace the prediction with the target. Analogous for less-than-inequalities.
+    preds = np.where(
+        np.logical_and(np.greater(preds, targets),gt_targets),
+        targets,
+        preds,
+    )
+    preds = np.where(
+        np.logical_and(np.less(preds, targets),lt_targets),
+        targets,
+        preds,
+    )
+    return mean_absolute_error(targets, preds)
 
 
 def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:

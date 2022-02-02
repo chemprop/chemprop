@@ -335,7 +335,7 @@ def get_data(path: str,
                     if args.loss_function == 'bounded_mse':
                         targets.append(float(value.strip('<>')))
                     else:
-                        raise ValueError('Inequality found in target data. To use inequality targets (> or <), the loss function bounded_mse must be used.')
+                        raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
                 else:
                     targets.append(float(value))
 
