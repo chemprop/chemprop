@@ -79,9 +79,9 @@ def train(model: MoleculeModel,
             gt_target_batch = gt_target_batch.to(torch_device)
 
         # Calculate losses
-        if args.loss_function in ['f1', 'mcc'] and args.dataset_type == 'classification':
+        if args.loss_function == 'mcc' and args.dataset_type == 'classification':
             loss = loss_func(preds, targets, data_weights, mask) *target_weights.squeeze(0)
-        elif args.loss_function in ['f1', 'mcc']: # multiclass dataset type
+        elif args.loss_function == 'mcc': # multiclass dataset type
             targets = targets.long()
             loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index], data_weights[:, target_index], mask[:, target_index]) for target_index in range(preds.size(1))], dim=1) * target_weights.squeeze(0)
         elif args.dataset_type == 'multiclass':

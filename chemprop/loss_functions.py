@@ -15,6 +15,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
     """
 
     # Nested dictionary of the form {dataset_type: {loss_function: loss_function callable}}, default keyed with None
+    # Note f1 loss function has been disabled because mcc is similar but less sensitive to unbalanced datasets
     supported_loss_functions ={
         'regression':{
             None: nn.MSELoss(reduction='none'),
@@ -24,13 +25,13 @@ def get_loss_func(args: TrainArgs) -> Callable:
         'classification':{
             None: nn.BCEWithLogitsLoss(reduction='none'),
             'cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
-            'f1': f1_class_loss,
+            # 'f1': f1_class_loss,
             'mcc': mcc_class_loss,
         },
         'multiclass':{
             None: nn.CrossEntropyLoss(reduction='none'),
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
-            'f1': f1_multiclass_loss,
+            # 'f1': f1_multiclass_loss,
             'mcc': mcc_multiclass_loss,
         },
         'spectra':{
