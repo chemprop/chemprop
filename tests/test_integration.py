@@ -532,12 +532,9 @@ class ChempropTests(TestCase):
             'chemprop',
             0.001737553471704,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
-                '--features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type',
-                'random_with_repeated_smiles'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles'
             ]
         ),
         (
@@ -545,12 +542,9 @@ class ChempropTests(TestCase):
             'chemprop',
             0.001323929967969,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
-                '--features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type',
-                'scaffold_balanced'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'scaffold_balanced'
             ]
         ),
         (
@@ -558,12 +552,9 @@ class ChempropTests(TestCase):
             'chemprop',
             0.001617717412785,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
-                '--features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type',
-                'random_with_repeated_smiles'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles'
             ]
         ),
         (
@@ -571,14 +562,10 @@ class ChempropTests(TestCase):
             'chemprop',
             0.001421314775383,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
-                '--phase_features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--spectra_phase_mask_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
-                '--split_type',
-                'random_with_repeated_smiles'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path', os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type', 'random_with_repeated_smiles'
             ]
         ),
     ])
@@ -613,16 +600,12 @@ class ChempropTests(TestCase):
             0.0014090729236303759,
             0,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra.csv'),
-                '--features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type',
-                'random_with_repeated_smiles'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles'
             ],
             [
-                '--features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
             ]
         ),
         (
@@ -631,18 +614,13 @@ class ChempropTests(TestCase):
             0.0009571740389124222,
             284,
             [
-                '--data_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
-                '--phase_features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--spectra_phase_mask_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
-                '--split_type',
-                'random_with_repeated_smiles'
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path', os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type', 'random_with_repeated_smiles'
             ],
             [
-                '--phase_features_path',
-                os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
             ]
         ),
     ])
