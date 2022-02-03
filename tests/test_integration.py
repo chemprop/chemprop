@@ -42,7 +42,7 @@ class ChempropTests(TestCase):
         """Creates a list of raw command line arguments for training."""
         return [
             'train',  # Note: not actually used, just a placeholder
-            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
+            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'), # Note: adding another --data_path argument will overwrite this one
             '--dataset_type', dataset_type,
             '--epochs', str(EPOCHS),
             '--num_folds', str(NUM_FOLDS),

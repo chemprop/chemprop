@@ -227,6 +227,7 @@ def get_data(path: str,
              max_data_size: int = None,
              store_row: bool = False,
              logger: Logger = None,
+             loss_function: str = None,
              skip_none_targets: bool = False) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
@@ -252,6 +253,7 @@ def get_data(path: str,
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
     :param skip_none_targets: Whether to skip targets that are all 'None'. This is mostly relevant when --target_columns
                               are passed in, so only a subset of tasks are examined.
+    :param loss_function: The loss function to be used in training.
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
@@ -270,6 +272,7 @@ def get_data(path: str,
         bond_features_path = bond_features_path if bond_features_path is not None \
             else args.bond_features_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
+        loss_function = loss_function if loss_function is not None else args.loss_function
 
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
@@ -313,7 +316,7 @@ def get_data(path: str,
         )
 
     # Find targets provided as inequalities
-    if args.loss_function == 'bounded_mse':
+    if loss_function == 'bounded_mse':
         gt_targets, lt_targets = get_inequality_targets(path=path, target_columns=target_columns)
     else:
         gt_targets, lt_targets = None, None
@@ -332,7 +335,7 @@ def get_data(path: str,
                 if value in ['','nan']:
                     targets.append(None)
                 elif '>' in value or '<' in value:
-                    if args.loss_function == 'bounded_mse':
+                    if loss_function == 'bounded_mse':
                         targets.append(float(value.strip('<>')))
                     else:
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
