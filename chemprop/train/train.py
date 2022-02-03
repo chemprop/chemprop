@@ -53,9 +53,9 @@ def train(model: MoleculeModel,
         targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch]) # shape(batch, tasks)
 
         if args.target_weights is not None:
-            target_weights = torch.tensor(args.target_weights).unsqeeze(0) # shape(1,tasks)
+            target_weights = torch.tensor(args.target_weights).unsqueeze(0) # shape(1,tasks)
         else:
-            target_weights = torch.ones(targets.shape[1]).unsqeeze(0)
+            target_weights = torch.ones(targets.shape[1]).unsqueeze(0)
         data_weights = torch.tensor(data_weights_batch).unsqueeze(1) # shape(batch,1)
 
         if args.loss_function == 'bounded_mse':
