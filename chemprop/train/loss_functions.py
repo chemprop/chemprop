@@ -83,10 +83,13 @@ def f1_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights
     """
     # shape(batch, tasks)
     # 2*TP/(2*TP + FN + FP)
-    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0)
-    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0)
-    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0)
-    return 2 * TP / (2 * TP + FN + FP)
+    torch_device = predictions.device
+    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0).to(torch_device)
+    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0).to(torch_device)
+    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
+    loss = 2 * TP / (2 * TP + FN + FP)
+    loss = loss.to(torch_device)
+    return loss
 
 
 def f1_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
@@ -96,10 +99,13 @@ def f1_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_we
     # targets shape (batch)
     # preds shape(batch, classes)
     # 2*TP/(2*TP + FN + FP), FP = P - TP
-    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
-    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1))
-    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask)
-    return 2 * TP / (TP + FN + P)
+    torch_device = predictions.device
+    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
+    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1)).to(torch_device)
+    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
+    loss = 2 * TP / (TP + FN + P)
+    loss = loss.to(torch_device)
+    return loss
 
 
 def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
@@ -108,11 +114,14 @@ def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weight
     """
     # shape(batch, tasks)
     # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
-    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0)
-    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0)
-    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0)
-    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis = 0)
-    return (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    torch_device = predictions.device
+    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0).to(torch_device)
+    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0).to(torch_device)
+    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
+    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
+    loss = (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    loss = loss.to(torch_device)
+    return loss
 
 
 def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
@@ -121,16 +130,19 @@ def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_w
     """
     # targets shape (batch)
     # preds shape(batch, classes)
+    torch_device = predictions.device
     data_weights = data_weights.unsqueeze(1)
     mask = mask.unsqueeze(1)
-    bin_targets = torch.zeros_like(predictions, device=predictions.device)
+    bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
-    c = torch.sum(predictions * bin_targets * data_weights * mask)
-    s = torch.sum(predictions * data_weights * mask)
-    pt = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) * torch.sum(bin_targets * data_weights * mask, axis=0))
-    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0)**2)
-    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0)**2)
-    return (c * s - pt) / torch.sqrt((s**2 - p2)*(s**2 - t2))
+    c = torch.sum(predictions * bin_targets * data_weights * mask).to(torch_device)
+    s = torch.sum(predictions * data_weights * mask).to(torch_device)
+    pt = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) * torch.sum(bin_targets * data_weights * mask, axis=0)).to(torch_device)
+    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0)**2).to(torch_device)
+    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0)**2).to(torch_device)
+    loss = (c * s - pt) / torch.sqrt((s**2 - p2)*(s**2 - t2))
+    loss = loss.to(torch_device)
+    return loss
 
 
 def sid_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, mask: torch.tensor, threshold: float = None) -> torch.tensor:
