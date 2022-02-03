@@ -15,7 +15,5 @@ import chemprop.sklearn_predict
 import chemprop.sklearn_train
 import chemprop.spectra_utils
 import chemprop.hyperopt_utils
-import chemprop.metrics
-import chemprop.loss_functions
 
 from chemprop._version import __version__

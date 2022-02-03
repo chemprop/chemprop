@@ -20,7 +20,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
         'regression':{
             None: nn.MSELoss(reduction='none'),
             'mse': nn.MSELoss(reduction='none'),
-            'bounded_mse': bounded_mse
+            'bounded_mse': bounded_mse_loss
         },
         'classification':{
             None: nn.BCEWithLogitsLoss(reduction='none'),
@@ -58,7 +58,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
         raise ValueError(f'Default loss function not configured for dataset type {args.dataset_type}.')
 
 
-def bounded_mse(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:
+def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:
     """
     
     """

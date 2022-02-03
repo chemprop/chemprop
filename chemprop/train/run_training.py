@@ -13,6 +13,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
+from .loss_functions import get_loss_func
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.args import TrainArgs
 from chemprop.constants import MODEL_FILE_NAME
@@ -21,7 +22,6 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits, load_frzn_model
-from chemprop.loss_functions import get_loss_func
 
 
 def run_training(args: TrainArgs,
