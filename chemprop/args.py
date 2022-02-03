@@ -229,8 +229,8 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'cross_entropy', 'mcc', 'sid', 'wasserstein'] = None
-    """Choice of loss function. Loss functions are limited to compatible dataset types.""" # Note f1 loss function has been disabled as mcc is similar but less sensitive to unbalanced datasets
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein'] = None
+    """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
     separate_val_path: str = None

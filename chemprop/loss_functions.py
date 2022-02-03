@@ -24,7 +24,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
         },
         'classification':{
             None: nn.BCEWithLogitsLoss(reduction='none'),
-            'cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
+            'binary_cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
             # 'f1': f1_class_loss,
             'mcc': mcc_class_loss,
         },

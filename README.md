@@ -28,21 +28,23 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
 - [Data](#data)
 - [Training](#training)
   * [Train/Validation/Test Splits](#trainvalidationtest-splits)
-  * [Cross validation](#cross-validation)
-  * [Ensembling](#ensembling)
-  * [Hyperparameter Optimization](#hyperparameter-optimization)
+  * [Loss functions](#loss-functions)
+  * [Metrics](#metrics)
+  * [Cross validation and ensembling](#cross-validation-and-ensembling)
   * [Aggregation](#aggregation)
   * [Additional Features](#additional-features)
-    * [RDKit 2D Features](#rdkit-2d-features)
-    * [Custom Features](#custom-features)
-    * [Atomic Features](#atomic-features)
+    * [Custom Features](#molecule-level-custom-features)
+    * [RDKit 2D Features](#molecule-level-rdkit-2d-features)
+    * [Atomic Features](#atom-level-features)
   * [Spectra](#spectra)
   * [Reaction](#reaction)
   * [Pretraining](#pretraining)
   * [Missing target values](#missing-target-values)
+  * [Weighted training by target and data](#weighted-training-by-target-and-data)
   * [Caching](#caching)
 - [Predicting](#predicting)
   * [Epistemic Uncertainty](#epistemic-uncertainty)
+- [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Encode Fingerprint Latent Representation](#encode-fingerprint-latent-representation)
 - [Interpreting Model Prediction](#interpreting)
 - [TensorBoard](#tensorboard)
@@ -101,10 +103,6 @@ To set a specific CUDA toolkit version, add `cudatoolkit=X.Y` to `environment.ym
 
 For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](http://chemprop.csail.mit.edu/).
 
-![Training with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_train.png "Training with our web interface")
-
-![Predicting with our web interface](https://github.com/chemprop/chemprop/raw/master/chemprop/web/app/static/images/web_predict.png "Predicting with our web interface")
-
 You can start the web interface on your local machine in two ways. Flask is used for development mode while gunicorn is used for production mode.
 
 ### Flask
@@ -132,15 +130,21 @@ section of the documentation.
 
 ## Data
 
-In order to train a model, you must provide training data containing molecules (as SMILES strings) and known target values. Targets can either be real numbers, if performing regression, or binary (i.e. 0s and 1s), if performing classification. Target values which are unknown can be left as blanks.
+In order to train a model, you must provide training data containing molecules (as SMILES strings) and known target values.
 
-Our model can either train on a single target ("single tasking") or on multiple targets simultaneously ("multi-tasking").
+Chemprop can either train on a single target ("single tasking") or on multiple targets simultaneously ("multi-tasking").
+
+There are four current supported dataset types. Targets with unknown values can be left as blanks.
+* **Regression.** Targets are float values. With bounded loss functions or metrics, the values may also be simple inequalities (e.g., >5.0 or <7.5).
+* **Classification.** Targets are binary (i.e. 0s and 1s) indicators of the classification.
+* **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--number_of_classes <int>`.
+* **Spectra.** Targets are positive float values with each target representing the signal at a specific spectrum position.
 
 The data file must be be a **CSV file with a header row**. For example:
 ```
-smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
-CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
-CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
+smiles,NR-AR,NR-AR-LBD,NR-AhR
+CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1
+CCN1C(=O)NC(c2ccccc2)C1=O,0,,0
 ...
 ```
 
@@ -174,53 +178,36 @@ Notes:
 
 Our code supports several methods of splitting data into train, validation, and test sets.
 
-**Random:** By default, the data will be split randomly into train, validation, and test sets.
-
-**Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
-
-**Random With Repeated SMILES** Some datasets have multiple entries with the same SMILES. To constrain splitting so the repeated SMILES are in the same split, use the argument `--split_type random_with_repeated_smiles`.
-
-**Separate val/test:** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`. If both are provided, then the data specified by `--data_path` is used entirely as the training data. If only one separate path is provided, the `--data_path` data is split between train data and either val or test data, whichever is not provided separately.
+* **Random.** By default, the data will be split randomly into train, validation, and test sets.
+* **Scaffold.** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
+* **Random With Repeated SMILES.** Some datasets have multiple entries with the same SMILES. To constrain splitting so the repeated SMILES are in the same split, use the argument `--split_type random_with_repeated_smiles`.
+* **Separate val/test.** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`. If both are provided, then the data specified by `--data_path` is used entirely as the training data. If only one separate path is provided, the `--data_path` data is split between train data and either val or test data, whichever is not provided separately.
 
 When data contains multiple molecules per datapoint, scaffold and repeated SMILES splitting will only constrain splitting based on one of the molecules. The key molecule can be chosen with the argument `--split_key_molecule <int>`, with the default setting using an index of 0 indicating the first molecule.
 
 By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with `--split_sizes <train_frac> <val_frac> <test_frac>`. The default setting is `--split_sizes 0.8 0.1 0.1`. If a separate validation set or test set is provided, the split defaults to 80%-20%. Splitting involves a random component and can be seeded with `--seed <seed>`. The default setting is `--seed 0`.
 
-### Cross validation
+### Loss functions
+
+The loss functions available for training are dependent on the selected dataset type. Loss functions other than the defaults can be selected from the supported options with the argument `--loss_function <function>`.
+* **Regression.** mse (default), bounded_mse.
+* **Classification.** binary_cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
+* **Multiclass.** cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
+* **Spectra.** sid (default, spectral information divergence), wasserstein (First-order Wasserstein distance a.k.a. earthmover's distance.)
+
+### Metrics
+
+Metrics are used to evaluate the success of the model against the test set as the final model score and to determine the optimal epoch to save the model at based on the validation set. The primary metric used for both purposes is selected with the argument `--metric <metric>` and additional metrics for test set score only can be added with `--extra_metrics <metric1> <metric2> ...`. Supported metrics are dependent on the dataset type. Unlike loss functions, metrics do not have to be differentiable.
+* **Regression.** rmse (default), mae, mse, r2, bounded_rmse, bounded_mae, bounded_mae.
+* **Classification.** auc (default), prc-auc, accuracy, binary_cross_entropy, f1, mcc.
+* **Multiclass.** cross_entropy (default), accuracy, f1, mcc.
+* **Spectra.** sid (default), wasserstein.
+
+### Cross validation and ensembling
 
 k-fold cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`. Each trained model will have different data splits. The reported test score will be the average of the metrics from each fold.
 
-### Ensembling
-
 To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`. Each trained model within the ensemble will share data splits. The reported test score for one ensemble is the metric applied to the averaged prediction across the models. Ensembling and cros-validation can be used at the same time.
-
-### Hyperparameter Optimization
-
-Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package), which will find the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
-```
-chemprop_hyperopt --data_path <data_path> --dataset_type <type> --num_iters <int> --config_save_path <config_path>
-```
-where `<int>` is the number of hyperparameter trial configurations to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. If installed from source, `chemprop_hyperopt` can be replaced with `python hyperparameter_optimization.py`. Additional training arguments can also be supplied during submission, and they will be applied to all included training iterations (`--epochs`, `--aggregation`, `--num_folds`, `--gpu`, `--seed`, etc.). The argument `--log_dir <dir_path>` can optionally be provided to set a location for the hyperparameter optimization log.
-
-Results of completed trial configurations will be stored there and may serve as checkpoints for other instances of hyperparameter optimization if the directory for hyperopt checkpoint files has been specified, `--hyperopt_checkpoint_dir <path>`. If `--hyperopt_checkpoint_dir` is not specified, then checkpoints will default to being stored with the hyperparame. Interrupted hyperparameter optimizations can be restarted by specifying the same directory. Previously completed hyperparameter optimizations can be used as the starting point for new optimizations with a larger selected number of iterations. Note that the `--num_iters <int>` argument will count all previous checkpoints saved in the directory towards the total number of iterations, and if the existing number of checkpoints exceeds this argment then no new trials will be carried out.
-
-Manual training instances outside of hyperparameter optimization may also be considered in the history of attempted trials. The paths to the save_dirs for these training instances can be specified with `--manual_trial_dirs <list-of-directories>`. These directories must contain the files `test_scores.csv` and `args.json` as generated during training. To work appropriately, these training instances must be consistent with the parameter space being searched in hyperparameter optimization (including the hyperparameter optimization default of ffn_hidden_size being set equal to hidden_size). Manual trials considered with this argument are not added to the checkpoint directory.
-
-As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int, default=10>`. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
-
-Parallel instances of hyperparameter optimization that share a checkpoint directory will have access to the shared results of hyperparameter optimization trials, allowing them to arrive at the desired total number of iterations collectively more quickly. In this way multiple GPUs or other computing resources can be applied to the search. Each instance of hyperparameter optimization is unaware of parallel trials that have not yet completed. This has several implications when running `n` parallel instances:
-* A parallel search will have different information and search different parameters than a single instance sequential search.
-* New trials will not consider the parameters in currently running trials, in rare cases leading to duplication.
-* Up to `n-1` extra random search iterations may occur above the number specified with `--startup_random_iters`.
-* Up to `n-1` extra total trials will be run above the chosen `num_iters`, though each instance will be exposed to at least that number of iterations.
-* The last parallel instance to complete is the only one that is aware of all the trials when reporting results.
-
-Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
-```
-chemprop_train --data_path <data_path> --dataset_type <type> --config_path <config_path>
-```
-
-Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run hyperparameter_optimization.py separately on each split's training and validation data with test held out.
 
 ### Aggregation
 
@@ -229,6 +216,13 @@ By default, the atom-level representations from the message passing network are 
 ### Additional Features
 
 While the model works very well on its own, especially after hyperparameter optimization, we have seen that additional features can further improve performance on certain datasets. The additional features can be added at the atom-, bond, or molecule-level. Molecule-level features can be either automatically generated by RDKit or custom features provided by the user.
+
+#### Molecule-Level Custom Features
+
+If you install from source, you can modify the code to load custom features as follows:
+
+1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
+2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule. By default, provided features will be normalized unless the flag `--no_features_scaling` is used.
 
 #### Molecule-Level RDKit 2D Features
 
@@ -240,13 +234,6 @@ The full list of available features for `--features_generator` is as follows.
 `morgan_count` is count-based Morgan, radius 2 and 2048 bits.
 `rdkit_2d` is an unnormalized version of 200 assorted rdkit descriptors. Full list can be found at the bottom of our paper: https://arxiv.org/pdf/1904.01561.pdf
 `rdkit_2d_normalized` is the CDF-normalized version of the 200 rdkit descriptors.
-
-#### Molecule-Level Custom Features
-
-If you install from source, you can modify the code to load custom features as follows:
-
-1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in `chemprop/features/features_generators.py`. Scroll down to the bottom of that file to see a features generator code template.
-2. **Load features:** If you have features saved as a numpy `.npy` file or as a `.csv` file, you can load the features by using `--features_path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Also note that `.csv` files must have a header row and the features should be comma-separated with one line per molecule. By default, provided features will be normalized unless the flag `--no_features_scaling` is used.
 
 #### Atom-Level Features
 
@@ -300,7 +287,7 @@ When training multitask models (models which predict more than one target simult
 
 In contrast, when using `sklearn_train.py` (a utility script provided within Chemprop that trains standard models such as random forests on Morgan fingerprints via the python package scikit-learn), multi-task models cannot be trained on datasets with partially missing targets. However, one can instead train individual models for each task (via the argument `--single_task`), where missing values are automatically removed from the dataset. Thus, the training still makes use of all non-missing values, but by training individual models for each task, instead of one model with multiple output values. This restriction only applies to sklearn models (via  :code:`sklearn_train` or :code:`python sklearn_train.py`), but NOT to default Chemprop models via `chemprop_train` or `python train.py`. Alternatively, missing target values can be imputed by specifying `--impute_mode <single_task/linear/median/mean/frequent>`. The option `single_task` trains single task sklearn models on each task to predict missing values and is computationally expensive. The option `linear` trains a stochastic gradient linear model on each target to compute missing targets. Both `single_task` and `linear` are applicable to regression and classification task. For regression tasks, the options `median` and `mean` furthermore compute the median and mean of the training data. For classification tasks, `frequent` computes the most frequent value for each task. For all options, models are fitted to non-missing training targets and predict missing training targets. The test set is not affected by imputing.
 
-### Weighted Loss Functions in Training
+### Weighted Training by Target and Data
 
 By default, each task in multitask training and each provided datapoint are weighted equally for training. Weights can be specified in either case to allow some tasks in training or some specified data points to be weighted more heavily than others in the training of the model.
 
@@ -337,6 +324,34 @@ If installed from source, `chemprop_predict` can be replaced with `python predic
 ### Epistemic Uncertainty
 
 One method of obtaining the epistemic uncertainty of a prediction is to calculate the variance of an ensemble of models. To calculate these variances and write them as an additional column in the `--preds_path` file, use `--ensemble_variance`. If this flag is used with a spectra prediction, it will instead return the average pairwise SID comparison of the different ensemble predictions.
+
+## Hyperparameter Optimization
+
+Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the [hyperopt](https://github.com/hyperopt/hyperopt) package), which will find the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
+```
+chemprop_hyperopt --data_path <data_path> --dataset_type <type> --num_iters <int> --config_save_path <config_path>
+```
+where `<int>` is the number of hyperparameter trial configurations to try and `<config_path>` is the path to a `.json` file where the optimal hyperparameters will be saved. If installed from source, `chemprop_hyperopt` can be replaced with `python hyperparameter_optimization.py`. Additional training arguments can also be supplied during submission, and they will be applied to all included training iterations (`--epochs`, `--aggregation`, `--num_folds`, `--gpu`, `--seed`, etc.). The argument `--log_dir <dir_path>` can optionally be provided to set a location for the hyperparameter optimization log.
+
+Results of completed trial configurations will be stored there and may serve as checkpoints for other instances of hyperparameter optimization if the directory for hyperopt checkpoint files has been specified, `--hyperopt_checkpoint_dir <path>`. If `--hyperopt_checkpoint_dir` is not specified, then checkpoints will default to being stored with the hyperparame. Interrupted hyperparameter optimizations can be restarted by specifying the same directory. Previously completed hyperparameter optimizations can be used as the starting point for new optimizations with a larger selected number of iterations. Note that the `--num_iters <int>` argument will count all previous checkpoints saved in the directory towards the total number of iterations, and if the existing number of checkpoints exceeds this argment then no new trials will be carried out.
+
+Manual training instances outside of hyperparameter optimization may also be considered in the history of attempted trials. The paths to the save_dirs for these training instances can be specified with `--manual_trial_dirs <list-of-directories>`. These directories must contain the files `test_scores.csv` and `args.json` as generated during training. To work appropriately, these training instances must be consistent with the parameter space being searched in hyperparameter optimization (including the hyperparameter optimization default of ffn_hidden_size being set equal to hidden_size). Manual trials considered with this argument are not added to the checkpoint directory.
+
+As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int, default=10>`. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
+
+Parallel instances of hyperparameter optimization that share a checkpoint directory will have access to the shared results of hyperparameter optimization trials, allowing them to arrive at the desired total number of iterations collectively more quickly. In this way multiple GPUs or other computing resources can be applied to the search. Each instance of hyperparameter optimization is unaware of parallel trials that have not yet completed. This has several implications when running `n` parallel instances:
+* A parallel search will have different information and search different parameters than a single instance sequential search.
+* New trials will not consider the parameters in currently running trials, in rare cases leading to duplication.
+* Up to `n-1` extra random search iterations may occur above the number specified with `--startup_random_iters`.
+* Up to `n-1` extra total trials will be run above the chosen `num_iters`, though each instance will be exposed to at least that number of iterations.
+* The last parallel instance to complete is the only one that is aware of all the trials when reporting results.
+
+Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path as follows:
+```
+chemprop_train --data_path <data_path> --dataset_type <type> --config_path <config_path>
+```
+
+Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run hyperparameter_optimization.py separately on each split's training and validation data with test held out.
 
 ## Encode Fingerprint Latent Representation
 
