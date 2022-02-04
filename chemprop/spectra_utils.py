@@ -2,7 +2,6 @@ from typing import List
 import csv
 
 from tqdm import trange
-import torch
 import numpy as np
 
 

@@ -55,7 +55,7 @@ def run_training(args: TrainArgs,
                              bond_features_path=args.separate_test_bond_features_path,
                              phase_features_path=args.separate_test_phase_features_path,
                              smiles_columns=args.smiles_columns,
-                             loss_func=args.loss_function,
+                             loss_function=args.loss_function,
                              logger=logger)
     if args.separate_val_path:
         val_data = get_data(path=args.separate_val_path,
@@ -65,7 +65,7 @@ def run_training(args: TrainArgs,
                             bond_features_path=args.separate_val_bond_features_path,
                             phase_features_path=args.separate_val_phase_features_path,
                             smiles_columns = args.smiles_columns,
-                            loss_func=args.loss_function,
+                            loss_function=args.loss_function,
                             logger=logger)
 
     if args.separate_val_path and args.separate_test_path:
