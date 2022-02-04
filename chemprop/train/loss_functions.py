@@ -67,7 +67,7 @@ def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than
         predictions
     )
     
-    return nn.functional.mseloss(predictions, targets, reduction='none')
+    return nn.functional.mse_loss(predictions, targets, reduction='none')
 
 
 def f1_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
@@ -80,7 +80,7 @@ def f1_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights
     TP = torch.sum(targets * predictions * data_weights * mask, axis = 0).to(torch_device)
     FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0).to(torch_device)
     FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
-    loss = 2 * TP / (2 * TP + FN + FP)
+    loss = 1 - (2 * TP / (2 * TP + FN + FP))
     loss = loss.to(torch_device)
     return loss
 
@@ -96,7 +96,7 @@ def f1_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_we
     TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
     P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1)).to(torch_device)
     FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
-    loss = 2 * TP / (TP + FN + P)
+    loss = 1 - (2 * TP / (TP + FN + P))
     loss = loss.to(torch_device)
     return loss
 
@@ -112,7 +112,7 @@ def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weight
     FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0).to(torch_device)
     FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
     TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
-    loss = (TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    loss = 1 - ((TP*TN-FP*FN)/torch.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)))
     loss = loss.to(torch_device)
     return loss
 
@@ -133,7 +133,7 @@ def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_w
     pt = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) * torch.sum(bin_targets * data_weights * mask, axis=0)).to(torch_device)
     p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0)**2).to(torch_device)
     t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0)**2).to(torch_device)
-    loss = (c * s - pt) / torch.sqrt((s**2 - p2)*(s**2 - t2))
+    loss = 1 - (c * s - pt) / torch.sqrt((s**2 - p2)*(s**2 - t2))
     loss = loss.to(torch_device)
     return loss
 
