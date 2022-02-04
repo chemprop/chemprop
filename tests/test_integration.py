@@ -186,45 +186,61 @@ class ChempropTests(TestCase):
         (
                 'sklearn_random_forest',
                 'random_forest',
+                'rmse',
                 1.582733
         ),
         (
                 'sklearn_svm',
                 'svm',
+                'rmse',
                 1.698927
         ),
         (
                 'chemprop',
                 'chemprop',
+                'rmse',
                 1.237620
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
+                'rmse',
                 1.433300,
                 ['--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
+                'rmse',
                 1.834947,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
+                'rmse',
                 0.807828,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_bounded_mse_loss',
+                'chemprop',
+                'bounded_mse',
+                1.4771486,
+                [
+                    '--loss_function', 'bounded_mse', 
+                    '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
+                ]
         )
     ])
     def test_train_single_task_regression(self,
                                           name: str,
                                           model_type: str,
+                                          metric: str,
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            metric = 'rmse'
             self.train(
                 dataset_type='regression',
                 metric=metric,
@@ -245,29 +261,53 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
+                'auc',
                 0.691205
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
+                'auc',
                 0.619021,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
+                'auc',
                 0.659145,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_mcc_metric',
+                'chemprop',
+                'mcc',
+                0.17130675,
+                ['--metric', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
+        ),
+        (
+                'chemprop_f1_metric',
+                'chemprop',
+                'f1',
+                0.221176,
+                ['--metric', 'f1', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
+        ),
+        (
+                'chemprop_mcc_loss',
+                'chemprop',
+                'auc',
+                0.6941197,
+                ['--loss_function', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         )
     ])
     def test_train_multi_task_classification(self,
                                              name: str,
                                              model_type: str,
+                                             metric: str,
                                              expected_score: float,
                                              train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            metric = 'auc'
             self.train(
                 dataset_type='classification',
                 metric=metric,
@@ -279,7 +319,6 @@ class ChempropTests(TestCase):
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
             test_scores = test_scores_data[f'Mean {metric}']
-            self.assertEqual(len(test_scores), 12)
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
@@ -535,16 +574,6 @@ class ChempropTests(TestCase):
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
                 '--split_type', 'random_with_repeated_smiles'
-            ]
-        ),
-        (
-            'spectra_scaffold_split',
-            'chemprop',
-            0.001323929967969,
-            [
-                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
-                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type', 'scaffold_balanced'
             ]
         ),
         (
