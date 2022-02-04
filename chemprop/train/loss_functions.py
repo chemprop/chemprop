@@ -14,29 +14,25 @@ def get_loss_func(args: TrainArgs) -> Callable:
     :return: A PyTorch loss function.
     """
 
-    # Nested dictionary of the form {dataset_type: {loss_function: loss_function callable}}, default keyed with None
+    # Nested dictionary of the form {dataset_type: {loss_function: loss_function callable}}
     # Note f1 loss function has been disabled because mcc is similar but less sensitive to unbalanced datasets
     supported_loss_functions ={
         'regression':{
-            None: nn.MSELoss(reduction='none'),
             'mse': nn.MSELoss(reduction='none'),
             'bounded_mse': bounded_mse_loss
         },
         'classification':{
-            None: nn.BCEWithLogitsLoss(reduction='none'),
             'binary_cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
             # 'f1': f1_class_loss,
             'mcc': mcc_class_loss,
         },
         'multiclass':{
-            None: nn.CrossEntropyLoss(reduction='none'),
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
             # 'f1': f1_multiclass_loss,
             'mcc': mcc_multiclass_loss,
         },
         'spectra':{
-            None: sid_loss,
-            'spectra': sid_loss,
+            'sid': sid_loss,
             'wasserstein': wasserstein_loss,
         }
     }
@@ -51,11 +47,8 @@ def get_loss_func(args: TrainArgs) -> Callable:
     if loss_function is not None:
         return loss_function
 
-    elif args.loss_function is not None:
-        raise ValueError(f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. Available options are {supported_loss_functions[args.dataset_type].keys()}.')
-    
-    else: # loss_function is None
-        raise ValueError(f'Default loss function not configured for dataset type {args.dataset_type}.')
+    else:
+        raise ValueError(f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. Available options for that dataset type are {supported_loss_functions[args.dataset_type].keys()}.')
 
 
 def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:

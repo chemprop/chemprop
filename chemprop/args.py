@@ -441,7 +441,7 @@ class TrainArgs(CommonArgs):
     @property
     def minimize_score(self) -> bool:
         """Whether the model should try to minimize the score metric or maximize it."""
-        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein'}
+        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'bounded_mse', 'bounded_mae', 'bounded_rmse'}
 
     @property
     def use_input_features(self) -> bool:
@@ -556,6 +556,18 @@ class TrainArgs(CommonArgs):
                     (self.dataset_type == 'spectra' and metric in ['sid','wasserstein'])]):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
         
+        if self.loss_function is None:
+            if self.dataset_type == 'classification':
+                self.loss_function = 'binary_cross_entropy'
+            elif self.dataset_type == 'multiclass':
+                self.loss_function = 'cross_entropy'
+            elif self.dataset_type == 'spectra':
+                self.loss_function = 'sid'
+            elif self.dataset_type == 'regression':
+                self.loss_function = 'mse'
+            else:
+                raise ValueError(f'Default loss function not configured for dataset type {self.dataset_type}.')
+
         if self.loss_function != 'bounded_mse' and any(metric in ['bounded_mse', 'bounded_rmse', 'bounded_mae'] for metric in self.metrics):
             raise ValueError('Bounded metrics can only be used in conjunction with the regression loss function bounded_mse.')
 
