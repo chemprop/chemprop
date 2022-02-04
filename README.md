@@ -135,7 +135,7 @@ In order to train a model, you must provide training data containing molecules (
 Chemprop can either train on a single target ("single tasking") or on multiple targets simultaneously ("multi-tasking").
 
 There are four current supported dataset types. Targets with unknown values can be left as blanks.
-* **Regression.** Targets are float values. With bounded loss functions or metrics, the values may also be simple inequalities (e.g., >5.0 or <7.5).
+* **Regression.** Targets are float values. With bounded loss functions or metrics, the values may also be simple inequalities (e.g., >7.5 or <5.0).
 * **Classification.** Targets are binary (i.e. 0s and 1s) indicators of the classification.
 * **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--number_of_classes <int>`.
 * **Spectra.** Targets are positive float values with each target representing the signal at a specific spectrum position.
@@ -198,7 +198,7 @@ The loss functions available for training are dependent on the selected dataset 
 ### Metrics
 
 Metrics are used to evaluate the success of the model against the test set as the final model score and to determine the optimal epoch to save the model at based on the validation set. The primary metric used for both purposes is selected with the argument `--metric <metric>` and additional metrics for test set score only can be added with `--extra_metrics <metric1> <metric2> ...`. Supported metrics are dependent on the dataset type. Unlike loss functions, metrics do not have to be differentiable.
-* **Regression.** rmse (default), mae, mse, r2, bounded_rmse, bounded_mae, bounded_mae.
+* **Regression.** rmse (default), mae, mse, r2, bounded_rmse, bounded_mae, bounded_mse (default if bounded_mse is loss function).
 * **Classification.** auc (default), prc-auc, accuracy, binary_cross_entropy, f1, mcc.
 * **Multiclass.** cross_entropy (default), accuracy, f1, mcc.
 * **Spectra.** sid (default), wasserstein.

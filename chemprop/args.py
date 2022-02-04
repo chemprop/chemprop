@@ -542,8 +542,12 @@ class TrainArgs(CommonArgs):
                 self.metric = 'cross_entropy'
             elif self.dataset_type == 'spectra':
                 self.metric = 'sid'
-            else:
+            elif self.dataset_type == 'regression' and self.loss_function == 'bounded_mse':
+                self.metric = 'bounded_mse'
+            elif self.dataset_type == 'regression':
                 self.metric = 'rmse'
+            else:
+                raise ValueError(f'Dataset type {self.dataset_type} is not supported.')
 
         if self.metric in self.extra_metrics:
             raise ValueError(f'Metric {self.metric} is both the metric and is in extra_metrics. '
