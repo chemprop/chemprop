@@ -1,6 +1,6 @@
 from .metrics import get_metric_func, prc_auc, bce, rmse, bounded_mse, bounded_mae, \
     bounded_rmse, accuracy, f1_metric, mcc_metric, sid_metric, wasserstein_metric
-from .loss_functions import get_loss_func, bounded_mse_loss, f1_class_loss, f1_multiclass_loss, \
+from .loss_functions import get_loss_func, bounded_mse_loss, \
     mcc_class_loss, mcc_multiclass_loss, sid_loss, wasserstein_loss
 from .cross_validate import chemprop_train, cross_validate, TRAIN_LOGGER_NAME
 from .evaluate import evaluate, evaluate_predictions
@@ -37,8 +37,6 @@ __all__ = [
     'wasserstein_metric',
     'get_loss_func',
     'bounded_mse_loss',
-    'f1_class_loss',
-    'f1_multiclass_loss',
     'mcc_class_loss',
     'mcc_multiclass_loss',
     'sid_loss',

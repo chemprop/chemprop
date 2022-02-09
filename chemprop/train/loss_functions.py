@@ -15,7 +15,6 @@ def get_loss_func(args: TrainArgs) -> Callable:
     """
 
     # Nested dictionary of the form {dataset_type: {loss_function: loss_function callable}}
-    # Note f1 loss function has been disabled because mcc is similar but less sensitive to unbalanced datasets
     supported_loss_functions ={
         'regression':{
             'mse': nn.MSELoss(reduction='none'),
@@ -23,12 +22,10 @@ def get_loss_func(args: TrainArgs) -> Callable:
         },
         'classification':{
             'binary_cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
-            # 'f1': f1_class_loss,
             'mcc': mcc_class_loss,
         },
         'multiclass':{
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
-            # 'f1': f1_multiclass_loss,
             'mcc': mcc_multiclass_loss,
         },
         'spectra':{
@@ -68,37 +65,6 @@ def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than
     )
     
     return nn.functional.mse_loss(predictions, targets, reduction='none')
-
-
-def f1_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
-    """
-    
-    """
-    # shape(batch, tasks)
-    # 2*TP/(2*TP + FN + FP)
-    torch_device = predictions.device
-    TP = torch.sum(targets * predictions * data_weights * mask, axis = 0).to(torch_device)
-    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis = 0).to(torch_device)
-    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis = 0).to(torch_device)
-    loss = 1 - (2 * TP / (2 * TP + FN + FP))
-    loss = loss.to(torch_device)
-    return loss
-
-
-def f1_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
-    """
-    
-    """
-    # targets shape (batch)
-    # preds shape(batch, classes)
-    # 2*TP/(2*TP + FN + FP), FP = P - TP
-    torch_device = predictions.device
-    TP = torch.sum(predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
-    P = torch.sum(predictions * data_weights.unsqueeze(1) * mask.unsqueeze(1)).to(torch_device)
-    FN = torch.sum(1 - predictions[torch.arange(targets.shape[0]), targets] * data_weights * mask).to(torch_device)
-    loss = 1 - (2 * TP / (TP + FN + P))
-    loss = loss.to(torch_device)
-    return loss
 
 
 def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
