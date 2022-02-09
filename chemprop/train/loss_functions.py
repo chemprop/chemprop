@@ -51,7 +51,13 @@ def get_loss_func(args: TrainArgs) -> Callable:
 
 def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:
     """
-    
+    Loss function for use with regression when some targets are presented as inequalities.
+
+    :param predictions: Model predictions with shape(batch_size, tasks).
+    :param targets: Target values with shape(batch_size, tasks).
+    :param less_than_target: A tensor with boolean values indicating whether the target is a less-than inequality.
+    :param greater_than_target: A tensor with boolean values indicating whether the target is a greater-than inequality.
+    :return: A tensor containing loss values of shape(batch_size, tasks).
     """
     predictions = torch.where(
         torch.logical_and(predictions < targets, less_than_target),
@@ -70,7 +76,13 @@ def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than
 
 def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
     """
-    
+    A classification loss using a soft version of the Matthews Correlation Coefficient.
+
+    :param predictions: Model predictions with shape(batch_size, tasks).
+    :param targets: Target values with shape(batch_size, tasks).
+    :param data_weights: A tensor with float values indicating how heavily to weight each datapoint in training with shape(batch_size, 1)
+    :param mask: A tensor with boolean values indicating whether the loss for this prediction is considered in the gradient descent with shape(batch_size, tasks).
+    :return: A tensor containing loss values of shape(tasks).
     """
     # shape(batch, tasks)
     # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
@@ -86,12 +98,17 @@ def mcc_class_loss(predictions: torch.tensor, targets: torch.tensor, data_weight
 
 def mcc_multiclass_loss(predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor) -> torch.tensor:
     """
-    
+    A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
+
+    :param predictions: Model predictions with shape(batch_size, classes).
+    :param targets: Target values with shape(batch_size).
+    :param data_weights: A tensor with float values indicating how heavily to weight each datapoint in training with shape(batch_size, 1)
+    :param mask: A tensor with boolean values indicating whether the loss for this prediction is considered in the gradient descent with shape(batch_size).
+    :return: A tensor value for the loss.
     """
     # targets shape (batch)
     # preds shape(batch, classes)
     torch_device = predictions.device
-    data_weights = data_weights.unsqueeze(1)
     mask = mask.unsqueeze(1)
     bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
