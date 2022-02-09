@@ -2,6 +2,7 @@ from typing import Callable
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from chemprop.args import TrainArgs
 
@@ -182,5 +183,107 @@ def wasserstein_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, 
     model_cum = torch.cumsum(model_spectra,axis=1).to(torch_device)
     loss = torch.abs(target_cum - model_cum)
     loss = loss.to(torch_device)
+
+    return loss
+
+
+def negative_log_likelihood(pred_targets, pred_var, targets):
+    clamped_var = torch.clamp(pred_var, min=0.00001)
+    return torch.log(2*np.pi*clamped_var) / 2 + (pred_targets - targets)**2 / (2 * clamped_var)
+
+
+# evidential classification
+def dirichlet_loss(y, alphas, lam=1):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al
+    :y: labels to predict
+    :alphas: predicted parameters for Dirichlet
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
+    def KL(alpha):
+        """
+        Compute KL for Dirichlet defined by alpha to uniform dirichlet
+        :alpha: parameters for Dirichlet
+
+        :return: KL
+        """
+        beta = torch.ones_like(alpha)
+        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
+        S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
+        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
+
+        # digamma terms
+        dg_alpha = torch.digamma(alpha)
+        dg_S_alpha = torch.digamma(S_alpha)
+
+        # KL
+        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+        return kl
+
+
+    # Hard code to 2 classes per task, since this assumption is already made
+    # for the existing chemprop classification tasks
+    num_classes = 2
+    num_tasks = y.shape[1]
+
+    y_one_hot = torch.eye(num_classes)[y.long()]
+    if y.is_cuda:
+        y_one_hot = y_one_hot.cuda()
+
+    alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
+
+    # SOS term
+    S = torch.sum(alphas, dim=-1, keepdim=True)
+    p = alphas / S
+    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
+    SOS = A + B
+
+    # KL
+    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
+    KL = lam * KL(alpha_hat)
+
+    #loss = torch.mean(SOS + KL)
+    loss = SOS + KL
+    loss = torch.mean(loss, dim=-1)
+    return loss
+
+
+# updated evidential regression loss (evidential_loss_new from Amini repo)
+def evidential_loss(mu, v, alpha, beta, targets, lam=1, epsilon=1e-4):
+    """
+    Use Deep Evidential Regression negative log likelihood loss + evidential
+        regularizer
+
+    :mu: pred mean parameter for NIG
+    :v: pred lam parameter for NIG
+    :alpha: predicted parameter for NIG
+    :beta: Predicted parmaeter for NIG
+    :targets: Outputs to predict
+
+    :return: Loss
+    """
+    # Calculate NLL loss
+    twoBlambda = 2*beta*(1+v)
+    nll = 0.5*torch.log(np.pi/v) \
+        - alpha*torch.log(twoBlambda) \
+        + (alpha+0.5) * torch.log(v*(targets-mu)**2 + twoBlambda) \
+        + torch.lgamma(alpha) \
+        - torch.lgamma(alpha+0.5)
+
+    L_NLL = nll #torch.mean(nll, dim=-1)
+
+    # Calculate regularizer based on absolute error of prediction
+    error = torch.abs((targets - mu))
+    reg = error * (2 * v + alpha)
+    L_REG = reg #torch.mean(reg, dim=-1)
+
+    # Loss = L_NLL + L_REG
+    # TODO If we want to optimize the dual- of the objective use the line below:
+    loss = L_NLL + lam * (L_REG - epsilon)
 
     return loss
