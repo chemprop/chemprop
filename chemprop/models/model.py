@@ -182,6 +182,6 @@ class MoleculeModel(nn.Module):
         if self.multiclass:
             output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
             if not (self.training and self.no_training_normalization):
-                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training as when using CrossEntropyLoss
+                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
 
         return output

@@ -45,7 +45,8 @@ def get_loss_func(args: TrainArgs) -> Callable:
         return loss_function
 
     else:
-        raise ValueError(f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. Available options for that dataset type are {supported_loss_functions[args.dataset_type].keys()}.')
+        raise ValueError(f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. \
+            Available options for that dataset type are {supported_loss_functions[args.dataset_type].keys()}.')
 
 
 def bounded_mse_loss(predictions: torch.tensor, targets: torch.tensor, less_than_target: torch.tensor, greater_than_target: torch.tensor) -> torch.tensor:
@@ -121,7 +122,7 @@ def sid_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, mask: to
     zero_sub = torch.zeros_like(model_spectra, device=torch_device)
     one_sub = torch.ones_like(model_spectra, device=torch_device)
     if threshold is not None:
-        threshold_sub = torch.full(model_spectra.shape,threshold, device=torch_device)
+        threshold_sub = torch.full(model_spectra.shape, threshold, device=torch_device)
         model_spectra = torch.where(model_spectra < threshold, threshold_sub, model_spectra)
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)

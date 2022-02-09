@@ -83,10 +83,18 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, data_weights, mask) *target_weights.squeeze(0)
         elif args.loss_function == 'mcc': # multiclass dataset type
             targets = targets.long()
-            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index], data_weights[:, target_index], mask[:, target_index]) for target_index in range(preds.size(1))], dim=1) * target_weights.squeeze(0)
+            target_losses = []
+            for target_index in range(preds.size(1)):
+                target_loss = loss_func(preds[:, target_index, :], targets[:, target_index], data_weights.squeeze(1), mask[:, target_index]).unsqueeze(0)
+                target_losses.append(target_loss)
+            loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
         elif args.dataset_type == 'multiclass':
             targets = targets.long()
-            loss = torch.cat([loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1) for target_index in range(preds.size(1))], dim=1) * target_weights * data_weights * mask
+            target_losses = []
+            for target_index in range(preds.size(1)):
+                target_loss = loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1)
+                target_losses.append(target_loss)
+            loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
         elif args.dataset_type == 'spectra':
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == 'bounded_mse':
