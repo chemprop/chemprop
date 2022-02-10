@@ -13,13 +13,14 @@ from torch.optim.lr_scheduler import ExponentialLR
 from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
+from .loss_functions import get_loss_func
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.args import TrainArgs
 from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
-from chemprop.utils import build_optimizer, build_lr_scheduler, get_loss_func, load_checkpoint, makedirs, \
+from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits, load_frzn_model
 
 
@@ -54,6 +55,7 @@ def run_training(args: TrainArgs,
                              bond_features_path=args.separate_test_bond_features_path,
                              phase_features_path=args.separate_test_phase_features_path,
                              smiles_columns=args.smiles_columns,
+                             loss_function=args.loss_function,
                              logger=logger)
     if args.separate_val_path:
         val_data = get_data(path=args.separate_val_path,
@@ -63,6 +65,7 @@ def run_training(args: TrainArgs,
                             bond_features_path=args.separate_val_bond_features_path,
                             phase_features_path=args.separate_val_phase_features_path,
                             smiles_columns = args.smiles_columns,
+                            loss_function=args.loss_function,
                             logger=logger)
 
     if args.separate_val_path and args.separate_test_path:
@@ -310,6 +313,8 @@ def run_training(args: TrainArgs,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
             dataset_type=args.dataset_type,
+            gt_targets=test_data.gt_targets(),
+            lt_targets=test_data.lt_targets(),
             logger=logger
         )
 
@@ -338,6 +343,8 @@ def run_training(args: TrainArgs,
         num_tasks=args.num_tasks,
         metrics=args.metrics,
         dataset_type=args.dataset_type,
+        gt_targets=test_data.gt_targets(),
+        lt_targets=test_data.lt_targets(),
         logger=logger
     )
 

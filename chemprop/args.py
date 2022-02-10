@@ -13,7 +13,7 @@ from chemprop.data import set_cache_mol, empty_cache
 from chemprop.features import get_available_features_generators
 
 
-Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein']
+Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
 
 
 def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
@@ -228,7 +228,9 @@ class TrainArgs(CommonArgs):
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
-    """Type of dataset. This determines the loss function used during training."""
+    """Type of dataset. This determines the default loss function used during training."""
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein'] = None
+    """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
     separate_val_path: str = None
@@ -398,8 +400,6 @@ class TrainArgs(CommonArgs):
     """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
-    alternative_loss_function: Literal['wasserstein'] = None
-    """Option to replace the default loss function, with an alternative. Only currently applied for spectra data type and wasserstein loss."""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
@@ -441,7 +441,7 @@ class TrainArgs(CommonArgs):
     @property
     def minimize_score(self) -> bool:
         """Whether the model should try to minimize the score metric or maximize it."""
-        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein'}
+        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'bounded_mse', 'bounded_mae', 'bounded_rmse'}
 
     @property
     def use_input_features(self) -> bool:
@@ -542,19 +542,38 @@ class TrainArgs(CommonArgs):
                 self.metric = 'cross_entropy'
             elif self.dataset_type == 'spectra':
                 self.metric = 'sid'
-            else:
+            elif self.dataset_type == 'regression' and self.loss_function == 'bounded_mse':
+                self.metric = 'bounded_mse'
+            elif self.dataset_type == 'regression':
                 self.metric = 'rmse'
+            else:
+                raise ValueError(f'Dataset type {self.dataset_type} is not supported.')
 
         if self.metric in self.extra_metrics:
             raise ValueError(f'Metric {self.metric} is both the metric and is in extra_metrics. '
                              f'Please only include it once.')
 
         for metric in self.metrics:
-            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy']), 
-                    (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2']), 
-                    (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy']),
+            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']), 
+                    (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']), 
+                    (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
                     (self.dataset_type == 'spectra' and metric in ['sid','wasserstein'])]):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
+        
+        if self.loss_function is None:
+            if self.dataset_type == 'classification':
+                self.loss_function = 'binary_cross_entropy'
+            elif self.dataset_type == 'multiclass':
+                self.loss_function = 'cross_entropy'
+            elif self.dataset_type == 'spectra':
+                self.loss_function = 'sid'
+            elif self.dataset_type == 'regression':
+                self.loss_function = 'mse'
+            else:
+                raise ValueError(f'Default loss function not configured for dataset type {self.dataset_type}.')
+
+        if self.loss_function != 'bounded_mse' and any(metric in ['bounded_mse', 'bounded_rmse', 'bounded_mae'] for metric in self.metrics):
+            raise ValueError('Bounded metrics can only be used in conjunction with the regression loss function bounded_mse.')
 
         # Validate class balance
         if self.class_balance and self.dataset_type != 'classification':
