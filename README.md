@@ -125,7 +125,7 @@ Next, navigate to `chemprop/web` and run `gunicorn --bind {host}:{port} 'wsgi:bu
 ## Within Python
 
 For information on the use of Chemprop within a python script, refer to the [Within a python script](https://chemprop.readthedocs.io/en/latest/tutorial.html#within-a-python-script)
-section of the documentation.
+section of the documentation. A [Google Colab notebook](https://colab.research.google.com/github/chemprop/chemprop/blob/master/colab_demo.ipynb) is also available with several examples. Note that this notebook is intended to be run in Google Colab rather than as a Jupypter notebook on your local machine.
 
 
 ## Data
