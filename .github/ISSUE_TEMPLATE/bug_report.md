@@ -10,22 +10,18 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Example(s)**
+Provide some examples of where the current code fails. Feel free to share your actual code for additional context, but a minimal and isolated examlpe is preferred.
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+A clear and concise description of what you expected to happen. If there is correct, expected output, include that here as well.
 
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
 **Environment**
 - python version
-- package versions
+- package versions: `conda list` or `pip list`
 - OS
 
 **Checks**
