@@ -1,6 +1,7 @@
 from collections import OrderedDict, defaultdict
 import csv
 from logging import Logger
+import multiprocessing
 import pickle
 from random import Random
 from typing import List, Optional, Set, Tuple, Union
@@ -390,25 +391,27 @@ def get_data(path: str,
             except Exception as e:
                 raise ValueError(f'Failed to load or validate custom bond features: {e}')
 
-        data = MoleculeDataset([
-            MoleculeDatapoint(
+        args_list = [
+            list(dict(
                 smiles=smiles,
                 targets=targets,
                 row=all_rows[i] if store_row else None,
                 data_weight=all_weights[i] if data_weights is not None else None,
                 gt_targets=all_gt[i] if gt_targets is not None else None,
                 lt_targets=all_lt[i] if lt_targets is not None else None,
-                features_generator=features_generator,
                 features=all_features[i] if features_data is not None else None,
+                features_generator=features_generator,
                 phase_features=all_phase_features[i] if phase_features is not None else None,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_features=bond_features[i] if bond_features is not None else None,
                 overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
                 overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
-            ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
-                                               total=len(all_smiles))
-        ])
+            ).values())
+            for i, (smiles, targets) in enumerate(zip(all_smiles, all_targets))
+        ]
+        with multiprocessing.Pool() as pool:
+            data = MoleculeDataset(pool.starmap(MoleculeDatapoint, tqdm(args_list, total=len(args_list))))
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
