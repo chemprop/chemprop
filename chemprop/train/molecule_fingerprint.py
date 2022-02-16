@@ -138,8 +138,8 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
                     fingerprint_columns.append(f'fp_{j}_mol_{k}')
         else:
             for j in range(total_fp_size//2):
-                for k in range(args.number_of_molecules):
-                    for i in range(len(args.checkpoint_paths)):
+                for i in range(len(args.checkpoint_paths)):
+                    for k in range(args.number_of_molecules):
                         fingerprint_columns.append(f'fp_{j}_mol_{k}_model_{i}')
 
     else: # args == 'last_FNN'
