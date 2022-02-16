@@ -7,6 +7,6 @@ Include a sample execution to reproduce the bug with current codebase, and some 
 ## Questions
 If there are open questions about implementation strategy or scope of the PR, include them here
 
-## checklist
+## Checklist
 - [ ] linted with flake8?
 - [ ] (if necessary) appropriate unit tests added?

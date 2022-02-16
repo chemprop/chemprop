@@ -10,6 +10,6 @@ Include some (pseudo)code containing the new workflow that this PR will (seek to
 ## Questions
 If there are open questions about implementation strategy or scope of the PR, include them here
 
-## checklist
+## Checklist
 - [ ] linted with flake8?
 - [ ] appropriate unit tests added?

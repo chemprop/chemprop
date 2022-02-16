@@ -13,6 +13,6 @@ If there are open questions about implementation strategy or scope of the PR, in
 ## Relevant issues
 If appropriate, please tag them here and include a quick summary
 
-## checklist
+## Checklist
 - [ ] linted with flake8?
 - [ ] (if appropriate) unit tests added?
