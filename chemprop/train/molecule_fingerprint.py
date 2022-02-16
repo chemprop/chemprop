@@ -131,13 +131,25 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
 
     # Set column names
     fingerprint_columns = []
-    if len(args.checkpoint_paths) == 1:
-        for j in range(total_fp_size):
-            fingerprint_columns.append(f'fp_{j}')
-    else:
-        for j in range(total_fp_size):
-            for i in range(len(args.checkpoint_paths)):
-                fingerprint_columns.append(f'fp_{j}_model_{i}')
+    if args.fingerprint_type == 'MPN':
+        if len(args.checkpoint_paths) == 1:
+            for j in range(total_fp_size//2):
+                for k in range(args.number_of_molecules):
+                    fingerprint_columns.append(f'fp_{j}_mol_{k}')
+        else:
+            for j in range(total_fp_size//2):
+                for k in range(args.number_of_molecules):
+                    for i in range(len(args.checkpoint_paths)):
+                        fingerprint_columns.append(f'fp_{j}_mol_{k}_model_{i}')
+
+    else: # args == 'last_FNN'
+        if len(args.checkpoint_paths) == 1:
+            for j in range(total_fp_size):
+                fingerprint_columns.append(f'fp_{j}')
+        else:
+            for j in range(total_fp_size):
+                for i in range(len(args.checkpoint_paths)):
+                    fingerprint_columns.append(f'fp_{j}_model_{i}')
 
     # Copy predictions over to full_data
     for full_index, datapoint in enumerate(full_data):

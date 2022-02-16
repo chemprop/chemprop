@@ -16,7 +16,7 @@ from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 
-from chemprop.args import PredictArgs, TrainArgs
+from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
@@ -577,10 +577,11 @@ def update_prediction_args(predict_args: PredictArgs,
                 setattr(predict_args,key,override_defaults.get(key,value))
     
     # Same number of molecules must be used in training as in making predictions
-    if train_args.number_of_molecules != predict_args.number_of_molecules:
+    if train_args.number_of_molecules != predict_args.number_of_molecules \
+            and not (isinstance(predict_args, FingerprintArgs) and predict_args.fingerprint_type == "MPN" and predict_args.mpn_shared):
         raise ValueError('A different number of molecules was used in training '
-                        f'model than is specified for prediction, {train_args.number_of_molecules} '
-                         'smiles fields must be provided')
+                         'model than is specified for prediction. This is only supported for models with shared MPN networks'
+                         f'and a fingerprint type of MPN. {train_args.number_of_molecules} smiles fields must be provided.')
 
     # If atom-descriptors were used during training, they must be used when predicting and vice-versa
     if train_args.atom_descriptors != predict_args.atom_descriptors:
