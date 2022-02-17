@@ -38,6 +38,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
     * [Atomic Features](#atom-level-features)
   * [Spectra](#spectra)
   * [Reaction](#reaction)
+  * [Reaction in a solvent / Reaction and a molecule](#reaction-in-a-solvent--reaction-and-a-molecule)
   * [Pretraining](#pretraining)
   * [Missing target values](#missing-target-values)
   * [Weighted training by target and data](#weighted-training-by-target-and-data)
@@ -268,6 +269,35 @@ In absorption spectra, sometimes the phase of collection will create regions in 
 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see [Daylight manual](https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html) for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option `--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option `--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option `--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option `--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option `--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via `--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: `[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: `[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary. With reaction modes `reac_prod`, `reac_diff` and `prod_diff`, the atom and bond features of unbalanced aroma are set to zero on the side of the reaction they are not specified. Alternatively, features can be set to the same values on the reactant and product side via the modes `reac_prod_balance`, `reac_diff_balance` and `prod_diff_balance`, which corresponds to a rough balancing of the reaction.
 For further details and benchmarking, as well as a citable reference, please refer to the [article](https://doi.org/10.1021/acs.jcim.1c00975).
+
+### Reaction in a solvent / Reaction and a molecule]
+
+Chemprop can process a reaction in a solvent or a reaction and a molecule with the `--reaction_solvent` option. While this
+option is originally built to model a reaction in a solvent, this option works for any reaction and a molecule where 
+the molecule can represent anything, i.e. a solvent, a reagent, etc.
+This requires the input csv file to have two separate columns of SMILES: one column for atom-mapped reaction SMILES 
+and the other column for solvent/molecule SMILES. The reaction and solvent/molecule SMILES columns can be ordered in 
+any way (i.e. the first column can be either reaction SMILES or solvent SMILES and the second column can then be 
+solvent SMILES or reaction SMILES). However, the same column ordering as used in the training must be used for the prediction
+(i.e. if the input csv file used for model training had reaction SMILES as the first column and solvent SMILES as the 
+second columns, the csv file used for prediction should also have the first column as reaction SMILES and second column 
+as the solvent SMILES). For the information on atom-mapped reaction SMILES, please refer to [Reaction](#reaction).
+
+When using the `--reaction_solvent` option, `--number_of_molecules` must be set to 2. All options listed in the [Reaction](#reaction) 
+section such as different `--reaction_mode` and `--explicit_h` can be used for `--reaction_solvent`. Note that 
+`--explicit_h` option is only applicable to reaction SMILES. The `--adding_h` option can be used instead for 
+solvent/molecule if one wishes to add hydrogens to solvent/molecule SMILES. Chemprop allows differently sized MPNNs to be used for each 
+reaction and solvent/molecule encoding. Below are the input arguments for specifying the size and option of the two MPNNs:
+* Reaction:
+  * `--bias` Whether to add bias to linear layers.
+  * `--hidden_size` Dimensionality of hidden layers.
+  * `--depth` Number of message passing steps.
+  * `--explicit_h` Whether H are explicitly specified in input and should be kept this way. Only applicable to reaction SMILES.
+* Solvent / Molecule:
+  * `--bias_solvent` Whether to add bias to linear layers for solvent/molecule MPN.
+  * `--hidden_size_solvent` Dimensionality of hidden layers in solvent/molecule MPN.
+  * `--depth_solvent` Number of message passing steps for solvent/molecule.
+  * `--adding_h` Whether RDKit molecules will be constructed with adding the Hs to them. Applicable to any SMILES that is not reaction.
 
 ### Pretraining
 

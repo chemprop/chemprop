@@ -104,7 +104,10 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
     #set explicit H option and reaction option
     set_explicit_h(train_args.explicit_h)
     set_adding_hs(args.adding_h)
-    set_reaction(train_args.reaction, train_args.reaction_mode)
+    if train_args.reaction:
+        set_reaction(train_args.reaction, train_args.reaction_mode)
+    elif train_args.reaction_solvent:
+        set_reaction(True, train_args.reaction_mode)
 
 
 def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: MoleculeDataset,
