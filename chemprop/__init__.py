@@ -17,3 +17,5 @@ import chemprop.spectra_utils
 import chemprop.hyperopt_utils
 
 # from chemprop._version import __version__
+
+__version__ = "1.4.1"
