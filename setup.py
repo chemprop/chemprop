@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-__version__ = None
+__version__ = "1.4.0"
 
 # Load README
 with open('README.md', encoding='utf-8') as f:
