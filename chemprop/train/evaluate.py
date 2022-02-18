@@ -5,7 +5,7 @@ from typing import Dict, List
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler
 from chemprop.models import MoleculeModel
-from chemprop.utils import get_metric_func
+from chemprop.train import get_metric_func
 
 
 def evaluate_predictions(preds: List[List[float]],
@@ -13,6 +13,8 @@ def evaluate_predictions(preds: List[List[float]],
                          num_tasks: int,
                          metrics: List[str],
                          dataset_type: str,
+                         gt_targets: List[List[bool]] = None,
+                         lt_targets: List[List[bool]] = None,
                          logger: logging.Logger = None) -> Dict[str, List[float]]:
     """
     Evaluates predictions using a metric function after filtering out invalid targets.
@@ -22,6 +24,8 @@ def evaluate_predictions(preds: List[List[float]],
     :param num_tasks: Number of tasks.
     :param metrics: A list of names of metric functions.
     :param dataset_type: Dataset type.
+    :param gt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
+    :param lt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
@@ -72,6 +76,8 @@ def evaluate_predictions(preds: List[List[float]],
                 if dataset_type == 'multiclass' and metric == 'cross_entropy':
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i],
                                                     labels=list(range(len(valid_preds[i][0])))))
+                elif metric in ['bounded_rmse', 'bounded_mse', 'bounded_mae']:
+                    results[metric].append(metric_func(valid_targets[i], valid_preds[i], gt_targets[i], lt_targets[i]))
                 else:
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
 
@@ -100,6 +106,14 @@ def evaluate(model: MoleculeModel,
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
 
     """
+    # Inequality targets only need for evaluation of certain regression metrics
+    if any(m in metrics for m in ['bounded_rmse', 'bounded_mse', 'bounded_mae']):
+        gt_targets = data_loader.gt_targets
+        lt_targets = data_loader.lt_targets
+    else:
+        gt_targets = None
+        lt_targets = None
+
     preds = predict(
         model=model,
         data_loader=data_loader,
@@ -112,7 +126,9 @@ def evaluate(model: MoleculeModel,
         num_tasks=num_tasks,
         metrics=metrics,
         dataset_type=dataset_type,
-        logger=logger
+        logger=logger,
+        gt_targets=gt_targets,
+        lt_targets=lt_targets,
     )
 
     return results

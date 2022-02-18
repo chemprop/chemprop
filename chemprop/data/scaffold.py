@@ -21,7 +21,7 @@ def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], incl
     :return: The Bemis-Murcko scaffold for the molecule.
     """
     if isinstance(mol, str):
-        mol = make_mol(mol, keep_h = False)
+        mol = make_mol(mol, keep_h = False, add_h = False)
     if isinstance(mol, tuple):
         mol = mol[0]
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol = mol, includeChirality = include_chirality)
@@ -53,6 +53,7 @@ def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mo
 def scaffold_split(data: MoleculeDataset,
                    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
                    balanced: bool = False,
+                   key_molecule_index: int = 0,
                    seed: int = 0,
                    logger: logging.Logger = None) -> Tuple[MoleculeDataset,
                                                            MoleculeDataset,
@@ -63,6 +64,7 @@ def scaffold_split(data: MoleculeDataset,
     :param data: A :class:`MoleculeDataset`.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param balanced: Whether to balance the sizes of scaffolds in each set rather than putting the smallest in test set.
+    :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
     :param seed: Random seed for shuffling when doing balanced splitting.
     :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
@@ -70,16 +72,14 @@ def scaffold_split(data: MoleculeDataset,
     """
     assert sum(sizes) == 1
 
-    if data.number_of_molecules > 1:
-        raise ValueError('Cannot perform a scaffold split with more than one molecule per datapoint.')
-
     # Split
     train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
     train, val, test = [], [], []
     train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
 
     # Map from scaffold to index in the data
-    scaffold_to_indices = scaffold_to_smiles(data.mols(flatten=True), use_indices=True)
+    key_mols = [m[key_molecule_index] for m in data.mols(flatten=False)]
+    scaffold_to_indices = scaffold_to_smiles(key_mols, use_indices=True)
 
     # Seed randomness
     random = Random(seed)

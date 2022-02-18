@@ -22,6 +22,10 @@ class MoleculeModel(nn.Module):
 
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
+        
+        # when using cross entropy losses, no sigmoid or softmax during training. But they are needed for mcc loss.
+        if self.classification or self.multiclass:
+            self.no_training_normalization = args.loss_function in ['cross_entropy', 'binary_cross_entropy']
 
         self.output_size = args.num_tasks
         if self.multiclass:
@@ -172,12 +176,12 @@ class MoleculeModel(nn.Module):
         output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch,
                                        atom_features_batch, bond_features_batch))
 
-        # Don't apply sigmoid during training b/c using BCEWithLogitsLoss
-        if self.classification and not self.training:
+        # Don't apply sigmoid during training when using BCEWithLogitsLoss
+        if self.classification and not (self.training and self.no_training_normalization):
             output = self.sigmoid(output)
         if self.multiclass:
             output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
-            if not self.training:
-                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training as we're using CrossEntropyLoss
+            if not (self.training and self.no_training_normalization):
+                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
 
         return output
