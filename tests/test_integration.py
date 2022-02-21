@@ -195,7 +195,7 @@ class ChempropTests(TestCase):
             flags=fingerprint_flags
         )
 
-        # Interpret
+        # Fingerprint
         with patch('sys.argv', raw_args):
             command_line = ' '.join(raw_args[1:])
             print(f'python fingerprint.py {command_line}')
