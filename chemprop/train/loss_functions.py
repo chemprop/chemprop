@@ -19,11 +19,14 @@ def get_loss_func(args: TrainArgs) -> Callable:
     supported_loss_functions ={
         'regression':{
             'mse': nn.MSELoss(reduction='none'),
-            'bounded_mse': bounded_mse_loss
+            'bounded_mse': bounded_mse_loss,
+            'mve': normal_mve,
+            'evidential': evidential_loss,
         },
         'classification':{
             'binary_cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
             'mcc': mcc_class_loss,
+            'evidential': dirichlet_class_loss,
         },
         'multiclass':{
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
@@ -187,17 +190,30 @@ def wasserstein_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, 
     return loss
 
 
-def negative_log_likelihood(pred_targets, pred_var, targets):
-    clamped_var = torch.clamp(pred_var, min=0.00001)
-    return torch.log(2*np.pi*clamped_var) / 2 + (pred_targets - targets)**2 / (2 * clamped_var)
+def normal_mve(pred_values, targets):
+    """
+    Use the negative log likelihood function of a normal distribution as a loss function used for making
+    simultaneous predictions of the mean and error distribution variance simultaneously.
+
+    :param pred_values: Combined predictions of means and variances of shape(data, tasks*2).
+                        Means are first in dimension 1, followed by variances.
+    :return: A tensor loss value.
+    """
+    # Unpack combined prediction values
+    pred_means, pred_var = torch.split(pred_values, pred_values.size[1]//2, axis=1)
+    pred_means = pred_means.to(pred_values.device)
+    pred_var = pred_var.to(pred_values.device)
+
+    return torch.log(2*np.pi*pred_var) / 2 + (pred_means - targets)**2 / (2 * pred_var)
 
 
 # evidential classification
-def dirichlet_loss(y, alphas, lam=1):
+def dirichlet_class_loss(alphas, target_labels, lam=1):
     """
     Use Evidential Learning Dirichlet loss from Sensoy et al
-    :y: labels to predict
-    :alphas: predicted parameters for Dirichlet
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, tasks*2).
+                   Negative class first then positive class in dimension 1.
+    :param target_labels: Digital labels to predict in shape(datapoints, tasks).
     :lambda: coefficient to weight KL term
 
     :return: Loss
@@ -228,10 +244,10 @@ def dirichlet_loss(y, alphas, lam=1):
     # Hard code to 2 classes per task, since this assumption is already made
     # for the existing chemprop classification tasks
     num_classes = 2
-    num_tasks = y.shape[1]
+    num_tasks = target_labels.shape[1]
 
-    y_one_hot = torch.eye(num_classes)[y.long()]
-    if y.is_cuda:
+    y_one_hot = torch.eye(num_classes)[target_labels.long()]
+    if target_labels.is_cuda:
         y_one_hot = y_one_hot.cuda()
 
     alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
@@ -254,11 +270,13 @@ def dirichlet_loss(y, alphas, lam=1):
 
 
 # updated evidential regression loss (evidential_loss_new from Amini repo)
-def evidential_loss(mu, v, alpha, beta, targets, lam=1, epsilon=1e-4):
+def evidential_loss(pred_values, targets, lam=1, epsilon=1e-4):
     """
     Use Deep Evidential Regression negative log likelihood loss + evidential
         regularizer
 
+    :param pred_values: Combined prediction values for mu, v, alpha, and beta parameters in shape(data, tasks*4).
+                        Order in dimension 1 is mu, v, alpha, beta.
     :mu: pred mean parameter for NIG
     :v: pred lam parameter for NIG
     :alpha: predicted parameter for NIG
@@ -267,6 +285,11 @@ def evidential_loss(mu, v, alpha, beta, targets, lam=1, epsilon=1e-4):
 
     :return: Loss
     """
+    # Unpack combined prediction values\
+    mu, v, alpha, beta = np.split(pred_values, pred_values.shape[1]//4, axis=1)
+    torch_device = pred_values.device
+    mu, v, alpha, beta = mu.to(torch_device), v.to(torch_device), alpha.to(torch_device), beta.to(torch_device)
+
     # Calculate NLL loss
     twoBlambda = 2*beta*(1+v)
     nll = 0.5*torch.log(np.pi/v) \
