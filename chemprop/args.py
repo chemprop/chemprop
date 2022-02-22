@@ -229,7 +229,7 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -789,7 +789,6 @@ class InterpretArgs(CommonArgs):
             number_of_molecules=self.number_of_molecules,
         )
 
-
         if self.features_path is not None:
             raise ValueError('Cannot use --features_path <path> for interpretation since features '
                              'need to be computed dynamically for molecular substructures. '
@@ -825,7 +824,6 @@ class HyperoptArgs(TrainArgs):
     """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
     Results will be considered as part of the trial history of the hyperparameter search."""
 
-
     def process_args(self) -> None:
         super(HyperoptArgs, self).process_args()
 
@@ -834,6 +832,45 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
+
+
+class UncertaintyArgs(PredictArgs):
+    """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
+
+    uncertainty_method: Literal['mve', 'ensemble', 'evidential'] = None
+    """The method of calculating uncertainty."""
+    calibrated_metric: Literal['variance', '95_interval'] = 'variance'
+    """The type of uncertainty value returned when calibrated."""
+    calibration_path: str = None
+    """Path to data file to be used for uncertainty calibration."""
+    calibration_features_path: str = None
+    """Path to features data to be used with the uncertainty calibration dataset."""
+    calibration_phase_features_path: str = None
+    """ """
+    calibration_atom_descriptors_path: str = None
+    """Path to the extra atom descriptors."""
+    calibration_bond_features_path: str = None
+    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
+
+    def process_args(self) -> None:
+        super(UncertaintyArgs, self).process_args()
+
+        if self.ensemble_variance == True and self.uncertainty_method != 'ensemble':
+            raise ValueError('The `--ensemble_variance` method of uncertainty quantification should be replaced with '
+                             '`--uncertainty_method ensemble` for dedicated uncertainty jobs.')
+
+        if self.individual_ensemble_predictions == True:
+            raise ValueError('The argument `--individual_ensemble_predictions` is not supported in uncertainty jobs.')
+
+        # Validate that features provided for the prediction test set are also provided for the calibration set
+        for (features_argument, base_features_path, cal_features_path) in [
+            ('`--features_path`', self.features_path, self.calibration_features_path),
+            ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
+            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
+            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
+        ]:
+            if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
+                    raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')
 
 
 class SklearnTrainArgs(TrainArgs):
