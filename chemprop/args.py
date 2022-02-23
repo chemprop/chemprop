@@ -311,6 +311,12 @@ class TrainArgs(CommonArgs):
     """Dimensionality of hidden layers in MPN."""
     depth: int = 3
     """Number of message passing steps."""
+    bias_solvent: bool = False
+    """Whether to add bias to linear layers for solvent MPN if :code:`reaction_solvent` is True."""
+    hidden_size_solvent: int = 300
+    """Dimensionality of hidden layers in solvent MPN if :code:`reaction_solvent` is True."""
+    depth_solvent: int = 3
+    """Number of message passing steps for solvent if :code:`reaction_solvent` is True."""
     mpn_shared: bool = False
     """Whether to use the same message passing neural network for all input molecules
     Only relevant if :code:`number_of_molecules > 1`"""
@@ -369,13 +375,19 @@ class TrainArgs(CommonArgs):
     :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions. 
     :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions. 
     """
+    reaction_solvent: bool = False
+    """
+    Whether to adjust the MPNN layer to take as input a reaction and a molecule, and to encode them with separate MPNNs.
+    """
     explicit_h: bool = False
     """
-    Whether H are explicitly specified in input (and should be kept this way).
+    Whether H are explicitly specified in input (and should be kept this way). This option is intended to be used
+    with the :code:`reaction` or :code:`reaction_solvent` options, and applies only to the reaction part.
     """
     adding_h: bool = False
     """
-    Whether RDKit molecules will be constructed with adding the Hs to them.
+    Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used
+    with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.
     """
 
     # Training arguments
@@ -511,6 +523,10 @@ class TrainArgs(CommonArgs):
 
         global temp_save_dir  # Prevents the temporary directory from being deleted upon function return
 
+        #Adapt the number of molecules for reaction_solvent mode
+        if self.reaction_solvent is True and self.number_of_molecules != 2:
+            raise ValueError('In reaction_solvent mode, --number_of_molecules 2 must be specified.')
+
         # Process SMILES columns
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.data_path,
@@ -525,6 +541,14 @@ class TrainArgs(CommonArgs):
                 for key, value in config.items():
                     setattr(self, key, value)
 
+        #Check whether the number of input columns is two for the reaction_solvent mode
+        if self.reaction_solvent is True and len(self.smiles_columns) != 2:
+            raise ValueError(f'In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
+
+        #Validate reaction/reaction_solvent mode
+        if self.reaction is True and self.reaction_solvent is True:
+            raise ValueError('Only reaction or reaction_solvent mode can be used, not both.')
+        
         # Create temporary directory as save directory if not provided
         if self.save_dir is None:
             temp_save_dir = TemporaryDirectory()

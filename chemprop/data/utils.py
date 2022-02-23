@@ -13,8 +13,7 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_valid_atom_or_bond_features
-
+from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
 
 def preprocess_smiles_columns(path: str,
                               smiles_columns: Optional[Union[str, List[Optional[str]]]],
@@ -200,8 +199,17 @@ def get_invalid_smiles_from_list(smiles: List[List[str]], reaction: bool = False
     """
     invalid_smiles = []
 
+    # If the first SMILES in the column is a molecule, the remaining SMILES in the same column should all be a molecule.
+    # Similarly, if the first SMILES in the column is a reaction, the remaining SMILES in the same column should all
+    # correspond to reaction. Therefore, get `is_mol_list` only using the first element in smiles.
+    is_mol_list = [is_mol(s) for s in smiles[0]]
+    is_reaction_list = [True if not x and reaction else False for x in is_mol_list]
+    is_explicit_h_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
+    is_adding_hs_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
+
     for mol_smiles in smiles:
-        mols = make_mols(smiles=mol_smiles, reaction=reaction, keep_h=False, add_h=False)
+        mols = make_mols(smiles=mol_smiles, reaction_list=is_reaction_list, keep_h_list=is_explicit_h_list,
+                         add_h_list=is_adding_hs_list)
         if any(s == '' for s in mol_smiles) or \
            any(m is None for m in mols) or \
            any(m.GetNumHeavyAtoms() == 0 for m in mols if not isinstance(m, tuple)) or \
