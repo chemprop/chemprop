@@ -14,19 +14,23 @@ from chemprop.nn_utils import index_select_ND, get_activation_function
 class MPNEncoder(nn.Module):
     """An :class:`MPNEncoder` is a message passing neural network for encoding a molecule."""
 
-    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int):
+    def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int, hidden_size: int = None,
+                  bias: bool = None, depth: int = None):
         """
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
         :param atom_fdim: Atom feature vector dimension.
         :param bond_fdim: Bond feature vector dimension.
-        """
+        :param hidden_size: Hidden layers dimension
+        :param bias: Whether to add bias to linear layers
+        :param depth: Number of message passing steps
+       """
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
         self.atom_messages = args.atom_messages
-        self.hidden_size = args.hidden_size
-        self.bias = args.bias
-        self.depth = args.depth
+        self.hidden_size = hidden_size or args.hidden_size
+        self.bias = bias or args.bias
+        self.depth = depth or args.depth
         self.dropout = args.dropout
         self.layers_per_message = 1
         self.undirected = args.undirected
@@ -163,11 +167,14 @@ class MPN(nn.Module):
         :param bond_fdim: Bond feature vector dimension.
         """
         super(MPN, self).__init__()
-        self.atom_fdim = atom_fdim or get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_features)
+        self.reaction = args.reaction
+        self.reaction_solvent = args.reaction_solvent
+        self.atom_fdim = atom_fdim or get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
+                                                     is_reaction=(self.reaction or self.reaction_solvent))
         self.bond_fdim = bond_fdim or get_bond_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
                                                     overwrite_default_bond=args.overwrite_default_bond_features,
-                                                    atom_messages=args.atom_messages)
-
+                                                    atom_messages=args.atom_messages,
+                                                    is_reaction=(self.reaction or self.reaction_solvent))
         self.features_only = args.features_only
         self.use_input_features = args.use_input_features
         self.device = args.device
@@ -178,11 +185,23 @@ class MPN(nn.Module):
         if self.features_only:
             return
 
-        if args.mpn_shared:
-            self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)] * args.number_of_molecules)
+        if not self.reaction_solvent:
+            if args.mpn_shared:
+                self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)] * args.number_of_molecules)
+            else:
+                self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
+                                               for _ in range(args.number_of_molecules)])
         else:
-            self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
-                                          for _ in range(args.number_of_molecules)])
+            self.encoder = MPNEncoder(args, self.atom_fdim, self.bond_fdim)
+            # Set separate atom_fdim and bond_fdim for solvent molecules
+            self.atom_fdim_solvent = get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
+                                                   is_reaction=False)
+            self.bond_fdim_solvent = get_bond_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
+                                                   overwrite_default_bond=args.overwrite_default_bond_features,
+                                                   atom_messages=args.atom_messages,
+                                                   is_reaction=False)
+            self.encoder_solvent = MPNEncoder(args, self.atom_fdim_solvent, self.bond_fdim_solvent,
+                                               args.hidden_size_solvent, args.bias_solvent, args.depth_solvent)
 
     def forward(self,
                 batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
@@ -253,7 +272,15 @@ class MPN(nn.Module):
 
             encodings = [enc(ba, atom_descriptors_batch) for enc, ba in zip(self.encoder, batch)]
         else:
-            encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
+            if not self.reaction_solvent:
+                 encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
+            else:
+                 encodings = []
+                 for ba in batch:
+                     if ba.is_reaction:
+                         encodings.append(self.encoder(ba))
+                     else:
+                         encodings.append(self.encoder_solvent(ba))
 
         output = reduce(lambda x, y: torch.cat((x, y), dim=1), encodings)
 

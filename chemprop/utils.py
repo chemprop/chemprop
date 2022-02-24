@@ -116,7 +116,7 @@ def load_checkpoint(path: str,
     pretrained_state_dict = {}
     for loaded_param_name in loaded_state_dict.keys():
         # Backward compatibility for parameter names
-        if re.match(r'(encoder\.encoder\.)([Wc])', loaded_param_name):
+        if re.match(r'(encoder\.encoder\.)([Wc])', loaded_param_name) and not args.reaction_solvent:
             param_name = loaded_param_name.replace('encoder.encoder', 'encoder.encoder.0')
         else:
             param_name = loaded_param_name

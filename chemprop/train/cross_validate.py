@@ -64,7 +64,10 @@ def cross_validate(args: TrainArgs,
     reset_featurization_parameters(logger=logger)
     set_explicit_h(args.explicit_h)
     set_adding_hs(args.adding_h)
-    set_reaction(args.reaction, args.reaction_mode)
+    if args.reaction:
+        set_reaction(args.reaction, args.reaction_mode)
+    elif args.reaction_solvent:
+        set_reaction(True, args.reaction_mode)
         
     # Get data
     debug('Loading data')

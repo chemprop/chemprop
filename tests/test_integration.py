@@ -247,7 +247,7 @@ class ChempropTests(TestCase):
                 'bounded_mse',
                 1.4771486,
                 [
-                    '--loss_function', 'bounded_mse', 
+                    '--loss_function', 'bounded_mse',
                     '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
                 ]
         )
@@ -910,7 +910,66 @@ class ChempropTests(TestCase):
 
                 self.assertEqual(list(fingerprints['smiles'].values), list(test_input['smiles'].values))
 
+    @parameterized.expand([(
+                'chemprop_reaction_solvent',
+                'chemprop',
+                2.912189,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv')]
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                3.465252,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'),'--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_reaction_solvent_explicit_h',
+                'chemprop',
+                2.805125,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h']
+         ),
+        (
+                'chemprop_reaction_solvent_explicit_h_adding_h',
+                'chemprop',
+                2.826695,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h', '--adding_h']
+        ),
+        (
+                'chemprop_reaction_solvent_diff_mpn_size',
+                'chemprop',
+                2.791803,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--hidden_size', '500',
+                 '--hidden_size_solvent', '250']
+        )
+    ])
+    def test_train_single_task_regression_reaction_solvent(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'rmse'
+            self.train(
+                dataset_type = 'regression',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
 
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 1)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
 if __name__ == '__main__':
     unittest.main()

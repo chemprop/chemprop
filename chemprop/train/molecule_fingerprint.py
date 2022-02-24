@@ -44,7 +44,10 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
 
     set_explicit_h(train_args.explicit_h)
     set_adding_hs(args.adding_h)
-    set_reaction(train_args.reaction, train_args.reaction_mode)
+    if train_args.reaction:
+        set_reaction(train_args.reaction, train_args.reaction_mode)
+    elif train_args.reaction_solvent:
+        set_reaction(True, train_args.reaction_mode)
 
     print('Loading data')
     if smiles is not None:
@@ -85,6 +88,9 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
         if args.atom_descriptors == "descriptor": # special case when we have 'descriptor' extra dimensions need to be added
             total_fp_size = (args.hidden_size + test_data.atom_descriptors_size()) * args.number_of_molecules
         else:
+            if args.reaction_solvent:
+                total_fp_size = args.hidden_size + args.hidden_size_solvent
+            else:
                 total_fp_size = args.hidden_size * args.number_of_molecules
         if args.features_only:
             raise ValueError('With features_only models, there is no latent MPN representation. Use last_FFN fingerprint type instead.')

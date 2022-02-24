@@ -64,14 +64,18 @@ def reset_featurization_parameters(logger: logging.Logger = None) -> None:
     PARAMS = Featurization_parameters()
 
 
-def get_atom_fdim(overwrite_default_atom: bool = False) -> int:
+def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = False) -> int:
     """
     Gets the dimensionality of the atom feature vector.
 
     :param overwrite_default_atom: Whether to overwrite the default atom descriptors
+    :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None
     :return: The dimensionality of the atom feature vector.
     """
-    return (not overwrite_default_atom) * PARAMS.ATOM_FDIM + PARAMS.EXTRA_ATOM_FDIM
+    if PARAMS.REACTION_MODE:
+        return (not overwrite_default_atom) * PARAMS.ATOM_FDIM + is_reaction * PARAMS.EXTRA_ATOM_FDIM
+    else:
+        return (not overwrite_default_atom) * PARAMS.ATOM_FDIM + PARAMS.EXTRA_ATOM_FDIM
 
 
 def set_explicit_h(explicit_h: bool) -> None:
@@ -101,24 +105,31 @@ def set_reaction(reaction: bool, mode: str) -> None:
     """
     PARAMS.REACTION = reaction
     if reaction:
-        PARAMS.EXTRA_ATOM_FDIM = PARAMS.ATOM_FDIM - PARAMS.MAX_ATOMIC_NUM -1
+        PARAMS.EXTRA_ATOM_FDIM = PARAMS.ATOM_FDIM - PARAMS.MAX_ATOMIC_NUM - 1
         PARAMS.EXTRA_BOND_FDIM = PARAMS.BOND_FDIM
-        PARAMS.REACTION_MODE = mode        
-
+        PARAMS.REACTION_MODE = mode
         
-def is_explicit_h() -> bool:
-    r"""Returns whether to use retain explicit Hs"""
-    return PARAMS.EXPLICIT_H
+def is_explicit_h(is_mol: bool = True) -> bool:
+    r"""Returns whether to retain explicit Hs (for reactions only)"""
+    if not is_mol:
+        return PARAMS.EXPLICIT_H
+    return False
 
 
-def is_adding_hs() -> bool:
-    r"""Returns whether to add explicit Hs to the mol"""
-    return PARAMS.ADDING_H
+def is_adding_hs(is_mol: bool = True) -> bool:
+    r"""Returns whether to add explicit Hs to the mol (not for reactions)"""
+    if is_mol:
+        return PARAMS.ADDING_H
+    return False
     
 
-def is_reaction() -> bool:
+def is_reaction(is_mol: bool = True) -> bool:
     r"""Returns whether to use reactions as input"""
-    return PARAMS.REACTION
+    if is_mol:
+        return False
+    if PARAMS.REACTION: #(and not is_mol, checked above)
+        return True
+    return False
 
 
 def reaction_mode() -> str:
@@ -133,7 +144,8 @@ def set_extra_atom_fdim(extra):
 
 def get_bond_fdim(atom_messages: bool = False,
                   overwrite_default_bond: bool = False,
-                  overwrite_default_atom: bool = False) -> int:
+                  overwrite_default_atom: bool = False,
+                  is_reaction: bool = False) -> int:
     """
     Gets the dimensionality of the bond feature vector.
 
@@ -142,11 +154,16 @@ def get_bond_fdim(atom_messages: bool = False,
                           Otherwise it contains both atom and bond features.
     :param overwrite_default_bond: Whether to overwrite the default bond descriptors
     :param overwrite_default_atom: Whether to overwrite the default atom descriptors
+    :param is_reaction: Whether to add :code:`EXTRA_BOND_FDIM` for reaction input when :code:`REACTION_MODE:` is not None
     :return: The dimensionality of the bond feature vector.
     """
 
-    return (not overwrite_default_bond) * PARAMS.BOND_FDIM + PARAMS.EXTRA_BOND_FDIM + \
-           (not atom_messages) * get_atom_fdim(overwrite_default_atom=overwrite_default_atom)
+    if PARAMS.REACTION_MODE:
+        return (not overwrite_default_bond) * PARAMS.BOND_FDIM + is_reaction * PARAMS.EXTRA_BOND_FDIM + \
+            (not atom_messages) * get_atom_fdim(overwrite_default_atom=overwrite_default_atom, is_reaction=is_reaction)
+    else:
+        return (not overwrite_default_bond) * PARAMS.BOND_FDIM + PARAMS.EXTRA_BOND_FDIM + \
+            (not atom_messages) * get_atom_fdim(overwrite_default_atom=overwrite_default_atom, is_reaction=is_reaction)
 
 
 def set_extra_bond_fdim(extra):
@@ -281,6 +298,11 @@ class MolGraph:
     * :code:`b2revb`: A mapping from a bond index to the index of the reverse bond.
     * :code:`overwrite_default_atom_features`: A boolean to overwrite default atom descriptors.
     * :code:`overwrite_default_bond_features`: A boolean to overwrite default bond descriptors.
+    * :code:`is_mol`: A boolean whether the input is a molecule.
+    * :code:`is_reaction`: A boolean whether the molecule is a reaction.
+    * :code:`is_explicit_h`: A boolean whether to retain explicit Hs (for reaction mode)
+    * :code:`is_adding_hs`: A boolean whether to add explicit Hs (not for reaction mode)
+    * :code:`reaction_mode`:  Reaction mode to construct atom and bond feature vectors
     """
 
     def __init__(self, mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]],
@@ -295,9 +317,10 @@ class MolGraph:
         :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating
         :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating
         """
-        self.is_reaction = is_reaction()
-        self.is_explicit_h = is_explicit_h()
-        self.is_adding_hs = is_adding_hs()
+        self.is_mol = is_mol(mol)
+        self.is_reaction = is_reaction(self.is_mol)
+        self.is_explicit_h = is_explicit_h(self.is_mol)
+        self.is_adding_hs = is_adding_hs(self.is_mol)
         self.reaction_mode = reaction_mode()
         
         # Convert SMILES to RDKit molecule if necessary
@@ -488,9 +511,12 @@ class BatchMolGraph:
         """
         self.overwrite_default_atom_features = mol_graphs[0].overwrite_default_atom_features
         self.overwrite_default_bond_features = mol_graphs[0].overwrite_default_bond_features
-        self.atom_fdim = get_atom_fdim(overwrite_default_atom=self.overwrite_default_atom_features)
+        self.is_reaction = mol_graphs[0].is_reaction
+        self.atom_fdim = get_atom_fdim(overwrite_default_atom=self.overwrite_default_atom_features,
+                                       is_reaction=self.is_reaction)
         self.bond_fdim = get_bond_fdim(overwrite_default_bond=self.overwrite_default_bond_features,
-                                       overwrite_default_atom=self.overwrite_default_atom_features)
+                                      overwrite_default_atom=self.overwrite_default_atom_features,
+                                      is_reaction=self.is_reaction)
 
         # Start n_atoms and n_bonds at 1 b/c zero padding
         self.n_atoms = 1  # number of atoms (start at 1 b/c need index 0 as padding)
@@ -612,3 +638,16 @@ def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.M
                                    overwrite_default_bond_features=overwrite_default_bond_features)
                           for mol, af, bf
                           in zip_longest(mols, atom_features_batch, bond_features_batch)])
+
+def is_mol(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]) -> bool:
+    """Checks whether an input is a molecule or a reaction
+
+    :param mol: str, RDKIT molecule or tuple of molecules
+    :return: Whether the supplied input corresponds to a single molecule
+    """
+
+    if isinstance(mol, str) and ">" not in mol:
+        return True
+    elif isinstance(mol, Chem.Mol):
+        return True
+    return False
