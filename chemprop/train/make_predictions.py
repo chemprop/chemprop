@@ -113,7 +113,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: MoleculeDataset,
                      task_names: List[str], num_tasks: int, test_data_loader: MoleculeDataLoader, full_data: MoleculeDataset,
                      full_to_valid_indices: dict, models: List[MoleculeModel], scalers: List[List[StandardScaler]],
-                     return_invalid_smiles: bool = False):
+                     return_invalid_smiles: bool = False, save_results: bool = True):
     """
     Function to predict with a model and save the predictions to file.
 
@@ -129,6 +129,7 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
     :param models: A list or generator object of :class:`~chemprop.models.MoleculeModel`\ s.
     :param scalers: A list or generator object of :class:`~chemprop.features.scaler.StandardScaler` objects.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
+    :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
     :return:  A list of lists of target predictions.
     """
     # Predict with each model individually and sum predictions
@@ -243,12 +244,13 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
                     datapoint.row[pred_name+'_epi_unc'] = epi_unc
 
     # Save
-    with open(args.preds_path, 'w') as f:
-        writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
-        writer.writeheader()
+    if save_results:
+        with open(args.preds_path, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+            writer.writeheader()
 
-        for datapoint in full_data:
-            writer.writerow(datapoint.row)
+            for datapoint in full_data:
+                writer.writerow(datapoint.row)
 
     # Return predicted values
     avg_preds = avg_preds.tolist()

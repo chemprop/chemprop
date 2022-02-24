@@ -837,10 +837,12 @@ class HyperoptArgs(TrainArgs):
 class UncertaintyArgs(PredictArgs):
     """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
 
-    uncertainty_method: Literal['mve', 'ensemble', 'evidential'] = None
+    uncertainty_method: Literal['mve', 'ensemble', 'evidential', 'classification'] = None
     """The method of calculating uncertainty."""
-    calibrated_metric: Literal['variance', '95_interval'] = 'variance'
+    calibration_metric: Literal['variance', '95_interval', 'asym_interval'] = 'variance'
     """The type of uncertainty value returned when calibrated."""
+    calibration_method: Literal['histogram'] = 'histogram'
+    """The method used for calibrating uncertainty estimates"""
     calibration_path: str = None
     """Path to data file to be used for uncertainty calibration."""
     calibration_features_path: str = None
