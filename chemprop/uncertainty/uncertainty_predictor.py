@@ -20,8 +20,6 @@ class UncertaintyPredictor:
         self.dataset_type = dataset_type
         self.return_invalid_smiles = return_invalid_smiles
         self.return_pred_dict = return_pred_dict
-
-        self.raise_argument_errors()
     
     def raise_argument_errors(self):
         """
@@ -40,6 +38,10 @@ class UncertaintyPredictor:
 
     def uncal_vars(self):
         """Return the uncalibrated variances for the test data"""
+        pass
+
+    def unc_parameters(self):
+        """Return a tuple of uncertainty parameters for the prediction"""
         pass
 
     def uncal_prob_of_prediction(self,targets):

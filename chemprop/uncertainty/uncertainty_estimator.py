@@ -16,12 +16,6 @@ class UncertaintyEstimator:
                        return_invalid_smiles: bool = True,
                        return_pred_dict: bool = False,
                        ):
-        self.test_data = test_data
-        self.models = models
-        self.scalers = scalers
-        self.dataset_type = dataset_type
-        self.return_invalid_smiles = return_invalid_smiles
-        self.return_pred_dict = return_pred_dict
 
         self.predictor = uncertainty_predictor_builder(
             test_data=test_data,
@@ -37,4 +31,12 @@ class UncertaintyEstimator:
         Return values for the prediction and uncertainty metric. 
         If a calibrator is provided, returns a calibrated metric of the type specified.
         """
-        pass
+        means = self.predictor.means()
+
+        if calibrator is not None:
+            unc_params = self.predictor.unc_parameters()
+            cal_unc = calibrator.apply_calibration(means, unc_params)
+            return means, cal_unc
+        else:
+            uncal_vars = self.predictor.uncal_vars()
+            return means, uncal_vars

@@ -21,9 +21,7 @@ class UncertaintyCalibrator:
         self.scalers = scalers
         self.dataset_type = dataset_type
 
-        self.raise_argument_errors()
-
-        self.calibration_data_estimator = uncertainty_predictor_builder(
+        self.calibration_data_predictor = uncertainty_predictor_builder(
             test_data=calibration_data,
             models=models,
             scalers=scalers,
@@ -37,9 +35,14 @@ class UncertaintyCalibrator:
         """
         pass
 
-    def calibrate(self, means, unc_parameters):
+    def calibrate(self):
         """
-        Take in predicted means and uncertainty parameters from a model
+        Fit calibration parameters for the calibration data
+        """
+
+    def apply_calibration(self, means, unc_parameters):
+        """
+        Take in predicted means and uncertainty parameters from a model and apply the calibration method using fitted parameters.
         """
         pass
 
@@ -47,6 +50,17 @@ class UncertaintyCalibrator:
 class HistogramCalibrator(UncertaintyCalibrator):
     def __init__(self, uncertainty_method: str, calibration_data: MoleculeDataset, calibration_metric: str, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler]):
         super().__init__(uncertainty_method, calibration_data, calibration_metric, models, scalers)
+
+        self.raise_argument_errors()
+
+    def raise_argument_errors(self):
+        pass
+
+    def calibrate(self, means, unc_parameters):
+        pass
+
+    def apply_calibration(self, means, unc_parameters):
+        pass
 
 
 def uncertainty_calibrator_builder(calibration_method: str,
