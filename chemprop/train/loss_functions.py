@@ -208,7 +208,7 @@ def normal_mve(pred_values, targets):
 
 
 # evidential classification
-def dirichlet_class_loss(alphas, target_labels, lam=1):
+def dirichlet_class_loss(alphas, target_labels, lam=0):
     """
     Use Evidential Learning Dirichlet loss from Sensoy et al
     :param alphas: Predicted parameters for Dirichlet in shape(datapoints, tasks*2).
@@ -270,7 +270,7 @@ def dirichlet_class_loss(alphas, target_labels, lam=1):
 
 
 # updated evidential regression loss (evidential_loss_new from Amini repo)
-def evidential_loss(pred_values, targets, lam=1, epsilon=1e-4):
+def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     """
     Use Deep Evidential Regression negative log likelihood loss + evidential
         regularizer

@@ -209,7 +209,7 @@ class MoleculeModel(nn.Module):
             else:
                 means, lambdas, alphas, betas = torch.split(output, output.shape[1]//4, dim=1)
                 lambdas = self.softplus(lambdas) # + min_val
-                alphas = self.softplus(alphas) # + min_val + 1  # add 1 for numerical contraints of Gamma function
+                alphas = self.softplus(alphas) + 1 # + min_val # add 1 for numerical contraints of Gamma function
                 betas = self.softplus(betas) # + min_val
 
                 # Return these parameters as the output of the model

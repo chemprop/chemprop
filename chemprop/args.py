@@ -413,6 +413,8 @@ class TrainArgs(CommonArgs):
     """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
+    evidential_regularization: float = None
+    """Value used in regularization for evidential loss function. Value used in literature was 1."""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
@@ -837,9 +839,9 @@ class HyperoptArgs(TrainArgs):
 class UncertaintyArgs(PredictArgs):
     """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
 
-    uncertainty_method: Literal['mve', 'ensemble', 'evidential', 'classification'] = None
+    uncertainty_method: Literal['mve', 'ensemble', 'evidential_epistemic', 'evidential_aleatoric', 'classification'] = None
     """The method of calculating uncertainty."""
-    calibration_metric: Literal['variance', '95_interval', 'asym_interval'] = 'variance'
+    calibration_metric: Literal['variance', '95_interval'] = 'variance'
     """The type of uncertainty value returned when calibrated."""
     calibration_method: Literal['histogram'] = 'histogram'
     """The method used for calibrating uncertainty estimates"""
