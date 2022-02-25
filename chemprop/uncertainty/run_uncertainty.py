@@ -1,13 +1,16 @@
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional
+import csv
+from collections import OrderedDict
 
 import numpy as np
 
 from chemprop.models import MoleculeModel
-from chemprop.args import PredictArgs, UncertaintyArgs, TrainArgs
+from chemprop.args import UncertaintyArgs, TrainArgs
 from chemprop.data import StandardScaler, get_data
-from chemprop.utils import timeit
+from chemprop.utils import timeit, makedirs
 from chemprop.train import load_model, set_features, load_data, predict_and_save
 from .uncertainty_calibrator import UncertaintyCalibrator, uncertainty_calibrator_builder
+from .uncertainty_estimator import UncertaintyEstimator
 
 
 @timeit()
@@ -16,7 +19,9 @@ def run_uncertainty(args: UncertaintyArgs,
                     model_objects: Tuple[UncertaintyArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str]] = None,
                     calibrator: UncertaintyCalibrator = None,
                     return_invalid_smiles: bool = True,
-                    return_index_dict: bool = False) -> List[List[Optional[float]]]:
+                    return_index_dict: bool = False,
+                    save_results: bool = True,
+                    ) -> List[List[Optional[float]]]:
     """
     return predictions and uncertainty metric
     """
@@ -51,42 +56,91 @@ def run_uncertainty(args: UncertaintyArgs,
             models=models,
             scalers=scalers,
             dataset_type=args.dataset_type,
+            loss_function=args.loss_function,
         )
-
 
     # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
-    full_data, test_data, test_data_loader, full_to_valid_indices = load_data(args, smiles)
+    full_data, test_data, _, full_to_valid_indices = load_data(args, smiles)
     
-    # Edge case if empty list of smiles is provided
-    if len(test_data) == 0:
-        avg_preds = [None] * len(full_data)
-    else:
-        avg_preds = predict_and_save(
-            args=args,
-            train_args=train_args,
-            test_data=test_data,
-            task_names=task_names,
-            num_tasks=num_tasks,
-            test_data_loader=test_data_loader,
-            full_data=full_data,
-            full_to_valid_indices=full_to_valid_indices,
-            models=models,
-            scalers=scalers,
-            return_invalid_smiles=return_invalid_smiles,
-        )
+    estimator = UncertaintyEstimator(
+        test_data=test_data,
+        models=models,
+        scalers=scalers,
+        dataset_type=args.dataset_type,
+        loss_function=args.loss_function,
+    )
+
+    preds, unc = estimator.calculate_uncertainty(calibrator=calibrator) # preds and unc are lists of shape(data,tasks)
+
+    # Save results
+    if save_results:
+        print(f'Saving predictions to {args.preds_path}')
+        assert len(test_data) == len(preds)
+        assert len(test_data) == len(unc)
+
+        makedirs(args.preds_path, isfile=True)
+
+        # Set multiclass column names, update num_tasks definition for multiclass
+        if args.dataset_type == 'multiclass':
+            task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
+            num_tasks = num_tasks * args.multiclass_num_classes
+
+        # Copy predictions over to full_data
+        for full_index, datapoint in enumerate(full_data):
+            valid_index = full_to_valid_indices.get(full_index, None)
+            d_preds = preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+            d_unc = unc[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+
+            # Reshape multiclass to merge task and class dimension, with updated num_tasks
+            if args.dataset_type == 'multiclass':
+                if isinstance(d_preds, np.ndarray) and d_preds.ndim > 1:
+                    d_preds = d_preds.reshape((num_tasks))
+                    d_unc = d_unc.reshape((num_tasks))
+
+            # If extra columns have been dropped, add back in SMILES columns
+            if args.drop_extra_columns:
+                datapoint.row = OrderedDict()
+
+                smiles_columns = args.smiles_columns
+
+                for column, smiles in zip(smiles_columns, datapoint.smiles):
+                    datapoint.row[column] = smiles
+
+            # Add predictions columns
+            if calibrator == None: args.calibration_metric = 'uncal'
+            unc_names = [name + f'_{args.calibration_metric}_{args.uncertainty_method}' for name in task_names]
+            for pred_name, unc_name, pred, un in zip(task_names, unc_names, d_preds, d_unc):
+                datapoint.row[pred_name] = pred
+                datapoint.row[unc_name] = un
+
+        # Save
+        with open(args.preds_path, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+            writer.writeheader()
+            for datapoint in full_data:
+                writer.writerow(datapoint.row)
     
+    # Report results
     if return_index_dict:
         preds_dict = {}
         for i in range(len(full_data)):
-            if return_invalid_smiles:
-                preds_dict[i] = avg_preds[i]
+            valid_index = full_to_valid_indices.get(i, None)
+            if valid_index is None:
+                if return_invalid_smiles:
+                    preds_dict[i] = (['Invalid SMILES'] * num_tasks, ['Invalid SMILES'] * num_tasks)
             else:
-                valid_index = full_to_valid_indices.get(i, None)
-                if valid_index is not None:
-                    preds_dict[i] = avg_preds[valid_index]
+                preds_dict[i] = (preds[valid_index], unc[valid_index])
         return preds_dict
     else:
-        return avg_preds
+        preds_list = []
+        for i in range(len(full_data)):
+            valid_index = full_to_valid_indices.get(i, None)
+            if valid_index is None:
+                if return_invalid_smiles:
+                    preds_list.append((['Invalid SMILES'] * num_tasks, ['Invalid SMILES'] * num_tasks))
+            else:
+                preds_list.append((preds[valid_index], unc[valid_index]))
+        return preds_list
 
 
 def chemprop_uncertainty() -> None:

@@ -841,7 +841,7 @@ class UncertaintyArgs(PredictArgs):
 
     uncertainty_method: Literal['mve', 'ensemble', 'evidential_epistemic', 'evidential_aleatoric', 'classification'] = None
     """The method of calculating uncertainty."""
-    calibration_metric: Literal['variance', '95_interval'] = 'variance'
+    calibration_metric: Literal['variance', '95interval'] = 'variance'
     """The type of uncertainty value returned when calibrated."""
     calibration_method: Literal['histogram'] = 'histogram'
     """The method used for calibrating uncertainty estimates"""

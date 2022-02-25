@@ -13,6 +13,7 @@ class UncertaintyCalibrator:
                        models: Iterator[MoleculeModel],
                        scalers: Iterator[StandardScaler],
                        dataset_type: str,
+                       loss_function: str,
                        ):
         self.calibration_data = calibration_data
         self.uncertainty_method = uncertainty_method
@@ -20,6 +21,9 @@ class UncertaintyCalibrator:
         self.models = models
         self.scalers = scalers
         self.dataset_type = dataset_type
+        self.loss_function = loss_function
+
+        self.raise_argument_errors()
 
         self.calibration_data_predictor = uncertainty_predictor_builder(
             test_data=calibration_data,
@@ -28,6 +32,8 @@ class UncertaintyCalibrator:
             dataset_type=dataset_type,
             return_invalid_smiles=False,
         )
+
+        self.calibrate()
     
     def raise_argument_errors(self):
         """
@@ -48,8 +54,8 @@ class UncertaintyCalibrator:
 
 
 class HistogramCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, calibration_data: MoleculeDataset, calibration_metric: str, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler]):
-        super().__init__(uncertainty_method, calibration_data, calibration_metric, models, scalers)
+    def __init__(self, uncertainty_method: str, calibration_data: MoleculeDataset, calibration_metric: str, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str):
+        super().__init__(uncertainty_method, calibration_data, calibration_metric, models, scalers, dataset_type, loss_function)
 
         self.raise_argument_errors()
 
@@ -70,6 +76,7 @@ def uncertainty_calibrator_builder(calibration_method: str,
                                    models: Iterator[MoleculeModel],
                                    scalers: Iterator[StandardScaler],
                                    dataset_type: str,
+                                   loss_function: str,
                                    ) -> UncertaintyCalibrator:
     """
     
@@ -90,5 +97,6 @@ def uncertainty_calibrator_builder(calibration_method: str,
             models=models,
             scalers=scalers,
             dataset_type=dataset_type,
+            loss_function=loss_function,
         )
     return calibrator

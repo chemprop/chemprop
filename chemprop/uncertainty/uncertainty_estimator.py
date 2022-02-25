@@ -13,8 +13,7 @@ class UncertaintyEstimator:
                        models: Iterator[MoleculeModel],
                        scalers: Iterator[StandardScaler],
                        dataset_type: str,
-                       return_invalid_smiles: bool = True,
-                       return_pred_dict: bool = False,
+                       loss_function: str,
                        ):
 
         self.predictor = uncertainty_predictor_builder(
@@ -22,8 +21,7 @@ class UncertaintyEstimator:
             models=models,
             scalers=scalers,
             dataset_type=dataset_type,
-            return_invalid_smiles=return_invalid_smiles,
-            return_pred_dict=return_pred_dict,
+            loss_function=loss_function,
         )
 
     def calculate_uncertainty(self, calibrator: UncertaintyCalibrator = None):
@@ -31,12 +29,12 @@ class UncertaintyEstimator:
         Return values for the prediction and uncertainty metric. 
         If a calibrator is provided, returns a calibrated metric of the type specified.
         """
-        means = self.predictor.means()
+        means = self.predictor.get_means()
 
         if calibrator is not None:
-            unc_params = self.predictor.unc_parameters()
+            unc_params = self.predictor.get_unc_parameters()
             cal_unc = calibrator.apply_calibration(means, unc_params)
             return means, cal_unc
         else:
-            uncal_vars = self.predictor.uncal_vars()
+            uncal_vars = self.predictor.get_uncal_vars()
             return means, uncal_vars

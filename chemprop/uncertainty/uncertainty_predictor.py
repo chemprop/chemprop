@@ -11,15 +11,16 @@ class UncertaintyPredictor:
                        models: Iterator[MoleculeModel],
                        scalers: Iterator[StandardScaler],
                        dataset_type: str,
-                       return_invalid_smiles: bool = True,
-                       return_pred_dict: bool = False,
+                       loss_function: str,
                        ):
         self.test_data = test_data
         self.models = models
         self.scalers = scalers
         self.dataset_type = dataset_type
-        self.return_invalid_smiles = return_invalid_smiles
-        self.return_pred_dict = return_pred_dict
+        self.loss_function = loss_function
+
+        self.raise_argument_errors()
+        self.calculate_predictions()
     
     def raise_argument_errors(self):
         """
@@ -29,20 +30,21 @@ class UncertaintyPredictor:
 
     def calculate_predictions(self):
         """
-        Calculate the uncalibrated predictions and store them as class attributes
+        Calculate the uncalibrated predictions and store them as attributes
         """
+        pass
     
-    def means(self):
+    def get_means(self):
         """Return the predicted values for the test data."""
-        pass
+        return self.means
 
-    def uncal_vars(self):
+    def get_uncal_vars(self):
         """Return the uncalibrated variances for the test data"""
-        pass
+        return self.uncal_vars
 
-    def unc_parameters(self):
+    def get_unc_parameters(self):
         """Return a tuple of uncertainty parameters for the prediction"""
-        pass
+        return self.unc_parameters
 
     def uncal_prob_of_prediction(self,targets):
         """
@@ -53,8 +55,15 @@ class UncertaintyPredictor:
 
 
 class MVEPredictor(UncertaintyPredictor):
-    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler]):
-        super().__init__(test_data, models, scalers)
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function)
+
+    def raise_argument_errors(self):
+        if self.loss_function != 'mve':
+            raise ValueError('In order to use mve uncertainty, trained models must have used mve loss function.')
+
+    def uncal_vars(self):
+        "do a thing"
 
 
 def uncertainty_predictor_builder(uncertainty_method: str,
@@ -62,8 +71,7 @@ def uncertainty_predictor_builder(uncertainty_method: str,
                                   models: Iterator[MoleculeModel],
                                   scalers: Iterator[StandardScaler],
                                   dataset_type: str,
-                                  return_invalid_smiles: bool = True,
-                                  return_pred_dict: bool = False,
+                                  loss_function: str,
                                   ) -> UncertaintyPredictor:
     """
     
@@ -82,7 +90,6 @@ def uncertainty_predictor_builder(uncertainty_method: str,
             models=models,
             scalers=scalers,
             dataset_type=dataset_type,
-            return_invalid_smiles=return_invalid_smiles,
-            return_pred_dict=return_pred_dict,
+            loss_function=loss_function,
         )
     return estimator
