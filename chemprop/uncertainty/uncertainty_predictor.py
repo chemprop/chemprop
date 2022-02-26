@@ -1,25 +1,36 @@
-from typing import Iterator
+from typing import Iterator, List
 
 import numpy as np
+from scipy.special import erf
 
-from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
 from chemprop.models import MoleculeModel
+from chemprop.train import predict
 
-
+# Should there be an intermediate class inheritor for dataset type?
 class UncertaintyPredictor:
     def __init__(self, test_data: MoleculeDataset,
                        models: Iterator[MoleculeModel],
                        scalers: Iterator[StandardScaler],
                        dataset_type: str,
                        loss_function: str,
+                       batch_size: int,
+                       num_workers: int,
                        ):
         self.test_data = test_data
         self.models = models
         self.scalers = scalers
         self.dataset_type = dataset_type
         self.loss_function = loss_function
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.raise_argument_errors()
+        self.test_data_loader=MoleculeDataLoader(
+            dataset=self.test_data,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
         self.calculate_predictions()
     
     def raise_argument_errors(self):
@@ -34,9 +45,9 @@ class UncertaintyPredictor:
         """
         pass
     
-    def get_means(self):
+    def get_uncal_preds(self):
         """Return the predicted values for the test data."""
-        return self.means
+        return self.uncal_preds
 
     def get_uncal_vars(self):
         """Return the uncalibrated variances for the test data"""
@@ -46,7 +57,7 @@ class UncertaintyPredictor:
         """Return a tuple of uncertainty parameters for the prediction"""
         return self.unc_parameters
 
-    def uncal_prob_of_prediction(self,targets):
+    def uncal_prob_of_prediction(self,targets: List[List[float]]):
         """
         For a given set of targets, return the uncalibrated probability 
         for the calculated mean prediction
@@ -72,12 +83,15 @@ def uncertainty_predictor_builder(uncertainty_method: str,
                                   scalers: Iterator[StandardScaler],
                                   dataset_type: str,
                                   loss_function: str,
+                                  batch_size: int,
+                                  num_workers: int,
                                   ) -> UncertaintyPredictor:
     """
     
     """
     supported_predictors = {
-        'mve': MVEPredictor
+        'mve': MVEPredictor,
+        'ensemble': EnsemblePredictor,
     }
 
     estimator_class = supported_predictors.get(uncertainty_method, None)
@@ -91,5 +105,7 @@ def uncertainty_predictor_builder(uncertainty_method: str,
             scalers=scalers,
             dataset_type=dataset_type,
             loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
     return estimator

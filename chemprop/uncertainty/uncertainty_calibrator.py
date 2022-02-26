@@ -14,6 +14,8 @@ class UncertaintyCalibrator:
                        scalers: Iterator[StandardScaler],
                        dataset_type: str,
                        loss_function: str,
+                       batch_size: int,
+                       num_workers: int,
                        ):
         self.calibration_data = calibration_data
         self.uncertainty_method = uncertainty_method
@@ -22,6 +24,8 @@ class UncertaintyCalibrator:
         self.scalers = scalers
         self.dataset_type = dataset_type
         self.loss_function = loss_function
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.raise_argument_errors()
 
@@ -30,7 +34,8 @@ class UncertaintyCalibrator:
             models=models,
             scalers=scalers,
             dataset_type=dataset_type,
-            return_invalid_smiles=False,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
         self.calibrate()
@@ -54,9 +59,8 @@ class UncertaintyCalibrator:
 
 
 class HistogramCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, calibration_data: MoleculeDataset, calibration_metric: str, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str):
-        super().__init__(uncertainty_method, calibration_data, calibration_metric, models, scalers, dataset_type, loss_function)
-
+    def __init__(self, uncertainty_method: str, calibration_data: MoleculeDataset, calibration_metric: str, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
+        super().__init__(uncertainty_method, calibration_data, calibration_metric, models, scalers, dataset_type, loss_function, batch_size, num_workers)
         self.raise_argument_errors()
 
     def raise_argument_errors(self):
@@ -77,6 +81,8 @@ def uncertainty_calibrator_builder(calibration_method: str,
                                    scalers: Iterator[StandardScaler],
                                    dataset_type: str,
                                    loss_function: str,
+                                   batch_size: int,
+                                   num_workers: int,
                                    ) -> UncertaintyCalibrator:
     """
     
@@ -98,5 +104,7 @@ def uncertainty_calibrator_builder(calibration_method: str,
             scalers=scalers,
             dataset_type=dataset_type,
             loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
     return calibrator

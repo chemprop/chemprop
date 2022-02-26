@@ -28,7 +28,7 @@ def run_uncertainty(args: UncertaintyArgs,
     if model_objects:
         args, train_args, models, scalers, num_tasks, task_names = model_objects
     else:
-        args, train_args, models, scalers, num_tasks, task_names = load_model(args, generator=True)
+        args, train_args, models, scalers, num_tasks, task_names = load_model(args, generator=False)
 
     set_features(args, train_args)
 
@@ -57,6 +57,8 @@ def run_uncertainty(args: UncertaintyArgs,
             scalers=scalers,
             dataset_type=args.dataset_type,
             loss_function=args.loss_function,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
         )
 
     # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
@@ -64,10 +66,13 @@ def run_uncertainty(args: UncertaintyArgs,
     
     estimator = UncertaintyEstimator(
         test_data=test_data,
+        uncertainty_method=args.uncertainty_method,
         models=models,
         scalers=scalers,
         dataset_type=args.dataset_type,
         loss_function=args.loss_function,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
     )
 
     preds, unc = estimator.calculate_uncertainty(calibrator=calibrator) # preds and unc are lists of shape(data,tasks)

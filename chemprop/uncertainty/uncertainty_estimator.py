@@ -1,7 +1,5 @@
 from typing import Iterator
 
-import numpy as np
-
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from .uncertainty_calibrator import UncertaintyCalibrator
@@ -12,16 +10,22 @@ class UncertaintyEstimator:
     def __init__(self, test_data: MoleculeDataset,
                        models: Iterator[MoleculeModel],
                        scalers: Iterator[StandardScaler],
+                       uncertainty_method: str,
                        dataset_type: str,
                        loss_function: str,
+                       batch_size: int,
+                       num_workers: int,
                        ):
 
         self.predictor = uncertainty_predictor_builder(
             test_data=test_data,
             models=models,
             scalers=scalers,
+            uncertainty_method=uncertainty_method,
             dataset_type=dataset_type,
             loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     def calculate_uncertainty(self, calibrator: UncertaintyCalibrator = None):
@@ -29,12 +33,12 @@ class UncertaintyEstimator:
         Return values for the prediction and uncertainty metric. 
         If a calibrator is provided, returns a calibrated metric of the type specified.
         """
-        means = self.predictor.get_means()
+        uncal_preds = self.predictor.get_uncal_preds()
 
         if calibrator is not None:
             unc_params = self.predictor.get_unc_parameters()
-            cal_unc = calibrator.apply_calibration(means, unc_params)
-            return means, cal_unc
+            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds, unc_params)
+            return cal_preds, cal_unc
         else:
             uncal_vars = self.predictor.get_uncal_vars()
-            return means, uncal_vars
+            return uncal_preds, uncal_vars

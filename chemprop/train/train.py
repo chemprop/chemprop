@@ -99,7 +99,7 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == 'bounded_mse':
             loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
-        elif args.evidential_regulizarization is not None:
+        elif args.evidential_regularization is not None:
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
