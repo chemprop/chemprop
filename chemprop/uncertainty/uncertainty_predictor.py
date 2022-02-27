@@ -57,19 +57,6 @@ class UncertaintyPredictor:
         """Return a tuple of uncertainty parameters for the prediction"""
         return self.unc_parameters
 
-    def uncal_prob_of_prediction(self,targets: List[List[float]]):
-        """
-        For a given set of targets, return the uncalibrated probability that the 
-        target was this deviation or less from the predication according to the 
-        uncalibrated uncertainty. The default assumption is a single-sample 
-        normal distribution, to be overridden by a subclass otherwise.
-        """
-        targets = np.array(targets)
-        preds = np.array(self.uncal_preds)
-        stdev = np.sqrt(np.array(self.uncal_vars))
-        prob = erf((targets - preds)/(stdev * np.sqrt(2)))
-        return prob.tolist()
-
 
 class MVEPredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
@@ -79,27 +66,38 @@ class MVEPredictor(UncertaintyPredictor):
         super().raise_argument_errors()
         if self.loss_function != 'mve':
             raise ValueError('In order to use mve uncertainty, trained models must have used mve loss function.')
-        if len(self.models) > 1:
-            raise NotImplementedError('Use of mve uncertainty within an ensemble has not been implemented.')
 
     def calculate_predictions(self):
+        num_models = len(self.models)
+        for i in range(num_models):
 
-        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[0]
-        if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
-            self.test_data.reset_features_and_targets()
-            if features_scaler is not None:
-                self.test_data.normalize_features(features_scaler)
-            if atom_descriptor_scaler is not None:
-                self.test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
-            if bond_feature_scaler is not None:
-                self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+            scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
+            if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+                if bond_feature_scaler is not None:
+                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
 
-        self.uncal_preds, self.uncal_vars = predict(
-            model=self.models[0],
-            data_loader=self.test_data_loader,
-            scaler=scaler,
-            return_unc_parameters=True,
-        )
+            preds, uncal_vars = predict(
+                model=self.models[i],
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                return_unc_parameters=True,
+            )
+            if i == 0:
+                sum_preds = np.array(preds)
+                sum_squared = np.square(preds)
+                sum_vars = np.array(uncal_vars)
+            else:
+                sum_preds += np.array(preds)
+                sum_squared += np.square(preds)
+                sum_vars += np.array(uncal_vars)
+
+        self.uncal_preds = sum_preds / num_models
+        self.uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
         self.unc_parameters = self.uncal_vars
 
 
