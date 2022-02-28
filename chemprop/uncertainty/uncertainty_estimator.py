@@ -34,11 +34,11 @@ class UncertaintyEstimator:
         If a calibrator is provided, returns a calibrated metric of the type specified.
         """
         uncal_preds = self.predictor.get_uncal_preds()
+        uncal_vars = self.predictor.get_uncal_vars()
 
         if calibrator is not None:
             unc_params = self.predictor.get_unc_parameters()
-            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds, unc_params)
+            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds=uncal_preds, uncal_vars=uncal_vars, unc_parameters=unc_params)
             return cal_preds, cal_unc
         else:
-            uncal_vars = self.predictor.get_uncal_vars()
             return uncal_preds, uncal_vars

@@ -24,6 +24,9 @@ class UncertaintyPredictor:
         self.loss_function = loss_function
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.uncal_preds = None
+        self.uncal_vars = None
+        self.unc_parameters = None
 
         self.raise_argument_errors()
         self.test_data_loader=MoleculeDataLoader(
@@ -81,7 +84,7 @@ class MVEPredictor(UncertaintyPredictor):
                 if bond_feature_scaler is not None:
                     self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
 
-            preds, uncal_vars = predict(
+            preds, var = predict(
                 model=self.models[i],
                 data_loader=self.test_data_loader,
                 scaler=scaler,
@@ -90,14 +93,15 @@ class MVEPredictor(UncertaintyPredictor):
             if i == 0:
                 sum_preds = np.array(preds)
                 sum_squared = np.square(preds)
-                sum_vars = np.array(uncal_vars)
+                sum_vars = np.array(var)
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
-                sum_vars += np.array(uncal_vars)
+                sum_vars += np.array(var)
 
-        self.uncal_preds = sum_preds / num_models
-        self.uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
+        uncal_preds = sum_preds / num_models
+        uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
+        uncal_preds, uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         self.unc_parameters = self.uncal_vars
 
 
