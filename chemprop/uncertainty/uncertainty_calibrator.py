@@ -114,6 +114,7 @@ class ZscoreCalibrator(UncertaintyCalibrator):
         self.raise_argument_errors()
 
     def raise_argument_errors(self):
+        super().raise_argument_errors()
         if self.dataset_type != 'regression':
             raise ValueError('Z Score Calibration is only compatible with regression datasets.')
 
