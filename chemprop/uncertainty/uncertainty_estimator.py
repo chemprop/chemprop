@@ -16,6 +16,7 @@ class UncertaintyEstimator:
                        batch_size: int,
                        num_workers: int,
                        ):
+        self.uncertainty_method = uncertainty_method
 
         self.predictor = uncertainty_predictor_builder(
             test_data=test_data,
@@ -38,7 +39,7 @@ class UncertaintyEstimator:
 
         if calibrator is not None:
             unc_params = self.predictor.get_unc_parameters()
-            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds=uncal_preds, uncal_vars=uncal_vars, unc_parameters=unc_params)
+            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds=uncal_preds, uncal_vars=uncal_vars, unc_parameters=unc_params, uncertainty_method=self.uncertainty_method)
             return cal_preds, cal_unc
         else:
             return uncal_preds, uncal_vars

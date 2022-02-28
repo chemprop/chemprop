@@ -65,11 +65,11 @@ class UncertaintyCalibrator:
         calibration_functions[0]()
         self._apply_calibration = calibration_functions[1]
 
-    def apply_calibration(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_calibration(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         """
         Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
         """
-        return self._apply_calibration(uncal_preds, uncal_vars, unc_parameters)
+        return self._apply_calibration(uncal_preds, uncal_vars, unc_parameters, uncertainty_method)
 
     def calibrate_stdev(self):
         """
@@ -89,19 +89,19 @@ class UncertaintyCalibrator:
         """
         raise NotImplementedError(f'The calibration metric confidence is not implemented with the chosen calibration method.')
 
-    def apply_stdev(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_stdev(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         """
         Take in predications and uncertainty parameters from a model and return a calibrated standard deviation uncertainty.
         """
         raise NotImplementedError(f'The calibration metric stdev is not implemented with the chosen calibration method.')
 
-    def apply_95interval(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_95interval(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         """
         Take in predications and uncertainty parameters from a model and return a calibrated standard deviation uncertainty.
         """
         raise NotImplementedError(f'The calibration metric 95interval is not implemented with the chosen calibration method.')
 
-    def apply_confidence(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_confidence(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         """
         Take in predications and uncertainty parameters from a model and return a calibrated standard deviation uncertainty.
         """
@@ -122,22 +122,25 @@ class ZscoreCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         zscore_preds = (uncal_preds - targets) / np.sqrt(uncal_vars)
-        zscore_preds = np.concatenate([zscore_preds, -1 * zscore_preds], axis=1) # include both values and reflections across x=0 to give a centered distribution
-        self.stdev_scaling = np.std(zscore_preds, axis=1, keepdims=True)
+        zscore_preds = np.concatenate([zscore_preds, -1 * zscore_preds], axis=0) # include both values and reflections across x=0 to give a centered distribution
+        self.stdev_scaling = np.std(zscore_preds, axis=0, keepdims=True)
+        print(self.stdev_scaling, 'stdev\n')
 
     def calibrate_95interval(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         zscore_preds = np.abs(uncal_preds - targets) / np.sqrt(uncal_vars)
-        self.stdev_scaling = np.percentile(zscore_preds, 95, axis=1, keepdims=True)
+        self.stdev_scaling = np.percentile(zscore_preds, 95, axis=0, keepdims=True)
 
-    def apply_stdev(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_stdev(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         cal_stdev = np.sqrt(uncal_vars) * self.stdev_scaling
+        print(self.stdev_scaling, 'apply stdev\n')
         return uncal_preds, cal_stdev.tolist()
 
-    def apply_95interval(self, uncal_preds, uncal_vars, unc_parameters):
+    def apply_95interval(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         cal_stdev = np.sqrt(uncal_vars) * self.stdev_scaling
+        print(self.stdev_scaling, 'apply 95 interval\n')
         return uncal_preds, cal_stdev.tolist()
 
 
