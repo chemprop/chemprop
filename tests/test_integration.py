@@ -235,6 +235,13 @@ class ChempropTests(TestCase):
                 ['--features_generator', 'morgan']
         ),
         (
+                'chemprop_morgan_features_generator_batch',
+                'chemprop',
+                'rmse',
+                1.834947,
+                ['--features_generator', 'morgan', '--precompute_features']
+        ),
+        (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'rmse',
@@ -829,7 +836,7 @@ class ChempropTests(TestCase):
                 flags=train_flags
             )
 
-            # Predict
+            # Fingerprint
             fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
             self.fingerprint(
                 dataset_type=dataset_type,
@@ -840,9 +847,17 @@ class ChempropTests(TestCase):
 
             # Check to make sure that fingerprints are generated for all input molecules
             fingerprints = pd.read_csv(fingerprint_path)
-            test_input = pd.read_csv(os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'))
+            true_fingerprints = pd.read_csv(os.path.join(TEST_DATA_DIR, f'fingerprints_true_{fingerprint_flags[1]}.csv'))
 
-            self.assertEqual(list(fingerprints['smiles'].values), list(test_input['smiles'].values))
+            fingerprints = fingerprints.drop("smiles", axis=1)
+            true_fingerprints = true_fingerprints.drop("smiles", axis=1)
+
+            self.assertEqual(fingerprints.size, true_fingerprints.size)
+
+            # self.assertEqual(fingerprints.sum().values, true_fingerprints.sum().values)
+            for column in fingerprints.columns:
+                for a, b in zip(fingerprints[column].values, true_fingerprints[column].values):
+                    self.assertAlmostEqual(a, b)
 
     @parameterized.expand([
         (
@@ -885,7 +900,7 @@ class ChempropTests(TestCase):
                 flags=train_flags
             )
 
-            # Predict
+            # Fingerprint
             fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
 
             # Check to make sure that an exception is thrown for cases where the model isn't built with --mpn-shared and with a fingerprint

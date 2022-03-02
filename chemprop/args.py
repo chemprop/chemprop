@@ -110,6 +110,11 @@ class CommonArgs(Tap):
     """
     Whether to empty all caches before training or predicting. This is necessary if multiple jobs are run within a single script and the atom or bond features change.
     """
+    precompute_features: bool = False
+    """
+    Whether or not to precompute features for molecules in a batch through provided generators.
+    """
+
 
     def __init__(self, *args, **kwargs):
         super(CommonArgs, self).__init__(*args, **kwargs)
@@ -207,6 +212,10 @@ class CommonArgs(Tap):
         if self.bond_features_path is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
+
+        # Precompute features only works for models with number_of_molecules == 1
+        if self.precompute_features and self.number_of_molecules > 1:
+            raise ValueError("Precomputing features with generators only works with one molecule.")
 
         set_cache_mol(not self.no_cache_mol)
 

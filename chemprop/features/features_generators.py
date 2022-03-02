@@ -5,7 +5,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 
-Molecule = Union[str, Chem.Mol]
+Molecule = Union[str, Chem.Mol, List[List[str]], List[List[Chem.Mol]]]
 FeaturesGenerator = Callable[[Molecule], np.ndarray]
 
 
@@ -52,7 +52,7 @@ MORGAN_NUM_BITS = 2048
 @register_features_generator('morgan')
 def morgan_binary_features_generator(mol: Molecule,
                                      radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+                                     num_bits: int = MORGAN_NUM_BITS) -> Union[np.ndarray, List[np.ndarray]]:
     """
     Generates a binary Morgan fingerprint for a molecule.
 
@@ -61,10 +61,19 @@ def morgan_binary_features_generator(mol: Molecule,
     :param num_bits: Number of bits in Morgan fingerprint.
     :return: A 1D numpy array containing the binary Morgan fingerprint.
     """
-    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
-    features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
-    features = np.zeros((1,))
-    DataStructs.ConvertToNumpyArray(features_vec, features)
+    if type(mol) == list:
+        features = []
+        for m in mol:
+            molecule = Chem.MolFromSmiles(m[0]) if type(m[0]) == str else m[0]
+            features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
+            f = np.zeros((1,))
+            DataStructs.ConvertToNumpyArray(features_vec, f)
+            features.append(f)
+    else:
+        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+        features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
+        features = np.zeros((1,))
+        DataStructs.ConvertToNumpyArray(features_vec, features)
 
     return features
 

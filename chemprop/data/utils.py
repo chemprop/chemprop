@@ -13,7 +13,7 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
+from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol, get_features_generator
 
 def preprocess_smiles_columns(path: str,
                               smiles_columns: Optional[Union[str, List[Optional[str]]]],
@@ -236,7 +236,8 @@ def get_data(path: str,
              store_row: bool = False,
              logger: Logger = None,
              loss_function: str = None,
-             skip_none_targets: bool = False) -> MoleculeDataset:
+             skip_none_targets: bool = False,
+             precompute_features: bool = False) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -281,6 +282,7 @@ def get_data(path: str,
             else args.bond_features_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
+        precompute_features = args.precompute_features
 
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
@@ -377,6 +379,16 @@ def get_data(path: str,
 
             if len(all_smiles) >= max_data_size:
                 break
+
+        # Precompute feature generators in batch
+        if precompute_features and features_generator is not None:
+            features_data = []
+            for fg in features_generator:
+                generator = get_features_generator(fg)
+                all_features.extend(generator(all_smiles))
+
+            # Remove feature generators from list since we have precomputed them
+            features_generator = None
 
         atom_features = None
         atom_descriptors = None
