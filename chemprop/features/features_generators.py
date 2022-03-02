@@ -70,8 +70,8 @@ def morgan_binary_features_generator(mol: Molecule,
                 features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
                 f = np.zeros((1,))
                 DataStructs.ConvertToNumpyArray(features_vec, f)
-                entry_features.extend(f)
-            features.append(entry_features)
+                entry_features.append(f)
+            features.extend(entry_features)
         features = np.array(features)
     else:
         mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
