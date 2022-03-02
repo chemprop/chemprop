@@ -213,10 +213,6 @@ class CommonArgs(Tap):
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
-        # Precompute features only works for models with number_of_molecules == 1
-        if self.precompute_features and self.number_of_molecules > 1:
-            raise ValueError("Precomputing features with generators only works with one molecule.")
-
         set_cache_mol(not self.no_cache_mol)
 
         if self.empty_cache:

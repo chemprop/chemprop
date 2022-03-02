@@ -63,12 +63,16 @@ def morgan_binary_features_generator(mol: Molecule,
     """
     if type(mol) == list:
         features = []
-        for m in mol:
-            molecule = Chem.MolFromSmiles(m[0]) if type(m[0]) == str else m[0]
-            features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
-            f = np.zeros((1,))
-            DataStructs.ConvertToNumpyArray(features_vec, f)
-            features.append(f)
+        for entry in mol:
+            entry_features = []
+            for m in entry:
+                molecule = Chem.MolFromSmiles(m) if type(m) == str else m
+                features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
+                f = np.zeros((1,))
+                DataStructs.ConvertToNumpyArray(features_vec, f)
+                entry_features.extend(f)
+            features.append(entry_features)
+        features = np.array(features)
     else:
         mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
         features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
