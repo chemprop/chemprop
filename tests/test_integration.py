@@ -782,6 +782,20 @@ class ChempropTests(TestCase):
                 'auc',
                 0.699453,
                 ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
+        ),
+        (
+                'chemprop_morgan',
+                'chemprop',
+                'auc',
+                0.699453,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv'), '--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_morgan_precompute',
+                'chemprop',
+                'auc',
+                0.699453,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv'), '--features_generator', 'rdkit_2d', '--precompute_features']
         )
     ])
     def test_single_task_multimolecule_classification(self,
