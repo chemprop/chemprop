@@ -805,17 +805,20 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 ['--fingerprint_type', 'MPN'],
+                2571.193
         ),
         (
                 'chemprop',
                 'chemprop',
-                ['--fingerprint_type', 'last_FFN']
+                ['--fingerprint_type', 'last_FFN'],
+                2840.854
         )
     ])
     def test_single_task_fingerprint(self,
                                             name: str,
                                             model_type: str,
                                             fingerprint_flags: List[str],
+                                            expected_score: float,
                                             train_flags: List[str] = None,
                                      ):
         with TemporaryDirectory() as save_dir:
@@ -829,7 +832,7 @@ class ChempropTests(TestCase):
                 flags=train_flags
             )
 
-            # Predict
+            # Fingerprint
             fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
             self.fingerprint(
                 dataset_type=dataset_type,
@@ -838,11 +841,8 @@ class ChempropTests(TestCase):
                 fingerprint_flags=fingerprint_flags
             )
 
-            # Check to make sure that fingerprints are generated for all input molecules
-            fingerprints = pd.read_csv(fingerprint_path)
-            test_input = pd.read_csv(os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'))
-
-            self.assertEqual(list(fingerprints['smiles'].values), list(test_input['smiles'].values))
+            fingerprints = pd.read_csv(fingerprint_path).drop(["smiles"], axis=1)
+            self.assertAlmostEqual(np.sum(fingerprints.to_numpy()), expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
         (
