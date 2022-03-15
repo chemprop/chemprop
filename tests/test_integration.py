@@ -18,7 +18,7 @@ from chemprop.hyperparameter_optimization import chemprop_hyperopt
 from chemprop.interpret import chemprop_interpret
 from chemprop.sklearn_predict import sklearn_predict
 from chemprop.sklearn_train import sklearn_train
-from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions
+from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions, chemprop_fingerprint
 from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
@@ -181,6 +181,25 @@ class ChempropTests(TestCase):
             command_line = ' '.join(raw_args[1:])
             print(f'python interpret.py {command_line}')
             chemprop_interpret()
+
+    def fingerprint(self,
+                    dataset_type: str,
+                    checkpoint_dir: str,
+                    fingerprint_path: str,
+                    fingerprint_flags: List[str]):
+        # Set up command line arguments
+        raw_args = self.create_raw_predict_args(
+            dataset_type=dataset_type,
+            preds_path=fingerprint_path,
+            checkpoint_dir=checkpoint_dir,
+            flags=fingerprint_flags
+        )
+
+        # Fingerprint
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
+            print(f'python fingerprint.py {command_line}')
+            chemprop_fingerprint()
 
     @parameterized.expand([
         (
@@ -751,6 +770,147 @@ class ChempropTests(TestCase):
 
     @parameterized.expand([
         (
+                'chemprop',
+                'chemprop',
+                'auc',
+                0.699453,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
+        )
+    ])
+    def test_single_task_multimolecule_classification(self,
+                                          name: str,
+                                          model_type: str,
+                                          metric: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            self.train(
+                dataset_type='classification',
+                metric=metric,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
+
+    @parameterized.expand([
+        (
+                'chemprop',
+                'chemprop',
+                ['--fingerprint_type', 'MPN'],
+                2571.193
+        ),
+        (
+                'chemprop',
+                'chemprop',
+                ['--fingerprint_type', 'last_FFN'],
+                2840.854
+        )
+    ])
+    def test_single_task_fingerprint(self,
+                                            name: str,
+                                            model_type: str,
+                                            fingerprint_flags: List[str],
+                                            expected_score: float,
+                                            train_flags: List[str] = None,
+                                     ):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            dataset_type = 'classification'
+            self.train(
+                dataset_type=dataset_type,
+                metric='auc',
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
+
+            # Fingerprint
+            fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
+            self.fingerprint(
+                dataset_type=dataset_type,
+                checkpoint_dir=save_dir,
+                fingerprint_path=fingerprint_path,
+                fingerprint_flags=fingerprint_flags
+            )
+
+            fingerprints = pd.read_csv(fingerprint_path).drop(["smiles"], axis=1)
+            self.assertAlmostEqual(np.sum(fingerprints.to_numpy()), expected_score, delta=DELTA*expected_score)
+
+    @parameterized.expand([
+        (
+                'chemprop',
+                'chemprop',
+                ['--fingerprint_type', 'MPN'],
+                True,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
+        ),
+        (
+                'chemprop',
+                'chemprop',
+                ['--fingerprint_type', 'MPN'],
+                False,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv'), '--mpn_shared']
+        ),
+        (
+                'chemprop',
+                'chemprop',
+                ['--fingerprint_type', 'last_FFN'],
+                True,
+                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
+        )
+    ])
+    def test_multimolecule_fingerprint_with_single_input(self,
+                                     name: str,
+                                     model_type: str,
+                                     fingerprint_flags: List[str],
+                                     exception_thrown: bool,
+                                     train_flags: List[str] = None
+                                     ):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            dataset_type = 'classification'
+            self.train(
+                dataset_type=dataset_type,
+                metric='auc',
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
+
+            # Predict
+            fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
+
+            # Check to make sure that an exception is thrown for cases where the model isn't built with --mpn-shared and with a fingerprint
+            # type of MPN
+            if exception_thrown:
+                with self.assertRaises(ValueError):
+                    self.fingerprint(
+                        dataset_type=dataset_type,
+                        checkpoint_dir=save_dir,
+                        fingerprint_path=fingerprint_path,
+                        fingerprint_flags=fingerprint_flags
+                    )
+            else:
+                self.fingerprint(
+                    dataset_type=dataset_type,
+                    checkpoint_dir=save_dir,
+                    fingerprint_path=fingerprint_path,
+                    fingerprint_flags=fingerprint_flags
+                )
+                fingerprints = pd.read_csv(fingerprint_path)
+                test_input = pd.read_csv(os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'))
+
+                self.assertEqual(list(fingerprints['smiles'].values), list(test_input['smiles'].values))
+
+    @parameterized.expand([(
                 'chemprop_reaction_solvent',
                 'chemprop',
                 2.912189,
