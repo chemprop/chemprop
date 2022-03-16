@@ -1,10 +1,13 @@
 from typing import Iterator
 
 import numpy as np
+from scipy.special import erfinv
+from scipy.optimize import root
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from .uncertainty_predictor import uncertainty_predictor_builder
+from .utils import calibration_normal_auc
 
 class UncertaintyCalibrator:
     """
@@ -123,9 +126,15 @@ class ZscoreCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         zscore_preds = (uncal_preds - targets) / np.sqrt(uncal_vars)
-        zscore_preds = np.concatenate([zscore_preds, -1 * zscore_preds], axis=0) # include both values and reflections across x=0 to give a centered distribution
-        self.stdev_scaling = np.std(zscore_preds, axis=0, keepdims=True)
-        print(self.stdev_scaling, 'stdev\n')
+        abs_zscore_preds = np.abs(zscore_preds)
+
+        def objective(scaler_values: np.ndarray):
+            cal_z = abs_zscore_preds / scaler_values
+            return calibration_normal_auc(cal_z)
+
+        initial_guess = np.std(zscore_preds, axis=0, keepdims=True)
+        sol = root(objective, initial_guess)
+        self.stdev_scaling = sol.x
 
     def calibrate_95interval(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
@@ -136,12 +145,10 @@ class ZscoreCalibrator(UncertaintyCalibrator):
 
     def apply_stdev(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         cal_stdev = np.sqrt(uncal_vars) * self.stdev_scaling
-        print(self.stdev_scaling, 'apply stdev\n')
         return uncal_preds, cal_stdev.tolist()
 
     def apply_95interval(self, uncal_preds, uncal_vars, unc_parameters, uncertainty_method):
         cal_stdev = np.sqrt(uncal_vars) * self.stdev_scaling
-        print(self.stdev_scaling, 'apply 95 interval\n')
         return uncal_preds, cal_stdev.tolist()
 
 
