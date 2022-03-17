@@ -70,7 +70,9 @@ def scaffold_split(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    assert sum(sizes) == 1
+    #TODO(degraff): floating point math could mess this up
+    if sum(sizes) != 1:
+        raise ValueError(f"train/val/test fractions must add up to 1! got: {sizes}")
 
     # Split
     train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
