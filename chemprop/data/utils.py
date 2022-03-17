@@ -385,7 +385,7 @@ def get_data(path: str,
             features_data = []
             for fg in features_generator:
                 generator = get_features_generator(fg)
-                all_features.extend(generator(all_smiles))
+                all_features.append(generator(all_smiles))
 
             # Remove feature generators from list since we have precomputed them
             features_generator = None
