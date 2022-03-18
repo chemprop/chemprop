@@ -71,8 +71,8 @@ def scaffold_split(data: MoleculeDataset,
              validation, and test splits of the data.
     """
     #TODO(degraff): floating point math could mess this up
-    if sum(sizes) != 1:
-        raise ValueError(f"train/val/test fractions must add up to 1! got: {sizes}")
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     # Split
     train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)

@@ -506,8 +506,8 @@ def split_data(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    if not (len(sizes) == 3 and sum(sizes) == 1):
-        raise ValueError('Valid split sizes must sum to 1 and must have three sizes: train, validation, and test.')
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     random = Random(seed)
 
