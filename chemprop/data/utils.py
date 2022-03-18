@@ -385,7 +385,13 @@ def get_data(path: str,
             features_data = []
             for fg in features_generator:
                 generator = get_features_generator(fg)
-                all_features.append(generator(all_smiles))
+                gen_data = generator(all_smiles).reshape((len(all_smiles), -1))
+                
+                for i, _ in enumerate(all_smiles):
+                  try:
+                    all_features[i].extend(gen_data[i])
+                  except IndexError:
+                    all_features.append(gen_data[i])
 
             # Remove feature generators from list since we have precomputed them
             features_generator = None
