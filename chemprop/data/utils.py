@@ -389,7 +389,7 @@ def get_data(path: str,
                 
                 for i, _ in enumerate(all_smiles):
                   try:
-                    all_features[i].extend(gen_data[i])
+                    all_features[i].append(gen_data[i])
                   except IndexError:
                     all_features.append(gen_data[i])
 
