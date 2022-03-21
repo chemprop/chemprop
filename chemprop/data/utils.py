@@ -506,8 +506,8 @@ def split_data(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    if not (len(sizes) == 3 and sum(sizes) == 1):
-        raise ValueError('Valid split sizes must sum to 1 and must have three sizes: train, validation, and test.')
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     random = Random(seed)
 
@@ -571,8 +571,10 @@ def split_data(data: MoleculeDataset,
             raise ValueError('Test size must be zero since test set is created separately '
                              'and we want to put all other data in train and validation')
 
-        assert folds_file is not None
-        assert test_fold_index is not None
+        if folds_file is None:
+            raise ValueError('arg "folds_file" can not be None!')
+        if test_fold_index is None:
+            raise ValueError('arg "test_fold_index" can not be None!')
 
         try:
             with open(folds_file, 'rb') as f:

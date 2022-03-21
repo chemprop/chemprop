@@ -70,7 +70,8 @@ def scaffold_split(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    assert sum(sizes) == 1
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     # Split
     train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)

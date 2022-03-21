@@ -189,9 +189,10 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
 
     # Save predictions
     print(f'Saving predictions to {args.preds_path}')
-    assert len(test_data) == len(avg_preds)
-    if args.ensemble_variance:
-        assert len(test_data) == len(all_epi_uncs)
+    #TODO: add unit tests for this
+    # assert len(test_data) == len(avg_preds)
+    # if args.ensemble_variance:
+        # assert len(test_data) == len(all_epi_uncs)
     makedirs(args.preds_path, isfile=True)
 
     # Set multiclass column names, update num_tasks definition for multiclass

@@ -132,7 +132,7 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
 
     # Save predictions
     print(f'Saving predictions to {args.preds_path}')
-    assert len(test_data) == len(all_fingerprints)
+    # assert len(test_data) == len(all_fingerprints) #TODO: add unit test for this
     makedirs(args.preds_path, isfile=True)
 
     # Set column names
