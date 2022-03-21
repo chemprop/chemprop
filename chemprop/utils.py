@@ -266,6 +266,7 @@ def load_frzn_model(
                 "encoder.encoder.0.W_o.weight",
                 "encoder.encoder.0.W_o.bias",
             ] * current_args.number_of_molecules
+
             model_encoder_param_names = [
                 [
                     (
