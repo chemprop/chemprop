@@ -417,8 +417,9 @@ class TestGetData(TestCase):
 
 class TestSplitData(TestCase):
     """
-    Testing of the split_data function. Excludes the scaffold_split case.
+    Testing of the split_data function.
     """
+    # Testing currently covers random and random_with_repeated_smiles
     def setUp(self):
         smiles_list = [['C','CC'],['CC','CCC'],['CCC','CN'],['CN','CCN'],['CCN','CCCN'],['CCCN','CCCCN'],['CCCCN','CO'],['CO','CCO'],['CO','CCCO'],['CN','CCC']]
         self.dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
@@ -463,16 +464,3 @@ class TestSplitData(TestCase):
         )
         self.assertEqual(test.smiles(),[['CO', 'CCCO'], ['CO', 'CCO']])
 
-    def test_cv(self):
-        """Testing the cv split"""
-        train, val, test = split_data(
-            data=self.dataset,
-            split_type='cv',
-            num_folds=5,
-            seed=4
-        )
-        print(len(train), len(val), len(test))
-        self.assertTrue(False)
-
-    def tearDown(self):
-        pass
