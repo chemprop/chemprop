@@ -424,6 +424,20 @@ class TestSplitData(TestCase):
         smiles_list = [['C','CC'],['CC','CCC'],['CCC','CN'],['CN','CCN'],['CCN','CCCN'],['CCCN','CCCCN'],['CCCCN','CO'],['CO','CCO'],['CO','CCCO'],['CN','CCC']]
         self.dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
 
+    def test_splits_sum1(self):
+        with self.assertRaises(ValueError):
+            train, val, test = split_data(
+                data=self.dataset,
+                sizes=(0.4,0.8,0.2)
+            )
+
+    def test_three_splits_provided(self):
+        with self.assertRaises(ValueError):
+            train, val, test = split_data(
+                data=self.dataset,
+                sizes=(0.8,0.2)
+            )
+
     def test_random_split(self):
         """Testing the random split with seed 0"""
         train, val, test = split_data(
