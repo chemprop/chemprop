@@ -62,25 +62,24 @@ def save_checkpoint(
     if args is not None:
         args = Namespace(**args.as_dict())
 
-    state = {
-        "args": args,
-        "state_dict": model.state_dict(),
-        "data_scaler": {"means": scaler.means, "stds": scaler.stds} if scaler is not None else None,
-        "features_scaler": {"means": features_scaler.means, "stds": features_scaler.stds}
-        if features_scaler is not None
-        else None,
-        "atom_descriptor_scaler": {
+    data_scaler = {"means": scaler.means, "stds": scaler.stds} if scaler is not None else None
+    if features_scaler is not None:
+        features_scaler = {"means": features_scaler.means, "stds": features_scaler.stds}
+    if atom_descriptor_scaler is not None:
+        atom_descriptor_scaler = {
             "means": atom_descriptor_scaler.means,
             "stds": atom_descriptor_scaler.stds,
         }
-        if atom_descriptor_scaler is not None
-        else None,
-        "bond_feature_scaler": {
-            "means": bond_feature_scaler.means,
-            "stds": bond_feature_scaler.stds,
-        }
-        if bond_feature_scaler is not None
-        else None,
+    if bond_feature_scaler is not None:
+        bond_feature_scaler = {"means": bond_feature_scaler.means, "stds": bond_feature_scaler.stds}
+
+    state = {
+        "args": args,
+        "state_dict": model.state_dict(),
+        "data_scaler": data_scaler,
+        "features_scaler": features_scaler,
+        "atom_descriptor_scaler": atom_descriptor_scaler,
+        "bond_feature_scaler": bond_feature_scaler,
     }
     torch.save(state, path)
 
@@ -288,9 +287,7 @@ def load_frzn_model(
                     loaded_param_name, model_param_name, loaded_state_dict, model_state_dict
                 )
 
-        if (
-            current_args.frzn_ffn_layers > 0
-        ):  # Duplicate encoder from frozen checkpoint and overwrite all encoders + FFN layers
+        if current_args.frzn_ffn_layers > 0:
             raise ValueError(
                 f"Number of molecules from checkpoint_frzn ({loaded_args.number_of_molecules}) "
                 f"must equal current number of molecules ({current_args.number_of_molecules})!"
@@ -388,7 +385,6 @@ def load_scalers(
     else:
         features_scaler = None
 
-
     if "atom_descriptor_scaler" in state.keys() and state["atom_descriptor_scaler"] is not None:
         atom_descriptor_scaler = StandardScaler(
             state["atom_descriptor_scaler"]["means"],
@@ -397,7 +393,6 @@ def load_scalers(
         )
     else:
         atom_descriptor_scaler = None
-
 
     if "bond_feature_scaler" in state.keys() and state["bond_feature_scaler"] is not None:
         bond_feature_scaler = StandardScaler(
