@@ -70,7 +70,6 @@ def scaffold_split(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    #TODO(degraff): floating point math could mess this up
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
         raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
