@@ -29,7 +29,7 @@ SEED = 0
 EPOCHS = 3
 NUM_FOLDS = 3
 NUM_ITER = 2
-DELTA = 0.01
+DELTA = 0.015
 
 
 class ChempropTests(TestCase):
