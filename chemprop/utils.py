@@ -280,6 +280,7 @@ def load_frzn_model(
             model_encoder_param_names = [
                 item for sublist in model_encoder_param_names for item in sublist
             ]
+
             for loaded_param_name, model_param_name in zip(
                 loaded_encoder_param_names, model_encoder_param_names
             ):
