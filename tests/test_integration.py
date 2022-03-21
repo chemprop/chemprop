@@ -26,10 +26,10 @@ from chemprop.features import load_features
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
-EPOCHS = 10
+EPOCHS = 3
 NUM_FOLDS = 3
 NUM_ITER = 2
-DELTA = 0.05
+DELTA = 0.015
 
 
 class ChempropTests(TestCase):
@@ -218,34 +218,34 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'rmse',
-                1.237620
+                1.64048879,
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
                 'rmse',
-                1.433300,
+                1.70756238,
                 ['--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'rmse',
-                1.834947,
+                1.99633537,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'rmse',
-                0.807828,
+                1.06655898,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
         ),
         (
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
-                1.4771486,
+                2.9177008,
                 [
                     '--loss_function', 'bounded_mse',
                     '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
@@ -259,6 +259,7 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/train_single_regression/{name}'
             # Train
             self.train(
                 dataset_type='regression',
@@ -281,41 +282,41 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.691205
+                0.63495735,
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'auc',
-                0.619021,
+                0.5827042,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'auc',
-                0.659145,
+                0.63613397,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling']
         ),
         (
                 'chemprop_mcc_metric',
                 'chemprop',
                 'mcc',
-                0.17130675,
+                0.0352518,
                 ['--metric', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_f1_metric',
                 'chemprop',
                 'f1',
-                0.221176,
+                0.02777778,
                 ['--metric', 'f1', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_mcc_loss',
                 'chemprop',
                 'auc',
-                0.6941197,
+                0.74079357,
                 ['--loss_function', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         )
     ])
@@ -326,6 +327,7 @@ class ChempropTests(TestCase):
                                              expected_score: float,
                                              train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/train_multi_class/{name}'
             # Train
             self.train(
                 dataset_type='classification',
@@ -346,29 +348,29 @@ class ChempropTests(TestCase):
         (
                 'sklearn_random_forest',
                 'random_forest',
-                0.945589
+                0.9455894
         ),
         (
                 'sklearn_svm',
                 'svm',
-                1.015136
+                1.0151356
         ),
         (
                 'chemprop',
                 'chemprop',
-                0.561477
+                1.1261400
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                3.825271,
+                4.1756080,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.693359,
+                0.47390878,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         )
@@ -380,6 +382,7 @@ class ChempropTests(TestCase):
                                             train_flags: List[str] = None,
                                             predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/pred_single_regression/{name}'
             # Train
             dataset_type = 'regression'
             self.train(
@@ -415,19 +418,19 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                0.064605
+                0.07072509
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                0.083170,
+                0.07685293,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.064972,
+                0.072059973,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         )
@@ -439,6 +442,7 @@ class ChempropTests(TestCase):
                                                train_flags: List[str] = None,
                                                predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/pred_multi_class/{name}'
             # Train
             dataset_type = 'classification'
             self.train(
@@ -472,6 +476,7 @@ class ChempropTests(TestCase):
 
     def test_chemprop_hyperopt(self):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/hyperopt'
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
             self.hyperopt(
@@ -506,6 +511,7 @@ class ChempropTests(TestCase):
                                               train_flags: List[str] = None,
                                               interpret_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/interpret_single_regression/{name}'
             # Train
             dataset_type = 'regression'
             self.train(
@@ -530,6 +536,7 @@ class ChempropTests(TestCase):
             app = build_app(root_folder=root_dir, init_db=True)
 
             app.config['TESTING'] = True
+            app.config['SERVER_NAME'] = 'localhost'
 
             data_path = 'regression.csv'
             test_path = 'regression_test_smiles.csv'
@@ -546,49 +553,50 @@ class ChempropTests(TestCase):
             with open(os.path.join(TEST_DATA_DIR, test_path)) as f:
                 test_smiles = f.read()
 
-            with app.test_client() as client:
-                response = client.get('/')
-                self.assertEqual(response.status_code, 200)
+            with app.app_context():
+                with app.test_client() as client:
+                    response = client.get('/')
+                    self.assertEqual(response.status_code, 200)
 
-                # Upload data
-                response = client.post(
-                    url_for('upload_data', return_page='home'),
-                    data={
-                        'dataset': (train_data, data_path),
-                        'datasetName': dataset_name
-                    }
-                )
-                self.assertEqual(response.status_code, 302)
+                    # Upload data
+                    response = client.post(
+                        url_for('upload_data', return_page='home'),
+                        data={
+                            'dataset': (train_data, data_path),
+                            'datasetName': dataset_name
+                        }
+                    )
+                    self.assertEqual(response.status_code, 302)
 
-                # Train
-                response = client.post(
-                    url_for('train'),
-                    data={
-                        'dataName': data_name,
-                        'epochs': epochs,
-                        'ensembleSize': ensemble_size,
-                        'checkpointName': checkpoint_name,
-                        'datasetType': dataset_type,
-                        'useProgressBar': False
-                    }
-                )
-                self.assertEqual(response.status_code, 200)
+                    # Train
+                    response = client.post(
+                        url_for('train'),
+                        data={
+                            'dataName': data_name,
+                            'epochs': epochs,
+                            'ensembleSize': ensemble_size,
+                            'checkpointName': checkpoint_name,
+                            'datasetType': dataset_type,
+                            'useProgressBar': False
+                        }
+                    )
+                    self.assertEqual(response.status_code, 200)
 
-                # Predict
-                response = client.post(
-                    url_for('predict'),
-                    data={
-                        'checkpointName': ckpt_name,
-                        'textSmiles': test_smiles
-                    }
-                )
-                self.assertEqual(response.status_code, 200)
+                    # Predict
+                    response = client.post(
+                        url_for('predict'),
+                        data={
+                            'checkpointName': ckpt_name,
+                            'textSmiles': test_smiles
+                        }
+                    )
+                    self.assertEqual(response.status_code, 200)
 
     @parameterized.expand([
         (
             'spectra',
             'chemprop',
-            0.001737553471704,
+            0.00520246,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -598,7 +606,7 @@ class ChempropTests(TestCase):
         (
             'spectra_excluded_targets',
             'chemprop',
-            0.001617717412785,
+            0.003938459,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -608,7 +616,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.001421314775383,
+            0.0065630322,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -623,6 +631,7 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/train_spectra/{name}'
             # Train
             metric = 'sid'
             self.train(
@@ -645,7 +654,7 @@ class ChempropTests(TestCase):
         (
             'spectra',
             'chemprop',
-            0.0014090729236303759,
+            0.0041501114,
             0,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
@@ -659,7 +668,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.0009571740389124222,
+            0.0053274466,
             284,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
@@ -680,6 +689,7 @@ class ChempropTests(TestCase):
                                             train_flags: List[str] = None,
                                             predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/pred_spectra/{name}'
             # Train
             dataset_type = 'spectra'
             self.train(
@@ -722,25 +732,25 @@ class ChempropTests(TestCase):
         (
                 'chemprop_reaction',
                 'chemprop',
-                2.019870,
+                2.1235725,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv')]
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
-                1.907502,
+                2.0610431,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                2.846405,
+                2.8446566,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--features_generator', 'morgan']
         ),
         (
                 'chemprop_reaction_explicit_h',
                 'chemprop',
-                2.139865,
+                2.2980834,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h']
          )
     ])
@@ -750,6 +760,7 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/train_single_reaction/{name}'
             # Train
             metric = 'rmse'
             self.train(
@@ -804,21 +815,21 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
+                3473.79893,
                 ['--fingerprint_type', 'MPN'],
-                2571.193
         ),
         (
                 'chemprop',
                 'chemprop',
+                3504.50003,
                 ['--fingerprint_type', 'last_FFN'],
-                2840.854
         )
     ])
     def test_single_task_fingerprint(self,
                                             name: str,
                                             model_type: str,
-                                            fingerprint_flags: List[str],
                                             expected_score: float,
+                                            fingerprint_flags: List[str],
                                             train_flags: List[str] = None,
                                      ):
         with TemporaryDirectory() as save_dir:
@@ -920,7 +931,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                3.465252,
+                3.7687076,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'),'--features_generator', 'morgan']
         ),
@@ -934,14 +945,14 @@ class ChempropTests(TestCase):
         (
                 'chemprop_reaction_solvent_explicit_h_adding_h',
                 'chemprop',
-                2.826695,
+                2.8814398,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h', '--adding_h']
         ),
         (
                 'chemprop_reaction_solvent_diff_mpn_size',
                 'chemprop',
-                2.791803,
+                2.9015592,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--hidden_size', '500',
                  '--hidden_size_solvent', '250']
