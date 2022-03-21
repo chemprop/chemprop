@@ -520,9 +520,6 @@ def split_data(data: MoleculeDataset,
     else:
         folds_file = val_fold_index = test_fold_index = None
     
-    if key_molecule_index >= args.number_of_molecules:
-        raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
-
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []

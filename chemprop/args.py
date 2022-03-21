@@ -248,7 +248,8 @@ class TrainArgs(CommonArgs):
     split_sizes: List[float] = None
     """Split proportions for train/validation/test sets."""
     split_key_molecule: int = 0
-    """The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles."""
+    """The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.
+       Note that this index begins with zero for the first molecule."""
     num_folds: int = 1
     """Number of folds when performing cross validation."""
     folds_file: str = None
@@ -722,6 +723,9 @@ class TrainArgs(CommonArgs):
             if min(self.target_weights) < 0:
                 raise ValueError('Provided target weights must be non-negative.')
 
+        # check if key molecule index is outside of the number of molecules
+        if self.split_key_molecule >= self.number_of_molecules:
+            raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
 
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
