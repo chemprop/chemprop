@@ -380,36 +380,30 @@ def load_scalers(
         scaler = StandardScaler(state["data_scaler"]["means"], state["data_scaler"]["stds"])
     else:
         scaler = None
-    features_scaler = (
-        StandardScaler(
+
+    if state["features_scaler"] is not None:
+        features_scaler = StandardScaler(
             state["features_scaler"]["means"], state["features_scaler"]["stds"], replace_nan_token=0
         )
-        if state["features_scaler"] is not None
-        else None
-    )
+    else:
+        features_scaler = None
 
-    if "atom_descriptor_scaler" in state.keys():
-        atom_descriptor_scaler = (
-            StandardScaler(
-                state["atom_descriptor_scaler"]["means"],
-                state["atom_descriptor_scaler"]["stds"],
-                replace_nan_token=0,
-            )
-            if state["atom_descriptor_scaler"] is not None
-            else None
+
+    if "atom_descriptor_scaler" in state.keys() and state["atom_descriptor_scaler"] is not None:
+        atom_descriptor_scaler = StandardScaler(
+            state["atom_descriptor_scaler"]["means"],
+            state["atom_descriptor_scaler"]["stds"],
+            replace_nan_token=0,
         )
     else:
         atom_descriptor_scaler = None
 
-    if "bond_feature_scaler" in state.keys():
-        bond_feature_scaler = (
-            StandardScaler(
-                state["bond_feature_scaler"]["means"],
-                state["bond_feature_scaler"]["stds"],
-                replace_nan_token=0,
-            )
-            if state["bond_feature_scaler"] is not None
-            else None
+
+    if "bond_feature_scaler" in state.keys() and state["bond_feature_scaler"] is not None:
+        bond_feature_scaler = StandardScaler(
+            state["bond_feature_scaler"]["means"],
+            state["bond_feature_scaler"]["stds"],
+            replace_nan_token=0,
         )
     else:
         bond_feature_scaler = None
