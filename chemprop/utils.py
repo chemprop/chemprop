@@ -376,11 +376,10 @@ def load_scalers(
     """
     state = torch.load(path, map_location=lambda storage, loc: storage)
 
-    scaler = (
-        StandardScaler(state["data_scaler"]["means"], state["data_scaler"]["stds"])
-        if state["data_scaler"] is not None
-        else None
-    )
+    if state["data_scaler"] is not None:
+        scaler = StandardScaler(state["data_scaler"]["means"], state["data_scaler"]["stds"])
+    else:
+        scaler = None
     features_scaler = (
         StandardScaler(
             state["features_scaler"]["means"], state["features_scaler"]["stds"], replace_nan_token=0
