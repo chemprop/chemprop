@@ -27,6 +27,7 @@ class UncertaintyPredictor:
         self.uncal_preds = None
         self.uncal_vars = None
         self.uncal_confidence = None
+        self.uncal_output = None
 
         self.raise_argument_errors()
         self.test_data_loader=MoleculeDataLoader(
@@ -57,9 +58,12 @@ class UncertaintyPredictor:
         return self.uncal_vars
 
     def get_uncal_confidence(self):
-        """Return a tuple of uncertainty parameters for the prediction"""
+        """Return the uncalibrated confidences for the test data"""
         return self.uncal_confidence
-
+    
+    def get_uncal_output(self):
+        """Return the uncalibrated uncertainty outputs for the test data"""
+        pass
 
 class MVEPredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
@@ -103,6 +107,9 @@ class MVEPredictor(UncertaintyPredictor):
         uncal_preds = sum_preds / num_models
         uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
         uncal_preds, uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+    
+    def get_uncal_output(self):
+        return self.uncal_vars
 
 
 class EnsemblePredictor(UncertaintyPredictor):
@@ -141,6 +148,9 @@ class EnsemblePredictor(UncertaintyPredictor):
                 sum_squared += np.square(preds)
         self.uncal_preds = sum_preds / num_models
         self.uncal_vars = sum_squared / num_models - np.square(sum_preds) / num_models ** 2
+    
+    def get_uncal_output(self):
+        return self.uncal_vars
 
 
 class SigmoidPredictor(UncertaintyPredictor):
@@ -180,6 +190,9 @@ class SigmoidPredictor(UncertaintyPredictor):
                 sum_preds += np.array(preds)
         self.uncal_preds = sum_preds / num_models
         self.uncal_confidence = self.uncal_preds
+    
+    def get_uncal_output(self):
+        return self.uncal_confidence
 
 
 def uncertainty_predictor_builder(uncertainty_method: str,
