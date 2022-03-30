@@ -136,9 +136,9 @@ class TScalingCalibrator(UncertaintyCalibrator):
     def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
         if self.interval_percentile is None: # stdev metric
-            self.label = f'{uncertainty_method}_zscaling_stdev'
+            self.label = f'{uncertainty_method}_tscaling_stdev'
         else:
-            self.label = f'{uncertainty_method}_zscaling_{interval_percentile}interval'
+            self.label = f'{uncertainty_method}_tscaling_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -176,9 +176,9 @@ class TCrudeCalibrator(UncertaintyCalibrator):
     def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
         if self.interval_percentile is None: # stdev metric
-            self.label = f'{uncertainty_method}_zcrude_stdev'
+            self.label = f'{uncertainty_method}_tcrude_stdev'
         else:
-            self.label = f'{uncertainty_method}_zcrude_{interval_percentile}interval'
+            self.label = f'{uncertainty_method}_tcrude_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()

@@ -28,6 +28,7 @@ class UncertaintyEstimator:
             batch_size=batch_size,
             num_workers=num_workers,
         )
+        self.label = self.predictor.label
 
     def calculate_uncertainty(self, calibrator: UncertaintyCalibrator = None):
         """
@@ -39,6 +40,7 @@ class UncertaintyEstimator:
         uncal_confidence = self.predictor.get_uncal_confidence()
 
         if calibrator is not None:
+            self.label = calibrator.label
             cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds=uncal_preds, uncal_vars=uncal_vars, uncal_confidence=uncal_confidence, uncertainty_method=self.uncertainty_method)
             return cal_preds, cal_unc
         else:
