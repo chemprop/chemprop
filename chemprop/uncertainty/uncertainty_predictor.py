@@ -26,7 +26,7 @@ class UncertaintyPredictor:
         self.num_workers = num_workers
         self.uncal_preds = None
         self.uncal_vars = None
-        self.unc_parameters = None
+        self.uncal_confidence = None
 
         self.raise_argument_errors()
         self.test_data_loader=MoleculeDataLoader(
@@ -56,14 +56,15 @@ class UncertaintyPredictor:
         """Return the uncalibrated variances for the test data"""
         return self.uncal_vars
 
-    def get_unc_parameters(self):
+    def get_uncal_confidence(self):
         """Return a tuple of uncertainty parameters for the prediction"""
-        return self.unc_parameters
+        return self.uncal_confidence
 
 
 class MVEPredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'mve_uncal_var'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -102,12 +103,12 @@ class MVEPredictor(UncertaintyPredictor):
         uncal_preds = sum_preds / num_models
         uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
         uncal_preds, uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        self.unc_parameters = self.uncal_vars
 
 
 class EnsemblePredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'ensemble_uncal_var'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -140,7 +141,6 @@ class EnsemblePredictor(UncertaintyPredictor):
                 sum_squared += np.square(preds)
         self.uncal_preds = sum_preds / num_models
         self.uncal_vars = sum_squared / num_models - np.square(sum_preds) / num_models ** 2
-        self.unc_parameters = self.uncal_vars
 
 
 class SigmoidPredictor(UncertaintyPredictor):
@@ -149,6 +149,7 @@ class SigmoidPredictor(UncertaintyPredictor):
     """
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'sigmoid_uncal_confidence'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -178,7 +179,7 @@ class SigmoidPredictor(UncertaintyPredictor):
             else:
                 sum_preds += np.array(preds)
         self.uncal_preds = sum_preds / num_models
-        self.unc_parameters = self.uncal_preds
+        self.uncal_confidence = self.uncal_preds
 
 
 def uncertainty_predictor_builder(uncertainty_method: str,

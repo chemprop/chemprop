@@ -841,10 +841,11 @@ class UncertaintyArgs(PredictArgs):
 
     uncertainty_method: Literal['mve', 'ensemble', 'evidential_epistemic', 'evidential_aleatoric', 'evidential_class', 'sigmoid'] = None
     """The method of calculating uncertainty."""
-    calibration_metric: Literal['stdev', '95interval', 'confidence'] = 'stdev'
-    """The type of uncertainty value returned when calibrated."""
-    calibration_method: Literal['zscorefit'] = 'zscorefit'
+    calibration_method: Literal['zscaling', 'tscaling', 'zcrude', 'tcrude'] = 'zscaling'
     """The method used for calibrating uncertainty estimates"""
+    calibration_interval_percentile: float = None
+    """Sets the percentile used in the calibration methods, in regression methods. Must be in the range (0,100).
+    By default, has a value of None and will return the standard deviation instead."""
     calibration_path: str = None
     """Path to data file to be used for uncertainty calibration."""
     calibration_features_path: str = None
@@ -862,6 +863,9 @@ class UncertaintyArgs(PredictArgs):
         if self.ensemble_variance == True and self.uncertainty_method != 'ensemble':
             raise ValueError('The `--ensemble_variance` method of uncertainty quantification should be replaced with '
                              '`--uncertainty_method ensemble` for dedicated uncertainty jobs.')
+        
+        if self.calibration_interval_percentile <= 0 or self.calibration_interval_percentile >= 100:
+            raise ValueError('The calibration interval must be a percentile value in the range (0,100).')
 
         if self.individual_ensemble_predictions == True:
             raise ValueError('The argument `--individual_ensemble_predictions` is not supported in uncertainty jobs.')

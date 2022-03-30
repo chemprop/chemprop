@@ -51,8 +51,8 @@ def run_uncertainty(args: UncertaintyArgs,
         calibrator = uncertainty_calibrator_builder(
             calibration_method=args.calibration_method,
             uncertainty_method=args.uncertainty_method,
+            interval_percentile=args.calibration_interval_percentile,
             calibration_data=calibration_data,
-            calibration_metric=args.calibration_metric,
             models=models,
             scalers=scalers,
             dataset_type=args.dataset_type,
@@ -112,8 +112,7 @@ def run_uncertainty(args: UncertaintyArgs,
                     datapoint.row[column] = smiles
 
             # Add predictions columns
-            if calibrator == None: args.calibration_metric = 'uncal'
-            unc_names = [name + f'_{args.calibration_metric}_{args.uncertainty_method}' for name in task_names]
+            unc_names = [name + f'_{estimator.label}' for name in task_names]
             for pred_name, unc_name, pred, un in zip(task_names, unc_names, d_preds, d_unc):
                 datapoint.row[pred_name] = pred
                 datapoint.row[unc_name] = un
