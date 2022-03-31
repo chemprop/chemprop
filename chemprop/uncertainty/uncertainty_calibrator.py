@@ -19,6 +19,7 @@ class UncertaintyCalibrator:
         self,
         uncertainty_method: str,
         interval_percentile: int,
+        regression_calibrator_metric: str,
         calibration_data: MoleculeDataset,
         models: Iterator[MoleculeModel],
         scalers: Iterator[StandardScaler],
@@ -28,6 +29,7 @@ class UncertaintyCalibrator:
         num_workers: int,
     ):
         self.calibration_data = calibration_data
+        self.regression_calibrator_metric = regression_calibrator_metric
         self.interval_percentile = interval_percentile
 
         self.raise_argument_errors()
@@ -65,11 +67,34 @@ class UncertaintyCalibrator:
 
 
 class ZScalingCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
-        if self.interval_percentile is None: # stdev metric
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        if self.regression_calibrator_metric == 'stdev':
             self.label = f'{uncertainty_method}_zscaling_stdev'
-        else:
+        else: # interval
             self.label = f'{uncertainty_method}_zscaling_{interval_percentile}interval'
 
     def raise_argument_errors(self):
@@ -93,9 +118,9 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         initial_guess = np.std(zscore_preds, axis=0, keepdims=True)
         sol = fmin(objective, initial_guess)
         stdev_scaling = sol[0]
-        if self.interval_percentile is None: # stdev metric
+        if self.regression_calibrator_metric == 'stdev':
             self.scaling = stdev_scaling
-        else:
+        else: # interval
             interval_scaling = stdev_scaling * erfinv(self.interval_percentile/100) * np.sqrt(2)
             self.scaling = interval_scaling
 
@@ -105,12 +130,32 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 
 class ZCrudeCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
-        if self.interval_percentile is None: # stdev metric
-            self.label = f'{uncertainty_method}_zcrude_stdev'
-        else:
-            self.label = f'{uncertainty_method}_zcrude_{interval_percentile}interval'
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        self.label = f'{uncertainty_method}_zcrude_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -122,8 +167,6 @@ class ZCrudeCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         abs_zscore_preds = np.abs(uncal_preds - targets) / np.sqrt(uncal_vars)
-        if self.interval_percentile is None: # stdev metric
-            self.interval_percentile = erf(1/np.sqrt(2))*100
         interval_scaling = np.percentile(abs_zscore_preds, self.interval_percentile, axis=0, keepdims=True)
         self.scaling = interval_scaling
 
@@ -133,17 +176,40 @@ class ZCrudeCalibrator(UncertaintyCalibrator):
 
 
 class TScalingCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
-        if self.interval_percentile is None: # stdev metric
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        if self.regression_calibrator_metric == 'stdev':
             self.label = f'{uncertainty_method}_tscaling_stdev'
-        else:
+        else: # interval
             self.label = f'{uncertainty_method}_tscaling_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != 'regression':
-            raise ValueError('Z Score Scaling is only compatible with regression datasets.')
+            raise ValueError('T Score Scaling is only compatible with regression datasets.')
 
     def calibrate(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
@@ -173,25 +239,43 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
 
 class TCrudeCalibrator(UncertaintyCalibrator):
-    def __init__(self, uncertainty_method: str, interval_percentile: int, calibration_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(uncertainty_method, interval_percentile, calibration_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
-        if self.interval_percentile is None: # stdev metric
-            self.label = f'{uncertainty_method}_tcrude_stdev'
-        else:
-            self.label = f'{uncertainty_method}_tcrude_{interval_percentile}interval'
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        self.label = f'{uncertainty_method}_tcrude_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != 'regression':
-            raise ValueError('Z Score Scaling is only compatible with regression datasets.')
+            raise ValueError('T Score Scaling is only compatible with regression datasets.')
 
     def calibrate(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         abs_zscore_preds = np.abs(uncal_preds - targets) / np.sqrt(uncal_vars)
-        if self.interval_percentile is None: # stdev metric
-            self.interval_percentile = erf(1/np.sqrt(2))*100
         interval_scaling = np.percentile(abs_zscore_preds, self.interval_percentile, axis=0, keepdims=True)
         self.scaling = interval_scaling
 
@@ -203,7 +287,7 @@ class TCrudeCalibrator(UncertaintyCalibrator):
 def uncertainty_calibrator_builder(
     calibration_method: str,
     uncertainty_method: str,
-    calibration_gaussian_metric: str,
+    regression_calibrator_metric: str,
     interval_percentile: int,
     calibration_data: MoleculeDataset,
     models: Iterator[MoleculeModel],
@@ -228,7 +312,7 @@ def uncertainty_calibrator_builder(
     else:
         calibrator = calibrator_class(
             uncertainty_method=uncertainty_method,
-            calibration_gaussian_metric=calibration_gaussian_metric,
+            regression_calibrator_metric=regression_calibrator_metric,
             interval_percentile=interval_percentile,
             calibration_data=calibration_data,
             models=models,
