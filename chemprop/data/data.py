@@ -400,7 +400,7 @@ class MoleculeDataset(Dataset):
         """
 
         """
-        if not hasattr(self._data[0], 'gt_targets'):
+        if len(self._data) == 0 or not hasattr(self._data[0], 'gt_targets'):
             return None
 
         return [d.gt_targets for d in self._data]
@@ -409,7 +409,7 @@ class MoleculeDataset(Dataset):
         """
 
         """
-        if not hasattr(self._data[0], 'lt_targets'):
+        if len(self._data) == 0 or not hasattr(self._data[0], 'lt_targets'):
             return None
 
         return [d.lt_targets for d in self._data]
@@ -713,7 +713,7 @@ class MoleculeDataLoader(DataLoader):
         if self._class_balance or self._shuffle:
             raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
         
-        if not hasattr(self._dataset[0],'gt_targets'):
+        if len(self._dataset) == 0 or not hasattr(self._dataset[0], 'gt_targets'):
             return None
 
         return [self._dataset[index].gt_targets for index in self._sampler]
@@ -728,7 +728,7 @@ class MoleculeDataLoader(DataLoader):
         if self._class_balance or self._shuffle:
             raise ValueError('Cannot safely extract targets when class balance or shuffle are enabled.')
 
-        if not hasattr(self._dataset[0],'lt_targets'):
+        if len(self._dataset) == 0 or not hasattr(self._dataset[0], 'lt_targets'):
             return None
 
         return [self._dataset[index].lt_targets for index in self._sampler]
