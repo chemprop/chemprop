@@ -43,13 +43,13 @@ def predict(model: MoleculeModel,
         batch_preds = batch_preds.data.cpu().numpy()
 
         if model.loss_function == 'mve':
-            batch_preds, batch_var = np.split(batch_preds, batch_preds.shape[1]//2, axis=1)
+            batch_preds, batch_var = np.split(batch_preds, 2, axis=1)
         elif model.loss_function == 'evidential':
             if model.classification:
                 batch_alphas = np.reshape(batch_preds,[batch_preds.shape[0], batch_preds.shape[1]//2, 2])
                 batch_preds = batch_alphas[:,:,1] / np.sum(batch_alphas, axis=2) # shape(data, tasks, 2)
             else: # regression
-                batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(batch_preds, batch_preds.shape[1]//4, axis=1)
+                batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(batch_preds, 4, axis=1)
 
         # Inverse scale if regression
         if scaler is not None:

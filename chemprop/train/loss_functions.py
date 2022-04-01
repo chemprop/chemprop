@@ -200,7 +200,7 @@ def normal_mve(pred_values, targets):
     :return: A tensor loss value.
     """
     # Unpack combined prediction values
-    pred_means, pred_var = torch.split(pred_values, pred_values.size[1]//2, axis=1)
+    pred_means, pred_var = torch.split(pred_values, pred_values.shape[1]//2, dim=1)
     pred_means = pred_means.to(pred_values.device)
     pred_var = pred_var.to(pred_values.device)
 
@@ -286,7 +286,7 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     :return: Loss
     """
     # Unpack combined prediction values\
-    mu, v, alpha, beta = np.split(pred_values, pred_values.shape[1]//4, axis=1)
+    mu, v, alpha, beta = np.split(pred_values, 4, axis=1)
     torch_device = pred_values.device
     mu, v, alpha, beta = mu.to(torch_device), v.to(torch_device), alpha.to(torch_device), beta.to(torch_device)
 

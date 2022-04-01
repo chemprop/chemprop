@@ -46,7 +46,7 @@ class MoleculeModel(nn.Module):
             self.multiclass_softmax = nn.Softmax(dim=2)
 
         if self.loss_function in ['mve', 'evidential']:
-            self.softplus = nn.SoftPlus()
+            self.softplus = nn.Softplus()
 
         self.create_encoder(args)
         self.create_ffn(args)
@@ -193,13 +193,13 @@ class MoleculeModel(nn.Module):
         if self.classification and not (self.training and self.no_training_normalization) and self.loss_function != 'evidential':
             output = self.sigmoid(output)
         if self.multiclass:
-            output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
+            output = output.reshape((output.shape[0], -1, self.num_classes))  # batch size x num targets x num classes per target
             if not (self.training and self.no_training_normalization):
                 output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
 
         # Modify multi-input loss functions
         if self.loss_function == 'mve':
-            means, variances = torch.split(output, output.size[1]//2, axis=1)
+            means, variances = torch.split(output, output.shape[1]//2, dim=1)
             means, variances = means.to(output.device), variances.to(output.device)
             variances = self.softplus(variances)
             output = torch.cat([means,variances], axis=1)

@@ -28,6 +28,7 @@ class UncertaintyPredictor:
         self.uncal_vars = None
         self.uncal_confidence = None
         self.uncal_output = None
+        self.num_models = len(self.models)
 
         self.raise_argument_errors()
         self.test_data_loader=MoleculeDataLoader(
@@ -76,8 +77,7 @@ class MVEPredictor(UncertaintyPredictor):
             raise ValueError('In order to use mve uncertainty, trained models must have used mve loss function.')
 
     def calculate_predictions(self):
-        num_models = len(self.models)
-        for i in range(num_models):
+        for i in range(self.num_models):
 
             scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
             if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
@@ -104,10 +104,10 @@ class MVEPredictor(UncertaintyPredictor):
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
 
-        uncal_preds = sum_preds / num_models
-        uncal_vars = (sum_vars + sum_squared) / num_models - np.square(sum_preds / num_models)
-        uncal_preds, uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-    
+        uncal_preds = sum_preds / self.num_models
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(sum_preds / self.num_models)
+        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+
     def get_uncal_output(self):
         return self.uncal_vars
 
@@ -123,8 +123,7 @@ class EnsemblePredictor(UncertaintyPredictor):
             raise ValueError('Ensemble method for uncertainty is only available when multiple models are provided.')
     
     def calculate_predictions(self):
-        num_models = len(self.models)
-        for i in range(num_models):
+        for i in range(self.num_models):
             scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
             if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
                 self.test_data.reset_features_and_targets()
@@ -146,8 +145,8 @@ class EnsemblePredictor(UncertaintyPredictor):
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
-        self.uncal_preds = sum_preds / num_models
-        self.uncal_vars = sum_squared / num_models - np.square(sum_preds) / num_models ** 2
+        self.uncal_preds = sum_preds / self.num_models
+        self.uncal_vars = sum_squared / self.num_models - np.square(sum_preds) / self.num_models ** 2
     
     def get_uncal_output(self):
         return self.uncal_vars
@@ -167,8 +166,7 @@ class SigmoidPredictor(UncertaintyPredictor):
             raise ValueError('Sigmoid uncertainty method must be used with dataset types classification or multiclass.')
     
     def calculate_predictions(self):
-        num_models = len(self.models)
-        for i in range(num_models):
+        for i in range(self.num_models):
             scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
             if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
                 self.test_data.reset_features_and_targets()
@@ -188,7 +186,7 @@ class SigmoidPredictor(UncertaintyPredictor):
                 sum_preds = np.array(preds)
             else:
                 sum_preds += np.array(preds)
-        self.uncal_preds = sum_preds / num_models
+        self.uncal_preds = sum_preds / self.num_models
         self.uncal_confidence = self.uncal_preds
     
     def get_uncal_output(self):
