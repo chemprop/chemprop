@@ -205,6 +205,19 @@ def uncertainty_predictor_builder(uncertainty_method: str,
     """
     
     """
+    if uncertainty_method is None:
+        if loss_function == 'mve':
+            uncertainty_method = 'mve'
+        elif dataset_type == 'regression':
+            if len(models) > 1:
+                uncertainty_method = 'ensemble'
+            else:
+                uncertainty_method = 'dropout'
+        elif dataset_type in ['classification', 'multiclass']:
+            uncertainty_method = 'sigmoid'
+        elif dataset_type == 'spectra':
+            raise ValueError('Uncertainty quantification not currently enabled for spectra')
+
     supported_predictors = {
         'mve': MVEPredictor,
         'ensemble': EnsemblePredictor,

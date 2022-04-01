@@ -264,6 +264,14 @@ def uncertainty_calibrator_builder(
     """
     
     """
+    if calibration_method is None:
+        if dataset_type == 'regression':
+            if regression_calibrator_metric == 'stdev':
+                calibration_method = 'zscaling'
+            else:
+                calibration_method = 'zelikman_interval'
+
+
     supported_calibrators = {
         'zscaling': ZScalingCalibrator,
         'tscaling': TScalingCalibrator,

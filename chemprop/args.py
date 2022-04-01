@@ -839,9 +839,17 @@ class HyperoptArgs(TrainArgs):
 class UncertaintyArgs(PredictArgs):
     """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
 
-    uncertainty_method: Literal['mve', 'ensemble', 'evidential_epistemic', 'evidential_aleatoric', 'evidential_class', 'sigmoid'] = None
+    uncertainty_method: Literal[
+        'mve',
+        'ensemble',
+        'evidential_epistemic',
+        'evidential_aleatoric',
+        'evidential_total',
+        'evidential_class',
+        'sigmoid'
+    ] = None
     """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval'] = 'zscaling'
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval'] = None
     """The method used for calibrating uncertainty estimates"""
     calibration_interval_percentile: float = 95
     """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
