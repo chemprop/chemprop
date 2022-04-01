@@ -1,54 +1,66 @@
-from typing import List, Tuple, Union
+from dataclasses import InitVar, dataclass, field, fields
+from typing import Dict, List, Tuple, Union
 from itertools import zip_longest
 import logging
 
 from rdkit import Chem
+from rdkit.Chem.rdchem import HybridizationType
 import torch
 import numpy as np
 
 from chemprop.rdkit import make_mol
 
-class Featurization_parameters:
-    """
-    A class holding molecule featurization parameters as attributes.
-    """
-    def __init__(self) -> None:
+@dataclass
+class AtomFeatureParams:
+    max_atomic_num: InitVar[int] = 100
+    atomic_num: List[int] = field(init=False)
+    degree: List[int] = field(default_factory=lambda: [0, 1, 2, 3, 4, 5])
+    formal_charge: List[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
+    chiral_tag: List[int] = field(default_factory=lambda: [0, 1, 2, 3])
+    num_Hs: List[int] = field(default_factory=lambda: [0, 1, 2, 3, 4])
+    hybridization: List[HybridizationType] = field(default_factory=lambda: [
+        HybridizationType.SP,
+        HybridizationType.SP2,
+        HybridizationType.SP3,
+        HybridizationType.SP3D,
+        HybridizationType.SP3D2
+    ])
 
-        # Atom feature sizes
-        self.MAX_ATOMIC_NUM = 100
-        self.ATOM_FEATURES = {
-            'atomic_num': list(range(self.MAX_ATOMIC_NUM)),
-            'degree': [0, 1, 2, 3, 4, 5],
-            'formal_charge': [-1, -2, 1, 2, 0],
-            'chiral_tag': [0, 1, 2, 3],
-            'num_Hs': [0, 1, 2, 3, 4],
-            'hybridization': [
-                Chem.rdchem.HybridizationType.SP,
-                Chem.rdchem.HybridizationType.SP2,
-                Chem.rdchem.HybridizationType.SP3,
-                Chem.rdchem.HybridizationType.SP3D,
-                Chem.rdchem.HybridizationType.SP3D2
-            ],
-        }
+    def __post_init__(self, max_atomic_num: int):
+        self.atomic_num = list(range(max_atomic_num))
+    
+    def __len__(self):
+        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon values and 2 at the end to account for aromaticity and mass"""
+        return sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
 
-        # Distance feature sizes
-        self.PATH_DISTANCE_BINS = list(range(10))
-        self.THREE_D_DISTANCE_MAX = 20
-        self.THREE_D_DISTANCE_STEP = 1
-        self.THREE_D_DISTANCE_BINS = list(range(0, self.THREE_D_DISTANCE_MAX + 1, self.THREE_D_DISTANCE_STEP))
 
-        # len(choices) + 1 to include room for uncommon values; + 2 at end for IsAromatic and mass
-        self.ATOM_FDIM = sum(len(choices) + 1 for choices in self.ATOM_FEATURES.values()) + 2
-        self.EXTRA_ATOM_FDIM = 0
-        self.BOND_FDIM = 14
-        self.EXTRA_BOND_FDIM = 0
-        self.REACTION_MODE = None
-        self.EXPLICIT_H = False
-        self.REACTION = False
-        self.ADDING_H = False
+@dataclass
+class FeaturizationParams:
+    """A class holding molecule featurization parameters as attributes."""
+    max_atomic_num: int = 100
+    atom_features: Dict = field(init=False)
+    path_distance_bins: List[int] = field(default_factory=lambda: list(range(10)))
+    three_d_distance_max: int = 20
+    three_d_distance_step: int = 1
+    three_d_distance_bins: List[int] = field(init=False)
+    atom_fdim: int = field(init=False)
+    extra_atom_fdim: int = 0
+    bond_fdim: int = 14
+    extra_bond_fdim: int = 0
+    reaction_mode: bool = None
+    explicit_H: bool = False
+    reaction: bool = False
+    adding_H: bool = False
 
-# Create a global parameter object for reference throughout this module
-PARAMS = Featurization_parameters()
+    def __post_init__(self):
+        self.atom_features = AtomFeatureParams(self.max_atomic_num)
+        self.three_d_distance_bins = list(
+            range(0, self.three_d_distance_max + 1, self.three_d_distance_step)
+        )
+        self.atom_fdim = len(self.atom_features)
+
+
+PARAMS = FeaturizationParams()
 
 
 def reset_featurization_parameters(logger: logging.Logger = None) -> None:
@@ -61,7 +73,7 @@ def reset_featurization_parameters(logger: logging.Logger = None) -> None:
         debug = print
     debug('Setting molecule featurization parameters to default.')
     global PARAMS
-    PARAMS = Featurization_parameters()
+    PARAMS = FeaturizationParams()
 
 
 def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = False) -> int:
@@ -72,27 +84,10 @@ def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = Fals
     :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None
     :return: The dimensionality of the atom feature vector.
     """
-    if PARAMS.REACTION_MODE:
-        return (not overwrite_default_atom) * PARAMS.ATOM_FDIM + is_reaction * PARAMS.EXTRA_ATOM_FDIM
+    if PARAMS.reaction_mode:
+        return (not overwrite_default_atom) * PARAMS.atom_fdim + is_reaction * PARAMS.extra_atom_fdim
     else:
-        return (not overwrite_default_atom) * PARAMS.ATOM_FDIM + PARAMS.EXTRA_ATOM_FDIM
-
-
-def set_explicit_h(explicit_h: bool) -> None:
-    """
-    Sets whether RDKit molecules will be constructed with explicit Hs.
-
-    :param explicit_h: Boolean whether to keep explicit Hs from input.
-    """
-    PARAMS.EXPLICIT_H = explicit_h
-
-def set_adding_hs(adding_hs: bool) -> None:
-    """
-    Sets whether RDKit molecules will be constructed with adding the Hs to them.
-
-    :param adding_hs: Boolean whether to add Hs to the molecule.
-    """
-    PARAMS.ADDING_H = adding_hs
+        return (not overwrite_default_atom) * PARAMS.atom_fdim + PARAMS.extra_atom_fdim
 
 
 def set_reaction(reaction: bool, mode: str) -> None:
@@ -103,23 +98,23 @@ def set_reaction(reaction: bool, mode: str) -> None:
     :param mode: Reaction mode to construct atom and bond feature vectors.
 
     """
-    PARAMS.REACTION = reaction
+    PARAMS.reaction = reaction
     if reaction:
-        PARAMS.EXTRA_ATOM_FDIM = PARAMS.ATOM_FDIM - PARAMS.MAX_ATOMIC_NUM - 1
-        PARAMS.EXTRA_BOND_FDIM = PARAMS.BOND_FDIM
-        PARAMS.REACTION_MODE = mode
+        PARAMS.extra_atom_fdim = PARAMS.atom_fdim - PARAMS.max_atomic_num - 1
+        PARAMS.extra_bond_fdim = PARAMS.bond_fdim
+        PARAMS.reaction_mode = mode
         
 def is_explicit_h(is_mol: bool = True) -> bool:
     r"""Returns whether to retain explicit Hs (for reactions only)"""
     if not is_mol:
-        return PARAMS.EXPLICIT_H
+        return PARAMS.explicit_H
     return False
 
 
 def is_adding_hs(is_mol: bool = True) -> bool:
     r"""Returns whether to add explicit Hs to the mol (not for reactions)"""
     if is_mol:
-        return PARAMS.ADDING_H
+        return PARAMS.adding_H
     return False
     
 
@@ -127,19 +122,14 @@ def is_reaction(is_mol: bool = True) -> bool:
     r"""Returns whether to use reactions as input"""
     if is_mol:
         return False
-    if PARAMS.REACTION: #(and not is_mol, checked above)
+    if PARAMS.reaction: #(and not is_mol, checked above)
         return True
     return False
 
 
 def reaction_mode() -> str:
     r"""Returns the reaction mode"""
-    return PARAMS.REACTION_MODE
-
-
-def set_extra_atom_fdim(extra):
-    """Change the dimensionality of the atom feature vector."""
-    PARAMS.EXTRA_ATOM_FDIM = extra
+    return PARAMS.reaction_mode
 
 
 def get_bond_fdim(atom_messages: bool = False,
@@ -158,17 +148,12 @@ def get_bond_fdim(atom_messages: bool = False,
     :return: The dimensionality of the bond feature vector.
     """
 
-    if PARAMS.REACTION_MODE:
-        return (not overwrite_default_bond) * PARAMS.BOND_FDIM + is_reaction * PARAMS.EXTRA_BOND_FDIM + \
+    if PARAMS.reaction_mode:
+        return (not overwrite_default_bond) * PARAMS.bond_fdim + is_reaction * PARAMS.extra_bond_fdim + \
             (not atom_messages) * get_atom_fdim(overwrite_default_atom=overwrite_default_atom, is_reaction=is_reaction)
     else:
-        return (not overwrite_default_bond) * PARAMS.BOND_FDIM + PARAMS.EXTRA_BOND_FDIM + \
+        return (not overwrite_default_bond) * PARAMS.bond_fdim + PARAMS.extra_bond_fdim + \
             (not atom_messages) * get_atom_fdim(overwrite_default_atom=overwrite_default_atom, is_reaction=is_reaction)
-
-
-def set_extra_bond_fdim(extra):
-    """Change the dimensionality of the bond feature vector."""
-    PARAMS.EXTRA_BOND_FDIM = extra
 
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
@@ -196,14 +181,14 @@ def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -
     :return: A list containing the atom features.
     """
     if atom is None:
-        features = [0] * PARAMS.ATOM_FDIM
+        features = [0] * PARAMS.atom_fdim
     else:
-        features = onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.ATOM_FEATURES['atomic_num']) + \
-            onek_encoding_unk(atom.GetTotalDegree(), PARAMS.ATOM_FEATURES['degree']) + \
-            onek_encoding_unk(atom.GetFormalCharge(), PARAMS.ATOM_FEATURES['formal_charge']) + \
-            onek_encoding_unk(int(atom.GetChiralTag()), PARAMS.ATOM_FEATURES['chiral_tag']) + \
-            onek_encoding_unk(int(atom.GetTotalNumHs()), PARAMS.ATOM_FEATURES['num_Hs']) + \
-            onek_encoding_unk(int(atom.GetHybridization()), PARAMS.ATOM_FEATURES['hybridization']) + \
+        features = onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.atom_features.atomic_num) + \
+            onek_encoding_unk(atom.GetTotalDegree(), PARAMS.atom_features.degree) + \
+            onek_encoding_unk(atom.GetFormalCharge(), PARAMS.atom_features.formal_charge) + \
+            onek_encoding_unk(int(atom.GetChiralTag()), PARAMS.atom_features.chiral_tag) + \
+            onek_encoding_unk(int(atom.GetTotalNumHs()), PARAMS.atom_features.num_Hs) + \
+            onek_encoding_unk(int(atom.GetHybridization()), PARAMS.atom_features.hybridization) + \
             [1 if atom.GetIsAromatic() else 0] + \
             [atom.GetMass() * 0.01]  # scaled to about the same range as other features
         if functional_groups is not None:
@@ -219,10 +204,10 @@ def atom_features_zeros(atom: Chem.rdchem.Atom) -> List[Union[bool, int, float]]
     :return: A list containing the atom features.
     """
     if atom is None:
-        features = [0] * PARAMS.ATOM_FDIM
+        features = [0] * PARAMS.atom_fdim
     else:
-        features = onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.ATOM_FEATURES['atomic_num']) + \
-            [0] * (PARAMS.ATOM_FDIM - PARAMS.MAX_ATOMIC_NUM - 1) #set other features to zero
+        features = onek_encoding_unk(atom.GetAtomicNum() - 1, PARAMS.atom_features.atomic_num) + \
+            [0] * (PARAMS.atom_fdim - PARAMS.max_atomic_num - 1) #set other features to zero
     return features
 
 
@@ -234,7 +219,7 @@ def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
     :return: A list containing the bond features.
     """
     if bond is None:
-        fbond = [1] + [0] * (PARAMS.BOND_FDIM - 1)
+        fbond = [1] + [0] * (PARAMS.bond_fdim - 1)
     else:
         bt = bond.GetBondType()
         fbond = [
@@ -423,11 +408,11 @@ class MolGraph:
             if self.reaction_mode in ['reac_diff', 'prod_diff', 'reac_diff_balance', 'prod_diff_balance']:
                 f_atoms_diff = [list(map(lambda x, y: x - y, ii, jj)) for ii, jj in zip(f_atoms_prod, f_atoms_reac)]
             if self.reaction_mode in ['reac_prod', 'reac_prod_balance']:
-                self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_reac, f_atoms_prod)]
+                self.f_atoms = [x+y[PARAMS.max_atomic_num+1:] for x,y in zip(f_atoms_reac, f_atoms_prod)]
             elif self.reaction_mode in ['reac_diff', 'reac_diff_balance']:
-                self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_reac, f_atoms_diff)]
+                self.f_atoms = [x+y[PARAMS.max_atomic_num+1:] for x,y in zip(f_atoms_reac, f_atoms_diff)]
             elif self.reaction_mode in ['prod_diff', 'prod_diff_balance']:
-                self.f_atoms = [x+y[PARAMS.MAX_ATOMIC_NUM+1:] for x,y in zip(f_atoms_prod, f_atoms_diff)]
+                self.f_atoms = [x+y[PARAMS.max_atomic_num+1:] for x,y in zip(f_atoms_prod, f_atoms_diff)]
             self.n_atoms = len(self.f_atoms)
             n_atoms_reac = mol_reac.GetNumAtoms()
 
