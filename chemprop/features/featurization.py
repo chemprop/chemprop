@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass, field, fields
 from itertools import zip_longest
 import logging
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 from rdkit import Chem
@@ -29,9 +29,9 @@ class AtomFeaturizationParams:
 
     def __post_init__(self, max_atomic_num: int):
         self.atomic_num = list(range(max_atomic_num))
-    
+
     def __len__(self):
-        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon 
+        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon
         values and 2 at the end to account for aromaticity and mass"""
         return sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
 
@@ -60,9 +60,11 @@ class FeaturizationParams:
         )
         self.atom_fdim = len(self.atom_features)
 
-# have to do some wonkiness to max_atomic_num to work as a property
+
+# have to do some wonkiness to get `max_atomic_num` to work as a property
 def get_max_atomic_num(self) -> int:
     return self.__max_atomic_num
+
 
 def set_max_atomic_num(self, max_atomic_num: int):
     self.__max_atomic_num = max_atomic_num
@@ -105,7 +107,7 @@ def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = Fals
 def set_reaction(reaction: bool, mode: str) -> None:
     """
     Sets whether to use a reaction or molecule as input and adapts feature dimensions.
- 
+
     :param reaction: Boolean whether to except reactions as input.
     :param mode: Reaction mode to construct atom and bond feature vectors.
 
@@ -115,8 +117,8 @@ def set_reaction(reaction: bool, mode: str) -> None:
         PARAMS.extra_atom_fdim = PARAMS.atom_fdim - PARAMS.max_atomic_num - 1
         PARAMS.extra_bond_fdim = PARAMS.bond_fdim
         PARAMS.reaction_mode = mode
-        
-        
+
+
 def is_explicit_h(is_mol: bool = True) -> bool:
     r"""Returns whether to retain explicit Hs (for reactions only)"""
     if not is_mol:
@@ -129,7 +131,7 @@ def is_adding_hs(is_mol: bool = True) -> bool:
     if is_mol:
         return PARAMS.adding_H
     return False
-    
+
 
 def is_reaction(is_mol: bool = True) -> bool:
     r"""Returns whether to use reactions as input"""
@@ -180,7 +182,8 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None
+def atom_features(
+    atom: Chem.rdchem.Atom, functional_groups: List[int] = None
 ) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
