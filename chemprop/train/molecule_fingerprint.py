@@ -43,7 +43,7 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
         PARAMS.extra_bond_fdim = train_args.bond_features_size
 
     PARAMS.explicit_H = train_args.explicit_h
-    PARAMS.adding_H = train_args.adding_h
+    PARAMS.adding_H = args.adding_h
     if train_args.reaction:
         set_reaction(train_args.reaction, train_args.reaction_mode)
     elif train_args.reaction_solvent:

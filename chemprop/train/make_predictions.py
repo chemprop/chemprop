@@ -103,7 +103,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 
     #set explicit H option and reaction option
     PARAMS.explicit_H = train_args.explicit_h
-    PARAMS.adding_H = train_args.adding_h
+    PARAMS.adding_H = args.adding_h
     if train_args.reaction:
         set_reaction(train_args.reaction, train_args.reaction_mode)
     elif train_args.reaction_solvent:
