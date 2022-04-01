@@ -9,7 +9,7 @@ from chemprop.args import FingerprintArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers, update_prediction_args
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.features import set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters, set_extra_atom_fdim, set_extra_bond_fdim
+from chemprop.features import PARAMS, set_reaction, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 
 @timeit()
@@ -37,13 +37,13 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
     #set explicit H option and reaction option
     reset_featurization_parameters()
     if args.atom_descriptors == 'feature':
-        set_extra_atom_fdim(train_args.atom_features_size)
+        PARAMS.extra_atom_fdim = train_args.atom_features_size
 
     if args.bond_features_path is not None:
-        set_extra_bond_fdim(train_args.bond_features_size)
+        PARAMS.extra_bond_fdim = train_args.bond_features_size
 
-    set_explicit_h(train_args.explicit_h)
-    set_adding_hs(args.adding_h)
+    PARAMS.explicit_H = train_args.explicit_h
+    PARAMS.adding_H = train_args.adding_h
     if train_args.reaction:
         set_reaction(train_args.reaction, train_args.reaction_mode)
     elif train_args.reaction_solvent:
