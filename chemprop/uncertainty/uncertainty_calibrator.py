@@ -7,7 +7,7 @@ from scipy.stats import norm, t
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
-from .uncertainty_predictor import uncertainty_predictor_builder
+from .uncertainty_predictor import uncertainty_predictor_builder, UncertaintyPredictor
 from .utils import calibration_normal_auc
 
 class UncertaintyCalibrator:
@@ -62,7 +62,7 @@ class UncertaintyCalibrator:
         """
         pass
 
-    def apply_calibration(self, uncal_preds, uncal_vars, uncal_confidence, uncertainty_method):
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         """
         Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
         """
@@ -127,7 +127,9 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             interval_scaling = stdev_scaling * erfinv(self.interval_percentile/100) * np.sqrt(2)
             self.scaling = interval_scaling
 
-    def apply_calibration(self, uncal_preds, uncal_vars, uncal_confidence, uncertainty_method):
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds()
+        uncal_vars = uncal_predictor.get_uncal_vars()
         cal_stdev = np.sqrt(uncal_vars) * self.scaling
         return uncal_preds, cal_stdev.tolist()
 
@@ -191,7 +193,9 @@ class TScalingCalibrator(UncertaintyCalibrator):
             interval_scaling = stdev_scaling * t.ppf((self.interval_percentile/100 +1) / 2, df = self.num_models - 1)
             self.scaling = interval_scaling
 
-    def apply_calibration(self, uncal_preds, uncal_vars, uncal_confidence, uncertainty_method):
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds()
+        uncal_vars = uncal_predictor.get_uncal_vars()
         cal_stdev = np.sqrt(uncal_vars / (self.num_models -1 )) * self.scaling
         return uncal_preds, cal_stdev.tolist()
 
@@ -237,7 +241,9 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         interval_scaling = np.percentile(abs_zscore_preds, self.interval_percentile, axis=0, keepdims=True)
         self.scaling = interval_scaling
 
-    def apply_calibration(self, uncal_preds, uncal_vars, uncal_confidence, uncertainty_method):
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds()
+        uncal_vars = uncal_predictor.get_uncal_vars()
         cal_stdev = np.sqrt(uncal_vars) * self.scaling
         return uncal_preds, cal_stdev.tolist()
 

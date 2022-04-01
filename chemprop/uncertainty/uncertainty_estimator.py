@@ -35,14 +35,12 @@ class UncertaintyEstimator:
         Return values for the prediction and uncertainty metric. 
         If a calibrator is provided, returns a calibrated metric of the type specified.
         """
-        uncal_preds = self.predictor.get_uncal_preds()
 
         if calibrator is not None:
             self.label = calibrator.label
-            uncal_vars = self.predictor.get_uncal_vars()
-            uncal_confidence = self.predictor.get_uncal_confidence()
-            cal_preds, cal_unc = calibrator.apply_calibration(uncal_preds=uncal_preds, uncal_vars=uncal_vars, uncal_confidence=uncal_confidence, uncertainty_method=self.uncertainty_method)
+            cal_preds, cal_unc = calibrator.apply_calibration(uncal_predictor=self.predictor)
             return cal_preds, cal_unc
         else:
+            uncal_preds = self.predictor.get_uncal_preds()
             uncal_output = self.predictor.get_uncal_output()
             return uncal_preds, uncal_output
