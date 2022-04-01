@@ -1,17 +1,18 @@
 from dataclasses import InitVar, dataclass, field, fields
-from typing import Dict, List, Tuple, Union
 from itertools import zip_longest
 import logging
+from typing import Dict, List, Tuple, Union
 
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 import torch
-import numpy as np
 
 from chemprop.rdkit import make_mol
 
+
 @dataclass
-class AtomFeatureParams:
+class AtomFeaturizationParams:
     max_atomic_num: InitVar[int] = 100
     atomic_num: List[int] = field(init=False)
     degree: List[int] = field(default_factory=lambda: [0, 1, 2, 3, 4, 5])
@@ -30,15 +31,15 @@ class AtomFeatureParams:
         self.atomic_num = list(range(max_atomic_num))
     
     def __len__(self):
-        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon values and 2 at the end to account for aromaticity and mass"""
+        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon 
+        values and 2 at the end to account for aromaticity and mass"""
         return sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
 
 
 @dataclass
 class FeaturizationParams:
-    """A class holding molecule featurization parameters as attributes."""
     max_atomic_num: int = 100
-    atom_features: Dict = field(init=False)
+    atom_features: AtomFeaturizationParams = field(init=False)
     path_distance_bins: List[int] = field(default_factory=lambda: list(range(10)))
     three_d_distance_max: int = 20
     three_d_distance_step: int = 1
@@ -53,12 +54,23 @@ class FeaturizationParams:
     adding_H: bool = False
 
     def __post_init__(self):
-        self.atom_features = AtomFeatureParams(self.max_atomic_num)
+        self.atom_features = AtomFeaturizationParams(self.max_atomic_num)
         self.three_d_distance_bins = list(
             range(0, self.three_d_distance_max + 1, self.three_d_distance_step)
         )
         self.atom_fdim = len(self.atom_features)
 
+# have to do some wonkiness to max_atomic_num to work as a property
+def get_max_atomic_num(self) -> int:
+    return self.__max_atomic_num
+
+def set_max_atomic_num(self, max_atomic_num: int):
+    self.__max_atomic_num = max_atomic_num
+    self.atom_features = AtomFeaturizationParams(max_atomic_num)
+    self.atom_fdim = len(self.atom_features)
+
+
+FeaturizationParams.max_atomic_num = property(get_max_atomic_num, set_max_atomic_num)
 
 PARAMS = FeaturizationParams()
 
@@ -104,6 +116,7 @@ def set_reaction(reaction: bool, mode: str) -> None:
         PARAMS.extra_bond_fdim = PARAMS.bond_fdim
         PARAMS.reaction_mode = mode
         
+        
 def is_explicit_h(is_mol: bool = True) -> bool:
     r"""Returns whether to retain explicit Hs (for reactions only)"""
     if not is_mol:
@@ -125,11 +138,6 @@ def is_reaction(is_mol: bool = True) -> bool:
     if PARAMS.reaction: #(and not is_mol, checked above)
         return True
     return False
-
-
-def reaction_mode() -> str:
-    r"""Returns the reaction mode"""
-    return PARAMS.reaction_mode
 
 
 def get_bond_fdim(atom_messages: bool = False,
@@ -172,7 +180,8 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -> List[Union[bool, int, float]]:
+def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None
+) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
 
@@ -306,7 +315,7 @@ class MolGraph:
         self.is_reaction = is_reaction(self.is_mol)
         self.is_explicit_h = is_explicit_h(self.is_mol)
         self.is_adding_hs = is_adding_hs(self.is_mol)
-        self.reaction_mode = reaction_mode()
+        self.reaction_mode = PARAMS.reaction_mode
         
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
