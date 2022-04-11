@@ -1,8 +1,8 @@
 from typing import Iterator
 
 import numpy as np
-from scipy.special import erfinv, erf
-from scipy.optimize import root, fmin
+from scipy.special import erfinv, erf, softmax
+from scipy.optimize import least_squares, fmin
 from scipy.stats import norm, t
 
 from chemprop.data import MoleculeDataset, StandardScaler
@@ -33,6 +33,7 @@ class UncertaintyCalibrator:
         self.regression_calibrator_metric = regression_calibrator_metric
         self.interval_percentile = interval_percentile
         self.dataset_type = dataset_type
+        self.loss_function = loss_function
         self.num_models = len(models)
 
         self.raise_argument_errors()
@@ -113,14 +114,14 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         zscore_preds = errors / np.sqrt(uncal_vars)
 
         def objective(scaler_values: np.ndarray):
-            scaled_vars = uncal_vars * scaler_values ** 2
+            scaled_vars = uncal_vars * np.expand_dims(scaled_vars, axis=0) ** 2
             nll = np.log(2 * np.pi * scaled_vars) / 2 + (errors) ** 2 / (2 * scaled_vars)
             nll = np.sum(nll, axis=0)
             return nll
 
-        initial_guess = np.std(zscore_preds, axis=0, keepdims=True)
-        sol = fmin(objective, initial_guess)
-        stdev_scaling = sol[0]
+        initial_guess = np.std(zscore_preds, axis=0, keepdims=False)
+        sol = least_squares(objective, initial_guess)
+        stdev_scaling = sol.x
         if self.regression_calibrator_metric == 'stdev':
             self.scaling = stdev_scaling
         else: # interval
@@ -130,7 +131,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = uncal_predictor.get_uncal_preds()
         uncal_vars = uncal_predictor.get_uncal_vars()
-        cal_stdev = np.sqrt(uncal_vars) * self.scaling
+        cal_stdev = np.sqrt(uncal_vars) * np.expand_dims(self.scaling, axis=0)
         return uncal_preds, cal_stdev.tolist()
 
 
@@ -179,14 +180,14 @@ class TScalingCalibrator(UncertaintyCalibrator):
         tscore_preds = errors / std_error_of_mean
 
         def objective(scaler_values: np.ndarray):
-            scaled_std = std_error_of_mean * scaler_values
+            scaled_std = std_error_of_mean * np.expand_dims(scaler_values, axis=0)
             likelihood = t.pdf(x=errors, df=self.num_models - 1, scale = scaled_std) # scipy t distribution pdf
             nll = np.sum(-1 * np.log(likelihood), axis=0)
             return nll
 
-        initial_guess = np.std(tscore_preds, axis=0, keepdims=True)
-        sol = fmin(objective, initial_guess)
-        stdev_scaling = sol[0]
+        initial_guess = np.std(tscore_preds, axis=0, keepdims=False)
+        sol = least_squares(objective, initial_guess)
+        stdev_scaling = sol.x
         if self.regression_calibrator_metric == 'stdev':
             self.scaling = stdev_scaling
         else: # interval
@@ -196,7 +197,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = uncal_predictor.get_uncal_preds()
         uncal_vars = uncal_predictor.get_uncal_vars()
-        cal_stdev = np.sqrt(uncal_vars / (self.num_models -1 )) * self.scaling
+        cal_stdev = np.sqrt(uncal_vars / (self.num_models -1 )) * np.expand_dims(self.scaling, axis=0)
         return uncal_preds, cal_stdev.tolist()
 
 
@@ -248,6 +249,71 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         return uncal_preds, cal_stdev.tolist()
 
 
+class MVEWeightingCalibrator(UncertaintyCalibrator):
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        self.label = f'{uncertainty_method}_zelikman_{interval_percentile}interval'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != 'regression':
+            raise ValueError('MVE Weighting is only compatible with regression datasets.')
+        if self.loss_function not in ['mve', 'evidential_epistemic', 'evidential_aleatoric', 'evidential_total']:
+            raise ValueError('MVE Weighting calibration can only be carried out with MVE or Evidential loss function models.')
+
+    def calibrate(self):
+        uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
+        individual_vars = np.array(self.calibration_predictor.get_individual_vars()) #shape(models, data, tasks)
+        targets = np.array(self.calibration_data.targets())
+        errors = uncal_preds - targets
+
+        def objective(scaler_values: np.ndarray):
+            scaler_values = np.reshape(softmax(scaler_values), [-1, 1, 1])
+            scaled_vars = np.sum(individual_vars * scaler_values, axis=0, keepdims=False)
+            nll = np.log(2 * np.pi * scaled_vars) / 2 + (errors) ** 2 / (2 * scaled_vars)
+            nll = np.sum(nll, axis=0)
+            return nll
+
+        initial_guess = np.ones_like(self.num_models)
+        sol = fmin(objective, initial_guess)
+        self.var_weighting = softmax(sol)
+        if self.regression_calibrator_metric == 'stdev':
+            self.scaling = 1
+        else: # interval
+            self.scaling = erfinv(self.interval_percentile/100) * np.sqrt(2)
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds()
+        uncal_individual_vars = uncal_predictor.get_individual_vars()
+        weighted_vars = np.sum(uncal_individual_vars * np.reshape(self.var_weighting, [-1, 1, 1]), axis=0, keepdims=False)
+        weighted_stdev = np.sqrt(weighted_vars) * self.scaling
+        return uncal_preds, weighted_stdev.tolist()
+
+
+
 def uncertainty_calibrator_builder(
     calibration_method: str,
     uncertainty_method: str,
@@ -281,7 +347,7 @@ def uncertainty_calibrator_builder(
     calibrator_class = supported_calibrators.get(calibration_method, None)
     
     if calibrator_class is None:
-        raise NotImplementedError(f'Calibrator type {calibration_method} is not currently supported. Avalable options are: {supported_calibrators.keys()}')
+        raise NotImplementedError(f'Calibrator type {calibration_method} is not currently supported. Avalable options are: {list(supported_calibrators.keys())}')
     else:
         calibrator = calibrator_class(
             uncertainty_method=uncertainty_method,

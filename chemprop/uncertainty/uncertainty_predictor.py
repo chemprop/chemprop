@@ -28,6 +28,7 @@ class UncertaintyPredictor:
         self.uncal_vars = None
         self.uncal_confidence = None
         self.uncal_output = None
+        self.individual_vars = None
         self.num_models = len(self.models)
 
         self.raise_argument_errors()
@@ -61,6 +62,10 @@ class UncertaintyPredictor:
     def get_uncal_confidence(self):
         """Return the uncalibrated confidences for the test data"""
         return self.uncal_confidence
+    
+    def get_individual_vars(self):
+        """Return the variances predicted by each individual model in an ensemble."""
+        return self.individual_vars
     
     def get_uncal_output(self):
         """Return the uncalibrated uncertainty outputs for the test data"""
@@ -99,14 +104,17 @@ class MVEPredictor(UncertaintyPredictor):
                 sum_preds = np.array(preds)
                 sum_squared = np.square(preds)
                 sum_vars = np.array(var)
+                individual_vars = [var]
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
+                individual_vars.append(var)
 
         uncal_preds = sum_preds / self.num_models
         uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(sum_preds / self.num_models)
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+        self.individual_vars = individual_vars
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -227,7 +235,7 @@ def uncertainty_predictor_builder(uncertainty_method: str,
     estimator_class = supported_predictors.get(uncertainty_method, None)
     
     if estimator_class is None:
-        raise NotImplementedError(f'Uncertainty estimator type {uncertainty_method} is not currently supported. Avalable options are: {supported_predictors.keys()}')
+        raise NotImplementedError(f'Uncertainty estimator type {uncertainty_method} is not currently supported. Avalable options are: {list(supported_predictors.keys())}')
     else:
         estimator = estimator_class(
             test_data=test_data,
