@@ -182,7 +182,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         def objective(scaler_values: np.ndarray):
             scaled_std = std_error_of_mean * np.expand_dims(scaler_values, axis=0)
             likelihood = t.pdf(x=errors, df=self.num_models - 1, scale = scaled_std) # scipy t distribution pdf
-            nll = np.sum(-1 * np.log(likelihood), axis=0)
+            nll = -1 * np.sum(np.log(likelihood), axis=0)
             return nll
 
         initial_guess = np.std(tscore_preds, axis=0, keepdims=False)
@@ -275,7 +275,10 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             batch_size=batch_size,
             num_workers=num_workers,
         )
-        self.label = f'{uncertainty_method}_zelikman_{interval_percentile}interval'
+        if self.regression_calibrator_metric == 'stdev':
+            self.label = f'{uncertainty_method}_mve_weighting_stdev'
+        else: # interval
+            self.label = f'{uncertainty_method}_mve_weighting_{interval_percentile}interval'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -342,6 +345,7 @@ def uncertainty_calibrator_builder(
         'zscaling': ZScalingCalibrator,
         'tscaling': TScalingCalibrator,
         'zelikman_interval': ZelikmanCalibrator,
+        'mve_weighting': MVEWeightingCalibrator,
     }
 
     calibrator_class = supported_calibrators.get(calibration_method, None)
