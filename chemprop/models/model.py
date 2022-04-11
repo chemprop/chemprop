@@ -23,6 +23,11 @@ class MoleculeModel(nn.Module):
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
         self.loss_function = args.loss_function
+
+        if hasattr(args, 'train_class_sizes'):
+            self.train_class_sizes = args.train_class_sizes
+        else:
+            self.train_class_sizes = None
         
         # when using cross entropy losses, no sigmoid or softmax during training. But they are needed for mcc loss.
         if self.classification or self.multiclass:

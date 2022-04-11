@@ -1,9 +1,10 @@
 from typing import Iterator
 
 import numpy as np
-from scipy.special import erfinv, erf, softmax
+from scipy.special import erfinv, erf, softmax, logit, expit
 from scipy.optimize import least_squares, fmin
 from scipy.stats import norm, t
+from sklearn.isotonic import IsotonicRegression
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
@@ -316,6 +317,150 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         return uncal_preds, weighted_stdev.tolist()
 
 
+class PlattCalibrator(UncertaintyCalibrator):
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        self.label = f'{uncertainty_method}_platt_confidence'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != 'classification':
+            raise ValueError('Platt scaling is only implemented for classification dataset types.')
+
+    def calibrate(self):
+        uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
+        targets = np.array(self.calibration_data.targets())
+        num_tasks = targets.shape[1]
+        # If train class sizes are available, set Bayes corrected calibration targets
+        if self.models[0].train_class_sizes is not None:
+            class_size_correction = True
+            train_class_sizes = []
+            for m in self.models:
+                train_class_sizes.append(m.train_class_sizes)
+            train_class_sizes = np.sum(train_class_sizes, axis = 0) # shape(tasks, 2)
+            negative_target = 1/(train_class_sizes[:,0] + 2)
+            positive_target = (train_class_sizes[:,1] + 1)/(train_class_sizes[:,1] + 2)
+            print('Platt scaling for calibration uses Bayesian correction against training set overfitting, '
+                f'replacing calibration targets [0,1] with adjusted values.')
+        else:
+            class_size_correction = False
+            print('Class sizes used in training models unavailable in checkpoints before Chemprop v1.4.2. '
+            'No Bayesian correction perfomed as part of class scaling.')
+
+        platt_parameters = []
+        for i in range(num_tasks):
+            task_targets = targets[:, i]
+            task_preds = uncal_preds[:, i]
+            if class_size_correction:
+                task_targets[task_targets == 0] = negative_target[i]
+                task_targets[task_targets == 1] = positive_target[i]
+                print(f'Platt Bayesian correction for task {i} in calibration replacing [0,1] targets with {[negative_target[i], positive_target[i]]}')
+
+            def objective(parameters: np.ndarray):
+                a = parameters[0]
+                b = parameters[1]
+                scaled_preds = expit(a * logit(task_preds) + b)
+                nll = -1 * np.sum(task_targets * np.log(scaled_preds) + (1 - task_targets) * np.log(1 - scaled_preds))
+                return nll
+
+            initial_guess = [1, 0]
+            sol = fmin(objective, initial_guess)
+            platt_parameters.append(sol)
+
+        platt_parameters = np.array(platt_parameters) # shape(task, 2)
+        self.platt_a = platt_parameters[:,0]
+        self.platt_b = platt_parameters[:,1]
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds() # shape(data, task)
+        cal_preds = expit(np.expand_dims(self.platt_a, axis=0) * logit(uncal_preds) + np.expand_dims(self.platt_b, axis=0))
+        return uncal_preds, cal_preds
+
+
+class IsotonicCalibrator(UncertaintyCalibrator):
+    def __init__(
+        self,
+        uncertainty_method: str,
+        interval_percentile: int,
+        regression_calibrator_metric: str,
+        calibration_data: MoleculeDataset,
+        models: Iterator[MoleculeModel],
+        scalers: Iterator[StandardScaler],
+        dataset_type: str,
+        loss_function: str,
+        batch_size: int,
+        num_workers: int,
+    ):
+        super().__init__(
+            uncertainty_method=uncertainty_method,
+            interval_percentile=interval_percentile,
+            regression_calibrator_metric=regression_calibrator_metric,
+            calibration_data=calibration_data,
+            models=models,
+            scalers=scalers,
+            dataset_type=dataset_type,
+            loss_function=loss_function,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+        self.label = f'{uncertainty_method}_isotonic_confidence'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != 'classification':
+            raise ValueError('Isotonic Regression is only implemented for classification dataset types.')
+
+    def calibrate(self):
+        uncal_preds = np.array(self.calibration_predictor.get_uncal_preds()) # shape(data, tasks)
+        targets = np.array(self.calibration_data.targets())
+        num_tasks = targets.shape[1]
+        # If train class sizes are available, set Bayes corrected calibration targets
+
+        isotonic_models = []
+        for i in range(num_tasks):
+            task_targets = targets[:, i]
+            task_preds = uncal_preds[:, i]
+
+            isotonic_model = IsotonicRegression(y_min=0, y_max=1, out_of_bounds='clip')
+            isotonic_model.fit(task_preds,task_targets)
+            isotonic_models.append(isotonic_model)
+
+        self.isotonic_models = isotonic_models
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = uncal_predictor.get_uncal_preds() # shape(data, task)
+        transpose_cal_preds = []
+        for i, iso_model in enumerate(self.isotonic_models):
+            task_preds = uncal_preds[:,i]
+            task_cal = iso_model.predict(task_preds)
+            transpose_cal_preds.append(task_cal)
+        cal_preds = np.transpose(transpose_cal_preds)
+        return uncal_preds, cal_preds
+
+    
 
 def uncertainty_calibrator_builder(
     calibration_method: str,
@@ -339,6 +484,8 @@ def uncertainty_calibrator_builder(
                 calibration_method = 'zscaling'
             else:
                 calibration_method = 'zelikman_interval'
+        if dataset_type == 'classification':
+            calibration_method == 'isotonic'
 
 
     supported_calibrators = {
@@ -346,6 +493,8 @@ def uncertainty_calibrator_builder(
         'tscaling': TScalingCalibrator,
         'zelikman_interval': ZelikmanCalibrator,
         'mve_weighting': MVEWeightingCalibrator,
+        'platt': PlattCalibrator,
+        'isotonic': IsotonicCalibrator,
     }
 
     calibrator_class = supported_calibrators.get(calibration_method, None)

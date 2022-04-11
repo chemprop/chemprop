@@ -849,7 +849,7 @@ class UncertaintyArgs(PredictArgs):
         'sigmoid'
     ] = None
     """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval'] = None
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt'] = None
     """The method used for calibrating uncertainty estimates"""
     calibration_interval_percentile: float = 95
     """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
