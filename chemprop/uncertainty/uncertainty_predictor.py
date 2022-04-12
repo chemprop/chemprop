@@ -75,7 +75,7 @@ class UncertaintyPredictor:
 
 class MVEPredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'mve_uncal_var'
 
     def raise_argument_errors(self):
@@ -124,7 +124,7 @@ class MVEPredictor(UncertaintyPredictor):
 
 class EnsemblePredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'ensemble_uncal_var'
 
     def raise_argument_errors(self):
@@ -164,16 +164,16 @@ class EnsemblePredictor(UncertaintyPredictor):
 
 class DropoutPredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = "dropout_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
-        if not ((self.dropout > 0.0) and (self.dropout < 1.0)):
-            raise ValueError('Dropout method for uncertainty is only available when 0 < dropout < 1.')
+        if self.num_models > 1:
+            raise ValueError('Dropout method for uncertainty should be used for a single model rather than an ensemble.')
 
     def calculate_predictions(self):
-        for _ in range(self.dropout_sampling_size):
+        for i in range(self.dropout_sampling_size):
             scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[0]
             if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
                 self.test_data.reset_features_and_targets()
@@ -207,7 +207,7 @@ class SigmoidPredictor(UncertaintyPredictor):
     Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence.
     """
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'sigmoid_uncal_confidence'
 
     def raise_argument_errors(self):
