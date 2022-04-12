@@ -846,9 +846,12 @@ class UncertaintyArgs(PredictArgs):
         'evidential_aleatoric',
         'evidential_total',
         'evidential_class',
-        'sigmoid'
+        'sigmoid',
+        'dropout'
     ] = None
     """The method of calculating uncertainty."""
+    dropout_sampling_size: int = 10
+    """Sampling size for Monte Carlo dropout uncertainty estimation. Must be greater than 1."""
     calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt'] = None
     """The method used for calibrating uncertainty estimates"""
     calibration_interval_percentile: float = 95
@@ -878,6 +881,9 @@ class UncertaintyArgs(PredictArgs):
 
         if self.individual_ensemble_predictions == True:
             raise ValueError('The argument `--individual_ensemble_predictions` is not supported in uncertainty jobs.')
+
+        if self.dropout_sampling_size <= 1:
+            raise ValueError('The argument `--dropout_sampling_size` must be an integer greater than 1.')
 
         # Validate that features provided for the prediction test set are also provided for the calibration set
         for (features_argument, base_features_path, cal_features_path) in [
