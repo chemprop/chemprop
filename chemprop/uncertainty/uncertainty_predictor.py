@@ -120,6 +120,168 @@ class MVEPredictor(UncertaintyPredictor):
         return self.uncal_vars
 
 
+class EvidentialTotalPredictor(UncertaintyPredictor):
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'evidential_total_uncal_var'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.loss_function != 'evidential':
+            raise ValueError('In order to use evidential uncertainty, trained models must have used evidential regression loss function.')
+        if self.dataset_type != 'regression':
+            raise ValueError('Evidential total uncertainty is only compatible with regression dataset types.')
+
+
+    def calculate_predictions(self):
+        for i in range(self.num_models):
+
+            scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
+            if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+                if bond_feature_scaler is not None:
+                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+
+            preds, lambdas, alphas, betas = predict(
+                model=self.models[i],
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                return_unc_parameters=True,
+            )
+            if i == 0:
+                var = np.array(betas) * (1 + 1 / np.array(lambdas)) / (np.array(alphas) - 1)
+                sum_preds = np.array(preds)
+                sum_squared = np.square(preds)
+                sum_vars = np.array(var)
+                individual_vars = [var]
+            else:
+                var = np.array(betas) * (1 + 1 / np.array(lambdas)) / (np.array(alphas) - 1)
+                sum_preds += np.array(preds)
+                sum_squared += np.square(preds)
+                sum_vars += np.array(var)
+                individual_vars.append(var)
+
+        uncal_preds = sum_preds / self.num_models
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(sum_preds / self.num_models)
+        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+        self.individual_vars = individual_vars
+
+    def get_uncal_output(self):
+        return self.uncal_vars
+
+
+class EvidentialAleatoricPredictor(UncertaintyPredictor):
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'evidential_aleatoric_uncal_var'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.loss_function != 'evidential':
+            raise ValueError('In order to use evidential uncertainty, trained models must have used evidential regression loss function.')
+        if self.dataset_type != 'regression':
+            raise ValueError('Evidential aleatoric uncertainty is only compatible with regression dataset types.')
+
+
+    def calculate_predictions(self):
+        for i in range(self.num_models):
+
+            scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
+            if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+                if bond_feature_scaler is not None:
+                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+
+            preds, lambdas, alphas, betas = predict(
+                model=self.models[i],
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                return_unc_parameters=True,
+            )
+            if i == 0:
+                var = np.array(betas) / (np.array(alphas) - 1)
+                sum_preds = np.array(preds)
+                sum_squared = np.square(preds)
+                sum_vars = np.array(var)
+                individual_vars = [var]
+            else:
+                var = np.array(betas) / (np.array(alphas) - 1)
+                sum_preds += np.array(preds)
+                sum_squared += np.square(preds)
+                sum_vars += np.array(var)
+                individual_vars.append(var)
+
+        uncal_preds = sum_preds / self.num_models
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(sum_preds / self.num_models)
+        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+        self.individual_vars = individual_vars
+
+    def get_uncal_output(self):
+        return self.uncal_vars
+
+
+class EvidentialEpistemicPredictor(UncertaintyPredictor):
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+        self.label = 'evidential_epistemic_uncal_var'
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.loss_function != 'evidential':
+            raise ValueError('In order to use evidential uncertainty, trained models must have used evidential regression loss function.')
+        if self.dataset_type != 'regression':
+            raise ValueError('Evidential epistemic uncertainty is only compatible with regression dataset types.')
+
+
+    def calculate_predictions(self):
+        for i in range(self.num_models):
+
+            scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = self.scalers[i]
+            if features_scaler is not None or atom_descriptor_scaler is not None or bond_feature_scaler is not None:
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
+                if bond_feature_scaler is not None:
+                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+
+            preds, lambdas, alphas, betas = predict(
+                model=self.models[i],
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                return_unc_parameters=True,
+            )
+            if i == 0:
+                var = np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))
+                sum_preds = np.array(preds)
+                sum_squared = np.square(preds)
+                sum_vars = np.array(var)
+                individual_vars = [var]
+            else:
+                var = np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))
+                sum_preds += np.array(preds)
+                sum_squared += np.square(preds)
+                sum_vars += np.array(var)
+                individual_vars.append(var)
+
+        uncal_preds = sum_preds / self.num_models
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(sum_preds / self.num_models)
+        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+        self.individual_vars = individual_vars
+
+    def get_uncal_output(self):
+        return self.uncal_vars
+
+
 class EnsemblePredictor(UncertaintyPredictor):
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
@@ -217,11 +379,18 @@ def uncertainty_predictor_builder(uncertainty_method: str,
         if loss_function == 'mve':
             uncertainty_method = 'mve'
         elif dataset_type == 'regression':
-            if len(models) > 1:
+            if loss_function == 'evidential':
+                uncertainty_method = 'evidential_epistemic'
+            elif len(models) > 1:
                 uncertainty_method = 'ensemble'
             else:
                 uncertainty_method = 'dropout'
-        elif dataset_type in ['classification', 'multiclass']:
+        elif dataset_type == 'classification':
+            # if loss_function == 'evidential':
+            #     uncertainty_method = 'evidential_classification'
+            # else:
+                uncertainty_method = 'sigmoid'
+        elif dataset_type == 'multiclass':
             uncertainty_method = 'sigmoid'
         elif dataset_type == 'spectra':
             raise ValueError('Uncertainty quantification not currently enabled for spectra')
@@ -230,6 +399,9 @@ def uncertainty_predictor_builder(uncertainty_method: str,
         'mve': MVEPredictor,
         'ensemble': EnsemblePredictor,
         'sigmoid': SigmoidPredictor,
+        'evidential_total': EvidentialTotalPredictor,
+        'evidential_epistemic': EvidentialEpistemicPredictor,
+        'evidential_aleatoric': EvidentialAleatoricPredictor,
     }
 
     estimator_class = supported_predictors.get(uncertainty_method, None)
