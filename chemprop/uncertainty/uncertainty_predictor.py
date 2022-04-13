@@ -322,18 +322,18 @@ class EnsemblePredictor(UncertaintyPredictor):
         return self.uncal_vars
 
 
-class SigmoidPredictor(UncertaintyPredictor):
+class ClassPredictor(UncertaintyPredictor):
     """
     Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence.
     """
     def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
         super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
-        self.label = 'sigmoid_uncal_confidence'
+        self.label = 'classification_uncal_confidence'
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type not in ['classification', 'multiclass']:
-            raise ValueError('Sigmoid uncertainty method must be used with dataset types classification or multiclass.')
+            raise ValueError('Classification output uncertainty method must be used with dataset types classification or multiclass.')
     
     def calculate_predictions(self):
         for i in range(self.num_models):
@@ -386,9 +386,9 @@ def uncertainty_predictor_builder(uncertainty_method: str,
             else:
                 uncertainty_method = 'dropout'
         elif dataset_type == 'classification':
-            # if loss_function == 'evidential':
-            #     uncertainty_method = 'evidential_classification'
-            # else:
+            if loss_function == 'evidential':
+                uncertainty_method = 'evidential_classification'
+            else:
                 uncertainty_method = 'sigmoid'
         elif dataset_type == 'multiclass':
             uncertainty_method = 'sigmoid'
@@ -398,7 +398,7 @@ def uncertainty_predictor_builder(uncertainty_method: str,
     supported_predictors = {
         'mve': MVEPredictor,
         'ensemble': EnsemblePredictor,
-        'sigmoid': SigmoidPredictor,
+        'classification': ClassPredictor,
         'evidential_total': EvidentialTotalPredictor,
         'evidential_epistemic': EvidentialEpistemicPredictor,
         'evidential_aleatoric': EvidentialAleatoricPredictor,
