@@ -41,7 +41,7 @@ class MoleculeModel(nn.Module):
         if self.loss_function == 'evidential':
             if self.classification:
                 self.output_size *= 2 # return dirichlet parameters for positive and negative class
-            else: # regression
+            if not self.multiclass: # regression
                 self.output_size *= 4 # return four evidential parameters: gamma, lambda, alpha, beta
 
         if self.classification:
@@ -199,7 +199,7 @@ class MoleculeModel(nn.Module):
             output = self.sigmoid(output)
         if self.multiclass:
             output = output.reshape((output.shape[0], -1, self.num_classes))  # batch size x num targets x num classes per target
-            if not (self.training and self.no_training_normalization):
+            if not (self.training and self.no_training_normalization) and self.loss_function != 'evidential':
                 output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
 
         # Modify multi-input loss functions
@@ -209,7 +209,7 @@ class MoleculeModel(nn.Module):
             variances = self.softplus(variances)
             output = torch.cat([means,variances], axis=1)
         if self.loss_function == 'evidential':
-            if self.classification:
+            if self.classification or self.multiclass:
                 output = nn.functional.softplus(output) + 1
             else:
                 means, lambdas, alphas, betas = torch.split(output, output.shape[1]//4, dim=1)

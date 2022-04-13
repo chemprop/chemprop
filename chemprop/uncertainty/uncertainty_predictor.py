@@ -386,10 +386,7 @@ def uncertainty_predictor_builder(uncertainty_method: str,
             else:
                 uncertainty_method = 'dropout'
         elif dataset_type == 'classification':
-            if loss_function == 'evidential':
-                uncertainty_method = 'evidential_classification'
-            else:
-                uncertainty_method = 'sigmoid'
+            uncertainty_method = 'classification'
         elif dataset_type == 'multiclass':
             uncertainty_method = 'sigmoid'
         elif dataset_type == 'spectra':

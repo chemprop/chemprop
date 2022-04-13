@@ -31,6 +31,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
         'multiclass':{
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
             'mcc': mcc_multiclass_loss,
+            'evidential': dirichlet_multiclass_loss,
         },
         'spectra':{
             'sid': sid_loss,
@@ -210,7 +211,7 @@ def normal_mve(pred_values, targets):
 # evidential classification
 def dirichlet_class_loss(alphas, target_labels, lam=0):
     """
-    Use Evidential Learning Dirichlet loss from Sensoy et al
+    Use Evidential Learning Dirichlet loss from Sensoy et al in classification datasets.
     :param alphas: Predicted parameters for Dirichlet in shape(datapoints, tasks*2).
                    Negative class first then positive class in dimension 1.
     :param target_labels: Digital labels to predict in shape(datapoints, tasks).
@@ -240,17 +241,68 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
         kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
         return kl
 
-
-    # Hard code to 2 classes per task, since this assumption is already made
-    # for the existing chemprop classification tasks
-    num_classes = 2
     num_tasks = target_labels.shape[1]
+    num_classes = 2
+    alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
 
     y_one_hot = torch.eye(num_classes)[target_labels.long()]
     if target_labels.is_cuda:
         y_one_hot = y_one_hot.cuda()
 
-    alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
+    # SOS term
+    S = torch.sum(alphas, dim=-1, keepdim=True)
+    p = alphas / S
+    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
+    SOS = A + B
+
+    # KL
+    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
+    KL = lam * KL(alpha_hat)
+
+    #loss = torch.mean(SOS + KL)
+    loss = SOS + KL
+    loss = torch.mean(loss, dim=-1)
+    return loss
+
+
+def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al for multiclass datasets.
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
+    :param target_labels: Digital labels to predict in shape(datapoints, tasks).
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
+    def KL(alpha):
+        """
+        Compute KL for Dirichlet defined by alpha to uniform dirichlet
+        :alpha: parameters for Dirichlet
+
+        :return: KL
+        """
+        beta = torch.ones_like(alpha)
+        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
+        S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
+        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
+
+        # digamma terms
+        dg_alpha = torch.digamma(alpha)
+        dg_S_alpha = torch.digamma(S_alpha)
+
+        # KL
+        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+        return kl
+
+    num_tasks = target_labels.shape[1]
+    num_classes = alphas.shape[2]
+
+    y_one_hot = torch.eye(num_classes)[target_labels.long()]
+    if target_labels.is_cuda:
+        y_one_hot = y_one_hot.cuda()
 
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)

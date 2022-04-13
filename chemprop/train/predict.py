@@ -48,6 +48,9 @@ def predict(model: MoleculeModel,
             if model.classification:
                 batch_alphas = np.reshape(batch_preds,[batch_preds.shape[0], batch_preds.shape[1]//2, 2])
                 batch_preds = batch_alphas[:,:,1] / np.sum(batch_alphas, axis=2) # shape(data, tasks, 2)
+            elif model.multiclass:
+                batch_alphas = batch_preds
+                batch_preds = batch_preds / np.sum(batch_alphas, axis=2, keepdims=True) # shape(data, tasks, num_classes)
             else: # regression
                 batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(batch_preds, 4, axis=1)
 

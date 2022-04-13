@@ -413,7 +413,7 @@ class TrainArgs(CommonArgs):
     """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
-    evidential_regularization: float = None
+    evidential_regularization: float = 0
     """Value used in regularization for evidential loss function. Value used in literature was 1."""
     overwrite_default_atom_features: bool = False
     """
