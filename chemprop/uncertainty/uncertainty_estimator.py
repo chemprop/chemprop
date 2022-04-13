@@ -15,6 +15,7 @@ class UncertaintyEstimator:
                        loss_function: str,
                        batch_size: int,
                        num_workers: int,
+                       dropout_sampling_size: int,
                        ):
         self.uncertainty_method = uncertainty_method
 
@@ -27,6 +28,7 @@ class UncertaintyEstimator:
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         self.label = self.predictor.label
 

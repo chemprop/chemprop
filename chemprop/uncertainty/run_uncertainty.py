@@ -74,6 +74,7 @@ def run_uncertainty(args: UncertaintyArgs,
         loss_function=args.loss_function,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        dropout_sampling_size=args.dropout_sampling_size,
     )
 
     preds, unc = estimator.calculate_uncertainty(calibrator=calibrator) # preds and unc are lists of shape(data,tasks)
