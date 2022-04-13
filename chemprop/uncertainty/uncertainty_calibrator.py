@@ -29,6 +29,7 @@ class UncertaintyCalibrator:
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         self.calibration_data = calibration_data
         self.regression_calibrator_metric = regression_calibrator_metric
@@ -48,6 +49,7 @@ class UncertaintyCalibrator:
             num_workers=num_workers,
             loss_function=loss_function,
             uncertainty_method=uncertainty_method,
+            dropout_sampling_size=dropout_sampling_size,
         )
 
         self.calibrate()
@@ -84,6 +86,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -96,6 +99,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         if self.regression_calibrator_metric == 'stdev':
             self.label = f'{uncertainty_method}_zscaling_stdev'
@@ -149,6 +153,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -161,6 +166,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         if self.regression_calibrator_metric == 'stdev':
             self.label = f'{uncertainty_method}_tscaling_stdev'
@@ -215,6 +221,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -227,6 +234,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         self.label = f'{uncertainty_method}_zelikman_{interval_percentile}interval'
 
@@ -263,6 +271,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -275,6 +284,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         if self.regression_calibrator_metric == 'stdev':
             self.label = f'{uncertainty_method}_mve_weighting_stdev'
@@ -330,6 +340,7 @@ class PlattCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -342,6 +353,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         self.label = f'{uncertainty_method}_platt_confidence'
 
@@ -413,6 +425,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -425,6 +438,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         self.label = f'{uncertainty_method}_isotonic_confidence'
 
@@ -473,6 +487,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         loss_function: str,
         batch_size: int,
         num_workers: int,
+        dropout_sampling_size: int,
     ):
         super().__init__(
             uncertainty_method=uncertainty_method,
@@ -485,6 +500,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
         self.label = f'{uncertainty_method}_isotonic_confidence'
 
@@ -543,6 +559,7 @@ def uncertainty_calibrator_builder(
     loss_function: str,
     batch_size: int,
     num_workers: int,
+    dropout_sampling_size: int,
     ) -> UncertaintyCalibrator:
     """
     
@@ -582,5 +599,6 @@ def uncertainty_calibrator_builder(
             loss_function=loss_function,
             batch_size=batch_size,
             num_workers=num_workers,
+            dropout_sampling_size=dropout_sampling_size,
         )
     return calibrator

@@ -123,8 +123,8 @@ class MVEPredictor(UncertaintyPredictor):
 
 
 class EvidentialTotalPredictor(UncertaintyPredictor):
-    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'evidential_total_uncal_var'
 
     def raise_argument_errors(self):
@@ -177,8 +177,8 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
 
 
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
-    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'evidential_aleatoric_uncal_var'
 
     def raise_argument_errors(self):
@@ -231,8 +231,8 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 
 
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
-    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'evidential_epistemic_uncal_var'
 
     def raise_argument_errors(self):
@@ -366,10 +366,10 @@ class DropoutPredictor(UncertaintyPredictor):
 
 class ClassPredictor(UncertaintyPredictor):
     """
-    Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence.
+    Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence. Used for classification and multiclass dataset types.
     """
-    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int):
-        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers)
+    def __init__(self, test_data: MoleculeDataset, models: Iterator[MoleculeModel], scalers: Iterator[StandardScaler], dataset_type: str, loss_function: str, batch_size: int, num_workers: int, dropout_sampling_size: int):
+        super().__init__(test_data, models, scalers, dataset_type, loss_function, batch_size, num_workers, dropout_sampling_size)
         self.label = 'classification_uncal_confidence'
 
     def raise_argument_errors(self):
