@@ -75,7 +75,7 @@ def predict(model: MoleculeModel,
     if return_unc_parameters:
         if model.loss_function == 'mve':
             return preds, var
-        if model.loss_function == 'evidedntial':
+        if model.loss_function == 'evidential':
             if model.classification:
                 return preds, alphas
             else:
