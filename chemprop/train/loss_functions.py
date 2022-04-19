@@ -53,7 +53,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
     else:
         raise ValueError(
             f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. \
-            Available options for that dataset type are {supported_loss_functions[args.dataset_type].keys()}.'
+            Available options for that dataset type are {loss_function_choices.keys()}.'
         )
 
 
