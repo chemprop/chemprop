@@ -111,9 +111,7 @@ def predict(
         if model.loss_function == "mve":
             return preds, var
         if model.loss_function == "evidential":
-            if model.classification:
-                return preds, alphas
-            elif model.multiclass:
+            if model.classification or model.multiclass:
                 return preds, alphas
             else:
                 return preds, lambdas, alphas, betas
