@@ -104,6 +104,8 @@ def run_training(args: TrainArgs,
         for i, task_class_sizes in enumerate(class_sizes):
             debug(f'{args.task_names[i]} '
                   f'{", ".join(f"{cls}: {size * 100:.2f}%" for cls, size in enumerate(task_class_sizes))}')
+        train_class_sizes = get_class_sizes(train_data, proportion=False)
+        args.train_class_sizes = train_class_sizes
 
     if args.save_smiles_splits:
         save_smiles_splits(
@@ -148,6 +150,7 @@ def run_training(args: TrainArgs,
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
         scaler = train_data.normalize_targets()
+        args.spectra_phase_mask = None
     elif args.dataset_type == 'spectra':
         debug('Normalizing spectra and excluding spectra regions based on phase')
         args.spectra_phase_mask = load_phase_mask(args.spectra_phase_mask_path)
@@ -162,6 +165,7 @@ def run_training(args: TrainArgs,
             dataset.set_targets(data_targets)
         scaler = None
     else:
+        args.spectra_phase_mask = None
         scaler = None
 
     # Get loss function

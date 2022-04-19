@@ -90,15 +90,20 @@ def train(model: MoleculeModel,
             loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
         elif args.dataset_type == 'multiclass':
             targets = targets.long()
-            target_losses = []
-            for target_index in range(preds.size(1)):
-                target_loss = loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1)
-                target_losses.append(target_loss)
-            loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
+            if args.loss_function == 'evidential':
+                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+            else:
+                target_losses = []
+                for target_index in range(preds.size(1)):
+                    target_loss = loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1)
+                    target_losses.append(target_loss)
+                loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
         elif args.dataset_type == 'spectra':
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == 'bounded_mse':
             loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
+        elif args.loss_function == 'evidential': # regression or classification
+            loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
         loss = loss.sum() / mask.sum()

@@ -37,6 +37,7 @@ def param_count(model: nn.Module) -> int:
     """
     return sum(param.numel() for param in model.parameters() if param.requires_grad)
 
+
 def param_count_all(model: nn.Module) -> int:
     """
     Determines number of trainable parameters.
@@ -141,7 +142,7 @@ class NoamLR(_LRScheduler):
         :param final_lr: The final learning rate (achieved after :code:`total_epochs`).
         """
         if not (
-            len(optimizer.param_groups) == len(warmup_epochs) == len(total_epochs) \
+            len(optimizer.param_groups) == len(warmup_epochs) == len(total_epochs)
             == len(init_lr) == len(max_lr) == len(final_lr)
         ):
             raise ValueError(
@@ -203,3 +204,31 @@ class NoamLR(_LRScheduler):
                 self.lr[i] = self.final_lr[i]
 
             self.optimizer.param_groups[i]['lr'] = self.lr[i]
+
+
+class EvaluationDropout(nn.Dropout):
+    def forward(self, input):
+        return nn.functional.dropout(input, p=self.p)
+
+
+def replace_dropout_layers(model, dropout_prob):
+    """
+    Replace dropout layers with new dropout layers that work during inference for uncertainty estimation.
+
+    :param model: A :class:`~chemprop.models.model.MoleculeModel`.
+    :param dropout_prob: A float on (0,1) indicating the dropout probability.
+    """
+    for i in range(0, len(list(model.encoder.encoder.children()))):  # handle multiple molecule inputs
+        dropout_module_names_encoder = []
+        for module_name, module in model.encoder.encoder[i].named_modules(remove_duplicate=False):
+            if isinstance(module, nn.Dropout):
+                dropout_module_names_encoder.append(module_name)
+        for module_name in dropout_module_names_encoder:  # separate for loop because can't change OrderedDict while iterating over it
+            setattr(model.encoder.encoder[i], module_name, EvaluationDropout(p=dropout_prob))
+
+    dropout_module_names_ffn = []
+    for module_name, module in model.ffn.named_modules(remove_duplicate=False):
+        if isinstance(module, nn.Dropout):
+            dropout_module_names_ffn.append(module_name)
+    for module_name in dropout_module_names_ffn:  # separate for loop because can't change OrderedDict while iterating over it
+        setattr(model.ffn, module_name, EvaluationDropout(p=dropout_prob))
