@@ -38,6 +38,8 @@ score=[[float(_) for _ in x[1:]] for x in score]#truncating header and smile nam
 
 
 ##############################################################################
+#calibrationSet is loaded from tox21.csv (same as trained data)
+#the model fhat is taken from table of predicted values in tox21_preds.csv
 ##############################################################################
 
 
@@ -51,8 +53,8 @@ def sAdaptive(x,y,score,K):#x,y are the indices
             result+=score[x][i]
     return result
 
-#TODO: Change N,K inputs to lists of input data and classes
-#TODO: Change to using pandas?
+#TODO: Change N,K inputs to lists of smile strings and classes
+#TODO: Change to lists to pandas DataFrames
 
 def calculateQhat(calibrationSet,score,s,alpha,N,K):
 

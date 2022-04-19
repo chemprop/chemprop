@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../chemprop/')
+sys.path.append('../')
 
 
 import chemprop
