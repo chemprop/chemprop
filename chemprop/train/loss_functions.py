@@ -44,9 +44,8 @@ def get_loss_func(args: TrainArgs) -> Callable:
         raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
 
     # Return loss function if it is represented in the supported_loss_functions dictionary
-    loss_function = supported_loss_functions.get(args.dataset_type, dict()).get(
-        args.loss_function, None
-    )
+    loss_function_choices = supported_loss_functions.get(args.dataset_type, dict())
+    loss_function = loss_function_choices.get(args.loss_function)
 
     if loss_function is not None:
         return loss_function
