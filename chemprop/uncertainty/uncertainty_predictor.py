@@ -32,7 +32,6 @@ class UncertaintyPredictor:
         self.uncal_preds = None
         self.uncal_vars = None
         self.uncal_confidence = None
-        self.uncal_output = None
         self.individual_vars = None
         self.num_models = num_models
         self.uncertainty_dropout_p = uncertainty_dropout_p
@@ -170,6 +169,9 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         self.uncal_vars = uncal_vars
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
+        
+    def get_uncal_output(self):
+        return self.uncal_vars
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
@@ -255,9 +257,12 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                 )  # shape(data, tasks, ensemble)
 
         self.uncal_preds = (sum_preds / self.num_models).tolist()
-        self.uncal_vars = roundrobin_sid(individual_preds)  # shape(data)
+        self.uncal_sid = roundrobin_sid(individual_preds)  # shape(data)
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
+
+    def get_uncal_output(self):
+        return self.uncal_sid
 
 
 class MVEPredictor(UncertaintyPredictor):
