@@ -793,7 +793,7 @@ class PredictArgs(CommonArgs):
         if self.uncertainty_method is None and (self.calibration_method is not None or self.evaluation_methods is not None):
             raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
 
-        if self.dataset_type == 'regression' and self.regression_calibrator_metric is None:
+        if self.regression_calibrator_metric is None:
             if self.calibration_method == 'zelikman_interval':
                 self.regression_calibrator_metric = 'interval'
             else:
