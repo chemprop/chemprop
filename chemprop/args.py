@@ -799,7 +799,7 @@ class PredictArgs(CommonArgs):
             else:
                 self.regression_calibrator_metric = 'stdev'
 
-        if self.uncertainty_method == 'dropout' and version.parse(torch.__version__) >= version.parse('1.9.0'):
+        if self.uncertainty_method == 'dropout' and version.parse(torch.__version__) < version.parse('1.9.0'):
             raise ValueError('Dropout uncertainty is only supported for pytorch versions >= 1.9.0')
 
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
