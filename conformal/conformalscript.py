@@ -80,14 +80,41 @@ def returnSet(X,qhat,s,score,K):
 
     return set
 
-alpha=0.2
+alpha=0.5
 s=sBasic
 qhat=calculateQhat(calibrationSet,score,s,alpha,N,K)
 
-for i in range(100):
-    X=i
-    print(returnSet(X,qhat,s,score,K))
-    print(len(returnSet(X,qhat,s,score,K)))
+set_sizes=[]
+ssc_proportion=[0.0]*(K+1)
+ssc_total=[0]*(K+1)
+
+
+for X in range(N):
+    #print(returnSet(X,qhat,s,score,K))
+    x_set=returnSet(X,qhat,s,score,K)
+    set_sizes.append(len(x_set))
+    ssc_total[len(x_set)]+=1
+    if classData[X] in x_set:
+        ssc_proportion[len(x_set)]+=1
+
+for i in range(K+1):
+    if ssc_proportion[i]>0:
+        ssc_proportion[i]=ssc_proportion[i]/ssc_total[i]
+
+print(ssc_proportion)
+
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-whitegrid')
+import numpy as np
+
+plt.hist(set_sizes, density=True, bins=12)
+plt.show()
+
+
+
+
+
+
 
 
 

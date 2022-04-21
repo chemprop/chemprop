@@ -12,3 +12,4 @@ arguments = [
 
 args = chemprop.args.PredictArgs().parse_args(arguments)
 preds = chemprop.train.make_predictions(args=args)
+
