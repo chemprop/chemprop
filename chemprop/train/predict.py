@@ -6,7 +6,7 @@ import numpy as np
 
 from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
-from chemprop.nn_utils import replace_dropout_layers
+from chemprop.nn_utils import activate_dropout
 
 
 def predict(
@@ -28,10 +28,12 @@ def predict(
     :return: A list of lists of predictions. The outer list is molecules while the inner list is tasks.
     """
     model.eval()
-
-    # Replace dropout layers with new dropout layers that work during inference for uncertainty estimation
+    
+    # Activate dropout layers to work during inference for uncertainty estimation
     if dropout_prob > 0.0:
-        replace_dropout_layers(model, dropout_prob)
+        def activate_dropout_(model):
+            return activate_dropout(model, dropout_prob)
+        model.apply(activate_dropout_)
 
     preds = []
 
