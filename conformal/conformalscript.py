@@ -95,7 +95,7 @@ for X in range(N):
     set_sizes.append(len(x_set))
     ssc_total[len(x_set)]+=1
     if classData[X] in x_set:
-        ssc_proportion[len(x_set)]+=1
+        ssc_proportion[len(x_set)]+=
 
 for i in range(K+1):
     if ssc_proportion[i]>0:
