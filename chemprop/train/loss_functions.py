@@ -26,12 +26,12 @@ def get_loss_func(args: TrainArgs) -> Callable:
         "classification": {
             "binary_cross_entropy": nn.BCEWithLogitsLoss(reduction="none"),
             "mcc": mcc_class_loss,
-            "evidential": dirichlet_class_loss,
+            "dirichlet": dirichlet_class_loss,
         },
         "multiclass": {
             "cross_entropy": nn.CrossEntropyLoss(reduction="none"),
             "mcc": mcc_multiclass_loss,
-            "evidential": dirichlet_multiclass_loss,
+            "dirichlet": dirichlet_multiclass_loss,
         },
         "spectra": {
             "sid": sid_loss,

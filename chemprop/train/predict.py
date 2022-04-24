@@ -70,7 +70,7 @@ def predict(
 
         if model.loss_function == "mve":
             batch_preds, batch_var = np.split(batch_preds, 2, axis=1)
-        elif model.loss_function == "evidential":
+        elif model.loss_function == "dirichlet":
             if model.classification:
                 batch_alphas = np.reshape(
                     batch_preds, [batch_preds.shape[0], batch_preds.shape[1] // 2, 2]
@@ -83,10 +83,10 @@ def predict(
                 batch_preds = batch_preds / np.sum(
                     batch_alphas, axis=2, keepdims=True
                 )  # shape(data, tasks, num_classes)
-            else:  # regression
-                batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(
-                    batch_preds, 4, axis=1
-                )
+        elif model.loss_function == 'evidential':  # regression
+            batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(
+                batch_preds, 4, axis=1
+            )
 
         # Inverse scale if regression
         if scaler is not None:
@@ -101,21 +101,19 @@ def predict(
         preds.extend(batch_preds)
         if model.loss_function == "mve":
             var.extend(batch_var.tolist())
-        if model.loss_function == "evidential":
-            if model.classification:
-                alphas.extend(batch_alphas.tolist())
-            elif not model.multiclass:  # regression
-                lambdas.extend(batch_lambdas.tolist())
-                alphas.extend(batch_alphas.tolist())
-                betas.extend(batch_betas.tolist())
+        elif model.loss_function == "dirichlet" and model.classification:
+            alphas.extend(batch_alphas.tolist())
+        elif model.loss_function == "evidential":  # regression
+            lambdas.extend(batch_lambdas.tolist())
+            alphas.extend(batch_alphas.tolist())
+            betas.extend(batch_betas.tolist())
 
     if return_unc_parameters:
         if model.loss_function == "mve":
             return preds, var
-        if model.loss_function == "evidential":
-            if model.classification or model.multiclass:
-                return preds, alphas
-            else:
-                return preds, lambdas, alphas, betas
+        elif model.loss_function == "dirichlet":
+            return preds, alphas
+        elif model.loss_function == "evidential":
+            return preds, lambdas, alphas, betas
 
     return preds
