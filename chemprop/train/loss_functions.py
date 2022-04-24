@@ -102,21 +102,13 @@ def mcc_class_loss(
     """
     # shape(batch, tasks)
     # (TP*TN-FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
-    torch_device = predictions.device
-    TP = torch.sum(targets * predictions * data_weights * mask, axis=0).to(torch_device)
-    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis=0).to(
-        torch_device
-    )
-    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis=0).to(
-        torch_device
-    )
-    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis=0).to(
-        torch_device
-    )
+    TP = torch.sum(targets * predictions * data_weights * mask, axis=0)
+    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis=0)
+    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis=0)
+    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis=0)
     loss = 1 - (
         (TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
     )
-    loss = loss.to(torch_device)
     return loss
 
 
@@ -141,20 +133,15 @@ def mcc_multiclass_loss(
     mask = mask.unsqueeze(1)
     bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
-    c = torch.sum(predictions * bin_targets * data_weights * mask).to(torch_device)
-    s = torch.sum(predictions * data_weights * mask).to(torch_device)
+    c = torch.sum(predictions * bin_targets * data_weights * mask)
+    s = torch.sum(predictions * data_weights * mask)
     pt = torch.sum(
         torch.sum(predictions * data_weights * mask, axis=0)
         * torch.sum(bin_targets * data_weights * mask, axis=0)
-    ).to(torch_device)
-    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2).to(
-        torch_device
     )
-    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2).to(
-        torch_device
-    )
+    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
+    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
     loss = 1 - (c * s - pt) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
-    loss = loss.to(torch_device)
     return loss
 
 
@@ -196,7 +183,6 @@ def sid_loss(
     loss = torch.mul(
         torch.log(torch.div(model_spectra, target_spectra)), model_spectra
     ) + torch.mul(torch.log(torch.div(target_spectra, model_spectra)), target_spectra)
-    loss = loss.to(torch_device)
 
     return loss
 
@@ -231,10 +217,9 @@ def wasserstein_loss(
     model_spectra = torch.div(model_spectra, sum_model_spectra)
 
     # Calculate loss value
-    target_cum = torch.cumsum(target_spectra, axis=1).to(torch_device)
-    model_cum = torch.cumsum(model_spectra, axis=1).to(torch_device)
+    target_cum = torch.cumsum(target_spectra, axis=1)
+    model_cum = torch.cumsum(model_spectra, axis=1)
     loss = torch.abs(target_cum - model_cum)
-    loss = loss.to(torch_device)
 
     return loss
 
@@ -250,8 +235,6 @@ def normal_mve(pred_values, targets):
     """
     # Unpack combined prediction values
     pred_means, pred_var = torch.split(pred_values, pred_values.shape[1] // 2, dim=1)
-    pred_means = pred_means.to(pred_values.device)
-    pred_var = pred_var.to(pred_values.device)
 
     return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (
         2 * pred_var
@@ -406,13 +389,6 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     """
     # Unpack combined prediction values
     mu, v, alpha, beta = torch.split(pred_values, pred_values.shape[1] // 4, dim=1)
-    torch_device = pred_values.device
-    mu, v, alpha, beta = (
-        mu.to(torch_device),
-        v.to(torch_device),
-        alpha.to(torch_device),
-        beta.to(torch_device),
-    )
 
     # Calculate NLL loss
     twoBlambda = 2 * beta * (1 + v)

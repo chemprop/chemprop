@@ -206,7 +206,6 @@ class MoleculeModel(nn.Module):
         # Modify multi-input loss functions
         if self.loss_function == 'mve':
             means, variances = torch.split(output, output.shape[1] // 2, dim=1)
-            means, variances = means.to(output.device), variances.to(output.device)
             variances = self.softplus(variances)
             output = torch.cat([means, variances], axis=1)
         if self.loss_function == 'evidential':
