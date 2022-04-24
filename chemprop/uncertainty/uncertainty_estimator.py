@@ -3,8 +3,7 @@ from typing import Iterator, List
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.data.data import MoleculeDataLoader
 from chemprop.models import MoleculeModel
-from .uncertainty_calibrator import UncertaintyCalibrator
-from .uncertainty_predictor import build_uncertainty_predictor
+from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_predictor
 
 
 class UncertaintyEstimator:
