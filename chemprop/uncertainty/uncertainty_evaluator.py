@@ -5,7 +5,7 @@ from scipy.stats import t, spearmanr
 from scipy.special import erfinv
 
 from chemprop.data import MoleculeDataset
-from chemprop.uncertainty import UncertaintyCalibrator
+from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
 from chemprop.train import evaluate_predictions
 
 
