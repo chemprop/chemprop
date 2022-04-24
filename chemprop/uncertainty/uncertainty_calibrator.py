@@ -64,6 +64,14 @@ class UncertaintyCalibrator(ABC):
 
         self.calibrate()
 
+    @property
+    @abstractmethod
+    def label(self):
+        """
+        The string in saved results indicating the uncertainty method used.
+        """
+        pass
+
     def raise_argument_errors(self):
         """
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
@@ -100,41 +108,14 @@ class UncertaintyCalibrator(ABC):
 
 
 class ZScalingCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
+
+    @property
+    def label(self):
         if self.regression_calibrator_metric == "stdev":
-            self.label = f"{uncertainty_method}_zscaling_stdev"
+            label = f"{self.uncertainty_method}_zscaling_stdev"
         else:  # interval
-            self.label = f"{uncertainty_method}_zscaling_{interval_percentile}interval"
+            label = f"{self.uncertainty_method}_zscaling_{self.interval_percentile}interval"
+        return label
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -190,41 +171,14 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 
 class TScalingCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
+
+    @property
+    def label(self):
         if self.regression_calibrator_metric == "stdev":
-            self.label = f"{uncertainty_method}_tscaling_stdev"
+            label = f"{self.uncertainty_method}_tscaling_stdev"
         else:  # interval
-            self.label = f"{uncertainty_method}_tscaling_{interval_percentile}interval"
+            label = f"{self.uncertainty_method}_tscaling_{self.interval_percentile}interval"
+        return label
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -290,41 +244,14 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
 
 class ZelikmanCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
+
+    @property
+    def label(self):
         if self.regression_calibrator_metric == "stdev":
-            self.label = f"{uncertainty_method}_zelikman_stdev"
+            label = f"{self.uncertainty_method}_zelikman_stdev"
         else:
-            self.label = f"{uncertainty_method}_zelikman_{interval_percentile}interval"
+            label = f"{self.uncertainty_method}_zelikman_{self.interval_percentile}interval"
+        return label
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -396,43 +323,14 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
 
 
 class MVEWeightingCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
+
+    @property
+    def label(self):
         if self.regression_calibrator_metric == "stdev":
-            self.label = f"{uncertainty_method}_mve_weighting_stdev"
+            label = f"{self.uncertainty_method}_mve_weighting_stdev"
         else:  # interval
-            self.label = (
-                f"{uncertainty_method}_mve_weighting_{interval_percentile}interval"
-            )
+            label = f"{self.uncertainty_method}_mve_weighting_{self.interval_percentile}interval"
+        return label
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -499,38 +397,10 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
 
 class PlattCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = f"{uncertainty_method}_platt_confidence"
+
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_platt_confidence"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -605,38 +475,10 @@ class PlattCalibrator(UncertaintyCalibrator):
 
 
 class IsotonicCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = f"{uncertainty_method}_isotonic_confidence"
+
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_isotonic_confidence"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -675,38 +517,10 @@ class IsotonicCalibrator(UncertaintyCalibrator):
 
 
 class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
-    def __init__(
-        self,
-        uncertainty_method: str,
-        interval_percentile: int,
-        regression_calibrator_metric: str,
-        calibration_data: MoleculeDataset,
-        calibration_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        spectra_phase_mask: List[List[bool]],
-    ):
-        super().__init__(
-            uncertainty_method=uncertainty_method,
-            interval_percentile=interval_percentile,
-            regression_calibrator_metric=regression_calibrator_metric,
-            calibration_data=calibration_data,
-            calibration_data_loader=calibration_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = f"{uncertainty_method}_isotonic_confidence"
+
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_isotonic_confidence"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()

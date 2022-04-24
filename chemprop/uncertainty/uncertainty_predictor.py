@@ -45,6 +45,14 @@ class UncertaintyPredictor(ABC):
         self.test_data_loader = test_data_loader
         self.calculate_predictions()
 
+    @property
+    @abstractmethod
+    def label(self):
+        """
+        The string in saved results indicating the uncertainty method used.
+        """
+        pass
+
     def raise_argument_errors(self):
         """
         Raise errors for incompatible dataset types or uncertainty methods, etc.
@@ -85,34 +93,10 @@ class UncertaintyPredictor(ABC):
 
 
 class NoUncertaintyPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "no_uncertainty_method"
+
+    @property
+    def label(self):
+        return "no_uncertainty_method"
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -175,34 +159,10 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "roundrobin_sid"
+
+    @property
+    def label(self): 
+        return "roundrobin_sid"
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -263,34 +223,10 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
 
 
 class MVEPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "mve_uncal_var"
+
+    @property
+    def label(self): 
+        return"mve_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -360,34 +296,10 @@ class MVEPredictor(UncertaintyPredictor):
 
 
 class EvidentialTotalPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "evidential_total_uncal_var"
+
+    @property
+    def label(self): 
+        return "evidential_total_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -466,34 +378,10 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
 
 
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "evidential_aleatoric_uncal_var"
+
+    @property
+    def label(self): 
+        return "evidential_aleatoric_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -568,34 +456,10 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 
 
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "evidential_epistemic_uncal_var"
+
+    @property
+    def label(self): 
+        return "evidential_epistemic_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -670,34 +534,10 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
 
 
 class EnsemblePredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "ensemble_uncal_var"
+
+    @property
+    def label(self): 
+        return "ensemble_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -772,34 +612,10 @@ class EnsemblePredictor(UncertaintyPredictor):
 
 
 class DropoutPredictor(UncertaintyPredictor):
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "dropout_uncal_var"
+
+    @property
+    def label(self): 
+        return "dropout_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -867,34 +683,9 @@ class ClassPredictor(UncertaintyPredictor):
     Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence. Used for classification and multiclass dataset types.
     """
 
-    def __init__(
-        self,
-        test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
-        dataset_type: str,
-        loss_function: str,
-        uncertainty_dropout_p: float,
-        dropout_sampling_size: int,
-        individual_ensemble_predictions: bool = False,
-        spectra_phase_mask: List[List[bool]] = None,
-    ):
-        super().__init__(
-            test_data=test_data,
-            test_data_loader=test_data_loader,
-            models=models,
-            scalers=scalers,
-            num_models=num_models,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            uncertainty_dropout_p=uncertainty_dropout_p,
-            dropout_sampling_size=dropout_sampling_size,
-            individual_ensemble_predictions=individual_ensemble_predictions,
-            spectra_phase_mask=spectra_phase_mask,
-        )
-        self.label = "classification_uncal_confidence"
+    @property
+    def label(self): 
+        return "classification_uncal_confidence"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
