@@ -4,7 +4,7 @@ from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.data.data import MoleculeDataLoader
 from chemprop.models import MoleculeModel
 from .uncertainty_calibrator import UncertaintyCalibrator
-from .uncertainty_predictor import uncertainty_predictor_builder
+from .uncertainty_predictor import build_uncertainty_predictor
 
 
 class UncertaintyEstimator:
@@ -25,7 +25,7 @@ class UncertaintyEstimator:
     ):
         self.uncertainty_method = uncertainty_method
 
-        self.predictor = uncertainty_predictor_builder(
+        self.predictor = build_uncertainty_predictor(
             test_data=test_data,
             test_data_loader=test_data_loader,
             models=models,

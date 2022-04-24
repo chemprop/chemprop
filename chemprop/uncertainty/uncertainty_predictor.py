@@ -961,7 +961,7 @@ class ClassPredictor(UncertaintyPredictor):
         return self.uncal_confidence
 
 
-def uncertainty_predictor_builder(
+def build_uncertainty_predictor(
     uncertainty_method: str,
     test_data: MoleculeDataset,
     test_data_loader: MoleculeDataLoader,

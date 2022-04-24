@@ -9,7 +9,7 @@ from sklearn.isotonic import IsotonicRegression
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
-from .uncertainty_predictor import uncertainty_predictor_builder, UncertaintyPredictor
+from .uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
 
 
 class UncertaintyCalibrator:
@@ -46,7 +46,7 @@ class UncertaintyCalibrator:
 
         self.raise_argument_errors()
 
-        self.calibration_predictor = uncertainty_predictor_builder(
+        self.calibration_predictor = build_uncertainty_predictor(
             test_data=calibration_data,
             test_data_loader=calibration_data_loader,
             models=models,
@@ -758,7 +758,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         return uncal_preds.tolist(), cal_preds.tolist()
 
 
-def uncertainty_calibrator_builder(
+def build_uncertainty_calibrator(
     calibration_method: str,
     uncertainty_method: str,
     regression_calibrator_metric: str,

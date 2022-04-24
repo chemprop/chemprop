@@ -447,7 +447,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         return spearman_coeffs
 
 
-def uncertainty_evaluator_builder(
+def build_uncertainty_evaluator(
     evaluation_method: str,
     calibration_method: str,
     uncertainty_method: str,

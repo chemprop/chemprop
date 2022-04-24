@@ -9,7 +9,7 @@ from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, Mo
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.models import MoleculeModel
-from chemprop.uncertainty import UncertaintyCalibrator, uncertainty_calibrator_builder, UncertaintyEstimator, uncertainty_evaluator_builder
+from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
 
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -221,7 +221,7 @@ def predict_and_save(
 
         evaluators = []
         for evaluation_method in args.evaluation_methods:
-            evaluator = uncertainty_evaluator_builder(
+            evaluator = build_uncertainty_evaluator(
                 evaluation_method=evaluation_method,
                 calibration_method=args.calibration_method,
                 uncertainty_method=args.uncertainty_method,
@@ -451,7 +451,7 @@ def make_predictions(
             num_workers=args.num_workers,
         )
 
-        calibrator = uncertainty_calibrator_builder(
+        calibrator = build_uncertainty_calibrator(
             calibration_method=args.calibration_method,
             uncertainty_method=args.uncertainty_method,
             interval_percentile=args.calibration_interval_percentile,
