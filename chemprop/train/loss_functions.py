@@ -252,44 +252,12 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
 
     :return: Loss
     """
-
-    def KL(alpha):
-        """
-        Compute KL for Dirichlet defined by alpha to uniform dirichlet
-        :alpha: parameters for Dirichlet
-
-        :return: KL
-        """
-        beta = torch.ones_like(alpha)
-        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
-        S_beta = torch.sum(beta, dim=-1, keepdim=True)
-
-        ln_alpha = torch.lgamma(S_alpha) - torch.sum(
-            torch.lgamma(alpha), dim=-1, keepdim=True
-        )
-        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
-            S_beta
-        )
-
-        # digamma terms
-        dg_alpha = torch.digamma(alpha)
-        dg_S_alpha = torch.digamma(S_alpha)
-
-        # KL
-        kl = (
-            ln_alpha
-            + ln_beta
-            + torch.sum((alpha - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-        )
-        return kl
-
+    torch_device = alphas.device
     num_tasks = target_labels.shape[1]
     num_classes = 2
     alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
 
-    y_one_hot = torch.eye(num_classes)[target_labels.long()]
-    if target_labels.is_cuda:
-        y_one_hot = y_one_hot.cuda()
+    y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
@@ -300,7 +268,30 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
 
     # KL
     alpha_hat = y_one_hot + (1 - y_one_hot) * alphas
-    KL = lam * KL(alpha_hat)
+
+    beta = torch.ones_like(alpha_hat)
+    S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
+    S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
+        torch.lgamma(alpha_hat), dim=-1, keepdim=True
+    )
+    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
+        S_beta
+    )
+
+    # digamma terms
+    dg_alpha = torch.digamma(alpha_hat)
+    dg_S_alpha = torch.digamma(S_alpha)
+
+    # KL
+    KL = (
+        ln_alpha
+        + ln_beta
+        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+    )
+
+    KL = lam * KL
 
     # loss = torch.mean(SOS + KL)
     loss = SOS + KL
@@ -317,42 +308,10 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 
     :return: Loss
     """
-
-    def KL(alpha):
-        """
-        Compute KL for Dirichlet defined by alpha to uniform dirichlet
-        :alpha: parameters for Dirichlet
-
-        :return: KL
-        """
-        beta = torch.ones_like(alpha)
-        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
-        S_beta = torch.sum(beta, dim=-1, keepdim=True)
-
-        ln_alpha = torch.lgamma(S_alpha) - torch.sum(
-            torch.lgamma(alpha), dim=-1, keepdim=True
-        )
-        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
-            S_beta
-        )
-
-        # digamma terms
-        dg_alpha = torch.digamma(alpha)
-        dg_S_alpha = torch.digamma(S_alpha)
-
-        # KL
-        kl = (
-            ln_alpha
-            + ln_beta
-            + torch.sum((alpha - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-        )
-        return kl
-
+    torch_device = alphas.device
     num_classes = alphas.shape[2]
 
-    y_one_hot = torch.eye(num_classes)[target_labels.long()]
-    if target_labels.is_cuda:
-        y_one_hot = y_one_hot.cuda()
+    y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
@@ -363,7 +322,30 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 
     # KL
     alpha_hat = y_one_hot + (1 - y_one_hot) * alphas
-    KL = lam * KL(alpha_hat)
+
+    beta = torch.ones_like(alpha_hat)
+    S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
+    S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
+        torch.lgamma(alpha_hat), dim=-1, keepdim=True
+    )
+    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
+        S_beta
+    )
+
+    # digamma terms
+    dg_alpha = torch.digamma(alpha_hat)
+    dg_S_alpha = torch.digamma(S_alpha)
+
+    # KL
+    KL = (
+        ln_alpha
+        + ln_beta
+        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+    )
+
+    KL = lam * KL
 
     # loss = torch.mean(SOS + KL)
     loss = SOS + KL
