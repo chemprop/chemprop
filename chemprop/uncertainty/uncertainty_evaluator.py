@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
@@ -9,7 +10,7 @@ from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
 from chemprop.train import evaluate_predictions
 
 
-class UncertaintyEvaluator:
+class UncertaintyEvaluator(ABC):
     """
     A class for evaluating the effectiveness of uncertainty estimates with metrics.
     """
@@ -39,6 +40,7 @@ class UncertaintyEvaluator:
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
 
+    @abstractmethod
     def evaluate(
         self,
         test_data: MoleculeDataset,
@@ -55,27 +57,6 @@ class MetricEvaluator(UncertaintyEvaluator):
     """
     A class for evaluating confidence estimates of classification and multiclass datasets using builtin evaluation metrics.
     """
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
-
-    def raise_argument_errors(self):
-        super().raise_argument_errors()
 
     def evaluate(
         self,
@@ -96,24 +77,6 @@ class MetricEvaluator(UncertaintyEvaluator):
 
 class NLLRegressionEvaluator(UncertaintyEvaluator):
     """"""
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -145,24 +108,6 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
 class NLLClassEvaluator(UncertaintyEvaluator):
     """"""
 
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
-
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != "classification":
@@ -185,24 +130,6 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 
 class NLLMultiEvaluator(UncertaintyEvaluator):
     """"""
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -234,24 +161,6 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
 
 class CalibrationAreaEvaluator(UncertaintyEvaluator):
     """"""
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -314,24 +223,6 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
 
 class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
     """"""
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -402,24 +293,6 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
 class SpearmanEvaluator(UncertaintyEvaluator):
     """"""
-
-    def __init__(
-        self,
-        evaluation_method: str,
-        calibration_method: str,
-        uncertainty_method: str,
-        dataset_type: str,
-        loss_function: str,
-        calibrator: UncertaintyCalibrator,
-    ):
-        super().__init__(
-            evaluation_method=evaluation_method,
-            calibration_method=calibration_method,
-            uncertainty_method=uncertainty_method,
-            dataset_type=dataset_type,
-            loss_function=loss_function,
-            calibrator=calibrator,
-        )
 
     def raise_argument_errors(self):
         super().raise_argument_errors()

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Iterator, List
 
 import numpy as np
@@ -9,7 +10,7 @@ from chemprop.train.predict import predict
 from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 
 
-class UncertaintyPredictor:
+class UncertaintyPredictor(ABC):
     def __init__(
         self,
         test_data: MoleculeDataset,
@@ -50,6 +51,7 @@ class UncertaintyPredictor:
         """
         pass
 
+    @abstractmethod
     def calculate_predictions(self):
         """
         Calculate the uncalibrated predictions and store them as attributes
@@ -76,6 +78,7 @@ class UncertaintyPredictor:
         """Return the value predicted by each individual model in an ensemble."""
         return self.individual_preds
 
+    @abstractmethod
     def get_uncal_output(self):
         """Return the uncalibrated uncertainty outputs for the test data"""
         pass
@@ -110,9 +113,6 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             spectra_phase_mask=spectra_phase_mask,
         )
         self.label = "no_uncertainty_method"
-
-    def raise_argument_errors(self):
-        super().raise_argument_errors()
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -203,9 +203,6 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
             spectra_phase_mask=spectra_phase_mask,
         )
         self.label = "roundrobin_sid"
-
-    def raise_argument_errors(self):
-        super().raise_argument_errors()
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(

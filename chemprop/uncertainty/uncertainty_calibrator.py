@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Iterator, List
 
 import numpy as np
@@ -12,7 +13,7 @@ from chemprop.models import MoleculeModel
 from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
 
 
-class UncertaintyCalibrator:
+class UncertaintyCalibrator(ABC):
     """
     Uncertainty calibrator class. Subclasses for each uncertainty calibration
     method. Subclasses should override the calibrate and apply functions for
@@ -72,12 +73,14 @@ class UncertaintyCalibrator:
                 "No uncertainty calibrators are implemented for the spectra dataset type."
             )
 
+    @abstractmethod
     def calibrate(self):
         """
         Fit calibration method for the calibration data.
         """
         pass
 
+    @abstractmethod
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         """
         Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
