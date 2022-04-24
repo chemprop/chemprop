@@ -97,12 +97,12 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
             targets = np.array(test_data.targets)
             nll = np.log(2 * np.pi * uncertainties) / 2 \
                 + (preds - targets) ** 2 / (2 * uncertainties)
-            return np.sum(nll, axis=0).tolist()
+            return np.mean(nll, axis=0).tolist()
         else:
             nll = self.calibrator.nll(
                 preds=preds, unc=uncertainties, targets=test_data.targets()
             )  # shape(data, task)
-            return np.sum(nll, axis=0).tolist()
+            return np.mean(nll, axis=0).tolist()
 
 
 class NLLClassEvaluator(UncertaintyEvaluator):
@@ -125,7 +125,7 @@ class NLLClassEvaluator(UncertaintyEvaluator):
         uncertainties = np.array(uncertainties)
         likelihood = uncertainties * targets + (1 - uncertainties) * (1 - targets)
         nll = -1 * np.log(likelihood)
-        return np.sum(nll, axis=0).tolist()
+        return np.mean(nll, axis=0).tolist()
 
 
 class NLLMultiEvaluator(UncertaintyEvaluator):
@@ -156,7 +156,7 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
             task_likelihood = np.sum(bin_targets * task_preds, axis=1)
             task_nll = -1 * np.log(task_likelihood)
             nll[:, i] = task_nll
-        return np.sum(nll, axis=0).tolist()
+        return np.mean(nll, axis=0).tolist()
 
 
 class CalibrationAreaEvaluator(UncertaintyEvaluator):
