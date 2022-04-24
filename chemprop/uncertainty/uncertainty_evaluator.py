@@ -217,7 +217,7 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets(), dtype="int")  # shape(data, tasks)
+        targets = np.array(test_data.targets(), dtype=int)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         nll = np.zeros_like(targets)
