@@ -42,19 +42,11 @@ def predict(
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        (
-            mol_batch,
-            features_batch,
-            atom_descriptors_batch,
-            atom_features_batch,
-            bond_features_batch,
-        ) = (
-            batch.batch_graph(),
-            batch.features(),
-            batch.atom_descriptors(),
-            batch.atom_features(),
-            batch.bond_features(),
-        )
+        mol_batch = batch.batch_graph()
+        features_batch = batch.features()
+        atom_descriptors_batch = batch.atom_descriptors()
+        atom_features_batch = batch.atom_features()
+        bond_features_batch = batch.bond_features()
 
         # Make predictions
         with torch.no_grad():
