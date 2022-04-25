@@ -150,7 +150,7 @@ class MoleculeModel(nn.Module):
                     atom_descriptors_batch: List[np.ndarray] = None,
                     atom_features_batch: List[np.ndarray] = None,
                     bond_features_batch: List[np.ndarray] = None,
-                    fingerprint_type: str = 'MPN') -> torch.FloatTensor:
+                    fingerprint_type: str = 'MPN') -> torch.Tensor:
         """
         Encodes the latent representations of the input molecules from intermediate stages of the model.
 
