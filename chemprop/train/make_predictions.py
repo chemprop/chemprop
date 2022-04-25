@@ -16,12 +16,15 @@ def load_model(args: PredictArgs, generator: bool = False):
     """
     Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler
     objects is returned (memory efficient), else the full list (holding all models in memory, necessary for preloading).
+    Because deep copies of generators is not possible, separate generator objects are created to be used for prediction and uncertainty calibration.
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
     :param generator: A boolean to return a generator instead of a list of models and scalers.
-    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or
-                 generator object of scalers, the number of tasks and their respective names.
+    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models,
+                the same models for use in calibration, a list or generator object of scalers,
+                the same scalers for use in calibration, the number of tasks, the respective names of the tasks, 
+                and the total number of models.
     """
     print("Loading training args")
     train_args = load_args(args.checkpoint_paths[0])
@@ -176,6 +179,8 @@ def predict_and_save(
     :param full_to_valid_indices: A dictionary dictionary mapping full to valid indices.
     :param models: A list or generator object of :class:`~chemprop.models.MoleculeModel`\ s.
     :param scalers: A list or generator object of :class:`~chemprop.features.scaler.StandardScaler` objects.
+    :param num_models: The number of models included in the models and scalers input.
+    :param calibrator: A :class: `~chemprop.uncertainty.UncertaintyCalibrator` object, for use in calibrating uncertainty predictions.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
     :return:  A list of lists of target predictions.
@@ -393,9 +398,11 @@ def make_predictions(
                  loading data and a model and making predictions.
     :param smiles: List of list of SMILES to make predictions on.
     :param model_objects: Tuple of output of load_model function which can be called separately.
+    :param calibrator: A :class: `~chemprop.uncertainty.UncertaintyCalibrator` object, for use in calibrating uncertainty predictions.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :param return_index_dict: Whether to return the prediction results as a dictionary keyed from the initial data indexes.
-    :return: A list of lists of target predictions.
+    :param return_uncertainty: Whether to return uncertainty predictions alongside the model value predictions.
+    :return: A list of lists of target predictions. If returning uncertainty, a tuple containing first prediction values then uncertainty estimates.
     """
     if model_objects:
         (

@@ -25,7 +25,9 @@ def predict(
     :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
     :param return_unc_parameters: A bool indicating whether additional uncertainty parameters would be returned alongside the mean predictions.
-    :return: A list of lists of predictions. The outer list is molecules while the inner list is tasks.
+    :param dropout_prob: For use during uncertainty prediction only. The propout probability used in generating a dropout ensemble.
+    :return: A list of lists of predictions. The outer list is molecules while the inner list is tasks. If returning uncertainty parameters as well,
+        it is a tuple of lists of lists, of a length depending on how many uncertainty parameters are appropriate for the loss function.
     """
     model.eval()
     

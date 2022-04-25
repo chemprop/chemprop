@@ -11,6 +11,10 @@ from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 
 
 class UncertaintyPredictor(ABC):
+    """
+    A class for making model predictions and associated predictions of
+    prediction uncertainty according to the chosen uncertainty method.
+    """
     def __init__(
         self,
         test_data: MoleculeDataset,
@@ -93,7 +97,10 @@ class UncertaintyPredictor(ABC):
 
 
 class NoUncertaintyPredictor(UncertaintyPredictor):
-
+    """
+    Class that is used for predictions when no uncertainty method is selected.
+    Model value predictions are made as normal but uncertainty output only returns "nan".
+    """
     @property
     def label(self):
         return "no_uncertainty_method"
@@ -159,10 +166,20 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
-
+    """
+    A class predicting uncertainty for spectra outputs from an ensemble of models. Output is
+    the average SID calculated pairwise between each of the individual spectrum predictions.
+    """
     @property
     def label(self): 
         return "roundrobin_sid"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.num_models == 1:
+            raise ValueError(
+                "Roundrobin uncertainty is only available when multiple models are provided."
+            )
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -223,7 +240,10 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
 
 
 class MVEPredictor(UncertaintyPredictor):
-
+    """
+    Class that uses the variance output of the mve loss function (aka heteroscedastic loss)
+    as a prediction uncertainty.
+    """
     @property
     def label(self): 
         return"mve_uncal_var"
@@ -296,7 +316,10 @@ class MVEPredictor(UncertaintyPredictor):
 
 
 class EvidentialTotalPredictor(UncertaintyPredictor):
-
+    """
+    Uses the evidential loss function to calculate total uncertainty variance from
+    ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
+    """
     @property
     def label(self): 
         return "evidential_total_uncal_var"
@@ -378,7 +401,10 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
 
 
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
-
+    """
+    Uses the evidential loss function to calculate aleatoric uncertainty variance from
+    ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
+    """
     @property
     def label(self): 
         return "evidential_aleatoric_uncal_var"
@@ -456,7 +482,10 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 
 
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
-
+    """
+    Uses the evidential loss function to calculate epistemic uncertainty variance from
+    ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
+    """
     @property
     def label(self): 
         return "evidential_epistemic_uncal_var"
@@ -534,7 +563,10 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
 
 
 class EnsemblePredictor(UncertaintyPredictor):
-
+    """
+    Class that predicts uncertainty for predictions based on the variance in predictions among
+    an ensemble's submodels.
+    """
     @property
     def label(self): 
         return "ensemble_uncal_var"
@@ -612,7 +644,11 @@ class EnsemblePredictor(UncertaintyPredictor):
 
 
 class DropoutPredictor(UncertaintyPredictor):
-
+    """
+    Class that creates an artificial ensemble of models by applying monte carlo dropout to the loaded
+    model parameters. Predicts uncertainty for predictions based on the variance in predictions among
+    an ensemble's submodels.
+    """
     @property
     def label(self): 
         return "dropout_uncal_var"
@@ -680,7 +716,8 @@ class DropoutPredictor(UncertaintyPredictor):
 
 class ClassPredictor(UncertaintyPredictor):
     """
-    Class uses the [0,1] range of results from classification or multiclass models as the indicator of confidence. Used for classification and multiclass dataset types.
+    Class uses the [0,1] range of results from classification or multiclass models 
+    as the indicator of confidence. Used for classification and multiclass dataset types.
     """
 
     @property
@@ -764,7 +801,8 @@ def build_uncertainty_predictor(
     spectra_phase_mask: List[List[bool]],
 ) -> UncertaintyPredictor:
     """
-
+    Function that chooses and returns the appropriate :class: `UncertaintyPredictor` subclass
+    for the provided arguments.
     """
 
     supported_predictors = {

@@ -108,7 +108,13 @@ class UncertaintyCalibrator(ABC):
 
 
 class ZScalingCalibrator(UncertaintyCalibrator):
-
+    """
+    A class that calibrates regression uncertainty models by applying
+    a scaling value to the uncalibrated standard deviation, fitted by minimizing the
+    negative log likelihood of a normal distribution around each prediction
+    with scaling given by the uncalibrated variance. Method is described
+    in https://arxiv.org/abs/1905.11659.
+    """
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
@@ -171,7 +177,13 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 
 class TScalingCalibrator(UncertaintyCalibrator):
-
+    """
+    A class that calibrates regression uncertainty models using a variation of the
+    ZScaling method. Instead, this method assumes that error is dominated by
+    variance error as represented by the variance of the ensemble predictions.
+    The scaling value is obtained by minimizing the negative log likelihood
+    of the t distribution, including reductio term due to the number of ensemble models sampled.
+    """
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
@@ -244,7 +256,12 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
 
 class ZelikmanCalibrator(UncertaintyCalibrator):
-
+    """
+    A calibrator for regression datasets that does not depend on a particular probability
+    function form. Designed to be used with interval output. Uses the "CRUDE" method as
+    described in https://arxiv.org/abs/2005.12496. As implemented here, the interval
+    bounds are constrained to be symmetrical, though this is not required in the source method.
+    """
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
@@ -323,7 +340,12 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
 
 
 class MVEWeightingCalibrator(UncertaintyCalibrator):
-
+    """
+    A method of calibration for models that have ensembles of individual models that
+    make variance predictions. Minimizes the negative log likelihood for the
+    predictions versus the targets by applying a weighted average across the
+    variance predictions of the ensemble. Discussed in https://doi.org/10.1186/s13321-021-00551-x.
+    """
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
@@ -397,7 +419,10 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
 
 class PlattCalibrator(UncertaintyCalibrator):
-
+    """
+    A calibration method for classification datasets based on the Platt scaling algorithm.
+    As discussed in https://arxiv.org/abs/1706.04599.
+    """
     @property
     def label(self):
         return f"{self.uncertainty_method}_platt_confidence"
@@ -475,7 +500,12 @@ class PlattCalibrator(UncertaintyCalibrator):
 
 
 class IsotonicCalibrator(UncertaintyCalibrator):
-
+    """
+    A calibration method for classification datasets based on the isotonic regression algorithm.
+    In effect, the method transforms incoming uncalibrated confidences using a histogram-like
+    function where the range of each transforming bin and its magnitude is learned.
+    As discussed in https://arxiv.org/abs/1706.04599.
+    """
     @property
     def label(self):
         return f"{self.uncertainty_method}_isotonic_confidence"
@@ -517,7 +547,13 @@ class IsotonicCalibrator(UncertaintyCalibrator):
 
 
 class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
-
+    """
+    A multiclass method for classification datasets based on the isotonic regression algorithm.
+    In effect, the method transforms incoming uncalibrated confidences using a histogram-like
+    function where the range of each transforming bin and its magnitude is learned. Uses a 
+    one-against-all aggregation scheme for convertering between binary and multiclass classifiers.
+    As discussed in https://arxiv.org/abs/1706.04599.
+    """
     @property
     def label(self):
         return f"{self.uncertainty_method}_isotonic_confidence"
@@ -591,7 +627,10 @@ def build_uncertainty_calibrator(
     dropout_sampling_size: int,
     spectra_phase_mask: List[List[bool]],
 ) -> UncertaintyCalibrator:
-    """"""
+    """
+    Function that chooses the subclass of :class: `UncertaintyCalibrator`
+    based on the provided arguments and returns that class.
+    """
     if calibration_method is None:
         if dataset_type == "regression":
             if regression_calibrator_metric == "stdev":

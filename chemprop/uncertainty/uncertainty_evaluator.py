@@ -46,9 +46,14 @@ class UncertaintyEvaluator(ABC):
         test_data: MoleculeDataset,
         preds: List[List[float]],
         uncertainties: List[List[float]],
-    ):
+    ) -> List[float]:
         """
-        Run evaluation of predicted uncertainty values
+        Evaluate the performance of uncertainty predictions against the model target values.
+
+        :param test_data:  A :class:`~chemprop.data.MoleculeModel` object containing the test set with target values.
+        :param preds: The prediction values of a model on the test set.
+        :param uncertainties: The estimated uncertainty values, either calibrated or uncalibrated, of a model on the test set.
+        :return: A list of metric values for each model task.
         """
         pass
 
@@ -76,7 +81,10 @@ class MetricEvaluator(UncertaintyEvaluator):
 
 
 class NLLRegressionEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    A class for evaluating regression uncertainty values using the mean negative-log-likelihood
+    of the actual targets given the probability distributions estimated by the model.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -106,7 +114,10 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
 
 
 class NLLClassEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    A class for evaluating classification uncertainty values using the mean negative-log-likelihood
+    of the actual targets given the probabilities assigned to them by the model.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -129,7 +140,10 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 
 
 class NLLMultiEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    A class for evaluating multiclass uncertainty values using the mean negative-log-likelihood
+    of the actual targets given the probabilities assigned to them by the model.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -160,7 +174,10 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
 
 
 class CalibrationAreaEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    A class for evaluating regression uncertainty values based on how they deviate from perfect
+    calibration on an observed-probability versus expected-probability plot.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -222,7 +239,11 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
 
 
 class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    A class that evaluates uncertainty performance by binning together clusters of predictions
+    and comparing the average predicted variance of the clusters against the RMSE of the cluster.
+    Method discussed in https://doi.org/10.1021/acs.jcim.9b00975.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -292,7 +313,11 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
 
 class SpearmanEvaluator(UncertaintyEvaluator):
-    """"""
+    """
+    Class evaluating uncertainty performance using the spearman rank correlation. Method produces
+    better scores (closer to 1 in the [-1, 1] range) when the uncertainty values are predictive
+    of the ranking of prediciton errors.
+    """
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -327,8 +352,11 @@ def build_uncertainty_evaluator(
     dataset_type: str,
     loss_function: str,
     calibrator: UncertaintyCalibrator,
-):
-    """"""
+) -> UncertaintyEvaluator:
+    """
+    Function that chooses and returns the appropriate :class: `UncertaintyEvaluator` subclass
+    for the provided arguments.
+    """
     supported_evaluators = {
         "nll": {
             "regression": NLLRegressionEvaluator,
