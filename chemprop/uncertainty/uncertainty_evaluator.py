@@ -39,6 +39,12 @@ class UncertaintyEvaluator(ABC):
             raise NotImplementedError(
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
+        if self.uncertainty_method in ['ensemble', 'dropout'] and self.dataset_type in ['classification', 'multiclass']:
+            raise NotImplementedError(
+                'Though ensemble and dropout uncertainty methods are available for classification \
+                    multiclass dataset types, their outputs are not confidences and are not \
+                    compatible with any implemented evaluation methods for classification.'
+            )
 
     @abstractmethod
     def evaluate(

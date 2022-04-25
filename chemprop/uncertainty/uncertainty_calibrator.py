@@ -80,6 +80,12 @@ class UncertaintyCalibrator(ABC):
             raise NotImplementedError(
                 "No uncertainty calibrators are implemented for the spectra dataset type."
             )
+        if self.uncertainty_method in ['ensemble', 'dropout'] and self.dataset_type in ['classification', 'multiclass']:
+            raise NotImplementedError(
+                'Though ensemble and dropout uncertainty methods are available for classification \
+                    multiclass dataset types, their outputs are not confidences and are not \
+                    compatible with any implemented calibration methods for classification.'
+            )
 
     @abstractmethod
     def calibrate(self):

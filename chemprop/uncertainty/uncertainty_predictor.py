@@ -659,10 +659,6 @@ class DropoutPredictor(UncertaintyPredictor):
             raise ValueError(
                 "Dropout method for uncertainty should be used for a single model rather than an ensemble."
             )
-        if self.dataset_type != "regression":
-            raise ValueError(
-                "Dropout method for uncertainty is inteded for use with regression datasets only"
-            )
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
