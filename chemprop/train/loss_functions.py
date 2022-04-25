@@ -262,7 +262,7 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
     p = alphas / S
-    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
     B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
     SOS = A + B
 
