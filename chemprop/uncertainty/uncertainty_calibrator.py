@@ -172,8 +172,10 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         unc_var = np.square(unc)
         preds = np.array(preds)
         targets = np.array(targets)
-        return np.log(2 * np.pi * unc_var) / 2 \
+        return (
+            np.log(2 * np.pi * unc_var) / 2
             + (preds - targets) ** 2 / (2 * unc_var)
+        )
 
 
 class TScalingCalibrator(UncertaintyCalibrator):
