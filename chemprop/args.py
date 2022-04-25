@@ -5,6 +5,7 @@ import pickle
 from typing import List, Optional
 from typing_extensions import Literal
 from packaging import version
+from warnings import warn
 
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
@@ -741,7 +742,7 @@ class PredictArgs(CommonArgs):
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False
-    """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
+    """Deprecated. Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
     individual_ensemble_predictions: bool = False
     """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
     # Uncertainty arguments
@@ -790,9 +791,6 @@ class PredictArgs(CommonArgs):
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
 
-        if self.uncertainty_method is None and (self.calibration_method is not None or self.evaluation_methods is not None):
-            raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
-
         if self.regression_calibrator_metric is None:
             if self.calibration_method == 'zelikman_interval':
                 self.regression_calibrator_metric = 'interval'
@@ -812,12 +810,21 @@ class PredictArgs(CommonArgs):
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
 
-        if self.uncertainty_method is None and (self.calibration_method is not None or self.evaluation_methods is not None):
-            raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
-
-        if self.ensemble_variance == True and self.uncertainty_method != 'ensemble':
-            raise ValueError('The `--ensemble_variance` method of uncertainty quantification should be replaced with '
-                             '`--uncertainty_method ensemble` for dedicated uncertainty jobs.')
+        if self.ensemble_variance == True:
+            if self.uncertainty_method in ['ensemble', None]:
+                warn(
+                    'The `--ensemble_variance` argument is deprecated and should \
+                        be replaced with `--uncertainty_method ensemble`.',
+                    DeprecationWarning,
+                )
+                self.uncertainty_method = 'ensemble'
+            else:
+                raise ValueError(
+                    f'Only one uncertainty method can be used at a time. \
+                        The arguement `--ensemble_variance` was provided along \
+                        with the uncertainty method {self.uncertainty_method}. The `--ensemble_variance` \
+                        argument is deprecated and should be replaced with `--uncertainty_method ensemble`.'
+                )
 
         if self.calibration_interval_percentile <= 1 or self.calibration_interval_percentile >= 100:
             raise ValueError('The calibration interval must be a percentile value in the range (1,100).')
