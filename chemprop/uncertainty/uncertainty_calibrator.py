@@ -70,7 +70,6 @@ class UncertaintyCalibrator(ABC):
         """
         The string in saved results indicating the uncertainty method used.
         """
-        pass
 
     def raise_argument_errors(self):
         """
@@ -92,14 +91,12 @@ class UncertaintyCalibrator(ABC):
         """
         Fit calibration method for the calibration data.
         """
-        pass
 
     @abstractmethod
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         """
         Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
         """
-        pass
 
     def nll(
         self,
@@ -110,7 +107,6 @@ class UncertaintyCalibrator(ABC):
         """
         Takes in calibrated predictions and uncertainty parameters and returns the log probability density of that result.
         """
-        pass
 
 
 class ZScalingCalibrator(UncertaintyCalibrator):

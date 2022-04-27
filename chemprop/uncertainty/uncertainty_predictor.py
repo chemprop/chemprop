@@ -55,45 +55,53 @@ class UncertaintyPredictor(ABC):
         """
         The string in saved results indicating the uncertainty method used.
         """
-        pass
 
     def raise_argument_errors(self):
         """
         Raise errors for incompatible dataset types or uncertainty methods, etc.
         """
-        pass
 
     @abstractmethod
     def calculate_predictions(self):
         """
         Calculate the uncalibrated predictions and store them as attributes
         """
-        pass
 
     def get_uncal_preds(self):
-        """Return the predicted values for the test data."""
+        """
+        Return the predicted values for the test data.
+        """
         return self.uncal_preds
 
     def get_uncal_vars(self):
-        """Return the uncalibrated variances for the test data"""
+        """
+        Return the uncalibrated variances for the test data
+        """
         return self.uncal_vars
 
     def get_uncal_confidence(self):
-        """Return the uncalibrated confidences for the test data"""
+        """
+        Return the uncalibrated confidences for the test data
+        """
         return self.uncal_confidence
 
     def get_individual_vars(self):
-        """Return the variances predicted by each individual model in an ensemble."""
+        """
+        Return the variances predicted by each individual model in an ensemble.
+        """
         return self.individual_vars
 
     def get_individual_preds(self):
-        """Return the value predicted by each individual model in an ensemble."""
+        """
+        Return the value predicted by each individual model in an ensemble.
+        """
         return self.individual_preds
 
     @abstractmethod
     def get_uncal_output(self):
-        """Return the uncalibrated uncertainty outputs for the test data"""
-        pass
+        """
+        Return the uncalibrated uncertainty outputs for the test data
+        """
 
 
 class NoUncertaintyPredictor(UncertaintyPredictor):

@@ -61,7 +61,6 @@ class UncertaintyEvaluator(ABC):
         :param uncertainties: The estimated uncertainty values, either calibrated or uncalibrated, of a model on the test set.
         :return: A list of metric values for each model task.
         """
-        pass
 
 
 class MetricEvaluator(UncertaintyEvaluator):
