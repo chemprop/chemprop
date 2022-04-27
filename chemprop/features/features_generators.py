@@ -50,23 +50,23 @@ MORGAN_NUM_BITS = 2048
 
 
 @register_features_generator('morgan')
-def morgan_binary_features_generator(mol: Molecule,
+def morgan_binary_features_generator(mol_data: Molecule,
                                      radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> Union[np.ndarray, List[np.ndarray]]:
+                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
     """
     Generates a binary Morgan fingerprint for a molecule.
-
-    :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
+    :param mol_data: A molecule (i.e., either a SMILES or an RDKit molecule).
     :param radius: Morgan fingerprint radius.
     :param num_bits: Number of bits in Morgan fingerprint.
     :return: A 1D numpy array containing the binary Morgan fingerprint.
     """
-    if type(mol) == list:
+
+    if type(mol_data) == list:
         features = []
-        for entry in mol:
+        for datapoint in mol_data:
             entry_features = []
-            for m in entry:
-                molecule = Chem.MolFromSmiles(m) if type(m) == str else m
+            for molecule in datapoint:
+                molecule = Chem.MolFromSmiles(molecule) if type(molecule) == str else molecule
                 features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
                 f = np.zeros((1,))
                 DataStructs.ConvertToNumpyArray(features_vec, f)
@@ -74,8 +74,8 @@ def morgan_binary_features_generator(mol: Molecule,
             features.extend(entry_features)
         features = np.array(features)
     else:
-        mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
-        features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=num_bits)
+        mol_data = Chem.MolFromSmiles(mol_data) if type(mol_data) == str else mol_data
+        features_vec = AllChem.GetMorganFingerprintAsBitVect(mol_data, radius, nBits=num_bits)
         features = np.zeros((1,))
         DataStructs.ConvertToNumpyArray(features_vec, features)
 
@@ -105,17 +105,28 @@ def morgan_counts_features_generator(mol: Molecule,
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
+
     @register_features_generator('rdkit_2d')
-    def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+    def rdkit_2d_features_generator(mol_data: Molecule) -> np.ndarray:
         """
         Generates RDKit 2D features for a molecule.
-
-        :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
+        :param mol_data: A molecule (i.e., either a SMILES or an RDKit molecule).
         :return: A 1D numpy array containing the RDKit 2D features.
         """
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
         generator = rdDescriptors.RDKit2D()
-        features = generator.process(smiles)[1:]
+
+        if type(mol_data) == list:
+            features = []
+            for datapoint in mol_data:
+                entry_features = []
+                for molecule in datapoint:
+                    f = generator.process(molecule)[1:]
+                    entry_features.append(f)
+                features.extend(entry_features)
+            features = np.array(features)
+        else:
+            smiles = Chem.MolToSmiles(mol_data, isomericSmiles=True) if type(mol_data) != str else mol_data
+            features = np.array(generator.process(smiles)[1:])
 
         return features
 

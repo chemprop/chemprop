@@ -382,7 +382,7 @@ def get_data(path: str,
 
         # Precompute feature generators in batch
         if precompute_features and features_generator is not None:
-            features_data = []
+            features_data = [] # in the following lines of code, features_data is only checked if it is not none, the data contained is not used
             for fg in features_generator:
                 generator = get_features_generator(fg)
                 all_features.extend(generator(all_smiles))

@@ -1000,5 +1000,59 @@ class ChempropTests(TestCase):
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
+    @parameterized.expand([
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
+                'rmse',
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit2d_features_generator',
+                'chemprop',
+                'rmse',
+                ['--features_generator', 'rdkit_2d']
+        ),
+        (
+                'chemprop_combined_features_generator',
+                'chemprop',
+                'rmse',
+                ['--features_generator', 'rdkit_2d', 'morgan']
+        ),
+    ])
+    def test_batch_generation(self,
+                                          name: str,
+                                          model_type: str,
+                                          metric: str,
+                                          train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train with unbatched generators
+            self.train(
+                dataset_type='regression',
+                metric=metric,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags
+            )
+
+            unbatched_test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            unbatched_test_scores = unbatched_test_scores_data[f'Mean {metric}']
+
+            # Train with batched generators
+            self.train(
+                dataset_type='regression',
+                metric=metric,
+                save_dir=save_dir,
+                model_type=model_type,
+                flags=train_flags + ['--precompute_features']
+            )
+
+            batched_test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            batched_test_scores = batched_test_scores_data[f'Mean {metric}']
+
+            # Check results
+            self.assertAlmostEqual(unbatched_test_scores[0], batched_test_scores[0], delta=DELTA*unbatched_test_scores[0])
+
+
 if __name__ == '__main__':
     unittest.main()
