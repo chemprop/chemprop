@@ -669,32 +669,30 @@ class DropoutPredictor(UncertaintyPredictor):
             )
 
     def calculate_predictions(self):
-        for i, (model, scaler_list) in enumerate(
-            tqdm(zip(self.models, self.scalers), total=self.num_models)
+        model = next(self.models)
+        (
+            scaler,
+            features_scaler,
+            atom_descriptor_scaler,
+            bond_feature_scaler,
+        ) = next(self.scalers)
+        if (
+            features_scaler is not None
+            or atom_descriptor_scaler is not None
+            or bond_feature_scaler is not None
         ):
-            (
-                scaler,
-                features_scaler,
-                atom_descriptor_scaler,
-                bond_feature_scaler,
-            ) = scaler_list
-            if (
-                features_scaler is not None
-                or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
-            ):
-                self.test_data.reset_features_and_targets()
-                if features_scaler is not None:
-                    self.test_data.normalize_features(features_scaler)
-                if atom_descriptor_scaler is not None:
-                    self.test_data.normalize_features(
-                        atom_descriptor_scaler, scale_atom_descriptors=True
-                    )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
-                    )
-
+            self.test_data.reset_features_and_targets()
+            if features_scaler is not None:
+                self.test_data.normalize_features(features_scaler)
+            if atom_descriptor_scaler is not None:
+                self.test_data.normalize_features(
+                    atom_descriptor_scaler, scale_atom_descriptors=True
+                )
+            if bond_feature_scaler is not None:
+                self.test_data.normalize_features(
+                    bond_feature_scaler, scale_bond_features=True
+                )
+        for i in range(self.dropout_sampling_size):
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
