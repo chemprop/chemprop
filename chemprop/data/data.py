@@ -535,7 +535,11 @@ class MoleculeDataset(Dataset):
         :param targets: A list of lists of floats (or None) containing targets for each molecule. This must be the
                         same length as the underlying dataset.
         """
-        assert len(self._data) == len(targets)
+        if not len(self._data) == len(targets):
+            raise ValueError(
+                "number of molecules and targets must be of same length! "
+                f"num molecules: {len(self._data)}, num targets: {len(targets)}"
+            )
         for i in range(len(self._data)):
             self._data[i].set_targets(targets[i])
 

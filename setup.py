@@ -1,23 +1,13 @@
-import os
 from setuptools import find_packages, setup
 
-# Load version number
-__version__ = None
-
-src_dir = os.path.abspath(os.path.dirname(__file__))
-version_file = os.path.join(src_dir, 'chemprop', '_version.py')
-
-with open(version_file, encoding='utf-8') as fd:
-    exec(fd.read())
+__version__ = "1.4.1"
 
 # Load README
 with open('README.md', encoding='utf-8') as f:
     long_description = f.read()
 
-
 setup(
     name='chemprop',
-    version=__version__,
     author='Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld, Allison Tam',
     author_email='chemprop@mit.edu',
     description='Molecular Property Prediction with Message Passing Neural Networks',

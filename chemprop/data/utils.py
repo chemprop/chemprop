@@ -3,7 +3,7 @@ import csv
 from logging import Logger
 import pickle
 from random import Random
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Set, Tuple, Union
 import os
 
 from rdkit import Chem
@@ -15,12 +15,25 @@ from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol, get_features_generator
 
+def get_header(path: str) -> List[str]:
+    """
+    Returns the header of a data CSV file.
+
+    :param path: Path to a CSV file.
+    :return: A list of strings containing the strings in the comma-separated header.
+    """
+    with open(path) as f:
+        header = next(csv.reader(f))
+
+    return header
+
+
 def preprocess_smiles_columns(path: str,
-                              smiles_columns: Optional[Union[str, List[Optional[str]]]],
-                              number_of_molecules: int = 1) -> List[Optional[str]]:
+                              smiles_columns: Union[str, List[str]] = None,
+                              number_of_molecules: int = 1) -> List[str]:
     """
     Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
-    headings corresponding to the columns in the data file holding SMILES.
+    headings corresponding to the columns in the data file holding SMILES. Assumes file has a header.
 
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
@@ -84,19 +97,6 @@ def get_task_names(path: str,
     return target_names
 
 
-def get_header(path: str) -> List[str]:
-    """
-    Returns the header of a data CSV file.
-
-    :param path: Path to a CSV file.
-    :return: A list of strings containing the strings in the comma-separated header.
-    """
-    with open(path) as f:
-        header = next(csv.reader(f))
-
-    return header
-
-
 def get_data_weights(path: str) -> List[float]:
     """
     Returns the list of data weights for the loss function as stored in a CSV file.
@@ -120,6 +120,7 @@ def get_data_weights(path: str) -> List[float]:
 
 def get_smiles(path: str,
                smiles_columns: Union[str, List[str]] = None,
+               number_of_molecules: int = 1,
                header: bool = True,
                flatten: bool = False
                ) -> Union[List[str], List[List[str]]]:
@@ -129,6 +130,8 @@ def get_smiles(path: str,
     :param path: Path to a CSV file.
     :param smiles_columns: A list of the names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules for each data point. Not necessary if
+                                the names of smiles columns are previously processed.
     :param header: Whether the CSV file contains a header.
     :param flatten: Whether to flatten the returned SMILES to a list instead of a list of lists.
     :return: A list of SMILES or a list of lists of SMILES, depending on :code:`flatten`.
@@ -136,15 +139,15 @@ def get_smiles(path: str,
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    if not isinstance(smiles_columns, list):
-        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
+    if not isinstance(smiles_columns, list) and header:
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns, number_of_molecules=number_of_molecules)
 
     with open(path) as f:
         if header:
             reader = csv.DictReader(f)
         else:
             reader = csv.reader(f)
-            smiles_columns = 0
+            smiles_columns = list(range(number_of_molecules))
 
         smiles = [[row[c] for c in smiles_columns] for row in reader]
 
@@ -524,8 +527,8 @@ def split_data(data: MoleculeDataset,
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
-    if not (len(sizes) == 3 and sum(sizes) == 1):
-        raise ValueError('Valid split sizes must sum to 1 and must have three sizes: train, validation, and test.')
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     random = Random(seed)
 
@@ -535,9 +538,6 @@ def split_data(data: MoleculeDataset,
     else:
         folds_file = val_fold_index = test_fold_index = None
     
-    if key_molecule_index >= args.number_of_molecules:
-        raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
-
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -589,8 +589,10 @@ def split_data(data: MoleculeDataset,
             raise ValueError('Test size must be zero since test set is created separately '
                              'and we want to put all other data in train and validation')
 
-        assert folds_file is not None
-        assert test_fold_index is not None
+        if folds_file is None:
+            raise ValueError('arg "folds_file" can not be None!')
+        if test_fold_index is None:
+            raise ValueError('arg "test_fold_index" can not be None!')
 
         try:
             with open(folds_file, 'rb') as f:

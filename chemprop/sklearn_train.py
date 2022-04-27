@@ -305,7 +305,7 @@ def run_sklearn(args: SklearnTrainArgs,
     for dataset in [train_data, test_data]:
         for datapoint in tqdm(dataset, total=len(dataset)):
             for s in datapoint.smiles:
-                datapoint.extend_features(morgan_fingerprint(mol=s, radius=args.radius, num_bits=args.num_bits))
+                datapoint.extend_features(morgan_fingerprint(mol_data=s, radius=args.radius, num_bits=args.num_bits))
 
     debug('Building model')
     if args.dataset_type == 'regression':

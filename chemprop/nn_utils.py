@@ -140,8 +140,19 @@ class NoamLR(_LRScheduler):
         :param max_lr: The maximum learning rate (achieved after :code:`warmup_epochs`).
         :param final_lr: The final learning rate (achieved after :code:`total_epochs`).
         """
-        assert len(optimizer.param_groups) == len(warmup_epochs) == len(total_epochs) == len(init_lr) == \
-               len(max_lr) == len(final_lr)
+        if not (
+            len(optimizer.param_groups) == len(warmup_epochs) == len(total_epochs) \
+            == len(init_lr) == len(max_lr) == len(final_lr)
+        ):
+            raise ValueError(
+                "Number of param groups must match the number of epochs and learning rates! "
+                f"got: len(optimizer.param_groups)= {len(optimizer.param_groups)}, "
+                f"len(warmup_epochs)= {len(warmup_epochs)}, "
+                f"len(total_epochs)= {len(total_epochs)}, "
+                f"len(init_lr)= {len(init_lr)}, "
+                f"len(max_lr)= {len(max_lr)}, "
+                f"len(final_lr)= {len(final_lr)}"
+            )
 
         self.num_lrs = len(optimizer.param_groups)
 
