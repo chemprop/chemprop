@@ -259,44 +259,7 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
 
     y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
-    # SOS term
-    S = torch.sum(alphas, dim=-1, keepdim=True)
-    p = alphas / S
-    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
-    B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
-    SOS = A + B
-
-    # KL
-    alpha_hat = y_one_hot + (1 - y_one_hot) * alphas
-
-    beta = torch.ones_like(alpha_hat)
-    S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
-    S_beta = torch.sum(beta, dim=-1, keepdim=True)
-
-    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
-        torch.lgamma(alpha_hat), dim=-1, keepdim=True
-    )
-    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
-        S_beta
-    )
-
-    # digamma terms
-    dg_alpha = torch.digamma(alpha_hat)
-    dg_S_alpha = torch.digamma(S_alpha)
-
-    # KL
-    KL = (
-        ln_alpha
-        + ln_beta
-        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-    )
-
-    KL = lam * KL
-
-    # loss = torch.mean(SOS + KL)
-    loss = SOS + KL
-    loss = torch.mean(loss, dim=-1)
-    return loss
+    return dirichlet_common_loss(alphas=alphas, y_one_hot=y_one_hot, lam=lam)
 
 
 def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
@@ -313,14 +276,28 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 
     y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
+    return dirichlet_common_loss(alphas=alphas, y_one_hot=y_one_hot, lam=lam)
+
+
+def dirichlet_common_loss(alphas, y_one_hot, lam=0):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al. This function follows
+    after the classification and multiclass specific functions that reshape the 
+    alpha inputs and create one-hot targets.
+
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
+    :param y_one_hot: Digital labels to predict in shape(datapoints, tasks, classes).
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
     p = alphas / S
-    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
     B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
     SOS = A + B
 
-    # KL
     alpha_hat = y_one_hot + (1 - y_one_hot) * alphas
 
     beta = torch.ones_like(alpha_hat)
