@@ -55,7 +55,7 @@ def calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K):
     calibration_scores[N]=np.Inf
 
     calibration_scores=np.sort(calibration_scores)
-    index=int(math.ceil((1-alpha)*(N+1)))-1
+    index=int(math.ceil((1-alpha)*(N+1)))-1#np.quantile
     qhat=calibration_scores[index]#want the ceil((1-alpha)(N+1))th value
 
     return qhat
