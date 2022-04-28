@@ -385,7 +385,7 @@ def get_data(path: str,
 
         # Precompute feature generators in batch
         if precompute_features and features_generator is not None:
-            features_data = [] # in the following lines of code, features_data is only checked if it is not none, the data contained is not used
+            features_data = []  # needed since features_data is checked if none in MoleculeDatapoint construction below
             for fg in features_generator:
                 generator = get_features_generator(fg)
                 gen_data = generator(all_smiles).reshape((len(all_smiles), -1))
