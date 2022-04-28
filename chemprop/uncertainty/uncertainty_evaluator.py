@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import t, spearmanr
 from scipy.special import erfinv
 
-from chemprop.data import MoleculeDataset
 from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
 from chemprop.train import evaluate_predictions
 
@@ -31,6 +30,8 @@ class UncertaintyEvaluator(ABC):
         self.loss_function = loss_function
         self.calibrator = calibrator
 
+        self.raise_argument_errors()
+
     def raise_argument_errors(self):
         """
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
@@ -49,14 +50,14 @@ class UncertaintyEvaluator(ABC):
     @abstractmethod
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ) -> List[float]:
         """
         Evaluate the performance of uncertainty predictions against the model target values.
 
-        :param test_data:  A :class:`~chemprop.data.MoleculeModel` object containing the test set with target values.
+        :param targets:  The target values for prediction.
         :param preds: The prediction values of a model on the test set.
         :param uncertainties: The estimated uncertainty values, either calibrated or uncalibrated, of a model on the test set.
         :return: A list of metric values for each model task.
@@ -70,18 +71,16 @@ class MetricEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
         return evaluate_predictions(
             preds=uncertainties,
-            targets=test_data.targets(),
-            num_tasks=np.array(test_data.targets()).shape[1],
+            targets=targets,
+            num_tasks=np.array(targets).shape[1],
             metrics=[self.evaluation_method],
             dataset_type=self.dataset_type,
-            gt_targets=test_data.gt_targets,
-            lt_targets=test_data.lt_targets,
         )[self.evaluation_method]
 
 
@@ -100,20 +99,20 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
         if self.calibrator is None:  # uncalibrated regression uncertainties are variances
             uncertainties = np.array(uncertainties)
             preds = np.array(preds)
-            targets = np.array(test_data.targets)
+            targets = np.array(targets)
             nll = np.log(2 * np.pi * uncertainties) / 2 \
                 + (preds - targets) ** 2 / (2 * uncertainties)
             return np.mean(nll, axis=0).tolist()
         else:
             nll = self.calibrator.nll(
-                preds=preds, unc=uncertainties, targets=test_data.targets()
+                preds=preds, unc=uncertainties, targets=targets
             )  # shape(data, task)
             return np.mean(nll, axis=0).tolist()
 
@@ -133,11 +132,11 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets())
+        targets = np.array(targets)
         uncertainties = np.array(uncertainties)
         likelihood = uncertainties * targets + (1 - uncertainties) * (1 - targets)
         nll = -1 * np.log(likelihood)
@@ -159,11 +158,11 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets(), dtype=int)  # shape(data, tasks)
+        targets = np.array(targets, dtype=int)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         nll = np.zeros_like(targets)
@@ -193,11 +192,11 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets())  # shape(data, tasks)
+        targets = np.array(targets)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
@@ -221,7 +220,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                     / np.expand_dims(original_scaling, axis=0)
                     * np.expand_dims(bin_scaling, axis=0)
                 )  # shape(data, tasks)
-                bin_fraction = np.sum(bin_unc >= abs_error, axis=0)
+                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
                 fractions[:, i] = bin_fraction
 
             self.calibrator.regression_calibrator_metric = original_metric
@@ -259,11 +258,11 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets())  # shape(data, tasks)
+        targets = np.array(targets)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
@@ -333,11 +332,11 @@ class SpearmanEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        test_data: MoleculeDataset,
+        targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
     ):
-        targets = np.array(test_data.targets())  # shape(data, tasks)
+        targets = np.array(targets)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)

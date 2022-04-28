@@ -982,5 +982,205 @@ class ChempropTests(TestCase):
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
+    @parameterized.expand([(
+        101.8037,
+        'ensemble',
+        None,
+        'nll',
+        [],
+        [],
+    ),
+    (
+        1.749264,
+        'mve',
+        None,
+        'nll',
+        ['--loss_function', 'mve'],
+        [],
+    ),
+    (
+        1.93262,
+        'evidential_epistemic',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    (
+        1.936139,
+        'evidential_aleatoric',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    (
+        1.9502012,
+        'evidential_total',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    # (
+    #     8.843267,
+    #     'dropout',
+    #     None,
+    #     'nll',
+    #     ['--num_folds', '1'],
+    #     [],
+    # ),
+    (
+        2.350392723,
+        'ensemble',
+        'zscaling',
+        'nll',
+        [],
+        [],
+    ),
+    (
+        1.8707739,
+        'ensemble',
+        'tscaling',
+        'nll',
+        ['--num_folds','5'],
+        [],
+    ),
+    (
+        1.2245133,
+        'ensemble',
+        'zelikman_interval',
+        'ence',
+        [],
+        [],
+    ),
+    (
+        2.06247499,
+        'mve',
+        'mve_weighting',
+        'nll',
+        ['--loss_function', 'mve'],
+        [],
+    ),
+    (
+        0.38442,
+        'ensemble',
+        None,
+        'miscalibration_area',
+        [],
+        [],
+    ),
+    (
+        166.80048,
+        'ensemble',
+        None,
+        'ence',
+        [],
+        [],
+    ),
+    # (
+    #     0.0239197,
+    #     'ensemble',
+    #     None,
+    #     'spearman',
+    #     [],
+    #     [],
+    # ),
+    ])
+    def test_uncertainty_regression(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            self.train(
+                dataset_type='regression',
+                metric='rmse',
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+            test_path = os.path.join(TEST_DATA_DIR, 'regression.csv')
+            eval_path = os.path.join(save_dir, 'eval_scores.csv')
+            predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(['--uncertainty_method', uncertainty_method,])
+            if calibration_method is not None:
+                predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
+            if evaluation_methods is not None:
+                predict_flags.extend(['--evaluation_methods', evaluation_methods])
+            self.predict(
+                dataset_type='regression',
+                preds_path=os.path.join(save_dir, 'preds.csv'),
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores_data=pd.read_csv(eval_path)
+            self.assertAlmostEqual(evaluation_scores_data['logSolubility'][0], expected_score, delta=expected_score * DELTA)
+
+    @parameterized.expand([(
+        0.62062329,
+        'classification',
+        'platt',
+        'nll',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    (
+        0.60075398,
+        'classification',
+        'isotonic',
+        'nll',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    (
+        0.67181467,
+        'classification',
+        'isotonic',
+        'accuracy',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    ])
+    def test_uncertainty_class(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            test_path = os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')
+            train_flags.extend(['--data_path', test_path])
+            self.train(
+                dataset_type='classification',
+                metric='binary_cross_entropy',
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+            eval_path = os.path.join(save_dir, 'eval_scores.csv')
+            predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(['--uncertainty_method', uncertainty_method,])
+            if calibration_method is not None:
+                predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
+            if evaluation_methods is not None:
+                predict_flags.extend(['--evaluation_methods', evaluation_methods])
+            self.predict(
+                dataset_type='regression',
+                preds_path=os.path.join(save_dir, 'preds.csv'),
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores_data=pd.read_csv(eval_path)
+            self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
+
+
 if __name__ == '__main__':
     unittest.main()

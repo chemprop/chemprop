@@ -14,64 +14,34 @@ from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibr
 
 def load_model(args: PredictArgs, generator: bool = False):
     """
-    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler
+    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler 
     objects is returned (memory efficient), else the full list (holding all models in memory, necessary for preloading).
-    Because deep copies of generators is not possible, separate generator objects are created to be used for prediction and uncertainty calibration.
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
     :param generator: A boolean to return a generator instead of a list of models and scalers.
-    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models,
-                the same models for use in calibration, a list or generator object of scalers,
-                the same scalers for use in calibration, the number of tasks, the respective names of the tasks, 
-                and the total number of models.
+    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or 
+                 generator object of scalers, the number of tasks and their respective names.
     """
-    print("Loading training args")
+    print('Loading training args')
     train_args = load_args(args.checkpoint_paths[0])
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
-    num_models = len(args.checkpoint_paths)
 
     update_prediction_args(predict_args=args, train_args=train_args)
     args: Union[PredictArgs, TrainArgs]
 
     # Load model and scalers
     models = (
-        load_checkpoint(checkpoint_path, device=args.device)
-        for checkpoint_path in args.checkpoint_paths
+        load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths
     )
     scalers = (
         load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths
     )
-    # generators cannot be deepcopied for multiple purposes. To use models in calibration, need to make duplicates.
-    if args.calibration_path is not None:
-        calibration_models = (
-            load_checkpoint(checkpoint_path, device=args.device)
-            for checkpoint_path in args.checkpoint_paths
-        )
-        calibration_scalers = (
-            load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths
-        )
-    else:
-        calibration_models = calibration_scalers = None
-
     if not generator:
         models = list(models)
         scalers = list(scalers)
-        if args.calibration_path is not None:
-            calibration_models = models
-            calibration_scalers = scalers
 
-    return (
-        args,
-        train_args,
-        models,
-        calibration_models,
-        scalers,
-        calibration_scalers,
-        num_tasks,
-        task_names,
-        num_models,
-    )
+    return args, train_args, models, scalers, num_tasks, task_names
 
 
 def load_data(args: PredictArgs, smiles: List[List[str]]):
@@ -243,7 +213,7 @@ def predict_and_save(
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
-                test_data=evaluation_data, preds=preds, uncertainties=unc
+                targets=evaluation_data.targets(), preds=preds, uncertainties=unc
             )
             evaluations.append(evaluation)
             print(
@@ -376,12 +346,9 @@ def make_predictions(
         PredictArgs,
         TrainArgs,
         List[MoleculeModel],
-        List[MoleculeModel],
-        List[StandardScaler],
         List[StandardScaler],
         int,
         List[str],
-        int,
     ] = None,
     calibrator: UncertaintyCalibrator = None,
     return_invalid_smiles: bool = True,
@@ -395,10 +362,14 @@ def make_predictions(
     Otherwise makes predictions on :code:`args.test_data`.
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
-                 loading data and a model and making predictions.
+                loading data and a model and making predictions.
     :param smiles: List of list of SMILES to make predictions on.
-    :param model_objects: Tuple of output of load_model function which can be called separately.
+    :param model_objects: Tuple of output of load_model function which can be called separately outside this function. Preloaded model objects should have
+                used the non-generator option for load_model if the objects are to be used multiple times or are intended to be used for calibration as well.
     :param calibrator: A :class: `~chemprop.uncertainty.UncertaintyCalibrator` object, for use in calibrating uncertainty predictions.
+                Can be preloaded and provided as a function input or constructed within the function from arguments. The models and scalers used
+                to initiate the calibrator must be lists instead of generators if the same calibrator is to be used multiple times or
+                if the same models and scalers objects are also part of the provided model_objects input.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :param return_index_dict: Whether to return the prediction results as a dictionary keyed from the initial data indexes.
     :param return_uncertainty: Whether to return uncertainty predictions alongside the model value predictions.
@@ -409,26 +380,21 @@ def make_predictions(
             args,
             train_args,
             models,
-            calibration_models,
             scalers,
-            calibration_scalers,
             num_tasks,
             task_names,
-            num_models,
         ) = model_objects
     else:
         (
             args,
             train_args,
             models,
-            calibration_models,
             scalers,
-            calibration_scalers,
             num_tasks,
             task_names,
-            num_models,
         ) = load_model(args, generator=True)
-    # Note: generators cannot be deep copied, so prediction and calibration model and scaler objects are different instances unless generator=False
+
+    num_models = len(args.checkpoint_paths)
 
     set_features(args, train_args)
 
@@ -464,6 +430,14 @@ def make_predictions(
             batch_size=args.batch_size,
             num_workers=args.num_workers,
         )
+
+        if isinstance(models, List) and isinstance(scalers, List):
+            calibration_models = models
+            calibration_scalers = scalers
+        else:
+            calibration_model_objects = load_model(args, generator=True)
+            calibration_models = calibration_model_objects[2]
+            calibration_scalers = calibration_model_objects[3]
 
         calibrator = build_uncertainty_calibrator(
             calibration_method=args.calibration_method,
