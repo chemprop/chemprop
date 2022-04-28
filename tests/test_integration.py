@@ -23,8 +23,6 @@ from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
 
-import timeit
-
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
 EPOCHS = 3
