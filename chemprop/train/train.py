@@ -90,7 +90,7 @@ def train(model: MoleculeModel,
             loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
         elif args.dataset_type == 'multiclass':
             targets = targets.long()
-            if args.loss_function == 'evidential':
+            if args.loss_function == 'dirichlet':
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
             else:
                 target_losses = []
@@ -102,7 +102,9 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == 'bounded_mse':
             loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
-        elif args.loss_function == 'evidential' # regression or classification
+        elif args.loss_function == 'evidential':
+            loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+        elif args.loss_function == 'dirichlet': # classification
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask

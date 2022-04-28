@@ -4,6 +4,8 @@ from tempfile import TemporaryDirectory
 import pickle
 from typing import List, Optional
 from typing_extensions import Literal
+from packaging import version
+from warnings import warn
 
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
@@ -229,7 +231,7 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -370,11 +372,11 @@ class TrainArgs(CommonArgs):
     """
     Choices for construction of atom and bond features for reactions
     :code:`reac_prod`: concatenates the reactants feature with the products feature.
-    :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products. 
-    :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products. 
+    :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products.
+    :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products.
     :code:`reac_prod_balance`: concatenates the reactants feature with the products feature, balances imbalanced reactions.
-    :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions. 
-    :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions. 
+    :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
+    :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.
     """
     reaction_solvent: bool = False
     """
@@ -428,9 +430,9 @@ class TrainArgs(CommonArgs):
     """Turn off atom feature scaling."""
     frzn_ffn_layers: int = 0
     """
-    Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), 
+    Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn),
     where n is specified in the input.
-    Automatically also freezes mpnn weights. 
+    Automatically also freezes mpnn weights.
     """
     freeze_first_only: bool = False
     """
@@ -526,7 +528,7 @@ class TrainArgs(CommonArgs):
 
         global temp_save_dir  # Prevents the temporary directory from being deleted upon function return
 
-        #Adapt the number of molecules for reaction_solvent mode
+        # Adapt the number of molecules for reaction_solvent mode
         if self.reaction_solvent is True and self.number_of_molecules != 2:
             raise ValueError('In reaction_solvent mode, --number_of_molecules 2 must be specified.')
 
@@ -544,11 +546,11 @@ class TrainArgs(CommonArgs):
                 for key, value in config.items():
                     setattr(self, key, value)
 
-        #Check whether the number of input columns is two for the reaction_solvent mode
+        # Check whether the number of input columns is two for the reaction_solvent mode
         if self.reaction_solvent is True and len(self.smiles_columns) != 2:
             raise ValueError(f'In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
 
-        #Validate reaction/reaction_solvent mode
+        # Validate reaction/reaction_solvent mode
         if self.reaction is True and self.reaction_solvent is True:
             raise ValueError('Only reaction or reaction_solvent mode can be used, not both.')
         
@@ -729,6 +731,7 @@ class TrainArgs(CommonArgs):
         if self.split_key_molecule >= self.number_of_molecules:
             raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
 
+
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
 
@@ -739,9 +742,46 @@ class PredictArgs(CommonArgs):
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False
-    """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
+    """Deprecated. Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
     individual_ensemble_predictions: bool = False
     """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
+    # Uncertainty arguments
+    uncertainty_method: Literal[
+        'mve',
+        'ensemble',
+        'evidential_epistemic',
+        'evidential_aleatoric',
+        'evidential_total',
+        'classification',
+        'dropout',
+        'spectra_roundrobin',
+    ] = None
+    """The method of calculating uncertainty."""
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
+    """Methods used for calibrating the uncertainty calculated with uncertainty method."""
+    evaluation_methods: List[str] = None
+    """The methods used for evaluating the uncertainty performance if the test data provided includes targets.
+    Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric."""
+    evaluation_scores_path: str = None
+    """Location to save the results of uncertainty evaluations."""
+    uncertainty_dropout_p: float = 0.1
+    """The probability to use for Monte Carlo dropout uncertainty estimation."""
+    dropout_sampling_size: int = 10
+    """The number of samples to use for Monte Carlo dropout uncertainty estimation."""
+    calibration_interval_percentile: float = 95
+    """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
+    regression_calibrator_metric: Literal['stdev', 'interval'] = None
+    """Regression calibrators can output either a stdev or an inverval. """
+    calibration_path: str = None
+    """Path to data file to be used for uncertainty calibration."""
+    calibration_features_path: str = None
+    """Path to features data to be used with the uncertainty calibration dataset."""
+    calibration_phase_features_path: str = None
+    """ """
+    calibration_atom_descriptors_path: str = None
+    """Path to the extra atom descriptors."""
+    calibration_bond_features_path: str = None
+    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
 
     @property
     def ensemble_size(self) -> int:
@@ -750,6 +790,15 @@ class PredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
+
+        if self.regression_calibrator_metric is None:
+            if self.calibration_method == 'zelikman_interval':
+                self.regression_calibrator_metric = 'interval'
+            else:
+                self.regression_calibrator_metric = 'stdev'
+
+        if self.uncertainty_method == 'dropout' and version.parse(torch.__version__) < version.parse('1.9.0'):
+            raise ValueError('Dropout uncertainty is only supported for pytorch versions >= 1.9.0')
 
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.test_path,
@@ -760,6 +809,41 @@ class PredictArgs(CommonArgs):
         if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
+
+        if self.ensemble_variance == True:
+            if self.uncertainty_method in ['ensemble', None]:
+                warn(
+                    'The `--ensemble_variance` argument is deprecated and should \
+                        be replaced with `--uncertainty_method ensemble`.',
+                    DeprecationWarning,
+                )
+                self.uncertainty_method = 'ensemble'
+            else:
+                raise ValueError(
+                    f'Only one uncertainty method can be used at a time. \
+                        The arguement `--ensemble_variance` was provided along \
+                        with the uncertainty method {self.uncertainty_method}. The `--ensemble_variance` \
+                        argument is deprecated and should be replaced with `--uncertainty_method ensemble`.'
+                )
+
+        if self.calibration_interval_percentile <= 1 or self.calibration_interval_percentile >= 100:
+            raise ValueError('The calibration interval must be a percentile value in the range (1,100).')
+
+        if self.uncertainty_dropout_p < 0 or self.uncertainty_dropout_p > 1:
+            raise ValueError('The dropout probability must be in the range (0,1).')
+
+        if self.dropout_sampling_size <= 1:
+            raise ValueError('The argument `--dropout_sampling_size` must be an integer greater than 1.')
+
+        # Validate that features provided for the prediction test set are also provided for the calibration set
+        for (features_argument, base_features_path, cal_features_path) in [
+            ('`--features_path`', self.features_path, self.calibration_features_path),
+            ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
+            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
+            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
+        ]:
+            if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
+                raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')
 
 
 class InterpretArgs(CommonArgs):
@@ -804,7 +888,7 @@ class InterpretArgs(CommonArgs):
 class FingerprintArgs(PredictArgs):
     """:class:`FingerprintArgs` includes :class:`PredictArgs` with additional arguments for the generation of latent fingerprint vectors."""
 
-    fingerprint_type: Literal['MPN','last_FFN'] = 'MPN'
+    fingerprint_type: Literal['MPN', 'last_FFN'] = 'MPN'
     """Choice of which type of latent fingerprint vector to use. Default is the output of the MPNN, excluding molecular features"""
 
 
@@ -834,65 +918,6 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
-
-
-class UncertaintyArgs(PredictArgs):
-    """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
-
-    uncertainty_method: Literal[
-        'mve',
-        'ensemble',
-        'evidential_epistemic',
-        'evidential_aleatoric',
-        'evidential_total',
-        'classification',
-        'dropout',
-    ] = None
-    """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
-    """Sampling size for Monte Carlo dropout uncertainty estimation. Must be greater than 1."""
-    dropout_sampling_size: int = 10
-    """The method used for calibrating uncertainty estimates"""
-    calibration_interval_percentile: float = 95
-    """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
-    regression_calibrator_metric: Literal['stdev', 'interval'] = 'stdev'
-    """Regression calibrators that assume a particular distribution, such as a gaussian, can output either a stdev or an inverval. """
-    calibration_path: str = None
-    """Path to data file to be used for uncertainty calibration."""
-    calibration_features_path: str = None
-    """Path to features data to be used with the uncertainty calibration dataset."""
-    calibration_phase_features_path: str = None
-    """ """
-    calibration_atom_descriptors_path: str = None
-    """Path to the extra atom descriptors."""
-    calibration_bond_features_path: str = None
-    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
-
-    def process_args(self) -> None:
-        super(UncertaintyArgs, self).process_args()
-
-        if self.ensemble_variance == True and self.uncertainty_method != 'ensemble':
-            raise ValueError('The `--ensemble_variance` method of uncertainty quantification should be replaced with '
-                             '`--uncertainty_method ensemble` for dedicated uncertainty jobs.')
-        
-        if self.calibration_interval_percentile <= 1 or self.calibration_interval_percentile >= 100:
-            raise ValueError('The calibration interval must be a percentile value in the range (1,100).')
-
-        if self.individual_ensemble_predictions == True:
-            raise ValueError('The argument `--individual_ensemble_predictions` is not supported in uncertainty jobs.')
-
-        if self.dropout_sampling_size <= 1:
-            raise ValueError('The argument `--dropout_sampling_size` must be an integer greater than 1.')
-
-        # Validate that features provided for the prediction test set are also provided for the calibration set
-        for (features_argument, base_features_path, cal_features_path) in [
-            ('`--features_path`', self.features_path, self.calibration_features_path),
-            ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
-            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
-            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
-        ]:
-            if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
-                    raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')
 
 
 class SklearnTrainArgs(TrainArgs):

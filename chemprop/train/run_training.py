@@ -150,6 +150,7 @@ def run_training(args: TrainArgs,
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
         scaler = train_data.normalize_targets()
+        args.spectra_phase_mask = None
     elif args.dataset_type == 'spectra':
         debug('Normalizing spectra and excluding spectra regions based on phase')
         args.spectra_phase_mask = load_phase_mask(args.spectra_phase_mask_path)
@@ -164,6 +165,7 @@ def run_training(args: TrainArgs,
             dataset.set_targets(data_targets)
         scaler = None
     else:
+        args.spectra_phase_mask = None
         scaler = None
 
     # Get loss function

@@ -335,6 +335,11 @@ def get_data(path: str,
     # Load data
     with open(path) as f:
         reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        if any([c not in fieldnames for c in smiles_columns]):
+            raise ValueError(f'Data file did not contain all provided smiles columns: {smiles_columns}. Data file field names are: {fieldnames}')
+        if any([c not in fieldnames for c in target_columns]):
+            raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
 
         all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
