@@ -767,7 +767,7 @@ class PredictArgs(CommonArgs):
     uncertainty_dropout_p: float = 0.1
     """The probability to use for Monte Carlo dropout uncertainty estimation."""
     dropout_sampling_size: int = 10
-    """The number of samples to use for Monte Carlo dropout uncertainty estimation."""
+    """The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training."""
     calibration_interval_percentile: float = 95
     """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
     regression_calibrator_metric: Literal['stdev', 'interval'] = None
