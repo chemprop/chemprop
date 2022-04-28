@@ -61,23 +61,24 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[Molecule]],
     :return: A 1D numpy array containing the binary Morgan fingerprint.
     """
 
+    def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
+        m = Chem.MolFromSmiles(m) if type(m) == str else m
+        features_vec = AllChem.GetMorganFingerprintAsBitVect(m, radius, nBits=num_bits)
+        single_mol_features = np.zeros((1,))
+        DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
+        return single_mol_features
+
     if type(mol_data) == list:
         features = []
         for datapoint in mol_data:
             entry_features = []
             for molecule in datapoint:
-                molecule = Chem.MolFromSmiles(molecule) if type(molecule) == str else molecule
-                features_vec = AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=num_bits)
-                f = np.zeros((1,))
-                DataStructs.ConvertToNumpyArray(features_vec, f)
+                f = fingerprint_single_molecule(molecule)
                 entry_features.append(f)
             features.extend(entry_features)
         features = np.array(features)
     else:
-        mol_data = Chem.MolFromSmiles(mol_data) if type(mol_data) == str else mol_data
-        features_vec = AllChem.GetMorganFingerprintAsBitVect(mol_data, radius, nBits=num_bits)
-        features = np.zeros((1,))
-        DataStructs.ConvertToNumpyArray(features_vec, features)
+        features = fingerprint_single_molecule(mol_data)
 
     return features
 
@@ -94,23 +95,25 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, List[Molecule]],
     :param num_bits: Number of bits in Morgan fingerprint.
     :return: A 1D numpy array containing the counts-based Morgan fingerprint.
     """
+
+    def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
+        m = Chem.MolFromSmiles(m) if type(m) == str else m
+        features_vec = AllChem.GetHashedMorganFingerprint(m, radius, nBits=num_bits)
+        single_mol_features = np.zeros((1,))
+        DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
+        return single_mol_features
+
     if type(mol_data) == list:
         features = []
         for datapoint in mol_data:
             entry_features = []
             for molecule in datapoint:
-                molecule = Chem.MolFromSmiles(molecule) if type(molecule) == str else molecule
-                features_vec = AllChem.GetHashedMorganFingerprint(molecule, radius, nBits=num_bits)
-                f = np.zeros((1,))
-                DataStructs.ConvertToNumpyArray(features_vec, f)
+                f = fingerprint_single_molecule(molecule)
                 entry_features.append(f)
             features.extend(entry_features)
         features = np.array(features)
     else:
-        mol_data = Chem.MolFromSmiles(mol_data) if type(mol_data) == str else mol_data
-        features_vec = AllChem.GetHashedMorganFingerprint(mol_data, radius, nBits=num_bits)
-        features = np.zeros((1,))
-        DataStructs.ConvertToNumpyArray(features_vec, features)
+        features = fingerprint_single_molecule(mol_data)
 
     return features
 
@@ -128,19 +131,22 @@ try:
         """
         generator = rdDescriptors.RDKit2D()
 
+        def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
+            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if type(m) != str else m
+            single_mol_features = np.array(generator.process(smiles)[1:])
+            return single_mol_features
+
         if type(mol_data) == list:
             features = []
             for datapoint in mol_data:
                 entry_features = []
                 for molecule in datapoint:
-                    molecule = Chem.MolToSmiles(molecule, isomericSmiles=True) if type(molecule) != str else molecule
-                    f = generator.process(molecule)[1:]
+                    f = fingerprint_single_molecule(molecule)
                     entry_features.append(f)
                 features.extend(entry_features)
             features = np.array(features)
         else:
-            smiles = Chem.MolToSmiles(mol_data, isomericSmiles=True) if type(mol_data) != str else mol_data
-            features = np.array(generator.process(smiles)[1:])
+            features = fingerprint_single_molecule(mol_data)
 
         return features
 
@@ -154,19 +160,22 @@ try:
         """
         generator = rdNormalizedDescriptors.RDKit2DNormalized()
 
+        def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
+            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if type(m) != str else m
+            single_mol_features = np.array(generator.process(smiles)[1:])
+            return single_mol_features
+
         if type(mol_data) == list:
             features = []
             for datapoint in mol_data:
                 entry_features = []
                 for molecule in datapoint:
-                    molecule = Chem.MolToSmiles(molecule, isomericSmiles=True) if type(molecule) != str else molecule
-                    f = generator.process(molecule)[1:]
+                    f = fingerprint_single_molecule(molecule)
                     entry_features.append(f)
                 features.extend(entry_features)
             features = np.array(features)
         else:
-            smiles = Chem.MolToSmiles(mol_data, isomericSmiles=True) if type(mol_data) != str else mol_data
-            features = np.array(generator.process(smiles)[1:])
+            features = fingerprint_single_molecule(mol_data)
 
         return features
 except ImportError:

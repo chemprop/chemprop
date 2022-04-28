@@ -23,6 +23,7 @@ from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
 
+import timeit
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
@@ -233,13 +234,6 @@ class ChempropTests(TestCase):
                 'rmse',
                 1.99633537,
                 ['--features_generator', 'morgan']
-        ),
-        (
-                'chemprop_morgan_features_generator_batch',
-                'chemprop',
-                'rmse',
-                1.834947,
-                ['--features_generator', 'morgan', '--precompute_features']
         ),
         (
                 'chemprop_rdkit_features_path',
@@ -793,20 +787,6 @@ class ChempropTests(TestCase):
                 'auc',
                 0.699453,
                 ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
-        ),
-        (
-                'chemprop_morgan',
-                'chemprop',
-                'auc',
-                0.699453,
-                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv'), '--features_generator', 'morgan']
-        ),
-        (
-                'chemprop_morgan_precompute',
-                'chemprop',
-                'auc',
-                0.699453,
-                ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv'), '--features_generator', 'rdkit_2d', '--precompute_features']
         )
     ])
     def test_single_task_multimolecule_classification(self,
@@ -834,13 +814,13 @@ class ChempropTests(TestCase):
 
     @parameterized.expand([
         (
-                'chemprop',
+                'chemprop_mpn',
                 'chemprop',
                 3473.79893,
                 ['--fingerprint_type', 'MPN'],
         ),
         (
-                'chemprop',
+                'chemprop_last_ffn',
                 'chemprop',
                 3504.50003,
                 ['--fingerprint_type', 'last_FFN'],
@@ -872,20 +852,6 @@ class ChempropTests(TestCase):
                 fingerprint_path=fingerprint_path,
                 fingerprint_flags=fingerprint_flags
             )
-
-            # Check to make sure that fingerprints are generated for all input molecules
-            fingerprints = pd.read_csv(fingerprint_path)
-            true_fingerprints = pd.read_csv(os.path.join(TEST_DATA_DIR, f'fp_{fingerprint_flags[1]}_test_true.csv'))
-
-            fingerprints = fingerprints.drop("smiles", axis=1)
-            true_fingerprints = true_fingerprints.drop("smiles", axis=1)
-
-            self.assertEqual(fingerprints.size, true_fingerprints.size)
-
-            # self.assertEqual(fingerprints.sum().values, true_fingerprints.sum().values)
-            for column in fingerprints.columns:
-                for a, b in zip(fingerprints[column].values, true_fingerprints[column].values):
-                    self.assertAlmostEqual(a, b)
 
             fingerprints = pd.read_csv(fingerprint_path).drop(["smiles"], axis=1)
             self.assertAlmostEqual(np.sum(fingerprints.to_numpy()), expected_score, delta=DELTA*expected_score)
@@ -1032,22 +998,22 @@ class ChempropTests(TestCase):
                 ['--features_generator', 'rdkit_2d']
         ),
         (
+                'chemprop_morgan_count_features_generator',
+                'chemprop',
+                'auc',
+                ['--features_generator', 'morgan_count']
+        ),
+        (
+                'chemprop_rdkit_2d_normalized_count_features_generator',
+                'chemprop',
+                'auc',
+                ['--features_generator', 'rdkit_2d_normalized', '--no_features_scaling']
+        ),
+        (
                 'chemprop_combined_features_generator',
                 'chemprop',
                 'auc',
                 ['--features_generator', 'rdkit_2d', 'morgan']
-        ),
-        (
-                'chemprop_morgan_features_generator_multimolecule',
-                'chemprop',
-                'auc',
-                ['--features_generator', 'morgan', '--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
-        ),
-        (
-                'chemprop_rdkit2d_features_generator_multimolecule',
-                'chemprop',
-                'auc',
-                ['--features_generator', 'rdkit_2d', '--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
         ),
         (
                 'chemprop_combined_features_generator_multimolecule',
@@ -1056,11 +1022,11 @@ class ChempropTests(TestCase):
                 ['--features_generator', 'rdkit_2d', 'morgan', '--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
         ),
     ])
-    def test_batch_generation(self,
-                                          name: str,
-                                          model_type: str,
-                                          metric: str,
-                                          train_flags: List[str] = None):
+    def test_feature_precomputation(self,
+                                    name: str,
+                                    model_type: str,
+                                    metric: str,
+                                    train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train with unbatched generators
             self.train(
