@@ -31,6 +31,8 @@ class UncertaintyEvaluator(ABC):
         self.loss_function = loss_function
         self.calibrator = calibrator
 
+        self.raise_argument_errors()
+
     def raise_argument_errors(self):
         """
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
