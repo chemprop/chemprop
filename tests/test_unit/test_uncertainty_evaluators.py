@@ -7,6 +7,7 @@ import pytest
 from chemprop.uncertainty.uncertainty_evaluator import build_uncertainty_evaluator
 
 
+# Fixtures
 @pytest.fixture(params=["regression", "classification", "multiclass"])
 def dataset_type(request):
     return request.param
@@ -51,28 +52,44 @@ def spearman_evaluator():
     return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None)
 
 
+# Tests
 def test_build_regression_metric(regression_metric):
+    """
+    Tests the build_uncertainty_evaluator function's acceptance of the different regression evaluators.
+    """
     assert build_uncertainty_evaluator(regression_metric, None, None, "regression", None, None)
 
 
 def test_build_classification_metric(classification_metric):
+    """
+    Tests the build_uncertainty_evaluator function's acceptance of the different classification evaluators.
+    """
     assert build_uncertainty_evaluator(
         classification_metric, None, None, "classification", None, None
     )
 
 
 def test_build_multiclass_metric(multiclass_metric):
+    """
+    Tests the build_uncertainty_evaluator function's acceptance of the different multiclass evaluators.
+    """
     assert build_uncertainty_evaluator(multiclass_metric, None, None, "multiclass", None, None)
 
 
 @pytest.mark.parametrize("metric", [str(uuid.uuid4()) for _ in range(3)])
 def test_build_unsupported_metrics(metric, dataset_type):
+    """
+    Tests build_uncertainty_evaluator function's unsupported error for unknown metric strings.
+    """
     with pytest.raises(NotImplementedError):
-        build_uncertainty_evaluator(metric, None, None, "spectra", dataset_type, None)
+        build_uncertainty_evaluator(metric, None, None, dataset_type, None, None)
 
 
 @pytest.mark.parametrize("targets,preds,uncs,likelihood", [([[0]], [[0]], [[1]], [0.3989])])
 def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, likelihood):
+    """
+    Tests the result of the NLL regression UncertaintyEvaluator.
+    """
     nll_calc = np.array(nll_regression_evaluator.evaluate(targets, preds, uncs))
     likelihood_calc = np.exp(-1 * nll_calc)
 
@@ -84,6 +101,9 @@ def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, likeliho
     [([[1]], [[0.8]], [[0.8]], [0.8]), ([[0]], [[0.8]], [[0.8]], [0.2])],
 )
 def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs, likelihood):
+    """
+    Tests the result of the NLL classification UncertaintyEvaluator.
+    """
     nll_calc = np.array(nll_classification_evaluator.evaluate(targets, preds, uncs))
     likelihood_calc = np.exp(-1 * nll_calc)
 
@@ -98,6 +118,9 @@ def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs,
     ],
 )
 def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, area_exp):
+    """
+    Tests the result of the miscalibration_area UncertaintyEvaluator.
+    """
     area = miscal_regression_evaluator.evaluate(targets, preds, uncs)
 
     np.testing.assert_array_almost_equal(area, area_exp)
@@ -121,6 +144,9 @@ def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, ar
     ],
 )
 def test_spearman_regression(spearman_evaluator, targets, preds, uncs, spearman_exp):
+    """
+    Tests the result of the spearman rank correlation UncertaintyEvaluator.
+    """
     area = spearman_evaluator.evaluate(targets, preds, uncs)
 
     np.testing.assert_array_almost_equal(area, spearman_exp)
