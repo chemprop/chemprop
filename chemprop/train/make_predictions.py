@@ -375,7 +375,6 @@ def make_predictions(
     :param return_uncertainty: Whether to return uncertainty predictions alongside the model value predictions.
     :return: A list of lists of target predictions. If returning uncertainty, a tuple containing first prediction values then uncertainty estimates.
     """
-    args, train_args, models, scalers, num_tasks, task_names
     if model_objects:
         (
             args,
