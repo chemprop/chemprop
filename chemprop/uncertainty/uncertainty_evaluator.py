@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import t, spearmanr
 from scipy.special import erfinv
 
-from chemprop.data import MoleculeDataset
 from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
 from chemprop.train import evaluate_predictions
 
@@ -221,7 +220,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                     / np.expand_dims(original_scaling, axis=0)
                     * np.expand_dims(bin_scaling, axis=0)
                 )  # shape(data, tasks)
-                bin_fraction = np.sum(bin_unc >= abs_error, axis=0)
+                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
                 fractions[:, i] = bin_fraction
 
             self.calibrator.regression_calibrator_metric = original_metric
