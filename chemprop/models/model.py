@@ -22,6 +22,12 @@ class MoleculeModel(nn.Module):
 
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
+        self.loss_function = args.loss_function
+
+        if hasattr(args, 'train_class_sizes'):
+            self.train_class_sizes = args.train_class_sizes
+        else:
+            self.train_class_sizes = None
         
         # when using cross entropy losses, no sigmoid or softmax during training. But they are needed for mcc loss.
         if self.classification or self.multiclass:
@@ -30,12 +36,22 @@ class MoleculeModel(nn.Module):
         self.output_size = args.num_tasks
         if self.multiclass:
             self.output_size *= args.multiclass_num_classes
+        if self.loss_function == 'mve':
+            self.output_size *= 2 # return means and variances
+        if self.loss_function == 'evidential':
+            if self.classification:
+                self.output_size *= 2 # return dirichlet parameters for positive and negative class
+            if not self.multiclass: # regression
+                self.output_size *= 4 # return four evidential parameters: gamma, lambda, alpha, beta
 
         if self.classification:
             self.sigmoid = nn.Sigmoid()
 
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
+
+        if self.loss_function in ['mve', 'evidential']:
+            self.softplus = nn.Softplus()
 
         self.create_encoder(args)
         self.create_ffn(args)
@@ -179,12 +195,29 @@ class MoleculeModel(nn.Module):
         output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch,
                                        atom_features_batch, bond_features_batch))
 
-        # Don't apply sigmoid during training when using BCEWithLogitsLoss
-        if self.classification and not (self.training and self.no_training_normalization):
+        if self.classification and not (self.training and self.no_training_normalization) and self.loss_function != 'evidential':
             output = self.sigmoid(output)
         if self.multiclass:
-            output = output.reshape((output.size(0), -1, self.num_classes))  # batch size x num targets x num classes per target
-            if not (self.training and self.no_training_normalization):
+            output = output.reshape((output.shape[0], -1, self.num_classes))  # batch size x num targets x num classes per target
+            if not (self.training and self.no_training_normalization) and self.loss_function != 'evidential':
                 output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
+
+        # Modify multi-input loss functions
+        if self.loss_function == 'mve':
+            means, variances = torch.split(output, output.shape[1]//2, dim=1)
+            means, variances = means.to(output.device), variances.to(output.device)
+            variances = self.softplus(variances)
+            output = torch.cat([means,variances], axis=1)
+        if self.loss_function == 'evidential':
+            if self.classification or self.multiclass:
+                output = nn.functional.softplus(output) + 1
+            else:
+                means, lambdas, alphas, betas = torch.split(output, output.shape[1]//4, dim=1)
+                lambdas = self.softplus(lambdas) # + min_val
+                alphas = self.softplus(alphas) + 1 # + min_val # add 1 for numerical contraints of Gamma function
+                betas = self.softplus(betas) # + min_val
+
+                # Return these parameters as the output of the model
+                output = torch.cat([means, lambdas, alphas, betas], dim = 1)
 
         return output

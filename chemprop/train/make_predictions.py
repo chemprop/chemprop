@@ -113,7 +113,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: MoleculeDataset,
                      task_names: List[str], num_tasks: int, test_data_loader: MoleculeDataLoader, full_data: MoleculeDataset,
                      full_to_valid_indices: dict, models: List[MoleculeModel], scalers: List[List[StandardScaler]],
-                     return_invalid_smiles: bool = False):
+                     return_invalid_smiles: bool = False, save_results: bool = True):
     """
     Function to predict with a model and save the predictions to file.
 
@@ -129,6 +129,7 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
     :param models: A list or generator object of :class:`~chemprop.models.MoleculeModel`\ s.
     :param scalers: A list or generator object of :class:`~chemprop.features.scaler.StandardScaler` objects.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
+    :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
     :return:  A list of lists of target predictions.
     """
     # Predict with each model individually and sum predictions
@@ -188,67 +189,67 @@ def predict_and_save(args: PredictArgs, train_args: TrainArgs, test_data: Molecu
             all_epi_uncs = all_epi_uncs.tolist()
 
     # Save predictions
-    print(f'Saving predictions to {args.preds_path}')
-    #TODO: add unit tests for this
-    # assert len(test_data) == len(avg_preds)
-    # if args.ensemble_variance:
-        # assert len(test_data) == len(all_epi_uncs)
-    makedirs(args.preds_path, isfile=True)
-
-    # Set multiclass column names, update num_tasks definition for multiclass
-    if args.dataset_type == 'multiclass':
-        task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
-        num_tasks = num_tasks * args.multiclass_num_classes
-
-    # Copy predictions over to full_data
-    for full_index, datapoint in enumerate(full_data):
-        valid_index = full_to_valid_indices.get(full_index, None)
-        preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+    if save_results:
+        print(f'Saving predictions to {args.preds_path}')
+        assert len(test_data) == len(avg_preds)
         if args.ensemble_variance:
-            if args.dataset_type == 'spectra':
-                epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES']
-            else:
-                epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
-        if args.individual_ensemble_predictions:
-            ind_preds = all_preds[valid_index] if valid_index is not None else [['Invalid SMILES'] * len(args.checkpoint_paths)] * num_tasks
+            assert len(test_data) == len(all_epi_uncs)
+        makedirs(args.preds_path, isfile=True)
 
-        # Reshape multiclass to merge task and class dimension, with updated num_tasks
+        # Set multiclass column names, update num_tasks definition for multiclass
         if args.dataset_type == 'multiclass':
-            if isinstance(preds, np.ndarray) and preds.ndim > 1:
-                preds = preds.reshape((num_tasks))
-                if args.ensemble_variance or args. individual_ensemble_predictions:
-                    ind_preds = ind_preds.reshape((num_tasks, len(args.checkpoint_paths)))
+            task_names = [f'{name}_class_{i}' for name in task_names for i in range(args.multiclass_num_classes)]
+            num_tasks = num_tasks * args.multiclass_num_classes
 
-        # If extra columns have been dropped, add back in SMILES columns
-        if args.drop_extra_columns:
-            datapoint.row = OrderedDict()
+        # Copy predictions over to full_data
+        for full_index, datapoint in enumerate(full_data):
+            valid_index = full_to_valid_indices.get(full_index, None)
+            preds = avg_preds[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+            if args.ensemble_variance:
+                if args.dataset_type == 'spectra':
+                    epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES']
+                else:
+                    epi_uncs = all_epi_uncs[valid_index] if valid_index is not None else ['Invalid SMILES'] * num_tasks
+            if args.individual_ensemble_predictions:
+                ind_preds = all_preds[valid_index] if valid_index is not None else [['Invalid SMILES'] * len(args.checkpoint_paths)] * num_tasks
 
-            smiles_columns = args.smiles_columns
+            # Reshape multiclass to merge task and class dimension, with updated num_tasks
+            if args.dataset_type == 'multiclass':
+                if isinstance(preds, np.ndarray) and preds.ndim > 1:
+                    preds = preds.reshape((num_tasks))
+                    if args.ensemble_variance or args. individual_ensemble_predictions:
+                        ind_preds = ind_preds.reshape((num_tasks, len(args.checkpoint_paths)))
 
-            for column, smiles in zip(smiles_columns, datapoint.smiles):
-                datapoint.row[column] = smiles
+            # If extra columns have been dropped, add back in SMILES columns
+            if args.drop_extra_columns:
+                datapoint.row = OrderedDict()
 
-        # Add predictions columns
-        for pred_name, pred in zip(task_names, preds):
-            datapoint.row[pred_name] = pred
-        if args.individual_ensemble_predictions:
-            for pred_name, model_preds in zip(task_names,ind_preds):
-                for idx, pred in enumerate(model_preds):
-                    datapoint.row[pred_name+f'_model_{idx}'] = pred
-        if args.ensemble_variance:
-            if args.dataset_type == 'spectra':
-                datapoint.row['epi_unc'] = epi_uncs
-            else:
-                for pred_name, epi_unc in zip(task_names, epi_uncs):
-                    datapoint.row[pred_name+'_epi_unc'] = epi_unc
+                smiles_columns = args.smiles_columns
 
-    # Save
-    with open(args.preds_path, 'w') as f:
-        writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
-        writer.writeheader()
+                for column, smiles in zip(smiles_columns, datapoint.smiles):
+                    datapoint.row[column] = smiles
 
-        for datapoint in full_data:
-            writer.writerow(datapoint.row)
+            # Add predictions columns
+            for pred_name, pred in zip(task_names, preds):
+                datapoint.row[pred_name] = pred
+            if args.individual_ensemble_predictions:
+                for pred_name, model_preds in zip(task_names,ind_preds):
+                    for idx, pred in enumerate(model_preds):
+                        datapoint.row[pred_name+f'_model_{idx}'] = pred
+            if args.ensemble_variance:
+                if args.dataset_type == 'spectra':
+                    datapoint.row['epi_unc'] = epi_uncs
+                else:
+                    for pred_name, epi_unc in zip(task_names, epi_uncs):
+                        datapoint.row[pred_name+'_epi_unc'] = epi_unc
+
+        # Save
+        with open(args.preds_path, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+            writer.writeheader()
+
+            for datapoint in full_data:
+                writer.writerow(datapoint.row)
 
     # Return predicted values
     avg_preds = avg_preds.tolist()

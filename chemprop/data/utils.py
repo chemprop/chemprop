@@ -649,11 +649,12 @@ def split_data(data: MoleculeDataset,
         raise ValueError(f'split_type "{split_type}" not supported.')
 
 
-def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
+def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List[float]]:
     """
     Determines the proportions of the different classes in a classification dataset.
 
     :param data: A classification :class:`~chemprop.data.MoleculeDataset`.
+    :param proportion: Choice of whether to return proportions for class size or counts.
     :return: A list of lists of class proportions. Each inner list contains the class proportions for a task.
     """
     targets = data.targets()
@@ -669,13 +670,16 @@ def get_class_sizes(data: MoleculeDataset) -> List[List[float]]:
     for task_targets in valid_targets:
         if set(np.unique(task_targets)) > {0, 1}:
             raise ValueError('Classification dataset must only contains 0s and 1s.')
-
-        try:
-            ones = np.count_nonzero(task_targets) / len(task_targets)
-        except ZeroDivisionError:
-            ones = float('nan')
-            print('Warning: class has no targets')
-        class_sizes.append([1 - ones, ones])
+        if proportion:
+            try:
+                ones = np.count_nonzero(task_targets) / len(task_targets)
+            except ZeroDivisionError:
+                ones = float('nan')
+                print('Warning: class has no targets')
+            class_sizes.append([1 - ones, ones])
+        else: # counts
+            ones = np.count_nonzero(task_targets)
+            class_sizes.append([len(task_targets) - ones, ones])
 
     return class_sizes
 

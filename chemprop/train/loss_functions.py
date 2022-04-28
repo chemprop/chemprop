@@ -2,6 +2,7 @@ from typing import Callable
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from chemprop.args import TrainArgs
 
@@ -18,15 +19,19 @@ def get_loss_func(args: TrainArgs) -> Callable:
     supported_loss_functions ={
         'regression':{
             'mse': nn.MSELoss(reduction='none'),
-            'bounded_mse': bounded_mse_loss
+            'bounded_mse': bounded_mse_loss,
+            'mve': normal_mve,
+            'evidential': evidential_loss,
         },
         'classification':{
             'binary_cross_entropy': nn.BCEWithLogitsLoss(reduction='none'),
             'mcc': mcc_class_loss,
+            'evidential': dirichlet_class_loss,
         },
         'multiclass':{
             'cross_entropy': nn.CrossEntropyLoss(reduction='none'),
             'mcc': mcc_multiclass_loss,
+            'evidential': dirichlet_multiclass_loss,
         },
         'spectra':{
             'sid': sid_loss,
@@ -182,5 +187,178 @@ def wasserstein_loss(model_spectra: torch.tensor, target_spectra: torch.tensor, 
     model_cum = torch.cumsum(model_spectra,axis=1).to(torch_device)
     loss = torch.abs(target_cum - model_cum)
     loss = loss.to(torch_device)
+
+    return loss
+
+
+def normal_mve(pred_values, targets):
+    """
+    Use the negative log likelihood function of a normal distribution as a loss function used for making
+    simultaneous predictions of the mean and error distribution variance simultaneously.
+
+    :param pred_values: Combined predictions of means and variances of shape(data, tasks*2).
+                        Means are first in dimension 1, followed by variances.
+    :return: A tensor loss value.
+    """
+    # Unpack combined prediction values
+    pred_means, pred_var = torch.split(pred_values, pred_values.shape[1]//2, dim=1)
+    pred_means = pred_means.to(pred_values.device)
+    pred_var = pred_var.to(pred_values.device)
+
+    return torch.log(2*np.pi*pred_var) / 2 + (pred_means - targets)**2 / (2 * pred_var)
+
+
+# evidential classification
+def dirichlet_class_loss(alphas, target_labels, lam=0):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al in classification datasets.
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, tasks*2).
+                   Negative class first then positive class in dimension 1.
+    :param target_labels: Digital labels to predict in shape(datapoints, tasks).
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
+    def KL(alpha):
+        """
+        Compute KL for Dirichlet defined by alpha to uniform dirichlet
+        :alpha: parameters for Dirichlet
+
+        :return: KL
+        """
+        beta = torch.ones_like(alpha)
+        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
+        S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
+        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
+
+        # digamma terms
+        dg_alpha = torch.digamma(alpha)
+        dg_S_alpha = torch.digamma(S_alpha)
+
+        # KL
+        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+        return kl
+
+    num_tasks = target_labels.shape[1]
+    num_classes = 2
+    alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
+
+    y_one_hot = torch.eye(num_classes)[target_labels.long()]
+    if target_labels.is_cuda:
+        y_one_hot = y_one_hot.cuda()
+
+    # SOS term
+    S = torch.sum(alphas, dim=-1, keepdim=True)
+    p = alphas / S
+    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
+    SOS = A + B
+
+    # KL
+    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
+    KL = lam * KL(alpha_hat)
+
+    #loss = torch.mean(SOS + KL)
+    loss = SOS + KL
+    loss = torch.mean(loss, dim=-1)
+    return loss
+
+
+def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al for multiclass datasets.
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
+    :param target_labels: Digital labels to predict in shape(datapoints, tasks).
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
+    def KL(alpha):
+        """
+        Compute KL for Dirichlet defined by alpha to uniform dirichlet
+        :alpha: parameters for Dirichlet
+
+        :return: KL
+        """
+        beta = torch.ones_like(alpha)
+        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
+        S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
+        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
+
+        # digamma terms
+        dg_alpha = torch.digamma(alpha)
+        dg_S_alpha = torch.digamma(S_alpha)
+
+        # KL
+        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+        return kl
+
+    num_tasks = target_labels.shape[1]
+    num_classes = alphas.shape[2]
+
+    y_one_hot = torch.eye(num_classes)[target_labels.long()]
+    if target_labels.is_cuda:
+        y_one_hot = y_one_hot.cuda()
+
+    # SOS term
+    S = torch.sum(alphas, dim=-1, keepdim=True)
+    p = alphas / S
+    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
+    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
+    SOS = A + B
+
+    # KL
+    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
+    KL = lam * KL(alpha_hat)
+
+    #loss = torch.mean(SOS + KL)
+    loss = SOS + KL
+    loss = torch.mean(loss, dim=-1)
+    return loss
+
+
+# updated evidential regression loss (evidential_loss_new from Amini repo)
+def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
+    """
+    Use Deep Evidential Regression negative log likelihood loss + evidential
+        regularizer
+
+    :param pred_values: Combined prediction values for mu, v, alpha, and beta parameters in shape(data, tasks*4).
+                        Order in dimension 1 is mu, v, alpha, beta.
+    :mu: pred mean parameter for NIG
+    :v: pred lam parameter for NIG
+    :alpha: predicted parameter for NIG
+    :beta: Predicted parmaeter for NIG
+    :targets: Outputs to predict
+
+    :return: Loss
+    """
+    # Unpack combined prediction values\
+    mu, v, alpha, beta = np.split(pred_values, 4, axis=1)
+    torch_device = pred_values.device
+    mu, v, alpha, beta = mu.to(torch_device), v.to(torch_device), alpha.to(torch_device), beta.to(torch_device)
+
+    # Calculate NLL loss
+    twoBlambda = 2*beta*(1+v)
+    nll = 0.5*torch.log(np.pi/v) \
+        - alpha*torch.log(twoBlambda) \
+        + (alpha+0.5) * torch.log(v*(targets-mu)**2 + twoBlambda) \
+        + torch.lgamma(alpha) \
+        - torch.lgamma(alpha+0.5)
+
+    L_NLL = nll #torch.mean(nll, dim=-1)
+
+    # Calculate regularizer based on absolute error of prediction
+    error = torch.abs((targets - mu))
+    reg = error * (2 * v + alpha)
+    L_REG = reg #torch.mean(reg, dim=-1)
+
+    # Loss = L_NLL + L_REG
+    # TODO If we want to optimize the dual- of the objective use the line below:
+    loss = L_NLL + lam * (L_REG - epsilon)
 
     return loss

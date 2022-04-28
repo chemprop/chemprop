@@ -28,6 +28,7 @@ setup(
         'console_scripts': [
             'chemprop_train=chemprop.train:chemprop_train',
             'chemprop_predict=chemprop.train:chemprop_predict',
+            'chemprop_uncertainty=chemprop.uncertainty:chemprop_uncertainty',
             'chemprop_fingerprint=chemprop.train:chemprop_fingerprint',
             'chemprop_hyperopt=chemprop.hyperparameter_optimization:chemprop_hyperopt',
             'chemprop_interpret=chemprop.interpret:chemprop_interpret',
