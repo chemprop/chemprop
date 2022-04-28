@@ -1047,10 +1047,10 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        0.0239197,
+        1.2245133,
         'ensemble',
         'zelikman_interval',
-        'spearman',
+        'ence',
         [],
         [],
     ),
@@ -1078,14 +1078,14 @@ class ChempropTests(TestCase):
         [],
         [],
     ),
-    (
-        0.0239197,
-        'ensemble',
-        None,
-        'spearman',
-        [],
-        [],
-    ),
+    # (
+    #     0.0239197,
+    #     'ensemble',
+    #     None,
+    #     'spearman',
+    #     [],
+    #     [],
+    # ),
     ])
     def test_uncertainty_regression(
         self,
