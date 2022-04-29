@@ -71,10 +71,7 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[Molecule]],
     if type(mol_data) == list:
         features = []
         for datapoint in mol_data:
-            entry_features = []
-            for molecule in datapoint:
-                f = fingerprint_single_molecule(molecule)
-                entry_features.append(f)
+            entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
             features.extend(entry_features)
         features = np.array(features)
     else:
@@ -106,10 +103,7 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, List[Molecule]],
     if type(mol_data) == list:
         features = []
         for datapoint in mol_data:
-            entry_features = []
-            for molecule in datapoint:
-                f = fingerprint_single_molecule(molecule)
-                entry_features.append(f)
+            entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
             features.extend(entry_features)
         features = np.array(features)
     else:
@@ -139,10 +133,7 @@ try:
         if type(mol_data) == list:
             features = []
             for datapoint in mol_data:
-                entry_features = []
-                for molecule in datapoint:
-                    f = fingerprint_single_molecule(molecule)
-                    entry_features.append(f)
+                entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
                 features.extend(entry_features)
             features = np.array(features)
         else:
@@ -168,10 +159,7 @@ try:
         if type(mol_data) == list:
             features = []
             for datapoint in mol_data:
-                entry_features = []
-                for molecule in datapoint:
-                    f = fingerprint_single_molecule(molecule)
-                    entry_features.append(f)
+                entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
                 features.extend(entry_features)
             features = np.array(features)
         else:
