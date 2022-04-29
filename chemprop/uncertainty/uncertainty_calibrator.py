@@ -363,7 +363,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
             raise ValueError(
-                "MVE Weighting is only compatible with regression datasets."
+                f"MVE Weighting is only compatible with regression datasets! got: {self.dataset_type}"
             )
         if self.loss_function not in ["mve", "evidential"]:
             raise ValueError(
