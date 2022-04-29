@@ -98,6 +98,7 @@ class UncertaintyCalibrator(ABC):
         Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
         """
 
+    @abstractmethod
     def nll(
         self,
         preds: List[List[float]],
@@ -501,6 +502,13 @@ class PlattCalibrator(UncertaintyCalibrator):
             + np.expand_dims(self.platt_b, axis=0)
         )
         return uncal_preds.tolist(), cal_preds.tolist()
+    
+    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]]):
+        targets = np.array(targets)
+        unc = np.array(unc)
+        likelihood = unc * targets + (1 - unc) * (1 - targets)
+        nll = -1 * np.log(likelihood)
+        return nll
 
 
 class IsotonicCalibrator(UncertaintyCalibrator):
@@ -548,6 +556,13 @@ class IsotonicCalibrator(UncertaintyCalibrator):
             transpose_cal_preds.append(task_cal)
         cal_preds = np.transpose(transpose_cal_preds)
         return uncal_preds.tolist(), cal_preds.tolist()
+    
+    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]]):
+        targets = np.array(targets)
+        unc = np.array(unc)
+        likelihood = unc * targets + (1 - unc) * (1 - targets)
+        nll = -1 * np.log(likelihood)
+        return nll
 
 
 class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
@@ -613,6 +628,21 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         )  # shape(data, task, class)
         cal_preds = cal_preds / np.sum(cal_preds, axis=2, keepdims=True)
         return uncal_preds.tolist(), cal_preds.tolist()
+
+    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]]):
+        targets = np.array(targets, dtype=int)  # shape(data, tasks)
+        unc = np.array(unc)
+        preds = np.array(preds)
+        nll = np.zeros_like(targets)
+        for i in range(targets.shape[1]):
+            task_preds = unc[:, i]
+            task_targets = targets[:, i]  # shape(data)
+            bin_targets = np.zeros_like(preds[:, 0, :])  # shape(data, classes)
+            bin_targets[np.arange(targets.shape[0]), task_targets] = 1
+            task_likelihood = np.sum(bin_targets * task_preds, axis=1)
+            task_nll = -1 * np.log(task_likelihood)
+            nll[:, i] = task_nll
+        return nll
 
 
 def build_uncertainty_calibrator(
