@@ -266,6 +266,8 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
     function form. Designed to be used with interval output. Uses the "CRUDE" method as
     described in https://arxiv.org/abs/2005.12496. As implemented here, the interval
     bounds are constrained to be symmetrical, though this is not required in the source method.
+    The probability density to be used for NLL evaluator for the zelikman interval method is
+    approximated here as a histogram function.
     """
     @property
     def label(self):
@@ -321,8 +323,6 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         unc: List[List[float]],
         targets: List[List[float]],
     ):
-    # uses a histogram as probability density function
-    # assumes symmetrical probability distribution
         preds = np.array(preds)
         unc = np.array(unc)
         targets = np.array(targets)
