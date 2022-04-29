@@ -247,23 +247,16 @@ def predict_and_save(
         # Copy predictions over to full_data
         for full_index, datapoint in enumerate(full_data):
             valid_index = full_to_valid_indices.get(full_index, None)
-            d_preds = (
-                preds[valid_index]
-                if valid_index is not None
-                else ["Invalid SMILES"] * num_tasks
-            )
-            d_unc = (
-                unc[valid_index]
-                if valid_index is not None
-                else ["Invalid SMILES"] * num_unc_tasks
-            )
-            if args.individual_ensemble_predictions:
-                ind_preds = (
-                    individual_preds[valid_index]
-                    if valid_index is not None
-                    else [["Invalid SMILES"] * len(args.checkpoint_paths)] * num_tasks
-                )
-
+            if valid_index is not None:
+                d_preds = preds[valid_index]
+                d_unc = unc[valid_index]
+                if args.individual_ensemble_predictions:
+                    ind_preds = individual_preds[valid_index]
+            else:
+                d_preds = ["Invalid SMILES"] * num_tasks
+                d_unc = ["Invalid SMILES"] * num_unc_tasks
+                if args.individual_ensemble_predictions:
+                    ind_preds = [["Invalid SMILES"] * len(args.checkpoint_paths)] * num_tasks
             # Reshape multiclass to merge task and class dimension, with updated num_tasks
             if args.dataset_type == "multiclass":
                 d_preds = np.array(d_preds).reshape((num_tasks))
@@ -321,17 +314,13 @@ def predict_and_save(
         full_unc = []
         for full_index in range(len(full_data)):
             valid_index = full_to_valid_indices.get(full_index, None)
-            pred = (
-                preds[valid_index]
-                if valid_index is not None
-                else ["Invalid SMILES"] * num_tasks
-            )
+            if valid_index is not None:
+                pred = preds[valid_index]
+                un = unc[valid_index]
+            else:
+                pred = ["Invalid SMILES"] * num_tasks
+                un = ["Invalid SMILES"] * num_unc_tasks
             full_preds.append(pred)
-            un = (
-                unc[valid_index]
-                if valid_index is not None
-                else ["Invalid SMILES"] * num_unc_tasks
-            )
             full_unc.append(un)
         return full_preds, full_unc
     else:
