@@ -5,7 +5,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 
-Molecule = Union[str, Chem.Mol, List[List[str]], List[List[Chem.Mol]]]
+Molecule = Union[str, Chem.Mol]
 FeaturesGenerator = Callable[[Molecule], np.ndarray]
 
 
@@ -50,7 +50,7 @@ MORGAN_NUM_BITS = 2048
 
 
 @register_features_generator('morgan')
-def morgan_binary_features_generator(mol_data: Union[Molecule, List[Molecule]],
+def morgan_binary_features_generator(mol_data: Union[Molecule, List[List[Molecule]]],
                                      radius: int = MORGAN_RADIUS,
                                      num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
     """
@@ -81,7 +81,7 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[Molecule]],
 
 
 @register_features_generator('morgan_count')
-def morgan_counts_features_generator(mol_data: Union[Molecule, List[Molecule]],
+def morgan_counts_features_generator(mol_data: Union[Molecule, List[List[Molecule]]],
                                      radius: int = MORGAN_RADIUS,
                                      num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
     """
@@ -117,7 +117,7 @@ try:
 
 
     @register_features_generator('rdkit_2d')
-    def rdkit_2d_features_generator(mol_data: Union[Molecule, List[Molecule]]) -> np.ndarray:
+    def rdkit_2d_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
         """
         Generates RDKit 2D features for a molecule.
         :param mol_data: A molecule (i.e., either a SMILES or an RDKit molecule).
@@ -142,7 +142,7 @@ try:
         return features
 
     @register_features_generator('rdkit_2d_normalized')
-    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, List[Molecule]]) -> np.ndarray:
+    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
         """
         Generates RDKit 2D normalized features for a molecule.
 
@@ -168,13 +168,13 @@ try:
         return features
 except ImportError:
     @register_features_generator('rdkit_2d')
-    def rdkit_2d_features_generator(mol_data: Union[Molecule, List[Molecule]]) -> np.ndarray:
+    def rdkit_2d_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
 
     @register_features_generator('rdkit_2d_normalized')
-    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, List[Molecule]]) -> np.ndarray:
+    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
@@ -188,7 +188,7 @@ you will specify on the command line when using the --features_generator <name> 
 Ex. python train.py ... --features_generator custom ...
 
 @register_features_generator('custom')
-def custom_features_generator(mol_data: Union[Molecule, List[Molecule]]) -> np.ndarray:
+def custom_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
     if type(mol_data) == list:
         # If your generator supports an input of a list of molecules, implement  
     
