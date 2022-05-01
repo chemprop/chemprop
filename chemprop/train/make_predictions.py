@@ -182,7 +182,7 @@ def predict_and_save(
     if args.evaluation_methods is not None:
 
         evaluation_data = get_data(
-            path=args.data_path,
+            path=args.test_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
             features_path=args.features_path,
