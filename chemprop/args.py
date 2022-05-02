@@ -229,6 +229,10 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
+    atom_targets: List[str] = []
+    """Name of the columns containing target atomic values."""
+    bond_targets: List[str] = []
+    """Name of the columns containing target bond values."""   
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
     loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
@@ -392,6 +396,10 @@ class TrainArgs(CommonArgs):
     Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used
     with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.
     """
+    atom_constraints: List[float] = None
+    """Constraints applied to atomic output"""
+    bond_constraints: List[float] = None
+    """Constraints applied to bond output"""
 
     # Training arguments
     epochs: int = 30
@@ -546,6 +554,24 @@ class TrainArgs(CommonArgs):
                 for key, value in config.items():
                     setattr(self, key, value)
 
+        # Determine the target_columns when training atomic and bond targets
+        self.is_atom_bond_targets = False
+        if self.atom_targets != [] or self.bond_targets != []:
+            self.is_atom_bond_targets = True
+            self.target_columns = self.atom_targets + self.bond_targets
+
+        # Check whether atom/bond constraints have been applied on the correct dataset_type
+        if self.atom_constraints is not None or self.bond_constraints is not None:
+            if not self.is_atom_bond_targets:
+                raise ValueError(f'Constraints on atomic/bond targets can only be used in atomic/bond properties prediction.')
+            if self.dataset_type != 'regression':
+                raise ValueError(f'In atomic/bond properties prediction, atomic/bond constraints are not supported for {self.dataset_type}.')
+
+        # Check whether the number of input columns is one for the atomic/bond mode
+        if self.is_atom_bond_targets:
+            if len(self.smiles_columns) != 1:
+                raise ValueError(f'In atomic/bond properties prediction, exactly one smiles column must be provided.')
+
         # Check whether the number of input columns is two for the reaction_solvent mode
         if self.reaction_solvent is True and len(self.smiles_columns) != 2:
             raise ValueError(f'In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
@@ -553,7 +579,7 @@ class TrainArgs(CommonArgs):
         # Validate reaction/reaction_solvent mode
         if self.reaction is True and self.reaction_solvent is True:
             raise ValueError('Only reaction or reaction_solvent mode can be used, not both.')
-        
+
         # Create temporary directory as save directory if not provided
         if self.save_dir is None:
             temp_save_dir = TemporaryDirectory()
@@ -738,7 +764,7 @@ class PredictArgs(CommonArgs):
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
     preds_path: str
-    """Path to CSV file where predictions will be saved."""
+    """Path to CSV or PICKLE file where predictions will be saved."""
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False

@@ -8,22 +8,34 @@ import os
 
 from rdkit import Chem
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
+from chemprop.features import load_features, load_valid_atom_or_bond_features, is_explicit_h, is_reaction, is_adding_hs, is_mol
+from chemprop.rdkit import make_mol
 
 def get_header(path: str) -> List[str]:
     """
-    Returns the header of a data CSV file.
+    Returns the header of a data CSV or PICKLE file.
 
-    :param path: Path to a CSV file.
+    :param path: Path to a CSV or PICKLE file.
     :return: A list of strings containing the strings in the comma-separated header.
     """
-    with open(path) as f:
-        header = next(csv.reader(f))
+    extension = os.path.splitext(path)[1]
+
+    if extension in ['.pkl', '.pckl', '.pickle']:
+        df = pd.read_pickle(path)
+        header = df.columns.tolist()
+
+    elif extension == '.csv':
+        with open(path) as f:
+            header = next(csv.reader(f))
+
+    else:
+        raise ValueError(f'Extension "{extension}" is not supported.')
 
     return header
 
@@ -35,7 +47,7 @@ def preprocess_smiles_columns(path: str,
     Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
     headings corresponding to the columns in the data file holding SMILES. Assumes file has a header.
 
-    :param path: Path to a CSV file.
+    :param path: Path to a CSV or PICKLE file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
     :param number_of_molecules: The number of molecules with associated SMILES for each
@@ -50,8 +62,8 @@ def preprocess_smiles_columns(path: str,
         else:
             smiles_columns = [None]*number_of_molecules
     else:
-        if not isinstance(smiles_columns,list):
-            smiles_columns=[smiles_columns]
+        if not isinstance(smiles_columns, list):
+            smiles_columns = [smiles_columns]
         if os.path.isfile(path):
             columns = get_header(path)
             if len(smiles_columns) != number_of_molecules:
@@ -67,14 +79,14 @@ def get_task_names(path: str,
                    target_columns: List[str] = None,
                    ignore_columns: List[str] = None) -> List[str]:
     """
-    Gets the task names from a data CSV file.
+    Gets the task names from a data CSV or PICKLE file.
 
     If :code:`target_columns` is provided, returns `target_columns`.
     Otherwise, returns all columns except the :code:`smiles_columns`
     (or the first column, if the :code:`smiles_columns` is None) and
     the :code:`ignore_columns`.
 
-    :param path: Path to a CSV file.
+    :param path: Path to a CSV or PICKLE file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
     :param target_columns: Name of the columns containing target values. By default, uses all columns
@@ -333,98 +345,152 @@ def get_data(path: str,
         gt_targets, lt_targets = None, None
 
     # Load data
-    with open(path) as f:
+    extension = os.path.splitext(path)[1]
+    if extension == '.csv':
+        f = open(path)
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
-        if any([c not in fieldnames for c in smiles_columns]):
-            raise ValueError(f'Data file did not contain all provided smiles columns: {smiles_columns}. Data file field names are: {fieldnames}')
-        if any([c not in fieldnames for c in target_columns]):
-            raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
+    elif extension in ['.pkl', '.pckl', '.pickle']:
+        reader = pd.read_pickle(path)
+        fieldnames = reader.columns.tolist()
+        reader = reader.iterrows()
 
-        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
-        for i, row in enumerate(tqdm(reader)):
+    if any([c not in fieldnames for c in smiles_columns]):
+        raise ValueError(f'Data file did not contain all provided smiles columns: {smiles_columns}. Data file field names are: {fieldnames}')
+    if any([c not in fieldnames for c in target_columns]):
+        raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
+
+    all_smiles, all_targets, all_atom_targets, all_bond_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], [], [], []
+    for i, row in enumerate(tqdm(reader)):
+        targets, atom_targets, bond_targets = [], [], []
+
+        if extension == '.csv':
             smiles = [row[c] for c in smiles_columns]
 
-            targets = []
             for column in target_columns:
                 value = row[column]
-                if value in ['','nan']:
+                if value in ['', 'nan']:
                     targets.append(None)
                 elif '>' in value or '<' in value:
                     if loss_function == 'bounded_mse':
                         targets.append(float(value.strip('<>')))
                     else:
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
+                elif '[' in value or ']' in value:
+                    target = np.array(eval(value))
+                    if len(target.shape) == 1: # Atom targets saved as 1D list
+                        atom_targets.append(target)
+                        targets.append(target)
+                    else: # Bond targets saved as 2D list
+                        _is_mol = is_mol(smiles[0])
+                        keep_h = is_explicit_h(_is_mol)
+                        add_h = is_adding_hs(_is_mol)
+                        mol = make_mol(smiles[0], keep_h, add_h)
+                        bond_target_arranged = []
+                        for bond in mol.GetBonds():
+                            bond_target_arranged.append(target[bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()])
+                        bond_targets.append(np.array(bond_target_arranged))
+                        targets.append(np.array(bond_target_arranged))
                 else:
                     targets.append(float(value))
+        elif extension in ['.pkl', '.pckl', '.pickle']:
+            _, row = row
+            row = row.to_dict()
 
-            # Check whether all targets are None and skip if so
-            if skip_none_targets and all(x is None for x in targets):
-                continue
+            smiles = [row[c] for c in smiles_columns]
 
-            all_smiles.append(smiles)
-            all_targets.append(targets)
+            # Atom targets
+            for a_target_name in args.atom_targets:
+                atom_target = np.array(row[a_target_name])
+                atom_targets.append(atom_target)
 
-            if features_data is not None:
-                all_features.append(features_data[i])
-            
-            if phase_features is not None:
-                all_phase_features.append(phase_features[i])
+            # Bond targets
+            _is_mol = is_mol(smiles[0])
+            keep_h = is_explicit_h(_is_mol)
+            add_h = is_adding_hs(_is_mol)
+            mol = make_mol(smiles[0], keep_h, add_h)
+            for b_target_name in args.bond_targets:
+                bond_target = np.array(row[b_target_name])
+                bond_target_arranged = []
+                for b in mol.GetBonds():
+                    bond_target_arranged.append(bond_target[b.GetBeginAtom().GetIdx(), b.GetEndAtom().GetIdx()])
+                bond_targets.append(np.array(bond_target_arranged))
+            targets = atom_targets + bond_targets
 
-            if data_weights is not None:
-                all_weights.append(data_weights[i])
+        # Check whether all targets are None and skip if so
+        if skip_none_targets and all(x is None for x in targets):
+            continue
 
-            if gt_targets is not None:
-                all_gt.append(gt_targets[i])
+        all_smiles.append(smiles)
+        all_targets.append(targets)
+        all_atom_targets.append(atom_targets)
+        all_bond_targets.append(bond_targets)
 
-            if lt_targets is not None:
-                all_lt.append(lt_targets[i])
+        if features_data is not None:
+            all_features.append(features_data[i])
+        
+        if phase_features is not None:
+            all_phase_features.append(phase_features[i])
 
-            if store_row:
-                all_rows.append(row)
+        if data_weights is not None:
+            all_weights.append(data_weights[i])
 
-            if len(all_smiles) >= max_data_size:
-                break
+        if gt_targets is not None:
+            all_gt.append(gt_targets[i])
 
-        atom_features = None
-        atom_descriptors = None
-        if args is not None and args.atom_descriptors is not None:
-            try:
-                descriptors = load_valid_atom_or_bond_features(atom_descriptors_path, [x[0] for x in all_smiles])
-            except Exception as e:
-                raise ValueError(f'Failed to load or validate custom atomic descriptors or features: {e}')
+        if lt_targets is not None:
+            all_lt.append(lt_targets[i])
 
-            if args.atom_descriptors == 'feature':
-                atom_features = descriptors
-            elif args.atom_descriptors == 'descriptor':
-                atom_descriptors = descriptors
+        if store_row:
+            all_rows.append(row)
 
-        bond_features = None
-        if args is not None and args.bond_features_path is not None:
-            try:
-                bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
-            except Exception as e:
-                raise ValueError(f'Failed to load or validate custom bond features: {e}')
+        if len(all_smiles) >= max_data_size:
+            break
+    
+    if extension == '.csv':
+        f.close()
 
-        data = MoleculeDataset([
-            MoleculeDatapoint(
-                smiles=smiles,
-                targets=targets,
-                row=all_rows[i] if store_row else None,
-                data_weight=all_weights[i] if data_weights is not None else None,
-                gt_targets=all_gt[i] if gt_targets is not None else None,
-                lt_targets=all_lt[i] if lt_targets is not None else None,
-                features_generator=features_generator,
-                features=all_features[i] if features_data is not None else None,
-                phase_features=all_phase_features[i] if phase_features is not None else None,
-                atom_features=atom_features[i] if atom_features is not None else None,
-                atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
-                bond_features=bond_features[i] if bond_features is not None else None,
-                overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
-                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
-            ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
-                                               total=len(all_smiles))
-        ])
+    atom_features = None
+    atom_descriptors = None
+    if args is not None and args.atom_descriptors is not None:
+        try:
+            descriptors = load_valid_atom_or_bond_features(atom_descriptors_path, [x[0] for x in all_smiles])
+        except Exception as e:
+            raise ValueError(f'Failed to load or validate custom atomic descriptors or features: {e}')
+
+        if args.atom_descriptors == 'feature':
+            atom_features = descriptors
+        elif args.atom_descriptors == 'descriptor':
+            atom_descriptors = descriptors
+
+    bond_features = None
+    if args is not None and args.bond_features_path is not None:
+        try:
+            bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
+        except Exception as e:
+            raise ValueError(f'Failed to load or validate custom bond features: {e}')
+
+    data = MoleculeDataset([
+        MoleculeDatapoint(
+            smiles=smiles,
+            targets=targets,
+            atom_targets=all_atom_targets[i] if atom_targets else None,
+            bond_targets=all_bond_targets[i] if bond_targets else None,
+            row=all_rows[i] if store_row else None,
+            data_weight=all_weights[i] if data_weights is not None else None,
+            gt_targets=all_gt[i] if gt_targets is not None else None,
+            lt_targets=all_lt[i] if lt_targets is not None else None,
+            features_generator=features_generator,
+            features=all_features[i] if features_data is not None else None,
+            phase_features=all_phase_features[i] if phase_features is not None else None,
+            atom_features=atom_features[i] if atom_features is not None else None,
+            atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
+            bond_features=bond_features[i] if bond_features is not None else None,
+            overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
+            overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
+        ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
+                                           total=len(all_smiles))
+    ])
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
@@ -668,8 +734,13 @@ def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List
     valid_targets = [[] for _ in range(data.num_tasks())]
     for i in range(len(targets)):
         for task_num in range(len(targets[i])):
-            if targets[i][task_num] is not None:
-                valid_targets[task_num].append(targets[i][task_num])
+            if data[0].atom_targets is not None or data[0].bond_targets is not None:
+                for target in targets[i][task_num]:
+                    if targets[i][task_num] is not None:
+                        valid_targets[task_num].append(target)
+            else:
+                if targets[i][task_num] is not None:
+                    valid_targets[task_num].append(targets[i][task_num])
 
     class_sizes = []
     for task_targets in valid_targets:
@@ -697,7 +768,12 @@ def validate_dataset_type(data: MoleculeDataset, dataset_type: str) -> None:
     :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param dataset_type: The dataset type to check.
     """
-    target_set = {target for targets in data.targets() for target in targets} - {None}
+    target_list = [target for targets in data.targets() for target in targets]
+
+    if data[0].atom_targets is not None or data[0].bond_targets is not None:
+        target_set = set(list(np.concatenate(target_list).flat)) - {None}
+    else:
+        target_set = set(target_list) - {None}
     classification_target_set = {0, 1}
 
     if dataset_type == 'classification' and not (target_set <= classification_target_set):

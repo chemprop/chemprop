@@ -39,6 +39,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Spectra](#spectra)
   * [Reaction](#reaction)
   * [Reaction in a solvent / Reaction and a molecule](#reaction-in-a-solvent--reaction-and-a-molecule)
+  * [Atomic and bond properties prediction](#atomic-and-bond-properties-prediction)
   * [Pretraining](#pretraining)
   * [Missing target values](#missing-target-values)
   * [Weighted training by target and data](#weighted-training-by-target-and-data)
@@ -273,7 +274,7 @@ In absorption spectra, sometimes the phase of collection will create regions in 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see [Daylight manual](https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html) for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option `--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option `--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option `--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option `--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option `--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via `--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: `[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: `[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary. With reaction modes `reac_prod`, `reac_diff` and `prod_diff`, the atom and bond features of unbalanced aroma are set to zero on the side of the reaction they are not specified. Alternatively, features can be set to the same values on the reactant and product side via the modes `reac_prod_balance`, `reac_diff_balance` and `prod_diff_balance`, which corresponds to a rough balancing of the reaction.
 For further details and benchmarking, as well as a citable reference, please refer to the [article](https://doi.org/10.1021/acs.jcim.1c00975).
 
-### Reaction in a solvent / Reaction and a molecule]
+### Reaction in a solvent / Reaction and a molecule
 
 Chemprop can process a reaction in a solvent or a reaction and a molecule with the `--reaction_solvent` option. While this
 option is originally built to model a reaction in a solvent, this option works for any reaction and a molecule where 
@@ -301,6 +302,20 @@ reaction and solvent/molecule encoding. Below are the input arguments for specif
   * `--hidden_size_solvent` Dimensionality of hidden layers in solvent/molecule MPN.
   * `--depth_solvent` Number of message passing steps for solvent/molecule.
   * `--adding_h` Whether RDKit molecules will be constructed with adding the Hs to them. Applicable to any SMILES that is not reaction.
+
+### Atomic and bond properties prediction
+
+Chemprop can perform multitask constraint message passing neural networks for atomic/bond properties prediction as described in this [paper](https://chemrxiv.org/articles/preprint/Regio-Selectivity_Prediction_with_a_Machine-Learned_Reaction_Representation_and_On-the-Fly_Quantum_Mechanical_Descriptors/12907316). This model can train on any number of atomic/bond properties simultaneously. In the original work, a total loss was calculated as a weighted sum of every single loss, where the weights were required to be specified for the regression task. In this repository, these weights have been automatically taken into account by doing standardization of all the training targets. In order to train a model, training data containing molecules (as SMILES strings) and known atomic/bond target values are required. The input format can either be a csv or pickle file. For example:
+```
+                              smiles                                  hirshfeld_charges  ...                                 bond_length_matrix                                  bond_index_matrix
+0     CNC(=S)N/N=C/c1c(O)ccc2ccccc12  [-0.026644, -0.075508, 0.096217, -0.287798, -0...  ...  [[0.0, 1.4372890960937539, 2.4525543850909814,...  [[0.0, 0.9595, 0.0158, 0.0162, 0.0103, 0.0008,...
+2      O=C(NCCn1cccc1)c1cccc2ccccc12  [-0.292411, 0.170263, -0.085754, 0.002736, 0.0...  ...  [[0.0, 1.2158509801073485, 2.2520730233154076,...  [[0.0, 1.6334, 0.1799, 0.0086, 0.0068, 0.0002,...
+3  C=C(C)[C@H]1C[C@@H]2OO[C@H]1C=C2C  [-0.101749, 0.012339, -0.07947, -0.020027, -0....  ...  [[0.0, 1.3223632546838255, 2.468055985361353, ...  [[0.0, 1.9083, 0.0179, 0.016, 0.0236, 0.001, 0...
+4                     OCCCc1cc[nH]n1  [-0.268379, 0.027614, -0.050745, -0.045047, 0....  ...  [[0.0, 1.4018301850170725, 2.4667588956616737,...  [[0.0, 0.9446, 0.0311, 0.002, 0.005, 0.0007, 0...
+5      CC(=N)NCc1cccc(CNCc2ccncc2)c1  [-0.083162, 0.114954, -0.274544, -0.100369, 0....  ...  [[0.0, 1.5137126697008916, 2.4882198180715465,...  [[0.0, 1.0036, 0.0437, 0.0108, 0.0134, 0.0004,......
+```
+where atomic properties (e.g. hirshfeld_charges) must be a 1D list with the order same as that of atoms in the SMILES string; and bond properties (e.g. bond_length_matrix) must be a 2D list of shape (number_of_atoms × number_of_atoms). If the input format is a pickle file, these targets can also be saved as numpy arrays.
+The atomic/bond training targets can be assigned by using `--atom_targets` and `--bond_targets`. This model allows multitask constraints applied to different atomic/bond properties by specifying `--atom_constraints` and `--bond_constraints`. For example, `--atom_constraints 0` would constrain the sum of the first atomic property to be 0 for each molecule.
 
 ### Pretraining
 
@@ -339,7 +354,7 @@ To load a trained model and make predictions, run `predict.py` and specify:
 * A checkpoint by using either:
   * `--checkpoint_dir <dir>` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
   * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
-* `--preds_path` Path where a CSV file containing the predictions will be saved.
+* `--preds_path` Path where a CSV file containing the predictions will be saved. If the task is atomic/bond properties prediction, it would be saved as a PICKEL file.
 
 For example:
 ```

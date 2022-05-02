@@ -358,6 +358,9 @@ class MolGraph:
             for _ in range(self.n_atoms):
                 self.a2b.append([])
 
+            # Initialize f_bonds to real bonds mapping for each bond
+            self.b2br = np.zeros([len(mol.GetBonds()), 2])
+
             # Get bond features
             for a1 in range(self.n_atoms):
                 for a2 in range(a1 + 1, self.n_atoms):
@@ -386,6 +389,7 @@ class MolGraph:
                     self.b2a.append(a2)
                     self.b2revb.append(b2)
                     self.b2revb.append(b1)
+                    self.b2br[bond.GetIdx(), :] = [self.n_bonds, self.n_bonds + 1]
                     self.n_bonds += 2
 
             if bond_features_extra is not None and len(bond_features_extra) != self.n_bonds / 2:
@@ -503,12 +507,14 @@ class BatchMolGraph:
     * :code:`max_num_bonds`: The maximum number of bonds neighboring an atom in this batch.
     * :code:`b2b`: (Optional) A mapping from a bond index to incoming bond indices.
     * :code:`a2a`: (Optional): A mapping from an atom index to neighboring atom indices.
+    * :code:`b2br`: (Optional): A mapping from f_bonds to real bonds in molecule recorded in targets.
     """
 
     def __init__(self, mol_graphs: List[MolGraph]):
         r"""
         :param mol_graphs: A list of :class:`MolGraph`\ s from which to construct the :class:`BatchMolGraph`.
         """
+        self.mol_graphs = mol_graphs
         self.overwrite_default_atom_features = mol_graphs[0].overwrite_default_atom_features
         self.overwrite_default_bond_features = mol_graphs[0].overwrite_default_bond_features
         self.is_reaction = mol_graphs[0].is_reaction
@@ -556,6 +562,7 @@ class BatchMolGraph:
         self.b2revb = torch.LongTensor(b2revb)
         self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
         self.a2a = None  # only needed if using atom messages
+        self.b2br = None  # only needed in predictions of atomic/bond targets
 
     def get_components(self, atom_messages: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor,
                                                                    torch.LongTensor, torch.LongTensor, torch.LongTensor,
@@ -616,6 +623,22 @@ class BatchMolGraph:
 
         return self.a2a
 
+    def get_b2br(self) -> torch.LongTensor:
+        """
+        Computes (if necessary) and returns a mapping from f_bonds to real bonds in molecule recorded in targets.
+
+        :return: A PyTorch tensor containing the mapping from f_bonds to real bonds in molecule recorded in targets.
+        """
+        if self.b2br is None:
+            n_bonds = 1 # number of bonds (start at 1 b/c need index 0 as padding)
+            b2br = []
+            for mol_graph in self.mol_graphs:
+                b2br.append(mol_graph.b2br + n_bonds)
+                n_bonds += mol_graph.n_bonds
+            b2br = np.concatenate(b2br, axis=0)
+            self.b2br = torch.LongTensor(b2br)
+
+        return self.b2br
 
 def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]]],
               atom_features_batch: List[np.array] = (None,),

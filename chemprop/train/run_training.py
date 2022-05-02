@@ -4,6 +4,8 @@ import os
 from typing import Dict, List
 
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 import pandas as pd
 from tensorboardX import SummaryWriter
 import torch
@@ -149,7 +151,12 @@ def run_training(args: TrainArgs,
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
-        scaler = train_data.normalize_targets()
+        if args.is_atom_bond_targets:
+            scaler = None
+            atom_bond_scalers = train_data.normalize_targets()
+        else:
+            scaler = train_data.normalize_targets()
+            atom_bond_scalers = None
         args.spectra_phase_mask = None
     elif args.dataset_type == 'spectra':
         debug('Normalizing spectra and excluding spectra regions based on phase')
@@ -164,9 +171,11 @@ def run_training(args: TrainArgs,
             )
             dataset.set_targets(data_targets)
         scaler = None
+        atom_bond_scalers = None
     else:
         args.spectra_phase_mask = None
         scaler = None
+        atom_bond_scalers = None
 
     # Get loss function
     loss_func = get_loss_func(args)
@@ -175,6 +184,11 @@ def run_training(args: TrainArgs,
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
     if args.dataset_type == 'multiclass':
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks, args.multiclass_num_classes))
+    elif args.is_atom_bond_targets:
+        sum_test_preds = []
+        for tb in zip(*test_data.targets()):
+            tb = np.concatenate(tb)
+            sum_test_preds.append(np.zeros((tb.shape[0], 1)))
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -246,7 +260,8 @@ def run_training(args: TrainArgs,
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
-                        features_scaler, atom_descriptor_scaler, bond_feature_scaler, args)
+                        features_scaler, atom_descriptor_scaler, bond_feature_scaler,
+                        atom_bond_scalers, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -267,6 +282,7 @@ def run_training(args: TrainArgs,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
+                atom_bond_scalers=atom_bond_scalers,
                 logger=logger,
                 writer=writer
             )
@@ -279,6 +295,7 @@ def run_training(args: TrainArgs,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
                 scaler=scaler,
+                atom_bond_scalers=atom_bond_scalers,
                 logger=logger
             )
 
@@ -300,7 +317,7 @@ def run_training(args: TrainArgs,
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
-                                atom_descriptor_scaler, bond_feature_scaler, args)
+                                atom_descriptor_scaler, bond_feature_scaler, atom_bond_scalers, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
@@ -309,7 +326,8 @@ def run_training(args: TrainArgs,
         test_preds = predict(
             model=model,
             data_loader=test_data_loader,
-            scaler=scaler
+            scaler=scaler,
+            atom_bond_scalers=atom_bond_scalers
         )
         test_scores = evaluate_predictions(
             preds=test_preds,
@@ -317,6 +335,7 @@ def run_training(args: TrainArgs,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
             dataset_type=args.dataset_type,
+            is_atom_bond_targets=args.is_atom_bond_targets,
             gt_targets=test_data.gt_targets(),
             lt_targets=test_data.lt_targets(),
             logger=logger
@@ -347,6 +366,7 @@ def run_training(args: TrainArgs,
         num_tasks=args.num_tasks,
         metrics=args.metrics,
         dataset_type=args.dataset_type,
+        is_atom_bond_targets=args.is_atom_bond_targets,
         gt_targets=test_data.gt_targets(),
         lt_targets=test_data.lt_targets(),
         logger=logger
@@ -370,9 +390,18 @@ def run_training(args: TrainArgs,
     if args.save_preds:
         test_preds_dataframe = pd.DataFrame(data={'smiles': test_data.smiles()})
 
-        for i, task_name in enumerate(args.task_names):
-            test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
+        if args.is_atom_bond_targets:
+            n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
 
-        test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
+            for i, atom_target in enumerate(args.atom_targets):
+                test_preds_dataframe[atom_target] = np.split(avg_test_preds[i].flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+            for i, bond_target in enumerate(args.bond_targets):
+                test_preds_dataframe[bond_target] = np.split(avg_test_preds[i+len(args.atom_targets)].flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+            test_preds_dataframe.to_pickle(os.path.join(args.save_dir, 'test_preds.pkl'))
+        else:
+            for i, task_name in enumerate(args.task_names):
+                test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
+
+            test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
     return ensemble_scores

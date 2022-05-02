@@ -6,6 +6,7 @@ def make_mol(s: str, keep_h: bool, add_h: bool):
     
     :param s: SMILES string.
     :param keep_h: Boolean whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified.
+    :param add_h: Boolean whether to add hydrogens to the input smiles.
     :return: RDKit molecule.
     """
     if keep_h:

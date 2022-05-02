@@ -9,6 +9,8 @@ import re
 from time import time
 from typing import Any, Callable, List, Tuple
 import collections
+import numpy as np
+import pandas as pd
 
 import torch
 import torch.nn as nn
@@ -45,6 +47,7 @@ def save_checkpoint(
     features_scaler: StandardScaler = None,
     atom_descriptor_scaler: StandardScaler = None,
     bond_feature_scaler: StandardScaler = None,
+    atom_bond_scalers: List[StandardScaler] = None,
     args: TrainArgs = None,
 ) -> None:
     """
@@ -55,6 +58,7 @@ def save_checkpoint(
     :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
     :param atom_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the atom descriptors.
     :param bond_feature_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_fetaures.
+    :param atom_bond_scalers: A list of :class:`~chemprop.data.scaler.StandardScaler` fitted on each atomic/bond target.
     :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
     """
@@ -63,6 +67,12 @@ def save_checkpoint(
         args = Namespace(**args.as_dict())
 
     data_scaler = {"means": scaler.means, "stds": scaler.stds} if scaler is not None else None
+    if atom_bond_scalers is not None:
+        means, stds = [], []
+        for scaler in atom_bond_scalers:
+            means.append(scaler.means)
+            stds.append(scaler.stds)
+        atom_bond_scalers = {"means": means, "stds": stds}
     if features_scaler is not None:
         features_scaler = {"means": features_scaler.means, "stds": features_scaler.stds}
     if atom_descriptor_scaler is not None:
@@ -80,6 +90,7 @@ def save_checkpoint(
         "features_scaler": features_scaler,
         "atom_descriptor_scaler": atom_descriptor_scaler,
         "bond_feature_scaler": bond_feature_scaler,
+        "atom_bond_scalers": atom_bond_scalers,
     }
     torch.save(state, path)
 
@@ -365,7 +376,7 @@ def load_frzn_model(
 
 def load_scalers(
     path: str,
-) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]:
+) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler, List[StandardScaler]]:
     """
     Loads the scalers a model was trained with.
 
@@ -405,7 +416,14 @@ def load_scalers(
     else:
         bond_feature_scaler = None
 
-    return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler
+    if "atom_bond_scalers" in state.keys() and state["atom_bond_scalers"] is not None:
+        atom_bond_scalers = []
+        for mean, std in zip(state["atom_bond_scalers"]["means"], state["atom_bond_scalers"]["stds"]):
+            atom_bond_scalers.append(StandardScaler(mean, std, replace_nan_token=0))
+    else:
+        atom_bond_scalers = None
+
+    return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler, atom_bond_scalers
 
 
 def load_args(path: str) -> TrainArgs:
@@ -563,7 +581,7 @@ def save_smiles_splits(
     Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries
     with the same SMILES or entries entered from a path other than the main data path, such as a separate test path.
 
-    :param data_path: Path to data CSV file.
+    :param data_path: Path to data CSV or PICKLE file.
     :param save_dir: Path where pickle files will be saved.
     :param task_names: List of target names for the model as from the function get_task_names().
         If not provided, will use datafile header entries.
@@ -582,19 +600,28 @@ def save_smiles_splits(
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=data_path, smiles_columns=smiles_columns)
 
-    with open(data_path) as f:
+    extension = os.path.splitext(data_path)[1]
+    if extension == '.csv':
+        f = open(data_path)
         reader = csv.DictReader(f)
+    elif extension in ['.pkl', '.pckl', '.pickle']:
+        reader = pd.read_pickle(data_path).iterrows()
 
-        indices_by_smiles = {}
-        for i, row in enumerate(tqdm(reader)):
-            smiles = tuple([row[column] for column in smiles_columns])
-            if smiles in indices_by_smiles:
-                save_split_indices = False
-                info(
-                    "Warning: Repeated SMILES found in data, pickle file of split indices cannot distinguish entries and will not be generated."
-                )
-                break
-            indices_by_smiles[smiles] = i
+    indices_by_smiles = {}
+    for i, row in enumerate(tqdm(reader)):
+        if extension in ['.pkl', '.pckl', '.pickle']:
+            _, row = row
+        smiles = tuple([row[column] for column in smiles_columns])
+        if smiles in indices_by_smiles:
+            save_split_indices = False
+            info(
+                "Warning: Repeated SMILES found in data, pickle file of split indices cannot distinguish entries and will not be generated."
+            )
+            break
+        indices_by_smiles[smiles] = i
+
+    if extension == '.csv':
+        f.close()
 
     if task_names is None:
         task_names = get_task_names(path=data_path, smiles_columns=smiles_columns)
@@ -626,7 +653,8 @@ def save_smiles_splits(
             writer.writerow(smiles_columns + task_names)
             dataset_targets = dataset.targets()
             for i, smiles in enumerate(dataset.smiles()):
-                writer.writerow(smiles + dataset_targets[i])
+                targets = [x.tolist() if isinstance(x, np.ndarray) else x for x in dataset_targets[i]]
+                writer.writerow(smiles + targets)
 
         if features_path is not None:
             dataset_features = dataset.features()

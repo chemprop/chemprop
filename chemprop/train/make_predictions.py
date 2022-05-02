@@ -3,6 +3,8 @@ import csv
 from typing import List, Optional, Union, Tuple
 
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
@@ -129,7 +131,7 @@ def predict_and_save(
     full_data: MoleculeDataset,
     full_to_valid_indices: dict,
     models: List[MoleculeModel],
-    scalers: List[List[StandardScaler]],
+    scalers: List[Union[List[StandardScaler], StandardScaler]],
     num_models: int,
     calibrator: UncertaintyCalibrator = None,
     return_invalid_smiles: bool = False,
@@ -153,7 +155,7 @@ def predict_and_save(
     :param calibrator: A :class: `~chemprop.uncertainty.UncertaintyCalibrator` object, for use in calibrating uncertainty predictions.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
-    :return:  A list of lists of target predictions.
+    :return: A list of lists of target predictions.
     """
     estimator = UncertaintyEstimator(
         test_data=test_data,
@@ -168,6 +170,7 @@ def predict_and_save(
         dropout_sampling_size=args.dropout_sampling_size,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
+        is_atom_bond_targets=getattr(train_args, "is_atom_bond_targets", False),
     )
 
     preds, unc = estimator.calculate_uncertainty(
@@ -293,11 +296,19 @@ def predict_and_save(
                         datapoint.row[pred_name + f"_model_{idx}"] = pred
 
         # Save
-        with open(args.preds_path, "w") as f:
-            writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
-            writer.writeheader()
-            for datapoint in full_data:
-                writer.writerow(datapoint.row)
+        if train_args.is_atom_bond_targets:
+            data = {}
+            for key in full_data[0].row.keys():
+                data[key] = [datapoint.row[key] for datapoint in full_data]
+            preds_dataframe = pd.DataFrame.from_dict(data)
+            preds_dataframe.to_pickle(args.preds_path)
+        else:
+            with open(args.preds_path, 'w') as f:
+                writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+                writer.writeheader()
+
+                for datapoint in full_data:
+                    writer.writerow(datapoint.row)
 
         if evaluations is not None and args.evaluation_scores_path is not None:
             print(f"Saving uncertainty evaluations to {args.evaluation_scores_path}")
@@ -335,7 +346,7 @@ def make_predictions(
         PredictArgs,
         TrainArgs,
         List[MoleculeModel],
-        List[StandardScaler],
+        List[Union[List[StandardScaler], StandardScaler]],
         int,
         List[str],
     ] = None,

@@ -28,6 +28,7 @@ class UncertaintyPredictor(ABC):
         dropout_sampling_size: int,
         individual_ensemble_predictions: bool = False,
         spectra_phase_mask: List[List[bool]] = None,
+        is_atom_bond_targets: bool = None,
     ):
         self.test_data = test_data
         self.models = models
@@ -43,6 +44,7 @@ class UncertaintyPredictor(ABC):
         self.dropout_sampling_size = dropout_sampling_size
         self.individual_ensemble_predictions = individual_ensemble_predictions
         self.spectra_phase_mask = spectra_phase_mask
+        self.is_atom_bond_targets = is_atom_bond_targets
         self.train_class_sizes = None
 
         self.raise_argument_errors()
@@ -122,6 +124,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
+                atom_bond_scalers,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -144,6 +147,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scalers=atom_bond_scalers,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":

@@ -20,9 +20,9 @@ class MPNEncoder(nn.Module):
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
         :param atom_fdim: Atom feature vector dimension.
         :param bond_fdim: Bond feature vector dimension.
-        :param hidden_size: Hidden layers dimension
-        :param bias: Whether to add bias to linear layers
-        :param depth: Number of message passing steps
+        :param hidden_size: Hidden layers dimension.
+        :param bias: Whether to add bias to linear layers.
+        :param depth: Number of message passing steps.
        """
         super(MPNEncoder, self).__init__()
         self.atom_fdim = atom_fdim
@@ -37,6 +37,7 @@ class MPNEncoder(nn.Module):
         self.device = args.device
         self.aggregation = args.aggregation
         self.aggregation_norm = args.aggregation_norm
+        self.is_atom_bond_targets = args.is_atom_bond_targets
 
         # Dropout
         self.dropout_layer = nn.Dropout(p=self.dropout)
@@ -59,7 +60,10 @@ class MPNEncoder(nn.Module):
         # Shared weight matrix across depths (default)
         self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
 
-        self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+        # hidden state readout
+        self.W_o_a = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+
+        self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
 
         # layer after concatenating the descriptors if args.atom_descriptors == descriptors
         if args.atom_descriptors == 'descriptor':
@@ -84,6 +88,9 @@ class MPNEncoder(nn.Module):
 
         f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components(atom_messages=self.atom_messages)
         f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.to(self.device), f_bonds.to(self.device), a2b.to(self.device), b2a.to(self.device), b2revb.to(self.device)
+
+        if self.is_atom_bond_targets:
+            b2br = mol_graph.get_b2br().to(self.device)
 
         if self.atom_messages:
             a2a = mol_graph.get_a2a().to(self.device)
@@ -117,12 +124,18 @@ class MPNEncoder(nn.Module):
             message = self.act_func(input + message)  # num_bonds x hidden_size
             message = self.dropout_layer(message)  # num_bonds x hidden
 
+        # atom hidden
         a2x = a2a if self.atom_messages else a2b
         nei_a_message = index_select_ND(message, a2x)  # num_atoms x max_num_bonds x hidden
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
-        atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
+        atom_hiddens = self.act_func(self.W_o_a(a_input))  # num_atoms x hidden
         atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
+
+        # bond hidden
+        b_input = torch.cat([f_bonds, message], dim=1)  # num_bonds x (bond_fdim + hidden)
+        bond_hiddens = self.act_func(self.W_o_b(b_input))  # num_bonds x hidden
+        bond_hiddens = self.dropout_layer(bond_hiddens)  # num_bonds x hidden
 
         # concatenate the atom descriptors
         if atom_descriptors_batch is not None:
@@ -134,6 +147,9 @@ class MPNEncoder(nn.Module):
             atom_hiddens = self.dropout_layer(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
 
         # Readout
+        if self.is_atom_bond_targets:
+            return atom_hiddens, a_scope, bond_hiddens, b_scope, b2br  # num_atoms x hidden, remove the first one which is zero padding
+
         mol_vecs = []
         for i, (a_start, a_size) in enumerate(a_scope):
             if a_size == 0:
