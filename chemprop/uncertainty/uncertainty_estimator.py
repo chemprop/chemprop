@@ -60,6 +60,6 @@ class UncertaintyEstimator:
 
     def individual_predictions(self):
         """
-        
+        Return separate predictions made by each individual model in an ensemble of models.
         """
-        return self.predictor.get_individual_ensemble_predictions()
+        return self.predictor.get_individual_preds()

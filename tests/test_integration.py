@@ -413,6 +413,32 @@ class ChempropTests(TestCase):
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.nanmean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
+    
+    def test_predict_individual_ensemble(self):
+        with TemporaryDirectory() as save_dir:
+            save_dir = f'../test/pred_single_regression/individual_ensemble'
+            # Train
+            dataset_type = 'regression'
+            self.train(
+                dataset_type=dataset_type,
+                metric='rmse',
+                save_dir=save_dir,
+            )
+
+            # Predict
+            preds_path = os.path.join(save_dir, 'preds.csv')
+            self.predict(
+                dataset_type=dataset_type,
+                preds_path=preds_path,
+                save_dir=save_dir,
+                flags=['--individual_ensemble_predictions']
+            )
+
+            pred = pd.read_csv(preds_path)
+            columns = list(pred.columns)
+            expected_columns = ['smiles', 'logSolubility'] + [f'logSolubility_model_{idx}' for idx in range(NUM_FOLDS)]
+            self.assertTrue(columns == expected_columns)
+
 
     @parameterized.expand([
         (
