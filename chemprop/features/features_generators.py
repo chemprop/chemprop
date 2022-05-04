@@ -1,4 +1,4 @@
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Iterable
 
 import numpy as np
 from rdkit import Chem, DataStructs
@@ -62,18 +62,14 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[List[Molecul
     """
 
     def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-        m = Chem.MolFromSmiles(m) if type(m) == str else m
+        m = Chem.MolFromSmiles(m) if isinstance(m, str) else m
         features_vec = AllChem.GetMorganFingerprintAsBitVect(m, radius, nBits=num_bits)
         single_mol_features = np.zeros((1,))
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if type(mol_data) == list:
-        features = []
-        for datapoint in mol_data:
-            entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
-            features.extend(entry_features)
-        features = np.array(features)
+    if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+        features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
 
@@ -94,18 +90,14 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, List[List[Molecul
     """
 
     def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-        m = Chem.MolFromSmiles(m) if type(m) == str else m
+        m = Chem.MolFromSmiles(m) if isinstance(m, str) else m
         features_vec = AllChem.GetHashedMorganFingerprint(m, radius, nBits=num_bits)
         single_mol_features = np.zeros((1,))
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if type(mol_data) == list:
-        features = []
-        for datapoint in mol_data:
-            entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
-            features.extend(entry_features)
-        features = np.array(features)
+    if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+        features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
 
@@ -130,12 +122,8 @@ try:
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if type(mol_data) == list:
-            features = []
-            for datapoint in mol_data:
-                entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
-                features.extend(entry_features)
-            features = np.array(features)
+        if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+            features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
 
@@ -156,12 +144,8 @@ try:
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if type(mol_data) == list:
-            features = []
-            for datapoint in mol_data:
-                entry_features = [fingerprint_single_molecule(molecule) for molecule in datapoint]
-                features.extend(entry_features)
-            features = np.array(features)
+        if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+            features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
 
@@ -189,7 +173,7 @@ Ex. python train.py ... --features_generator custom ...
 
 @register_features_generator('custom')
 def custom_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
-    if type(mol_data) == list:
+    if isinstance(mol_data, Iterable) and not isinstance(mol_data, AnyStr):
         # If your generator supports an input of a list of molecules, implement  
     
     # If you want to use the SMILES string
