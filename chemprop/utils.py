@@ -710,9 +710,11 @@ def update_prediction_args(
     if train_args.number_of_molecules != predict_args.number_of_molecules and not (
             isinstance(predict_args, FingerprintArgs) and predict_args.fingerprint_type == "MPN" and
                        predict_args.mpn_shared and predict_args.number_of_molecules == 1):
-        raise ValueError('A different number of molecules was used in training '
-                         'model than is specified for prediction. This is only supported for models with shared MPN networks'
-                         f'and a fingerprint type of MPN. {train_args.number_of_molecules} smiles fields must be provided.')
+        raise ValueError('A different number of molecules was used in training the'
+                         'model than is specified for prediction. You are attempting to predict using ' 
+                         f'{predict_args.number_of_molecules} molecules but the model was trained on {train_args.number_of_molecules}.\n'
+                         'This is only supported for models with shared MPN networks and a fingerprint type of MPN, otherwise '
+                         f'{train_args.number_of_molecules} smiles fields must be provided in the prediction data.')
 
     if train_args.number_of_molecules != predict_args.number_of_molecules and not (
         isinstance(predict_args, FingerprintArgs)
