@@ -40,11 +40,11 @@ class UncertaintyEvaluator(ABC):
             raise NotImplementedError(
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
-        if self.uncertainty_method in ['ensemble', 'dropout'] and self.dataset_type in ['classification', 'multiclass']:
+        if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in ["classification", "multiclass"]:
             raise NotImplementedError(
-                'Though ensemble and dropout uncertainty methods are available for classification \
+                "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
-                    compatible with any implemented evaluation methods for classification.'
+                    compatible with any implemented evaluation methods for classification."
             )
 
     @abstractmethod
@@ -107,14 +107,33 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
             uncertainties = np.array(uncertainties)
             preds = np.array(preds)
             targets = np.array(targets)
-            nll = np.log(2 * np.pi * uncertainties) / 2 \
-                + (preds - targets) ** 2 / (2 * uncertainties)
-            return np.mean(nll, axis=0).tolist()
+            if self.calibrator.is_atom_bond_targets:
+                uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+                preds = [np.concatenate(x) for x in zip(*preds)]
+                targets = [np.concatenate(x) for x in zip(*targets)]
+                nll = []
+                for uncertainty, pred, target in zip(uncertainties, preds, targets):
+                    nll.append(
+                        np.log(2 * np.pi * uncertainty) / 2
+                        + (pred - target) ** 2 / (2 * uncertainty)
+                    )
+                return [np.mean(x) for x in nll]
+            else:
+                nll = np.log(2 * np.pi * uncertainties) / 2 + (preds - targets) ** 2 / (
+                    2 * uncertainties
+                )
+                return np.mean(nll, axis=0).tolist()
         else:
-            nll = self.calibrator.nll(
-                preds=preds, unc=uncertainties, targets=targets
-            )  # shape(data, task)
-            return np.mean(nll, axis=0).tolist()
+            if self.calibrator.is_atom_bond_targets:
+                nll = self.calibrator.nll(
+                    preds=preds, unc=uncertainties, targets=targets
+                )  # shpae(task, targets)
+                return [np.mean(x) for x in nll]
+            else:
+                nll = self.calibrator.nll(
+                    preds=preds, unc=uncertainties, targets=targets
+                )  # shape(data, task)
+                return np.mean(nll, axis=0).tolist()
 
 
 class NLLClassEvaluator(UncertaintyEvaluator):
@@ -138,9 +157,18 @@ class NLLClassEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)
         uncertainties = np.array(uncertainties)
-        likelihood = uncertainties * targets + (1 - uncertainties) * (1 - targets)
-        nll = -1 * np.log(likelihood)
-        return np.mean(nll, axis=0).tolist()
+        if self.calibrator.is_atom_bond_targets:
+            targets = [np.concatenate(x) for x in zip(*targets)]
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            nll = []
+            for uncertainty, target in zip(uncertainties, targets):
+                likelihood = uncertainty * target + (1 - uncertainty) * (1 - target)
+                nll.append(-1 * np.log(likelihood))
+            return [np.mean(x) for x in nll]
+        else:
+            likelihood = uncertainties * targets + (1 - uncertainties) * (1 - targets)
+            nll = -1 * np.log(likelihood)
+            return np.mean(nll, axis=0).tolist()
 
 
 class NLLMultiEvaluator(UncertaintyEvaluator):
@@ -187,7 +215,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
             raise NotImplementedError(
-                f"Miscalibration area is only implemented for regression dataset types."
+                "Miscalibration area is only implemented for regression dataset types."
             )
 
     def evaluate(
@@ -201,44 +229,63 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
-        fractions = np.zeros([preds.shape[1], 101])  # shape(tasks, 101)
-        fractions[:, 100] = 1
+        if self.calibrator.is_atom_bond_targets:
+            uncertainties_list = [
+                np.concatenate(x).reshape(-1, 1) for x in zip(*uncertainties)
+            ]
+            abs_error_list = [np.concatenate(x).reshape(-1, 1) for x in zip(*abs_error)]
+        else:
+            uncertainties_list = [
+                np.array(x).reshape(-1, 1) for x in zip(*uncertainties)
+            ]
+            abs_error_list = [np.array(x).reshape(-1, 1) for x in zip(*abs_error)]
 
-        if self.calibrator is not None:
-            # using 101 bin edges, hardcoded
-            original_metric = self.calibrator.regression_calibrator_metric
-            original_scaling = self.calibrator.scaling
-            original_interval = self.calibrator.interval_percentile
+        auce = np.array([])
+        for num, (uncertainties, abs_error) in enumerate(
+            zip(uncertainties_list, abs_error_list)
+        ):
+            fractions = np.zeros([1, 101])  # shape(1, 101)
+            fractions[:, 100] = 1
 
-            for i in range(1, 100):
-                self.calibrator.regression_calibrator_metric = "interval"
-                self.calibrator.interval_percentile = i
-                self.calibrator.calibrate()
-                bin_scaling = self.calibrator.scaling
-                bin_unc = (
-                    uncertainties
-                    / np.expand_dims(original_scaling, axis=0)
-                    * np.expand_dims(bin_scaling, axis=0)
-                )  # shape(data, tasks)
-                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
-                fractions[:, i] = bin_fraction
+            if self.calibrator is not None:
+                # using 101 bin edges, hardcoded
+                original_metric = self.calibrator.regression_calibrator_metric
+                original_scaling = self.calibrator.scaling
+                original_interval = self.calibrator.interval_percentile
 
-            self.calibrator.regression_calibrator_metric = original_metric
-            self.calibrator.scaling = original_scaling
-            self.calibrator.interval_percentile = original_interval
+                for i in range(1, 100):
+                    self.calibrator.regression_calibrator_metric = "interval"
+                    self.calibrator.interval_percentile = i
+                    self.calibrator.calibrate()
+                    bin_scaling = self.calibrator.scaling
+                    bin_unc = (
+                        uncertainties
+                        / np.expand_dims(original_scaling[num], axis=0)
+                        * np.expand_dims(bin_scaling[num], axis=0)
+                    )  # shape(data, 1)
+                    bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
+                    fractions[:, i] = bin_fraction
 
-        else:  # uncertainties are uncalibrated variances
-            std = np.sqrt(uncertainties)
-            for i in range(1, 100):
-                bin_scaling = erfinv(i / 100) * np.sqrt(2)
-                bin_unc = std * bin_scaling
-                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
-                fractions[:, i] = bin_fraction
-        # trapezoid rule
-        auce = np.sum(
-            0.01 * np.abs(fractions - np.expand_dims(np.arange(101) / 100, axis=0)),
-            axis=1,
-        )
+                self.calibrator.regression_calibrator_metric = original_metric
+                self.calibrator.scaling = original_scaling
+                self.calibrator.interval_percentile = original_interval
+
+            else:  # uncertainties are uncalibrated variances
+                std = np.sqrt(uncertainties)
+                for i in range(1, 100):
+                    bin_scaling = erfinv(i / 100) * np.sqrt(2)
+                    bin_unc = std * bin_scaling
+                    bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
+                    fractions[:, i] = bin_fraction
+            # trapezoid rule
+            auce = np.append(
+                auce,
+                np.sum(
+                    0.01
+                    * np.abs(fractions - np.expand_dims(np.arange(101) / 100, axis=0)),
+                    axis=1,
+                ),
+            )
         return auce.tolist()
 
 
@@ -253,7 +300,7 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
             raise ValueError(
-                f"Expected normalized error is only appropriate for regression dataset types."
+                "Expected normalized error is only appropriate for regression dataset types."
             )
 
     def evaluate(
@@ -267,52 +314,69 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
-        sort_record = np.rec.fromarrays([uncertainties, abs_error], names="i, j")
-        sort_record.sort(axis=0)
-        uncertainties = sort_record["i"]
-        abs_error = sort_record["j"]
+        if self.calibrator.is_atom_bond_targets:
+            uncertainties = [
+                np.concatenate(x).reshape(-1, 1) for x in zip(*uncertainties)
+            ]
+            abs_error = [np.concatenate(x).reshape(-1, 1) for x in zip(*abs_error)]
+        else:
+            uncertainties = [np.array(x).reshape(-1, 1) for x in zip(*uncertainties)]
+            abs_error = [np.array(x).reshape(-1, 1) for x in zip(*abs_error)]
+
+        uncertainties_list, abs_error_list = [], []
+        for unc, error in zip(uncertainties, abs_error):
+            sort_record = np.rec.fromarrays([unc, error], names="i, j")
+            sort_record.sort(axis=0)
+            uncertainties_list.append(sort_record["i"])
+            abs_error_list.append(sort_record["j"])
 
         # get stdev scaling
         if self.calibrator is not None:
             original_metric = self.calibrator.regression_calibrator_metric
             original_scaling = self.calibrator.scaling
 
-        # 100 bins
-        split_unc = np.array_split(
-            uncertainties, 100, axis=0
-        )  # shape(list100, data, tasks)
-        split_error = np.array_split(abs_error, 100, axis=0)
+        ence = np.array([])
+        for num, (uncertainties, abs_error, scaling) in enumerate(
+            zip(uncertainties_list, abs_error_list, original_scaling)
+        ):
+            # 100 bins
+            split_unc = np.array_split(
+                uncertainties, 100, axis=0
+            )  # shape(list100, data, 1)
+            split_error = np.array_split(abs_error, 100, axis=0)
 
-        mean_vars = np.zeros([preds.shape[1], 100])  # shape(tasks, 100)
-        rmses = np.zeros_like(mean_vars)
+            mean_vars = np.zeros([1, 100])  # shape(1, 100)
+            rmses = np.zeros_like(mean_vars)
 
-        for i in range(100):
-            if self.calibrator is None:  # starts as a variance
-                mean_vars[:, i] = np.mean(split_unc[i], axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
-            elif self.calibration_method == "tscaling":  # convert back to sample stdev
-                bin_unc = split_unc[i] / np.expand_dims(original_scaling, axis=0)
-                bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
-                mean_vars[:, i] = np.mean(bin_var, axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
-            else:
-                self.calibrator.regression_calibrator_metric = "stdev"
-                self.calibrator.calibrate()
+            for i in range(100):
+                if self.calibrator is None:  # starts as a variance
+                    mean_vars[:, i] = np.mean(split_unc[i], axis=0)
+                    rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
+                elif self.calibration_method == "tscaling":  # convert back to sample stdev
+                    bin_unc = split_unc[i] / np.expand_dims(scaling, axis=0)
+                    bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
+                    mean_vars[:, i] = np.mean(bin_var, axis=0)
+                    rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
+                else:
+                    self.calibrator.regression_calibrator_metric = "stdev"
+                    self.calibrator.calibrate()
 
-                stdev_scaling = self.calibrator.scaling
+                    stdev_scaling = self.calibrator.scaling
 
-                self.calibrator.regression_calibrator_metric = original_metric
-                self.calibrator.scaling = original_scaling
+                    self.calibrator.regression_calibrator_metric = original_metric
+                    self.calibrator.scaling = original_scaling
 
-                bin_unc = split_unc[i]
-                bin_unc = (
-                    bin_unc
-                    / np.expand_dims(original_scaling, axis=0)
-                    * np.expand_dims(stdev_scaling, axis=0)
-                )  # convert from interval to stdev as needed
-                mean_vars[:, i] = np.mean(np.square(bin_unc), axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
-        ence = np.mean(np.abs(mean_vars - rmses) / mean_vars, axis=1)
+                    bin_unc = split_unc[i]
+                    bin_unc = (
+                        bin_unc
+                        / np.expand_dims(original_scaling[num], axis=0)
+                        * np.expand_dims(stdev_scaling[num], axis=0)
+                    )  # convert from interval to stdev as needed
+                    mean_vars[:, i] = np.mean(np.square(bin_unc), axis=0)
+                    rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
+            ence = np.append(
+                ence, np.mean(np.abs(mean_vars - rmses) / mean_vars, axis=1)
+            )
         return ence.tolist()
 
 
@@ -327,7 +391,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
             raise ValueError(
-                f"Spearman rank correlation is only appropriate for regression dataset types."
+                "Spearman rank correlation is only appropriate for regression dataset types."
             )
 
     def evaluate(
@@ -340,11 +404,16 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
-
         num_tasks = targets.shape[1]
         spearman_coeffs = []
+        if self.calibrator.is_atom_bond_targets:
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            abs_error = [np.concatenate(x) for x in zip(*abs_error)]
+        else:
+            uncertainties = [np.array(x) for x in zip(*uncertainties)]
+            abs_error = [np.array(x) for x in zip(*abs_error)]
         for i in range(num_tasks):
-            spmn = spearmanr(uncertainties[:, i], abs_error[:, i]).correlation
+            spmn = spearmanr(uncertainties[i], abs_error[i]).correlation
             spearman_coeffs.append(spmn)
         return spearman_coeffs
 

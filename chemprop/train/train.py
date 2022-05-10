@@ -114,7 +114,7 @@ def train(model: MoleculeModel,
         preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, constraints_batch)
 
         # Move tensors to correct device
-        torch_device = preds.device
+        torch_device = args.device
         if model.is_atom_bond_targets:
             masks = [x.to(torch_device) for x in masks]
             masks = [x.reshape([-1, 1]) for x in masks]
@@ -139,10 +139,12 @@ def train(model: MoleculeModel,
                     loss = loss_func(pred, target, data_weight, mask) * target_weight.squeeze(0)
                 elif args.loss_function == 'bounded_mse':
                     raise ValueError(f'Loss function "{args.loss_function}" is not supported with dataset type {args.dataset_type} in atomic/bond properties prediction.')
-                elif args.loss_function in ['binary_cross_entropy', 'mse']:
+                elif args.loss_function in ['binary_cross_entropy', 'mse', 'mve']:
                     loss = loss_func(pred, target) * target_weight * data_weight * mask
-                elif args.loss_function in ['evidential', 'dirichlet']:
-                    loss = loss_func(preds, target, args.evidential_regularization) * target_weight * data_weight * mask
+                elif args.loss_function == 'evidential':
+                    loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
+                elif args.loss_function == 'dirichlet' and args.dataset_type == 'classification':
+                    loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
                 else:
                     raise ValueError(f'Dataset type "{args.dataset_type}" is not supported.')
                 loss = loss.sum() / mask.sum()
@@ -165,21 +167,21 @@ def train(model: MoleculeModel,
             elif args.dataset_type == 'multiclass':
                 targets = targets.long()
                 if args.loss_function == 'dirichlet':
-                    loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+                    loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
                 else:
                     target_losses = []
                     for target_index in range(preds.size(1)):
                         target_loss = loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1)
                         target_losses.append(target_loss)
-                    loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
+                    loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * masks
             elif args.dataset_type == 'spectra':
                 loss = loss_func(preds, targets, masks) * target_weights * data_weights * masks
             elif args.loss_function == 'bounded_mse':
                 loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * masks
             elif args.loss_function == 'evidential':
-                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
             elif args.loss_function == 'dirichlet': # classification
-                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
             else:
                 loss = loss_func(preds, targets) * target_weights * data_weights * masks
 

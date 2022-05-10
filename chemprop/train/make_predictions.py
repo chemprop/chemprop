@@ -12,6 +12,7 @@ from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, t
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
+from chemprop.multitask_utils import get_reshaped_values
 
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -170,12 +171,14 @@ def predict_and_save(
         dropout_sampling_size=args.dropout_sampling_size,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
-        is_atom_bond_targets=getattr(train_args, "is_atom_bond_targets", False),
     )
 
     preds, unc = estimator.calculate_uncertainty(
         calibrator=calibrator
     )  # preds and unc are lists of shape(data,tasks)
+
+    if calibrator.is_atom_bond_targets and args.calibration_method == "isotonic":
+        unc = get_reshaped_values(unc, test_data, args.atom_targets, args.bond_targets, num_tasks)
 
     if args.individual_ensemble_predictions:
         individual_preds = (

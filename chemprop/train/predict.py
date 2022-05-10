@@ -3,7 +3,6 @@ from typing import List
 import numpy as np
 import torch
 from tqdm import tqdm
-import numpy as np
 
 from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
@@ -33,16 +32,23 @@ def predict(
         it is a tuple of lists of lists, of a length depending on how many uncertainty parameters are appropriate for the loss function.
     """
     model.eval()
-    
+
     # Activate dropout layers to work during inference for uncertainty estimation
     if dropout_prob > 0.0:
+
         def activate_dropout_(model):
             return activate_dropout(model, dropout_prob)
+
         model.apply(activate_dropout_)
 
     preds = []
 
-    var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
+    var, lambdas, alphas, betas = (
+        [],
+        [],
+        [],
+        [],
+    )  # only used if returning uncertainty parameters
 
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
@@ -53,16 +59,24 @@ def predict(
         atom_features_batch = batch.atom_features()
         bond_features_batch = batch.bond_features()
 
+        constraints_batch = []
         if model.is_atom_bond_targets:
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
-            constraints_batch = []
             ind = 0
             for i in range(len(model.atom_targets)):
                 if model.atom_constraints is None:
                     constraints_batch.append(None)
                 elif i < len(model.atom_constraints):
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
-                    constraints = torch.tensor([(model.atom_constraints[i] - natom * mean) / std for natom in natoms])
+                    mean, std = (
+                        atom_bond_scalers[ind].means[0],
+                        atom_bond_scalers[ind].stds[0],
+                    )
+                    constraints = torch.tensor(
+                        [
+                            (model.atom_constraints[i] - natom * mean) / std
+                            for natom in natoms
+                        ]
+                    )
                     constraints_batch.append(constraints.to(model.device))
                 else:
                     constraints_batch.append(None)
@@ -71,8 +85,16 @@ def predict(
                 if model.bond_constraints is None:
                     constraints_batch.append(None)
                 elif i < len(model.bond_constraints):
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
-                    constraints = torch.tensor([(model.bond_constraints[i] - nbond * mean) / std for nbond in nbonds])
+                    mean, std = (
+                        atom_bond_scalers[ind].means[0],
+                        atom_bond_scalers[ind].stds[0],
+                    )
+                    constraints = torch.tensor(
+                        [
+                            (model.bond_constraints[i] - nbond * mean) / std
+                            for nbond in nbonds
+                        ]
+                    )
                     constraints_batch.append(constraints.to(model.device))
                 else:
                     constraints_batch.append(None)
@@ -91,14 +113,54 @@ def predict(
 
         if model.is_atom_bond_targets:
             batch_preds = [x.data.cpu().numpy() for x in batch_preds]
+            batch_vars, batch_lambdas, batch_alphas, batch_betas = [], [], [], []
 
-            # Inverse scale for each atom/bond target if regression
-            if atom_bond_scalers is not None:
-                for i, pred in enumerate(batch_preds):
-                    batch_preds[i] = atom_bond_scalers[i].inverse_transform(pred)
+            for i, batch_pred in enumerate(batch_preds):
+                if model.loss_function == "mve":
+                    batch_pred, batch_var = np.split(batch_pred, 2, axis=1)
+                    batch_vars.append(batch_var)
+                elif model.loss_function == "dirichlet":
+                    if model.classification:
+                        batch_alpha = np.reshape(
+                            batch_pred,
+                            [batch_pred.shape[0], batch_pred.shape[1] // 2, 2],
+                        )
+                        batch_pred = batch_alpha[:, :, 1] / np.sum(
+                            batch_alpha, axis=2
+                        )  # shape(data, tasks, 2)
+                        batch_alphas.append(batch_alpha)
+                    elif model.multiclass:
+                        raise ValueError(
+                            f"In atomic/bond properties prediction, {model.multiclass} is not supported."
+                        )
+                elif model.loss_function == "evidential":  # regression
+                    batch_pred, batch_lambda, batch_alpha, batch_beta = np.split(
+                        batch_pred, 4, axis=1
+                    )
+                    batch_alphas.append(batch_alpha)
+                    batch_lambdas.append(batch_lambda)
+                    batch_betas.append(batch_beta)
+
+                # Inverse scale for each atom/bond target if regression
+                if atom_bond_scalers is not None:
+                    batch_preds[i] = atom_bond_scalers[i].inverse_transform(batch_pred)
+                    if model.loss_function == "mve":
+                        batch_vars[i] = batch_vars[i] * atom_bond_scalers[i].stds ** 2
+                    elif model.loss_function == "evidential":
+                        batch_betas[i] = batch_betas[i] * atom_bond_scalers[i].stds ** 2
+                else:
+                    batch_preds[i] = batch_pred
 
             # Collect vectors
             preds.append(batch_preds)
+            if model.loss_function == "mve":
+                var.append(batch_vars)
+            elif model.loss_function == "dirichlet" and model.classification:
+                alphas.append(batch_alphas)
+            elif model.loss_function == "evidential":  # regression
+                lambdas.append(batch_lambdas)
+                alphas.append(batch_alphas)
+                betas.append(batch_betas)
         else:
             batch_preds = batch_preds.data.cpu().numpy()
 
@@ -107,7 +169,8 @@ def predict(
             elif model.loss_function == "dirichlet":
                 if model.classification:
                     batch_alphas = np.reshape(
-                        batch_preds, [batch_preds.shape[0], batch_preds.shape[1] // 2, 2]
+                        batch_preds,
+                        [batch_preds.shape[0], batch_preds.shape[1] // 2, 2],
                     )
                     batch_preds = batch_alphas[:, :, 1] / np.sum(
                         batch_alphas, axis=2
@@ -117,7 +180,7 @@ def predict(
                     batch_preds = batch_preds / np.sum(
                         batch_alphas, axis=2, keepdims=True
                     )  # shape(data, tasks, num_classes)
-            elif model.loss_function == 'evidential':  # regression
+            elif model.loss_function == "evidential":  # regression
                 batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(
                     batch_preds, 4, axis=1
                 )
@@ -126,9 +189,9 @@ def predict(
             if scaler is not None:
                 batch_preds = scaler.inverse_transform(batch_preds)
                 if model.loss_function == "mve":
-                    batch_var = batch_var * scaler.stds ** 2
+                    batch_var = batch_var * scaler.stds**2
                 elif model.loss_function == "evidential":
-                    batch_betas = batch_betas * scaler.stds ** 2
+                    batch_betas = batch_betas * scaler.stds**2
 
             # Collect vectors
             batch_preds = batch_preds.tolist()
@@ -141,9 +204,13 @@ def predict(
                 lambdas.extend(batch_lambdas.tolist())
                 alphas.extend(batch_alphas.tolist())
                 betas.extend(batch_betas.tolist())
-    
+
     if model.is_atom_bond_targets:
         preds = [np.concatenate(x) for x in zip(*preds)]
+        var = [np.concatenate(x) for x in zip(*var)]
+        alphas = [np.concatenate(x) for x in zip(*alphas)]
+        betas = [np.concatenate(x) for x in zip(*betas)]
+        lambdas = [np.concatenate(x) for x in zip(*lambdas)]
 
     if return_unc_parameters:
         if model.loss_function == "mve":
