@@ -56,6 +56,7 @@ def run_training(args: TrainArgs,
                              atom_descriptors_path=args.separate_test_atom_descriptors_path,
                              bond_features_path=args.separate_test_bond_features_path,
                              phase_features_path=args.separate_test_phase_features_path,
+                             constraints_path=args.seperate_test_constraints_path,
                              smiles_columns=args.smiles_columns,
                              loss_function=args.loss_function,
                              logger=logger)
@@ -66,7 +67,8 @@ def run_training(args: TrainArgs,
                             atom_descriptors_path=args.separate_val_atom_descriptors_path,
                             bond_features_path=args.separate_val_bond_features_path,
                             phase_features_path=args.separate_val_phase_features_path,
-                            smiles_columns = args.smiles_columns,
+                            constraints_path=args.seperate_val_constraints_path,
+                            smiles_columns=args.smiles_columns,
                             loss_function=args.loss_function,
                             logger=logger)
 
@@ -115,6 +117,7 @@ def run_training(args: TrainArgs,
             save_dir=args.save_dir,
             task_names=args.task_names,
             features_path=args.features_path,
+            constraints_path=args.constraints_path,
             train_data=train_data,
             val_data=val_data,
             test_data=test_data,
@@ -240,20 +243,20 @@ def run_training(args: TrainArgs,
         else:
             debug(f'Building model {model_idx}')
             model = MoleculeModel(args)
-            
+
         # Optionally, overwrite weights:
         if args.checkpoint_frzn is not None:
             debug(f'Loading and freezing parameters from {args.checkpoint_frzn}.')
-            model = load_frzn_model(model=model,path=args.checkpoint_frzn, current_args=args, logger=logger)     
-        
+            model = load_frzn_model(model=model, path=args.checkpoint_frzn, current_args=args, logger=logger)
+
         debug(model)
-        
+
         if args.checkpoint_frzn is not None:
             debug(f'Number of unfrozen parameters = {param_count(model):,}')
             debug(f'Total number of parameters = {param_count_all(model):,}')
         else:
             debug(f'Number of parameters = {param_count_all(model):,}')
-        
+
         if args.cuda:
             debug('Moving model to cuda')
         model = model.to(args.device)
@@ -394,9 +397,9 @@ def run_training(args: TrainArgs,
             n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
 
             for i, atom_target in enumerate(args.atom_targets):
-                test_preds_dataframe[atom_target] = np.split(avg_test_preds[i].flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+                test_preds_dataframe[atom_target] = np.split(np.array(avg_test_preds[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
             for i, bond_target in enumerate(args.bond_targets):
-                test_preds_dataframe[bond_target] = np.split(avg_test_preds[i+len(args.atom_targets)].flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+                test_preds_dataframe[bond_target] = np.split(np.array(avg_test_preds[i+len(args.atom_targets)]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
             test_preds_dataframe.to_pickle(os.path.join(args.save_dir, 'test_preds.pkl'))
         else:
             for i, task_name in enumerate(args.task_names):

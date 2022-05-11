@@ -69,6 +69,8 @@ class MoleculeDatapoint:
                  atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None,
                  bond_features: np.ndarray = None,
+                 constraints: np.ndarray = None,
+                 raw_constraints: np.ndarray = None,
                  overwrite_default_atom_features: bool = False,
                  overwrite_default_bond_features: bool = False):
         """
@@ -83,10 +85,12 @@ class MoleculeDatapoint:
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
         :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
-        :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
-        :param bond_features: A numpy array containing additional bond features to featurize the molecule
-        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features
-        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features
+        :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule.
+        :param bond_features: A numpy array containing additional bond features to featurize the molecule.
+        :param constraints: A numpy array containing constraints applied to different atomic/bond properties.
+        :param raw_constraints: A numpy array containing constraints in raw data.
+        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features.
+        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features.
 
         """
         if features is not None and features_generator is not None:
@@ -103,6 +107,8 @@ class MoleculeDatapoint:
         self.atom_descriptors = atom_descriptors
         self.atom_features = atom_features
         self.bond_features = bond_features
+        self.constraints = constraints
+        self.raw_constraints = raw_constraints
         self.overwrite_default_atom_features = overwrite_default_atom_features
         self.overwrite_default_bond_features = overwrite_default_bond_features
         self.is_mol_list = [is_mol(s) for s in smiles]
@@ -422,6 +428,12 @@ class MoleculeDataset(Dataset):
             return None
 
         return [d.bond_features for d in self._data]
+    
+    def constraints(self) -> List[np.ndarray]:
+        """
+        Return the constraints applied in atomic/bond properties prediction.
+        """
+        return [d.constraints for d in self._data]
 
     def data_weights(self) -> List[float]:
         """

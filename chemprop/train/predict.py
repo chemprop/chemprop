@@ -43,12 +43,7 @@ def predict(
 
     preds = []
 
-    var, lambdas, alphas, betas = (
-        [],
-        [],
-        [],
-        [],
-    )  # only used if returning uncertainty parameters
+    var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
 
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
@@ -58,46 +53,29 @@ def predict(
         atom_descriptors_batch = batch.atom_descriptors()
         atom_features_batch = batch.atom_features()
         bond_features_batch = batch.bond_features()
+        constraints_batch = batch.constraints()
 
-        constraints_batch = []
         if model.is_atom_bond_targets:
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
+            constraints_batch = np.transpose(constraints_batch).tolist()
             ind = 0
             for i in range(len(model.atom_targets)):
-                if model.atom_constraints is None:
-                    constraints_batch.append(None)
-                elif i < len(model.atom_constraints):
-                    mean, std = (
-                        atom_bond_scalers[ind].means[0],
-                        atom_bond_scalers[ind].stds[0],
-                    )
-                    constraints = torch.tensor(
-                        [
-                            (model.atom_constraints[i] - natom * mean) / std
-                            for natom in natoms
-                        ]
-                    )
-                    constraints_batch.append(constraints.to(model.device))
+                if not model.atom_constraints[i]:
+                    constraints_batch[ind] = None
                 else:
-                    constraints_batch.append(None)
+                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    for j, natom in enumerate(natoms):
+                        constraints_batch[ind][j] = (constraints_batch[ind][j] - natom * mean) / std
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(model.device)
                 ind += 1
             for i in range(len(model.bond_targets)):
-                if model.bond_constraints is None:
-                    constraints_batch.append(None)
-                elif i < len(model.bond_constraints):
-                    mean, std = (
-                        atom_bond_scalers[ind].means[0],
-                        atom_bond_scalers[ind].stds[0],
-                    )
-                    constraints = torch.tensor(
-                        [
-                            (model.bond_constraints[i] - nbond * mean) / std
-                            for nbond in nbonds
-                        ]
-                    )
-                    constraints_batch.append(constraints.to(model.device))
+                if not model.bond_constraints[i]:
+                    constraints_batch[ind] = None
                 else:
-                    constraints_batch.append(None)
+                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    for j, nbond in enumerate(nbonds):
+                        constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(model.device)
                 ind += 1
 
         # Make predictions

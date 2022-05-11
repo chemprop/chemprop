@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import re
 
+
 class AttrProxy(object):
     """Translates index lookups into attribute lookups."""
     def __init__(self, module, prefix):
@@ -18,6 +19,7 @@ class AttrProxy(object):
             raise IndexError
         return getattr(self.module, self.prefix + str(item))
 
+
 class MultiReadout(nn.Module):
     """A fake list of FFNs for reading out as suggested in
     https://discuss.pytorch.org/t/list-of-nn-module-in-a-nn-module/219/3 """
@@ -31,8 +33,8 @@ class MultiReadout(nn.Module):
                  activation: nn.Module,
                  atom_targets: List[str] = None,
                  bond_targets: List[str] = None,
-                 atom_constraints: torch.tensor = None,
-                 bond_constraints: torch.tensor = None):
+                 atom_constraints: List[bool] = None,
+                 bond_constraints: List[bool] = None):
         """
         :param features_size: Dimensionality of input features.
         :param hidden_size: Dimensionality of hidden layers.
@@ -42,20 +44,19 @@ class MultiReadout(nn.Module):
         :param activation: Activation function.
         :param atom_targets: A list of names for atomic targets.
         :param bond_targets: A list of names for bond targets.
-        :param atom_constraints: Constraints applied to output of atomic properties.
-        :param bond_constraints: Constraints applied to output of bond properties.
+        :param atom_constraints: A list of booleans indicatin whether constraints applied to output of atomic properties.
+        :param bond_constraints: A list of booleans indicatin whether constraints applied to output of bond properties.
         """
         super(MultiReadout, self).__init__()
         ind = 0
-        if atom_targets:
-            for i, a_target in enumerate(atom_targets):
-                constraint = True if atom_constraints is not None and i < len(atom_constraints) else False
-                self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
-                                                           dropout, activation, constraint, ffn_type='atom'))
-                ind += 1
+        for i in range(len(atom_targets)):
+            constraint = atom_constraints[i]
+            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
+                                                       dropout, activation, constraint, ffn_type='atom'))
+            ind += 1
 
-        for j, b_target in enumerate(bond_targets):
-            constraint = True if bond_constraints is not None and j < len(bond_constraints) else False
+        for i in range(len(bond_targets)):
+            constraint = bond_constraints[i]
             self.add_module(f'readout_{ind}', FFNAtten(2*features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, constraint, ffn_type='bond'))
             ind += 1
@@ -71,12 +72,13 @@ class MultiReadout(nn.Module):
         """
         return [ffn(input, constraints_batch[i]) for i, ffn in enumerate(self.ffn_list)]
 
+
 class FFNAtten(nn.Module):
     """
-    A :class:`FFNAtten` is a multiple feed forward neural networks (NN) to predict 
-    the atom/bond descriptors. For constrained descriptors, an attention-based 
-    constraint is applied. This metthod is from `Regio-selectivity prediction with a 
-    machinelearned reaction representation and on-the-fly quantum mechanical descriptors 
+    A :class:`FFNAtten` is a multiple feed forward neural networks (NN) to predict
+    the atom/bond descriptors. For constrained descriptors, an attention-based
+    constraint is applied. This metthod is from `Regio-selectivity prediction with a
+    machinelearned reaction representation and on-the-fly quantum mechanical descriptors
     <https://pubs.rsc.org/en/content/articlelanding/2021/sc/d0sc04823b>`_, section 2.2.
     """
 
@@ -177,6 +179,7 @@ class FFNAtten(nn.Module):
 
         return output
 
+
 class DenseLayers(nn.Module):
     """A :class:`DenseLayers` is a object of dense layers."""
 
@@ -230,6 +233,7 @@ class DenseLayers(nn.Module):
                 class nn_exp(torch.nn.Module):
                     def __init__(self):
                         super(nn_exp, self).__init__()
+
                     def forward(self, x):
                         return torch.exp(x)
                 spectra_activation = nn_exp()

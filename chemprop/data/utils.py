@@ -14,8 +14,9 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_valid_atom_or_bond_features, is_explicit_h, is_reaction, is_adding_hs, is_mol
+from chemprop.features import load_features, load_valid_atom_or_bond_features, is_explicit_h, is_adding_hs, is_mol
 from chemprop.rdkit import make_mol
+
 
 def get_header(path: str) -> List[str]:
     """
@@ -118,13 +119,13 @@ def get_data_weights(path: str) -> List[float]:
     """
     weights = []
     with open(path) as f:
-        reader=csv.reader(f)
-        next(reader) #skip header row
+        reader = csv.reader(f)
+        next(reader)  # skip header row
         for line in reader:
             weights.append(float(line[0]))
     # normalize the data weights
-    avg_weight=sum(weights)/len(weights)
-    weights = [w/avg_weight for w in weights]
+    avg_weight = sum(weights) / len(weights)
+    weights = [w / avg_weight for w in weights]
     if min(weights) < 0:
         raise ValueError('Data weights must be non-negative for each datapoint.')
     return weights
@@ -183,10 +184,10 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 
 def get_invalid_smiles_from_file(path: str = None,
-               smiles_columns: Union[str, List[str]] = None,
-               header: bool = True,
-               reaction: bool = False,
-               ) -> Union[List[str], List[List[str]]]:
+                                 smiles_columns: Union[str, List[str]] = None,
+                                 header: bool = True,
+                                 reaction: bool = False,
+                                 ) -> Union[List[str], List[List[str]]]:
     """
     Returns the invalid SMILES from a data CSV file.
 
@@ -247,6 +248,7 @@ def get_data(path: str,
              phase_features_path: str = None,
              atom_descriptors_path: str = None,
              bond_features_path: str = None,
+             constraints_path: str = None,
              max_data_size: int = None,
              store_row: bool = False,
              logger: Logger = None,
@@ -271,6 +273,7 @@ def get_data(path: str,
     :param phase_features_path: A path to a file containing phase features as applicable to spectra.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
     :param bond_features_path: The path to the file containing the custom bond features.
+    :param constraints_path: The path to the file containing constraints applied to different atomic/bond properties.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
@@ -294,6 +297,7 @@ def get_data(path: str,
             else args.atom_descriptors_path
         bond_features_path = bond_features_path if bond_features_path is not None \
             else args.bond_features_path
+        constraints_path = constraints_path if constraints_path is not None else args.constraints_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
 
@@ -310,18 +314,40 @@ def get_data(path: str,
         features_data = np.concatenate(features_data, axis=1)
     else:
         features_data = None
-        
+
     if phase_features_path is not None:
         phase_features = load_features(phase_features_path)
         for d_phase in phase_features:
             if not (d_phase.sum() == 1 and np.count_nonzero(d_phase) == 1):
                 raise ValueError('Phase features must be one-hot encoded.')
         if features_data is not None:
-            features_data = np.concatenate((features_data,phase_features), axis=1)
-        else: # if there are no other molecular features, phase features become the only molecular features
+            features_data = np.concatenate((features_data, phase_features), axis=1)
+        else:  # if there are no other molecular features, phase features become the only molecular features
             features_data = np.array(phase_features)
     else:
         phase_features = None
+
+    # Load constraints
+    if constraints_path is not None:
+        constraints_data = []
+        reader = pd.read_csv(constraints_path)
+        for target in args.target_columns:
+            if target in reader.columns.tolist():
+                constraints_data.append(reader[target].values)
+            else:
+                constraints_data.append([None] * len(reader))
+        constraints_data = np.transpose(constraints_data)  # each is num_data x num_targets
+
+        if args.save_smiles_splits:
+            raw_constraints_data = []
+            for target in reader.columns.tolist():
+                raw_constraints_data.append(reader[target].values)
+            raw_constraints_data = np.transpose(raw_constraints_data)  # each is num_data x num_columns
+        else:
+            raw_constraints_data = None
+    else:
+        constraints_data = None
+        raw_constraints_data = None
 
     # Load data weights
     if data_weights_path is not None:
@@ -360,7 +386,7 @@ def get_data(path: str,
     if any([c not in fieldnames for c in target_columns]):
         raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
 
-    all_smiles, all_targets, all_atom_targets, all_bond_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], [], [], []
+    all_smiles, all_targets, all_atom_targets, all_bond_targets, all_rows, all_features, all_phase_features, all_constraints_data, all_raw_constraints_data, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], [], [], [], [], []
     for i, row in enumerate(tqdm(reader)):
         targets, atom_targets, bond_targets = [], [], []
 
@@ -378,10 +404,13 @@ def get_data(path: str,
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
                 elif '[' in value or ']' in value:
                     target = np.array(eval(value))
-                    if len(target.shape) == 1: # Atom targets saved as 1D list
+                    if len(target.shape) == 1 and column in args.atom_targets:  # Atom targets saved as 1D list
                         atom_targets.append(target)
                         targets.append(target)
-                    else: # Bond targets saved as 2D list
+                    elif len(target.shape) == 1 and column in args.bond_targets:  # Bond targets saved as 1D list
+                        bond_targets.append(target)
+                        targets.append(target)
+                    else:  # Bond targets saved as 2D list
                         _is_mol = is_mol(smiles[0])
                         keep_h = is_explicit_h(_is_mol)
                         add_h = is_adding_hs(_is_mol)
@@ -411,10 +440,13 @@ def get_data(path: str,
             mol = make_mol(smiles[0], keep_h, add_h)
             for b_target_name in args.bond_targets:
                 bond_target = np.array(row[b_target_name])
-                bond_target_arranged = []
-                for b in mol.GetBonds():
-                    bond_target_arranged.append(bond_target[b.GetBeginAtom().GetIdx(), b.GetEndAtom().GetIdx()])
-                bond_targets.append(np.array(bond_target_arranged))
+                if len(bond_target.shape) == 1:
+                    bond_targets.append(bond_target)
+                else:
+                    bond_target_arranged = []
+                    for b in mol.GetBonds():
+                        bond_target_arranged.append(bond_target[b.GetBeginAtom().GetIdx(), b.GetEndAtom().GetIdx()])
+                    bond_targets.append(np.array(bond_target_arranged))
             targets = atom_targets + bond_targets
 
         # Check whether all targets are None and skip if so
@@ -428,9 +460,15 @@ def get_data(path: str,
 
         if features_data is not None:
             all_features.append(features_data[i])
-        
+
         if phase_features is not None:
             all_phase_features.append(phase_features[i])
+
+        if constraints_data is not None:
+            all_constraints_data.append(constraints_data[i])
+
+        if raw_constraints_data is not None:
+            all_raw_constraints_data.append(raw_constraints_data[i])
 
         if data_weights is not None:
             all_weights.append(data_weights[i])
@@ -446,7 +484,7 @@ def get_data(path: str,
 
         if len(all_smiles) >= max_data_size:
             break
-    
+
     if extension == '.csv':
         f.close()
 
@@ -486,6 +524,8 @@ def get_data(path: str,
             atom_features=atom_features[i] if atom_features is not None else None,
             atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
             bond_features=bond_features[i] if bond_features is not None else None,
+            constraints=all_constraints_data[i] if constraints_data is not None else None,
+            raw_constraints=all_raw_constraints_data[i] if raw_constraints_data is not None else None,
             overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
             overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
         ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
@@ -590,7 +630,7 @@ def split_data(data: MoleculeDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
-    
+
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -680,14 +720,14 @@ def split_data(data: MoleculeDataset,
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
 
-    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split.
-        smiles_dict=defaultdict(set)
-        for i,smiles in enumerate(data.smiles()):
+    elif split_type == 'random_with_repeated_smiles':  # Use to constrain data with the same smiles go in the same split.
+        smiles_dict = defaultdict(set)
+        for i, smiles in enumerate(data.smiles()):
             smiles_dict[smiles[key_molecule_index]].add(i)
-        index_sets=list(smiles_dict.values())
+        index_sets = list(smiles_dict.values())
         random.seed(seed)
         random.shuffle(index_sets)
-        train,val,test=[],[],[]
+        train, val, test = [], [], []
         train_size = int(sizes[0] * len(data))
         val_size = int(sizes[1] * len(data))
         for index_set in index_sets:
@@ -753,7 +793,7 @@ def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List
                 ones = float('nan')
                 print('Warning: class has no targets')
             class_sizes.append([1 - ones, ones])
-        else: # counts
+        else:  # counts
             ones = np.count_nonzero(task_targets)
             class_sizes.append([len(task_targets) - ones, ones])
 

@@ -51,9 +51,9 @@ def train(model: MoleculeModel,
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, data_weights_batch = \
+        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, constraints_batch, data_weights_batch = \
             batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
-            batch.atom_features(), batch.bond_features(), batch.data_weights()
+            batch.atom_features(), batch.bond_features(), batch.constraints(), batch.data_weights()
 
         if model.is_atom_bond_targets:
             masks, targets = [], []
@@ -62,50 +62,48 @@ def train(model: MoleculeModel,
                 masks.append(torch.tensor([x is not None for x in tb], dtype=torch.bool))
                 targets.append(torch.tensor([0 if x is None else x for x in tb], dtype=torch.float))
             if args.target_weights is not None:
-                target_weights = [torch.ones(1, 1) * i for i in args.target_weights] # shape(tasks,1)
+                target_weights = [torch.ones(1, 1) * i for i in args.target_weights]  # shape(tasks,1)
             else:
                 target_weights = [torch.ones(1, 1) for i in targets]
             data_weights = batch.atom_bond_data_weights()
             data_weights = [torch.tensor(x).unsqueeze(1) for x in data_weights]
 
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
-            constraints_batch = []
+            constraints_batch = np.transpose(constraints_batch).tolist()
             ind = 0
             for i in range(len(args.atom_targets)):
-                if args.atom_constraints is None:
-                    constraints_batch.append(None)
-                elif i < len(args.atom_constraints):
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
-                    constraints = torch.tensor([(args.atom_constraints[i] - natom * mean) / std for natom in natoms])
-                    constraints_batch.append(constraints.to(args.device))
+                if not args.atom_constraints[i]:
+                    constraints_batch[ind] = None
                 else:
-                    constraints_batch.append(None)
+                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    for j, natom in enumerate(natoms):
+                        constraints_batch[ind][j] = (constraints_batch[ind][j] - natom * mean) / std
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(args.device)
                 ind += 1
             for i in range(len(args.bond_targets)):
-                if args.bond_constraints is None:
-                    constraints_batch.append(None)
-                elif i < len(args.bond_constraints):
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
-                    constraints = torch.tensor([(args.bond_constraints[i] - nbond * mean) / std for nbond in nbonds])
-                    constraints_batch.append(constraints.to(args.device))
+                if not args.bond_constraints[i]:
+                    constraints_batch[ind] = None
                 else:
-                    constraints_batch.append(None)
+                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    for j, nbond in enumerate(nbonds):
+                        constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(args.device)
                 ind += 1
         else:
-            masks = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool) # shape(batch, tasks)
-            targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch]) # shape(batch, tasks)
+            masks = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool)  # shape(batch, tasks)
+            targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])  # shape(batch, tasks)
 
             if args.target_weights is not None:
-                target_weights = torch.tensor(args.target_weights).unsqueeze(0) # shape(1,tasks)
+                target_weights = torch.tensor(args.target_weights).unsqueeze(0)  # shape(1,tasks)
             else:
                 target_weights = torch.ones(targets.shape[1]).unsqueeze(0)
-            data_weights = torch.tensor(data_weights_batch).unsqueeze(1) # shape(batch,1)
+            data_weights = torch.tensor(data_weights_batch).unsqueeze(1)  # shape(batch,1)
 
             constraints_batch = None
 
             if args.loss_function == 'bounded_mse':
-                lt_target_batch = batch.lt_targets() # shape(batch, tasks)
-                gt_target_batch = batch.gt_targets() # shape(batch, tasks)
+                lt_target_batch = batch.lt_targets()  # shape(batch, tasks)
+                gt_target_batch = batch.gt_targets()  # shape(batch, tasks)
                 lt_target_batch = torch.tensor(lt_target_batch)
                 gt_target_batch = torch.tensor(gt_target_batch)
 
@@ -157,7 +155,7 @@ def train(model: MoleculeModel,
         else:
             if args.loss_function == 'mcc' and args.dataset_type == 'classification':
                 loss = loss_func(preds, targets, data_weights, masks) * target_weights.squeeze(0)
-            elif args.loss_function == 'mcc': # multiclass dataset type
+            elif args.loss_function == 'mcc':  # multiclass dataset type
                 targets = targets.long()
                 target_losses = []
                 for target_index in range(preds.size(1)):
@@ -180,7 +178,7 @@ def train(model: MoleculeModel,
                 loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * masks
             elif args.loss_function == 'evidential':
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
-            elif args.loss_function == 'dirichlet': # classification
+            elif args.loss_function == 'dirichlet':  # classification
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
             else:
                 loss = loss_func(preds, targets) * target_weights * data_weights * masks

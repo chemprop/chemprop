@@ -570,6 +570,7 @@ def save_smiles_splits(
     save_dir: str,
     task_names: List[str] = None,
     features_path: List[str] = None,
+    constraints_path: str = None,
     train_data: MoleculeDataset = None,
     val_data: MoleculeDataset = None,
     test_data: MoleculeDataset = None,
@@ -586,6 +587,7 @@ def save_smiles_splits(
     :param task_names: List of target names for the model as from the function get_task_names().
         If not provided, will use datafile header entries.
     :param features_path: List of path(s) to files with additional molecule features.
+    :param constraints_path: Path to constraints applied to atomic/bond properties prediction.
     :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
@@ -634,6 +636,11 @@ def save_smiles_splits(
                 feat_header = next(reader)
                 features_header.extend(feat_header)
 
+    if constraints_path is not None:
+        with open(constraints_path, "r") as f:
+            reader = csv.reader(f)
+            constraints_header = next(reader)
+
     all_split_indices = []
     for dataset, name in [(train_data, "train"), (val_data, "val"), (test_data, "test")]:
         if dataset is None:
@@ -662,6 +669,13 @@ def save_smiles_splits(
                 writer = csv.writer(f)
                 writer.writerow(features_header)
                 writer.writerows(dataset_features)
+
+        if constraints_path is not None:
+            dataset_constraints = [d.raw_constraints for d in dataset._data]
+            with open(os.path.join(save_dir, f"{name}_constraints.csv"), "w") as f:
+                writer = csv.writer(f)
+                writer.writerow(constraints_header)
+                writer.writerows(dataset_constraints)
 
         if save_split_indices:
             split_indices = []
@@ -781,8 +795,15 @@ def update_prediction_args(
     # If bond features were used during training, they must be used when predicting and vice-versa
     if (train_args.bond_features_path is None) != (predict_args.bond_features_path is None):
         raise ValueError(
-            "The use of bond descriptors is different between training and prediction. If you used bond"
+            "The use of bond descriptors is different between training and prediction. If you used bond "
             "descriptors for training, please specify a path to new bond descriptors for prediction."
+        )
+
+    # If constraints were used during training, they must be used when predicting and vice-versa
+    if (train_args.constraints_path is None) != (predict_args.constraints_path is None):
+        raise ValueError(
+            "The use of constraints is different between training and prediction. If you applied constraints "
+            "for training, please specify a path to new constraints for prediction."
         )
 
     # If features were used during training, they must be used when predicting
