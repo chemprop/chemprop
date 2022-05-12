@@ -118,7 +118,7 @@ class FFNAtten(nn.Module):
                                            activation=activation)
             self.weights_readout = DenseLayers(first_linear_dim=hidden_size,
                                                hidden_size=hidden_size,
-                                               output_size=output_size,
+                                               output_size=1,
                                                num_layers=2,
                                                dropout=dropout,
                                                activation=activation)
@@ -163,12 +163,12 @@ class FFNAtten(nn.Module):
                     cur_weights = weights.narrow(0, start, size)
                     cur_output = output.narrow(0, start, size)
 
-                    cur_weights = torch.nn.Softmax()(cur_weights)
+                    cur_weights = torch.nn.Softmax()(cur_weights).reshape(-1,)
                     cur_weights_sum = cur_weights.sum()
 
-                    cur_output_sum = cur_output.sum()
+                    cur_output_sum = cur_output[:, 0].sum()
 
-                    cur_output = cur_output + cur_weights * (constraints[i] - cur_output_sum) / cur_weights_sum
+                    cur_output[:, 0] = cur_output[:, 0] + cur_weights * (constraints[i] - cur_output_sum) / cur_weights_sum
                     constrained_output.append(cur_output)
 
             output = torch.cat(constrained_output, dim=0)
