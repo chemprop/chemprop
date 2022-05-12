@@ -595,14 +595,6 @@ class TrainArgs(CommonArgs):
             if self.dataset_type != 'regression':
                 raise ValueError(f'In atomic/bond properties prediction, atomic/bond constraints are not supported for {self.dataset_type}.')
 
-        '''if self.is_atom_bond_targets and self.constraints_path:
-            header = chemprop.data.utils.get_header(self.constraints_path)
-            self.atom_constraints = [target in header for target in self.atom_targets]
-            self.bond_constraints = [target in header for target in self.bond_targets]
-        else:
-            self.atom_constraints = [None] * len(self.atom_targets)
-            self.bond_constraints = [None] * len(self.bond_targets)'''
-
         # Check whether the number of input columns is one for the atomic/bond mode
         if self.is_atom_bond_targets:
             if len(self.smiles_columns) != 1:
