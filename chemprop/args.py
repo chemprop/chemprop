@@ -535,6 +535,30 @@ class TrainArgs(CommonArgs):
         """
         return not self.no_bond_features_scaling
 
+    @property
+    def atom_constraints(self) -> List[bool]:
+        """
+        A list of booleans indicatin whether constraints applied to output of atomic properties.
+        """
+        if self.is_atom_bond_targets and self.constraints_path:
+            header = chemprop.data.utils.get_header(self.constraints_path)
+            atom_constraints = [target in header for target in self.atom_targets]
+        else:
+            atom_constraints = [None] * len(self.atom_targets)
+        return atom_constraints
+    
+    @property
+    def bond_constraints(self) -> List[bool]:
+        """
+        A list of booleans indicatin whether constraints applied to output of bond properties.
+        """
+        if self.is_atom_bond_targets and self.constraints_path:
+            header = chemprop.data.utils.get_header(self.constraints_path)
+            bond_constraints = [target in header for target in self.bond_targets]
+        else:
+            bond_constraints = [None] * len(self.bond_targets)
+        return bond_constraints
+
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
 
@@ -571,13 +595,13 @@ class TrainArgs(CommonArgs):
             if self.dataset_type != 'regression':
                 raise ValueError(f'In atomic/bond properties prediction, atomic/bond constraints are not supported for {self.dataset_type}.')
 
-        if self.is_atom_bond_targets and self.constraints_path:
+        '''if self.is_atom_bond_targets and self.constraints_path:
             header = chemprop.data.utils.get_header(self.constraints_path)
             self.atom_constraints = [target in header for target in self.atom_targets]
             self.bond_constraints = [target in header for target in self.bond_targets]
         else:
             self.atom_constraints = [None] * len(self.atom_targets)
-            self.bond_constraints = [None] * len(self.bond_targets)
+            self.bond_constraints = [None] * len(self.bond_targets)'''
 
         # Check whether the number of input columns is one for the atomic/bond mode
         if self.is_atom_bond_targets:

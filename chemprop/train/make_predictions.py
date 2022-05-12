@@ -177,7 +177,7 @@ def predict_and_save(
         calibrator=calibrator
     )  # preds and unc are lists of shape(data,tasks)
 
-    if calibrator.is_atom_bond_targets and args.calibration_method == "isotonic":
+    if calibrator is not None and calibrator.is_atom_bond_targets and args.calibration_method == "isotonic":
         unc = get_reshaped_values(unc, test_data, args.atom_targets, args.bond_targets, num_tasks)
 
     if args.individual_ensemble_predictions:
@@ -191,6 +191,7 @@ def predict_and_save(
             path=args.test_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
+            args=args,
             features_path=args.features_path,
             features_generator=args.features_generator,
             phase_features_path=args.phase_features_path,
@@ -419,6 +420,7 @@ def make_predictions(
             path=args.calibration_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
+            args=args,
             features_path=args.calibration_features_path,
             features_generator=args.features_generator,
             phase_features_path=args.calibration_phase_features_path,
