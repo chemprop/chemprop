@@ -63,7 +63,8 @@ class MPNEncoder(nn.Module):
         # hidden state readout
         self.W_o_a = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
-        self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
+        if self.is_atom_bond_targets:
+            self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
 
         # layer after concatenating the descriptors if args.atom_descriptors == descriptors
         if args.atom_descriptors == 'descriptor':
@@ -133,14 +134,15 @@ class MPNEncoder(nn.Module):
         atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
 
         # bond hidden
-        b_input = torch.cat([f_bonds, message], dim=1)  # num_bonds x (bond_fdim + hidden)
-        bond_hiddens = self.act_func(self.W_o_b(b_input))  # num_bonds x hidden
-        bond_hiddens = self.dropout_layer(bond_hiddens)  # num_bonds x hidden
+        if self.is_atom_bond_targets:
+            b_input = torch.cat([f_bonds, message], dim=1)  # num_bonds x (bond_fdim + hidden)
+            bond_hiddens = self.act_func(self.W_o_b(b_input))  # num_bonds x hidden
+            bond_hiddens = self.dropout_layer(bond_hiddens)  # num_bonds x hidden
 
         # concatenate the atom descriptors
         if atom_descriptors_batch is not None:
             if len(atom_hiddens) != len(atom_descriptors_batch):
-                raise ValueError(f'The number of atoms is different from the length of the extra atom features')
+                raise ValueError('The number of atoms is different from the length of the extra atom features')
 
             atom_hiddens = torch.cat([atom_hiddens, atom_descriptors_batch], dim=1)     # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.atom_descriptors_layer(atom_hiddens)                    # num_atoms x (hidden + descriptor size)
@@ -186,7 +188,7 @@ class MPN(nn.Module):
         self.reaction = args.reaction
         self.reaction_solvent = args.reaction_solvent
         self.atom_fdim = atom_fdim or get_atom_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
-                                                     is_reaction=(self.reaction or self.reaction_solvent))
+                                                    is_reaction=(self.reaction or self.reaction_solvent))
         self.bond_fdim = bond_fdim or get_bond_fdim(overwrite_default_atom=args.overwrite_default_atom_features,
                                                     overwrite_default_bond=args.overwrite_default_bond_features,
                                                     atom_messages=args.atom_messages,
@@ -206,7 +208,7 @@ class MPN(nn.Module):
                 self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)] * args.number_of_molecules)
             else:
                 self.encoder = nn.ModuleList([MPNEncoder(args, self.atom_fdim, self.bond_fdim)
-                                               for _ in range(args.number_of_molecules)])
+                                             for _ in range(args.number_of_molecules)])
         else:
             self.encoder = MPNEncoder(args, self.atom_fdim, self.bond_fdim)
             # Set separate atom_fdim and bond_fdim for solvent molecules
@@ -217,7 +219,7 @@ class MPN(nn.Module):
                                                    atom_messages=args.atom_messages,
                                                    is_reaction=False)
             self.encoder_solvent = MPNEncoder(args, self.atom_fdim_solvent, self.bond_fdim_solvent,
-                                               args.hidden_size_solvent, args.bias_solvent, args.depth_solvent)
+                                              args.hidden_size_solvent, args.bias_solvent, args.depth_solvent)
 
     def forward(self,
                 batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
@@ -289,14 +291,14 @@ class MPN(nn.Module):
             encodings = [enc(ba, atom_descriptors_batch) for enc, ba in zip(self.encoder, batch)]
         else:
             if not self.reaction_solvent:
-                 encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
+                encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
             else:
-                 encodings = []
-                 for ba in batch:
-                     if ba.is_reaction:
-                         encodings.append(self.encoder(ba))
-                     else:
-                         encodings.append(self.encoder_solvent(ba))
+                encodings = []
+                for ba in batch:
+                    if ba.is_reaction:
+                        encodings.append(self.encoder(ba))
+                    else:
+                        encodings.append(self.encoder_solvent(ba))
 
         output = reduce(lambda x, y: torch.cat((x, y), dim=1), encodings)
 
