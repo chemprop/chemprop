@@ -538,7 +538,7 @@ class TrainArgs(CommonArgs):
     @property
     def atom_constraints(self) -> List[bool]:
         """
-        A list of booleans indicatin whether constraints applied to output of atomic properties.
+        A list of booleans indicating whether constraints applied to output of atomic properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
             header = chemprop.data.utils.get_header(self.constraints_path)
@@ -550,7 +550,7 @@ class TrainArgs(CommonArgs):
     @property
     def bond_constraints(self) -> List[bool]:
         """
-        A list of booleans indicatin whether constraints applied to output of bond properties.
+        A list of booleans indicating whether constraints applied to output of bond properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
             header = chemprop.data.utils.get_header(self.constraints_path)
