@@ -30,13 +30,9 @@ def get_header(path: str) -> List[str]:
     if extension in ['.pkl', '.pckl', '.pickle']:
         df = pd.read_pickle(path)
         header = df.columns.tolist()
-
-    elif extension == '.csv':
+    else:
         with open(path) as f:
             header = next(csv.reader(f))
-
-    else:
-        raise ValueError(f'Extension "{extension}" is not supported.')
 
     return header
 
