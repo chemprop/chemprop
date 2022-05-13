@@ -1,12 +1,11 @@
 name: chemprop
 
 channels:
-  - conda-forge
   - pytorch
-  - rdkit
+  - conda-forge
 
 dependencies:
-  - python>=3.6
+  - python>=3.7
   - flask>=1.1.2
   - gunicorn>=20.0.4
   - hyperopt>=0.2.3

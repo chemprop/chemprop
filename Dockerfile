@@ -1,20 +1,21 @@
-FROM continuumio/miniconda3:4.9.2
+FROM mambaorg/micromamba:0.23.0
 
-COPY environment.yml /tmp/environment.yml
+USER root
 
-RUN /opt/conda/bin/conda env update -n base --file /tmp/environment.yml && \
-    find /opt/conda/ -follow -type f -name '*.a' -delete && \
-    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
-    /opt/conda/bin/conda clean -afy && \
-    rm /tmp/environment.yml
+RUN apt-get update && \
+    apt-get install -y git && \
+    rm -rf /var/lib/{apt,dpkg,cache,log}
 
-COPY . /opt/chemprop
+USER $MAMBA_USER
+
+COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/environment.yml
+
+RUN micromamba install -y -n base -f /tmp/environment.yml && \
+    micromamba clean --all --yes
+
+COPY --chown=$MAMBA_USER:$MAMBA_USER . /opt/chemprop
 
 WORKDIR /opt/chemprop
 
-RUN /opt/conda/bin/pip install -e .
+RUN /opt/conda/bin/python -m pip install -e .
 
-ENV PATH /opt/conda/bin${PATH:+:${PATH}}
-
-ENTRYPOINT ["/bin/bash"]
-CMD ["-l"]
