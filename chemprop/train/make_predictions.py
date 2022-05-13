@@ -210,6 +210,7 @@ def predict_and_save(
                 dataset_type=args.dataset_type,
                 loss_function=args.loss_function,
                 calibrator=calibrator,
+                is_atom_bond_targets=args.is_atom_bond_targets,
             )
             evaluators.append(evaluator)
     else:

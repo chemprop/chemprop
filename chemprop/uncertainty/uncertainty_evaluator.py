@@ -22,6 +22,7 @@ class UncertaintyEvaluator(ABC):
         dataset_type: str,
         loss_function: str,
         calibrator: UncertaintyCalibrator,
+        is_atom_bond_targets: bool,
     ):
         self.evaluation_method = evaluation_method
         self.calibration_method = calibration_method
@@ -29,6 +30,7 @@ class UncertaintyEvaluator(ABC):
         self.dataset_type = dataset_type
         self.loss_function = loss_function
         self.calibrator = calibrator
+        self.is_atom_bond_targets = is_atom_bond_targets
 
         self.raise_argument_errors()
 
@@ -107,7 +109,7 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
             uncertainties = np.array(uncertainties)
             preds = np.array(preds)
             targets = np.array(targets)
-            if self.calibrator.is_atom_bond_targets:
+            if self.is_atom_bond_targets:
                 uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
                 preds = [np.concatenate(x) for x in zip(*preds)]
                 targets = [np.concatenate(x) for x in zip(*targets)]
@@ -157,7 +159,7 @@ class NLLClassEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)
         uncertainties = np.array(uncertainties)
-        if self.calibrator.is_atom_bond_targets:
+        if self.is_atom_bond_targets:
             targets = [np.concatenate(x) for x in zip(*targets)]
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
             nll = []
@@ -229,7 +231,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
-        if self.calibrator.is_atom_bond_targets:
+        if self.is_atom_bond_targets:
             uncertainties_list = [
                 np.concatenate(x).reshape(-1, 1) for x in zip(*uncertainties)
             ]
@@ -314,7 +316,7 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
-        if self.calibrator.is_atom_bond_targets:
+        if self.is_atom_bond_targets:
             uncertainties = [
                 np.concatenate(x).reshape(-1, 1) for x in zip(*uncertainties)
             ]
@@ -406,7 +408,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
         num_tasks = targets.shape[1]
         spearman_coeffs = []
-        if self.calibrator.is_atom_bond_targets:
+        if self.is_atom_bond_targets:
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
             abs_error = [np.concatenate(x) for x in zip(*abs_error)]
         else:
@@ -425,6 +427,7 @@ def build_uncertainty_evaluator(
     dataset_type: str,
     loss_function: str,
     calibrator: UncertaintyCalibrator,
+    is_atom_bond_targets: bool,
 ) -> UncertaintyEvaluator:
     """
     Function that chooses and returns the appropriate :class: `UncertaintyEvaluator` subclass
@@ -475,5 +478,6 @@ def build_uncertainty_evaluator(
             dataset_type=dataset_type,
             loss_function=loss_function,
             calibrator=calibrator,
+            is_atom_bond_targets=is_atom_bond_targets,
         )
         return evaluator
