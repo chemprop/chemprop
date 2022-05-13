@@ -338,8 +338,8 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
             original_scaling = self.calibrator.scaling
 
         ence = np.array([])
-        for num, (uncertainties, abs_error, scaling) in enumerate(
-            zip(uncertainties_list, abs_error_list, original_scaling)
+        for num, (uncertainties, abs_error) in enumerate(
+            zip(uncertainties_list, abs_error_list)
         ):
             # 100 bins
             split_unc = np.array_split(
@@ -355,7 +355,7 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                     mean_vars[:, i] = np.mean(split_unc[i], axis=0)
                     rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
                 elif self.calibration_method == "tscaling":  # convert back to sample stdev
-                    bin_unc = split_unc[i] / np.expand_dims(scaling, axis=0)
+                    bin_unc = split_unc[i] / np.expand_dims(original_scaling[num], axis=0)
                     bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
                     mean_vars[:, i] = np.mean(bin_var, axis=0)
                     rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
