@@ -4,7 +4,6 @@ from typing import List, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler

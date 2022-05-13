@@ -744,7 +744,6 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         else:
             likelihood = unc * targets + (1 - unc) * (1 - targets)
             nll = -1 * np.log(likelihood)
-            raise
         return nll
 
 
