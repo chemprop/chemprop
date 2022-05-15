@@ -26,7 +26,7 @@ class ReactionEncoder(MPNEncoder):
             #     [encoder.apply(weight_init) for encoder in self.encoders]
 
         self.__output_dim = sum(encoder.output_dim for encoder in self.encoders)
-    
+
     @property
     def output_dim(self) -> int:
         self.__output_dim
@@ -38,11 +38,11 @@ class ReactionEncoder(MPNEncoder):
         ----------
         reactant_batch : Iterable[Iterable]
             an Iterable of length `n` containing inputs to a MoleculeEncoder, where `n` is the
-            number of molecules in each reaction (== `self.n_mols`). I.e., to encode a batch of 
+            number of molecules in each reaction (== `self.n_mols`). I.e., to encode a batch of
             3-component reactions, the 0th entry of `reactant_batches` will be the batched inputs of
-            the 0th component of each reaction, the 1st entry will be the 1st component, etc. In 
-            other words, if you were to (hypothetically) encode a batch of single component 
-            reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder 
+            the 0th component of each reaction, the 1st entry will be the 1st component, etc. In
+            other words, if you were to (hypothetically) encode a batch of single component
+            reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder
             and a MoleculeEncoder would be the call signature:
 
             >>> inputs = X_v, X_e, a2b, ..., X_v_d
@@ -56,13 +56,13 @@ class ReactionEncoder(MPNEncoder):
         Returns
         -------
         Tensor
-            a Tensor of shape `b x d_h` containing the reaction encodings, where `b` is the number 
+            a Tensor of shape `b x d_h` containing the reaction encodings, where `b` is the number
             of reactions in the batch, and `d_h` is equal to `output_dim`
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
         Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_batches)]
         H = torch.cat(Hs, 1)
-    
+
         return H
 
     @classmethod

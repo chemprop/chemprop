@@ -14,7 +14,8 @@ class ClassificationMoleculeModel(MoleculeModel):
         Y = super().forward(*args)
         # Y = self.sigmoid(Y)
         return Y
-    
+
+
 class DirichletClassificationModel(ClassificationMoleculeModel):
     def __init__(
         self,
@@ -32,4 +33,3 @@ class DirichletClassificationModel(ClassificationMoleculeModel):
         Y = self.softplus(Y) + 1
 
         return Y
-

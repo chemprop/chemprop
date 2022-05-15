@@ -25,6 +25,7 @@ class MulticlassMoleculeModel(MoleculeModel):
 
         return Y
 
+
 class DirichletMulticlassModel(MulticlassMoleculeModel):
     def __init__(
         self,
@@ -35,7 +36,7 @@ class DirichletMulticlassModel(MulticlassMoleculeModel):
         ffn_num_layers: int = 1,
     ):
         super().__init__(encoder, 2 * num_tasks, num_classes, ffn_hidden_dim, ffn_num_layers)
-        
+
         self.softplus = nn.Softplus()
 
     def forward(self, *args) -> Tensor:

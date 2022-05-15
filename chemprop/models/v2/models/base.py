@@ -12,7 +12,7 @@ class MoleculeModel(nn.Module):
         encoder: MPNEncoder,
         num_tasks: int,
         ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1
+        ffn_num_layers: int = 1,
     ):
         super().__init__()
 
@@ -20,9 +20,7 @@ class MoleculeModel(nn.Module):
         self.num_tasks = num_tasks
         self.ffn = self.build_ffn(encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers)
 
-    def build_ffn(
-        self, d_i: int, d_o: int, d_h: int = 300, n_layers: int = 1
-    ) -> nn.Sequential:
+    def build_ffn(self, d_i: int, d_o: int, d_h: int = 300, n_layers: int = 1) -> nn.Sequential:
         dropout = nn.Dropout(dropout)
         activation = get_activation_function(activation)
 
@@ -31,16 +29,8 @@ class MoleculeModel(nn.Module):
         else:
             layers = [dropout, nn.Linear(d_i, d_h)]
             for _ in range(1, n_layers):
-                layers.extend([
-                    activation,
-                    dropout,
-                    nn.Linear(d_h, d_h),
-                ])
-            layers.extend([
-                activation,
-                dropout,
-                nn.Linear(d_h, d_o),
-            ])
+                layers.extend([activation, dropout, nn.Linear(d_h, d_h)])
+            layers.extend([activation, dropout, nn.Linear(d_h, d_o)])
 
         return nn.Sequential(*layers)
 
@@ -54,8 +44,8 @@ class MoleculeModel(nn.Module):
 
     def forward(self, *args) -> Tensor:
         """Generate predictions for the input batch.
-        
-        NOTE: the input signature to this function is the same as the input `MoleculeModel`'s 
+
+        NOTE: the input signature to this function is the same as the input `MoleculeModel`'s
         `forward()` function
         """
         return self.ffn(self.encoder(*args))
