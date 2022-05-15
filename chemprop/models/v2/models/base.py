@@ -59,10 +59,3 @@ class MoleculeModel(nn.Module):
         `forward()` function
         """
         return self.ffn(self.encoder(*args))
-
-
-class SpectralMoleculeModel(MoleculeModel):
-    def __init__(self, *args, spectral_activation: str = "softplus", **kwargs):
-        super().__init__(*args, **kwargs)
-        act = nn.Softplus() if spectral_activation == "softplus" else Exp()
-        self.ffn.add_module(f"{len(self.ffn)}", act)
