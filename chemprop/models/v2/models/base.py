@@ -1,7 +1,6 @@
 from torch import Tensor, nn
 
 from chemprop.nn_utils import get_activation_function
-
 from chemprop.models.v2.encoders import MPNEncoder
 
 

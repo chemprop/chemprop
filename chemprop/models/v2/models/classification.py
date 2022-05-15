@@ -1,6 +1,6 @@
 from torch import Tensor, nn
-from chemprop.models.v2.encoders.base import MPNEncoder
 
+from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.models.base import MoleculeModel
 
 
