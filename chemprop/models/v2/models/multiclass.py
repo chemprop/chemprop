@@ -12,8 +12,12 @@ class MulticlassMoleculeModel(MoleculeModel):
         num_classes: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
     ):
-        super().__init__(encoder, num_tasks * num_classes, ffn_hidden_dim, ffn_num_layers)
+        super().__init__(
+            encoder, num_tasks * num_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
+        )
 
         self.num_classes = num_classes
         self.softmax = nn.Softmax(2)
@@ -34,8 +38,12 @@ class DirichletMulticlassModel(MulticlassMoleculeModel):
         num_classes: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
     ):
-        super().__init__(encoder, 2 * num_tasks, num_classes, ffn_hidden_dim, ffn_num_layers)
+        super().__init__(
+            encoder, 2 * num_tasks, num_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
+        )
 
         self.softplus = nn.Softplus()
 

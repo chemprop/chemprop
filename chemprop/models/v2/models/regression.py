@@ -16,8 +16,12 @@ class MveRegressionMoleculeModel(RegressionMoleculeModel):
         num_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
     ):
-        super().__init__(encoder, 2 * num_tasks, ffn_hidden_dim, ffn_num_layers)
+        super().__init__(
+            encoder, 2 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+        )
         self.softplus = nn.Softplus()
 
     def forward(self, *args) -> Tensor:
@@ -36,8 +40,12 @@ class EvidentialMoleculeModel(RegressionMoleculeModel):
         num_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
     ):
-        super().__init__(encoder, 4 * num_tasks, ffn_hidden_dim, ffn_num_layers)
+        super().__init__(
+            encoder, 4 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+        )
 
         self.softplus = nn.Softplus()
 

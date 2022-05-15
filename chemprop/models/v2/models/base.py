@@ -3,7 +3,6 @@ from torch import Tensor, nn
 from chemprop.nn_utils import get_activation_function
 
 from chemprop.models.v2.encoders import MPNEncoder
-from chemprop.models.v2.layers import Exp
 
 
 class MoleculeModel(nn.Module):
@@ -13,14 +12,26 @@ class MoleculeModel(nn.Module):
         num_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
     ):
         super().__init__()
 
         self.encoder = encoder
         self.num_tasks = num_tasks
-        self.ffn = self.build_ffn(encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers)
+        self.ffn = self.build_ffn(
+            encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+        )
 
-    def build_ffn(self, d_i: int, d_o: int, d_h: int = 300, n_layers: int = 1) -> nn.Sequential:
+    def build_ffn(
+        self,
+        d_i: int,
+        d_o: int,
+        d_h: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0.0,
+        activation: str = "relu",
+    ) -> nn.Sequential:
         dropout = nn.Dropout(dropout)
         activation = get_activation_function(activation)
 
