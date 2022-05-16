@@ -539,7 +539,7 @@ def split_data(data: MoleculeDataset,
 
     elif split_type in {'cv', 'cv-no-test'}:
         if num_folds <= 1 or num_folds > len(data):
-            raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
+            raise ValueError(f'Number of folds for cross-validation must be between 2 and the number of valid datapoints ({len(data)}), inclusive.')
 
         random = Random(0)
 
