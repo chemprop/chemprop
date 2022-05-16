@@ -543,7 +543,7 @@ def split_data(data: MoleculeDataset,
 
         random = Random(0)
 
-        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
+        indices = np.tile(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
         random.shuffle(indices)
         test_index = seed % num_folds
         val_index = (seed + 1) % num_folds
