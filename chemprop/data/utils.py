@@ -515,7 +515,9 @@ def split_data(data: MoleculeDataset,
              validation, and test splits of the data.
     """
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+        raise ValueError(f"Split sizes do not sum to 1. Received train/val/test splits: {sizes}")
+    if any([size < 0 for size in sizes]):
+        raise ValueError(f"Split sizes must be non-negative. Received train/val/test splits: {sizes}")
 
     random = Random(seed)
 

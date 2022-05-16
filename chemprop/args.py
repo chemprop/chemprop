@@ -9,6 +9,7 @@ from warnings import warn
 
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+import numpy as np
 
 import chemprop.data.utils
 from chemprop.data import set_cache_mol, empty_cache
@@ -649,8 +650,11 @@ class TrainArgs(CommonArgs):
                 self.split_sizes = (1., 0., 0.)
 
         else:
-            if sum(self.split_sizes) != 1.:
+            if not np.isclose(sum(self.split_sizes), 1):
                 raise ValueError(f'Provided split sizes of {self.split_sizes} do not sum to 1.')
+            if any([size < 0 for size in self.split_sizes]):
+                raise ValueError(f'Split sizes must be non-negative. Received split sizes: {self.split_sizes}')
+
 
             if len(self.split_sizes) not in [2,3]:
                 raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
@@ -669,9 +673,7 @@ class TrainArgs(CommonArgs):
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] != 0.:
-                    raise ValueError('Provided split size for validation split must be 0 because validation set is provided separately.')
-                if self.split_sizes[2] == 0.:
-                    raise ValueError('Provided split size for test split must be nonzero.')
+                    raise ValueError(f'Provided split size for validation split must be 0 because validation set is provided separately. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
@@ -681,12 +683,12 @@ class TrainArgs(CommonArgs):
                 if self.split_sizes[1] == 0.:
                     raise ValueError('Provided split size for validation split must be nonzero.')
                 if self.split_sizes[2] != 0.:
-                    raise ValueError('Provided split size for test split must be 0 because test set is provided separately.')
+                    raise ValueError(f'Provided split size for test split must be 0 because test set is provided separately. Received split size {self.split_sizes[2]}')
 
 
             else: # both separate data paths are provided
                 if self.split_sizes != (1., 0., 0.):
-                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided.')
+                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided. Received split sizes: {self.split_sizes}')
 
         # Test settings
         if self.test:
