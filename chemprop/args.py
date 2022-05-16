@@ -658,8 +658,10 @@ class TrainArgs(CommonArgs):
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
                 if len(self.split_sizes) != 3:
                     raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
-                if 0. in self.split_sizes:
-                    raise ValueError(f'Provided split sizes must be nonzero if no separate data files are provided. Received split sizes of {self.split_sizes}.')
+                if self.split_sizes[0] == 0.:
+                    raise ValueError(f'Provided split size for train split must be nonzero. Received split size {self.split_sizes[0]}')
+                if self.split_sizes[1] == 0.:
+                    raise ValueError(f'Provided split size for validation split must be nonzero. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
