@@ -141,7 +141,7 @@ Chemprop can either train on a single target ("single tasking") or on multiple t
 There are four current supported dataset types. Targets with unknown values can be left as blanks.
 * **Regression.** Targets are float values. With bounded loss functions or metrics, the values may also be simple inequalities (e.g., >7.5 or <5.0).
 * **Classification.** Targets are binary (i.e. 0s and 1s) indicators of the classification.
-* **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--number_of_classes <int>`.
+* **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--multiclass_num_classes <int>`.
 * **Spectra.** Targets are positive float values with each target representing the signal at a specific spectrum position.
 
 The data file must be be a **CSV file with a header row**. For example:
