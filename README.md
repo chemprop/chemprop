@@ -354,7 +354,7 @@ To load a trained model and make predictions, run `predict.py` and specify:
 * A checkpoint by using either:
   * `--checkpoint_dir <dir>` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
   * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
-* `--preds_path` Path where a CSV file containing the predictions will be saved. If the task is atomic/bond properties prediction, it would be saved as a PICKEL file.
+* `--preds_path` Path where a file containing the predictions will be saved (.csv if predicting molecular, spectral, or reaction targets; .pkl if predicting atom/bond-level targets).
 
 For example:
 ```
