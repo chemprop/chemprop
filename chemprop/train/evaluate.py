@@ -52,8 +52,8 @@ def evaluate_predictions(preds: List[List[float]],
             if is_atom_bond_targets:
                 for j in range(len(preds[i])):
                     if targets[i][j][0] is not None:  # Skip those without targets
-                        valid_preds[i].append(preds[i][j])
-                        valid_targets[i].append(targets[i][j])
+                        valid_preds[i].append(list(preds[i][j]))
+                        valid_targets[i].append(list(targets[i][j]))
             else:
                 for j in range(len(preds)):
                     if targets[j][i] is not None:  # Skip those without targets
