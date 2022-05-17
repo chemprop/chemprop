@@ -163,7 +163,7 @@ class FFNAtten(nn.Module):
                     cur_weights = weights.narrow(0, start, size)
                     cur_output = output.narrow(0, start, size)
 
-                    cur_weights = torch.nn.Softmax()(cur_weights).reshape(-1,)
+                    cur_weights = torch.nn.Softmax(dim=0)(cur_weights).reshape(-1,)
                     cur_weights_sum = cur_weights.sum()
 
                     cur_output_sum = cur_output[:, 0].sum()
