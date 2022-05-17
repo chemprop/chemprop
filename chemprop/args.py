@@ -361,9 +361,9 @@ class TrainArgs(CommonArgs):
     """Path to file with extra atom descriptors for separate val set."""
     separate_test_bond_features_path: str = None
     """Path to file with extra atom descriptors for separate test set."""
-    seperate_val_constraints_path: str = None
+    separate_val_constraints_path: str = None
     """Path to file with constraints for separate val set."""
-    seperate_test_constraints_path: str = None
+    separate_test_constraints_path: str = None
     """Path to file with constraints for separate test set."""
     config_path: str = None
     """
@@ -757,10 +757,10 @@ class TrainArgs(CommonArgs):
                     raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the separate test set.')
 
         if self.is_atom_bond_targets and self.constraints_path:
-            if self.separate_val_path is not None and self.seperate_val_constraints_path is None:
-                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate validation set using `--seperate_val_constraints_path`.')
-            if self.separate_test_path is not None and self.seperate_test_constraints_path is None:
-                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate test set using `--seperate_test_constraints_path`.')
+            if self.separate_val_path is not None and self.separate_val_constraints_path is None:
+                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate validation set using `--separate_val_constraints_path`.')
+            if self.separate_test_path is not None and self.separate_test_constraints_path is None:
+                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate test set using `--separate_test_constraints_path`.')
 
         # validate extra atom descriptor options
         if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
