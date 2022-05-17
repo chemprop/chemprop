@@ -1,4 +1,5 @@
 from collections import OrderedDict, defaultdict
+import sys
 import csv
 from logging import Logger
 import pickle
@@ -17,6 +18,8 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_or_bond_features, is_explicit_h, is_adding_hs, is_mol
 from chemprop.rdkit import make_mol
 
+# Increase maximum size of field in the csv processing
+csv.field_size_limit(sys.maxsize)
 
 def get_header(path: str) -> List[str]:
     """
