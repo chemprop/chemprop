@@ -600,6 +600,11 @@ class TrainArgs(CommonArgs):
             if len(self.smiles_columns) != 1:
                 raise ValueError('In atomic/bond properties prediction, exactly one smiles column must be provided.')
 
+        # Check whether the argument of `--adding_h` is used
+        if self.is_atom_bond_targets:
+            if not self.adding_h:
+                raise ValueError('In atomic/bond properties prediction, argument `--adding_h` should be used.')
+
         # Check whether the number of input columns is two for the reaction_solvent mode
         if self.reaction_solvent is True and len(self.smiles_columns) != 2:
             raise ValueError('In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
