@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import List, Tuple, Union
 from itertools import zip_longest
 import logging
@@ -187,7 +188,9 @@ def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     return encoding
 
 
-def atom_features(atom: Chem.rdchem.Atom, functional_groups: List[int] = None) -> List[Union[bool, int, float]]:
+def atom_features(
+    atom: Chem.rdchem.Atom, functional_groups: List[int] = None
+) -> List[Union[bool, int, float]]:
     """
     Builds a feature vector for an atom.
 
@@ -282,6 +285,134 @@ def map_reac_to_prod(mol_reac: Chem.Mol, mol_prod: Chem.Mol):
             only_reac_ids.append(atom.GetIdx())
     return reac_id_to_prod_id, only_prod_ids, only_reac_ids
 
+@dataclass
+class MolGraph_:
+    n_atoms: int
+    n_bonds: int
+    f_atoms: np.ndarray
+    f_bonds: np.ndarray
+    a2b: list
+    b2a: list
+    b2revb: list
+    b2b: list
+    a2a: list
+
+@dataclass
+class MolGraphFeaturizer:
+
+    max_atomic_num: int = 100
+    atom_features: dict = field(init=False)
+    atom_fdim: int = field(init=False)
+    extra_atom_fdim: int = 0
+    bond_fdim: int = 14
+    extra_bond_fdim: int = 0
+    atom_messages: bool = False
+    keep_h: bool = False
+    add_h: bool = False
+
+    def __post_init__(self):
+    # def __init__(
+    #     self,
+    #     atom_messages: bool,
+    #     keep_h: bool,
+    #     add_h: bool
+    # ):
+    #     self.atom_messages = atom_messages
+    #     self.keep_h = keep_h
+    #     self.add_h = add_h
+    #     self.MAX_ATOMIC_NUM = 100
+        self.ATOM_FEATURES = {
+            'atomic_num': list(range(self.MAX_ATOMIC_NUM)),
+            'degree': [0, 1, 2, 3, 4, 5],
+            'formal_charge': [-1, -2, 1, 2, 0],
+            'chiral_tag': [0, 1, 2, 3],
+            'num_Hs': [0, 1, 2, 3, 4],
+            'hybridization': [
+                Chem.rdchem.HybridizationType.SP,
+                Chem.rdchem.HybridizationType.SP2,
+                Chem.rdchem.HybridizationType.SP3,
+                Chem.rdchem.HybridizationType.SP3D,
+                Chem.rdchem.HybridizationType.SP3D2
+            ],
+        }
+
+        # len(choices) + 1 to include room for uncommon values; + 2 at end for IsAromatic and mass
+        self.ATOM_FDIM = sum(len(choices) + 1 for choices in self.ATOM_FEATURES.values()) + 2
+        self.EXTRA_ATOM_FDIM = 0
+        self.BOND_FDIM = 14
+        self.EXTRA_BOND_FDIM = 0
+
+    def featurize(
+        self,
+        smi: str,
+        atom_features_extra: np.ndarray = None,
+        bond_features_extra: np.ndarray = None,
+        overwrite_default_atom_features: bool = False,
+        overwrite_default_bond_features: bool = False
+    ):
+        mol = make_mol(smi, self.keep_h, self.add_h)
+
+        self.n_atoms = mol.GetNumAtoms()  # number of atoms
+        self.n_bonds = mol.GetNumBonds()  # number of bonds
+        self.f_atoms = []  # mapping from atom index to atom features
+        self.f_bonds = []  # mapping from bond index to concat(in_atom, bond) features
+        self.a2b = [[]] * self.n_atoms  # mapping from atom index to incoming bond indices
+        self.b2a = []  # mapping from bond index to the index of the atom the bond is coming from
+        self.b2revb = []  # mapping from bond index to the index of the reverse bond
+        self.overwrite_default_atom_features = overwrite_default_atom_features
+        self.overwrite_default_bond_features = overwrite_default_bond_features
+
+        # Get atom features
+        self.f_atoms = [atom_features(atom) for atom in mol.GetAtoms()]
+        if atom_features_extra is not None:
+            if len(atom_features_extra) != self.n_atoms:
+                raise ValueError(
+                    "arg `smi` must have same number of atoms as `len(atom_features_extra)`!"
+                    f"got: {self.n_atoms} and {len(atom_features_extra)}, respectively"
+                )
+            if overwrite_default_atom_features:
+                self.f_atoms = [descs.tolist() for descs in atom_features_extra]
+            else:
+                self.f_atoms = [
+                    f_atoms + descs.tolist()
+                    for f_atoms, descs in zip(self.f_atoms, atom_features_extra)
+                ]
+
+        # Get bond features
+        for a1 in range(self.n_atoms):
+            for a2 in range(a1 + 1, self.n_atoms):
+                bond = mol.GetBondBetweenAtoms(a1, a2)
+
+                if bond is None:
+                    continue
+
+                f_bond = bond_features(bond)
+                if bond_features_extra is not None:
+                    descr = bond_features_extra[bond.GetIdx()].tolist()
+                    if overwrite_default_bond_features:
+                        f_bond = descr
+                    else:
+                        f_bond += descr
+
+                self.f_bonds.append(self.f_atoms[a1] + f_bond)
+                self.f_bonds.append(self.f_atoms[a2] + f_bond)
+
+                # Update index mappings
+                b1 = self.n_bonds
+                b2 = b1 + 1
+                self.a2b[a2].append(b1)
+                self.b2a.append(a1)
+                self.a2b[a1].append(b2)
+                self.b2a.append(a2)
+                self.b2revb.append(b2)
+                self.b2revb.append(b1)
+                self.n_bonds += 2
+
+        if bond_features_extra is not None and len(bond_features_extra) != self.n_bonds / 2:
+            raise ValueError(
+                f'The number of bonds in {Chem.MolToSmiles(mol)} is different from the length of '
+                f'the extra bond features'
+            )
 
 class MolGraph:
     """
@@ -546,8 +677,8 @@ class BatchMolGraph:
             self.n_atoms += mol_graph.n_atoms
             self.n_bonds += mol_graph.n_bonds
 
-        self.max_num_bonds = max(1, max(
-            len(in_bonds) for in_bonds in a2b))  # max with 1 to fix a crash in rare case of all single-heavy-atom mols
+        # max with 1 to fix a crash in rare case of all single-heavy-atom mols
+        self.max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
 
         self.f_atoms = torch.FloatTensor(f_atoms)
         self.f_bonds = torch.FloatTensor(f_bonds)
@@ -579,9 +710,12 @@ class BatchMolGraph:
                  and scope of the atoms and bonds (i.e., the indices of the molecules they belong to).
         """
         if atom_messages:
-            f_bonds = self.f_bonds[:, -get_bond_fdim(atom_messages=atom_messages,
-                                                     overwrite_default_atom=self.overwrite_default_atom_features,
-                                                     overwrite_default_bond=self.overwrite_default_bond_features):]
+            j = get_bond_fdim(
+                atom_messages,
+                self.overwrite_default_bond_features,
+                self.overwrite_default_atom_features
+            )
+            f_bonds = self.f_bonds[:,-j:]
         else:
             f_bonds = self.f_bonds
 
