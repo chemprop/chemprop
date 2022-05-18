@@ -16,7 +16,7 @@ from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data import get_smiles
-from chemprop.features import get_features_generator
+from chemprop.featurizers import get_features_generator
 from chemprop.utils import makedirs
 
 

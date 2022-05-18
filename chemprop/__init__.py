@@ -1,5 +1,5 @@
 import chemprop.data
-import chemprop.features
+import chemprop.featurizers
 import chemprop.models
 import chemprop.train
 import chemprop.uncertainty

@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from .mpn import MPN
 from chemprop.args import TrainArgs
-from chemprop.features import BatchMolGraph
+from chemprop.featurizers import BatchMolGraph
 from chemprop.nn_utils import get_activation_function, initialize_weights
 
 

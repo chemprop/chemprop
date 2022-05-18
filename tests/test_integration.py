@@ -21,7 +21,7 @@ from chemprop.sklearn_train import sklearn_train
 from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions, chemprop_fingerprint
 from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
-from chemprop.features import load_features
+from chemprop.featurizers import load_features
 
 
 TEST_DATA_DIR = 'tests/data'

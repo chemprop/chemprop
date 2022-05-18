@@ -9,7 +9,7 @@ from chemprop.args import FingerprintArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.utils import load_args, load_checkpoint, makedirs, timeit, load_scalers, update_prediction_args
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
-from chemprop.features import set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters, set_extra_atom_fdim, set_extra_bond_fdim
+from chemprop.featurizers import set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters, set_extra_atom_fdim, set_extra_bond_fdim
 from chemprop.models import MoleculeModel
 
 @timeit()

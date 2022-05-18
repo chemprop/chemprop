@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 from rdkit import Chem
 
 from .scaler import StandardScaler
-from chemprop.features import get_features_generator
-from chemprop.features import BatchMolGraph, MolGraph
-from chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol
+from chemprop.featurizers import get_features_generator
+from chemprop.featurizers import BatchMolGraph, MolGraph
+from chemprop.featurizers import is_explicit_h, is_reaction, is_adding_hs, is_mol
 from chemprop.rdkit import make_mol
 
 # Cache of graph featurizations

@@ -12,7 +12,7 @@ from tqdm import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
 from chemprop.data import MoleculeDataset, split_data, get_task_names, get_data
-from chemprop.features import get_features_generator
+from chemprop.featurizers import get_features_generator
 from chemprop.train import cross_validate, evaluate_predictions
 from chemprop.utils import save_smiles_splits
 
