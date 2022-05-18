@@ -313,8 +313,18 @@ def predict():
     # Get arguments
     ckpt_id = request.form['checkpointName']
 
+    models = db.get_models(ckpt_id)
+    model_paths = [os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model["id"]}.pt') for model in models]
+
+    task_names = load_task_names(model_paths[0])
+    num_tasks = len(task_names)
+    gpu = request.form.get('gpu')
+    train_args = load_args(model_paths[0])
+
     if request.form['textSmiles'] != '':
-        smiles = request.form['textSmiles'].split()
+        smiles = request.form['textSmiles'].split('\r\n')
+        if train_args.number_of_molecules > 1:
+            smiles = [s.split(',') for s in smiles]
     elif request.form['drawSmiles'] != '':
         smiles = [request.form['drawSmiles']]
     else:
@@ -325,21 +335,14 @@ def predict():
         data.save(data_path)
 
         # Check if header is smiles
-        possible_smiles = get_header(data_path)[0]
-        smiles = [possible_smiles] if Chem.MolFromSmiles(possible_smiles) is not None else []
+        possible_smiles = get_header(data_path)
+        smiles = [possible_smiles] if Chem.MolFromSmiles(possible_smiles[0]) is not None else []
 
         # Get remaining smiles
-        smiles.extend(get_smiles(data_path))
+        smiles.extend(get_smiles(data_path, number_of_molecules=train_args.number_of_molecules))
 
-    smiles = [[s] for s in smiles]
-
-    models = db.get_models(ckpt_id)
-    model_paths = [os.path.join(app.config['CHECKPOINT_FOLDER'], f'{model["id"]}.pt') for model in models]
-
-    task_names = load_task_names(model_paths[0])
-    num_tasks = len(task_names)
-    gpu = request.form.get('gpu')
-    train_args = load_args(model_paths[0])
+    if train_args.number_of_molecules == 1:
+        smiles = [[s] for s in smiles]
 
     # Build arguments
     arguments = [
@@ -366,6 +369,12 @@ def predict():
 
         if not train_args.features_scaling:
             arguments.append('--no_features_scaling')
+
+    if train_args.number_of_molecules is not None:
+        arguments += [
+            '--number_of_molecules', str(train_args.number_of_molecules),
+            '--smiles_columns', str(train_args.number_of_molecules),
+        ]
 
     # Parse arguments
     args = PredictArgs().parse_args(arguments)
