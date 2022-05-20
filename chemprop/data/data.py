@@ -433,7 +433,16 @@ class MoleculeDataset(Dataset):
         """
         Return the constraints applied in atomic/bond properties prediction.
         """
-        return [d.constraints for d in self._data]
+        constraints = []
+        for d in self._data:
+            if d.constraints is None :
+                natom_targets = len(d.atom_targets) if d.atom_targets is not None else 0
+                nbond_targets = len(d.bond_targets) if d.bond_targets is not None else 0
+                ntargets = natom_targets + nbond_targets
+                constraints.append([None] * ntargets)
+            else:
+                constraints.append(d.constraints)
+        return constraints
 
     def data_weights(self) -> List[float]:
         """
