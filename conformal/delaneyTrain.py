@@ -13,3 +13,16 @@ if __name__ ==  '__main__':
 
 #for predicts:
 #python3 ../predict.py --test_path data/delaney.csv --checkpoint_dir delaney_checkpoints2 --preds_path delaney_preds.csv
+
+#python3 ../predict.py --test_path data/delaney.csv --checkpoint_dir delaney_checkpoints2 --preds_path delaney_preds_dropout.csv --uncertainty_method dropout
+
+
+#Failed: (or just took too long?)
+#python3 ../predict.py --test_path data/delaney.csv --calibration_path data/delaney.csv --checkpoint_dir delaney_checkpoints2 --preds_path delaney_preds_dropout_calib.csv --uncertainty_method dropout --calibration_method zscaling
+
+
+#Took 36 minutes:
+#Maybe its cuz the calibration set was too large lmao!
+#python3 ../predict.py --test_path data/delaney.csv --calibration_path data/delaney.csv --checkpoint_dir delaney_checkpoints2 --preds_path delaney_preds_dropout_calib.csv --uncertainty_method dropout
+
+#python3 ../predict.py --test_path data/delaney.csv --calibration_path data/delaneysmall.csv --checkpoint_dir delaney_checkpoints2 --preds_path delaney_preds_dropout_calibsmall.csv --uncertainty_method dropout
