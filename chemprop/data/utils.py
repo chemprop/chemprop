@@ -330,8 +330,11 @@ def get_data(path: str,
     if constraints_path is not None:
         constraints_data = []
         reader = pd.read_csv(constraints_path)
+        reader_columns = reader.columns.tolist()
+        if len(reader_columns) != len(set(reader_columns)):
+            raise ValueError(f'There are duplicates in {constraints_path}.')
         for target in args.target_columns:
-            if target in reader.columns.tolist():
+            if target in reader_columns:
                 constraints_data.append(reader[target].values)
             else:
                 constraints_data.append([None] * len(reader))
@@ -339,7 +342,7 @@ def get_data(path: str,
 
         if args.save_smiles_splits:
             raw_constraints_data = []
-            for target in reader.columns.tolist():
+            for target in reader_columns:
                 raw_constraints_data.append(reader[target].values)
             raw_constraints_data = np.transpose(raw_constraints_data)  # each is num_data x num_columns
         else:
