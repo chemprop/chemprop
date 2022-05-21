@@ -544,7 +544,7 @@ class TrainArgs(CommonArgs):
             header = chemprop.data.utils.get_header(self.constraints_path)
             atom_constraints = [target in header for target in self.atom_targets]
         else:
-            atom_constraints = [None] * len(self.atom_targets)
+            atom_constraints = [False] * len(self.atom_targets)
         return atom_constraints
     
     @property
@@ -556,7 +556,7 @@ class TrainArgs(CommonArgs):
             header = chemprop.data.utils.get_header(self.constraints_path)
             bond_constraints = [target in header for target in self.bond_targets]
         else:
-            bond_constraints = [None] * len(self.bond_targets)
+            bond_constraints = [False] * len(self.bond_targets)
         return bond_constraints
 
     def process_args(self) -> None:
@@ -597,7 +597,7 @@ class TrainArgs(CommonArgs):
 
         # Check whether the number of input columns is one for the atomic/bond mode
         if self.is_atom_bond_targets:
-            if len(self.smiles_columns) != 1:
+            if self.number_of_molecules != 1:
                 raise ValueError('In atomic/bond properties prediction, exactly one smiles column must be provided.')
 
         # Check whether the number of input columns is two for the reaction_solvent mode
@@ -748,19 +748,14 @@ class TrainArgs(CommonArgs):
             ('`--features_path`', self.features_path, self.separate_val_features_path, self.separate_test_features_path),
             ('`--phase_features_path`', self.phase_features_path, self.separate_val_phase_features_path, self.separate_test_phase_features_path),
             ('`--atom_descriptors_path`', self.atom_descriptors_path, self.separate_val_atom_descriptors_path, self.separate_test_atom_descriptors_path),
-            ('`--bond_features_path`', self.bond_features_path, self.separate_val_bond_features_path, self.separate_test_bond_features_path)
+            ('`--bond_features_path`', self.bond_features_path, self.separate_val_bond_features_path, self.separate_test_bond_features_path),
+            ('`--constraints_path`', self.constraints_path, self.separate_val_constraints_path, self.separate_test_constraints_path)
         ]:
             if base_features_path is not None:
                 if self.separate_val_path is not None and val_features_path is None:
                     raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the separate validation set.')
                 if self.separate_test_path is not None and test_features_path is None:
                     raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the separate test set.')
-
-        if self.is_atom_bond_targets and self.constraints_path:
-            if self.separate_val_path is not None and self.separate_val_constraints_path is None:
-                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate validation set using `--separate_val_constraints_path`.')
-            if self.separate_test_path is not None and self.separate_test_constraints_path is None:
-                raise ValueError('Additional constraints were provided using the argument `--constraints_path`. The same kinds of constraints must be provided for the separate test set using `--separate_test_constraints_path`.')
 
         # validate extra atom descriptor options
         if self.overwrite_default_atom_features and self.atom_descriptors != 'feature':
