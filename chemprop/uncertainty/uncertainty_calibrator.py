@@ -615,6 +615,32 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         return uncal_preds.tolist(), cal_preds.tolist()
 
 
+class ConformalCalibrator(UncertaintyCalibrator):
+    """
+    Outputs uncal and cal preds to list. Only uses uncal preds, ignores uncal vars.
+    """
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_conformal"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "classification":
+            raise ValueError(
+                "Conformal is only implemented for classification dataset types."
+            )
+
+    def calibrate(self):
+        pass
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        qhat=0.6#HARDCODED
+        uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        
+        cal_preds = (uncal_preds>qhat).astype(int)
+        return uncal_preds.tolist(), cal_preds.tolist()
+
+
 def build_uncertainty_calibrator(
     calibration_method: str,
     uncertainty_method: str,
@@ -650,6 +676,7 @@ def build_uncertainty_calibrator(
         "zelikman_interval": ZelikmanCalibrator,
         "mve_weighting": MVEWeightingCalibrator,
         "platt": PlattCalibrator,
+        "conformal": ConformalCalibrator,
         "isotonic": IsotonicCalibrator
         if dataset_type == "classification"
         else IsotonicMulticlassCalibrator,

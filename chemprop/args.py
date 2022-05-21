@@ -759,7 +759,7 @@ class PredictArgs(CommonArgs):
         'conformal_adaptive',
     ] = None
     """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic', 'conformal'] = None
     """Methods used for calibrating the uncertainty calculated with uncertainty method."""
     evaluation_methods: List[str] = None
     """The methods used for evaluating the uncertainty performance if the test data provided includes targets.
