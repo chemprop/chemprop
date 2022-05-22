@@ -5,6 +5,7 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import pandas as pd
 
 from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_mixed_task_names, \
     get_data_weights, get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data, split_data
@@ -18,10 +19,14 @@ class TestGetHeader(TestCase):
         with open(os.path.join(self.temp_dir.name,'dummy_data.csv'),'w') as f:
             data = 'column0,column1\nCC,10\nCCC,15'
             f.write(data)
+        df = pd.read_csv(os.path.join(self.temp_dir.name,'dummy_data.csv'))
+        df.to_pickle(os.path.join(self.temp_dir.name,'dummy_data.pkl'))
         
     def test_correct_file(self):
         """ Test correct input """
         header = get_header(os.path.join(self.temp_dir.name,'dummy_data.csv'))
+        self.assertEqual(header,['column0','column1'])
+        header = get_header(os.path.join(self.temp_dir.name,'dummy_data.pkl'))
         self.assertEqual(header,['column0','column1'])
 
     def test_bad_path(self):
