@@ -233,10 +233,6 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
-    atom_targets: List[str] = []
-    """Name of the columns containing target atomic values."""
-    bond_targets: List[str] = []
-    """Name of the columns containing target bond values."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
     loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
@@ -403,6 +399,10 @@ class TrainArgs(CommonArgs):
     """
     Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used
     with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.
+    """
+    is_atom_bond_targets: bool = False
+    """
+    whether this is atomic/bond properties prediction.
     """
 
     # Training arguments
@@ -583,10 +583,18 @@ class TrainArgs(CommonArgs):
                     setattr(self, key, value)
 
         # Determine the target_columns when training atomic and bond targets
-        self.is_atom_bond_targets = False
-        if self.atom_targets != [] or self.bond_targets != []:
-            self.is_atom_bond_targets = True
+        if self.is_atom_bond_targets:
+            self.atom_targets, self.bond_targets, self.molecule_targets = chemprop.data.utils.get_mixed_task_names(
+                path=self.data_path,
+                smiles_columns=self.smiles_columns,
+                target_columns=self.target_columns,
+                ignore_columns=self.ignore_columns,
+                add_h=self.adding_h,
+            )
             self.target_columns = self.atom_targets + self.bond_targets
+            # self.target_columns = self.atom_targets + self.bond_targets + self.molecule_targets  # TODO: Support mixed targets
+        else:
+            self.atom_targets, self.bond_targets = [], []
 
         # Check whether atom/bond constraints have been applied on the correct dataset_type
         if self.constraints_path:

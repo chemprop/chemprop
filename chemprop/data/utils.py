@@ -108,6 +108,88 @@ def get_task_names(path: str,
 
     return target_names
 
+def get_mixed_task_names(path: str,
+                         smiles_columns: Union[str, List[str]] = None,
+                         target_columns: List[str] = None,
+                         ignore_columns: List[str] = None,
+                         add_h: bool = None) -> Tuple[List[str], List[str], List[str]]:
+    """
+    Gets the task names for atomic, bond, and molecule targets separately from a data CSV or PICKLE file.
+
+    If :code:`target_columns` is provided, returned lists based off `target_columns`.
+    Otherwise, returned lists based off all columns except the :code:`smiles_columns`
+    (or the first column, if the :code:`smiles_columns` is None) and
+    the :code:`ignore_columns`.
+
+    :param path: Path to a CSV or PICKLE file.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param target_columns: Name of the columns containing target values. By default, uses all columns
+                           except the :code:`smiles_columns` and the :code:`ignore_columns`.
+    :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
+    :param add_h: Boolean whether to add hydrogens to the input smiles.
+    :return: A tuple containing the task names of atomic, bond, and molecule properties separately.
+    """
+    columns = get_header(path)
+
+    if not isinstance(smiles_columns, list):
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
+
+    ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
+
+    if target_columns is not None:
+        target_names =  target_columns
+    else:
+        target_names = [column for column in columns if column not in ignore_columns]
+
+    extension = os.path.splitext(path)[1]
+    if extension == '.csv':
+        f = open(path)
+        reader = csv.DictReader(f)
+    elif extension in ['.pkl', '.pckl', '.pickle']:
+        reader = pd.read_pickle(path)
+        reader = reader.iterrows()
+
+    for row in reader:
+        atom_target_names, bond_target_names, molecule_target_names = [], [], []
+        if extension in ['.pkl', '.pckl', '.pickle']:
+            _, row = row
+            row = row.to_dict()
+        smiles = [row[c] for c in smiles_columns]
+        mol = make_mol(smiles[0], False, add_h)
+        for column in target_names:
+            if extension == '.csv':
+                value = row[column]
+                target = np.array(eval(value))
+            elif extension in ['.pkl', '.pckl', '.pickle']:
+                target = np.array(row[column])
+
+            is_atom_target, is_bond_target, is_molecule_target = False, False, False
+            if len(target.shape) == 0:
+                is_molecule_target = True
+            elif len(target.shape) == 1:
+                if len(mol.GetAtoms()) == len(mol.GetBonds()):
+                    break
+                elif len(target) == len(mol.GetAtoms()):  # Atom targets saved as 1D list
+                    is_atom_target = True
+                elif len(target) == len(mol.GetBonds()):  # Bond targets saved as 1D list
+                    is_bond_target = True
+            elif len(target.shape) == 2:  # Bond targets saved as 2D list
+                is_bond_target = True
+            else:
+                raise ValueError('Unrecognized targets of column {column} in {path}.')
+            
+            if is_atom_target:
+                atom_target_names.append(column)
+            elif is_bond_target:
+                bond_target_names.append(column)
+            elif is_molecule_target:
+                molecule_target_names.append(column)
+
+        if extension == '.csv':
+            f.close()
+
+        return atom_target_names, bond_target_names, molecule_target_names
 
 def get_data_weights(path: str) -> List[float]:
     """
