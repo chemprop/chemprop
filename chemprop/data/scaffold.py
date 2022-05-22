@@ -120,7 +120,7 @@ def scaffold_split(data: MoleculeDataset,
                      f'val scaffolds = {val_scaffold_count:,} | '
                      f'test scaffolds = {test_scaffold_count:,}')
 
-    if logger is not None and data[0].atom_targets is None and data[0].bond_targets is None:
+    if logger is not None and not data.is_atom_bond_targets:
         log_scaffold_stats(data, index_sets, logger=logger)
 
     # Map from indices to data

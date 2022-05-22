@@ -332,6 +332,18 @@ class MoleculeDataset(Dataset):
         """
         return [d.number_of_bonds for d in self._data]
 
+    @property
+    def is_atom_bond_targets(self) -> bool:
+        """
+        Gets the Boolean whether this is atomic/bond properties prediction.
+
+        :return: A Boolean value.
+        """
+        if self._data[0].atom_targets is None and self._data[0].bond_targets is None:
+            return False
+        else:
+            return True
+
     def batch_graph(self) -> List[BatchMolGraph]:
         r"""
         Constructs a :class:`~chemprop.features.BatchMolGraph` with the graph featurization of all the molecules.
