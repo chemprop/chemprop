@@ -1199,22 +1199,28 @@ class ChempropTests(TestCase):
 
     @parameterized.expand([
         (
-                'chemprop_atomic_bond_targets',
+                'chemprop_atomic_bond_targets_csv',
                 'chemprop',
-                0.048023,
-                ['--atom_targets', 'hirshfeld_charges',
-                 '--bond_targets', 'bond_length_matrix',
-                 '--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                6.779551,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_pkl',
+                'chemprop',
+                6.779639,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.pkl'),
+                 '--is_atom_bond_targets',
                  '--adding_h']
         ),
         (
                 'chemprop_atomic_bond_targets_constraints',
                 'chemprop',
-                0.041328,
-                ['--atom_targets', 'hirshfeld_charges',
-                 '--bond_targets', 'bond_length_matrix',
-                 '--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                6.829711,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
                  '--adding_h']
         )
     ])
@@ -1237,7 +1243,7 @@ class ChempropTests(TestCase):
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
             test_scores = test_scores_data[f'Mean {metric}']
-            self.assertEqual(len(test_scores), 2)
+            self.assertEqual(len(test_scores), 10)
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
