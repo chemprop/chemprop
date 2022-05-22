@@ -38,3 +38,10 @@ preds = chemprop.train.make_predictions(args=args)
 #python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_part_2.csv --calibration_method conformal --calibration_path data/tox21small.csv
 #Took 1:49
 
+#Part 4:
+#python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_part_4.csv --calibration_method conformal --calibration_path data/tox21small.csv
+#By default, alpha is 0.1
+#alpha is the error rate
+
+#python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_part_4_alpha05.csv --calibration_method conformal --calibration_path data/tox21small.csv --alpha 0.5
+#Use command line args to change alpha to 0.5

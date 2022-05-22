@@ -35,6 +35,7 @@ class UncertaintyCalibrator(ABC):
         dataset_type: str,
         loss_function: str,
         uncertainty_dropout_p: float,
+        alpha: float,
         dropout_sampling_size: int,
         spectra_phase_mask: List[List[bool]],
     ):
@@ -46,6 +47,7 @@ class UncertaintyCalibrator(ABC):
         self.uncertainty_method = uncertainty_method
         self.loss_function = loss_function
         self.num_models = num_models
+        self.alpha = alpha
 
         self.raise_argument_errors()
 
@@ -59,6 +61,7 @@ class UncertaintyCalibrator(ABC):
             loss_function=loss_function,
             uncertainty_method=uncertainty_method,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            alpha=alpha,
             dropout_sampling_size=dropout_sampling_size,
             individual_ensemble_predictions=False,
             spectra_phase_mask=spectra_phase_mask,
@@ -642,12 +645,10 @@ class ConformalCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
         targets=np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
-        print(targets)
         
 
         softmax_scores=uncal_preds
         data=targets
-        print(data)
 
         (N, K) = data.shape
         true_class = np.zeros(N, dtype=np.int32)
@@ -655,7 +656,7 @@ class ConformalCalibrator(UncertaintyCalibrator):
 
 
         for x in range(N):
-            for y in range(K):
+            for y in range(K):#problem will arise if dataset has some things with no classes. We want single class stuff?
                 if data[x][y] == 1:
                     true_class[x] = y
                     calibration_set[x][0] = x
@@ -677,20 +678,23 @@ class ConformalCalibrator(UncertaintyCalibrator):
             for x in range(N):
                 X, Y = calibration_set[x][0], calibration_set[x][1]
                 calibration_scores[x]=s(X,Y,softmax_scores,K)
+                print(X,Y,softmax_scores[X][Y])
 
             calibration_scores[N]=np.Inf
 
             calibration_scores=np.sort(calibration_scores)
             index=int(math.ceil((1-alpha)*(N+1)))-1#np.quantile
             qhat=calibration_scores[index]#want the ceil((1-alpha)(N+1))th value
+            #print(calibration_scores)
 
             return qhat
 
 
-        alpha = 0.5
+        #alpha = 0.5
         s = s_basic
-        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K)
-        print(self.qhat)
+        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,self.alpha,N,K)
+        print("QHat: ",self.qhat)
+        print("Alpha: ",self.alpha)
 
         
 
@@ -730,6 +734,7 @@ def build_uncertainty_calibrator(
     dataset_type: str,
     loss_function: str,
     uncertainty_dropout_p: float,
+    alpha: float,
     dropout_sampling_size: int,
     spectra_phase_mask: List[List[bool]],
 ) -> UncertaintyCalibrator:
@@ -777,6 +782,7 @@ def build_uncertainty_calibrator(
             dataset_type=dataset_type,
             loss_function=loss_function,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            alpha=alpha,
             dropout_sampling_size=dropout_sampling_size,
             spectra_phase_mask=spectra_phase_mask,
         )

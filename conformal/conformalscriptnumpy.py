@@ -63,7 +63,7 @@ def calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K):
 def returnSet(X,qhat,s,softmax_scores,K):
     set=np.zeros(K, dtype=np.int32)
     for i in range(K):
-        if s(X,i,softmax_scores,K)>=qhat:#shouldn't it be smaller is better? oops lol
+        if s(X,i,softmax_scores,K)<=qhat:#shouldn't it be smaller is better? oops lol
             set[i]=1
 
     return set
