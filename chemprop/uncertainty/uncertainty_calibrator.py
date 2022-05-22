@@ -7,10 +7,12 @@ from scipy.special import erfinv, softmax, logit, expit
 from scipy.optimize import least_squares, fmin
 from scipy.stats import t
 from sklearn.isotonic import IsotonicRegression
+import math
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
+
 
 
 class UncertaintyCalibrator(ABC):
@@ -631,14 +633,88 @@ class ConformalCalibrator(UncertaintyCalibrator):
             )
 
     def calibrate(self):
-        pass
+        """
+        Calculates qhat from alpha. Assuming data is in form of multiclass?
+        """
+        alpha=0.9
+        uncal_preds = np.array(
+            self.calibration_predictor.get_uncal_preds()
+        )  # shape(data, tasks, num_classes)
+        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
+        targets=np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
+        print(targets)
+        
+
+        softmax_scores=uncal_preds
+        data=targets
+        print(data)
+
+        (N, K) = data.shape
+        true_class = np.zeros(N, dtype=np.int32)
+        calibration_set = np.zeros((N,2), dtype=np.int32)
+
+
+        for x in range(N):
+            for y in range(K):
+                if data[x][y] == 1:
+                    true_class[x] = y
+                    calibration_set[x][0] = x
+                    calibration_set[x][1] = y
+
+        def s_basic(x,y,softmax_scores,K):#x,y are the indices
+                return -softmax_scores[x][y]
+
+        def s_adaptive(x,y,softmax_scores,K):#x,y are the indices
+            result = 0
+            for Y in range(K):
+                if softmax_scores[x][Y] >= softmax_scores[x][y]:
+                    result += softmax_scores[x][Y]
+            return result
+
+        def calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K):
+            calibration_scores=np.zeros(N+1)
+
+            for x in range(N):
+                X, Y = calibration_set[x][0], calibration_set[x][1]
+                calibration_scores[x]=s(X,Y,softmax_scores,K)
+
+            calibration_scores[N]=np.Inf
+
+            calibration_scores=np.sort(calibration_scores)
+            index=int(math.ceil((1-alpha)*(N+1)))-1#np.quantile
+            qhat=calibration_scores[index]#want the ceil((1-alpha)(N+1))th value
+
+            return qhat
+
+
+        alpha = 0.5
+        s = s_basic
+        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K)
+        print(self.qhat)
+
+        
+
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        qhat=0.6#HARDCODED
+        #qhat=0.6#HARDCODED
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        softmax_scores=uncal_preds
+        (N, K) = softmax_scores.shape
+
+        def s_basic(x,y,softmax_scores,K):#x,y are the indices
+            return -softmax_scores[x][y]
+
+        def s_adaptive(x,y,softmax_scores,K):#x,y are the indices
+            result = 0
+            for Y in range(K):
+                if softmax_scores[x][Y] >= softmax_scores[x][y]:
+                    result += softmax_scores[x][Y]
+            return result
+
+        s=s_basic
         
-        cal_preds = (uncal_preds>qhat).astype(int)
-        return uncal_preds.tolist(), cal_preds.tolist()
+        cal_preds=[[int(s(x,y,softmax_scores,K)<=self.qhat) for y in range(K)] for x in range(N)]
+        return uncal_preds.tolist(), cal_preds
 
 
 def build_uncertainty_calibrator(
