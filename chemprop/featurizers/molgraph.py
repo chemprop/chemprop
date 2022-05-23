@@ -99,6 +99,9 @@ class MolGraphFeaturizer:
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
 
+    def __call__(self, *args, **kwargs) -> MolGraph:
+        return self.featurize(*args, **kwargs)
+
     def featurize(
         self,
         smi: str,

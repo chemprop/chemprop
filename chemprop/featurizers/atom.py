@@ -10,7 +10,7 @@ def safe_index(x, xs: Sequence):
     return xs.index(x) if x in xs else len(xs), len(xs)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AtomFeaturizer:
     max_atomic_num: InitVar[int] = 100
     atomic_num: list[int] = field(init=False)
@@ -60,6 +60,6 @@ class AtomFeaturizer:
             x[i + bit] = 1
             i += offset
         x[i] = int(a.GetIsAromatic())
-        x[i + 1] = [0.01 * a.Getmass()]
+        x[i + 1] = 0.01 * a.GetMass()
         
         return x
