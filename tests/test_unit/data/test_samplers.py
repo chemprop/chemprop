@@ -33,7 +33,7 @@ def scores(smis):
     return np.random.rand(len(smis), 1)
 
 
-@pytest.fixture(params=[0., 0.1, 0.5, 1.])
+@pytest.fixture(params=[0.0, 0.1, 0.5, 1.0])
 def t(request):
     return request.param
 
@@ -71,7 +71,7 @@ def class_sampler(smis, targets, featurizer):
 def test_seeded_no_seed(dataset):
     with pytest.raises(ValueError):
         SeededSampler(dataset, None)
-    
+
 
 def test_seeded_shuffle(dataset, seed):
     sampler = SeededSampler(dataset, seed)
@@ -99,7 +99,7 @@ def test_class_balance_length(class_sampler, targets: np.ndarray):
 
 def test_class_balance_sample(class_sampler, targets: np.ndarray):
     idxs = list(class_sampler)
-    
+
     # sampled indices should be 50/50 actives/inacitves
     assert sum(targets[idxs]) == len(idxs) // 2
 
@@ -113,6 +113,7 @@ def test_class_balance_shuffle(class_sampler):
 
     assert idxs1 != idxs2
 
+
 def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
     data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
     dset = MolGraphDataset(data, featurizer)
@@ -123,6 +124,7 @@ def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
         pytest.skip("no indices to sample!")
 
     assert list(sampler) != list(sampler)
+
 
 def test_seed_class_balance_reproducibility(smis, targets, featurizer, seed):
     data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]

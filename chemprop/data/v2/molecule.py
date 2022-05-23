@@ -36,6 +36,33 @@ class MolGraphDataset(Dataset):
         return [d.smiles for d in self.data]
 
     @property
+    def targets(self) -> np.ndarray:
+        return np.array([d.targets for d in self.data])
+
+    @targets.setter
+    def targets(self, targets: np.ndarray) -> None:
+        """Set the targets for each molecule in the dataset
+
+        Parameters
+        ----------
+        targets : np.ndarray
+            the targets for each molecule
+        
+        Raises
+        ------
+        ValueError
+            if `targets` is not the same length as the underlying dataset.
+        """
+        if not len(self.data) == len(targets):
+            raise ValueError(
+                "number of molecules and targets must be of same length! "
+                f"num molecules: {len(self.data)}, num targets: {len(targets)}"
+            )
+
+        for i in range(len(self.data)):
+            self.data[i].targets = targets[i]
+
+    @property
     def mols(self) -> list[Chem.Mol]:
         return [d.mol for d in self.data]
 
@@ -83,28 +110,6 @@ class MolGraphDataset(Dataset):
         return np.array([d.data_weight for d in self.data])
 
     @property
-    def targets(self) -> np.ndarray:
-        return np.array([d.targets for d in self.data])
-
-    @targets.setter
-    def targets(self, targets: np.ndarray) -> None:
-        """Set the targets for each molecule in the dataset
-
-        Parameters
-        ----------
-        targets : np.ndarray
-            the targets for each molecule. NOTE: must be the same length as the underlying dataset.
-        """
-        if not len(self.data) == len(targets):
-            raise ValueError(
-                "number of molecules and targets must be of same length! "
-                f"num molecules: {len(self.data)}, num targets: {len(targets)}"
-            )
-
-        for i in range(len(self.data)):
-            self.data[i].targets = targets[i]
-
-    @property
     def gt_targets(self) -> np.ndarray:
         if len(self.data) > 0 and self.data[0].gt_targets is None:
             return None
@@ -120,7 +125,7 @@ class MolGraphDataset(Dataset):
 
     @property
     def num_tasks(self) -> Optional[int]:
-        return self.data[0].num_tasks() if len(self.data) > 0 else None
+        return self.data[0].num_tasks if len(self.data) > 0 else None
 
     @property
     def features_size(self) -> Optional[int]:
