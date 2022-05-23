@@ -69,6 +69,7 @@ def train(model: MoleculeModel,
             data_weights = [torch.tensor(x).unsqueeze(1) for x in data_weights]
 
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
+            natoms, nbonds = np.array(natoms).flatten(), np.array(nbonds).flatten()
             constraints_batch = np.transpose(constraints_batch).tolist()
             ind = 0
             for i in range(len(args.atom_targets)):

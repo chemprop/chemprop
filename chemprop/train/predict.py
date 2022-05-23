@@ -57,6 +57,7 @@ def predict(
 
         if model.is_atom_bond_targets:
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
+            natoms, nbonds = np.array(natoms).flatten(), np.array(nbonds).flatten()
             constraints_batch = np.transpose(constraints_batch).tolist()
             ind = 0
             for i in range(len(model.atom_targets)):

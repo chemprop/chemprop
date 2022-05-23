@@ -193,18 +193,18 @@ class MoleculeDatapoint:
         """
         Gets the number of atoms in the :class:`MoleculeDatapoint`.
 
-        :return: The number of atoms.
+        :return: A list of number of atoms for each molecule.
         """
-        return len(self.mol[0].GetAtoms())
+        return [len(self.mol[i].GetAtoms()) for i in range(self.number_of_molecules)]
 
     @property
-    def number_of_bonds(self) -> int:
+    def number_of_bonds(self) -> List[int]:
         """
         Gets the number of bonds in the :class:`MoleculeDatapoint`.
 
-        :return: The number of bonds.
+        :return: A list of number of bonds for each molecule.
         """
-        return len(self.mol[0].GetBonds())
+        return [len(self.mol[i].GetBonds()) for i in range(self.number_of_molecules)]
 
     def set_features(self, features: np.ndarray) -> None:
         """
@@ -315,20 +315,20 @@ class MoleculeDataset(Dataset):
         return self._data[0].number_of_molecules if len(self._data) > 0 else None
 
     @property
-    def number_of_atoms(self) -> List[int]:
+    def number_of_atoms(self) -> List[List[int]]:
         """
         Gets the number of atoms in each :class:`MoleculeDatapoint`.
 
-        :return: The number of atoms.
+        :return: A list of number of atoms for each molecule.
         """
         return [d.number_of_atoms for d in self._data]
 
     @property
-    def number_of_bonds(self) -> List[int]:
+    def number_of_bonds(self) -> List[List[int]]:
         """
         Gets the number of bonds in each :class:`MoleculeDatapoint`.
 
-        :return: The number of bonds.
+        :return: A list of number of bonds for each molecule.
         """
         return [d.number_of_bonds for d in self._data]
 
