@@ -132,7 +132,7 @@ class MolGraphDataset(Dataset):
     def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
         d = self.data[idx]
 
-        return self.featurizer(d.smiles, d.atom_features, d.bond_features), d.targets
+        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
 
     @property
     def smiles(self) -> list[str]:
