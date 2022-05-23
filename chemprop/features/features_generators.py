@@ -62,13 +62,13 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[List[Molecul
     """
 
     def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-        m = Chem.MolFromSmiles(m) if isinstance(m, str) else m
-        features_vec = AllChem.GetMorganFingerprintAsBitVect(m, radius, nBits=num_bits)
+        m2 = Chem.MolFromSmiles(m) if isinstance(m, str) else m
+        features_vec = AllChem.GetMorganFingerprintAsBitVect(m2, radius, nBits=num_bits)
         single_mol_features = np.zeros((1,))
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if isinstance(mol_data, Sequence):
+    if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
         features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
@@ -96,7 +96,7 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, List[List[Molecul
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if isinstance(mol_data, Sequence):
+    if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
         features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
@@ -122,7 +122,7 @@ try:
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if isinstance(mol_data, Sequence):
+        if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
             features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
@@ -144,7 +144,7 @@ try:
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if isinstance(mol_data, Sequence):
+        if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
             features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
