@@ -41,7 +41,6 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
         n_atoms += mg.n_atoms
         n_bonds += mg.n_bonds
 
-
     X_v = torch.cat(X_vs)
     X_e = torch.cat(X_vs)
 
@@ -53,11 +52,10 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
 
     b2a = torch.tensor(b2a, dtype=torch.long)
     b2revb = torch.tensor(b2revb, dtype=torch.long)
-    b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
-    a2a = None  # only needed if using atom messages
+    a2a =  b2a[a2b]
 
-    return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope
- 
+    return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
+
 
 class MoleculeDataLoader(DataLoader):
     """A :class:`MoleculeDataLoader` is a PyTorch :class:`DataLoader` for loading a :class:`MoleculeDataset`."""
@@ -88,12 +86,6 @@ class MoleculeDataLoader(DataLoader):
         self._class_balance = class_balance
         self._shuffle = shuffle
         self._seed = seed
-        self._context = None
-        self._timeout = 0
-        is_main_thread = threading.current_thread() is threading.main_thread()
-        if not is_main_thread and self._num_workers > 0:
-            self._context = "forkserver"  # In order to prevent a hanging
-            self._timeout = 3600  # Just for sure that the DataLoader won't hang
 
         self._sampler = MoleculeSampler(
             self._dataset,
