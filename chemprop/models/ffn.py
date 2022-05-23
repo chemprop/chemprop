@@ -31,8 +31,6 @@ class MultiReadout(nn.Module):
                  output_size: int,
                  dropout: nn.Module,
                  activation: nn.Module,
-                 atom_targets: List[str] = None,
-                 bond_targets: List[str] = None,
                  atom_constraints: List[bool] = None,
                  bond_constraints: List[bool] = None):
         """
@@ -42,21 +40,17 @@ class MultiReadout(nn.Module):
         :param output_size: The size of output.
         :param dropout: Dropout probability.
         :param activation: Activation function.
-        :param atom_targets: A list of names for atomic targets.
-        :param bond_targets: A list of names for bond targets.
         :param atom_constraints: A list of booleans indicatin whether constraints applied to output of atomic properties.
         :param bond_constraints: A list of booleans indicatin whether constraints applied to output of bond properties.
         """
         super(MultiReadout, self).__init__()
         ind = 0
-        for i in range(len(atom_targets)):
-            constraint = atom_constraints[i]
+        for constraint in atom_constraints:
             self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, constraint, ffn_type='atom'))
             ind += 1
 
-        for i in range(len(bond_targets)):
-            constraint = bond_constraints[i]
+        for constraint in bond_constraints:
             self.add_module(f'readout_{ind}', FFNAtten(2*features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, constraint, ffn_type='bond'))
             ind += 1

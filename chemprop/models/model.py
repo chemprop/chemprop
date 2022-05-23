@@ -113,8 +113,6 @@ class MoleculeModel(nn.Module):
                                         output_size=self.relative_output_size,
                                         dropout=dropout,
                                         activation=activation,
-                                        atom_targets=args.atom_targets,
-                                        bond_targets=args.bond_targets,
                                         atom_constraints=args.atom_constraints,
                                         bond_constraints=args.bond_constraints)
         else:
