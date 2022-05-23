@@ -39,7 +39,6 @@ class MoleculeModel(nn.Module):
         if self.is_atom_bond_targets:
             self.atom_targets, self.bond_targets = args.atom_targets, args.bond_targets
             self.atom_constraints, self.bond_constraints = args.atom_constraints, args.bond_constraints
-            self.device = args.device
             self.output_size = 1
         else:
             self.output_size = args.num_tasks

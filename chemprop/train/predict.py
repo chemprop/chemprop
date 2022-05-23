@@ -59,6 +59,7 @@ def predict(
             natoms, nbonds = batch.number_of_atoms, batch.number_of_bonds
             natoms, nbonds = np.array(natoms).flatten(), np.array(nbonds).flatten()
             constraints_batch = np.transpose(constraints_batch).tolist()
+            device = next(model.parameters()).device
             ind = 0
             for i in range(len(model.atom_targets)):
                 if not model.atom_constraints[i]:
@@ -67,7 +68,7 @@ def predict(
                     mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
                     for j, natom in enumerate(natoms):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - natom * mean) / std
-                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(model.device)
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(device)
                 ind += 1
             for i in range(len(model.bond_targets)):
                 if not model.bond_constraints[i]:
@@ -76,7 +77,7 @@ def predict(
                     mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
                     for j, nbond in enumerate(nbonds):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
-                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(model.device)
+                    constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(device)
                 ind += 1
 
         # Make predictions
