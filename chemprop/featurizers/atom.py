@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass, field, fields
 from typing import Sequence
-import numpy as np
 
+import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
 
@@ -10,7 +10,7 @@ def safe_index(x, xs: Sequence):
     return xs.index(x) if x in xs else len(xs), len(xs)
 
 
-@dataclass
+@dataclass(frozen=True)
 class AtomFeaturizer:
     max_atomic_num: InitVar[int] = 100
     atomic_num: list[int] = field(init=False)
@@ -30,11 +30,12 @@ class AtomFeaturizer:
 
     def __post_init__(self, max_atomic_num: int):
         self.atomic_num = list(range(max_atomic_num))
+        self.__length = sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
 
     def __len__(self):
         """the dimension of an atom feature vector, adding 1 to each set of features for uncommon
         values and 2 at the end to account for aromaticity and mass"""
-        return sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
+        return self.__length
 
     def __call__(self, a: Atom) -> np.ndarray:
         return self.featurize(a)

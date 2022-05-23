@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+
 import numpy as np
-from rdkit.Chem.rdchem import Atom, Bond, HybridizationType
+from rdkit.Chem.rdchem import Bond
 
 @dataclass
 class BondFeaturizer:
