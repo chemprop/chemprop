@@ -8,26 +8,24 @@ from chemprop.data.v2.molecule import MolGraphDataset
 
 
 class SeededSampler(Sampler):
-    def __init__(self, dataset: MolGraphDataset, seed: int, shuffle: bool = False):
-        super().__init__()
-
+    """A SeededSampler is a class for iterating through a dataset in a randomly seeded fashion"""
+    def __init__(self, dataset: MolGraphDataset, seed: int):
         if seed is None:
             raise ValueError("arg `seed` was `None`! A SeededSampler must be seeded!")
 
         self.idxs = np.arange(len(dataset))
         self.rg = np.random.default_rng(seed)
-        self.shuffle = shuffle
         
     def __iter__(self) -> Iterator[int]:
         """an iterator over indices to sample."""
-        if self.shuffle:
-            self.rg.shuffle(self.idxs)
+        self.rg.shuffle(self.idxs)
 
         return iter(self.idxs)
 
     def __len__(self) -> int:
         """the number of indices that will be sampled."""
         return len(self.idxs)
+
 
 class ClassBalanceSampler(Sampler):
     """A `ClassBalanceSampler` samples data from a `MolGraphDataset` such that positive and 
@@ -42,14 +40,13 @@ class ClassBalanceSampler(Sampler):
     shuffle : bool, default=False
         whether to shuffle the data during sampling
     """
-    def __init__(self, dataset: MolGraphDataset, seed: Optional[int] = None, shuffle: bool = False):
-        super().__init__()
 
+    def __init__(self, dataset: MolGraphDataset, seed: Optional[int] = None, shuffle: bool = False):
         self.shuffle = shuffle
         self.rg = np.random.default_rng(seed)
 
         idxs = np.arange(len(dataset))
-        actives = np.array([targets.any() for _, targets in dataset])
+        actives = np.array([d.targets.any() for d in dataset.data])
 
         self.pos_idxs = idxs[actives]
         self.neg_idxs = idxs[~actives]

@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop.data.v2.data import MolGraphDataset
-from chemprop.data.v2.sampler import ClassBalanceSampler, MoleculeSampler, SeededSampler
+from chemprop.data.v2.sampler import ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.molgraph import MolGraph
 
 
@@ -61,11 +61,13 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
     return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
 
 
-class MoleculeDataLoader(DataLoader):
-    """A :class:`MoleculeDataLoader` is a PyTorch :class:`DataLoader` for loading a :class:`MoleculeDataset`.
+class MolGraphDataLoader(DataLoader):
+    """A `MoleculeDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
     
-    dataset : MoleculeDataset
-        The `MoleculeDataset` containing the molecules to load.
+    Parameters
+    ----------
+    dataset : MolGraphDataset
+        The `MolGraphDataset` containing the molecules to load.
     batch_size : int, default=50
         the batch size to load
     num_workers : int, default=0
@@ -81,7 +83,7 @@ class MoleculeDataLoader(DataLoader):
     """
     def __init__(
         self,
-        dataset: MolGraphDataset,
+        dset: MolGraphDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -89,19 +91,19 @@ class MoleculeDataLoader(DataLoader):
         shuffle: bool = False,
     ):
         
-        self.dataset = dataset
+        self.dset = dset
         self.class_balance = class_balance
         self.shuffle = shuffle
 
         if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dataset, seed, self.shuffle)
+            self.sampler = ClassBalanceSampler(self.dset, seed, self.shuffle)
         elif self.shuffle and seed is not None:
-            self.sampler = SeededSampler(self.dataset, seed, self.shuffle)
+            self.sampler = SeededSampler(self.dataset, seed)
         else:
             self.sampler = None
 
         super().__init__(
-            self.dataset,
+            self.dset,
             batch_size,
             self.sampler is None and self.shuffle,
             self.sampler,
@@ -111,51 +113,39 @@ class MoleculeDataLoader(DataLoader):
 
     @property
     def targets(self) -> np.ndarray:
-        """
-        Returns the targets associated with each molecule.
-
-        :return: A list of lists of floats (or None) containing the targets.
-        """
+        """the targets associated with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        return np.array([self.dataset[i].targets for i in self.sampler])
+        return np.array([self.dset.data[i].targets for i in self.sampler])
 
     @property
     def gt_targets(self) -> list[list[Optional[bool]]]:
-        """
-        Returns booleans for whether each target is an inequality rather than a value target, associated with each molecule.
-
-        :return: A list of lists of booleans (or None) containing the targets.
-        """
+        """booleans for whether each target is an inequality rather than a value target associated with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dataset[0], "gt_targets"):
+        if not hasattr(self.dset.data[0], "gt_targets"):
             return None
 
-        return [self.dataset[i].gt_targets for i in self.sampler]
+        return [self.dset.data[i].gt_targets for i in self.sampler]
 
     @property
     def lt_targets(self) -> list[list[Optional[bool]]]:
-        """
-        Returns booleans for whether each target is an inequality rather than a value target, associated with each molecule.
-
-        :return: A list of lists of booleans (or None) containing the targets.
-        """
+        """booleans for whether each target is an inequality rather than a value target associated with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dataset[0], "lt_targets"):
+        if not hasattr(self.dset.data[0], "lt_targets"):
             return None
 
-        return [self.dataset[i].lt_targets for i in self.sampler]
+        return [self.dset.data[i].lt_targets for i in self.sampler]
 
     @property
     def iter_size(self) -> int:
