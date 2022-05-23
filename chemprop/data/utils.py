@@ -108,6 +108,7 @@ def get_task_names(path: str,
 
     return target_names
 
+
 def get_mixed_task_names(path: str,
                          smiles_columns: Union[str, List[str]] = None,
                          target_columns: List[str] = None,
@@ -149,6 +150,8 @@ def get_mixed_task_names(path: str,
     elif extension in ['.pkl', '.pckl', '.pickle']:
         reader = pd.read_pickle(path)
         reader = reader.iterrows()
+    else:
+        raise NotImplementedError(f'The extension of {path} is not supported.')
 
     for row in reader:
         atom_target_names, bond_target_names, molecule_target_names = [], [], []
@@ -190,6 +193,7 @@ def get_mixed_task_names(path: str,
             f.close()
 
         return atom_target_names, bond_target_names, molecule_target_names
+
 
 def get_data_weights(path: str) -> List[float]:
     """
@@ -464,6 +468,8 @@ def get_data(path: str,
         reader = pd.read_pickle(path)
         fieldnames = reader.columns.tolist()
         reader = reader.iterrows()
+    else:
+        raise NotImplementedError(f'The extension of {path} is not supported.')
 
     if any([c not in fieldnames for c in smiles_columns]):
         raise ValueError(f'Data file did not contain all provided smiles columns: {smiles_columns}. Data file field names are: {fieldnames}')
