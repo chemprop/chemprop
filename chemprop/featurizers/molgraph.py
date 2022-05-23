@@ -4,10 +4,12 @@ from dataclasses import InitVar, dataclass, field, fields
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
+from rdkit import Chem
+
+from chemprop.rdkit import make_mol
 from chemprop.featurizers.atom import AtomFeaturizer
 from chemprop.featurizers.bond import BondFeaturizer
 
-from chemprop.rdkit import make_mol
 
 
 @dataclass
@@ -46,9 +48,6 @@ class MolGraph:
 class MolGraphFeaturizer:
     """A `MolGraphFeaturizer` featurizes molecules (in the form of SMILES strings) into `MolGraph`s
 
-    NOTE: hydrogens are generally treated implicitly in `MolGraph`s unless `keep_h` or `add_h` are 
-    set to `True`
-
     Attributes
     ----------
     atom_featurizer : AtomFeaturizer
@@ -58,8 +57,6 @@ class MolGraphFeaturizer:
     bond_fdim : int
         the dimension of bond feature represenatations in this featurizer
     atom_messages : bool
-    keep_h : bool
-    add_h : bool
 
     Parameters
     ----------
@@ -77,11 +74,6 @@ class MolGraphFeaturizer:
         features of each bond
     atom_messages : bool, default=False
         whether to prepare the `MolGraph` for use with atom-based messages
-    keep_h : bool, default=False
-        whether to retain the hydrogens present in input molecules or remove them from the prepared 
-        structure
-    add_h : bool, default=False
-        whether to add hydrogens to all input molecules when preparing the input structure
     """
     atom_featurizer: AtomFeaturizer = field(default_factory=lambda: AtomFeaturizer(100))
     bond_featurizer: BondFeaturizer = field(default_factory=lambda: BondFeaturizer(14))
@@ -90,8 +82,6 @@ class MolGraphFeaturizer:
     bond_fdim: int = field(init=False)
     extra_bond_fdim: InitVar[int] = 0
     atom_messages: bool = False
-    keep_h: bool = False
-    add_h: bool = False
 
     def __post_init__(self, extra_atom_fdim: int, extra_bond_fdim: int):
         self.atom_fdim = len(self.atom_featurizer) + extra_atom_fdim
@@ -104,12 +94,10 @@ class MolGraphFeaturizer:
 
     def featurize(
         self,
-        smi: str,
+        mol: Chem.Mol,
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ) -> MolGraph:
-        mol = make_mol(smi, self.keep_h, self.add_h)
-
         n_atoms = mol.GetNumAtoms() 
         n_bonds = mol.GetNumBonds()
         X_v = []

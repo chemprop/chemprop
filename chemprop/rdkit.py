@@ -1,6 +1,6 @@
 from rdkit import Chem
 
-def make_mol(s: str, keep_h: bool, add_h: bool):
+def make_mol(s: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
     

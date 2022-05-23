@@ -31,6 +31,14 @@ class MoleculeDatapoint:
     :param bond_features: A numpy array containing additional bond features to featurize the molecule
     :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features
     :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features
+    Parameters
+    ----------
+    keep_h : bool, default=False
+        whether to retain the hydrogens present in input molecules or remove them from the prepared 
+        structure
+    add_h : bool, default=False
+        whether to add hydrogens to all input molecules when preparing the input structure
+
     """
     smiles: str
     targets: np.ndarray
@@ -38,8 +46,8 @@ class MoleculeDatapoint:
     data_weight: float = 1
     gt_targets: List[bool] = None
     lt_targets: List[bool] = None
-    features: np.ndarray = None
-    features_generator: InitVar[Optional[List[str]]] = None
+    features: Optional[np.ndarray] = None
+    features_generators: InitVar[Optional[List[str]]] = None
     phase_features: List[float] = None
     atom_features: np.ndarray = None
     atom_descriptors: np.ndarray = None
@@ -49,27 +57,21 @@ class MoleculeDatapoint:
     explicit_h: bool = False
     add_h: bool = False
 
-    def __post_init__(self, features_generator):
-        if self.features is not None and features_generator is not None:
-            raise ValueError("Cannot provide both loaded features and a features generator.")
+    def __post_init__(self, features_generators: Optional[List[str]]):
+        if self.features is not None and features_generators is not None:
+            raise ValueError("Cannot provide both loaded features and features generators!")
 
         self.mol = make_mol(self.smiles, self.explicit_h, self.add_h)
 
-        if self.features_generator is not None:
+        if features_generators is not None:
             self.features = []
-
-            for fg in self.features_generator:
-                features_generator = get_features_generator(fg)
-                m = self.mol
-                if m is not None and m.GetNumHeavyAtoms() > 0:
-                    self.features.extend(features_generator(m))
-                # for H2
-                elif m is not None and m.GetNumHeavyAtoms() == 0:
-                    # not all features are equally long, so use methane as dummy molecule to determine length
-                    self.features.extend(
-                        np.zeros(len(features_generator(Chem.MolFromSmiles("C"))))
-                    )
-
+            for fg in features_generators:
+                fg = get_features_generator(fg)
+                if self.mol is not None:
+                    if self.mol.GetNumHeavyAtoms() > 0:
+                        self.features.extend(fg(self.mol))
+                    else:
+                        self.features.extend(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
             self.features = np.array(self.features)
 
         replace_token = 0
