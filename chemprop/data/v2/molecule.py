@@ -1,115 +1,12 @@
-from collections import OrderedDict
-from dataclasses import InitVar, dataclass
 from typing import List, Optional, Sequence
 
 import numpy as np
 from rdkit import Chem
 from torch.utils.data import Dataset
 
+from chemprop.featurizers.molgraph import MolGraph, MolGraphFeaturizer
 from chemprop.data.scaler import StandardScaler
-from chemprop.featurizers import get_features_generator
-from chemprop.featurizers import MolGraph
-from chemprop.featurizers.molgraph import MolGraphFeaturizer
-from chemprop.rdkit import make_mol
-
-@dataclass
-class MoleculeDatapoint:
-    """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets.
-    
-    :param smiles: A list of the SMILES strings for the molecules.
-    :param targets: the targets for the molecule with `nan` indicating unknown targets
-    :param row: The raw CSV row containing the information for this molecule.
-    :param data_weight: Weighting of the datapoint for the loss function.
-    :param gt_targets: Indicates whether the targets are an inequality regression target of the 
-    form ">x"
-    :param lt_targets: Indicates whether the targets are an inequality regression target of the 
-    form "<x"
-    :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
-    :param features_generator: A list of features generators to use.
-    :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
-    :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
-    :param bond_features: A numpy array containing additional bond features to featurize the molecule
-    :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features
-    :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features
-    Parameters
-    ----------
-    keep_h : bool, default=False
-        whether to retain the hydrogens present in input molecules or remove them from the prepared 
-        structure
-    add_h : bool, default=False
-        whether to add hydrogens to all input molecules when preparing the input structure
-
-    """
-    smiles: str
-    targets: np.ndarray
-    row: OrderedDict = None
-    data_weight: float = 1
-    gt_targets: List[bool] = None
-    lt_targets: List[bool] = None
-    features: Optional[np.ndarray] = None
-    features_generators: InitVar[Optional[List[str]]] = None
-    phase_features: List[float] = None
-    atom_features: np.ndarray = None
-    atom_descriptors: np.ndarray = None
-    bond_features: np.ndarray = None
-    overwrite_default_atom_features: bool = False
-    overwrite_default_bond_features: bool = False
-    explicit_h: bool = False
-    add_h: bool = False
-
-    def __post_init__(self, features_generators: Optional[List[str]]):
-        if self.features is not None and features_generators is not None:
-            raise ValueError("Cannot provide both loaded features and features generators!")
-
-        self.mol = make_mol(self.smiles, self.explicit_h, self.add_h)
-
-        if features_generators is not None:
-            self.features = []
-            for fg in features_generators:
-                fg = get_features_generator(fg)
-                if self.mol is not None:
-                    if self.mol.GetNumHeavyAtoms() > 0:
-                        self.features.extend(fg(self.mol))
-                    else:
-                        self.features.extend(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
-            self.features = np.array(self.features)
-
-        replace_token = 0
-        if self.features is not None:
-            self.features[np.isnan(self.features)] = replace_token
-
-        if self.atom_descriptors is not None:
-            self.atom_descriptors[np.isnan(self.atom_descriptors)] = replace_token
-
-        if self.atom_features is not None:
-            self.atom_features[np.isnan(self.atom_features)] = replace_token
-
-        if self.bond_features is not None:
-            self.bond_features[np.isnan(self.bond_features)] = replace_token
-
-        self.raw_features = self.features
-        self.raw_targets = self.targets
-        self.raw_atom_descriptors = self.atom_descriptors 
-        self.raw_atom_features = self.atom_features
-        self.raw_bond_features = self.bond_features
-
-
-    @property
-    def number_of_molecules(self) -> int:
-        return 1
-
-    @property
-    def num_tasks(self) -> int:
-        return len(self.targets)
-
-    def reset_features_and_targets(self) -> None:
-        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        self.features, self.targets = self.raw_features, self.raw_targets
-        self.atom_descriptors, self.atom_features, self.bond_features = (
-            self.raw_atom_descriptors,
-            self.raw_atom_features,
-            self.raw_bond_features,
-        )
+from chemprop.data.v2.datapoint import MoleculeDatapoint
 
 
 class MolGraphDataset(Dataset):
