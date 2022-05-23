@@ -44,7 +44,6 @@ class MolGraph:
     a2a: list[int]
 
 
-@dataclass
 class MolGraphFeaturizer:
     """A `MolGraphFeaturizer` featurizes molecules (in the form of SMILES strings) into `MolGraph`s
 
@@ -75,17 +74,21 @@ class MolGraphFeaturizer:
     atom_messages : bool, default=False
         whether to prepare the `MolGraph` for use with atom-based messages
     """
-    atom_featurizer: AtomFeaturizer = field(default_factory=lambda: AtomFeaturizer(100))
-    bond_featurizer: BondFeaturizer = field(default_factory=lambda: BondFeaturizer(14))
-    atom_fdim: int = field(init=False)
-    extra_atom_fdim: InitVar[int] = 0
-    bond_fdim: int = field(init=False)
-    extra_bond_fdim: InitVar[int] = 0
-    atom_messages: bool = False
 
-    def __post_init__(self, extra_atom_fdim: int, extra_bond_fdim: int):
+    def __init__(
+        self,
+        atom_featurizer: Optional[AtomFeaturizer] = None,
+        bond_featurizer: Optional[BondFeaturizer] = None,
+        extra_atom_fdim: int = 0,
+        extra_bond_fdim: int = 0,
+        atom_messages: bool = False
+    ):
+        self.atom_featurizer = atom_featurizer or AtomFeaturizer(100)
+        self.bond_featurizer = bond_featurizer or BondFeaturizer(14)
         self.atom_fdim = len(self.atom_featurizer) + extra_atom_fdim
         self.bond_fdim = len(self.bond_featurizer) + extra_bond_fdim
+        self.atom_messages = atom_messages
+
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
 

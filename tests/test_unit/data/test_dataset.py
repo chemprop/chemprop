@@ -69,6 +69,11 @@ def test_none():
         MolGraphDataset(None, MolGraphFeaturizer())
 
 
+def test_empty():
+    """TODO"""
+    pass
+
+
 def test_len(data, dataset):
     assert len(data) == len(dataset)
 

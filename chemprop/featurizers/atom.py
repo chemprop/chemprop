@@ -1,36 +1,45 @@
 from dataclasses import InitVar, dataclass, field, fields
-from typing import Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
+from chemprop.featurizers.utils import safe_index
 
-def safe_index(x, xs: Sequence):
-    """return both the index of `x` in `xs` (if it exists, else -1) and the total length of `xs`"""
-    return xs.index(x) if x in xs else len(xs), len(xs)
-
-
-@dataclass
 class AtomFeaturizer:
-    max_atomic_num: InitVar[int] = 100
-    atomic_num: list[int] = field(init=False)
-    degree: list[int] = field(default_factory=lambda: list(range(6)))
-    formal_charge: list[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
-    chiral_tag: list[int] = field(default_factory=lambda: list(range(4)))
-    num_Hs: list[int] = field(default_factory=lambda: list(range(5)))
-    hybridization: list[HybridizationType] = field(
-        default_factory=lambda: [
+    def __init__(
+        self,
+        max_atomic_num: int = 100,
+        degree: Optional[Sequence[int]] = None,
+        formal_charge: Optional[Sequence[int]] = None,
+        chiral_tag: Optional[Sequence[int]] = None,
+        num_Hs: Optional[Sequence[int]] = None,
+        hybridization: Optional[Sequence[HybridizationType]] = None
+    ):
+        self.atomic_num = list(range(max_atomic_num))
+        self.degree = degree or list(range(6))
+        self.formal_charge = formal_charge or [-1, -2, 1, 2, 0]
+        self.chiral_tag = chiral_tag or list(range(4))
+        self.num_Hs = num_Hs or list(range(5))
+        self.hybridization = hybridization or [
             HybridizationType.SP,
             HybridizationType.SP2,
             HybridizationType.SP3,
             HybridizationType.SP3D,
             HybridizationType.SP3D2
         ]
-    )
 
-    def __post_init__(self, max_atomic_num: int):
-        self.atomic_num = list(range(max_atomic_num))
-        self.__length = sum(len(getattr(self, field.name)) + 1 for field in fields(self)) + 2
+        self.__length = sum(
+            len(features) + 1
+            for features in (
+                self.atomic_num,
+                self.degree,
+                self.formal_charge,
+                self.chiral_tag,
+                self.num_Hs,
+                self.hybridization
+            )
+        ) + 2
 
     def __len__(self):
         """the dimension of an atom feature vector, adding 1 to each set of features for uncommon

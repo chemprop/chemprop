@@ -1,11 +1,18 @@
-from dataclasses import dataclass
+from typing import Iterable, Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond
 
-@dataclass
+from chemprop.featurizers.utils import safe_index
+
+
 class BondFeaturizer:
-    bond_fdim: int = 14
+    def __init__(
+        self, bond_types: Optional[Iterable[int]] = None, stereo: Optional[Sequence[int]] = None
+    ):
+        self.bond_types = set(bond_types) or {1, 2, 3, 12}
+        self.stereo = stereo or list(range(6))
+        self.bond_fdim = 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
 
     def __len__(self):
         return self.bond_fdim
@@ -21,20 +28,19 @@ class BondFeaturizer:
             return x
 
         bond_type = b.GetBondType()
-
         if bond_type is not None:
-            bt_int = int(bond_type)
+            i_bt = int(bond_type)
             CONJ_BIT = 5
             RING_BIT = 6
 
-            if bt_int in {1, 2, 3, 12}:
-                x[max(4, bt_int)] = 1
+            if i_bt in self.bond_types:
+                x[max(4, i_bt)] = 1
             if b.GetIsConjugated():
                 x[CONJ_BIT] = 1
             if b.IsInRing():
                 x[RING_BIT] = 1
 
-        stereo_bit = int(b.GetStereo())
+        stereo_bit = safe_index(int(b.GetStereo()), self.stereo)
         x[stereo_bit] = 1
 
         return x
