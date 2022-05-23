@@ -39,18 +39,16 @@ class MoleculeModel(nn.Module):
         if self.is_atom_bond_targets:
             self.atom_targets, self.bond_targets = args.atom_targets, args.bond_targets
             self.atom_constraints, self.bond_constraints = args.atom_constraints, args.bond_constraints
-            self.output_size = 1
-        else:
-            self.output_size = args.num_tasks
 
+        self.relative_output_size = 1
         if self.multiclass:
-            self.output_size *= args.multiclass_num_classes
+            self.relative_output_size *= args.multiclass_num_classes
         if self.loss_function == 'mve':
-            self.output_size *= 2  # return means and variances
+            self.relative_output_size *= 2  # return means and variances
         if self.loss_function == 'dirichlet' and self.classification:
-            self.output_size *= 2  # return dirichlet parameters for positive and negative class
+            self.relative_output_size *= 2  # return dirichlet parameters for positive and negative class
         if self.loss_function == 'evidential':
-            self.output_size *= 4  # return four evidential parameters: gamma, lambda, alpha, beta
+            self.relative_output_size *= 4  # return four evidential parameters: gamma, lambda, alpha, beta
 
         if self.classification:
             self.sigmoid = nn.Sigmoid()
@@ -112,7 +110,7 @@ class MoleculeModel(nn.Module):
             self.readout = MultiReadout(features_size=first_linear_dim,
                                         hidden_size=args.ffn_hidden_size,
                                         num_layers=args.ffn_num_layers,
-                                        output_size=self.output_size,
+                                        output_size=self.relative_output_size,
                                         dropout=dropout,
                                         activation=activation,
                                         atom_targets=args.atom_targets,
@@ -123,7 +121,7 @@ class MoleculeModel(nn.Module):
             self.readout = DenseLayers(first_linear_dim=first_linear_dim,
                                        hidden_size=args.ffn_hidden_size,
                                        num_layers=args.ffn_num_layers,
-                                       output_size=self.output_size,
+                                       output_size=self.relative_output_size * args.num_tasks,
                                        dropout=dropout,
                                        activation=activation,
                                        dataset_type=args.dataset_type,
