@@ -885,7 +885,7 @@ def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List
     valid_targets = [[] for _ in range(data.num_tasks())]
     for i in range(len(targets)):
         for task_num in range(len(targets[i])):
-            if data[0].atom_targets is not None or data[0].bond_targets is not None:
+            if data.is_atom_bond_targets:
                 for target in targets[i][task_num]:
                     if targets[i][task_num] is not None:
                         valid_targets[task_num].append(target)
@@ -921,7 +921,7 @@ def validate_dataset_type(data: MoleculeDataset, dataset_type: str) -> None:
     """
     target_list = [target for targets in data.targets() for target in targets]
 
-    if data[0].atom_targets is not None or data[0].bond_targets is not None:
+    if data.is_atom_bond_targets:
         target_set = set(list(np.concatenate(target_list).flat)) - {None}
     else:
         target_set = set(target_list) - {None}

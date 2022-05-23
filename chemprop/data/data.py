@@ -612,7 +612,7 @@ class MoleculeDataset(Dataset):
 
         :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
         """
-        if self._data[0].atom_targets is not None or self._data[0].bond_targets is not None:
+        if self.is_atom_bond_targets:
             atom_targets = self._data[0].atom_targets
             bond_targets = self._data[0].bond_targets
             n_atoms, n_bonds = self.number_of_atoms, self.number_of_bonds
