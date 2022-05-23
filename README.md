@@ -44,7 +44,9 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Weighted training by target and data](#weighted-training-by-target-and-data)
   * [Caching](#caching)
 - [Predicting](#predicting)
-  * [Epistemic Uncertainty](#epistemic-uncertainty)
+  * [Uncertainty Estimation](#uncertainty-estimation)
+  * [Uncertainty Calibration](#uncertainty-calibration)
+  * [Uncertainty Evaluation Metrics](#uncertainty-evaluation-metrics)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Encode Fingerprint Latent Representation](#encode-fingerprint-latent-representation)
 - [Interpreting Model Prediction](#interpreting)
@@ -126,7 +128,7 @@ Next, navigate to `chemprop/web` and run `gunicorn --bind {host}:{port} 'wsgi:bu
 ## Within Python
 
 For information on the use of Chemprop within a python script, refer to the [Within a python script](https://chemprop.readthedocs.io/en/latest/tutorial.html#within-a-python-script)
-section of the documentation. A [Google Colab notebook](https://colab.research.google.com/github/chemprop/chemprop/blob/master/colab_demo.ipynb) is also available with several examples. Note that this notebook is intended to be run in Google Colab rather than as a Jupypter notebook on your local machine.
+section of the documentation. A [Google Colab notebook](https://colab.research.google.com/github/chemprop/chemprop/blob/master/colab_demo.ipynb) is also available with several examples. Note that this notebook is intended to be run in Google Colab rather than as a Jupyter notebook on your local machine. A similar notebook of examples is available as a [nanoHUB tool](https://nanohub.org/resources/chempropdemo/).
 
 
 ## Data
@@ -138,7 +140,7 @@ Chemprop can either train on a single target ("single tasking") or on multiple t
 There are four current supported dataset types. Targets with unknown values can be left as blanks.
 * **Regression.** Targets are float values. With bounded loss functions or metrics, the values may also be simple inequalities (e.g., >7.5 or <5.0).
 * **Classification.** Targets are binary (i.e. 0s and 1s) indicators of the classification.
-* **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--number_of_classes <int>`.
+* **Multiclass.** Targets are integers (starting with zero) indicating which class the datapoint belongs to, out of a total number of exclusive classes indicated with `--multiclass_num_classes <int>`.
 * **Spectra.** Targets are positive float values with each target representing the signal at a specific spectrum position.
 
 The data file must be be a **CSV file with a header row**. For example:
@@ -191,11 +193,12 @@ By default, both random and scaffold split the data into 80% train, 10% validati
 ### Loss functions
 
 The loss functions available for training are dependent on the selected dataset type. Loss functions other than the defaults can be selected from the supported options with the argument `--loss_function <function>`.
-* **Regression.** mse (default), bounded_mse.
-* **Classification.** binary_cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
+* **Regression.** mse (default), bounded_mse, mve (mean-variance estimation, a.k.a. heteroscedastic loss), evidential.
+* **Classification.** binary_cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient), dirichlet (a.k.a. evidential classification)
 * **Multiclass.** cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
 * **Spectra.** sid (default, spectral information divergence), wasserstein (First-order Wasserstein distance a.k.a. earthmover's distance.)
 
+The regression loss functions `mve` and `evidential` function by minimizing the negative log likelihood of a predicted uncertainty distribution. If used during training, the uncertainty predictions from these loss functions can be used for uncertainty prediction during prediction tasks.
 ### Metrics
 
 Metrics are used to evaluate the success of the model against the test set as the final model score and to determine the optimal epoch to save the model at based on the validation set. The primary metric used for both purposes is selected with the argument `--metric <metric>` and additional metrics for test set score only can be added with `--extra_metrics <metric1> <metric2> ...`. Supported metrics are dependent on the dataset type. Unlike loss functions, metrics do not have to be differentiable.
@@ -351,9 +354,43 @@ Predictions made on an ensemble of models will return the average of the individ
 
 If installed from source, `chemprop_predict` can be replaced with `python predict.py`.
 
-### Epistemic Uncertainty
+### Uncertainty Estimation
 
-One method of obtaining the epistemic uncertainty of a prediction is to calculate the variance of an ensemble of models. To calculate these variances and write them as an additional column in the `--preds_path` file, use `--ensemble_variance`. If this flag is used with a spectra prediction, it will instead return the average pairwise SID comparison of the different ensemble predictions.
+The uncertainty of predictions made in Chemprop can be estimated by several different methods. Uncertainty estimation is carried out alongside model value prediction and reported in the predictions csv file when the argument `--uncertainty_method <method>` is provided. If no uncertainty method is provided, then only the model value predictions will be carried out. The available methods are:
+
+* `ensemble` For a prediction using an ensemble of models. Returns the variance of predictions made by each of the ensemble submodels. Ensemble variance can be used with any dataset type, but the results are only usable for calibration or evaluation with regression datasets.
+* `dropout` Intended for use with a single model and not an ensemble. This method uses Monte Carlo dropout to generate a virtual ensemble of models and reports the ensemble variance of the predictions. The number of models generated and the probability of dropout can be changed using `--uncertainty_dropout_p <float>` and `--dropout_sampling_size <int>`, respectively. Note that this dropout is distinct from dropout regularization used during training, which is not active during predictions.
+* `mve` When mve has been used for the training loss function on regression datasets, this method uses the separate variance prediction of the model. The variance result from ensembling models together includes the variance contribution of the different models having different mean predictions.
+* `evidential_total`, `evidential_epistemic`, `evidential_aleatoric` When evidential was used as the training loss function for regression datasets, these methods use the variance prediction of the model. The evidential output includes different functions intended to divide the variance into epistemic and aleatoric uncertainty. The variance result from ensembling models together includes the variance contribution of the different models having different mean predictions.
+* `spectra_roundrobin` For an ensemble of spectra predictions. Calculates the pairwise SID between the predictions made by each of the ensemble submodels. Returns the average SID.
+* `classification` The predictions of classification and multiclass dataset types are inherently probabilistic already. Used by default for classification and multiclass as needed.
+
+### Uncertainty Calibration
+
+Uncertainty predictions may be calibrated to improve their performance on new predictions. Calibration methods are selected using `--calibration_method <method>`, options provided below. An additional dataset to use in calibration is provided through `--calibration_path <path>`, along with necessary features like `--calibration_features_path <path>`.
+
+**Regression** Calibrated regression outputs can be in the form of a standard deviation or an interval, as specified with the argument `--regression_calibrator_metric <"stdev" or "interval">`. The interval can be set using `--calibration_interval_percentile <float>` in the range (1,100).
+* `zscaling` Assumes that errors are normally distributed according to the estimated variance for each prediction. Applies a constant multiple to all stdev or interval outputs in order to minimize the negative log likelihood for the normal distributions. (https://arxiv.org/abs/1905.11659)
+* `tscaling` Similar to zscaling. Assumes that the errors are normally distributed, but accounts for the ensemble size and uncertainty in the sample variance by using a sample-size reduced t-distribution in the negative log likelihood. Works best when errors are mostly due to variability between model instances and not dataset noise or model bias.
+* `zelikman_interval` Assumes that the error distribution is the same for each prediction but scaled by the uncalibrated standard deviation for each. Multiplies the uncalibrated standard deviation by a factor necessary to cover the specified interval of the calibration set. Does not assume a Gaussian distribution. Intended for use with intervals but can return a stdev as well. (https://arxiv.org/abs/2005.12496)
+* `mve_weighting` For use with ensembles of models trained with mve or evidential loss function. Uses a weighted average of the predicted variances to achieve a minimum negative log likelihood of predictions. (https://doi.org/10.1186/s13321-021-00551-x)
+**Classification**
+* `platt` Uses a linear scaling before the sigmoid function in prediction to minimize the negative log likelihood of the predictions. If the model checkpoint was generated after Chemprop v1.5.0, then a Bayesian correction is applied to account for the class balance in the training set during prediction. Implemented for classification but not multiclass datasets. (https://arxiv.org/abs/1706.04599)
+* `isotonic` Fits an isotonic regression model to the predictions. Prediction outputs are transformed using a stepped histogram-style to match the empirical probability observed in the calibration data. Number and size of the histogram bins are procedurally decided. Histogram bins are wider in the regions of the model output that are less reliable in ordering confidence. Implemented for both classification and multiclass datasets. (https://arxiv.org/abs/1706.04599)
+
+### Uncertainty Evaluation Metrics
+
+The performance of uncertainty predictions (calibrated or uncalibrated) as evaluated on the test set using different evaluation metrics as specified with `--evaluation_methods <[methods]>`. Evaluation scores will be saved at the path provided with `--evaluation_scores_path <path.csv>`. If no path is provided to save the scores, then the results will only appear in the output trace. Multiple evaluation methods can be provided and they will be calculated separately for each model task. Evaluation is only available when the target values are provided with the data in `--test_path <path.csv>`.
+
+* Any valid classification or multiclass metric. Because classification and multiclass outputs are inherently probabilistic, any metric used to assess them during training is appropriate to evaluate the confidences produced after calibration.
+* `nll` Returns the average negative log likelihood of the real target as indicated by the uncertainty predictions. Enabled for regression, classification, and multiclass dataset types.
+* `spearman` A regression evaluation metric. Returns the Spearman rank correlation between the predicted uncertainty and the actual error in predictions. Only considers ordering, does not assume a particular probability distribution.
+* `ence` Expected normalized calibration error. A regression evaluation metric. Bins model prediction according to uncertainty prediction and compares the RMSE in each bin versus the expected error based on the predicted uncertainty variance then scaled by variance. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
+* `miscalibration_area` A regression evaluation metric. Calculates the model's performance of expected probability versus realized probability at different points along the probability distribution. Values range (0, 0.5) with perfect calibration at 0. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
+
+Different evaluation metrics consider different aspects of uncertainty. It is often appropriate to consider multiple metrics. For intance, miscalibration error is important for evaluating uncertainty magnitude but does not indicate that the uncertainty function discriminates well between different outputs. Similarly, spearman tests ordering but not prediction magnitude.
+
+Evaluations can be used to compare different uncertainty methods and different calibration methods for a given dataset. Using evaluations to compare between datasets may not be a fair comparison and should be done cautiously.
 
 ## Hyperparameter Optimization
 

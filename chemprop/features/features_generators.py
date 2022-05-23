@@ -1,4 +1,4 @@
-from typing import Callable, List, Union, Iterable
+from typing import Callable, List, Union, Sequence
 
 import numpy as np
 from rdkit import Chem, DataStructs
@@ -68,7 +68,7 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, List[List[Molecul
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+    if isinstance(mol_data, Sequence):
         features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
@@ -96,7 +96,7 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, List[List[Molecul
         DataStructs.ConvertToNumpyArray(features_vec, single_mol_features)
         return single_mol_features
 
-    if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+    if isinstance(mol_data, Sequence):
         features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
     else:
         features = fingerprint_single_molecule(mol_data)
@@ -118,11 +118,11 @@ try:
         generator = rdDescriptors.RDKit2D()
 
         def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if type(m) != str else m
+            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if isinstance(m, Chem.Mol) else m
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+        if isinstance(mol_data, Sequence):
             features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
@@ -140,11 +140,11 @@ try:
         generator = rdNormalizedDescriptors.RDKit2DNormalized()
 
         def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if type(m) != str else m
+            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if isinstance(m, Chem.Mol) else m
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
-        if isinstance(mol_data, Iterable) and not isinstance(mol_data, str):
+        if isinstance(mol_data, Sequence):
             features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
         else:
             features = fingerprint_single_molecule(mol_data)
@@ -173,7 +173,7 @@ Ex. python train.py ... --features_generator custom ...
 
 @register_features_generator('custom')
 def custom_features_generator(mol_data: Union[Molecule, List[List[Molecule]]]) -> np.ndarray:
-    if isinstance(mol_data, Iterable) and not isinstance(mol_data, AnyStr):
+    if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
         # If your generator supports an input of a list of molecules, implement  
     
     # If you want to use the SMILES string

@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-__version__ = "1.4.1"
+__version__ = "1.5.1"
 
 # Load README
 with open('README.md', encoding='utf-8') as f:
@@ -44,7 +44,7 @@ setup(
         'pandas>=1.0.3',
         'pandas-flavor>=0.2.0',
         'scikit-learn>=0.22.2.post1',
-        'scipy>=1.4.1',
+        'scipy>=1.5.1',
         'sphinx>=3.1.2',
         'tensorboardX>=2.0',
         'torch>=1.5.1',
@@ -57,10 +57,9 @@ setup(
             'parameterized>=0.8.1'
         ]
     },
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     classifiers=[
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'License :: OSI Approved :: MIT License',

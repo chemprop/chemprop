@@ -2,6 +2,7 @@ import chemprop.data
 import chemprop.features
 import chemprop.models
 import chemprop.train
+import chemprop.uncertainty
 # import chemprop.web
 
 import chemprop.args
@@ -18,4 +19,4 @@ import chemprop.hyperopt_utils
 
 # from chemprop._version import __version__
 
-__version__ = "1.4.1"
+__version__ = "1.5.1"
