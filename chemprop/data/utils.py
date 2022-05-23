@@ -216,6 +216,41 @@ def get_data_weights(path: str) -> List[float]:
     return weights
 
 
+def get_constraints(path: str,
+                    target_columns: List[str],
+                    save_raw_data: bool = False) -> Tuple[List[float], List[float]]:
+    """
+    Returns lists of data constraints for the atomic/bond targets as stored in a CSV file.
+
+    :param path: Path to a CSV file.
+    :param target_columns: Name of the columns containing target values.
+    :param save_raw_data: Whether to save the raw data constraints, which will be used to construct
+                          constraints files for each train/val/test split for prediction convenience later.
+    :return: Lists of floats containing the data constraints.
+    """
+    constraints_data = []
+    reader = pd.read_csv(path)
+    reader_columns = reader.columns.tolist()
+    if len(reader_columns) != len(set(reader_columns)):
+        raise ValueError(f'There are duplicates in {path}.')
+    for target in target_columns:
+        if target in reader_columns:
+            constraints_data.append(reader[target].values)
+        else:
+            constraints_data.append([None] * len(reader))
+    constraints_data = np.transpose(constraints_data)  # each is num_data x num_targets
+
+    if save_raw_data:
+        raw_constraints_data = []
+        for target in reader_columns:
+            raw_constraints_data.append(reader[target].values)
+        raw_constraints_data = np.transpose(raw_constraints_data)  # each is num_data x num_columns
+    else:
+        raw_constraints_data = None
+    
+    return constraints_data, raw_constraints_data
+
+
 def get_smiles(path: str,
                smiles_columns: Union[str, List[str]] = None,
                number_of_molecules: int = 1,
@@ -414,25 +449,11 @@ def get_data(path: str,
 
     # Load constraints
     if constraints_path is not None:
-        constraints_data = []
-        reader = pd.read_csv(constraints_path)
-        reader_columns = reader.columns.tolist()
-        if len(reader_columns) != len(set(reader_columns)):
-            raise ValueError(f'There are duplicates in {constraints_path}.')
-        for target in args.target_columns:
-            if target in reader_columns:
-                constraints_data.append(reader[target].values)
-            else:
-                constraints_data.append([None] * len(reader))
-        constraints_data = np.transpose(constraints_data)  # each is num_data x num_targets
-
-        if args.save_smiles_splits:
-            raw_constraints_data = []
-            for target in reader_columns:
-                raw_constraints_data.append(reader[target].values)
-            raw_constraints_data = np.transpose(raw_constraints_data)  # each is num_data x num_columns
-        else:
-            raw_constraints_data = None
+        constraints_data, raw_constraints_data = get_constraints(
+            path=constraints_path,
+            target_columns=args.target_columns,
+            save_raw_data=args.save_smiles_splits
+        )
     else:
         constraints_data = None
         raw_constraints_data = None
