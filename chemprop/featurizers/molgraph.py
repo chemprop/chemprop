@@ -93,7 +93,7 @@ class MolGraphFeaturizer:
     keep_h: bool = False
     add_h: bool = False
 
-    def __post_init__(self, extra_atom_fdim: int, extra_bond_fdim):
+    def __post_init__(self, extra_atom_fdim: int, extra_bond_fdim: int):
         self.atom_fdim = len(self.atom_featurizer) + extra_atom_fdim
         self.bond_fdim = len(self.bond_featurizer) + extra_bond_fdim
         if not self.atom_messages:

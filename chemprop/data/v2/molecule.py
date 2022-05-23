@@ -127,10 +127,10 @@ class MolGraphDataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> MolGraph:
+    def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
         d = self.data[idx]
 
-        return self.featurizer(d.smiles, d.atom_features, d.bond_features)
+        return self.featurizer(d.smiles, d.atom_features, d.bond_features), d.targets
 
     @property
     def smiles(self) -> list[str]:
@@ -246,11 +246,6 @@ class MolGraphDataset(Dataset):
 
     @property
     def bond_features_size(self) -> int:
-        """
-        Returns the size of custom additional bond features vector associated with the molecules.
-
-        :return: The size of the additional bond feature vector.
-        """
         if len(self.data) > 0 and self.data[0].bond_features is None:
             return None
         

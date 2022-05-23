@@ -1,70 +1,68 @@
-from typing import Iterator
+from itertools import chain
+from typing import Iterator, Optional
 
 import numpy as np
 from torch.utils.data import Sampler
 
-from chemprop.data.v2.data import MolGraphDataset
+from chemprop.data.v2.molecule import MolGraphDataset
 
-class MoleculeSampler(Sampler):
-    """A :class:`MoleculeSampler` samples data from a :class:`MoleculeDataset` for a
-    :class:`MoleculeDataLoader`."""
 
-    def __init__(
-        self,
-        dataset: MolGraphDataset,
-        class_balance: bool = False,
-        shuffle: bool = False,
-        seed: int = 0,
-    ):
-        """
-        :param class_balance: Whether to perform class balancing (i.e., use an equal number of positive
-                              and negative molecules). Set shuffle to True in order to get a random
-                              subset of the larger class.
-        :param shuffle: Whether to shuffle the data.
-        :param seed: Random seed. Only needed if :code:`shuffle` is True.
-        """
+class SeededSampler(Sampler):
+    def __init__(self, dataset: MolGraphDataset, seed: int, shuffle: bool = False):
         super().__init__()
 
-        self.dataset = dataset
-        self.class_balance = class_balance
+        if seed is None:
+            raise ValueError("arg `seed` was `None`! A SeededSampler must be seeded!")
+
+        self.idxs = np.arange(len(dataset))
+        self.rg = np.random.default_rng(seed)
         self.shuffle = shuffle
+        
+    def __iter__(self) -> Iterator[int]:
+        """an iterator over indices to sample."""
+        if self.shuffle:
+            self.rg.shuffle(self.idxs)
 
-        self._random = np.random.default_rng(seed)
+        return iter(self.idxs)
 
-        if self.class_balance:
-            indices = np.arange(len(dataset))
-            has_active = np.array(
-                [any(target == 1 for target in datapoint.targets) for datapoint in dataset]
-            )
+    def __len__(self) -> int:
+        """the number of indices that will be sampled."""
+        return len(self.idxs)
 
-            self.positive_indices = indices[has_active].tolist()
-            self.negative_indices = indices[~has_active].tolist()
+class ClassBalanceSampler(Sampler):
+    """A `ClassBalanceSampler` samples data from a `MolGraphDataset` such that positive and 
+    negative classes are equally sampled
+    
+    Parameters
+    ----------
+    dataset : MolGraphDataset
+        the dataset from which to sample
+    seed : int
+        the random seed to use for shuffling (only used when `shuffle` is `True`)
+    shuffle : bool, default=False
+        whether to shuffle the data during sampling
+    """
+    def __init__(self, dataset: MolGraphDataset, seed: Optional[int] = None, shuffle: bool = False):
+        super().__init__()
 
-            self.length = 2 * min(len(self.positive_indices), len(self.negative_indices))
-        else:
-            self.positive_indices = self.negative_indices = None
+        self.shuffle = shuffle
+        self.rg = np.random.default_rng(seed)
 
-            self.length = len(self.dataset)
+        idxs = np.arange(len(dataset))
+        actives = np.array([targets.any() for _, targets in dataset])
+
+        self.pos_idxs = idxs[actives]
+        self.neg_idxs = idxs[~actives]
+
+        self.length = 2 * min(len(self.pos_idxs), len(self.neg_idxs))
 
     def __iter__(self) -> Iterator[int]:
         """an iterator over indices to sample."""
-        if self.class_balance:
-            if self.shuffle:
-                self._random.shuffle(self.positive_indices)
-                self._random.shuffle(self.negative_indices)
+        if self.shuffle:
+            self.rg.shuffle(self.pos_idxs)
+            self.rg.shuffle(self.neg_idxs)
 
-            indices = [
-                index
-                for pair in zip(self.positive_indices, self.negative_indices)
-                for index in pair
-            ]
-        else:
-            indices = list(range(len(self.dataset)))
-
-            if self.shuffle:
-                self._random.shuffle(indices)
-
-        return iter(indices)
+        return chain(*zip(self.pos_idxs, self.neg_idxs))
 
     def __len__(self) -> int:
         """the number of indices that will be sampled."""
