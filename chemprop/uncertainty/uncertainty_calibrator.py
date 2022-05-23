@@ -622,7 +622,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
 
 class ConformalCalibrator(UncertaintyCalibrator):
     """
-    Outputs uncal and cal preds to list. Only uses uncal preds, ignores uncal vars.
+    Conformal Calibrator.
     """
     @property
     def label(self):
@@ -636,10 +636,6 @@ class ConformalCalibrator(UncertaintyCalibrator):
             )
 
     def calibrate(self):
-        """
-        Calculates qhat from alpha. Assuming data is in form of multiclass?
-        """
-        alpha=0.9
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks, num_classes)
@@ -651,48 +647,47 @@ class ConformalCalibrator(UncertaintyCalibrator):
         data=targets
 
         (N, K) = data.shape
-        true_class = np.zeros(N, dtype=np.int32)
-        calibration_set = np.zeros((N,2), dtype=np.int32)
+        calibration_set=[]
 
 
         for x in range(N):
-            for y in range(K):#problem will arise if dataset has some things with no classes. We want single class stuff?
+            for y in range(K):#Problem will arise if some data values have no classes.
                 if data[x][y] == 1:
-                    true_class[x] = y
-                    calibration_set[x][0] = x
-                    calibration_set[x][1] = y
+                    calibration_set.append([x,y])
+                    break
+        calibration_set=np.array(calibration_set,dtype=int)
+        print(calibration_set)
 
-        def s_basic(x,y,softmax_scores,K):#x,y are the indices
+        def s_basic(x,y,softmax_scores):#x,y are the indices
                 return -softmax_scores[x][y]
 
-        def s_adaptive(x,y,softmax_scores,K):#x,y are the indices
+        def s_adaptive(x,y,softmax_scores):
+            K=softmax_scores.shape[1]
             result = 0
             for Y in range(K):
                 if softmax_scores[x][Y] >= softmax_scores[x][y]:
                     result += softmax_scores[x][Y]
             return result
 
-        def calculate_qhat(calibration_set,softmax_scores,s,alpha,N,K):
-            calibration_scores=np.zeros(N+1)
+        def calculate_qhat(calibration_set,softmax_scores,s,alpha):
+            (M,K)=calibration_set.shape
+            calibration_scores=np.zeros(M+1)
 
-            for x in range(N):
+            for x in range(M):
                 X, Y = calibration_set[x][0], calibration_set[x][1]
-                calibration_scores[x]=s(X,Y,softmax_scores,K)
+                calibration_scores[x]=s(X,Y,softmax_scores)
                 print(X,Y,softmax_scores[X][Y])
 
-            calibration_scores[N]=np.Inf
+            calibration_scores[M]=np.Inf
 
             calibration_scores=np.sort(calibration_scores)
-            index=int(math.ceil((1-alpha)*(N+1)))-1#np.quantile
-            qhat=calibration_scores[index]#want the ceil((1-alpha)(N+1))th value
-            #print(calibration_scores)
+            qhat=np.quantile(calibration_scores,1-alpha)
 
             return qhat
 
 
-        #alpha = 0.5
         s = s_basic
-        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,self.alpha,N,K)
+        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,self.alpha)
         print("QHat: ",self.qhat)
         print("Alpha: ",self.alpha)
 
@@ -700,15 +695,15 @@ class ConformalCalibrator(UncertaintyCalibrator):
 
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        #qhat=0.6#HARDCODED
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
         softmax_scores=uncal_preds
         (N, K) = softmax_scores.shape
 
-        def s_basic(x,y,softmax_scores,K):#x,y are the indices
+        def s_basic(x,y,softmax_scores):#x,y are the indices
             return -softmax_scores[x][y]
 
-        def s_adaptive(x,y,softmax_scores,K):#x,y are the indices
+        def s_adaptive(x,y,softmax_scores):
+            K=softmax_scores.shape[1]
             result = 0
             for Y in range(K):
                 if softmax_scores[x][Y] >= softmax_scores[x][y]:
@@ -717,8 +712,157 @@ class ConformalCalibrator(UncertaintyCalibrator):
 
         s=s_basic
         
-        cal_preds=[[int(s(x,y,softmax_scores,K)<=self.qhat) for y in range(K)] for x in range(N)]
+        cal_preds=[[int(s(x,y,softmax_scores)<=self.qhat) for y in range(K)] for x in range(N)]
         return uncal_preds.tolist(), cal_preds
+
+class ConformalAdaptiveCalibrator(UncertaintyCalibrator):
+    """
+    Adaptive Conformal Calibrator.
+    """
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_conformal_adaptive"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "classification":
+            raise ValueError(
+                "Conformal Adaptive is only implemented for classification dataset types."
+            )
+
+    def calibrate(self):
+        uncal_preds = np.array(
+            self.calibration_predictor.get_uncal_preds()
+        )  # shape(data, tasks, num_classes)
+        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
+        targets=np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
+        
+
+        softmax_scores=uncal_preds
+        data=targets
+
+        (N, K) = data.shape
+        calibration_set=[]
+
+
+        for x in range(N):
+            for y in range(K):#Problem will arise if some data values have no classes.
+                if data[x][y] == 1:
+                    calibration_set.append([x,y])
+                    break
+        calibration_set=np.array(calibration_set,dtype=int)
+        print(calibration_set)
+
+        def s_basic(x,y,softmax_scores):#x,y are the indices
+                return -softmax_scores[x][y]
+
+        def s_adaptive(x,y,softmax_scores):
+            K=softmax_scores.shape[1]
+            result = 0
+            for Y in range(K):
+                if softmax_scores[x][Y] >= softmax_scores[x][y]:
+                    result += softmax_scores[x][Y]
+            return result
+
+        def calculate_qhat(calibration_set,softmax_scores,s,alpha):
+            (M,K)=calibration_set.shape
+            calibration_scores=np.zeros(M+1)
+
+            for x in range(M):
+                X, Y = calibration_set[x][0], calibration_set[x][1]
+                calibration_scores[x]=s(X,Y,softmax_scores)
+                print(X,Y,softmax_scores[X][Y])
+
+            calibration_scores[M]=np.Inf
+
+            calibration_scores=np.sort(calibration_scores)
+            qhat=np.quantile(calibration_scores,1-alpha)
+
+            return qhat
+
+
+        s = s_basic
+        self.qhat = calculate_qhat(calibration_set,softmax_scores,s,self.alpha)
+        print("QHat: ",self.qhat)
+        print("Alpha: ",self.alpha)
+
+        
+
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        softmax_scores=uncal_preds
+        (N, K) = softmax_scores.shape
+
+        def s_basic(x,y,softmax_scores):#x,y are the indices
+            return -softmax_scores[x][y]
+
+        def s_adaptive(x,y,softmax_scores):
+            K=softmax_scores.shape[1]
+            result = 0
+            for Y in range(K):
+                if softmax_scores[x][Y] >= softmax_scores[x][y]:
+                    result += softmax_scores[x][Y]
+            return result
+
+        s=s_basic
+        
+        cal_preds=[[int(s(x,y,softmax_scores)<=self.qhat) for y in range(K)] for x in range(N)]
+        return uncal_preds.tolist(), cal_preds
+
+
+class ConformalRegressionCalibrator(UncertaintyCalibrator):
+    """
+    Conformal Regression Calibrator.
+    """
+    @property
+    def label(self):
+        return f"{self.uncertainty_method}_conformal_regression"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal Regression is only implemented for regression dataset types."
+            )
+
+    def calibrate(self):
+        uncal_preds = np.array(
+            self.calibration_predictor.get_uncal_preds()
+        )  # shape(data, tasks, num_classes)
+        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
+        targets = np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
+
+        #uncal_preds = uncal_preds[0]
+        #targets = targets[0]
+
+        print(uncal_preds)
+        print(targets)#generates 2D arrays!!! ok!
+
+
+        N = targets.shape[0]
+        print(N)
+        calibration_scores = np.zeros(N+1)
+        for x in range(N):
+            calibration_scores[x] = targets[x] - uncal_preds[x]
+        
+        calibration_scores[N] = np.Inf
+        calibration_scores = np.sort(np.absolute(calibration_scores))
+        self.qhat = np.quantile(calibration_scores,1-self.alpha)
+        print(self.qhat)
+
+
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        N = uncal_preds.shape[0]
+        intervals = np.zeros((N,2), dtype=float)
+        for x in range(N):
+            intervals[x][0] = uncal_preds[x] - self.qhat
+            intervals[x][1] = uncal_preds[x] + self.qhat
+
+
+        return uncal_preds.tolist(), intervals.tolist()
 
 
 def build_uncertainty_calibrator(
@@ -758,6 +902,8 @@ def build_uncertainty_calibrator(
         "mve_weighting": MVEWeightingCalibrator,
         "platt": PlattCalibrator,
         "conformal": ConformalCalibrator,
+        "conformal_adaptive": ConformalAdaptiveCalibrator,
+        "conformal_regression": ConformalRegressionCalibrator,
         "isotonic": IsotonicCalibrator
         if dataset_type == "classification"
         else IsotonicMulticlassCalibrator,
