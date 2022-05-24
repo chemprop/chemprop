@@ -582,7 +582,7 @@ def save_smiles_splits(
     Also saves indices of train/val/test split as a pickle file. Pickle file does not support repeated entries
     with the same SMILES or entries entered from a path other than the main data path, such as a separate test path.
 
-    :param data_path: Path to data CSV or PICKLE file.
+    :param data_path: Path to data CSV file.
     :param save_dir: Path where pickle files will be saved.
     :param task_names: List of target names for the model as from the function get_task_names().
         If not provided, will use datafile header entries.
@@ -602,28 +602,20 @@ def save_smiles_splits(
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=data_path, smiles_columns=smiles_columns)
 
-    extension = os.path.splitext(data_path)[1]
-    if extension == '.csv':
+    with open(data_path) as f:
         f = open(data_path)
         reader = csv.DictReader(f)
-    elif extension in ['.pkl', '.pckl', '.pickle']:
-        reader = pd.read_pickle(data_path).iterrows()
 
-    indices_by_smiles = {}
-    for i, row in enumerate(tqdm(reader)):
-        if extension in ['.pkl', '.pckl', '.pickle']:
-            _, row = row
-        smiles = tuple([row[column] for column in smiles_columns])
-        if smiles in indices_by_smiles:
-            save_split_indices = False
-            info(
-                "Warning: Repeated SMILES found in data, pickle file of split indices cannot distinguish entries and will not be generated."
-            )
-            break
-        indices_by_smiles[smiles] = i
-
-    if extension == '.csv':
-        f.close()
+        indices_by_smiles = {}
+        for i, row in enumerate(tqdm(reader)):
+            smiles = tuple([row[column] for column in smiles_columns])
+            if smiles in indices_by_smiles:
+                save_split_indices = False
+                info(
+                    "Warning: Repeated SMILES found in data, pickle file of split indices cannot distinguish entries and will not be generated."
+                )
+                break
+            indices_by_smiles[smiles] = i
 
     if task_names is None:
         task_names = get_task_names(path=data_path, smiles_columns=smiles_columns)

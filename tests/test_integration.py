@@ -1199,18 +1199,10 @@ class ChempropTests(TestCase):
 
     @parameterized.expand([
         (
-                'chemprop_atomic_bond_targets_csv',
+                'chemprop_atomic_bond_targets',
                 'chemprop',
                 6.779551,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
-                 '--is_atom_bond_targets',
-                 '--adding_h']
-        ),
-        (
-                'chemprop_atomic_bond_targets_pkl',
-                'chemprop',
-                6.779639,
-                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.pkl'),
                  '--is_atom_bond_targets',
                  '--adding_h']
         ),

@@ -300,19 +300,12 @@ def predict_and_save(
                         datapoint.row[pred_name + f"_model_{idx}"] = pred
 
         # Save
-        if train_args.is_atom_bond_targets:
-            data = {}
-            for key in full_data[0].row.keys():
-                data[key] = [datapoint.row[key] for datapoint in full_data]
-            preds_dataframe = pd.DataFrame.from_dict(data)
-            preds_dataframe.to_pickle(args.preds_path)
-        else:
-            with open(args.preds_path, 'w') as f:
-                writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
-                writer.writeheader()
+        with open(args.preds_path, 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
+            writer.writeheader()
 
-                for datapoint in full_data:
-                    writer.writerow(datapoint.row)
+            for datapoint in full_data:
+                writer.writerow(datapoint.row)
 
         if evaluations is not None and args.evaluation_scores_path is not None:
             print(f"Saving uncertainty evaluations to {args.evaluation_scores_path}")

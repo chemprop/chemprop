@@ -400,11 +400,10 @@ def run_training(args: TrainArgs,
                 test_preds_dataframe[atom_target] = np.split(np.array(avg_test_preds[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
             for i, bond_target in enumerate(args.bond_targets):
                 test_preds_dataframe[bond_target] = np.split(np.array(avg_test_preds[i+len(args.atom_targets)]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
-            test_preds_dataframe.to_pickle(os.path.join(args.save_dir, 'test_preds.pkl'))
         else:
             for i, task_name in enumerate(args.task_names):
                 test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
 
-            test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
+        test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
     return ensemble_scores

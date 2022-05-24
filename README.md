@@ -305,7 +305,7 @@ reaction and solvent/molecule encoding. Below are the input arguments for specif
 
 ### Atomic and bond properties prediction
 
-Chemprop can perform multitask constrained message passing neural networks for atomic/bond properties prediction as described in this [paper](https://chemrxiv.org/articles/preprint/Regio-Selectivity_Prediction_with_a_Machine-Learned_Reaction_Representation_and_On-the-Fly_Quantum_Mechanical_Descriptors/12907316). This model can train on any number of atomic/bond properties simultaneously. In the original work, a total loss was calculated as a weighted sum of every single loss, where the weights were required to be specified for the regression task. In this repository, these weights have been automatically taken into account by doing standardization of all the training targets. In order to train a model, training data containing molecules (as SMILES strings) and known atomic/bond target values are required. The input format can either be a csv or pickle file. For example:
+Chemprop can perform multitask constrained message passing neural networks for atomic/bond properties prediction as described in this [paper](https://chemrxiv.org/articles/preprint/Regio-Selectivity_Prediction_with_a_Machine-Learned_Reaction_Representation_and_On-the-Fly_Quantum_Mechanical_Descriptors/12907316). This model can train on any number of atomic/bond properties simultaneously. In the original work, a total loss was calculated as a weighted sum of every single loss, where the weights were required to be specified for the regression task. In this repository, these weights have been automatically taken into account by doing standardization of all the training targets. In order to train a model, training data containing molecules (as SMILES strings) and known atomic/bond target values are required. The input is a csv file. For example:
 ```
                               smiles                                  hirshfeld_charges  ...                                 bond_length_matrix                                  bond_index_matrix
 0     CNC(=S)N/N=C/c1c(O)ccc2ccccc12  [-0.026644, -0.075508, 0.096217, -0.287798, -0...  ...  [[0.0, 1.4372890960937539, 2.4525543850909814,...  [[0.0, 0.9595, 0.0158, 0.0162, 0.0103, 0.0008,...
@@ -314,7 +314,7 @@ Chemprop can perform multitask constrained message passing neural networks for a
 3                     OCCCc1cc[nH]n1  [-0.268379, 0.027614, -0.050745, -0.045047, 0....  ...  [[0.0, 1.4018301850170725, 2.4667588956616737,...  [[0.0, 0.9446, 0.0311, 0.002, 0.005, 0.0007, 0...
 4      CC(=N)NCc1cccc(CNCc2ccncc2)c1  [-0.083162, 0.114954, -0.274544, -0.100369, 0....  ...  [[0.0, 1.5137126697008916, 2.4882198180715465,...  [[0.0, 1.0036, 0.0437, 0.0108, 0.0134, 0.0004,......
 ```
-where atomic properties (e.g. hirshfeld_charges) must be a 1D list with the order same as that of atoms in the SMILES string; and bond properties (e.g. bond_length_matrix) can either be a 2D list of shape (number_of_atoms × number_of_atoms) or a 1D list with the order same as that of bonds in the SMILES string. If the input format is a pickle file, these targets can also be saved as numpy arrays.
+where atomic properties (e.g. hirshfeld_charges) must be a 1D list with the order same as that of atoms in the SMILES string; and bond properties (e.g. bond_length_matrix) can either be a 2D list of shape (number_of_atoms × number_of_atoms) or a 1D list with the order same as that of bonds in the SMILES string.
 This model allows multitask constraints applied to different atomic/bond properties by specifying the argument `--constraints_path` with a given `.csv` file. Note that the constraints must be in the same order as the SMILES strings in your data file. Also note that `.csv` file must have a header row and the constraints should be comma-separated with one line per molecule. The `--adding_h` option can be used if hydrogens are included in the atom targets and bonds to hydrogens are included in the bond targets.
 
 ### Pretraining
@@ -354,7 +354,7 @@ To load a trained model and make predictions, run `predict.py` and specify:
 * A checkpoint by using either:
   * `--checkpoint_dir <dir>` Directory where the model checkpoint(s) are saved (i.e. `--save_dir` during training). This will walk the directory, load all `.pt` files it finds, and treat the models as an ensemble.
   * `--checkpoint_path <path>` Path to a model checkpoint file (`.pt` file).
-* `--preds_path` Path where a file containing the predictions will be saved (.csv if predicting molecular, spectral, or reaction targets; .pkl if predicting atom/bond-level targets).
+* `--preds_path` Path where a CSV file containing the predictions will be saved.
 
 For example:
 ```

@@ -178,14 +178,9 @@ def cross_validate(args: TrainArgs,
 
     # Optionally merge and save test preds
     if args.save_preds:
-        if args.is_atom_bond_targets:
-            all_preds = pd.concat([pd.read_pickle(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.pkl'))
+        all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
                                   for fold_num in range(args.num_folds)])
-            all_preds.to_pickle(os.path.join(save_dir, 'test_preds.pkl'))
-        else:
-            all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
-                                  for fold_num in range(args.num_folds)])
-            all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
+        all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
 
     return mean_score, std_score
 
