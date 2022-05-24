@@ -10,9 +10,7 @@ from chemprop.featurizers.multihot.atom import AtomFeaturizer
 
 
 @pytest.fixture(
-    params=list(
-        Chem.MolFromSmiles("Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O").GetAtoms()
-    )[:10]
+    params=list(Chem.MolFromSmiles("Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O").GetAtoms())[:5]
 )
 def atom(request):
     return request.param
