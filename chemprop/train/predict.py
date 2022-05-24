@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import activate_dropout
 
@@ -14,7 +14,7 @@ def predict(
     data_loader: MoleculeDataLoader,
     disable_progress_bar: bool = False,
     scaler: StandardScaler = None,
-    atom_bond_scalers: List[StandardScaler] = None,
+    atom_bond_scaler: AtomBondScaler = None,
     return_unc_parameters: bool = False,
     dropout_prob: float = 0.0,
 ) -> List[List[float]]:
@@ -25,7 +25,7 @@ def predict(
     :param data_loader: A :class:`~chemprop.data.data.MoleculeDataLoader`.
     :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
-    :param atom_bond_scalers: A list of :class:`~chemprop.data.scaler.StandardScaler` fitted on each atomic/bond target.
+    :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param return_unc_parameters: A bool indicating whether additional uncertainty parameters would be returned alongside the mean predictions.
     :param dropout_prob: For use during uncertainty prediction only. The propout probability used in generating a dropout ensemble.
     :return: A list of lists of predictions. The outer list is molecules while the inner list is tasks. If returning uncertainty parameters as well,
@@ -65,7 +65,7 @@ def predict(
                 if not model.atom_constraints[i]:
                     constraints_batch[ind] = None
                 else:
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    mean, std = atom_bond_scaler.means[ind][0], atom_bond_scaler.stds[ind][0]
                     for j, natom in enumerate(natoms):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - natom * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(device)
@@ -74,7 +74,7 @@ def predict(
                 if not model.bond_constraints[i]:
                     constraints_batch[ind] = None
                 else:
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    mean, std = atom_bond_scaler.means[ind][0], atom_bond_scaler.stds[ind][0]
                     for j, nbond in enumerate(nbonds):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(device)
@@ -120,16 +120,16 @@ def predict(
                     batch_alphas.append(batch_alpha)
                     batch_lambdas.append(batch_lambda)
                     batch_betas.append(batch_beta)
+                batch_preds[i] = batch_pred
 
-                # Inverse scale for each atom/bond target if regression
-                if atom_bond_scalers is not None:
-                    batch_preds[i] = atom_bond_scalers[i].inverse_transform(batch_pred)
+            # Inverse scale for each atom/bond target if regression
+            if atom_bond_scaler is not None:
+                batch_preds = atom_bond_scaler.inverse_transform(batch_preds)
+                for i, stds in enumerate(atom_bond_scaler.stds):
                     if model.loss_function == "mve":
-                        batch_vars[i] = batch_vars[i] * atom_bond_scalers[i].stds ** 2
+                        batch_vars[i] = batch_vars[i] * stds ** 2
                     elif model.loss_function == "evidential":
-                        batch_betas[i] = batch_betas[i] * atom_bond_scalers[i].stds ** 2
-                else:
-                    batch_preds[i] = batch_pred
+                        batch_betas[i] = batch_betas[i] * stds ** 2
 
             # Collect vectors
             preds.append(batch_preds)

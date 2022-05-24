@@ -156,10 +156,10 @@ def run_training(args: TrainArgs,
         debug('Fitting scaler')
         if args.is_atom_bond_targets:
             scaler = None
-            atom_bond_scalers = train_data.normalize_targets()
+            atom_bond_scaler = train_data.normalize_atom_bond_targets()
         else:
             scaler = train_data.normalize_targets()
-            atom_bond_scalers = None
+            atom_bond_scaler = None
         args.spectra_phase_mask = None
     elif args.dataset_type == 'spectra':
         debug('Normalizing spectra and excluding spectra regions based on phase')
@@ -174,11 +174,11 @@ def run_training(args: TrainArgs,
             )
             dataset.set_targets(data_targets)
         scaler = None
-        atom_bond_scalers = None
+        atom_bond_scaler = None
     else:
         args.spectra_phase_mask = None
         scaler = None
-        atom_bond_scalers = None
+        atom_bond_scaler = None
 
     # Get loss function
     loss_func = get_loss_func(args)
@@ -264,7 +264,7 @@ def run_training(args: TrainArgs,
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
                         features_scaler, atom_descriptor_scaler, bond_feature_scaler,
-                        atom_bond_scalers, args)
+                        atom_bond_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -285,7 +285,7 @@ def run_training(args: TrainArgs,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 logger=logger,
                 writer=writer
             )
@@ -298,7 +298,7 @@ def run_training(args: TrainArgs,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 logger=logger
             )
 
@@ -320,7 +320,7 @@ def run_training(args: TrainArgs,
                     not args.minimize_score and avg_val_score > best_score:
                 best_score, best_epoch = avg_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
-                                atom_descriptor_scaler, bond_feature_scaler, atom_bond_scalers, args)
+                                atom_descriptor_scaler, bond_feature_scaler, atom_bond_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
@@ -330,7 +330,7 @@ def run_training(args: TrainArgs,
             model=model,
             data_loader=test_data_loader,
             scaler=scaler,
-            atom_bond_scalers=atom_bond_scalers
+            atom_bond_scaler=atom_bond_scaler
         )
         test_scores = evaluate_predictions(
             preds=test_preds,

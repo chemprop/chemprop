@@ -5,7 +5,7 @@ from typing import Dict, List
 import numpy as np
 
 from .predict import predict
-from chemprop.data import MoleculeDataLoader, StandardScaler
+from chemprop.data import MoleculeDataLoader, StandardScaler, AtomBondScaler
 from chemprop.models import MoleculeModel
 from chemprop.train import get_metric_func
 
@@ -109,7 +109,7 @@ def evaluate(model: MoleculeModel,
              metrics: List[str],
              dataset_type: str,
              scaler: StandardScaler = None,
-             atom_bond_scalers: List[StandardScaler] = None,
+             atom_bond_scaler: AtomBondScaler = None,
              logger: logging.Logger = None) -> Dict[str, List[float]]:
     """
     Evaluates an ensemble of models on a dataset by making predictions and then evaluating the predictions.
@@ -120,7 +120,7 @@ def evaluate(model: MoleculeModel,
     :param metrics: A list of names of metric functions.
     :param dataset_type: Dataset type.
     :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
-    :param atom_bond_scalers: A list of :class:`~chemprop.data.scaler.StandardScaler` fitted on each atomic/bond target.
+    :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
 
@@ -137,7 +137,7 @@ def evaluate(model: MoleculeModel,
         model=model,
         data_loader=data_loader,
         scaler=scaler,
-        atom_bond_scalers=atom_bond_scalers,
+        atom_bond_scaler=atom_bond_scaler,
     )
 
     results = evaluate_predictions(

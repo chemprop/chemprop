@@ -125,7 +125,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -148,7 +148,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":
@@ -256,7 +256,7 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -279,7 +279,7 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":
@@ -333,7 +333,7 @@ class MVEPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -356,7 +356,7 @@ class MVEPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             if i == 0:
@@ -478,7 +478,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -501,7 +501,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) * (1 + 1 / np.array(lambdas)) / (np.array(alphas) - 1)
@@ -624,7 +624,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -647,7 +647,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) / (np.array(alphas) - 1)
@@ -770,7 +770,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -793,7 +793,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))
@@ -912,7 +912,7 @@ class EnsemblePredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
@@ -934,7 +934,7 @@ class EnsemblePredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":
@@ -1059,7 +1059,7 @@ class DropoutPredictor(UncertaintyPredictor):
             features_scaler,
             atom_descriptor_scaler,
             bond_feature_scaler,
-            atom_bond_scalers,
+            atom_bond_scaler,
         ) = next(self.scalers)
         if (
             features_scaler is not None
@@ -1082,7 +1082,7 @@ class DropoutPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
-                atom_bond_scalers=atom_bond_scalers,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
                 dropout_prob=self.uncertainty_dropout_p,
             )
@@ -1159,7 +1159,7 @@ class ClassPredictor(UncertaintyPredictor):
                 features_scaler,
                 atom_descriptor_scaler,
                 bond_feature_scaler,
-                atom_bond_scalers,
+                atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None

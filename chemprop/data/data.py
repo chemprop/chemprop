@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset, Sampler
 from rdkit import Chem
 
-from .scaler import StandardScaler
+from .scaler import StandardScaler, AtomBondScaler
 from chemprop.features import get_features_generator
 from chemprop.features import BatchMolGraph, MolGraph
 from chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol
@@ -601,50 +601,53 @@ class MoleculeDataset(Dataset):
 
         return scaler
 
-    def normalize_targets(self) -> Union[List[StandardScaler], StandardScaler]:
+    def normalize_targets(self) -> StandardScaler:
         """
         Normalizes the targets of the dataset using a :class:`~chemprop.data.StandardScaler`.
-
         The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard deviation
+        for each task independently.
+        This should only be used for regression datasets.
+        :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
+        """
+        targets = [d.raw_targets for d in self._data]
+        scaler = StandardScaler().fit(targets)
+        scaled_targets = scaler.transform(targets).tolist()
+        self.set_targets(scaled_targets)
+
+        return scaler
+
+    def normalize_atom_bond_targets(self) -> AtomBondScaler:
+        """
+        Normalizes the targets of the dataset using a :class:`~chemprop.data.AtomBondScaler`.
+
+        The :class:`~chemprop.data.AtomBondScaler` subtracts the mean and divides by the standard deviation
         for each task independently.
 
         This should only be used for regression datasets.
 
-        :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
+        :return: A :class:`~chemprop.data.AtomBondScaler` fitted to the targets.
         """
-        if self.is_atom_bond_targets:
-            atom_targets = self._data[0].atom_targets
-            bond_targets = self._data[0].bond_targets
-            n_atoms, n_bonds = self.number_of_atoms, self.number_of_bonds
+        atom_targets = self._data[0].atom_targets
+        bond_targets = self._data[0].bond_targets
+        n_atom_targets = len(atom_targets) if atom_targets is not None else 0
+        n_bond_targets = len(bond_targets) if bond_targets is not None else 0
+        n_atoms, n_bonds = self.number_of_atoms, self.number_of_bonds
 
-            scalers, scaled_targets = [], []
-            targets = [d.raw_targets for d in self._data]
-            targets = [np.concatenate(x).reshape([-1, 1]) for x in zip(*targets)]
-            n_atom_targets = len(atom_targets) if atom_targets is not None else 0
-            if atom_targets is not None:
-                for i, atom_target in enumerate(atom_targets):
-                    scaler = StandardScaler().fit(targets[i])
-                    scalers.append(scaler)
-                    scaled_target = scaler.transform(targets[i]).tolist()
-                    scaled_targets.append(np.split(np.array(scaled_target).flatten(), np.cumsum(np.array(n_atoms)))[:-1])
-            if bond_targets is not None:
-                for i, bond_target in enumerate(bond_targets):
-                    scaler = StandardScaler().fit(targets[i+n_atom_targets])
-                    scalers.append(scaler)
-                    scaled_target = scaler.transform(targets[i+n_atom_targets]).tolist()
-                    scaled_targets.append(np.split(np.array(scaled_target).flatten(), np.cumsum(np.array(n_bonds)))[:-1])
+        targets = [d.raw_targets for d in self._data]
+        targets = [np.concatenate(x).reshape([-1, 1]) for x in zip(*targets)]
+        scaler = AtomBondScaler(
+            n_atom_targets=n_atom_targets,
+            n_bond_targets=n_bond_targets,
+        ).fit(targets)
+        scaled_targets = scaler.transform(targets)
+        for i in range(n_atom_targets):
+            scaled_targets[i] = np.split(np.array(scaled_targets[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+        for i in range(n_bond_targets):
+            scaled_targets[i+n_atom_targets] = np.split(np.array(scaled_targets[i+n_atom_targets]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+        scaled_targets = np.array(scaled_targets).T
+        self.set_targets(scaled_targets)
 
-            scaled_targets = np.array(scaled_targets).T
-            self.set_targets(scaled_targets)
-
-            return scalers
-        else:
-            targets = [d.raw_targets for d in self._data]
-            scaler = StandardScaler().fit(targets)
-            scaled_targets = scaler.transform(targets).tolist()
-            self.set_targets(scaled_targets)
-
-            return scaler
+        return scaler
 
     def set_targets(self, targets: List[List[Optional[float]]]) -> None:
         """

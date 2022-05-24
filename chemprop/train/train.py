@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 
 from chemprop.args import TrainArgs
-from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
+from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
@@ -22,7 +22,7 @@ def train(model: MoleculeModel,
           scheduler: _LRScheduler,
           args: TrainArgs,
           n_iter: int = 0,
-          atom_bond_scalers: List[StandardScaler] = None,
+          atom_bond_scaler: AtomBondScaler = None,
           logger: logging.Logger = None,
           writer: SummaryWriter = None) -> int:
     """
@@ -35,7 +35,7 @@ def train(model: MoleculeModel,
     :param scheduler: A learning rate scheduler.
     :param args: A :class:`~chemprop.args.TrainArgs` object containing arguments for training the model.
     :param n_iter: The number of iterations (training examples) trained on so far.
-    :param atom_bond_scalers: A list of :class:`~chemprop.data.scaler.StandardScaler` fitted on each atomic/bond target.
+    :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param logger: A logger for recording output.
     :param writer: A tensorboardX SummaryWriter.
     :return: The total number of iterations (training examples) trained on so far.
@@ -76,7 +76,7 @@ def train(model: MoleculeModel,
                 if not args.atom_constraints[i]:
                     constraints_batch[ind] = None
                 else:
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    mean, std = atom_bond_scaler.means[ind][0], atom_bond_scaler.stds[ind][0]
                     for j, natom in enumerate(natoms):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - natom * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(args.device)
@@ -85,7 +85,7 @@ def train(model: MoleculeModel,
                 if not args.bond_constraints[i]:
                     constraints_batch[ind] = None
                 else:
-                    mean, std = atom_bond_scalers[ind].means[0], atom_bond_scalers[ind].stds[0]
+                    mean, std = atom_bond_scaler.means[ind][0], atom_bond_scaler.stds[ind][0]
                     for j, nbond in enumerate(nbonds):
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(args.device)
