@@ -23,6 +23,8 @@ from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
 
+import test_utils
+
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
 EPOCHS = 3
@@ -31,175 +33,7 @@ NUM_ITER = 2
 DELTA = 0.015
 
 
-class ChempropTests(TestCase):
-    @staticmethod
-    def create_raw_train_args(dataset_type: str,
-                              metric: str,
-                              save_dir: str,
-                              model_type: str = 'chemprop',
-                              flags: List[str] = None) -> List[str]:
-        """Creates a list of raw command line arguments for training."""
-        return [
-            'train',  # Note: not actually used, just a placeholder
-            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'), # Note: adding another --data_path argument will overwrite this one
-            '--dataset_type', dataset_type,
-            '--epochs', str(EPOCHS),
-            '--num_folds', str(NUM_FOLDS),
-            '--seed', str(SEED),
-            '--metric', metric,
-            '--save_dir', save_dir,
-            '--quiet',
-            '--empty_cache'
-        ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
-
-    @staticmethod
-    def create_raw_predict_args(dataset_type: str,
-                                preds_path: str,
-                                checkpoint_dir: str,
-                                flags: List[str] = None) -> List[str]:
-        """Creates a list of raw command line arguments for predicting."""
-        return [
-            'predict',  # Note: not actually used, just a placeholder
-            '--test_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
-            '--preds_path', preds_path,
-            '--checkpoint_dir', checkpoint_dir
-        ] + (flags if flags is not None else [])
-
-    @staticmethod
-    def create_raw_hyperopt_args(dataset_type: str,
-                                 config_save_path: str,
-                                 save_dir: str,
-                                 flags: List[str] = None) -> List[str]:
-        """Creates a list of raw command line arguments for hyperparameter optimization."""
-        return [
-            'hyperopt',  # Note: not actually used, just a placeholder
-            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'),
-            '--dataset_type', dataset_type,
-            '--epochs', str(EPOCHS),
-            '--num_iter', str(NUM_ITER),
-            '--config_save_path', config_save_path,
-            '--save_dir', save_dir,
-            '--quiet',
-            '--empty_cache'
-        ] + (flags if flags is not None else [])
-
-    @staticmethod
-    def create_raw_interpret_args(dataset_type: str,
-                                  checkpoint_dir: str,
-                                  flags: List[str] = None) -> List[str]:
-        """Creates a list of raw command line arguments for interpretation."""
-        return [
-            'interpret',  # Note: not actually used, just a placeholder
-            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}_test_smiles.csv'),
-            '--checkpoint_dir', checkpoint_dir
-        ] + (flags if flags is not None else [])
-
-    def train(self,
-              dataset_type: str,
-              metric: str,
-              save_dir: str,
-              model_type: str = 'chemprop',
-              flags: List[str] = None):
-        # Set up command line arguments
-        raw_args = self.create_raw_train_args(
-            dataset_type=dataset_type,
-            metric=metric,
-            save_dir=save_dir,
-            model_type=model_type,
-            flags=flags
-        )
-
-        # Train
-        with patch('sys.argv', raw_args):
-            command_line = ' '.join(raw_args[1:])
-
-            if model_type == 'chemprop':
-                print(f'python train.py {command_line}')
-                chemprop_train()
-            else:
-                print(f'python sklearn_train.py {command_line}')
-                sklearn_train()
-
-    def predict(self,
-                dataset_type: str,
-                preds_path: str,
-                save_dir: str,
-                model_type: str = 'chemprop',
-                flags: List[str] = None):
-        # Set up command line arguments
-        raw_args = self.create_raw_predict_args(
-            dataset_type=dataset_type,
-            preds_path=preds_path,
-            checkpoint_dir=save_dir,
-            flags=flags
-        )
-
-        # Predict
-        with patch('sys.argv', raw_args):
-            command_line = ' '.join(raw_args[1:])
-
-            if model_type == 'chemprop':
-                print(f'python predict.py {command_line}')
-                chemprop_predict()
-            else:
-                print(f'python sklearn_predict.py {command_line}')
-                sklearn_predict()
-
-    def hyperopt(self,
-                 dataset_type: str,
-                 config_save_path: str,
-                 save_dir: str,
-                 flags: List[str] = None):
-        # Set up command line arguments
-        raw_args = self.create_raw_hyperopt_args(
-            dataset_type=dataset_type,
-            config_save_path=config_save_path,
-            save_dir=save_dir,
-            flags=flags
-        )
-
-        # Hyperopt
-        with patch('sys.argv', raw_args):
-            command_line = ' '.join(raw_args[1:])
-            print(f'python hyperparameter_optimization.py {command_line}')
-            chemprop_hyperopt()
-
-    def interpret(self,
-                  dataset_type: str,
-                  checkpoint_dir: str,
-                  flags: List[str] = None):
-        # Set up command line arguments
-        raw_args = self.create_raw_interpret_args(
-            dataset_type=dataset_type,
-            checkpoint_dir=checkpoint_dir,
-            flags=flags
-        )
-
-        # Interpret
-        with patch('sys.argv', raw_args):
-            command_line = ' '.join(raw_args[1:])
-            print(f'python interpret.py {command_line}')
-            chemprop_interpret()
-
-    def fingerprint(self,
-                    dataset_type: str,
-                    checkpoint_dir: str,
-                    fingerprint_path: str,
-                    fingerprint_flags: List[str]):
-        # Set up command line arguments
-        raw_args = self.create_raw_predict_args(
-            dataset_type=dataset_type,
-            preds_path=fingerprint_path,
-            checkpoint_dir=checkpoint_dir,
-            flags=fingerprint_flags
-        )
-
-        # Fingerprint
-        with patch('sys.argv', raw_args):
-            command_line = ' '.join(raw_args[1:])
-            print(f'python fingerprint.py {command_line}')
-            chemprop_fingerprint()
-
+class TestChemprop(TestCase):
     @parameterized.expand([
         (
                 'sklearn_random_forest',
@@ -259,7 +93,7 @@ class ChempropTests(TestCase):
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            self.train(
+            test_utils.train(
                 dataset_type='regression',
                 metric=metric,
                 save_dir=save_dir,
@@ -326,7 +160,7 @@ class ChempropTests(TestCase):
                                              train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            self.train(
+            test_utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -381,7 +215,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -391,7 +225,7 @@ class ChempropTests(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(
+            test_utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -414,7 +248,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -422,7 +256,7 @@ class ChempropTests(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(
+            test_utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -465,7 +299,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -475,7 +309,7 @@ class ChempropTests(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(
+            test_utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -498,7 +332,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
-            self.hyperopt(
+            test_utils.hyperopt(
                 dataset_type='regression',
                 config_save_path=config_save_path,
                 save_dir=save_dir
@@ -532,7 +366,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -541,7 +375,7 @@ class ChempropTests(TestCase):
 
             # Interpret
             try:
-                self.interpret(
+                test_utils.interpret(
                     dataset_type=dataset_type,
                     checkpoint_dir=save_dir,
                     flags=interpret_flags
@@ -651,7 +485,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'sid'
-            self.train(
+            test_utils.train(
                 dataset_type = 'spectra',
                 metric = metric,
                 save_dir = save_dir,
@@ -708,7 +542,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'spectra'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='sid',
                 save_dir=save_dir,
@@ -718,7 +552,7 @@ class ChempropTests(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            self.predict(
+            test_utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -778,7 +612,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            self.train(
+            test_utils.train(
                 dataset_type = 'regression',
                 metric = metric,
                 save_dir = save_dir,
@@ -811,7 +645,7 @@ class ChempropTests(TestCase):
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            self.train(
+            test_utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -850,7 +684,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -860,7 +694,7 @@ class ChempropTests(TestCase):
 
             # Fingerprint
             fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
-            self.fingerprint(
+            test_utils.fingerprint(
                 dataset_type=dataset_type,
                 checkpoint_dir=save_dir,
                 fingerprint_path=fingerprint_path,
@@ -903,7 +737,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            self.train(
+            test_utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -919,14 +753,14 @@ class ChempropTests(TestCase):
             # type of MPN
             if exception_thrown:
                 with self.assertRaises(ValueError):
-                    self.fingerprint(
+                    test_utils.fingerprint(
                         dataset_type=dataset_type,
                         checkpoint_dir=save_dir,
                         fingerprint_path=fingerprint_path,
                         fingerprint_flags=fingerprint_flags
                     )
             else:
-                self.fingerprint(
+                test_utils.fingerprint(
                     dataset_type=dataset_type,
                     checkpoint_dir=save_dir,
                     fingerprint_path=fingerprint_path,
@@ -982,7 +816,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            self.train(
+            test_utils.train(
                 dataset_type = 'regression',
                 metric = metric,
                 save_dir = save_dir,
@@ -1043,7 +877,7 @@ class ChempropTests(TestCase):
                                     train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train with unbatched generators
-            self.train(
+            test_utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -1055,7 +889,7 @@ class ChempropTests(TestCase):
             unbatched_test_scores = unbatched_test_scores_data[f'Mean {metric}']
 
             # Train with batched generators
-            self.train(
+            test_utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -1184,7 +1018,7 @@ class ChempropTests(TestCase):
         predict_flags: List[str] = None,
     ):
         with TemporaryDirectory() as save_dir:
-            self.train(
+            test_utils.train(
                 dataset_type='regression',
                 metric='rmse',
                 save_dir=save_dir,
@@ -1199,7 +1033,7 @@ class ChempropTests(TestCase):
                 predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
             if evaluation_methods is not None:
                 predict_flags.extend(['--evaluation_methods', evaluation_methods])
-            self.predict(
+            test_utils.predict(
                 dataset_type='regression',
                 preds_path=os.path.join(save_dir, 'preds.csv'),
                 save_dir=save_dir,
@@ -1245,7 +1079,7 @@ class ChempropTests(TestCase):
         with TemporaryDirectory() as save_dir:
             test_path = os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')
             train_flags.extend(['--data_path', test_path])
-            self.train(
+            test_utils.train(
                 dataset_type='classification',
                 metric='binary_cross_entropy',
                 save_dir=save_dir,
@@ -1259,7 +1093,7 @@ class ChempropTests(TestCase):
                 predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
             if evaluation_methods is not None:
                 predict_flags.extend(['--evaluation_methods', evaluation_methods])
-            self.predict(
+            test_utils.predict(
                 dataset_type='regression',
                 preds_path=os.path.join(save_dir, 'preds.csv'),
                 save_dir=save_dir,
