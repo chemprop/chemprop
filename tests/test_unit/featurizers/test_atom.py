@@ -1,4 +1,3 @@
-
 """NOTE: these tests make a lot of assumptions about the internal mechanics of the AtomFeaturizer,
 so they'll need to be reworked if something ever changes about that."""
 import numpy as np
@@ -35,6 +34,7 @@ def max_atomic_num(request):
 def degree():
     return list(range(6))
 
+
 @pytest.fixture
 def formal_charge():
     return [-1, -2, 1, 2, 0]
@@ -68,9 +68,11 @@ def featurizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybrid
 
 @pytest.fixture
 def expected_len(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
-    return (max_atomic_num + 1) + sum(
-        len(xs) + 1 for xs in (degree, formal_charge, chiral_tag, num_Hs, hybridization)
-    ) + 2
+    return (
+        (max_atomic_num + 1)
+        + sum(len(xs) + 1 for xs in (degree, formal_charge, chiral_tag, num_Hs, hybridization))
+        + 2
+    )
 
 
 @pytest.fixture
@@ -87,10 +89,7 @@ def test_num_subfeatures():
 
 
 def test_none(featurizer):
-    np.testing.assert_array_equal(
-        featurizer(None),
-        np.zeros(len(featurizer))
-    )
+    np.testing.assert_array_equal(featurizer(None), np.zeros(len(featurizer)))
 
 
 def test_atomic_num_bit(atom, x, max_atomic_num):
@@ -112,6 +111,7 @@ def test_aromatic_bit(featurizer, x, aromatic):
 
 def test_mass_bit(featurizer, x, mass_bit):
     assert x[featurizer.subfeatures["mass"]] == pytest.approx(mass_bit)
+
 
 @pytest.mark.parametrize(
     "a,x_v_orig",

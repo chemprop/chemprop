@@ -77,14 +77,14 @@ class AtomFeaturizer(MultiHotFeaturizer):
             return x
 
         bits = [
-            self.safe_index((a.GetAtomicNum() -1), self.__atomic_num),
+            self.safe_index((a.GetAtomicNum() - 1), self.__atomic_num),
             self.safe_index(a.GetTotalDegree(), self.__degree),
             self.safe_index(a.GetFormalCharge(), self.__formal_charge),
             self.safe_index(int(a.GetChiralTag()), self.__chiral_tag),
             self.safe_index(int(a.GetTotalNumHs()), self.__num_Hs),
             self.safe_index(int(a.GetHybridization()), self.__hybridization),
         ]
-        
+
         i = 0
         for j, size in zip(bits, self.subfeature_sizes):
             if j == -1:

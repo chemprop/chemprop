@@ -7,9 +7,10 @@ import numpy as np
 class MultiHotFeaturizer(ABC):
     """A MultiHotFeaturizer calculates feature vectors of arbitrary objects by concatenation of
     multiple feature vectors
-    
+
     NOTE: classes that implement the MultiHotFeaturizer should call `super().__init__() at the *end* of their respective `__init__()`
     """
+
     def __init__(self):
         self._validate_subfeatures()
 
@@ -24,7 +25,7 @@ class MultiHotFeaturizer(ABC):
     @abstractmethod
     def subfeatures(self) -> Mapping[str, int]:
         """a map from subfeature alias to the start index in the calculated feature vector.
-        
+
         NOTE: the ordering of the subfeatures in this dictionary is in increasing order such that
         the indices of each subfeature are can be calculated like so:
         >>> offsets = list(self.subfeatures.values())
