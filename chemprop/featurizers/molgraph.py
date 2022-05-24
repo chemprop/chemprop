@@ -9,7 +9,6 @@ from rdkit import Chem
 from chemprop.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 
 
-
 @dataclass
 class MolGraph:
     """A `MolGraph` represents the graph structure and featurization of a single molecule.

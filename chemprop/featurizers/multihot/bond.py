@@ -10,16 +10,28 @@ class BondFeaturizer(MultiHotFeaturizer):
     def __init__(
         self, bond_types: Optional[Iterable[int]] = None, stereo: Optional[Sequence[int]] = None
     ):
-        self.bond_types = set(bond_types) or {1, 2, 3, 12}
+        self.bond_types = set(bond_types or [1, 2, 3, 12])
         self.stereo = stereo or list(range(6))
-        self.bond_fdim = 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
+
+        subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
+        self.__size = sum(subfeature_sizes)
+
+        names = ("is_none", "bond_type", "conjugated", "ring", "stereo")
+        offsets = np.cumsum([0] + subfeature_sizes[:-1])
+        self.__subfeatures = dict(zip(names, offsets))
+        
+        super().__init__()
 
     def __len__(self):
-        return self.bond_fdim
-        
+        return self.__size
+
+    @property
+    def subfeatures(self) -> dict[str, int]:
+        return self.__subfeatures
+
     def featurize(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self))
-        
+
         if b is None:
             x[0] = 1
             return x
