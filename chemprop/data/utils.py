@@ -6,7 +6,7 @@ import pickle
 from random import Random
 from typing import List, Set, Tuple, Union
 import os
-import re
+import json
 
 from rdkit import Chem
 import numpy as np
@@ -480,18 +480,16 @@ def get_data(path: str,
                     else:
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
                 elif '[' in value or ']' in value:
-                    mol = make_mol(smiles[0], False, args.adding_h)
-                    value = re.sub("[\[\]\",]", " ", value)
-                    target = np.fromstring(value, float, sep=' ')
-                    if len(target) == len(mol.GetAtoms()) and column in args.atom_targets:  # Atom targets saved as 1D list
+                    target = np.array(json.loads(value))
+                    if len(target.shape) == 1 and column in args.atom_targets:  # Atom targets saved as 1D list
                         atom_targets.append(target)
                         targets.append(target)
-                    elif len(target) == len(mol.GetBonds()) and column in args.bond_targets:  # Bond targets saved as 1D list
+                    elif len(target.shape) == 1 and column in args.bond_targets:  # Bond targets saved as 1D list
                         bond_targets.append(target)
                         targets.append(target)
-                    elif len(target) == len(mol.GetAtoms()) ** 2:  # Bond targets saved as 2D list
-                        target = target.reshape(len(mol.GetAtoms()), len(mol.GetAtoms()))
+                    elif len(target.shape) == 2:  # Bond targets saved as 2D list
                         bond_target_arranged = []
+                        mol = make_mol(smiles[0], False, args.adding_h)
                         for bond in mol.GetBonds():
                             bond_target_arranged.append(target[bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()])
                         bond_targets.append(np.array(bond_target_arranged))
