@@ -19,14 +19,10 @@ class TestGetHeader(TestCase):
         with open(os.path.join(self.temp_dir.name,'dummy_data.csv'),'w') as f:
             data = 'column0,column1\nCC,10\nCCC,15'
             f.write(data)
-        df = pd.read_csv(os.path.join(self.temp_dir.name,'dummy_data.csv'))
-        df.to_pickle(os.path.join(self.temp_dir.name,'dummy_data.pkl'))
         
     def test_correct_file(self):
         """ Test correct input """
         header = get_header(os.path.join(self.temp_dir.name,'dummy_data.csv'))
-        self.assertEqual(header,['column0','column1'])
-        header = get_header(os.path.join(self.temp_dir.name,'dummy_data.pkl'))
         self.assertEqual(header,['column0','column1'])
 
     def test_bad_path(self):
