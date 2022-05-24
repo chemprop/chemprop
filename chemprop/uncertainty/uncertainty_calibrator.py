@@ -642,39 +642,36 @@ class ConformalCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
         targets = np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
         
-        uncal_preds = uncal_preds
-        data = targets
-        (N, K) = targets.shape
+        (self.num_data, self.num_tasks) = targets.shape
         calibration_set = []
 
-        for x in range(N):
-            for y in range(K):#Problem will arise if some data values have no classes.
-                if targets[x][y] == 1:
-                    calibration_set.append([x, y])
+        for i in range(self.num_data):
+            for j in range(self.num_tasks):#Problem will arise if some data values have no classes.
+                if targets[i][j] == 1:
+                    calibration_set.append([i, j])
                     break
         calibration_set = np.array(calibration_set, dtype=int)
 
-        def s_basic(x, y, uncal_preds):#x,y are the indices
-                return -uncal_preds[x][y]
+        def s_basic(i, j, uncal_preds):#x,y are the indices
+                return -uncal_preds[i][j]
 
-        def s_adaptive(x, y, uncal_preds):
-            K = uncal_preds.shape[1]
+        def s_adaptive(i, j, uncal_preds):
             result = 0
-            for Y in range(K):
-                if uncal_preds[x][Y] >= uncal_preds[x][y]:
-                    result += uncal_preds[x][Y]
+            for Y in range(self.num_tasks):
+                if uncal_preds[i][Y] >= uncal_preds[i][j]:
+                    result += uncal_preds[i][Y]
             return result
 
         def calculate_qhat(calibration_set, uncal_preds, s, alpha):
-            (M, K) = calibration_set.shape
-            calibration_scores = np.zeros(M+1)
+            num_valid_data = calibration_set.shape[0]
+            calibration_scores = np.zeros(num_valid_data+1)
 
-            for x in range(M):
-                X, Y = calibration_set[x][0], calibration_set[x][1]
-                calibration_scores[x] = s(X, Y, uncal_preds)
+            for i in range(num_valid_data):
+                X, Y = calibration_set[i][0], calibration_set[i][1]
+                calibration_scores[i] = s(X, Y, uncal_preds)
                 print(X, Y, uncal_preds[X][Y])
 
-            calibration_scores[M] = np.Inf
+            calibration_scores[num_valid_data] = np.Inf
 
             calibration_scores = np.sort(calibration_scores)
             qhat = np.quantile(calibration_scores, 1-alpha)
@@ -693,20 +690,20 @@ class ConformalCalibrator(UncertaintyCalibrator):
         uncal_preds = uncal_preds
         (N, K) = uncal_preds.shape
 
-        def s_basic(x, y, uncal_preds):#x,y are the indices
-            return -uncal_preds[x][y]
+        def s_basic(i, j, uncal_preds):#x,y are the indices
+            return -uncal_preds[i][j]
 
-        def s_adaptive(x, y, uncal_preds):
-            K=uncal_preds.shape[1]
+        def s_adaptive(i, j, uncal_preds):
+            #K=uncal_preds.shape[1]
             result = 0
             for Y in range(K):
-                if uncal_preds[x][Y] >= uncal_preds[x][y]:
-                    result += uncal_preds[x][Y]
+                if uncal_preds[i][Y] >= uncal_preds[i][j]:
+                    result += uncal_preds[i][Y]
             return result
 
         s=s_basic
         
-        cal_preds=[[int(s(x, y, uncal_preds) <= self.qhat) for y in range(K)] for x in range(N)]
+        cal_preds=[[int(s(i, j, uncal_preds) <= self.qhat) for j in range(K)] for i in range(N)]
         return uncal_preds.tolist(), cal_preds
 
 class ConformalAdaptiveCalibrator(UncertaintyCalibrator):
@@ -730,37 +727,37 @@ class ConformalAdaptiveCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
         targets = np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
-        (N, K) = targets.shape
+        
+        (self.num_data, self.num_tasks) = targets.shape
         calibration_set = []
 
-        for x in range(N):
-            for y in range(K):#Problem will arise if some data values have no classes.
-                if targets[x][y] == 1:
-                    calibration_set.append([x,y])
+        for i in range(self.num_data):
+            for j in range(self.num_tasks):#Problem will arise if some data values have no classes.
+                if targets[i][j] == 1:
+                    calibration_set.append([i, j])
                     break
-        calibration_set = np.array(calibration_set,dtype=int)
+        calibration_set = np.array(calibration_set, dtype=int)
 
-        def s_basic(x, y, uncal_preds):#x,y are the indices
-                return -uncal_preds[x][y]
+        def s_basic(i, j, uncal_preds):#x,y are the indices
+                return -uncal_preds[i][j]
 
-        def s_adaptive(x, y, uncal_preds):
-            K = uncal_preds.shape[1]
+        def s_adaptive(i, j, uncal_preds):
             result = 0
-            for Y in range(K):
-                if uncal_preds[x][Y] >= uncal_preds[x][y]:
-                    result += uncal_preds[x][Y]
+            for Y in range(self.num_tasks):
+                if uncal_preds[i][Y] >= uncal_preds[i][j]:
+                    result += uncal_preds[i][Y]
             return result
 
-        def calculate_qhat(calibration_set,uncal_preds, s, alpha):
-            (M,K) = calibration_set.shape
-            calibration_scores = np.zeros(M+1)
+        def calculate_qhat(calibration_set, uncal_preds, s, alpha):
+            num_valid_data = calibration_set.shape[0]
+            calibration_scores = np.zeros(num_valid_data+1)
 
-            for x in range(M):
-                X, Y = calibration_set[x][0], calibration_set[x][1]
-                calibration_scores[x] = s(X, Y, uncal_preds)
-                print(X,Y,uncal_preds[X][Y])
+            for i in range(num_valid_data):
+                X, Y = calibration_set[i][0], calibration_set[i][1]
+                calibration_scores[i] = s(X, Y, uncal_preds)
+                print(X, Y, uncal_preds[X][Y])
 
-            calibration_scores[M] = np.Inf
+            calibration_scores[num_valid_data] = np.Inf
 
             calibration_scores = np.sort(calibration_scores)
             qhat = np.quantile(calibration_scores, 1-alpha)
@@ -768,30 +765,31 @@ class ConformalAdaptiveCalibrator(UncertaintyCalibrator):
             return qhat
 
 
-        s = s_basic
-        self.qhat = calculate_qhat(calibration_set,uncal_preds, s, self.alpha)
+        s = s_adaptive
+        self.qhat = calculate_qhat(calibration_set, uncal_preds, s, self.alpha)
 
         
 
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        uncal_preds = uncal_preds
         (N, K) = uncal_preds.shape
 
-        def s_basic(x, y, uncal_preds):#x,y are the indices
-            return -uncal_preds[x][y]
+        def s_basic(i, j, uncal_preds):#x,y are the indices
+            return -uncal_preds[i][j]
 
-        def s_adaptive(x, y, uncal_preds):
-            K = uncal_preds.shape[1]
+        def s_adaptive(i, j, uncal_preds):
+            #K=uncal_preds.shape[1]
             result = 0
             for Y in range(K):
-                if uncal_preds[x][Y] >= uncal_preds[x][y]:
-                    result += uncal_preds[x][Y]
+                if uncal_preds[i][Y] >= uncal_preds[i][j]:
+                    result += uncal_preds[i][Y]
             return result
 
-        s = s_basic
+        s = s_adaptive
         
-        cal_preds = [[int(s(x, y, uncal_preds) <= self.qhat) for y in range(K)] for x in range(N)]
+        cal_preds=[[int(s(i, j, uncal_preds) <= self.qhat) for j in range(K)] for i in range(N)]
         return uncal_preds.tolist(), cal_preds
 
 

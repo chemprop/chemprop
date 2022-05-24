@@ -51,3 +51,9 @@ preds = chemprop.train.make_predictions(args=args)
 
 #Adaptive test:
 #python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_adaptive.csv --calibration_method conformal_adaptive --calibration_path data/tox21small.csv
+#python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_adaptive_alpha05.csv --calibration_method conformal_adaptive --calibration_path data/tox21small.csv --alpha 0.5
+
+
+#rewriting code test:
+#python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_adaptive_alpha05_v2.csv --calibration_method conformal_adaptive --calibration_path data/tox21small.csv --alpha 0.5
+#python3 ../predict.py --test_path data/tox21.csv --checkpoint_dir tox21_checkpoints2 --preds_path tox21_preds_conformal_part_4_alpha05_v2.csv --calibration_method conformal --calibration_path data/tox21small.csv --alpha 0.5

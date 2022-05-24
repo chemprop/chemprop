@@ -239,16 +239,18 @@ def predict_and_save(
                 for name in task_names
                 for i in range(args.multiclass_num_classes)
             ]
-            num_tasks = num_tasks * args.multiclass_num_classes
-        if args.uncertainty_method == "spectra_roundrobin":
+            num_tasks = num_tasks * args.multiclass_num_classes#num_tasks is like number of classes, num_unc_tasks is same but for uncertaint pred output
+        if args.uncertainty_method == "spectra_roundrobin":#spectra_roundrobin makes only 1 unc value per datapoint???
             num_unc_tasks = 1
+        elif args.calibration_method == "conformal_regression":
+            num_unc_tasks = 2
         else:
             num_unc_tasks = num_tasks
 
         # Copy predictions over to full_data
         for full_index, datapoint in enumerate(full_data):
             valid_index = full_to_valid_indices.get(full_index, None)
-            d_preds = (
+            d_preds = (#taking preds, unc and filtering out invalid datapoints
                 preds[valid_index]
                 if valid_index is not None
                 else ["Invalid SMILES"] * num_tasks
@@ -286,15 +288,31 @@ def predict_and_save(
             # Add predictions columns
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
+            elif args.calibration_method == "conformal_regression":
+                unc_names = [task_names[0] + "_conformal_regression_lower_bound", task_names[0] + "_conformal_regression_upper_bound"]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
-
+            
+            """
             for pred_name, unc_name, pred, un in zip(
                 task_names, unc_names, d_preds, d_unc
             ):
                 datapoint.row[pred_name] = pred
                 if args.uncertainty_method is not None:
                     datapoint.row[unc_name] = un
+            """
+            for pred_name, pred in zip(
+                task_names, d_preds
+            ):
+                datapoint.row[pred_name] = pred
+
+
+            for unc_name, un in zip(
+                unc_names, d_unc
+            ):
+                if args.uncertainty_method is not None:
+                    datapoint.row[unc_name] = un
+
             if args.individual_ensemble_predictions:
                 for pred_name, model_preds in zip(task_names, ind_preds):
                     for idx, pred in enumerate(model_preds):
