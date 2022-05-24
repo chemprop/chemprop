@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import InitVar, dataclass, field, fields
-from typing import List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 from rdkit import Chem
 
-from chemprop.rdkit import make_mol
-from chemprop.featurizers.atom import AtomFeaturizer
-from chemprop.featurizers.bond import BondFeaturizer
+from chemprop.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 
 
 

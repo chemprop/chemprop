@@ -6,8 +6,8 @@ from typing import Iterable
 import torch
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MPNEncoder, MoleculeEncoder
-from chemprop.models.v2.encoders.molecule import build_molecule_encoder
+from chemprop.models.v2.encoders.base import MPNEncoder
+from chemprop.models.v2.encoders.molecule import MoleculeEncoder, build_molecule_encoder
 
 
 class ReactionEncoder(MPNEncoder):

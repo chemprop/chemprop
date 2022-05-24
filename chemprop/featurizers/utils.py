@@ -1,16 +1,11 @@
 import csv
 import os
 import pickle
-from typing import List, Sequence
+from typing import List
 
 import numpy as np
 import pandas as pd
 from rdkit.Chem import PandasTools
-
-
-def safe_index(x, xs: Sequence):
-    """return both the index of `x` in `xs` (if it exists, else -1) and the total length of `xs`"""
-    return xs.index(x) if x in xs else len(xs), len(xs)
 
 
 def save_features(path: str, features: List[np.ndarray]) -> None:

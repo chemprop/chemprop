@@ -1,12 +1,11 @@
-from dataclasses import InitVar, dataclass, field, fields
 from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.featurizers.utils import safe_index
+from chemprop.featurizers.multihot.base import MultiHotFeaturizer
 
-class AtomFeaturizer:
+class AtomFeaturizer(MultiHotFeaturizer):
     def __init__(
         self,
         max_atomic_num: int = 100,
@@ -46,9 +45,6 @@ class AtomFeaturizer:
         values and 2 at the end to account for aromaticity and mass"""
         return self.__length
 
-    def __call__(self, a: Atom) -> np.ndarray:
-        return self.featurize(a)
-
     def featurize(self, a: Atom) -> np.ndarray:
         x = np.zeros(len(self))
 
@@ -56,12 +52,12 @@ class AtomFeaturizer:
             return x
 
         bits_offsets = [
-            safe_index((a.GetAtomicNum() -1), self.atomic_num),
-            safe_index(a.GetTotalDegree(), self.degree),
-            safe_index(a.GetFormalCharge(), self.formal_charge),
-            safe_index(int(a.GetChiralTag()), self.chiral_tag),
-            safe_index(int(a.GetTotalNumHs()), self.num_Hs),
-            safe_index(int(a.GetHybridization()), self.hybridization),
+            self.safe_index((a.GetAtomicNum() -1), self.atomic_num),
+            self.safe_index(a.GetTotalDegree(), self.degree),
+            self.safe_index(a.GetFormalCharge(), self.formal_charge),
+            self.safe_index(int(a.GetChiralTag()), self.chiral_tag),
+            self.safe_index(int(a.GetTotalNumHs()), self.num_Hs),
+            self.safe_index(int(a.GetHybridization()), self.hybridization),
         ]
 
         i = 0

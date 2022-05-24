@@ -3,10 +3,10 @@ from typing import Iterable, Optional, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Bond
 
-from chemprop.featurizers.utils import safe_index
+from chemprop.featurizers.multihot.base import MultiHotFeaturizer
 
 
-class BondFeaturizer:
+class BondFeaturizer(MultiHotFeaturizer):
     def __init__(
         self, bond_types: Optional[Iterable[int]] = None, stereo: Optional[Sequence[int]] = None
     ):
@@ -17,9 +17,6 @@ class BondFeaturizer:
     def __len__(self):
         return self.bond_fdim
         
-    def __call__(self, b: Bond) -> np.ndarray:
-        return self.featurize(b)
-
     def featurize(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self))
         
@@ -40,7 +37,7 @@ class BondFeaturizer:
             if b.IsInRing():
                 x[RING_BIT] = 1
 
-        stereo_bit = safe_index(int(b.GetStereo()), self.stereo)
+        stereo_bit, _ = self.safe_index(int(b.GetStereo()), self.stereo)
         x[stereo_bit] = 1
 
         return x
