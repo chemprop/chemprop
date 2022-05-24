@@ -34,7 +34,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
             HybridizationType.SP3D2,
         ]
 
-        subfeature_sizes = [
+        self.subfeature_sizes = [
             len(features) + 1
             for features in (
                 self.__atomic_num,
@@ -45,10 +45,9 @@ class AtomFeaturizer(MultiHotFeaturizer):
                 self.__hybridization,
             )
         ] + [1, 1]
-        self.subfeature_sizes = subfeature_sizes
-        self.__size = sum(subfeature_sizes)
+        self.__size = sum(self.subfeature_sizes)
 
-        offsets = np.cumsum([0] + subfeature_sizes)
+        offsets = np.cumsum([0] + self.subfeature_sizes)
         names = (
             "atomic_num",
             "degree",
@@ -64,8 +63,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         super().__init__()
 
     def __len__(self):
-        """the dimension of an atom feature vector, adding 1 to each set of features for uncommon
-        values (not including aromaticity and mass)"""
+        """the dimension of an atom feature vector"""
         return self.__size
 
     @property
@@ -86,7 +84,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
             self.safe_index(int(a.GetTotalNumHs()), self.__num_Hs),
             self.safe_index(int(a.GetHybridization()), self.__hybridization),
         ]
-
+        
         i = 0
         for j, size in zip(bits, self.subfeature_sizes):
             if j == -1:

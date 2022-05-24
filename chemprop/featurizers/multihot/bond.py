@@ -13,13 +13,13 @@ class BondFeaturizer(MultiHotFeaturizer):
         self.bond_types = set(bond_types or [1, 2, 3, 12])
         self.stereo = stereo or list(range(6))
 
-        subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
-        self.__size = sum(subfeature_sizes)
+        self.subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
+        self.__size = sum(self.subfeature_sizes)
 
         names = ("is_none", "bond_type", "conjugated", "ring", "stereo")
-        offsets = np.cumsum([0] + subfeature_sizes[:-1])
-        self.__subfeatures = dict(zip(names, offsets))
-        
+        self.offsets = np.cumsum([0] + self.subfeature_sizes[:-1])
+        self.__subfeatures = dict(zip(names, self.offsets))
+
         super().__init__()
 
     def __len__(self):
@@ -30,7 +30,7 @@ class BondFeaturizer(MultiHotFeaturizer):
         return self.__subfeatures
 
     def featurize(self, b: Bond) -> np.ndarray:
-        x = np.zeros(len(self))
+        x = np.zeros(len(self), int)
 
         if b is None:
             x[0] = 1
@@ -43,13 +43,14 @@ class BondFeaturizer(MultiHotFeaturizer):
             RING_BIT = 6
 
             if i_bt in self.bond_types:
-                x[max(4, i_bt)] = 1
-            if b.GetIsConjugated():
-                x[CONJ_BIT] = 1
-            if b.IsInRing():
-                x[RING_BIT] = 1
+                x[min(4, i_bt)] = 1
+            x[CONJ_BIT] = int(b.GetIsConjugated())
+            x[RING_BIT] = int(b.IsInRing())
 
-        stereo_bit, _ = self.safe_index(int(b.GetStereo()), self.stereo)
-        x[stereo_bit] = 1
+        stereo_bit = self.safe_index(int(b.GetStereo()), self.stereo)
+        if stereo_bit == -1:
+            x[-1] = 1
+        else:
+            x[self.offsets[-1] + stereo_bit] = 1
 
         return x
