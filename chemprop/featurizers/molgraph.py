@@ -25,10 +25,12 @@ class MolGraph:
         the bond features of the molecule
     a2b : list[tuple[int]]
         A mapping from an atom index to a list of incoming bond indices.
-    b2a : list[int]
+    b2a : np.ndarray
         A mapping from a bond index to the index of the atom the bond originates from.
-    b2revb
+    b2revb : np.ndarray
         A mapping from a bond index to the index of the reverse bond.
+    a2a : Optional[list[int]]
+    b2b: Optional[np.ndarray]
     """
     n_atoms: int
     n_bonds: int
@@ -36,9 +38,9 @@ class MolGraph:
     X_e: np.ndarray
     a2b: list[tuple[int]]
     b2a: list[int]
-    b2revb: list[int]
-    b2b: list[int]
-    a2a: list[int]
+    b2revb: np.ndarray
+    a2a: Optional[list[int]]
+    b2b: Optional[np.ndarray]
 
 
 class MolGraphFeaturizer:
@@ -100,11 +102,6 @@ class MolGraphFeaturizer:
     ) -> MolGraph:
         n_atoms = mol.GetNumAtoms() 
         n_bonds = mol.GetNumBonds()
-        X_v = []
-        X_e = []
-        a2b = [[] for _ in range(n_atoms)]
-        b2a = []
-        b2revb = []
 
         if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
             raise ValueError(
@@ -119,6 +116,9 @@ class MolGraphFeaturizer:
 
         X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
         X_e = np.empty((2 * n_bonds, self.bond_fdim))
+        a2b = [[] for _ in range(n_atoms)]
+        b2a = np.empty(2 * n_bonds, int)
+        b2revb = np.empty(2 * n_bonds, int)
 
         if atom_features_extra is not None:
             X_v = np.hstack((X_v, atom_features_extra))
@@ -148,8 +148,8 @@ class MolGraphFeaturizer:
                 a2b[a2].append(b12)
                 a2b[a1].append(b21)
 
-                b2a.extend([a1, a2])
-                b2revb.extend([b21, b12])
+                b2a[i:i+2] = [a1, a2]
+                b2revb[i:i+2] = [b21, b12]
 
                 i += 2
 

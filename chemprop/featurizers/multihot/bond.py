@@ -1,24 +1,34 @@
-from typing import Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
-from rdkit.Chem.rdchem import Bond
+from rdkit.Chem.rdchem import Bond, BondType
 
 from chemprop.featurizers.multihot.base import MultiHotFeaturizer
 
 
 class BondFeaturizer(MultiHotFeaturizer):
     def __init__(
-        self, bond_types: Optional[Iterable[int]] = None, stereo: Optional[Sequence[int]] = None
+        self,
+        bond_types: Optional[Sequence[BondType]] = None,
+        stereo: Optional[Sequence[int]] = None
     ):
-        self.bond_types = set(bond_types or [1, 2, 3, 12])
-        self.stereo = stereo or list(range(6))
+        self.bond_types = bond_types or [
+            BondType.SINGLE, BondType.DOUBLE, BondType.TRIPLE, BondType.AROMATIC
+        ]
+        self.stereo = stereo or range(6)
 
         self.subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
         self.__size = sum(self.subfeature_sizes)
 
-        names = ("is_none", "bond_type", "conjugated", "ring", "stereo")
+        names = ("null", "bond_type", "conjugated", "ring", "stereo")
         self.offsets = np.cumsum([0] + self.subfeature_sizes[:-1])
         self.__subfeatures = dict(zip(names, self.offsets))
+
+        self.null_bit = 0
+        self.bt_offset = 1
+        self.conj_bit = self.bt_offset + len(self.bond_types)
+        self.ring_bit = self.conj_bit + 1
+        self.stero_offset = self.ring_bit + 1
 
         super().__init__()
 
@@ -37,20 +47,14 @@ class BondFeaturizer(MultiHotFeaturizer):
             return x
 
         bond_type = b.GetBondType()
-        if bond_type is not None:
-            i_bt = int(bond_type)
-            CONJ_BIT = 5
-            RING_BIT = 6
+        bt_bit = self.safe_index(bond_type, self.bond_types)
+        if bt_bit != -1:
+            x[self.bt_offset:][bt_bit] = 1
 
-            if i_bt in self.bond_types:
-                x[min(4, i_bt)] = 1
-            x[CONJ_BIT] = int(b.GetIsConjugated())
-            x[RING_BIT] = int(b.IsInRing())
+        x[self.conj_bit] = int(b.GetIsConjugated())
+        x[self.ring_bit] = int(b.IsInRing())
 
         stereo_bit = self.safe_index(int(b.GetStereo()), self.stereo)
-        if stereo_bit == -1:
-            x[-1] = 1
-        else:
-            x[self.offsets[-1] + stereo_bit] = 1
+        x[self.stero_offset:][stereo_bit] = 1
 
         return x

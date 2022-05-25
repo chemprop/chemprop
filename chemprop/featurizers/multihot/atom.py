@@ -21,11 +21,11 @@ class AtomFeaturizer(MultiHotFeaturizer):
         num_Hs: Optional[Sequence[int]] = None,
         hybridization: Optional[Sequence[HybridizationType]] = None,
     ):
-        self.__atomic_num = list(range(max_atomic_num))
-        self.__degree = degree or list(range(6))
+        self.__atomic_num = range(max_atomic_num)
+        self.__degree = degree or range(6)
         self.__formal_charge = formal_charge or [-1, -2, 1, 2, 0]
-        self.__chiral_tag = chiral_tag or list(range(4))
-        self.__num_Hs = num_Hs or list(range(5))
+        self.__chiral_tag = chiral_tag or range(4)
+        self.__num_Hs = num_Hs or range(5)
         self.__hybridization = hybridization or [
             HybridizationType.SP,
             HybridizationType.SP2,
