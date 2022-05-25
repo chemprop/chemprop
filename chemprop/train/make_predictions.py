@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.models import MoleculeModel
@@ -131,7 +131,7 @@ def predict_and_save(
     full_data: MoleculeDataset,
     full_to_valid_indices: dict,
     models: List[MoleculeModel],
-    scalers: List[Union[List[StandardScaler], StandardScaler]],
+    scalers: List[Union[StandardScaler, AtomBondScaler]],
     num_models: int,
     calibrator: UncertaintyCalibrator = None,
     return_invalid_smiles: bool = False,
@@ -176,7 +176,7 @@ def predict_and_save(
         calibrator=calibrator
     )  # preds and unc are lists of shape(data,tasks)
 
-    if calibrator is not None and calibrator.is_atom_bond_targets and args.calibration_method == "isotonic":
+    if calibrator is not None and args.is_atom_bond_targets and args.calibration_method == "isotonic":
         unc = get_reshaped_values(unc, test_data, args.atom_targets, args.bond_targets, num_tasks)
 
     if args.individual_ensemble_predictions:
@@ -343,7 +343,7 @@ def make_predictions(
         PredictArgs,
         TrainArgs,
         List[MoleculeModel],
-        List[Union[List[StandardScaler], StandardScaler]],
+        List[Union[StandardScaler, AtomBondScaler]],
         int,
         List[str],
     ] = None,
