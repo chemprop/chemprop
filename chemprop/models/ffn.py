@@ -32,7 +32,8 @@ class MultiReadout(nn.Module):
                  dropout: nn.Module,
                  activation: nn.Module,
                  atom_constraints: List[bool] = None,
-                 bond_constraints: List[bool] = None):
+                 bond_constraints: List[bool] = None,
+                 shared_ffn: bool = True):
         """
         :param features_size: Dimensionality of input features.
         :param hidden_size: Dimensionality of hidden layers.
@@ -42,10 +43,11 @@ class MultiReadout(nn.Module):
         :param activation: Activation function.
         :param atom_constraints: A list of booleans indicatin whether constraints applied to output of atomic properties.
         :param bond_constraints: A list of booleans indicatin whether constraints applied to output of bond properties.
+        :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         """
         super(MultiReadout, self).__init__()
 
-        if num_layers > 1:
+        if num_layers > 1 and shared_ffn:
             self.atom_ffn_base = nn.Sequential([
                 DenseLayers(
                     first_linear_dim=features_size,
@@ -75,12 +77,12 @@ class MultiReadout(nn.Module):
         ind = 0
 
         for constraint in atom_constraints:
-            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, output_size,
+            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, self.atom_ffn_base, constraint, ffn_type='atom'))
             ind += 1
 
         for constraint in bond_constraints:
-            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, output_size,
+            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, self.bond_ffn_base, constraint, ffn_type='bond'))
             ind += 1
 
@@ -108,27 +110,40 @@ class FFNAtten(nn.Module):
     def __init__(self,
                  features_size: int,
                  hidden_size: int,
+                 num_layers: int,
                  output_size: int,
                  dropout: nn.Module,
                  activation: nn.Module,
                  ffn_base: nn.Module,
                  constraint: bool = False,
-                 ffn_type: str = 'atom'):
+                 ffn_type: str = 'atom',
+                 shared_ffn: bool = True):
         """
         :param features_size: Dimensionality of input features.
         :param hidden_size: Dimensionality of hidden layers.
+        :param num_layers: Number of layers in FFN.
         :param output_size: The size of output.
         :param dropout: Dropout probability.
         :param activation: Activation function.
         :param ffn_base: The shared base layers (all but the last) of the FFN between tasks.
         :param constraint: Whether to apply constraint to output.
         :param ffn_type: The type of target (atom or bond).
+        :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         """
         super(FFNAtten, self).__init__()
 
-        self.ffn = ffn_base
-
         if constraint:
+            if shared_ffn:
+                self.ffn = ffn_base
+            else:
+                self.ffn = DenseLayers(
+                    first_linear_dim=features_size,
+                    hidden_size=hidden_size,
+                    num_layers=num_layers,
+                    output_size=hidden_size,
+                    dropout=dropout,
+                    activation=activation
+                )
             self.ffn_readout = DenseLayers(first_linear_dim=hidden_size,
                                            hidden_size=hidden_size,
                                            num_layers=1,
@@ -142,17 +157,27 @@ class FFNAtten(nn.Module):
                                                dropout=dropout,
                                                activation=activation)
         else:
-            self.ffn_readout = nn.Sequential([
-                self.ffn,
+            if shared_ffn:
+                self.ffn_readout = nn.Sequential([
+                    self.ffn,
+                    DenseLayers(
+                        first_linear_dim=features_size,
+                        hidden_size=hidden_size,
+                        num_layers=1,
+                        output_size=output_size,
+                        dropout=dropout,
+                        activation=activation
+                    )
+                ])
+            else:
                 DenseLayers(
                     first_linear_dim=features_size,
                     hidden_size=hidden_size,
-                    num_layers=1,
+                    num_layers=num_layers,
                     output_size=output_size,
                     dropout=dropout,
                     activation=activation
                 )
-            ])
         self.constraint = constraint
         self.ffn_type = ffn_type
 

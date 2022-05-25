@@ -405,6 +405,10 @@ class TrainArgs(CommonArgs):
     """
     whether this is atomic/bond properties prediction.
     """
+    shared_atom_bond_ffn: bool = True
+    """
+    Whether the FFN weights for atom and bond targets should be shared between tasks.
+    """
 
     # Training arguments
     epochs: int = 30
