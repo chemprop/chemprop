@@ -45,11 +45,6 @@ class UncertaintyCalibrator(ABC):
         self.loss_function = loss_function
         self.num_models = num_models
 
-        if calibration_data[0].atom_targets is not None or calibration_data[0].bond_targets is not None:
-            self.is_atom_bond_targets = True
-        else:
-            self.is_atom_bond_targets = False
-
         self.raise_argument_errors()
 
         self.calibration_predictor = build_uncertainty_predictor(
@@ -148,7 +143,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         errors = uncal_preds - targets
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             sqrt_uncal_vars = [
                 [np.sqrt(var) for var in uncal_var] for uncal_var in uncal_vars
             ]
@@ -173,7 +168,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             nll = np.sum(nll, axis=0)
             return nll
 
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             stdev_scaling = np.array([])
             for zscore_preds, uncal_vars, errors in zip(
                 reshaped_zscore_preds, reshaped_uncal_vars, reshaped_errors
@@ -197,7 +192,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
         uncal_vars = np.array(uncal_predictor.get_uncal_vars())
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             cal_stdev = []
             sqrt_uncal_vars = [
                 [np.sqrt(var) for var in uncal_var] for uncal_var in uncal_vars
@@ -219,7 +214,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         unc_var = np.square(unc)
         preds = np.array(preds)
         targets = np.array(targets)
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             unc_vars = [np.concatenate(x).reshape(-1, 1) for x in zip(*unc_var)]
             preds = [np.concatenate(x).reshape(-1, 1) for x in zip(*preds)]
             targets = [np.concatenate(x).reshape(-1, 1) for x in zip(*targets)]
@@ -275,7 +270,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
         errors = uncal_preds - targets
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             std_error_of_mean = [
                 [np.sqrt(var / (self.num_models - 1)) for var in uncal_var]
                 for uncal_var in uncal_vars
@@ -307,7 +302,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
             nll = -1 * np.sum(np.log(likelihood), axis=0)
             return nll
 
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             stdev_scaling = np.array([])
             for uncal_vars, std_error_of_mean, errors, tscore_preds in zip(
                 reshaped_uncal_vars,
@@ -333,7 +328,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
         uncal_vars = np.array(uncal_predictor.get_uncal_vars())
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             cal_stdev = []
             sqrt_uncal_vars = [
                 [np.sqrt(var / (self.num_models - 1)) for var in uncal_var]
@@ -358,7 +353,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         preds = np.array(preds)
         targets = np.array(targets)
         errors = preds - targets
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             uncs = [np.concatenate(x).reshape(-1, 1) for x in zip(*unc)]
             errors = [np.concatenate(x).reshape(-1, 1) for x in zip(*errors)]
             nll = []
@@ -400,7 +395,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets())
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             sqrt_uncal_vars = [
                 [np.sqrt(var) for var in uncal_var] for uncal_var in uncal_vars
             ]
@@ -438,7 +433,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
         uncal_vars = np.array(uncal_predictor.get_uncal_vars())
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             cal_stdev = []
             sqrt_uncal_vars = [
                 [np.sqrt(var) for var in uncal_var] for uncal_var in uncal_vars
@@ -460,7 +455,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         preds = np.array(preds)
         unc = np.array(unc)
         targets = np.array(targets)
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             nll = []
             preds = [np.concatenate(x) for x in zip(*preds)]
             unc = [np.concatenate(x) for x in zip(*unc)]
@@ -482,7 +477,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
             pred_bins = np.searchsorted(bin_edges, task_abs_z)
             # magnitude adjusted by stdev scale of the distribution and symmetry assumption
             task_likelihood = bin_magnitudes[pred_bins] / task_stdev / 2
-            if self.is_atom_bond_targets:
+            if self.calibration_data.is_atom_bond_targets:
                 nll.append(-1 * np.log(task_likelihood))
             else:
                 nll[:, i] = -1 * np.log(task_likelihood)
@@ -688,7 +683,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets())
         num_tasks = targets.shape[1]
 
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             uncal_preds = [np.concatenate(x) for x in zip(*uncal_preds)]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
@@ -708,7 +703,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             cal_preds = []
             uncal_preds_list = [np.concatenate(x) for x in zip(*uncal_preds)]
             for i, iso_model in enumerate(self.isotonic_models):
@@ -734,7 +729,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
     ):
         targets = np.array(targets)
         unc = np.array(unc)
-        if self.is_atom_bond_targets:
+        if self.calibration_data.is_atom_bond_targets:
             targets = [np.concatenate(x).reshape(-1, 1) for x in zip(*targets)]
             uncs = [np.concatenate(x).reshape(-1, 1) for x in zip(*unc)]
             nll = []
