@@ -51,7 +51,7 @@ class MultiReadout(nn.Module):
             ind += 1
 
         for constraint in bond_constraints:
-            self.add_module(f'readout_{ind}', FFNAtten(2*features_size, hidden_size, num_layers, output_size,
+            self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
                                                        dropout, activation, constraint, ffn_type='bond'))
             ind += 1
 
@@ -145,7 +145,12 @@ class FFNAtten(nn.Module):
             scope = [((start-1)//2, size//2) for start, size in b_scope]
 
         if constraints is not None:
-            output_hidden = self.ffn(hidden)
+            if self.ffn_type == 'atom':
+                output_hidden = self.ffn(hidden)
+            elif self.ffn_type == 'bond':
+                forward_bond_hidden = self.ffn(forward_bond)
+                backward_bond_hidden = self.ffn(backward_bond)
+                output_hidden = forward_bond_hidden.add(backward_bond_hidden)
 
             output = self.ffn_readout(output_hidden)
             weights = self.weights_readout(output_hidden)
@@ -167,9 +172,13 @@ class FFNAtten(nn.Module):
 
             output = torch.cat(constrained_output, dim=0)
         else:
-            output = self.ffn_readout(hidden)
             if self.ffn_type == 'atom':
+                output = self.ffn_readout(hidden)
                 output = output[1:]  # remove the first one which is zero padding
+            elif self.ffn_type == 'bond':
+                forward_bond_output = self.ffn_readout(forward_bond)
+                backward_bond_output = self.ffn_readout(backward_bond)
+                output = forward_bond_output.add(backward_bond_output)
 
         return output
 
