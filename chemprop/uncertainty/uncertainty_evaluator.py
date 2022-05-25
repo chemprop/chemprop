@@ -126,7 +126,7 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
                 )
                 return np.mean(nll, axis=0).tolist()
         else:
-            if self.calibrator.is_atom_bond_targets:
+            if self.is_atom_bond_targets:
                 nll = self.calibrator.nll(
                     preds=preds, unc=uncertainties, targets=targets
                 )  # shpae(task, targets)
