@@ -18,7 +18,7 @@ class MoleculeDatapoint:
     smiles : str
         the SMILES string of the molecule
     targets : np.ndarray
-        the targets for the molecule with `nan` indicating unknown targets
+        the targets for the molecule with unknown targets indicated by `nan`s
     row : OrderedDict, default=None
         The raw CSV row containing the information for this molecule.
     data_weight : float, default=1
@@ -26,7 +26,7 @@ class MoleculeDatapoint:
     gt_targets : Optional[np.ndarray], default=None
         Indicates whether the targets are an inequality regression target of the form `>x`
     lt_targets : Optional[np.ndarray], default=None
-        Indicates whether the targets are an inequality regression target of the form "<x"
+        Indicates whether the targets are an inequality regression target of the form `<x`
     features : Optional[np.ndarray], default=None
         A numpy array containing additional features (e.g., Morgan fingerprint).
     features_generators : Optional[List[str]], default=None

@@ -56,10 +56,10 @@ class MolGraphFeaturizer:
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer(100)
+    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given 
         molecule
-    bond_featurizer : BondFeaturizer, default=BondFeaturizer(14)
+    bond_featurizer : BondFeaturizer, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given 
         molecule
     extra_atom_fdim : int, default=0
@@ -80,8 +80,8 @@ class MolGraphFeaturizer:
         extra_bond_fdim: int = 0,
         atom_messages: bool = False
     ):
-        self.atom_featurizer = atom_featurizer or AtomFeaturizer(100)
-        self.bond_featurizer = bond_featurizer or BondFeaturizer(14)
+        self.atom_featurizer = atom_featurizer or AtomFeaturizer()
+        self.bond_featurizer = bond_featurizer or BondFeaturizer()
         self.atom_fdim = len(self.atom_featurizer) + extra_atom_fdim
         self.bond_fdim = len(self.bond_featurizer) + extra_bond_fdim
         self.atom_messages = atom_messages
@@ -102,7 +102,7 @@ class MolGraphFeaturizer:
         n_bonds = mol.GetNumBonds()
         X_v = []
         X_e = []
-        a2b = [[]] * n_atoms
+        a2b = [[] for _ in range(n_atoms)]
         b2a = []
         b2revb = []
 
@@ -116,8 +116,8 @@ class MolGraphFeaturizer:
                 "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
                 f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
             )
-            
-        X_v = np.stack([self.atom_featurizer(a) for a in mol.GetAtoms()])
+
+        X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
         X_e = np.empty((2 * n_bonds, self.bond_fdim))
 
         if atom_features_extra is not None:
@@ -126,14 +126,14 @@ class MolGraphFeaturizer:
         i = 0
         for a1 in range(n_atoms):
             for a2 in range(a1 + 1, n_atoms):
-                b = mol.GetBondBetweenAtoms(a1, a2)
+                bond = mol.GetBondBetweenAtoms(a1, a2)
 
-                if b is None:
+                if bond is None:
                     continue
 
-                x_e = self.bond_featurizer(b)
+                x_e = self.bond_featurizer(bond)
                 if bond_features_extra is not None:
-                    x_e = np.concat((x_e, bond_features_extra[b.GetIdx()]))
+                    x_e = np.concat((x_e, bond_features_extra[bond.GetIdx()]))
 
                 b12 = i
                 b21 = b12 + 1
@@ -146,11 +146,10 @@ class MolGraphFeaturizer:
                     X_e[b21] = np.concatenate((X_v[a2], x_e))
 
                 a2b[a2].append(b12)
-                b2a.append(a1)
                 a2b[a1].append(b21)
-                b2a.append(a2)
-                b2revb.append(b21)
-                b2revb.append(b12)
+
+                b2a.extend([a1, a2])
+                b2revb.extend([b21, b12])
 
                 i += 2
 
