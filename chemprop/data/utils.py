@@ -515,7 +515,9 @@ def split_data(data: MoleculeDataset,
              validation, and test splits of the data.
     """
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+        raise ValueError(f"Split sizes do not sum to 1. Received train/val/test splits: {sizes}")
+    if any([size < 0 for size in sizes]):
+        raise ValueError(f"Split sizes must be non-negative. Received train/val/test splits: {sizes}")
 
     random = Random(seed)
 
@@ -539,11 +541,11 @@ def split_data(data: MoleculeDataset,
 
     elif split_type in {'cv', 'cv-no-test'}:
         if num_folds <= 1 or num_folds > len(data):
-            raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
+            raise ValueError(f'Number of folds for cross-validation must be between 2 and the number of valid datapoints ({len(data)}), inclusive.')
 
         random = Random(0)
 
-        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
+        indices = np.tile(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
         random.shuffle(indices)
         test_index = seed % num_folds
         val_index = (seed + 1) % num_folds
