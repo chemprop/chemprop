@@ -151,6 +151,20 @@ def run_training(args: TrainArgs,
     debug(f'Total size = {len(data):,} | '
           f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
 
+    if len(val_data) == 0:
+        raise ValueError('The validation data split is empty. During normal chemprop training (non-sklearn functions), \
+            a validation set is required to conduct early stopping according to the selected evaluation metric. This \
+            may have occurred because validation data provided with `--separate_val_path` was empty or contained only invalid molecules.')
+
+    if len(test_data) == 0:
+        debug('The test data split is empty. This may be either because splitting with no test set was selected, \
+            such as with `cv-no-test`, or because test data provided with `--separate_test_path` was empty or contained only invalid molecules. \
+            Performance on the test set will not be evaluated and metric scores will return `nan` for each task.')
+        empty_test_set = True
+    else:
+        empty_test_set = False
+
+
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
@@ -326,14 +340,53 @@ def run_training(args: TrainArgs,
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
 
-        test_preds = predict(
-            model=model,
-            data_loader=test_data_loader,
-            scaler=scaler,
-            atom_bond_scaler=atom_bond_scaler
-        )
-        test_scores = evaluate_predictions(
-            preds=test_preds,
+        if empty_test_set:
+            info(f'Model {model_idx} provided with no test set, no metric evaluation will be performed.')
+        else:
+            test_preds = predict(
+                model=model,
+                data_loader=test_data_loader,
+                scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler
+            )
+            test_scores = evaluate_predictions(
+                preds=test_preds,
+                targets=test_targets,
+                num_tasks=args.num_tasks,
+                metrics=args.metrics,
+                dataset_type=args.dataset_type,
+                is_atom_bond_targets=args.is_atom_bond_targets,
+                gt_targets=test_data.gt_targets(),
+                lt_targets=test_data.lt_targets(),
+                logger=logger
+            )
+
+            if len(test_preds) != 0:
+                sum_test_preds += np.array(test_preds)
+
+            # Average test score
+            for metric, scores in test_scores.items():
+                avg_test_score = np.nanmean(scores)
+                info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
+                writer.add_scalar(f'test_{metric}', avg_test_score, 0)
+
+                if args.show_individual_scores and args.dataset_type != 'spectra':
+                    # Individual test scores
+                    for task_name, test_score in zip(args.task_names, scores):
+                        info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
+                        writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
+        writer.close()
+
+    # Evaluate ensemble on test set
+    if empty_test_set:
+        ensemble_scores = {
+            metric: [np.nan for task in args.task_names] for metric in args.metrics
+        }
+    else:
+        avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
+
+        ensemble_scores = evaluate_predictions(
+            preds=avg_test_preds,
             targets=test_targets,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
@@ -343,37 +396,6 @@ def run_training(args: TrainArgs,
             lt_targets=test_data.lt_targets(),
             logger=logger
         )
-
-        if len(test_preds) != 0:
-            sum_test_preds += np.array(test_preds)
-
-        # Average test score
-        for metric, scores in test_scores.items():
-            avg_test_score = np.nanmean(scores)
-            info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
-            writer.add_scalar(f'test_{metric}', avg_test_score, 0)
-
-            if args.show_individual_scores and args.dataset_type != 'spectra':
-                # Individual test scores
-                for task_name, test_score in zip(args.task_names, scores):
-                    info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
-                    writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
-        writer.close()
-
-    # Evaluate ensemble on test set
-    avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
-
-    ensemble_scores = evaluate_predictions(
-        preds=avg_test_preds,
-        targets=test_targets,
-        num_tasks=args.num_tasks,
-        metrics=args.metrics,
-        dataset_type=args.dataset_type,
-        is_atom_bond_targets=args.is_atom_bond_targets,
-        gt_targets=test_data.gt_targets(),
-        lt_targets=test_data.lt_targets(),
-        logger=logger
-    )
 
     for metric, scores in ensemble_scores.items():
         # Average ensemble score
@@ -390,7 +412,7 @@ def run_training(args: TrainArgs,
         json.dump(ensemble_scores, f, indent=4, sort_keys=True)
 
     # Optionally save test preds
-    if args.save_preds:
+    if args.save_preds and not empty_test_set:
         test_preds_dataframe = pd.DataFrame(data={'smiles': test_data.smiles()})
 
         if args.is_atom_bond_targets:

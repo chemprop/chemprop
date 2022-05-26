@@ -489,7 +489,9 @@ class MoleculeDataset(Dataset):
 
     def gt_targets(self) -> List[np.ndarray]:
         """
-
+        Returns indications of whether the targets associated with each molecule are greater-than inequalities.
+        
+        :return: A list of lists of booleans indicating whether the targets in those positions are greater-than inequality targets.
         """
         if not hasattr(self._data[0], 'gt_targets'):
             return None
@@ -498,7 +500,9 @@ class MoleculeDataset(Dataset):
 
     def lt_targets(self) -> List[np.ndarray]:
         """
-
+        Returns indications of whether the targets associated with each molecule are less-than inequalities.
+        
+        :return: A list of lists of booleans indicating whether the targets in those positions are less-than inequality targets.
         """
         if not hasattr(self._data[0], 'lt_targets'):
             return None
