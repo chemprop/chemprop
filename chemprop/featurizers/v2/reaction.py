@@ -14,21 +14,22 @@ class ReactionMode(Enum):
     """The manner in which a reaction should be featurized into a `MolGraph`
 
     REAC_PROD
-        concatenates the reactants feature with the products feature.
+        concatenate the reactant features with the product features.
     REAC_PROD_BALANCE
-        concatenates the reactants feature with the products feature, balances imbalanced reactions.
+        concatenate the reactant features with the products feature and balances imbalanced 
+        reactions.
     REAC_DIFF
-        concatenates the reactants feature with the difference in features between reactants and
-        products.
+        concatenates the reactant features with the difference in features between reactants and
+        products
     REAC_DIFF_BALANCE
-        concatenates the reactants feature with the difference in features between reactants and
-        products, balances imbalanced reactions.
+        concatenates the reactant features with the difference in features between reactants and
+        products and balances imbalanced reactions
     PROD_DIFF
-        concatenates the products feature with the difference in features between reactants and
-        products.
+        concatenates the product features with the difference in features between reactants and
+        products
     PROD_DIFF_BALANCE
-        concatenates the products feature with the difference in features between reactants and
-        products, balances imbalanced reactions.
+        concatenates the product features with the difference in features between reactants and
+        products and balances imbalanced reactions
     """
 
     REAC_PROD = auto()
