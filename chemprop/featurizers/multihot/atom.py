@@ -21,6 +21,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         num_Hs: Optional[Sequence[int]] = None,
         hybridization: Optional[Sequence[HybridizationType]] = None,
     ):
+        self.max_atomic_num = max_atomic_num
         self.__atomic_num = range(max_atomic_num)
         self.__degree = degree or range(6)
         self.__formal_charge = formal_charge or [-1, -2, 1, 2, 0]
@@ -95,4 +96,17 @@ class AtomFeaturizer(MultiHotFeaturizer):
         x[i] = int(a.GetIsAromatic())
         x[i + 1] = 0.01 * a.GetMass()
 
+        return x
+
+    def featurize_num_only(self, a: Atom) -> np.ndarray:
+        x = np.zeros(len(self))
+
+        if a is None:
+            return x
+        
+        bit = self.safe_index((a.GetAtomicNum() - 1), self.__atomic_num)
+        bit = bit if bit != -1 else self.max_atomic_num
+
+        x[bit] = 1
+        
         return x
