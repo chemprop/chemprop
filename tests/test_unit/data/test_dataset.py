@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from chemprop.data.v2.molecule import MolGraphDataset, MoleculeDatapoint
-from chemprop.featurizers.v2.molgraph import MoleculeFeaturizer
+from chemprop.data.v2 import MoleculeDataset, MoleculeDatapoint
+from chemprop.featurizers.v2 import MoleculeFeaturizer
 
 
 @pytest.fixture(
@@ -61,12 +61,12 @@ def data(smis, targets):
 
 @pytest.fixture
 def dataset(data):
-    return MolGraphDataset(data, MoleculeFeaturizer())
+    return MoleculeDataset(data, MoleculeFeaturizer())
 
 
 def test_none():
     with pytest.raises(ValueError):
-        MolGraphDataset(None, MoleculeFeaturizer())
+        MoleculeDataset(None, MoleculeFeaturizer())
 
 
 def test_empty():
@@ -95,15 +95,13 @@ def test_num_tasks(dataset, targets):
     assert dataset.num_tasks == targets.shape[1]
 
 
-def test_aux_nones(dataset: MolGraphDataset):
+def test_aux_nones(dataset: MoleculeDataset):
     assert dataset.features is None
     assert dataset.phase_features is None
     assert dataset.atom_features is None
-    assert dataset.atom_descriptors is None
     assert dataset.bond_features is None
     assert dataset.gt_targets is None
     assert dataset.lt_targets is None
     assert dataset.features_size is None
-    assert dataset.atom_descriptors_size is None
     assert dataset.atom_features_size is None
     assert dataset.bond_features_size is None

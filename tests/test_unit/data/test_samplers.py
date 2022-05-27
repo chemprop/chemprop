@@ -4,9 +4,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chemprop.data.v2.molecule import MolGraphDataset, MoleculeDatapoint
-from chemprop.data.v2.sampler import SeededSampler, ClassBalanceSampler
-from chemprop.featurizers.v2.molgraph import MoleculeFeaturizer
+from chemprop.data.v2 import (
+    MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
+)
+from chemprop.featurizers.v2 import MoleculeFeaturizer
 
 
 TEST_DIR = Path(__file__).parents[2]
@@ -52,7 +53,7 @@ def featurizer():
 def dataset(smis, scores, featurizer):
     data = [MoleculeDatapoint(smi, score) for smi, score in zip(smis, scores)]
 
-    return MolGraphDataset(data, featurizer)
+    return MoleculeDataset(data, featurizer)
 
 
 @pytest.fixture(params=[0, 24, 100])
@@ -63,7 +64,7 @@ def seed(request):
 @pytest.fixture
 def class_sampler(smis, targets, featurizer):
     data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
-    dset = MolGraphDataset(data, featurizer)
+    dset = MoleculeDataset(data, featurizer)
 
     return ClassBalanceSampler(dset, shuffle=True)
 
@@ -116,7 +117,7 @@ def test_class_balance_shuffle(class_sampler):
 
 def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
     data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
-    dset = MolGraphDataset(data, featurizer)
+    dset = MoleculeDataset(data, featurizer)
 
     sampler = ClassBalanceSampler(dset, seed, True)
 
@@ -128,7 +129,7 @@ def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
 
 def test_seed_class_balance_reproducibility(smis, targets, featurizer, seed):
     data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
-    dset = MolGraphDataset(data, featurizer)
+    dset = MoleculeDataset(data, featurizer)
 
     sampler1 = ClassBalanceSampler(dset, seed, True)
     sampler2 = ClassBalanceSampler(dset, seed, True)

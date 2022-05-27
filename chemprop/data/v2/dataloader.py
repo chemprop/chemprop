@@ -6,9 +6,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.data import MolGraphDataset
-from chemprop.data.v2.sampler import ClassBalanceSampler, SeededSampler
-from chemprop.featurizers.molgraph import MolGraph
+from chemprop.data.v2.molecule import MoleculeDataset
+from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
+from chemprop.featurizers.v2 import MolGraph
 
 
 def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
@@ -61,13 +61,13 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
     return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
 
 
-class MolGraphDataLoader(DataLoader):
+class MoleculeDataLoader(DataLoader):
     """A `MoleculeDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
     
     Parameters
     ----------
-    dataset : MolGraphDataset
-        The `MolGraphDataset` containing the molecules to load.
+    dataset : MoleculeDataset
+        The `MoleculeDataset` containing the molecules to load.
     batch_size : int, default=50
         the batch size to load
     num_workers : int, default=0
@@ -83,7 +83,7 @@ class MolGraphDataLoader(DataLoader):
     """
     def __init__(
         self,
-        dset: MolGraphDataset,
+        dset: MoleculeDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,

@@ -6,17 +6,20 @@ from torch.utils.data import Dataset
 
 from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
 from chemprop.data.scaler import StandardScaler
-from chemprop.data.v2.datapoint import MoleculeDatapoint
+from chemprop.data.v2.datapoints import MoleculeDatapoint
 
 
-class MolGraphDataset(Dataset):
+class MoleculeDataset(Dataset):
     r"""A :class:`MoleculeDataset` contains a list of :class:`MoleculeDatapoint`\ s with access to 
-    their attributes."""
+    their attributes.
 
+    Parameters
+    ----------
+    data : Sequence[MoleculeDatapoint]
+        the dataset from which to load
+    featurizer : MoleculeFeaturizer
+    """
     def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
-        r"""
-        :param data: A list of :class:`MoleculeDatapoint`\ s.
-        """
         if data is None:
             raise ValueError("arg: `data` was None!")
 
@@ -33,7 +36,7 @@ class MolGraphDataset(Dataset):
 
     @property
     def smiles(self) -> list[str]:
-        return [d.smiles for d in self.data]
+        return [d.smi for d in self.data]
 
     @property
     def targets(self) -> np.ndarray:
