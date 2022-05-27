@@ -7,7 +7,11 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.models.v2.encoders.base import MPNEncoder
-from chemprop.models.v2.encoders.molecule import MoleculeEncoder, build_molecule_encoder
+from chemprop.models.v2.encoders.molecule import (
+    MoleculeEncoder,
+    MoleculeEncoderInput,
+    build_molecule_encoder,
+)
 
 
 class ReactionEncoder(MPNEncoder):
@@ -43,12 +47,12 @@ class ReactionEncoder(MPNEncoder):
     def output_dim(self) -> int:
         self.__output_dim
 
-    def forward(self, reactant_batches: Iterable[Iterable]) -> Tensor:
+    def forward(self, reactant_batches: Iterable[MoleculeEncoderInput]) -> Tensor:
         """Encode the reactant_batch
 
         Parameters
         ----------
-        reactant_batch : Iterable[Iterable]
+        reactant_batch : Iterable[MoleculeEncoderInput]
             an Iterable of length `n` containing inputs to a MoleculeEncoder, where `n` is the
             number of molecules in each reaction (== `self.n_mols`). I.e., to encode a batch of
             3-component reactions, the 0th entry of `reactant_batches` will be the batched inputs of

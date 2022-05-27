@@ -1,11 +1,26 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional
 
 import torch
 from torch import Tensor, nn
 
 from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.nn_utils import get_activation_function
+
+
+MoleculeEncoderInput = tuple[
+    Tensor,
+    Tensor,
+    Tensor,
+    Tensor,
+    Tensor,
+    Iterable[tuple[int]],
+    Iterable[tuple[int]],
+    Optional[Tensor],
+    Optional[Tensor],
+]
 
 
 class MoleculeEncoder(MPNEncoder, nn.Module, ABC):
@@ -83,7 +98,7 @@ class MoleculeEncoder(MPNEncoder, nn.Module, ABC):
                 f"got: `{' x '.join(map(str, F_v_d.shape))}`. expected: `{len(H_v)} x d_vd`"
             )
 
-        H_v = self.fc_vd(H_vd) 
+        H_v = self.fc_vd(H_vd)
         H_v = self.dropout(H_v)
 
         return H_v  # V x (d_h + d_vd)
@@ -109,8 +124,8 @@ class MoleculeEncoder(MPNEncoder, nn.Module, ABC):
         a2b: Tensor,
         b2a: Tensor,
         b2revb: Tensor,
-        a_scope: Iterable[Tuple],
-        b_scope: Iterable[Tuple],
+        a_scope: Iterable[tuple[int]],
+        b_scope: Iterable[tuple[int]],
         a2a: Optional[Tensor] = None,
         X_v_d: Optional[Tensor] = None,
     ) -> Tensor:
@@ -130,9 +145,9 @@ class MoleculeEncoder(MPNEncoder, nn.Module, ABC):
             a mapping from bond index to the index of the atom the bond is coming from
         b2revb : Tensor
             mapping from bond index to the index of the reverse bond
-        a_scope : Iterable[Tuple]
+        a_scope : Iterable[tuple[int]]
             a list of tuples containing (start_index, num_atoms) for each molecule in the batch
-        b_scope : Iterable[Tuple]
+        b_scope : Iterable[tuple[int]]
             TODO
         X_v_d : Optional[Tensor]
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
@@ -147,7 +162,7 @@ class MoleculeEncoder(MPNEncoder, nn.Module, ABC):
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
 
-        
+
 class BondMessageEncoder(MoleculeEncoder):
     def __init__(self, *args, **kwargs):
         super().__init__(True, *args, **kwargs)
@@ -159,8 +174,8 @@ class BondMessageEncoder(MoleculeEncoder):
         a2b: Tensor,
         b2a: Tensor,
         b2revb: Tensor,
-        a_scope: Iterable[Tuple],
-        b_scope: Optional[Iterable[Tuple]] = None,
+        a_scope: Iterable[tuple],
+        b_scope: Optional[Iterable[tuple]] = None,
         a2a: Optional[Tensor] = None,
         X_v_d: Optional[Tensor] = None,
     ) -> Tensor:
@@ -201,8 +216,8 @@ class AtomMessageEncoder(MoleculeEncoder):
         a2b: Tensor,
         b2a: Tensor,
         b2revb: Tensor,
-        a_scope: Iterable[Tuple],
-        b_scope: Optional[Iterable[Tuple]],
+        a_scope: Iterable[tuple],
+        b_scope: Optional[Iterable[tuple]],
         a2a: Tensor = None,
         X_v_d: Optional[Tensor] = None,
     ) -> Tensor:
