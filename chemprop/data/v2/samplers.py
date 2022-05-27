@@ -4,7 +4,7 @@ from typing import Iterator, Optional
 import numpy as np
 from torch.utils.data import Sampler
 
-from chemprop.data.v2.molecule import MoleculeDataset
+from chemprop.data.v2.dataset import MoleculeDataset
 
 
 class SeededSampler(Sampler):
