@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Optional, Union
+from typing import Optional
+import warnings
 import numpy as np
 from rdkit import Chem
 
-from chemprop.featurizers.molgraph import MolGraph
-from chemprop.featurizers.multihot import AtomFeaturizer, BondFeaturizer
+from chemprop.featurizers.v2.molgraph import MolGraph
+from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
 
 
 class ReactionMode(Enum):
@@ -72,19 +73,68 @@ def map_reac_to_prod(
 
 
 class ReactionFeaturizer:
+    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s
+
+    Attributes
+    ----------
+    atom_featurizer : AtomFeaturizer
+    bond_featurizer : BondFeaturizer
+    atom_fdim : int
+        the dimension of atom feature represenatations in this featurizer
+    bond_fdim : int
+        the dimension of bond feature represenatations in this featurizer
+    atom_messages : bool
+
+    Parameters
+    ----------
+    mode : ReactionMode
+        the mode by which to featurize the reaction
+    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
+        the featurizer with which to calculate feature representations of the atoms in a given 
+        molecule
+    bond_featurizer : BondFeaturizer, default=BondFeaturizer()
+        the featurizer with which to calculate feature representations of the bonds in a given 
+        molecule
+    atom_messages : bool, default=False
+        whether to prepare the `MolGraph` for use with atom-based messages
+    """
     def __init__(
-        self, mode: ReactionMode, atom_feautrizer: AtomFeaturizer, bond_featurizer: BondFeaturizer
+        self,
+        mode: ReactionMode,
+        atom_feautrizer: Optional[AtomFeaturizer] = None,
+        bond_featurizer: Optional[BondFeaturizer] = None,
+        atom_messages: bool = False
     ):
         self.mode = mode
-        self.atom_featurizer = atom_feautrizer
-        self.bond_feautrizer = bond_featurizer
+        self.atom_featurizer = atom_feautrizer or AtomFeaturizer()
+        self.bond_feautrizer = bond_featurizer or BondFeaturizer()
+        self.atom_messages = atom_messages
 
     def featurize(
         self,
-        reaction: list[Chem.Mol],
+        reaction: tuple[Chem.Mol],
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ):
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        reaction : tuple[Chem.Mol]
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the 
+            1st element is the product
+        atom_features_extra : Optional[np.ndarray], default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the 
+            `MoleculeFeaturizer` 
+        bond_features_extra : Optional[np.ndarray], default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the 
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the input reaction
+        """
         n_atoms = 0
         n_bonds = 0
         X_v = []
@@ -94,13 +144,9 @@ class ReactionFeaturizer:
         b2revb = []
 
         if atom_features_extra is not None:
-            raise NotImplementedError(
-                "Extra atom features are currently not supported for reactions"
-            )
+            warnings.warn("Extra atom features are currently not supported for reactions")
         if bond_features_extra is not None:
-            raise NotImplementedError(
-                "Extra bond features are currently not supported for reactions"
-            )
+            warnings.warn("Extra bond features are currently not supported for reactions")
 
         reactant = reaction[0]
         product = reaction[1]

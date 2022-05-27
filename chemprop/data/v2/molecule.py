@@ -4,7 +4,7 @@ import numpy as np
 from rdkit import Chem
 from torch.utils.data import Dataset
 
-from chemprop.featurizers.molgraph import MolGraph, MolGraphFeaturizer
+from chemprop.featurizers.molgraph import MolGraph, MoleculeFeaturizer
 from chemprop.data.scaler import StandardScaler
 from chemprop.data.v2.datapoint import MoleculeDatapoint
 
@@ -13,7 +13,7 @@ class MolGraphDataset(Dataset):
     r"""A :class:`MoleculeDataset` contains a list of :class:`MoleculeDatapoint`\ s with access to 
     their attributes."""
 
-    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MolGraphFeaturizer):
+    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
         r"""
         :param data: A list of :class:`MoleculeDatapoint`\ s.
         """

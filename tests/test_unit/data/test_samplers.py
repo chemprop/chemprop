@@ -6,7 +6,7 @@ import pytest
 
 from chemprop.data.v2.molecule import MolGraphDataset, MoleculeDatapoint
 from chemprop.data.v2.sampler import SeededSampler, ClassBalanceSampler
-from chemprop.featurizers.molgraph import MolGraphFeaturizer
+from chemprop.featurizers.v2.molgraph import MoleculeFeaturizer
 
 
 TEST_DIR = Path(__file__).parents[2]
@@ -45,7 +45,7 @@ def targets(scores, t):
 
 @pytest.fixture
 def featurizer():
-    return MolGraphFeaturizer()
+    return MoleculeFeaturizer()
 
 
 @pytest.fixture
