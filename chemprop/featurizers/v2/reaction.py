@@ -131,7 +131,12 @@ class ReactionFeaturizer:
         self.mode = mode
         self.atom_featurizer = atom_feautrizer or AtomFeaturizer()
         self.bond_feautrizer = bond_featurizer or BondFeaturizer()
+        self.atom_fdim = len(self.atom_featurizer)
+        self.bond_fdim = len(self.bond_featurizer)
         self.atom_messages = atom_messages
+
+        if not self.atom_messages:
+            self.bond_fdim += self.atom_fdim
 
     def featurize(
         self,
@@ -180,7 +185,8 @@ class ReactionFeaturizer:
             ReactionMode.PROD_DIFF,
             ReactionMode.REAC_PROD,
         ]:
-            # Reactant: regular atom features for each atom in the reactants, as well as zero features for atoms that are only in the products (indices in pio)
+            # Reactant: regular atom features for each atom in the reactants, as well as zero 
+            # features for atoms that are only in the products (indices in pio)
             X_v_r = [self.atom_featurizer(a) for a in reactant.GetAtoms()] + [
                 self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids
             ]

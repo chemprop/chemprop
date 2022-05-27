@@ -4,7 +4,7 @@ import numpy as np
 from rdkit import Chem
 from torch.utils.data import Dataset
 
-from chemprop.featurizers.molgraph import MolGraph, MoleculeFeaturizer
+from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
 from chemprop.data.scaler import StandardScaler
 from chemprop.data.v2.datapoint import MoleculeDatapoint
 
