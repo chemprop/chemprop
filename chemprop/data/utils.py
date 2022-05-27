@@ -395,7 +395,7 @@ def get_data(path: str,
                 generator = get_features_generator(fg)
                 gen_data = generator(all_smiles).reshape((len(all_smiles), -1))
                 
-                for i in range(all_smiles):
+                for i in range(len(all_smiles)):
                   try:
                     all_features[i] = np.append(all_features[i], gen_data[i])
                   except IndexError:
