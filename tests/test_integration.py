@@ -7,23 +7,18 @@ from tempfile import TemporaryDirectory
 from typing import List
 import unittest
 from unittest import TestCase
-from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 from parameterized import parameterized
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
-from chemprop.hyperparameter_optimization import chemprop_hyperopt
-from chemprop.interpret import chemprop_interpret
-from chemprop.sklearn_predict import sklearn_predict
-from chemprop.sklearn_train import sklearn_train
-from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions, chemprop_fingerprint
+from chemprop.train import evaluate_predictions
 from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
 
-import test_utils
+import utils
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
@@ -93,7 +88,7 @@ class TestChemprop(TestCase):
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            test_utils.train(
+            utils.train(
                 dataset_type='regression',
                 metric=metric,
                 save_dir=save_dir,
@@ -160,7 +155,7 @@ class TestChemprop(TestCase):
                                              train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            test_utils.train(
+            utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -215,7 +210,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -225,7 +220,7 @@ class TestChemprop(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            test_utils.predict(
+            utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -248,7 +243,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -256,7 +251,7 @@ class TestChemprop(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            test_utils.predict(
+            utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -299,7 +294,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -309,7 +304,7 @@ class TestChemprop(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            test_utils.predict(
+            utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -332,7 +327,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
-            test_utils.hyperopt(
+            utils.hyperopt(
                 dataset_type='regression',
                 config_save_path=config_save_path,
                 save_dir=save_dir
@@ -366,7 +361,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'regression'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='rmse',
                 save_dir=save_dir,
@@ -375,7 +370,7 @@ class TestChemprop(TestCase):
 
             # Interpret
             try:
-                test_utils.interpret(
+                utils.interpret(
                     dataset_type=dataset_type,
                     checkpoint_dir=save_dir,
                     flags=interpret_flags
@@ -485,7 +480,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'sid'
-            test_utils.train(
+            utils.train(
                 dataset_type = 'spectra',
                 metric = metric,
                 save_dir = save_dir,
@@ -542,7 +537,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'spectra'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='sid',
                 save_dir=save_dir,
@@ -552,7 +547,7 @@ class TestChemprop(TestCase):
 
             # Predict
             preds_path = os.path.join(save_dir, 'preds.csv')
-            test_utils.predict(
+            utils.predict(
                 dataset_type=dataset_type,
                 preds_path=preds_path,
                 save_dir=save_dir,
@@ -612,7 +607,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            test_utils.train(
+            utils.train(
                 dataset_type = 'regression',
                 metric = metric,
                 save_dir = save_dir,
@@ -645,7 +640,7 @@ class TestChemprop(TestCase):
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
-            test_utils.train(
+            utils.train(
                 dataset_type='classification',
                 metric=metric,
                 save_dir=save_dir,
@@ -684,7 +679,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -694,7 +689,7 @@ class TestChemprop(TestCase):
 
             # Fingerprint
             fingerprint_path = os.path.join(save_dir, 'fingerprints.csv')
-            test_utils.fingerprint(
+            utils.fingerprint(
                 dataset_type=dataset_type,
                 checkpoint_dir=save_dir,
                 fingerprint_path=fingerprint_path,
@@ -737,7 +732,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = 'classification'
-            test_utils.train(
+            utils.train(
                 dataset_type=dataset_type,
                 metric='auc',
                 save_dir=save_dir,
@@ -753,14 +748,14 @@ class TestChemprop(TestCase):
             # type of MPN
             if exception_thrown:
                 with self.assertRaises(ValueError):
-                    test_utils.fingerprint(
+                    utils.fingerprint(
                         dataset_type=dataset_type,
                         checkpoint_dir=save_dir,
                         fingerprint_path=fingerprint_path,
                         fingerprint_flags=fingerprint_flags
                     )
             else:
-                test_utils.fingerprint(
+                utils.fingerprint(
                     dataset_type=dataset_type,
                     checkpoint_dir=save_dir,
                     fingerprint_path=fingerprint_path,
@@ -816,7 +811,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = 'rmse'
-            test_utils.train(
+            utils.train(
                 dataset_type = 'regression',
                 metric = metric,
                 save_dir = save_dir,
@@ -947,7 +942,7 @@ class TestChemprop(TestCase):
         predict_flags: List[str] = None,
     ):
         with TemporaryDirectory() as save_dir:
-            test_utils.train(
+            utils.train(
                 dataset_type='regression',
                 metric='rmse',
                 save_dir=save_dir,
@@ -962,7 +957,7 @@ class TestChemprop(TestCase):
                 predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
             if evaluation_methods is not None:
                 predict_flags.extend(['--evaluation_methods', evaluation_methods])
-            test_utils.predict(
+            utils.predict(
                 dataset_type='regression',
                 preds_path=os.path.join(save_dir, 'preds.csv'),
                 save_dir=save_dir,
@@ -1008,7 +1003,7 @@ class TestChemprop(TestCase):
         with TemporaryDirectory() as save_dir:
             test_path = os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')
             train_flags.extend(['--data_path', test_path])
-            test_utils.train(
+            utils.train(
                 dataset_type='classification',
                 metric='binary_cross_entropy',
                 save_dir=save_dir,
@@ -1022,7 +1017,7 @@ class TestChemprop(TestCase):
                 predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
             if evaluation_methods is not None:
                 predict_flags.extend(['--evaluation_methods', evaluation_methods])
-            test_utils.predict(
+            utils.predict(
                 dataset_type='regression',
                 preds_path=os.path.join(save_dir, 'preds.csv'),
                 save_dir=save_dir,

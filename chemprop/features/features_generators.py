@@ -12,13 +12,16 @@ FeaturesGenerator = Callable[[Molecule], np.ndarray]
 FEATURES_GENERATOR_REGISTRY = {}
 
 
-def register_features_generator(features_generator_name: str) -> Callable[[FeaturesGenerator], FeaturesGenerator]:
+def register_features_generator(
+    features_generator_name: str,
+) -> Callable[[FeaturesGenerator], FeaturesGenerator]:
     """
     Creates a decorator which registers a features generator in a global dictionary to enable access by name.
 
     :param features_generator_name: The name to use to access the features generator.
     :return: A decorator which will add a features generator to the registry using the specified name.
     """
+
     def decorator(features_generator: FeaturesGenerator) -> FeaturesGenerator:
         FEATURES_GENERATOR_REGISTRY[features_generator_name] = features_generator
         return features_generator
@@ -34,8 +37,10 @@ def get_features_generator(features_generator_name: str) -> FeaturesGenerator:
     :return: The desired features generator.
     """
     if features_generator_name not in FEATURES_GENERATOR_REGISTRY:
-        raise ValueError(f'Features generator "{features_generator_name}" could not be found. '
-                         f'If this generator relies on rdkit features, you may need to install descriptastorus.')
+        raise ValueError(
+            f'Features generator "{features_generator_name}" could not be found. '
+            f"If this generator relies on rdkit features, you may need to install descriptastorus."
+        )
 
     return FEATURES_GENERATOR_REGISTRY[features_generator_name]
 
@@ -49,10 +54,12 @@ MORGAN_RADIUS = 2
 MORGAN_NUM_BITS = 2048
 
 
-@register_features_generator('morgan')
-def morgan_binary_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]],
-                                     radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+@register_features_generator("morgan")
+def morgan_binary_features_generator(
+    mol_data: Union[Molecule, Sequence[Sequence[Molecule]]],
+    radius: int = MORGAN_RADIUS,
+    num_bits: int = MORGAN_NUM_BITS,
+) -> np.ndarray:
     """
     Generates a binary Morgan fingerprint for a molecule.
     :param mol_data: A molecule (i.e., either a SMILES or an RDKit molecule).
@@ -69,17 +76,21 @@ def morgan_binary_features_generator(mol_data: Union[Molecule, Sequence[Sequence
         return single_mol_features
 
     if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
-        features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
+        features = np.array(
+            [[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data]
+        )
     else:
         features = fingerprint_single_molecule(mol_data)
 
     return features
 
 
-@register_features_generator('morgan_count')
-def morgan_counts_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]],
-                                     radius: int = MORGAN_RADIUS,
-                                     num_bits: int = MORGAN_NUM_BITS) -> np.ndarray:
+@register_features_generator("morgan_count")
+def morgan_counts_features_generator(
+    mol_data: Union[Molecule, Sequence[Sequence[Molecule]]],
+    radius: int = MORGAN_RADIUS,
+    num_bits: int = MORGAN_NUM_BITS,
+) -> np.ndarray:
     """
     Generates a counts-based Morgan fingerprint for a molecule.
 
@@ -97,7 +108,9 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, Sequence[Sequence
         return single_mol_features
 
     if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
-        features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
+        features = np.array(
+            [[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data]
+        )
     else:
         features = fingerprint_single_molecule(mol_data)
 
@@ -107,9 +120,10 @@ def morgan_counts_features_generator(mol_data: Union[Molecule, Sequence[Sequence
 try:
     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
-
-    @register_features_generator('rdkit_2d')
-    def rdkit_2d_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]) -> np.ndarray:
+    @register_features_generator("rdkit_2d")
+    def rdkit_2d_features_generator(
+        mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]
+    ) -> np.ndarray:
         """
         Generates RDKit 2D features for a molecule.
         :param mol_data: A molecule (i.e., either a SMILES or an RDKit molecule).
@@ -118,19 +132,30 @@ try:
         generator = rdDescriptors.RDKit2D()
 
         def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if isinstance(m, Chem.Mol) else m
+            smiles = (
+                Chem.MolToSmiles(m, isomericSmiles=True)
+                if isinstance(m, Chem.Mol)
+                else m
+            )
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
         if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
-            features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
+            features = np.array(
+                [
+                    [fingerprint_single_molecule(mol) for mol in datum]
+                    for datum in mol_data
+                ]
+            )
         else:
             features = fingerprint_single_molecule(mol_data)
 
         return features
 
-    @register_features_generator('rdkit_2d_normalized')
-    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]) -> np.ndarray:
+    @register_features_generator("rdkit_2d_normalized")
+    def rdkit_2d_normalized_features_generator(
+        mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]
+    ) -> np.ndarray:
         """
         Generates RDKit 2D normalized features for a molecule.
 
@@ -140,28 +165,47 @@ try:
         generator = rdNormalizedDescriptors.RDKit2DNormalized()
 
         def fingerprint_single_molecule(m: Molecule) -> np.ndarray:
-            smiles = Chem.MolToSmiles(m, isomericSmiles=True) if isinstance(m, Chem.Mol) else m
+            smiles = (
+                Chem.MolToSmiles(m, isomericSmiles=True)
+                if isinstance(m, Chem.Mol)
+                else m
+            )
             single_mol_features = np.array(generator.process(smiles)[1:])
             return single_mol_features
 
         if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
-            features = np.array([[fingerprint_single_molecule(mol) for mol in datum] for datum in mol_data])
+            features = np.array(
+                [
+                    [fingerprint_single_molecule(mol) for mol in datum]
+                    for datum in mol_data
+                ]
+            )
         else:
             features = fingerprint_single_molecule(mol_data)
 
         return features
-except ImportError:
-    @register_features_generator('rdkit_2d')
-    def rdkit_2d_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]) -> np.ndarray:
-        """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
-        raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
-                          '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
 
-    @register_features_generator('rdkit_2d_normalized')
-    def rdkit_2d_normalized_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]) -> np.ndarray:
+except ImportError:
+
+    @register_features_generator("rdkit_2d")
+    def rdkit_2d_features_generator(
+        mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]
+    ) -> np.ndarray:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
-        raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
-                          '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
+        raise ImportError(
+            "Failed to import descriptastorus. Please install descriptastorus "
+            "(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features."
+        )
+
+    @register_features_generator("rdkit_2d_normalized")
+    def rdkit_2d_normalized_features_generator(
+        mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]
+    ) -> np.ndarray:
+        """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+        raise ImportError(
+            "Failed to import descriptastorus. Please install descriptastorus "
+            "(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features."
+        )
 
 
 """
@@ -174,8 +218,8 @@ Ex. python train.py ... --features_generator custom ...
 @register_features_generator('custom')
 def custom_features_generator(mol_data: Union[Molecule, Sequence[Sequence[Molecule]]]) -> np.ndarray:
     if isinstance(mol_data, Sequence) and not isinstance(mol_data, str):
-        # If your generator supports an input of a list of molecules, implement  
-    
+        # If your generator supports an input of a list of molecules, implement
+
     # If you want to use the SMILES string
     smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
 
