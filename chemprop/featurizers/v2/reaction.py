@@ -11,12 +11,33 @@ from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
 
 
 class ReactionMode(Enum):
+    """The manner in which a reaction should be featurized into a `MolGraph`
+
+    REAC_PROD
+        concatenates the reactants feature with the products feature.
+    REAC_PROD_BALANCE
+        concatenates the reactants feature with the products feature, balances imbalanced reactions.
+    REAC_DIFF
+        concatenates the reactants feature with the difference in features between reactants and
+        products.
+    REAC_DIFF_BALANCE
+        concatenates the reactants feature with the difference in features between reactants and
+        products, balances imbalanced reactions.
+    PROD_DIFF
+        concatenates the products feature with the difference in features between reactants and
+        products.
+    PROD_DIFF_BALANCE
+        concatenates the products feature with the difference in features between reactants and
+        products, balances imbalanced reactions.
+    """
+
+    REAC_PROD = auto()
+    REAC_PROD_BALANCE = auto()
     REAC_DIFF = auto()
     REAC_DIFF_BALANCE = auto()
     PROD_DIFF = auto()
     PROD_DIFF_BALANCE = auto()
-    REAC_PROD = auto()
-    REAC_PROD_BALANCE = auto()
+
 
 def map_reac_to_prod(
     mol_reac: Chem.Mol, mol_prod: Chem.Mol
@@ -26,9 +47,9 @@ def map_reac_to_prod(
     Parameters
     ----------
     mol_reac
-        An RDKit molecule of the reactants.
+        An RDKit molecule of the reactants
     mol_prod
-        An RDKit molecule of the products.
+        An RDKit molecule of the products
 
     Returns
     -------
@@ -41,7 +62,7 @@ def map_reac_to_prod(
     """
     pids = []
     prod_map_to_id = {}
-    mapnos_reac = {a.GetAtomMapNum() for a in mol_reac.GetAtoms()} 
+    mapnos_reac = {a.GetAtomMapNum() for a in mol_reac.GetAtoms()}
 
     for a in mol_prod.GetAtoms():
         mapno = a.GetAtomMapNum()
@@ -50,7 +71,7 @@ def map_reac_to_prod(
         if mapno > 0:
             prod_map_to_id[mapno] = i
             if mapno not in mapnos_reac:
-                pids.append(i) 
+                pids.append(i)
         else:
             pids.append(i)
 
@@ -68,7 +89,7 @@ def map_reac_to_prod(
                 rids.append(i)
         else:
             rids.append(i)
-            
+
     return r2p, pids, rids
 
 
@@ -90,20 +111,21 @@ class ReactionFeaturizer:
     mode : ReactionMode
         the mode by which to featurize the reaction
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
-        the featurizer with which to calculate feature representations of the atoms in a given 
+        the featurizer with which to calculate feature representations of the atoms in a given
         molecule
     bond_featurizer : BondFeaturizer, default=BondFeaturizer()
-        the featurizer with which to calculate feature representations of the bonds in a given 
+        the featurizer with which to calculate feature representations of the bonds in a given
         molecule
     atom_messages : bool, default=False
         whether to prepare the `MolGraph` for use with atom-based messages
     """
+
     def __init__(
         self,
         mode: ReactionMode,
         atom_feautrizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
-        atom_messages: bool = False
+        atom_messages: bool = False,
     ):
         self.mode = mode
         self.atom_featurizer = atom_feautrizer or AtomFeaturizer()
@@ -121,13 +143,13 @@ class ReactionFeaturizer:
         Parameters
         ----------
         reaction : tuple[Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the 
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
             1st element is the product
         atom_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the 
-            `MoleculeFeaturizer` 
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
         bond_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the 
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
             `MoleculeFeaturizer`
 
         Returns
@@ -153,50 +175,54 @@ class ReactionFeaturizer:
         ri2pi, pids, rids = map_reac_to_prod(reactant, product)
 
         if self.reaction_mode in [
-            ReactionMode.REAC_DIFF, ReactionMode.PROD_DIFF, ReactionMode.REAC_PROD
+            ReactionMode.REAC_DIFF,
+            ReactionMode.PROD_DIFF,
+            ReactionMode.REAC_PROD,
         ]:
             # Reactant: regular atom features for each atom in the reactants, as well as zero features for atoms that are only in the products (indices in pio)
-            X_v_r = (
-                [self.atom_featurizer(a) for a in reactant.GetAtoms()]
-                + [self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids]
-            )
+            X_v_r = [self.atom_featurizer(a) for a in reactant.GetAtoms()] + [
+                self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids
+            ]
 
-            # Product: regular atom features for each atom that is in both reactants and products 
+            # Product: regular atom features for each atom that is in both reactants and products
             # (not in rio), other atom features zero,
             # regular features for atoms that are only in the products (indices in pio)
-            X_v_p = (
-                [
-                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
-                    if a.GetIdx() not in rids
-                    else self.atom_featurizer.featurize_num_only(a)
-                    for a in reactant.GetAtoms()
-                ] 
-                + [self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]
-            )
+            X_v_p = [
+                self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                if a.GetIdx() not in rids
+                else self.atom_featurizer.featurize_num_only(a)
+                for a in reactant.GetAtoms()
+            ] + [self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]
         else:  # balance
-            # Reactant: regular atom features for each atom in the reactants, copy features from 
+            # Reactant: regular atom features for each atom in the reactants, copy features from
             # product side for atoms that are only in the products (indices in pio)
             # X_v_r = (
             #     [self.atom_featurizer(a) for a in reactant.GetAtoms()]
             #     + [self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pio]
             # )
-            X_v_r = np.hstack((
-                np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()]),
-                np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
-            ))
+            X_v_r = np.hstack(
+                (
+                    np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()]),
+                    np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]),
+                )
+            )
 
-            # Product: regular atom features for each atom that is in both reactants and products 
+            # Product: regular atom features for each atom that is in both reactants and products
             # (not in rio), copy features from reactant side for
             # other atoms, regular features for atoms that are only in the products (indices in pio)
-            X_v_p = np.hstack((
-                np.array([
-                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
-                    if a.GetIdx() not in rids
-                    else self.atom_featurizer(a)
-                    for a in reactant.GetAtoms()
-                ]),
-                np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
-            ))
+            X_v_p = np.hstack(
+                (
+                    np.array(
+                        [
+                            self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                            if a.GetIdx() not in rids
+                            else self.atom_featurizer(a)
+                            for a in reactant.GetAtoms()
+                        ]
+                    ),
+                    np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]),
+                )
+            )
 
         m = min(len(X_v_p), len(X_v_d))
 
@@ -212,25 +238,16 @@ class ReactionFeaturizer:
             # X_v_d = X_v_p[:m] - X_v_r[:m]
 
         if self.reaction_mode in [ReactionMode.REAC_PROD, ReactionMode.REAC_PROD_BALANCE]:
-            X_v = [
-                x + y[self.atom_featurizer.max_atomic_num + 1 :]
-                for x, y in zip(X_v_r, X_v_p)
-            ]
+            X_v = [x + y[self.atom_featurizer.max_atomic_num + 1 :] for x, y in zip(X_v_r, X_v_p)]
             # X_v = np.hstack((X_v_r[:m], X_v_p[:m, self.atom_featurizer.max_atomic_num + 1 :]))
 
         elif self.reaction_mode in [ReactionMode.REAC_DIFF, ReactionMode.REAC_DIFF_BALANCE]:
-            X_v = [
-                x + y[self.atom_featurizer.max_atomic_num + 1 :]
-                for x, y in zip(X_v_r, X_v_d)
-            ]
+            X_v = [x + y[self.atom_featurizer.max_atomic_num + 1 :] for x, y in zip(X_v_r, X_v_d)]
             # X_v = np.hstack((X_v_r[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
         elif self.reaction_mode in [ReactionMode.PROD_DIFF, ReactionMode.PROD_DIFF_BALANCE]:
-            X_v = [
-                x + y[self.atom_featurizer.max_atomic_num + 1 :]
-                for x, y in zip(X_v_p, X_v_d)
-            ]
+            X_v = [x + y[self.atom_featurizer.max_atomic_num + 1 :] for x, y in zip(X_v_p, X_v_d)]
             # X_v = np.hstack((X_v_p[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
-        
+
         n_atoms = len(X_v)
         n_atoms_reac = reactant.GetNumAtoms()
 
@@ -287,7 +304,6 @@ class ReactionFeaturizer:
                 if bond_reac is None and bond_prod is None:
                     continue
 
-
                 if self.reaction_mode in [ReactionMode.REAC_PROD, ReactionMode.REAC_PROD_BALANCE]:
                     x_e_r = self.bond_featurizer(bond_reac)
                     x_e_p = self.bond_featurizer(bond_prod)
@@ -297,7 +313,8 @@ class ReactionFeaturizer:
                     x_e_d = x_e_p - x_e_r
 
                     if self.reaction_mode in [
-                        ReactionMode.REAC_DIFF, ReactionMode.REAC_DIFF_BALANCE
+                        ReactionMode.REAC_DIFF,
+                        ReactionMode.REAC_DIFF_BALANCE,
                     ]:
                         x_e_r = self.bond_featurizer(bond_reac)
                         x_e = np.hstack((x_e_r, x_e_d))

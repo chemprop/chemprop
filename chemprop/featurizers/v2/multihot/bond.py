@@ -10,10 +10,13 @@ class BondFeaturizer(MultiHotFeaturizer):
     def __init__(
         self,
         bond_types: Optional[Sequence[BondType]] = None,
-        stereo: Optional[Sequence[int]] = None
+        stereo: Optional[Sequence[int]] = None,
     ):
         self.bond_types = bond_types or [
-            BondType.SINGLE, BondType.DOUBLE, BondType.TRIPLE, BondType.AROMATIC
+            BondType.SINGLE,
+            BondType.DOUBLE,
+            BondType.TRIPLE,
+            BondType.AROMATIC,
         ]
         self.stereo = stereo or range(6)
 
@@ -49,12 +52,12 @@ class BondFeaturizer(MultiHotFeaturizer):
         bond_type = b.GetBondType()
         bt_bit = self.safe_index(bond_type, self.bond_types)
         if bt_bit != -1:
-            x[self.bt_offset:][bt_bit] = 1
+            x[self.bt_offset :][bt_bit] = 1
 
         x[self.conj_bit] = int(b.GetIsConjugated())
         x[self.ring_bit] = int(b.IsInRing())
 
         stereo_bit = self.safe_index(int(b.GetStereo()), self.stereo)
-        x[self.stero_offset:][stereo_bit] = 1
+        x[self.stero_offset :][stereo_bit] = 1
 
         return x

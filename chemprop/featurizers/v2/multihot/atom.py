@@ -103,10 +103,10 @@ class AtomFeaturizer(MultiHotFeaturizer):
 
         if a is None:
             return x
-        
+
         bit = self.safe_index((a.GetAtomicNum() - 1), self.__atomic_num)
         bit = bit if bit != -1 else self.max_atomic_num
 
         x[bit] = 1
-        
+
         return x

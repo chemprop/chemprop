@@ -26,16 +26,16 @@ class MoleculeFeaturizer:
     Parameters
     ----------
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
-        the featurizer with which to calculate feature representations of the atoms in a given 
+        the featurizer with which to calculate feature representations of the atoms in a given
         molecule
     bond_featurizer : BondFeaturizer, default=BondFeaturizer()
-        the featurizer with which to calculate feature representations of the bonds in a given 
+        the featurizer with which to calculate feature representations of the bonds in a given
         molecule
     extra_atom_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated 
+        the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
     extra_bond_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated 
+        the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
     atom_messages : bool, default=False
         whether to prepare the `MolGraph` for use with atom-based messages
@@ -47,7 +47,7 @@ class MoleculeFeaturizer:
         bond_featurizer: Optional[BondFeaturizer] = None,
         extra_atom_fdim: int = 0,
         extra_bond_fdim: int = 0,
-        atom_messages: bool = False
+        atom_messages: bool = False,
     ):
         self.atom_featurizer = atom_featurizer or AtomFeaturizer()
         self.bond_featurizer = bond_featurizer or BondFeaturizer()
@@ -67,7 +67,7 @@ class MoleculeFeaturizer:
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ) -> MolGraph:
-        n_atoms = mol.GetNumAtoms() 
+        n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
 
         if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
@@ -115,8 +115,8 @@ class MoleculeFeaturizer:
                 a2b[a2].append(b12)
                 a2b[a1].append(b21)
 
-                b2a[i:i+2] = [a1, a2]
-                b2revb[i:i+2] = [b21, b12]
+                b2a[i : i + 2] = [a1, a2]
+                b2revb[i : i + 2] = [b21, b12]
 
                 i += 2
 

@@ -29,6 +29,7 @@ class MolGraph:
     a2a : Optional[list[int]]
     b2b: Optional[np.ndarray]
     """
+
     n_atoms: int
     n_bonds: int
     X_v: np.ndarray
