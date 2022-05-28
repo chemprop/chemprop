@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.dataset import MoleculeDataset
+from chemprop.data.v2.dataset import MoleculeDataset, ReactionDataset
 from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.v2 import MolGraph
 
@@ -83,7 +83,7 @@ class MoleculeDataLoader(DataLoader):
     """
     def __init__(
         self,
-        dset: MoleculeDataset,
+        dset: Union[MoleculeDataset, ReactionDataset],
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,

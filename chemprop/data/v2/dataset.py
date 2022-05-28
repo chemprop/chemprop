@@ -1,42 +1,29 @@
-from typing import List, Optional, Sequence
+from abc import ABC, abstractmethod
+from typing import list, Optional, Sequence
 
 import numpy as np
 from rdkit import Chem
 from torch.utils.data import Dataset
 
-from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
 from chemprop.data.scaler import StandardScaler
-from chemprop.data.v2.datapoints import MoleculeDatapoint
+from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
+from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint
 
 
-class MoleculeDataset(Dataset):
-    r"""A :class:`MoleculeDataset` contains a list of :class:`MoleculeDatapoint`\ s with access to 
-    their attributes.
-
-    Parameters
-    ----------
-    data : Sequence[MoleculeDatapoint]
-        the dataset from which to load
-    featurizer : MoleculeFeaturizer
-    """
-    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
+class MolGraphDatasetBase(Dataset, ABC):
+    def __init__(self, data: Sequence[DatapointBase]):
         if data is None:
             raise ValueError("arg: `data` was None!")
 
         self.data = data
-        self.featurizer = featurizer
+        super().__init__()
+
+    @abstractmethod
+    def __getitem__(self, idx) -> MolGraph:
+        pass
 
     def __len__(self) -> int:
         return len(self.data)
-
-    def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
-        d = self.data[idx]
-
-        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
-
-    @property
-    def smiles(self) -> list[str]:
-        return [d.smi for d in self.data]
 
     @property
     def targets(self) -> np.ndarray:
@@ -44,18 +31,6 @@ class MoleculeDataset(Dataset):
 
     @targets.setter
     def targets(self, targets: np.ndarray) -> None:
-        """Set the targets for each molecule in the dataset
-
-        Parameters
-        ----------
-        targets : np.ndarray
-            the targets for each molecule
-        
-        Raises
-        ------
-        ValueError
-            if `targets` is not the same length as the underlying dataset.
-        """
         if not len(self.data) == len(targets):
             raise ValueError(
                 "number of molecules and targets must be of same length! "
@@ -64,14 +39,6 @@ class MoleculeDataset(Dataset):
 
         for i in range(len(self.data)):
             self.data[i].targets = targets[i]
-
-    @property
-    def mols(self) -> list[Chem.Mol]:
-        return [d.mol for d in self.data]
-
-    @property
-    def number_of_molecules(self) -> int:
-        return 1
 
     @property
     def features(self) -> np.ndarray:
@@ -88,27 +55,6 @@ class MoleculeDataset(Dataset):
         return [d.phase_features for d in self.data]
 
     @property
-    def atom_features(self) -> list[np.ndarray]:
-        if len(self.data) > 0 and  self.data[0].atom_features is None:
-            return None
-
-        return [d.atom_features for d in self.data]
-
-    @property
-    def atom_descriptors(self) -> list[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].atom_descriptors is None:
-            return None
-
-        return [d.atom_descriptors for d in self.data]
-
-    @property
-    def bond_features(self) -> list[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].bond_features is None:
-            return None
-
-        return [d.bond_features for d in self.data]
-
-    @property
     def data_weights(self) -> np.ndarray:
         return np.array([d.data_weight for d in self.data])
 
@@ -120,7 +66,7 @@ class MoleculeDataset(Dataset):
         return np.array([d.gt_targets for d in self.data])
 
     @property
-    def lt_targets(self) -> List[np.ndarray]:
+    def lt_targets(self) -> list[np.ndarray]:
         if len(self.data) > 0 and self.data[0].lt_targets is None:
             return None 
         
@@ -137,12 +83,75 @@ class MoleculeDataset(Dataset):
         
         return len(self.data[0].features)
 
+    def normalize_targets(self) -> StandardScaler:
+        """Normalizes the targets of the dataset using a `StandardScaler`
+
+        The StandardScaler subtracts the mean and divides by the standard deviation for each task 
+        independently. NOTE: This should only be used for regression datasets.
+
+        Returns
+        -------
+        StandardScaler
+            a scaler fit to the targets.
+        """
+        targets = [d.raw_targets for d in self.data]
+        scaler = StandardScaler().fit(targets)
+        scaled_targets = scaler.transform(targets)
+        self.targets = scaled_targets
+
+        return scaler
+
+    def reset_features_and_targets(self) -> None:
+        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
+        for d in self.data:
+            d.reset_features_and_targets()
+
+
+class MoleculeDataset(MolGraphDatasetBase):
+    """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to 
+    their attributes.
+
+    Parameters
+    ----------
+    data : Sequence[MoleculeDatapoint]
+        the dataset from which to load
+    featurizer : MoleculeFeaturizer
+        the featurizer with which to generate MolGraphs of the input
+    """
+    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
+        super().__init__(data)
+        self.featurizer = featurizer
+
+    def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
+        d = self.data[idx]
+
+        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
+
     @property
-    def atom_descriptors_size(self) -> int:
-        if len(self.data) > 0 and self.data[0].atom_descriptors is None:
+    def smiles(self) -> list[str]:
+        return [d.smi for d in self.data]
+
+    @property
+    def mols(self) -> list[Chem.Mol]:
+        return [d.mol for d in self.data]
+
+    @property
+    def number_of_molecules(self) -> int:
+        return 1
+
+    @property
+    def atom_features(self) -> list[np.ndarray]:
+        if len(self.data) > 0 and  self.data[0].atom_features is None:
             return None
-        
-        return len(self.data[0].atom_descriptors[0])
+
+        return [d.atom_features for d in self.data]
+
+    @property
+    def bond_features(self) -> list[np.ndarray]:
+        if len(self.data) > 0 and self.data[0].bond_features is None:
+            return None
+
+        return [d.bond_features for d in self.data]
 
     @property
     def atom_features_size(self) -> int:
@@ -165,8 +174,7 @@ class MoleculeDataset(Dataset):
         scale_atom_descriptors: bool = False,
         scale_bond_features: bool = False,
     ) -> StandardScaler:
-        """
-        Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
+        """Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
 
         The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard 
         deviation for each feature independently.
@@ -204,6 +212,7 @@ class MoleculeDataset(Dataset):
                 features = np.vstack([d.raw_bond_features for d in self.data])
             else:
                 features = np.vstack([d.raw_features for d in self.data])
+
             scaler = StandardScaler(replace_nan_token=replace_nan_token)
             scaler.fit(features)
 
@@ -222,25 +231,34 @@ class MoleculeDataset(Dataset):
 
         return scaler
 
-    def normalize_targets(self) -> StandardScaler:
-        """
-        Normalizes the targets of the dataset using a :class:`~chemprop.data.StandardScaler`.
+class ReactionDataset(MolGraphDatasetBase):
+    """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to 
+    their attributes.
 
-        The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard deviation
-        for each task independently.
+    Parameters
+    ----------
+    data : Sequence[MoleculeDatapoint]
+        the dataset from which to load
+    featurizer : MoleculeFeaturizer
+        the featurizer with which to generate MolGraphs of the input
+    """
+    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
+        super().__init__(data)
+        self.featurizer = featurizer
 
-        This should only be used for regression datasets.
+    def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
+        d = self.data[idx]
 
-        :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
-        """
-        targets = [d.raw_targets for d in self.data]
-        scaler = StandardScaler().fit(targets)
-        scaled_targets = scaler.transform(targets)
-        self.targets = scaled_targets
+        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
 
-        return scaler
+    @property
+    def smiles(self) -> list[str]:
+        return [d.smi for d in self.data]
 
-    def reset_features_and_targets(self) -> None:
-        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        for d in self.data:
-            d.reset_features_and_targets()
+    @property
+    def mols(self) -> list[Chem.Mol]:
+        return [d.mol for d in self.data]
+
+    @property
+    def number_of_molecules(self) -> int:
+        return 1
