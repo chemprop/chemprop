@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.dataset import MoleculeDataset, ReactionDataset
+from chemprop.data.v2.datasets import MolGraphDataset
 from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.v2 import MolGraph
 
@@ -61,7 +61,7 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
     return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
 
 
-class MoleculeDataLoader(DataLoader):
+class MolGraphDataLoader(DataLoader):
     """A `MoleculeDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
     
     Parameters
@@ -83,14 +83,13 @@ class MoleculeDataLoader(DataLoader):
     """
     def __init__(
         self,
-        dset: Union[MoleculeDataset, ReactionDataset],
+        dset: MolGraphDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
         seed: Optional[int] = None,
         shuffle: bool = False,
     ):
-        
         self.dset = dset
         self.class_balance = class_balance
         self.shuffle = shuffle
@@ -123,7 +122,8 @@ class MoleculeDataLoader(DataLoader):
 
     @property
     def gt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated with each molecule"""
+        """booleans for whether each target is an inequality rather than a value target associated 
+        with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
@@ -136,7 +136,8 @@ class MoleculeDataLoader(DataLoader):
 
     @property
     def lt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated with each molecule"""
+        """booleans for whether each target is an inequality rather than a value target associated 
+        with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
@@ -149,5 +150,6 @@ class MoleculeDataLoader(DataLoader):
 
     @property
     def iter_size(self) -> int:
-        """Returns the number of data points included in each full iteration through the :class:`MoleculeDataLoader`."""
+        """Returns the number of data points included in each full iteration through the 
+        :class:`MoleculeDataLoader`."""
         return len(self.sampler)

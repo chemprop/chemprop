@@ -10,7 +10,7 @@ from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
 from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint
 
 
-class MolGraphDatasetBase(Dataset, ABC):
+class MolGraphDataset(Dataset, ABC):
     def __init__(self, data: Sequence[DatapointBase]):
         if data is None:
             raise ValueError("arg: `data` was None!")
@@ -107,7 +107,7 @@ class MolGraphDatasetBase(Dataset, ABC):
             d.reset_features_and_targets()
 
 
-class MoleculeDataset(MolGraphDatasetBase):
+class MoleculeDataset(MolGraphDataset):
     """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to 
     their attributes.
 
@@ -231,7 +231,7 @@ class MoleculeDataset(MolGraphDatasetBase):
 
         return scaler
 
-class ReactionDataset(MolGraphDatasetBase):
+class ReactionDataset(MolGraphDataset):
     """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to 
     their attributes.
 

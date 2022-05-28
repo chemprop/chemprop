@@ -4,12 +4,12 @@ from typing import Iterator, Optional
 import numpy as np
 from torch.utils.data import Sampler
 
-from chemprop.data.v2.dataset import MoleculeDataset
+from chemprop.data.v2.datasets import MolGraphDataset
 
 
 class SeededSampler(Sampler):
     """A SeededSampler is a class for iterating through a dataset in a randomly seeded fashion"""
-    def __init__(self, dataset: MoleculeDataset, seed: int):
+    def __init__(self, dataset: MolGraphDataset, seed: int):
         if seed is None:
             raise ValueError("arg `seed` was `None`! A SeededSampler must be seeded!")
 
@@ -41,7 +41,7 @@ class ClassBalanceSampler(Sampler):
         whether to shuffle the data during sampling
     """
 
-    def __init__(self, dataset: MoleculeDataset, seed: Optional[int] = None, shuffle: bool = False):
+    def __init__(self, dataset: MolGraphDataset, seed: Optional[int] = None, shuffle: bool = False):
         self.shuffle = shuffle
         self.rg = np.random.default_rng(seed)
 

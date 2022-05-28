@@ -1,4 +1,4 @@
-from .dataloader import MoleculeDataLoader
-from .datapoints import MoleculeDatapoint
-from .dataset import MoleculeDataset
+from .dataloader import MolGraphDataLoader
+from .datapoints import MoleculeDatapoint, ReactionDatapoint
+from .datasets import MolGraphDataset, MoleculeDataset, ReactionDataset
 from .samplers import ClassBalanceSampler, SeededSampler

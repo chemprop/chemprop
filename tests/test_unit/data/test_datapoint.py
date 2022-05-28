@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chemprop.data.v2.dataset import MoleculeDatapoint
+from chemprop.data.v2.datasets import MoleculeDatapoint
 from chemprop.featurizers.features_generators import get_available_features_generators
 
 
