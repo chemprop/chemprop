@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional, Sequence
 
 import numpy as np
@@ -20,18 +21,17 @@ class BondFeaturizer(MultiHotFeaturizer):
         ]
         self.stereo = stereo or range(6)
 
-        names = ("null", "bond_type", "conjugated", "ring", "stereo")
-        subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
-        offsets = np.cumsum([0] + subfeature_sizes[:-1])
-        slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
-        self.__subfeatures = dict(zip(names, slices))
-
     def __len__(self):
         return 4 + len(self.bond_types) + len(self.stereo)
 
     @property
     def subfeatures(self) -> dict[str, int]:
-        return self.__subfeatures
+        names = ("null", "bond_type", "conjugated", "ring", "stereo")
+        subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
+        offsets = np.cumsum([0] + subfeature_sizes[:-1])
+        slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
+
+        return dict(zip(names, slices))
 
     def featurize(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self), int)

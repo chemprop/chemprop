@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import list, Optional, Sequence
 
@@ -237,7 +239,7 @@ class ReactionDataset(MolGraphDataset):
 
     Parameters
     ----------
-    data : Sequence[MoleculeDatapoint]
+    data : Sequence[ReactionDatapoint]
         the dataset from which to load
     featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the input

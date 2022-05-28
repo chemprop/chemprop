@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional, Sequence
 
 import numpy as np
@@ -7,10 +8,7 @@ from chemprop.featurizers.v2.multihot.base import MultiHotFeaturizer
 
 
 class AtomFeaturizer(MultiHotFeaturizer):
-    """An AtomFeaturizer calculates feature vectors of RDKit atoms.
-
-    TODO: fix attribute assignment such that the class doesn't break immediately upon a change
-    """
+    """An AtomFeaturizer calculates feature vectors of RDKit atoms. """
 
     def __init__(
         self,
@@ -35,7 +33,19 @@ class AtomFeaturizer(MultiHotFeaturizer):
             HybridizationType.SP3D2,
         ]
 
-        self.choicess = [
+    def __len__(self):
+        return (
+            len(self.atomic_num) + 1
+            + len(self.degree) + 1
+            + len(self.formal_charge) + 1
+            + len(self.chiral_tag) + 1
+            + len(self.num_Hs) + 1
+            + len(self.hybridization) + 1
+        ) + 2
+
+    @property
+    def choicess(self) -> list[Sequence]:
+        return [
             self.atomic_num,
             self.degree,
             self.formal_charge,
@@ -44,6 +54,8 @@ class AtomFeaturizer(MultiHotFeaturizer):
             self.hybridization,
         ]
 
+    @cached_property
+    def subfeatures(self) -> dict[str, slice]:
         names = (
             "atomic_num",
             "degree",
@@ -54,19 +66,11 @@ class AtomFeaturizer(MultiHotFeaturizer):
             "aromatic",
             "mass",
         )
-        subfeature_sizes = [len(choices) + 1 for choices in self.choicess] + [1, 1]
-        offsets = np.cumsum([0] + subfeature_sizes)
+        sizes = [len(choices) + 1 for choices in self.choicess] + [1, 1]
+        offsets = np.cumsum([0] + sizes)
         slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
-        self.__subfeatures = dict(zip(names, slices))
 
-        super().__init__()
-
-    def __len__(self):
-        return sum(len(xs) + 1 for xs in self.choicess) + 2
-
-    @property
-    def subfeatures(self) -> dict[str, slice]:
-        return self.__subfeatures
+        return dict(zip(names, slices))
 
     def featurize(self, a: Atom) -> np.ndarray:
         x = np.zeros(len(self))
@@ -98,9 +102,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         if a is None:
             return x
 
-        bit = self.safe_index((a.GetAtomicNum() - 1), self.atomic_num)
-        bit = bit if bit != -1 else self.max_atomic_num
-
+        bit, _ = self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_num)
         x[bit] = 1
 
         return x
