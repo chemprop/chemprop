@@ -22,12 +22,12 @@ class AtomFeaturizer(MultiHotFeaturizer):
         hybridization: Optional[Sequence[HybridizationType]] = None,
     ):
         self.max_atomic_num = max_atomic_num
-        self.__atomic_num = range(max_atomic_num)
-        self.__degree = degree or range(6)
-        self.__formal_charge = formal_charge or [-1, -2, 1, 2, 0]
-        self.__chiral_tag = chiral_tag or range(4)
-        self.__num_Hs = num_Hs or range(5)
-        self.__hybridization = hybridization or [
+        self.atomic_num = range(max_atomic_num)
+        self.degree = degree or range(6)
+        self.formal_charge = formal_charge or [-1, -2, 1, 2, 0]
+        self.chiral_tag = chiral_tag or range(4)
+        self.num_Hs = num_Hs or range(5)
+        self.hybridization = hybridization or [
             HybridizationType.SP,
             HybridizationType.SP2,
             HybridizationType.SP3,
@@ -35,20 +35,15 @@ class AtomFeaturizer(MultiHotFeaturizer):
             HybridizationType.SP3D2,
         ]
 
-        self.subfeature_sizes = [
-            len(features) + 1
-            for features in (
-                self.__atomic_num,
-                self.__degree,
-                self.__formal_charge,
-                self.__chiral_tag,
-                self.__num_Hs,
-                self.__hybridization,
-            )
-        ] + [1, 1]
-        self.__size = sum(self.subfeature_sizes)
+        self.choicess = [
+            self.atomic_num,
+            self.degree,
+            self.formal_charge,
+            self.chiral_tag,
+            self.num_Hs,
+            self.hybridization,
+        ]
 
-        offsets = np.cumsum([0] + self.subfeature_sizes)
         names = (
             "atomic_num",
             "degree",
@@ -59,13 +54,15 @@ class AtomFeaturizer(MultiHotFeaturizer):
             "aromatic",
             "mass",
         )
-        self.__subfeatures = dict(zip(names, offsets))
+        subfeature_sizes = [len(choices) + 1 for choices in self.choicess] + [1, 1]
+        offsets = np.cumsum([0] + subfeature_sizes)
+        slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
+        self.__subfeatures = dict(zip(names, slices))
 
         super().__init__()
 
     def __len__(self):
-        """the dimension of an atom feature vector"""
-        return self.__size
+        return sum(len(xs) + 1 for xs in self.choicess) + 2
 
     @property
     def subfeatures(self) -> dict[str, slice]:
@@ -77,21 +74,18 @@ class AtomFeaturizer(MultiHotFeaturizer):
         if a is None:
             return x
 
-        bits = [
-            self.safe_index((a.GetAtomicNum() - 1), self.__atomic_num),
-            self.safe_index(a.GetTotalDegree(), self.__degree),
-            self.safe_index(a.GetFormalCharge(), self.__formal_charge),
-            self.safe_index(int(a.GetChiralTag()), self.__chiral_tag),
-            self.safe_index(int(a.GetTotalNumHs()), self.__num_Hs),
-            self.safe_index(int(a.GetHybridization()), self.__hybridization),
+        bits_sizes = [
+            self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_num),
+            self.one_hot_index(a.GetTotalDegree(), self.degree),
+            self.one_hot_index(a.GetFormalCharge(), self.formal_charge),
+            self.one_hot_index(int(a.GetChiralTag()), self.chiral_tag),
+            self.one_hot_index(int(a.GetTotalNumHs()), self.num_Hs),
+            self.one_hot_index(int(a.GetHybridization()), self.hybridization),
         ]
 
         i = 0
-        for j, size in zip(bits, self.subfeature_sizes):
-            if j == -1:
-                x[i + size - 1] = 1
-            else:
-                x[i + j] = 1
+        for j, size in bits_sizes:
+            x[i + j] = 1
             i += size
         x[i] = int(a.GetIsAromatic())
         x[i + 1] = 0.01 * a.GetMass()
@@ -104,7 +98,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         if a is None:
             return x
 
-        bit = self.safe_index((a.GetAtomicNum() - 1), self.__atomic_num)
+        bit = self.safe_index((a.GetAtomicNum() - 1), self.atomic_num)
         bit = bit if bit != -1 else self.max_atomic_num
 
         x[bit] = 1

@@ -102,7 +102,7 @@ def test_atomic_num_bit(atom, x, max_atomic_num):
 
 
 def test_aromatic_bit(featurizer, x, aromatic):
-    i = featurizer.subfeatures["aromatic"]
+    i = featurizer.subfeatures["aromatic"].start
     if aromatic:
         assert x[i] == 1
     else:
@@ -110,7 +110,7 @@ def test_aromatic_bit(featurizer, x, aromatic):
 
 
 def test_mass_bit(featurizer, x, mass_bit):
-    assert x[featurizer.subfeatures["mass"]] == pytest.approx(mass_bit)
+    assert x[featurizer.subfeatures["mass"].start] == pytest.approx(mass_bit)
 
 
 @pytest.mark.parametrize(
