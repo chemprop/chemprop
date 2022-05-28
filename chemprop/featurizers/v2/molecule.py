@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 from rdkit import Chem
-from chemprop.featurizers.v2.molgraph import MolGraph
 
+from chemprop.featurizers.v2.base import MolGraphFeaturizer
+from chemprop.featurizers.v2.molgraph import MolGraph
 from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
 
 
-class MoleculeFeaturizer:
+class MoleculeFeaturizer(MolGraphFeaturizer):
     """A `MoleculeFeaturizer` featurizes molecules (in the form of rdkit molecules) into `MolGraph`s
 
     Attributes
