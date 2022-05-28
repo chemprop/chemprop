@@ -15,6 +15,7 @@ from chemprop.featurizers import get_features_generator
 @dataclass
 class DatapointBase(ABC):
     """A `DatapointBase` is the base datapoint for both molecule- and reaction-type data"""
+
     targets: np.ndarray
     row: OrderedDict = None
     data_weight: float = 1
@@ -63,7 +64,7 @@ class _MoleculeDatapointBase:
 @dataclass
 class MoleculeDatapoint(DatapointBase, _MoleculeDatapointBase):
     """A `MoleculeDatapoint` contains a single molecule and its associated features and targets.
-    
+
     Parameters
     ----------
     smi : str
@@ -91,11 +92,12 @@ class MoleculeDatapoint(DatapointBase, _MoleculeDatapointBase):
     atom_descriptors : Optional[np.ndarray], default=None
         A numpy array containing additional atom descriptors with which to featurize the molecule
     keep_h : bool, default=False
-        whether to retain the hydrogens present in input molecules or remove them from the prepared 
+        whether to retain the hydrogens present in input molecules or remove them from the prepared
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
     """
+
     atom_features: np.ndarray = None
     bond_features: np.ndarray = None
 
@@ -164,7 +166,7 @@ class ReactionDatapoint(DatapointBase, _ReactionDatapointBase):
     atom_descriptors : Optional[np.ndarray], default=None
         A numpy array containing additional atom descriptors with which to featurize the molecule
     keep_h : bool, default=False
-        whether to retain the hydrogens present in input molecules or remove them from the prepared 
+        whether to retain the hydrogens present in input molecules or remove them from the prepared
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
@@ -189,5 +191,5 @@ class ReactionDatapoint(DatapointBase, _ReactionDatapointBase):
                         features.append(fg(mol))
                     else:
                         features.append(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
-        
+
         return np.hstack(features)

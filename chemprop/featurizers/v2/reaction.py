@@ -17,7 +17,7 @@ class ReactionMode(Enum):
     REAC_PROD
         concatenate the reactant features with the product features.
     REAC_PROD_BALANCE
-        concatenate the reactant features with the products feature and balances imbalanced 
+        concatenate the reactant features with the products feature and balances imbalanced
         reactions.
     REAC_DIFF
         concatenates the reactant features with the difference in features between reactants and
@@ -175,54 +175,54 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         reactant, product = reaction
         ri2pi, pids, rids = map_reac_to_prod(reactant, product)
 
-        if self.mode in [
-            ReactionMode.REAC_DIFF,
-            ReactionMode.PROD_DIFF,
-            ReactionMode.REAC_PROD,
-        ]:
-            # Reactant: regular atom features for each atom in the reactants, as well as zero 
+        if self.mode in [ReactionMode.REAC_DIFF, ReactionMode.PROD_DIFF, ReactionMode.REAC_PROD]:
+            # Reactant: regular atom features for each atom in the reactants, as well as zero
             # features for atoms that are only in the products (indices in pio)
             A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
-            B = np.array([
-                self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids
-            ]).reshape(-1, self.atom_fdim)
+            B = np.array(
+                [self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids]
+            ).reshape(-1, self.atom_fdim)
             X_v_r = np.concatenate((A, B))
 
             # Product: regular atom features for each atom that is in both reactants and products
             # (not in rio), other atom features zero,
             # regular features for atoms that are only in the products (indices in pio)
-            C = np.array([
-                self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
-                if a.GetIdx() not in rids
-                else self.atom_featurizer.featurize_num_only(a)
-                for a in reactant.GetAtoms()
-            ])
-            D = np.array(
-                [self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]
-            ).reshape(-1, self.atom_fdim)
+            C = np.array(
+                [
+                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                    if a.GetIdx() not in rids
+                    else self.atom_featurizer.featurize_num_only(a)
+                    for a in reactant.GetAtoms()
+                ]
+            )
+            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
+                -1, self.atom_fdim
+            )
             X_v_p = np.concatenate((C, D))
         else:  # balance
             # Reactant: regular atom features for each atom in the reactants, copy features from
             #   product side for atoms that are only in the products (:= indices in pio)
             A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
-            B = np.array([
-                self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids
-            ]).reshape(-1, self.atom_fdim)
+            B = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
+                -1, self.atom_fdim
+            )
             X_v_r = np.concatenate((A, B))
 
-            # Product: (1) regular atom features for each atom that is in both reactants and 
-            #   products (:= indices not in rids), copy features from reactant side for other 
-            #   atoms, (2) regular features for atoms that are only in the products (:= indices in 
+            # Product: (1) regular atom features for each atom that is in both reactants and
+            #   products (:= indices not in rids), copy features from reactant side for other
+            #   atoms, (2) regular features for atoms that are only in the products (:= indices in
             #   pio)
-            C = np.array([
-                self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
-                if a.GetIdx() not in rids
-                else self.atom_featurizer(a)
-                for a in reactant.GetAtoms()
-            ])
-            D = np.array([
-                self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids
-            ]).reshape(-1, self.atom_fdim)
+            C = np.array(
+                [
+                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                    if a.GetIdx() not in rids
+                    else self.atom_featurizer(a)
+                    for a in reactant.GetAtoms()
+                ]
+            )
+            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
+                -1, self.atom_fdim
+            )
             X_v_p = np.concatenate((C, D))
 
         m = min(len(X_v_r), len(X_v_p))
@@ -244,7 +244,6 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
         n_atoms = len(X_v)
         n_atoms_reac = reactant.GetNumAtoms()
-
 
         n_bonds = 0
         X_e = []
@@ -310,10 +309,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                 else:
                     x_e_d = x_e_p - x_e_r
 
-                    if self.mode in [
-                        ReactionMode.REAC_DIFF,
-                        ReactionMode.REAC_DIFF_BALANCE,
-                    ]:
+                    if self.mode in [ReactionMode.REAC_DIFF, ReactionMode.REAC_DIFF_BALANCE]:
                         x_e_r = self.bond_featurizer(bond_reac)
                         x_e = np.hstack((x_e_r, x_e_d))
                     else:

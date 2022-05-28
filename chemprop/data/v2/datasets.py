@@ -68,8 +68,8 @@ class MolGraphDataset(Dataset, ABC):
     @property
     def lt_targets(self) -> list[np.ndarray]:
         if len(self.data) > 0 and self.data[0].lt_targets is None:
-            return None 
-        
+            return None
+
         return np.array([d.lt_targets for d in self.data])
 
     @property
@@ -80,13 +80,13 @@ class MolGraphDataset(Dataset, ABC):
     def features_size(self) -> Optional[int]:
         if len(self.data) > 0 and self.data[0].features is None:
             return None
-        
+
         return len(self.data[0].features)
 
     def normalize_targets(self) -> StandardScaler:
         """Normalizes the targets of the dataset using a `StandardScaler`
 
-        The StandardScaler subtracts the mean and divides by the standard deviation for each task 
+        The StandardScaler subtracts the mean and divides by the standard deviation for each task
         independently. NOTE: This should only be used for regression datasets.
 
         Returns
@@ -108,7 +108,7 @@ class MolGraphDataset(Dataset, ABC):
 
 
 class MoleculeDataset(MolGraphDataset):
-    """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to 
+    """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to
     their attributes.
 
     Parameters
@@ -118,6 +118,7 @@ class MoleculeDataset(MolGraphDataset):
     featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the input
     """
+
     def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
         super().__init__(data)
         self.featurizer = featurizer
@@ -141,7 +142,7 @@ class MoleculeDataset(MolGraphDataset):
 
     @property
     def atom_features(self) -> list[np.ndarray]:
-        if len(self.data) > 0 and  self.data[0].atom_features is None:
+        if len(self.data) > 0 and self.data[0].atom_features is None:
             return None
 
         return [d.atom_features for d in self.data]
@@ -164,7 +165,7 @@ class MoleculeDataset(MolGraphDataset):
     def bond_features_size(self) -> int:
         if len(self.data) > 0 and self.data[0].bond_features is None:
             return None
-        
+
         return len(self.data[0].bond_features[0])
 
     def normalize_features(
@@ -176,30 +177,28 @@ class MoleculeDataset(MolGraphDataset):
     ) -> StandardScaler:
         """Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
 
-        The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard 
+        The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard
         deviation for each feature independently.
 
-        If a :class:`~chemprop.data.StandardScaler` is provided, it is used to perform the 
-        normalization. Otherwise, a :class:`~chemprop.data.StandardScaler` is first fit to the 
+        If a :class:`~chemprop.data.StandardScaler` is provided, it is used to perform the
+        normalization. Otherwise, a :class:`~chemprop.data.StandardScaler` is first fit to the
         features in this  dataset and is then used to perform the normalization.
 
-        :param scaler: A fitted :class:`~chemprop.data.StandardScaler`. If it is provided it is 
-            used, otherwise a new :class:`~chemprop.data.StandardScaler` is first fitted to this 
+        :param scaler: A fitted :class:`~chemprop.data.StandardScaler`. If it is provided it is
+            used, otherwise a new :class:`~chemprop.data.StandardScaler` is first fitted to this
             data and is then used.
         :param replace_nan_token: A token to use to replace NaN entries in the features.
-        :param scale_atom_descriptors: If the features that need to be scaled are atom features 
+        :param scale_atom_descriptors: If the features that need to be scaled are atom features
             rather than molecule.
-        :param scale_bond_features: If the features that need to be scaled are bond descriptors 
+        :param scale_bond_features: If the features that need to be scaled are bond descriptors
             rather than molecule.
         :return: A fitted :class:`~chemprop.data.StandardScaler`. If a :class:`~chemprop.data.
             StandardScaler` is provided as a parameter, this is the same :class:`~chemprop.data.
-            StandardScaler`. Otherwise, this is a new :class:`~chemprop.data.StandardScaler` that 
+            StandardScaler`. Otherwise, this is a new :class:`~chemprop.data.StandardScaler` that
             has been fit on this dataset.
         """
         if len(self.data) == 0 or (
-            self.data[0].features is None
-            and not scale_bond_features
-            and not scale_atom_descriptors
+            self.data[0].features is None and not scale_bond_features and not scale_atom_descriptors
         ):
             return None
 
@@ -231,8 +230,9 @@ class MoleculeDataset(MolGraphDataset):
 
         return scaler
 
+
 class ReactionDataset(MolGraphDataset):
-    """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to 
+    """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to
     their attributes.
 
     Parameters
@@ -242,6 +242,7 @@ class ReactionDataset(MolGraphDataset):
     featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the input
     """
+
     def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
         super().__init__(data)
         self.featurizer = featurizer

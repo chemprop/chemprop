@@ -56,14 +56,14 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
 
     b2a = torch.tensor(b2a, dtype=torch.long)
     b2revb = torch.tensor(b2revb, dtype=torch.long)
-    a2a =  b2a[a2b]
+    a2a = b2a[a2b]
 
     return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
 
 
 class MolGraphDataLoader(DataLoader):
     """A `MoleculeDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
-    
+
     Parameters
     ----------
     dataset : MoleculeDataset
@@ -73,14 +73,15 @@ class MolGraphDataLoader(DataLoader):
     num_workers : int, default=0
         the number of workers used to build batches.
     class_balance : bool, default=False
-        Whether to perform class balancing (i.e., use an equal number of positive and negative 
-        molecules). Class balance is only available for single task classification datasets. Set 
+        Whether to perform class balancing (i.e., use an equal number of positive and negative
+        molecules). Class balance is only available for single task classification datasets. Set
         shuffle to True in order to get a random subset of the larger class.
     seed : int, default=None
         the random seed to use for shuffling (only used when `shuffle` is `True`)
     shuffle : bool, default=False
         whether to shuffle the data during sampling
     """
+
     def __init__(
         self,
         dset: MolGraphDataset,
@@ -122,7 +123,7 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def gt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated 
+        """booleans for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
@@ -136,7 +137,7 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def lt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated 
+        """booleans for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
@@ -150,6 +151,6 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def iter_size(self) -> int:
-        """Returns the number of data points included in each full iteration through the 
+        """Returns the number of data points included in each full iteration through the
         :class:`MoleculeDataLoader`."""
         return len(self.sampler)

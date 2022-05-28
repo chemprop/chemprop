@@ -9,13 +9,14 @@ from chemprop.data.v2.datasets import MolGraphDataset
 
 class SeededSampler(Sampler):
     """A SeededSampler is a class for iterating through a dataset in a randomly seeded fashion"""
+
     def __init__(self, dataset: MolGraphDataset, seed: int):
         if seed is None:
             raise ValueError("arg `seed` was `None`! A SeededSampler must be seeded!")
 
         self.idxs = np.arange(len(dataset))
         self.rg = np.random.default_rng(seed)
-        
+
     def __iter__(self) -> Iterator[int]:
         """an iterator over indices to sample."""
         self.rg.shuffle(self.idxs)
@@ -28,9 +29,9 @@ class SeededSampler(Sampler):
 
 
 class ClassBalanceSampler(Sampler):
-    """A `ClassBalanceSampler` samples data from a `MolGraphDataset` such that positive and 
+    """A `ClassBalanceSampler` samples data from a `MolGraphDataset` such that positive and
     negative classes are equally sampled
-    
+
     Parameters
     ----------
     dataset : MolGraphDataset
