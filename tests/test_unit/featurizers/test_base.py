@@ -1,6 +1,6 @@
 import pytest
 
-from chemprop.featurizers.multihot import MultiHotFeaturizer
+from chemprop.featurizers.v2.multihot import MultiHotFeaturizer
 
 
 def test_abc():

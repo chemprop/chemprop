@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.featurizers.multihot.bond import BondFeaturizer
+from chemprop.featurizers.v2.multihot import BondFeaturizer
 
 
 @pytest.fixture(
