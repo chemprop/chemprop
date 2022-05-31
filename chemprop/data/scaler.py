@@ -31,7 +31,7 @@ class StandardScaler:
         :param X: A list of lists of floats (or None).
         :return: The fitted :class:`StandardScaler` (self).
         """
-        X = np.array(X).astype(float)
+        X = np.array(X, float)
 
         self.means = np.nanmean(X, axis=0)
         self.means[np.isnan(self.means)] = 0
@@ -49,7 +49,7 @@ class StandardScaler:
         :param X: A list of lists of floats (or None).
         :return: The transformed data with NaNs replaced by :code:`self.replace_nan_token`.
         """
-        X = np.array(X).astype(float)
+        X = np.array(X, float)
         X_t = (X - self.means) / self.stds
         X_t[np.isnan(X_t)] = self.replace_nan_token
 
@@ -62,7 +62,7 @@ class StandardScaler:
         :param X: A list of lists of floats.
         :return: The inverse transformed data with NaNs replaced by :code:`self.replace_nan_token`.
         """
-        X_t = np.array(X_t).astype(float)
+        X_t = np.array(X_t, float)
         X = X_t * self.stds + self.means
         X[np.isnan(X)] = self.replace_nan_token
 
