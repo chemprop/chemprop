@@ -100,7 +100,7 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
 
                 x_e = self.bond_featurizer(bond)
                 if bond_features_extra is not None:
-                    x_e = np.concat((x_e, bond_features_extra[bond.GetIdx()]))
+                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
 
                 b12 = i
                 b21 = b12 + 1

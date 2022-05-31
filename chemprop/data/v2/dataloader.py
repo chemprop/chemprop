@@ -6,7 +6,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2 import MolGraphDataset, ClassBalanceSampler, SeededSampler
+from chemprop.data.v2.datasets import MolGraphDataset
+from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.v2 import MolGraph
 from chemprop.models.v2 import MoleculeEncoderInput
 

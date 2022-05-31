@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import list, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 from rdkit import Chem
