@@ -4,7 +4,6 @@ from tempfile import TemporaryDirectory
 from typing import List
 import pandas as pd
 import pytest
-from parameterized import parameterized
 
 from chemprop.constants import TEST_SCORES_FILE_NAME
 
@@ -18,61 +17,43 @@ NUM_ITER = 2
 DELTA = 0.015
 
 
-@parameterized.expand(
-    [
-        (
-            "chemprop_morgan_features_generator",
-            "chemprop",
-            "auc",
-            ["--features_generator", "morgan"],
-        ),
-        (
-            "chemprop_rdkit2d_features_generator",
-            "chemprop",
-            "auc",
-            ["--features_generator", "rdkit_2d"],
-        ),
-        (
-            "chemprop_morgan_count_features_generator",
-            "chemprop",
-            "auc",
-            ["--features_generator", "morgan_count"],
-        ),
-        (
-            "chemprop_rdkit_2d_normalized_count_features_generator",
-            "chemprop",
-            "auc",
-            [
-                "--features_generator",
-                "rdkit_2d_normalized",
-                "--no_features_scaling",
-            ],
-        ),
-        (
-            "chemprop_combined_features_generator",
-            "chemprop",
-            "auc",
-            ["--features_generator", "rdkit_2d", "morgan"],
-        ),
-        (
-            "chemprop_combined_features_generator_multimolecule",
-            "chemprop",
-            "auc",
-            [
-                "--features_generator",
-                "rdkit_2d",
-                "morgan",
-                "--number_of_molecules",
-                "2",
-                "--data_path",
-                os.path.join(TEST_DATA_DIR, "classification_multimolecule.csv"),
-            ],
-        ),
+@pytest.fixture(
+    params=[
+        ["morgan"],
+        ["morgan_count"],
+        ["rdkit_2d"],
+        ["rdkit_2d_normalized", "--no_features_scaling"],
+        ["rdkit_2d", "morgan"],
     ]
 )
-def test_feature_precomputation(
-    self, name: str, model_type: str, metric: str, train_flags: List[str] = None
-):
+def feature_generator(request):
+    return request.param
+
+
+@pytest.fixture(
+    params=[
+        ["1"],
+        [
+            "2",
+            "--data_path",
+            os.path.join(TEST_DATA_DIR, "classification_multimolecule.csv"),
+        ],
+    ]
+)
+def number_of_molecules(request):
+    return request.param
+
+
+def test_feature_precomputation(feature_generator: List, number_of_molecules: List):
+    metric = "auc"
+    model_type = "chemprop"
+    train_flags = [
+        "--features_generator",
+        *feature_generator,
+        "--number_of_molecules",
+        *number_of_molecules,
+    ]
+
     with TemporaryDirectory() as save_dir:
         # Train with unbatched generators
         utils.train(
