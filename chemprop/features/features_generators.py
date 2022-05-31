@@ -36,13 +36,14 @@ def get_features_generator(features_generator_name: str) -> FeaturesGenerator:
     :param features_generator_name: The name of the features generator.
     :return: The desired features generator.
     """
-    if features_generator_name not in FEATURES_GENERATOR_REGISTRY:
+
+    try:
+        return FEATURES_GENERATOR_REGISTRY[features_generator_name]
+    except KeyError:
         raise ValueError(
             f'Features generator "{features_generator_name}" could not be found. '
             f"If this generator relies on rdkit features, you may need to install descriptastorus."
         )
-
-    return FEATURES_GENERATOR_REGISTRY[features_generator_name]
 
 
 def get_available_features_generators() -> List[str]:
