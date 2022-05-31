@@ -6,12 +6,12 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.datasets import MolGraphDataset
-from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
+from chemprop.data.v2 import MolGraphDataset, ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.v2 import MolGraph
+from chemprop.models.v2 import MoleculeEncoderInput
 
 
-def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
+def collate_graphs(mgs: Sequence[MolGraph]) -> MoleculeEncoderInput:
     n_atoms = 1
     n_bonds = 1
     a_scope = []
@@ -45,8 +45,8 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
         n_atoms += mg.n_atoms
         n_bonds += mg.n_bonds
 
-    X_v = torch.from_numpy(np.concatenate(X_vs).astype(np.float32))
-    X_e = torch.from_numpy(np.concatenate(X_es).astype(np.float32))
+    X_v = torch.from_numpy(np.concatenate(X_vs)).float()
+    X_e = torch.from_numpy(np.concatenate(X_es)).float()
 
     # max with 1 to fix a crash in rare case of all single-heavy-atom mols
     max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
@@ -62,7 +62,7 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> tuple:
 
 
 class MolGraphDataLoader(DataLoader):
-    """A `MoleculeDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
+    """A `MolGraphDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
 
     Parameters
     ----------
@@ -123,7 +123,7 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def gt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated
+        """whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
@@ -137,7 +137,7 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def lt_targets(self) -> list[list[Optional[bool]]]:
-        """booleans for whether each target is an inequality rather than a value target associated
+        """for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
@@ -151,6 +151,5 @@ class MolGraphDataLoader(DataLoader):
 
     @property
     def iter_size(self) -> int:
-        """Returns the number of data points included in each full iteration through the
-        :class:`MoleculeDataLoader`."""
+        """the number of data points included in each full iteration of this dataloader."""
         return len(self.sampler)

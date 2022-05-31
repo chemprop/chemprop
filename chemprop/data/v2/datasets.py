@@ -9,7 +9,8 @@ from torch.utils.data import Dataset
 
 from chemprop.data.scaler import StandardScaler
 from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
-from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint
+from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint, ReactionDatapoint
+from chemprop.featurizers.v2.reaction import ReactionFeaturizer
 
 
 class MolGraphDataset(Dataset, ABC):
@@ -245,14 +246,14 @@ class ReactionDataset(MolGraphDataset):
         the featurizer with which to generate MolGraphs of the input
     """
 
-    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
+    def __init__(self, data: Sequence[ReactionDatapoint], featurizer: ReactionFeaturizer):
         super().__init__(data)
         self.featurizer = featurizer
 
     def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
         d = self.data[idx]
 
-        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
+        return self.featurizer(d.mols, d.atom_features, d.bond_features), d.targets
 
     @property
     def smiles(self) -> list[str]:
