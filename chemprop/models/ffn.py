@@ -83,7 +83,7 @@ class MultiReadout(nn.Module):
 
         for constraint in bond_constraints:
             self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
-                                                       dropout, activation, self.bond_ffn_base, constraint, ffn_type='bond'))
+                                                       dropout, activation, self.bond_ffn_base, constraint, ffn_type='bond', shared_ffn))
             ind += 1
 
         self.ffn_list = AttrProxy(self, 'readout_')
