@@ -78,7 +78,7 @@ class MultiReadout(nn.Module):
 
         for constraint in atom_constraints:
             self.add_module(f'readout_{ind}', FFNAtten(features_size, hidden_size, num_layers, output_size,
-                                                       dropout, activation, self.atom_ffn_base, constraint, ffn_type='atom'))
+                                                       dropout, activation, self.atom_ffn_base, constraint, ffn_type='atom', shared_ffn))
             ind += 1
 
         for constraint in bond_constraints:
