@@ -132,25 +132,36 @@ class FFNAtten(nn.Module):
         """
         super(FFNAtten, self).__init__()
 
+        if num_layers == 1:
+            base_output_size = features_size
+        else:
+            base_output_size = hidden_size
+
         if constraint:
             if shared_ffn:
                 self.ffn = ffn_base
             else:
-                self.ffn = DenseLayers(
-                    first_linear_dim=features_size,
-                    hidden_size=hidden_size,
-                    num_layers=num_layers,
-                    output_size=hidden_size,
-                    dropout=dropout,
-                    activation=activation
-                )
-            self.ffn_readout = DenseLayers(first_linear_dim=hidden_size,
+                if num_layers > 1:
+                    self.ffn = nn.Sequential([
+                        DenseLayers(
+                            first_linear_dim=features_size,
+                            hidden_size=hidden_size,
+                            num_layers=num_layers - 1,
+                            output_size=hidden_size,
+                            dropout=dropout,
+                            activation=activation
+                        ),
+                        activation
+                    ])
+                else:
+                    self.ffn = nn.Identity()
+            self.ffn_readout = DenseLayers(first_linear_dim=base_output_size,
                                            hidden_size=hidden_size,
                                            num_layers=1,
                                            output_size=output_size,
                                            dropout=dropout,
                                            activation=activation)
-            self.weights_readout = DenseLayers(first_linear_dim=hidden_size,
+            self.weights_readout = DenseLayers(first_linear_dim=base_output_size,
                                                hidden_size=hidden_size,
                                                output_size=1,
                                                num_layers=2,
@@ -159,9 +170,9 @@ class FFNAtten(nn.Module):
         else:
             if shared_ffn:
                 self.ffn_readout = nn.Sequential([
-                    self.ffn,
+                    ffn_base,
                     DenseLayers(
-                        first_linear_dim=features_size,
+                        first_linear_dim=base_output_size,
                         hidden_size=hidden_size,
                         num_layers=1,
                         output_size=output_size,
@@ -170,7 +181,7 @@ class FFNAtten(nn.Module):
                     )
                 ])
             else:
-                DenseLayers(
+                self.ffn_readout = DenseLayers(
                     first_linear_dim=features_size,
                     hidden_size=hidden_size,
                     num_layers=num_layers,
