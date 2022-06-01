@@ -114,7 +114,8 @@ class MoleculeModel(nn.Module):
                                         dropout=dropout,
                                         activation=activation,
                                         atom_constraints=args.atom_constraints,
-                                        bond_constraints=args.bond_constraints)
+                                        bond_constraints=args.bond_constraints,
+                                        shared_ffn=args.shared_atom_bond_ffn)
         else:
             self.readout = DenseLayers(first_linear_dim=first_linear_dim,
                                        hidden_size=args.ffn_hidden_size,

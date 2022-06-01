@@ -405,6 +405,10 @@ class TrainArgs(CommonArgs):
     """
     whether this is atomic/bond properties prediction.
     """
+    no_shared_atom_bond_ffn: bool = False
+    """
+    Whether the FFN weights for atom and bond targets should be independent between tasks.
+    """
 
     # Training arguments
     epochs: int = 30
@@ -535,6 +539,13 @@ class TrainArgs(CommonArgs):
         to the additional bond features."
         """
         return not self.no_bond_features_scaling
+    
+    @property
+    def shared_atom_bond_ffn(self) -> bool:
+        """
+        Whether the FFN weights for atom and bond targets should be shared between tasks.
+        """
+        return not self.no_shared_atom_bond_ffn
 
     @property
     def atom_constraints(self) -> List[bool]:
