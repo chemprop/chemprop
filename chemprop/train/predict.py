@@ -90,6 +90,8 @@ def predict(
                     bond_types_batch.append(bond_types)
                 else:
                     bond_types_batch.append(None)
+        else:
+            bond_types_batch = None
 
         # Make predictions
         with torch.no_grad():
