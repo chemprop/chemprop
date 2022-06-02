@@ -90,6 +90,17 @@ def train(model: MoleculeModel,
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(args.device)
                 ind += 1
+            bond_types_batch = []
+            for i in range(len(args.atom_targets)):
+                bond_types_batch.append(None)
+            for i in range(len(args.bond_targets)):
+                if args.adding_bond_types and atom_bond_scaler is not None:
+                    mean, std = atom_bond_scaler.means[i+len(args.atom_targets)][0], atom_bond_scaler.stds[i+len(args.atom_targets)][0]
+                    bond_types = [b.GetBondTypeAsDouble() - mean / std for d in batch for b in d.mol[0].GetBonds()]
+                    bond_types = torch.FloatTensor(bond_types).to(args.device)
+                    bond_types_batch.append(bond_types)
+                else:
+                    bond_types_batch.append(None)
         else:
             masks = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool)  # shape(batch, tasks)
             targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])  # shape(batch, tasks)
@@ -101,6 +112,7 @@ def train(model: MoleculeModel,
             data_weights = torch.tensor(data_weights_batch).unsqueeze(1)  # shape(batch,1)
 
             constraints_batch = None
+            bond_types_batch = None
 
             if args.loss_function == 'bounded_mse':
                 lt_target_batch = batch.lt_targets()  # shape(batch, tasks)
@@ -110,7 +122,7 @@ def train(model: MoleculeModel,
 
         # Run model
         model.zero_grad()
-        preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, constraints_batch)
+        preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, constraints_batch, bond_types_batch)
 
         # Move tensors to correct device
         torch_device = args.device

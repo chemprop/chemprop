@@ -39,6 +39,7 @@ class MoleculeModel(nn.Module):
         if self.is_atom_bond_targets:
             self.atom_targets, self.bond_targets = args.atom_targets, args.bond_targets
             self.atom_constraints, self.bond_constraints = args.atom_constraints, args.bond_constraints
+            self.adding_bond_types = args.adding_bond_types
 
         self.relative_output_size = 1
         if self.multiclass:
@@ -167,7 +168,8 @@ class MoleculeModel(nn.Module):
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
                 bond_features_batch: List[np.ndarray] = None,
-                constraints_batch: List[torch.tensor] = None) -> torch.FloatTensor:
+                constraints_batch: List[torch.tensor] = None,
+                bond_types_batch: List[torch.FloatTensor] = None) -> torch.FloatTensor:
         """
         Runs the :class:`MoleculeModel` on input.
 
@@ -180,12 +182,13 @@ class MoleculeModel(nn.Module):
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :param constraints_batch: A list of torch.tensor which applies constraint on atomic/bond properties.
-        :return: The output of the :class:`MoleculeModel`, containing a list of property predictions
+        :param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
+        :return: The output of the :class:`MoleculeModel`, containing a list of property predictions.
         """
         if self.is_atom_bond_targets:
             encodings = self.encoder(batch, features_batch, atom_descriptors_batch,
                                      atom_features_batch, bond_features_batch)
-            output = self.readout(encodings, constraints_batch)
+            output = self.readout(encodings, constraints_batch, bond_types_batch)
         else:
             encodings = self.encoder(batch, features_batch, atom_descriptors_batch,
                                      atom_features_batch, bond_features_batch)

@@ -413,6 +413,11 @@ class TrainArgs(CommonArgs):
     """
     Number of layers in FFN for determining weights used in constrained targets.
     """
+    no_adding_bond_types: bool = False
+    """
+    Whether the bond types determined by RDKit molecules added to the output of bond targets. This option is intended to be used
+    with the :code:`is_atom_bond_targets`.
+    """
 
     # Training arguments
     epochs: int = 30
@@ -550,6 +555,13 @@ class TrainArgs(CommonArgs):
         Whether the FFN weights for atom and bond targets should be shared between tasks.
         """
         return not self.no_shared_atom_bond_ffn
+
+    @property
+    def adding_bond_types(self) -> bool:
+        """
+        Whether the bond types determined by RDKit molecules should be added to the output of bond targets.
+        """
+        return not self.no_adding_bond_types
 
     @property
     def atom_constraints(self) -> List[bool]:

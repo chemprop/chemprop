@@ -68,8 +68,8 @@ def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = Fals
     """
     Gets the dimensionality of the atom feature vector.
 
-    :param overwrite_default_atom: Whether to overwrite the default atom descriptors
-    :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None
+    :param overwrite_default_atom: Whether to overwrite the default atom descriptors.
+    :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None.
     :return: The dimensionality of the atom feature vector.
     """
     if PARAMS.REACTION_MODE:
@@ -152,8 +152,8 @@ def get_bond_fdim(atom_messages: bool = False,
     :param atom_messages: Whether atom messages are being used. If atom messages are used,
                           then the bond feature vector only contains bond features.
                           Otherwise it contains both atom and bond features.
-    :param overwrite_default_bond: Whether to overwrite the default bond descriptors
-    :param overwrite_default_atom: Whether to overwrite the default atom descriptors
+    :param overwrite_default_bond: Whether to overwrite the default bond descriptors.
+    :param overwrite_default_atom: Whether to overwrite the default atom descriptors.
     :param is_reaction: Whether to add :code:`EXTRA_BOND_FDIM` for reaction input when :code:`REACTION_MODE:` is not None
     :return: The dimensionality of the bond feature vector.
     """
@@ -300,9 +300,10 @@ class MolGraph:
     * :code:`overwrite_default_bond_features`: A boolean to overwrite default bond descriptors.
     * :code:`is_mol`: A boolean whether the input is a molecule.
     * :code:`is_reaction`: A boolean whether the molecule is a reaction.
-    * :code:`is_explicit_h`: A boolean whether to retain explicit Hs (for reaction mode)
-    * :code:`is_adding_hs`: A boolean whether to add explicit Hs (not for reaction mode)
-    * :code:`reaction_mode`:  Reaction mode to construct atom and bond feature vectors
+    * :code:`is_explicit_h`: A boolean whether to retain explicit Hs (for reaction mode).
+    * :code:`is_adding_hs`: A boolean whether to add explicit Hs (not for reaction mode).
+    * :code:`reaction_mode`:  Reaction mode to construct atom and bond feature vectors.
+    * :code:`b2br`: A mapping from f_bonds to real bonds in molecule recorded in targets.
     """
 
     def __init__(self, mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]],
@@ -312,10 +313,10 @@ class MolGraph:
                  overwrite_default_bond_features: bool = False):
         """
         :param mol: A SMILES or an RDKit molecule.
-        :param atom_features_extra: A list of 2D numpy array containing additional atom features to featurize the molecule
-        :param bond_features_extra: A list of 2D numpy array containing additional bond features to featurize the molecule
-        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating
-        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating
+        :param atom_features_extra: A list of 2D numpy array containing additional atom features to featurize the molecule.
+        :param bond_features_extra: A list of 2D numpy array containing additional bond features to featurize the molecule.
+        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating.
+        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating.
         """
         self.is_mol = is_mol(mol)
         self.is_reaction = is_reaction(self.is_mol)
@@ -650,10 +651,10 @@ def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.M
     Converts a list of SMILES or RDKit molecules to a :class:`BatchMolGraph` containing the batch of molecular graphs.
 
     :param mols: A list of SMILES or a list of RDKit molecules.
-    :param atom_features_batch: A list of 2D numpy array containing additional atom features to featurize the molecule
-    :param bond_features_batch: A list of 2D numpy array containing additional bond features to featurize the molecule
-    :param overwrite_default_atom_features: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating
-    :param overwrite_default_bond_features: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating
+    :param atom_features_batch: A list of 2D numpy array containing additional atom features to featurize the molecule.
+    :param bond_features_batch: A list of 2D numpy array containing additional bond features to featurize the molecule.
+    :param overwrite_default_atom_features: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating.
+    :param overwrite_default_bond_features: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating.
     :return: A :class:`BatchMolGraph` containing the combined molecular graph for the molecules.
     """
     return BatchMolGraph([MolGraph(mol, af, bf,
@@ -665,8 +666,8 @@ def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.M
 def is_mol(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]) -> bool:
     """Checks whether an input is a molecule or a reaction
 
-    :param mol: str, RDKIT molecule or tuple of molecules
-    :return: Whether the supplied input corresponds to a single molecule
+    :param mol: str, RDKIT molecule or tuple of molecules.
+    :return: Whether the supplied input corresponds to a single molecule.
     """
 
     if isinstance(mol, str) and ">" not in mol:

@@ -45,10 +45,10 @@ class MultiReadout(nn.Module):
         :param output_size: The size of output.
         :param dropout: Dropout probability.
         :param activation: Activation function.
-        :param atom_constraints: A list of booleans indicatin whether constraints applied to output of atomic properties.
-        :param bond_constraints: A list of booleans indicatin whether constraints applied to output of bond properties.
+        :param atom_constraints: A list of booleans indicating whether constraints applied to output of atomic properties.
+        :param bond_constraints: A list of booleans indicating whether constraints applied to output of bond properties.
         :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
-        :param weights_ffn_num_layers: Number of layers in FFN for determining weights used in constrained targets.
+        :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
         super(MultiReadout, self).__init__()
 
@@ -125,14 +125,16 @@ class MultiReadout(nn.Module):
         self,
         input: Tuple[torch.tensor, List, torch.tensor, List, torch.tensor],
         constraints_batch: List[torch.tensor],
+        bond_types_batch: List[torch.FloatTensor],
     ) -> List[torch.tensor]:
         """
         Runs the :class:`MultiReadout` on input.
         :param input: A tuple of atomic and bond information of each molecule.
-        :params constraints_batch: A list of PyTorch tensors which applies constraint on atomic/bond properties.
+        :param constraints_batch: A list of PyTorch tensors which applies constraint on atomic/bond properties.
+        ;param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`MultiReadout`, a list of PyTorch tensors which ontains atomic/bond properties prediction.
         """
-        return [ffn(input, constraints_batch[i]) for i, ffn in enumerate(self.ffn_list)]
+        return [ffn(input, constraints_batch[i], bond_types_batch[i]) for i, ffn in enumerate(self.ffn_list)]
 
 
 class FFNAtten(nn.Module):
@@ -169,7 +171,7 @@ class FFNAtten(nn.Module):
         :param constraint: Whether to apply constraint to output.
         :param ffn_type: The type of target (atom or bond).
         :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
-        :param weights_ffn_num_layers: Number of layers in FFN for determining weights used in constrained targets.
+        :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
         super(FFNAtten, self).__init__()
 
@@ -241,10 +243,13 @@ class FFNAtten(nn.Module):
         self,
         input: Tuple[torch.tensor, List, torch.tensor, List, torch.tensor],
         constraints: torch.tensor,
+        bond_types: torch.tensor,
     ) -> torch.tensor:
         """
         Runs the :class:`FFNAtten` on input.
         :param input: A tuple of atom and bond informations of each molecule.
+        :param constraints: A PyTorch tensor which applies constraint on atomic/bond properties.
+        ;param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`FFNAtten`, a PyTorch tensor containing a list of property predictions.
         """
         a_hidden, a_scope, b_hidden, b_scope, b2br = input
@@ -262,12 +267,15 @@ class FFNAtten(nn.Module):
         if constraints is not None:
             if self.ffn_type == "atom":
                 output_hidden = self.ffn(hidden)
+                output = self.ffn_readout(output_hidden)
             elif self.ffn_type == "bond":
                 forward_bond_hidden = self.ffn(forward_bond)
                 backward_bond_hidden = self.ffn(backward_bond)
                 output_hidden = forward_bond_hidden.add(backward_bond_hidden)
+                output = self.ffn_readout(output_hidden)
+                if bond_types is not None:
+                    output = output + bond_types.reshape(-1, 1)
 
-            output = self.ffn_readout(output_hidden)
             weights = self.weights_readout(output_hidden)
             constrained_output = []
             for i, (start, size) in enumerate(scope):
@@ -293,6 +301,8 @@ class FFNAtten(nn.Module):
                 forward_bond_output = self.ffn_readout(forward_bond)
                 backward_bond_output = self.ffn_readout(backward_bond)
                 output = forward_bond_output.add(backward_bond_output)
+                if bond_types is not None:
+                    output = output + bond_types.reshape(-1, 1)
 
         return output
 

@@ -79,6 +79,17 @@ def predict(
                         constraints_batch[ind][j] = (constraints_batch[ind][j] - nbond * mean) / std
                     constraints_batch[ind] = torch.tensor(constraints_batch[ind]).to(device)
                 ind += 1
+            bond_types_batch = []
+            for i in range(len(model.atom_targets)):
+                bond_types_batch.append(None)
+            for i in range(len(model.bond_targets)):
+                if model.adding_bond_types and atom_bond_scaler is not None:
+                    mean, std = atom_bond_scaler.means[i+len(model.atom_targets)][0], atom_bond_scaler.stds[i+len(model.atom_targets)][0]
+                    bond_types = [b.GetBondTypeAsDouble() - mean / std for d in batch for b in d.mol[0].GetBonds()]
+                    bond_types = torch.FloatTensor(bond_types).to(device)
+                    bond_types_batch.append(bond_types)
+                else:
+                    bond_types_batch.append(None)
 
         # Make predictions
         with torch.no_grad():
@@ -89,6 +100,7 @@ def predict(
                 atom_features_batch,
                 bond_features_batch,
                 constraints_batch,
+                bond_types_batch,
             )
 
         if model.is_atom_bond_targets:

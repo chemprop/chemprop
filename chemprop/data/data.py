@@ -206,6 +206,15 @@ class MoleculeDatapoint:
         """
         return [len(self.mol[i].GetBonds()) for i in range(self.number_of_molecules)]
 
+    @property
+    def bond_types(self) -> List[List[float]]:
+        """
+        Gets the bond types in the :class:`MoleculeDatapoint`.
+
+        :return: A list of bond types for each molecule.
+        """
+        return [[b.GetBondTypeAsDouble() for b in self.mol[i].GetBonds()] for i in range(self.number_of_molecules)]
+
     def set_features(self, features: np.ndarray) -> None:
         """
         Sets the features of the molecule.
@@ -331,6 +340,15 @@ class MoleculeDataset(Dataset):
         :return: A list of number of bonds for each molecule.
         """
         return [d.number_of_bonds for d in self._data]
+
+    @property
+    def bond_types(self) -> List[List[float]]:
+        """
+        Gets the bond types in each :class:`MoleculeDatapoint`.
+
+        :return: A list of bond types for each molecule.
+        """
+        return [d.bond_types for d in self._data]
 
     @property
     def is_atom_bond_targets(self) -> bool:
