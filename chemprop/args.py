@@ -409,6 +409,10 @@ class TrainArgs(CommonArgs):
     """
     Whether the FFN weights for atom and bond targets should be independent between tasks.
     """
+    weights_ffn_num_layers: int = 2
+    """
+    Number of layers in FFN for determining weights used in constrained targets.
+    """
 
     # Training arguments
     epochs: int = 30
