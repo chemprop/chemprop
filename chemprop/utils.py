@@ -12,9 +12,11 @@ import collections
 
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
+from scipy.stats.mstats import gmean
 
 from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
@@ -768,3 +770,29 @@ def update_prediction_args(
                 "(with either --features_generator or --features_path "
                 "and using --no_features_scaling if applicable)."
             )
+
+
+def multitask_mean(
+    scores: np.ndarray,
+    metric: str,
+    axis: int = None,
+) -> float:
+    """
+    A function for combining the metric scores across different
+    model tasks into a single score. When the metric being used
+    is one that varies with the magnitude of the task (such as RMSE),
+    a geometric mean is used, otherwise a more typical arithmetic mean
+    is used. This prevents a task with a larger magnitude from dominating
+    over one with a smaller magnitude (e.g., temperature and pressure).
+
+    :param scores: The scores from different tasks for a single metric.
+    :param metric: The metric used to generate the scores.
+    :axis: The axis along which to take the mean.
+    :return: The combined score across the tasks.
+    """
+    scale_dependent_metrics = ['rmse', 'mae', 'mse', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
+
+    if metric in scale_dependent_metrics:
+        return gmean(scores, axis=axis)
+    else:
+        return np.mean(scores, axis=axis)
