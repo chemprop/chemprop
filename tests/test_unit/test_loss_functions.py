@@ -134,7 +134,7 @@ def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
     "preds,targets,likelihood",
     [(
         torch.tensor([[0, 1]], dtype=float),
-        torch.zeros([1, 1]),
+        torch.zeros([1, 1], dtype=float),
         [[0.3989]],
     )]
 )
@@ -151,14 +151,14 @@ def test_mve(preds, targets, likelihood):
     "alphas,target_labels,lam,expected_loss",
     [
         (
-            torch.tensor([[2, 2]]),
-            torch.ones([1, 1]),
+            torch.tensor([[2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
             0,
             [[0.6]]
         ),
         (
-            torch.tensor([[2, 2]]),
-            torch.ones([1, 1]),
+            torch.tensor([[2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
             0.2,
             [[0.63862943]]
         )
@@ -178,8 +178,8 @@ def test_dirichlet(alphas, target_labels, lam, expected_loss):
     "alphas,target_labels",
     [
         (
-            torch.ones([1, 1]),
-            torch.ones([1, 1]),
+            torch.ones([1, 1], dtype=float),
+            torch.ones([1, 1], dtype=float),
         ),
     ]
 )
@@ -196,14 +196,14 @@ def test_dirichlet_wrong_dimensions(alphas, target_labels):
     "alphas,targets,lam,expected_loss",
     [
         (
-            torch.tensor([[2, 2, 2, 2]]),
-            torch.ones([1, 1]),
+            torch.tensor([[2, 2, 2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
             0,
             [[1.56893861]]
         ),
         (
-            torch.tensor([[2, 2, 2, 2]]),
-            torch.ones([1, 1]),
+            torch.tensor([[2, 2, 2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
             0.2,
             [[2.768938541]]
         )
@@ -223,8 +223,8 @@ def test_evidential(alphas, targets, lam, expected_loss):
     "alphas,targets",
     [
         (
-            torch.ones([2, 2]),
-            torch.ones([2, 2]),
+            torch.ones([2, 2], dtype=float),
+            torch.ones([2, 2], dtype=float),
         ),
     ]
 )
