@@ -270,10 +270,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -281,21 +281,22 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.63495735,
+                0.4908104,
+                ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'auc',
-                0.5827042,
-                ['--features_generator', 'morgan']
+                0.4733686,
+                ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'auc',
-                0.63613397,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling']
+                0.4573833,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_mcc_metric',
@@ -337,9 +338,8 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
-
-            mean_score = test_scores.mean()
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
+            mean_score = np.mean(np.array(test_scores))
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -408,7 +408,7 @@ class ChempropTests(TestCase):
 
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
-            mse = float(np.nanmean((pred - true) ** 2))
+            mse = float(np.mean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
     
     def test_predict_individual_ensemble(self):
@@ -440,20 +440,21 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                0.07072509
+                0.1804146,
+                ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                0.07685293,
-                ['--features_generator', 'morgan'],
+                0.26773606,
+                ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.072059973,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
+                0.0778546,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         )
     ])
@@ -662,10 +663,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -789,10 +790,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -822,22 +823,22 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
     @parameterized.expand([
         (
                 'chemprop',
                 'chemprop',
-                3473.79893,
+                2805.4368779,
                 ['--fingerprint_type', 'MPN'],
         ),
         (
                 'chemprop',
                 'chemprop',
-                3504.50003,
+                2689.55376,
                 ['--fingerprint_type', 'last_FFN'],
         )
     ])
@@ -992,10 +993,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([(
