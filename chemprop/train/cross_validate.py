@@ -6,6 +6,7 @@ import os
 import sys
 from typing import Callable, Dict, List, Tuple
 import subprocess
+
 import numpy as np
 import pandas as pd
 
@@ -13,7 +14,7 @@ from .run_training import run_training
 from chemprop.args import TrainArgs
 from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
-from chemprop.utils import create_logger, makedirs, timeit
+from chemprop.utils import create_logger, makedirs, timeit, multitask_mean
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_explicit_h, set_adding_hs, set_reaction, reset_featurization_parameters
 
 
@@ -60,7 +61,7 @@ def cross_validate(args: TrainArgs,
         debug('Could not write the reproducibility section of the arguments to file, thus omitting this section.')
         args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
 
-    #set explicit H option and reaction option
+    # set explicit H option and reaction option
     reset_featurization_parameters(logger=logger)
     set_explicit_h(args.explicit_h)
     set_adding_hs(args.adding_h)
@@ -68,7 +69,7 @@ def cross_validate(args: TrainArgs,
         set_reaction(args.reaction, args.reaction_mode)
     elif args.reaction_solvent:
         set_reaction(True, args.reaction_mode)
-        
+    
     # Get data
     debug('Loading data')
     data = get_data(
@@ -129,7 +130,7 @@ def cross_validate(args: TrainArgs,
     # Report scores for each fold
     for fold_num in range(args.num_folds):
         for metric, scores in all_scores.items():
-            info(f'\tSeed {init_seed + fold_num} ==> test {metric} = {np.nanmean(scores[fold_num]):.6f}')
+            info(f'\tSeed {init_seed + fold_num} ==> test {metric} = {multitask_mean(scores[fold_num], metric):.6f}')
 
             if args.show_individual_scores:
                 for task_name, score in zip(args.task_names, scores[fold_num]):
@@ -137,14 +138,14 @@ def cross_validate(args: TrainArgs,
 
     # Report scores across folds
     for metric, scores in all_scores.items():
-        avg_scores = np.nanmean(scores, axis=1)  # average score for each model across tasks
-        mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
+        avg_scores = multitask_mean(scores, axis=1, metric=metric)  # average score for each model across tasks
+        mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
         info(f'Overall test {metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
         if args.show_individual_scores:
             for task_num, task_name in enumerate(args.task_names):
                 info(f'\tOverall test {task_name} {metric} = '
-                     f'{np.nanmean(scores[:, task_num]):.6f} +/- {np.nanstd(scores[:, task_num]):.6f}')
+                     f'{np.mean(scores[:, task_num]):.6f} +/- {np.std(scores[:, task_num]):.6f}')
 
     # Save scores
     with open(os.path.join(save_dir, TEST_SCORES_FILE_NAME), 'w') as f:
@@ -160,7 +161,7 @@ def cross_validate(args: TrainArgs,
             row = ['spectra']
             for metric, scores in all_scores.items():
                 task_scores = scores[:,0]
-                mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
+                mean, std = np.mean(task_scores), np.std(task_scores)
                 row += [mean, std] + task_scores.tolist()
             writer.writerow(row)
         else: # all other data types, separate scores by task
@@ -168,13 +169,13 @@ def cross_validate(args: TrainArgs,
                 row = [task_name]
                 for metric, scores in all_scores.items():
                     task_scores = scores[:, task_num]
-                    mean, std = np.nanmean(task_scores), np.nanstd(task_scores)
+                    mean, std = np.mean(task_scores), np.std(task_scores)
                     row += [mean, std] + task_scores.tolist()
                 writer.writerow(row)
 
     # Determine mean and std score of main metric
-    avg_scores = np.nanmean(all_scores[args.metric], axis=1)
-    mean_score, std_score = np.nanmean(avg_scores), np.nanstd(avg_scores)
+    avg_scores = multitask_mean(all_scores[args.metric], metric=args.metric, axis=1)
+    mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
 
     # Optionally merge and save test preds
     if args.save_preds:
