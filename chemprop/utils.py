@@ -790,9 +790,20 @@ def multitask_mean(
     :axis: The axis along which to take the mean.
     :return: The combined score across the tasks.
     """
-    scale_dependent_metrics = ['rmse', 'mae', 'mse', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
+    scale_dependent_metrics = ["rmse", "mae", "mse", "bounded_rmse", "bounded_mae", "bounded_mse"]
+    nonscale_dependent_metrics = [
+        "auc", "prc-auc", "r2", "accuracy", "cross_entropy",
+        "binary_cross_entropy", "sid", "wasserstein", "f1", "mcc",
+    ]
 
     if metric in scale_dependent_metrics:
         return gmean(scores, axis=axis)
-    else:
+    elif metric in nonscale_dependent_metrics:
         return np.mean(scores, axis=axis)
+    else:
+        raise NotImplementedError(
+            f"The metric used, {metric}, has not been added to the list of\
+                metrics that are scale-dependent or not scale-dependent.\
+                This metric must be added to the appropriate list in the multitask_mean\
+                function in `chemprop/utils.py` in order to be used."
+        )
