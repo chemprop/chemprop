@@ -143,7 +143,7 @@ def get_mixed_task_names(path: str,
             mol = make_mol(smiles[0], False, add_h)
             for column in target_names:
                 value = row[column]
-                target = np.array(eval(value))
+                target = np.array(json.loads(value))
 
                 is_atom_target, is_bond_target, is_molecule_target = False, False, False
                 if len(target.shape) == 0:

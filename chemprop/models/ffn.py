@@ -131,7 +131,7 @@ class MultiReadout(nn.Module):
         Runs the :class:`MultiReadout` on input.
         :param input: A tuple of atomic and bond information of each molecule.
         :param constraints_batch: A list of PyTorch tensors which applies constraint on atomic/bond properties.
-        ;param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
+        :param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`MultiReadout`, a list of PyTorch tensors which ontains atomic/bond properties prediction.
         """
         return [ffn(input, constraints_batch[i], bond_types_batch[i]) for i, ffn in enumerate(self.ffn_list)]
@@ -249,7 +249,7 @@ class FFNAtten(nn.Module):
         Runs the :class:`FFNAtten` on input.
         :param input: A tuple of atom and bond informations of each molecule.
         :param constraints: A PyTorch tensor which applies constraint on atomic/bond properties.
-        ;param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
+        :param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`FFNAtten`, a PyTorch tensor containing a list of property predictions.
         """
         a_hidden, a_scope, b_hidden, b_scope, b2br = input
