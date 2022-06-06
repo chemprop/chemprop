@@ -373,7 +373,7 @@ def predict():
     if train_args.number_of_molecules is not None:
         arguments += [
             '--number_of_molecules', str(train_args.number_of_molecules),
-            '--smiles_columns', str(train_args.number_of_molecules),
+            '--smiles_columns', str(train_args.smiles_columns),
         ]
 
     # Parse arguments
