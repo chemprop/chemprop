@@ -86,7 +86,7 @@ def predict(
             for i in range(len(model.bond_targets)):
                 if model.adding_bond_types and atom_bond_scaler is not None:
                     mean, std = atom_bond_scaler.means[i+len(model.atom_targets)][0], atom_bond_scaler.stds[i+len(model.atom_targets)][0]
-                    bond_types = [b.GetBondTypeAsDouble() - mean / std for d in batch for b in d.mol[0].GetBonds()]
+                    bond_types = [(b.GetBondTypeAsDouble() - mean) / std for d in batch for b in d.mol[0].GetBonds()]
                     bond_types = torch.FloatTensor(bond_types).to(device)
                     bond_types_batch.append(bond_types)
                 else:

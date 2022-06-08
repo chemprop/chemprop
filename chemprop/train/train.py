@@ -96,7 +96,7 @@ def train(model: MoleculeModel,
             for i in range(len(args.bond_targets)):
                 if args.adding_bond_types and atom_bond_scaler is not None:
                     mean, std = atom_bond_scaler.means[i+len(args.atom_targets)][0], atom_bond_scaler.stds[i+len(args.atom_targets)][0]
-                    bond_types = [b.GetBondTypeAsDouble() - mean / std for d in batch for b in d.mol[0].GetBonds()]
+                    bond_types = [(b.GetBondTypeAsDouble() - mean) / std for d in batch for b in d.mol[0].GetBonds()]
                     bond_types = torch.FloatTensor(bond_types).to(args.device)
                     bond_types_batch.append(bond_types)
                 else:
