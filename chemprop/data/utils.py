@@ -16,7 +16,7 @@ from tqdm import tqdm
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.features import load_features, load_valid_atom_or_bond_features, is_explicit_h, is_adding_hs, is_mol
+from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
 from chemprop.rdkit import make_mol
 
 # Increase maximum size of field in the csv processing
@@ -343,7 +343,7 @@ def get_data(path: str,
              features_generator: List[str] = None,
              phase_features_path: str = None,
              atom_descriptors_path: str = None,
-             bond_features_path: str = None,
+             bond_descriptors_path: str = None,
              constraints_path: str = None,
              max_data_size: int = None,
              store_row: bool = False,
@@ -368,7 +368,7 @@ def get_data(path: str,
                                in place of :code:`args.features_generator`.
     :param phase_features_path: A path to a file containing phase features as applicable to spectra.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
-    :param bond_features_path: The path to the file containing the custom bond features.
+    :param bond_descriptors_path: The path to the file containing the custom bond descriptors.
     :param constraints_path: The path to the file containing constraints applied to different atomic/bond properties.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
@@ -391,8 +391,8 @@ def get_data(path: str,
         phase_features_path = phase_features_path if phase_features_path is not None else args.phase_features_path
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
-        bond_features_path = bond_features_path if bond_features_path is not None \
-            else args.bond_features_path
+        bond_descriptors_path = bond_descriptors_path if bond_descriptors_path is not None \
+            else args.bond_descriptors_path
         constraints_path = constraints_path if constraints_path is not None else args.constraints_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
@@ -457,7 +457,6 @@ def get_data(path: str,
 
     # Load data
     with open(path) as f:
-        f = open(path)
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
         if any([c not in fieldnames for c in smiles_columns]):
@@ -549,11 +548,17 @@ def get_data(path: str,
                 atom_descriptors = descriptors
 
         bond_features = None
-        if args is not None and args.bond_features_path is not None:
+        bond_descriptors = None
+        if args is not None and args.bond_descriptors is not None:
             try:
-                bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
+                descriptors = load_valid_atom_or_bond_features(bond_descriptors_path, [x[0] for x in all_smiles])
             except Exception as e:
-                raise ValueError(f'Failed to load or validate custom bond features: {e}')
+                raise ValueError(f'Failed to load or validate custom bond descriptors or features: {e}')
+
+            if args.bond_descriptors == 'feature':
+                bond_features = descriptors
+            elif args.bond_descriptors == 'descriptor':
+                bond_descriptors = descriptors
 
         data = MoleculeDataset([
             MoleculeDatapoint(
@@ -571,6 +576,7 @@ def get_data(path: str,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_features=bond_features[i] if bond_features is not None else None,
+                bond_descriptors=bond_descriptors[i] if bond_descriptors is not None else None,
                 constraints=all_constraints_data[i] if constraints_data is not None else None,
                 raw_constraints=all_raw_constraints_data[i] if raw_constraints_data is not None else None,
                 overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,

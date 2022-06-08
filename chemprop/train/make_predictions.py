@@ -3,7 +3,6 @@ import csv
 from typing import List, Optional, Union, Tuple
 
 import numpy as np
-import pandas as pd
 
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
@@ -109,7 +108,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
     if args.atom_descriptors == "feature":
         set_extra_atom_fdim(train_args.atom_features_size)
 
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == "feature":
         set_extra_bond_fdim(train_args.bond_features_size)
 
     # set explicit H option and reaction option
@@ -195,7 +194,7 @@ def predict_and_save(
             features_generator=args.features_generator,
             phase_features_path=args.phase_features_path,
             atom_descriptors_path=args.atom_descriptors_path,
-            bond_features_path=args.bond_features_path,
+            bond_descriptors_path=args.bond_descriptors_path,
             max_data_size=args.max_data_size,
             loss_function=args.loss_function,
         )
@@ -418,7 +417,7 @@ def make_predictions(
             features_generator=args.features_generator,
             phase_features_path=args.calibration_phase_features_path,
             atom_descriptors_path=args.calibration_atom_descriptors_path,
-            bond_features_path=args.calibration_bond_features_path,
+            bond_descriptors_path=args.calibration_bond_descriptors_path,
             max_data_size=args.max_data_size,
             loss_function=args.loss_function,
         )

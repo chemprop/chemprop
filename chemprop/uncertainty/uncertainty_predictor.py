@@ -124,13 +124,13 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -139,9 +139,9 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds = predict(
@@ -255,13 +255,13 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -270,9 +270,9 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds = predict(
@@ -332,13 +332,13 @@ class MVEPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -347,9 +347,9 @@ class MVEPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds, var = predict(
@@ -477,13 +477,13 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -492,9 +492,9 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds, lambdas, alphas, betas = predict(
@@ -623,13 +623,13 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -638,9 +638,9 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds, lambdas, alphas, betas = predict(
@@ -769,13 +769,13 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -784,9 +784,9 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds, lambdas, alphas, betas = predict(
@@ -911,13 +911,13 @@ class EnsemblePredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -926,9 +926,9 @@ class EnsemblePredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
             preds = predict(
                 model=model,
@@ -1058,13 +1058,13 @@ class DropoutPredictor(UncertaintyPredictor):
             scaler,
             features_scaler,
             atom_descriptor_scaler,
-            bond_feature_scaler,
+            bond_descriptor_scaler,
             atom_bond_scaler,
         ) = next(self.scalers)
         if (
             features_scaler is not None
             or atom_descriptor_scaler is not None
-            or bond_feature_scaler is not None
+            or bond_descriptor_scaler is not None
         ):
             self.test_data.reset_features_and_targets()
             if features_scaler is not None:
@@ -1073,9 +1073,9 @@ class DropoutPredictor(UncertaintyPredictor):
                 self.test_data.normalize_features(
                     atom_descriptor_scaler, scale_atom_descriptors=True
                 )
-            if bond_feature_scaler is not None:
+            if bond_descriptor_scaler is not None:
                 self.test_data.normalize_features(
-                    bond_feature_scaler, scale_bond_features=True
+                    bond_descriptor_scaler, scale_bond_descriptors=True
                 )
         for i in range(self.dropout_sampling_size):
             preds = predict(
@@ -1158,13 +1158,13 @@ class ClassPredictor(UncertaintyPredictor):
                 scaler,
                 features_scaler,
                 atom_descriptor_scaler,
-                bond_feature_scaler,
+                bond_descriptor_scaler,
                 atom_bond_scaler,
             ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -1173,9 +1173,9 @@ class ClassPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
+                if bond_descriptor_scaler is not None:
                     self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
+                        bond_descriptor_scaler, scale_bond_descriptors=True
                     )
 
             preds = predict(

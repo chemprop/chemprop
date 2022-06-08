@@ -52,6 +52,7 @@ def predict(
         features_batch = batch.features()
         atom_descriptors_batch = batch.atom_descriptors()
         atom_features_batch = batch.atom_features()
+        bond_descriptors_batch = batch.bond_descriptors()
         bond_features_batch = batch.bond_features()
         constraints_batch = batch.constraints()
 
@@ -100,6 +101,7 @@ def predict(
                 features_batch,
                 atom_descriptors_batch,
                 atom_features_batch,
+                bond_descriptors_batch,
                 bond_features_batch,
                 constraints_batch,
                 bond_types_batch,

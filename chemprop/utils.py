@@ -10,7 +10,6 @@ from time import time
 from typing import Any, Callable, List, Tuple
 import collections
 import numpy as np
-import pandas as pd
 
 import torch
 import torch.nn as nn
@@ -46,7 +45,7 @@ def save_checkpoint(
     scaler: StandardScaler = None,
     features_scaler: StandardScaler = None,
     atom_descriptor_scaler: StandardScaler = None,
-    bond_feature_scaler: StandardScaler = None,
+    bond_descriptor_scaler: StandardScaler = None,
     atom_bond_scaler: AtomBondScaler = None,
     args: TrainArgs = None,
 ) -> None:
@@ -57,7 +56,7 @@ def save_checkpoint(
     :param scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the data.
     :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
     :param atom_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the atom descriptors.
-    :param bond_feature_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_fetaures.
+    :param bond_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond descriptors.
     :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
@@ -76,8 +75,8 @@ def save_checkpoint(
             "means": atom_descriptor_scaler.means,
             "stds": atom_descriptor_scaler.stds,
         }
-    if bond_feature_scaler is not None:
-        bond_feature_scaler = {"means": bond_feature_scaler.means, "stds": bond_feature_scaler.stds}
+    if bond_descriptor_scaler is not None:
+        bond_descriptor_scaler = {"means": bond_descriptor_scaler.means, "stds": bond_descriptor_scaler.stds}
 
     state = {
         "args": args,
@@ -85,7 +84,7 @@ def save_checkpoint(
         "data_scaler": data_scaler,
         "features_scaler": features_scaler,
         "atom_descriptor_scaler": atom_descriptor_scaler,
-        "bond_feature_scaler": bond_feature_scaler,
+        "bond_descriptor_scaler": bond_descriptor_scaler,
         "atom_bond_scaler": atom_bond_scaler,
     }
     torch.save(state, path)
@@ -403,14 +402,14 @@ def load_scalers(
     else:
         atom_descriptor_scaler = None
 
-    if "bond_feature_scaler" in state.keys() and state["bond_feature_scaler"] is not None:
-        bond_feature_scaler = StandardScaler(
-            state["bond_feature_scaler"]["means"],
-            state["bond_feature_scaler"]["stds"],
+    if "bond_descriptor_scaler" in state.keys() and state["bond_descriptor_scaler"] is not None:
+        bond_descriptor_scaler = StandardScaler(
+            state["bond_descriptor_scaler"]["means"],
+            state["bond_descriptor_scaler"]["stds"],
             replace_nan_token=0,
         )
     else:
-        bond_feature_scaler = None
+        bond_descriptor_scaler = None
 
     if "atom_bond_scaler" in state.keys() and state["atom_bond_scaler"] is not None:
         atom_bond_scaler =AtomBondScaler(
@@ -423,7 +422,7 @@ def load_scalers(
     else:
         atom_bond_scaler = None
 
-    return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler, atom_bond_scaler
+    return scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler
 
 
 def load_args(path: str) -> TrainArgs:
@@ -728,8 +727,8 @@ def update_prediction_args(
         # If a default argument would cause different behavior than occurred in legacy checkpoints before the argument existed,
         # then that argument must be included in the `override_defaults` dictionary to force the legacy behavior.
         override_defaults = {
-            "bond_features_scaling": False,
-            "no_bond_features_scaling": True,
+            "bond_descriptors_scaling": False,
+            "no_bond_descriptors_scaling": True,
             "atom_descriptors_scaling": False,
             "no_atom_descriptors_scaling": True,
         }
@@ -753,21 +752,6 @@ def update_prediction_args(
             f"and a fingerprint type of MPN. {train_args.number_of_molecules} smiles fields must be provided."
         )
 
-    # If atom-descriptors were used during training, they must be used when predicting and vice-versa
-    if train_args.atom_descriptors != predict_args.atom_descriptors:
-        raise ValueError(
-            "The use of atom descriptors is inconsistent between training and prediction. If atom descriptors "
-            " were used during training, they must be specified again during prediction using the same type of "
-            " descriptors as before. If they were not used during training, they cannot be specified during prediction."
-        )
-
-    # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (predict_args.bond_features_path is None):
-        raise ValueError(
-            "The use of bond descriptors is different between training and prediction. If you used bond "
-            "descriptors for training, please specify a path to new bond descriptors for prediction."
-        )
-
     # if atom or bond features were scaled, the same must be done during prediction
     if train_args.features_scaling != predict_args.features_scaling:
         raise ValueError(
@@ -785,10 +769,12 @@ def update_prediction_args(
         )
 
     # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (predict_args.bond_features_path is None):
+    if train_args.bond_descriptors != predict_args.bond_descriptors:
         raise ValueError(
-            "The use of bond descriptors is different between training and prediction. If you used bond "
-            "descriptors for training, please specify a path to new bond descriptors for prediction."
+            "The use of bond descriptors is inconsistent between training and prediction. "
+            "If bond descriptors were used during training, they must be specified again "
+            "during prediction using the same type of descriptors as before. "
+            "If they were not used during training, they cannot be specified during prediction."
         )
 
     # If constraints were used during training, they must be used when predicting and vice-versa

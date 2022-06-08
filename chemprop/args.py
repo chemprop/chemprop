@@ -103,7 +103,13 @@ class CommonArgs(Tap):
     """
     atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
-    bond_features_path: str = None
+    bond_descriptors: Literal['feature', 'descriptor'] = None
+    """
+    Custom extra bond descriptors.
+    :code:`feature`: used as bond features to featurize a given molecule.
+    :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
+    """
+    bond_descriptors_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
     no_cache_mol: bool = False
     """
@@ -123,6 +129,7 @@ class CommonArgs(Tap):
         self._atom_features_size = 0
         self._bond_features_size = 0
         self._atom_descriptors_size = 0
+        self._bond_descriptors_size = 0
 
     @property
     def device(self) -> torch.device:
@@ -185,6 +192,15 @@ class CommonArgs(Tap):
     def bond_features_size(self, bond_features_size: int) -> None:
         self._bond_features_size = bond_features_size
 
+    @property
+    def bond_descriptors_size(self) -> int:
+        """The size of the bond descriptors."""
+        return self._bond_descriptors_size
+
+    @bond_descriptors_size.setter
+    def bond_descriptors_size(self, bond_descriptors_size: int) -> None:
+        self._bond_descriptors_size = bond_descriptors_size
+
     def configure(self) -> None:
         self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
         self.add_argument('--features_generator', choices=get_available_features_generators())
@@ -211,7 +227,11 @@ class CommonArgs(Tap):
                                       'per input (i.e., number_of_molecules = 1).')
 
         # Validate bond descriptors
-        if self.bond_features_path is not None and self.number_of_molecules > 1:
+        if (self.bond_descriptors is None) != (self.bond_descriptors_path is None):
+            raise ValueError('If bond_descriptors is specified, then an bond_descriptors_path must be provided '
+                             'and vice versa.')
+
+        if self.bond_descriptors is not None and self.number_of_molecules > 1:
             raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
                                       'per input (i.e., number_of_molecules = 1).')
 
@@ -354,9 +374,9 @@ class TrainArgs(CommonArgs):
     """Path to file with extra atom descriptors for separate val set."""
     separate_test_atom_descriptors_path: str = None
     """Path to file with extra atom descriptors for separate test set."""
-    separate_val_bond_features_path: str = None
+    separate_val_bond_descriptors_path: str = None
     """Path to file with extra atom descriptors for separate val set."""
-    separate_test_bond_features_path: str = None
+    separate_test_bond_descriptors_path: str = None
     """Path to file with extra atom descriptors for separate test set."""
     separate_val_constraints_path: str = None
     """Path to file with constraints for separate val set."""
@@ -451,8 +471,11 @@ class TrainArgs(CommonArgs):
     no_atom_descriptor_scaling: bool = False
     """Turn off atom feature scaling."""
     overwrite_default_bond_features: bool = False
-    """Overwrites the default atom descriptors with the new ones instead of concatenating them"""
-    no_bond_features_scaling: bool = False
+    """
+    Overwrites the default bond descriptors with the new ones instead of concatenating them.
+    Can only be used if bond_descriptors are used as a feature.
+    """
+    no_bond_descriptor_scaling: bool = False
     """Turn off atom feature scaling."""
     frzn_ffn_layers: int = 0
     """
@@ -542,12 +565,12 @@ class TrainArgs(CommonArgs):
         return not self.no_atom_descriptor_scaling
 
     @property
-    def bond_feature_scaling(self) -> bool:
+    def bond_descriptor_scaling(self) -> bool:
         """
         Whether to apply normalization with a :class:`~chemprop.data.scaler.StandardScaler`
         to the additional bond features."
         """
-        return not self.no_bond_features_scaling
+        return not self.no_bond_descriptor_scaling
     
     @property
     def shared_atom_bond_ffn(self) -> bool:
@@ -624,7 +647,7 @@ class TrainArgs(CommonArgs):
         else:
             self.atom_targets, self.bond_targets = [], []
 
-        # Check whether atom/bond constraints have been applied on the correct dataset_type
+        # Check whether atomic/bond constraints have been applied on the correct dataset_type
         if self.constraints_path:
             if not self.is_atom_bond_targets:
                 raise ValueError('Constraints on atomic/bond targets can only be used in atomic/bond properties prediction.')
@@ -787,7 +810,7 @@ class TrainArgs(CommonArgs):
             ('`--features_path`', self.features_path, self.separate_val_features_path, self.separate_test_features_path),
             ('`--phase_features_path`', self.phase_features_path, self.separate_val_phase_features_path, self.separate_test_phase_features_path),
             ('`--atom_descriptors_path`', self.atom_descriptors_path, self.separate_val_atom_descriptors_path, self.separate_test_atom_descriptors_path),
-            ('`--bond_features_path`', self.bond_features_path, self.separate_val_bond_features_path, self.separate_test_bond_features_path),
+            ('`--bond_descriptors_path`', self.bond_descriptors_path, self.separate_val_bond_descriptors_path, self.separate_test_bond_descriptors_path),
             ('`--constraints_path`', self.constraints_path, self.separate_val_constraints_path, self.separate_test_constraints_path)
         ]:
             if base_features_path is not None:
@@ -804,13 +827,16 @@ class TrainArgs(CommonArgs):
         if not self.atom_descriptor_scaling and self.atom_descriptors is None:
             raise ValueError('Atom descriptor scaling is only possible if additional atom features are provided.')
 
-        # validate extra bond feature options
-        if self.overwrite_default_bond_features and self.bond_features_path is None:
-            raise ValueError('If you want to overwrite the default bond descriptors, '
-                             'a bond_descriptor_path must be provided.')
+        # validate extra bond descriptor options
+        if self.overwrite_default_bond_features and self.bond_descriptors != 'feature':
+            raise NotImplementedError('Overwriting of the default bond descriptors can only be used if the'
+                                      'provided bond descriptors are features.')
 
-        if not self.bond_feature_scaling and self.bond_features_path is None:
+        if not self.bond_descriptor_scaling and self.bond_descriptors is None:
             raise ValueError('Bond descriptor scaling is only possible if additional bond features are provided.')
+
+        if self.bond_descriptors == 'descriptor' and not self.is_atom_bond_targets:
+            raise NotImplementedError('Bond descriptors as descriptor can only be used with `--is_atom_bond_targets`.')
 
         # normalize target weights
         if self.target_weights is not None:
@@ -872,7 +898,7 @@ class PredictArgs(CommonArgs):
     """ """
     calibration_atom_descriptors_path: str = None
     """Path to the extra atom descriptors."""
-    calibration_bond_features_path: str = None
+    calibration_bond_descriptors_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
 
     @property
@@ -932,7 +958,7 @@ class PredictArgs(CommonArgs):
             ('`--features_path`', self.features_path, self.calibration_features_path),
             ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
             ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
-            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
+            ('`--bond_descriptors_path`', self.bond_descriptors_path, self.calibration_bond_descriptors_path)
         ]:
             if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
                 raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')

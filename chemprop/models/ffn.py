@@ -27,8 +27,10 @@ class MultiReadout(nn.Module):
 
     def __init__(
         self,
-        features_size: int,
-        hidden_size: int,
+        atom_features_size: int,
+        bond_features_size: int,
+        atom_hidden_size: int,
+        bond_hidden_size: int,
         num_layers: int,
         output_size: int,
         dropout: nn.Module,
@@ -39,8 +41,10 @@ class MultiReadout(nn.Module):
         weights_ffn_num_layers: int = 2,
     ):
         """
-        :param features_size: Dimensionality of input features.
-        :param hidden_size: Dimensionality of hidden layers.
+        :param atom_features_size: Dimensionality of input atomic features.
+        :param bond_features_size: Dimensionality of input bond features.
+        :param atom_hidden_size: Dimensionality of atomic hidden layers.
+        :param bond_hidden_size: Dimensionality of bond hidden layers.
         :param num_layers: Number of layers in FFN.
         :param output_size: The size of output.
         :param dropout: Dropout probability.
@@ -55,10 +59,10 @@ class MultiReadout(nn.Module):
         if num_layers > 1 and shared_ffn:
             self.atom_ffn_base = nn.Sequential(
                 DenseLayers(
-                    first_linear_dim=features_size,
-                    hidden_size=hidden_size,
+                    first_linear_dim=atom_features_size,
+                    hidden_size=atom_hidden_size,
                     num_layers=num_layers - 1,
-                    output_size=hidden_size,
+                    output_size=atom_hidden_size,
                     dropout=dropout,
                     activation=activation,
                 ),
@@ -66,10 +70,10 @@ class MultiReadout(nn.Module):
             )
             self.bond_ffn_base = nn.Sequential(
                 DenseLayers(
-                    first_linear_dim=features_size,
-                    hidden_size=hidden_size,
+                    first_linear_dim=bond_features_size,
+                    hidden_size=bond_hidden_size,
                     num_layers=num_layers - 1,
-                    output_size=hidden_size,
+                    output_size=bond_hidden_size,
                     dropout=dropout,
                     activation=activation,
                 ),
@@ -85,8 +89,8 @@ class MultiReadout(nn.Module):
             self.add_module(
                 f"readout_{ind}",
                 FFNAtten(
-                    features_size=features_size,
-                    hidden_size=hidden_size,
+                    features_size=atom_features_size,
+                    hidden_size=atom_hidden_size,
                     num_layers=num_layers,
                     output_size=output_size,
                     dropout=dropout,
@@ -104,13 +108,13 @@ class MultiReadout(nn.Module):
             self.add_module(
                 f"readout_{ind}",
                 FFNAtten(
-                    features_size=features_size,
-                    hidden_size=hidden_size,
+                    features_size=bond_features_size,
+                    hidden_size=bond_hidden_size,
                     num_layers=num_layers,
                     output_size=output_size,
                     dropout=dropout,
                     activation=activation,
-                    ffn_base=self.atom_ffn_base,
+                    ffn_base=self.bond_ffn_base,
                     constraint=constraint,
                     ffn_type="bond",
                     shared_ffn=shared_ffn,

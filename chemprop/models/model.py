@@ -101,15 +101,24 @@ class MoleculeModel(nn.Module):
                 first_linear_dim += args.features_size
 
         if args.atom_descriptors == 'descriptor':
-            first_linear_dim += args.atom_descriptors_size
+            atom_first_linear_dim = first_linear_dim + args.atom_descriptors_size
+        else:
+            atom_first_linear_dim = first_linear_dim
+
+        if args.bond_descriptors == 'descriptor':
+            bond_first_linear_dim = first_linear_dim + args.bond_descriptors_size
+        else:
+            bond_first_linear_dim = first_linear_dim
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
 
         # Create FFN layers
         if self.is_atom_bond_targets:
-            self.readout = MultiReadout(features_size=first_linear_dim,
-                                        hidden_size=args.ffn_hidden_size,
+            self.readout = MultiReadout(atom_features_size=atom_first_linear_dim,
+                                        bond_features_size=bond_first_linear_dim,
+                                        atom_hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
+                                        bond_hidden_size=args.ffn_hidden_size + args.bond_descriptors_size,
                                         num_layers=args.ffn_num_layers,
                                         output_size=self.relative_output_size,
                                         dropout=dropout,
@@ -119,8 +128,8 @@ class MoleculeModel(nn.Module):
                                         shared_ffn=args.shared_atom_bond_ffn,
                                         weights_ffn_num_layers=args.weights_ffn_num_layers)
         else:
-            self.readout = DenseLayers(first_linear_dim=first_linear_dim,
-                                       hidden_size=args.ffn_hidden_size,
+            self.readout = DenseLayers(first_linear_dim=atom_first_linear_dim,
+                                       hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
                                        num_layers=args.ffn_num_layers,
                                        output_size=self.relative_output_size * args.num_tasks,
                                        dropout=dropout,
@@ -138,6 +147,7 @@ class MoleculeModel(nn.Module):
                     features_batch: List[np.ndarray] = None,
                     atom_descriptors_batch: List[np.ndarray] = None,
                     atom_features_batch: List[np.ndarray] = None,
+                    bond_descriptors_batch: List[np.ndarray] = None,
                     bond_features_batch: List[np.ndarray] = None,
                     fingerprint_type: str = 'MPN') -> torch.Tensor:
         """
@@ -149,16 +159,19 @@ class MoleculeModel(nn.Module):
                       the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
+        :param atom_features_batch: A list of numpy arrays containing additional atom features.
+        :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
+        :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :param fingerprint_type: The choice of which type of latent representation to return as the molecular fingerprint. Currently
                                  supported MPN for the output of the MPNN portion of the model or last_FFN for the input to the final readout layer.
         :return: The latent fingerprint vectors.
         """
         if fingerprint_type == 'MPN':
-            return self.encoder(batch, features_batch, atom_descriptors_batch,
-                                atom_features_batch, bond_features_batch)
+            return self.encoder(batch, features_batch, atom_descriptors_batch, atom_features_batch,
+                                bond_descriptors_batch, bond_features_batch)
         elif fingerprint_type == 'last_FFN':
             return self.readout.dense_layers[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
-                                                  atom_features_batch, bond_features_batch))
+                                                  atom_features_batch, bond_descriptors_batch, bond_features_batch))
         else:
             raise ValueError(f'Unsupported fingerprint type {fingerprint_type}.')
 
@@ -167,6 +180,7 @@ class MoleculeModel(nn.Module):
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
+                bond_descriptors_batch: List[np.ndarray] = None,
                 bond_features_batch: List[np.ndarray] = None,
                 constraints_batch: List[torch.tensor] = None,
                 bond_types_batch: List[torch.FloatTensor] = None) -> torch.FloatTensor:
@@ -180,18 +194,19 @@ class MoleculeModel(nn.Module):
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
+        :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :param constraints_batch: A list of torch.tensor which applies constraint on atomic/bond properties.
         :param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`MoleculeModel`, containing a list of property predictions.
         """
         if self.is_atom_bond_targets:
-            encodings = self.encoder(batch, features_batch, atom_descriptors_batch,
-                                     atom_features_batch, bond_features_batch)
+            encodings = self.encoder(batch, features_batch, atom_descriptors_batch, atom_features_batch,
+                                     bond_descriptors_batch, bond_features_batch)
             output = self.readout(encodings, constraints_batch, bond_types_batch)
         else:
-            encodings = self.encoder(batch, features_batch, atom_descriptors_batch,
-                                     atom_features_batch, bond_features_batch)
+            encodings = self.encoder(batch, features_batch, atom_descriptors_batch, atom_features_batch,
+                                     bond_descriptors_batch, bond_features_batch)
             output = self.readout(encodings)
 
         # Don't apply sigmoid during training when using BCEWithLogitsLoss

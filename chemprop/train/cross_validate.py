@@ -83,11 +83,12 @@ def cross_validate(args: TrainArgs,
 
     if args.atom_descriptors == 'descriptor':
         args.atom_descriptors_size = data.atom_descriptors_size()
-        args.ffn_hidden_size += args.atom_descriptors_size
     elif args.atom_descriptors == 'feature':
         args.atom_features_size = data.atom_features_size()
         set_extra_atom_fdim(args.atom_features_size)
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == 'descriptor':
+        args.bond_descriptors_size = data.bond_descriptors_size()
+    elif args.bond_descriptors == 'feature':
         args.bond_features_size = data.bond_features_size()
         set_extra_bond_fdim(args.bond_features_size)
 
