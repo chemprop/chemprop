@@ -519,11 +519,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks)
-        print(self.calibration_predictor.get_individual_vars())
         individual_vars = np.array(
             self.calibration_predictor.get_individual_vars()
         )  # shape(models, data, tasks)
-        print(individual_vars)
         targets = np.array(self.calibration_data.targets())
         errors = uncal_preds - targets
 
