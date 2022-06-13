@@ -128,6 +128,7 @@ def cross_validate(args: TrainArgs,
     info(f'{args.num_folds}-fold cross validation')
 
     # Report scores for each fold
+    contains_nan_scores = False
     for fold_num in range(args.num_folds):
         for metric, scores in all_scores.items():
             info(f'\tSeed {init_seed + fold_num} ==> test {metric} = {multitask_mean(scores[fold_num], metric):.6f}')
@@ -135,6 +136,8 @@ def cross_validate(args: TrainArgs,
             if args.show_individual_scores:
                 for task_name, score in zip(args.task_names, scores[fold_num]):
                     info(f'\t\tSeed {init_seed + fold_num} ==> test {task_name} {metric} = {score:.6f}')
+                    if np.isnan(score):
+                        contains_nan_scores = True
 
     # Report scores across folds
     for metric, scores in all_scores.items():
@@ -146,6 +149,15 @@ def cross_validate(args: TrainArgs,
             for task_num, task_name in enumerate(args.task_names):
                 info(f'\tOverall test {task_name} {metric} = '
                      f'{np.mean(scores[:, task_num]):.6f} +/- {np.std(scores[:, task_num]):.6f}')
+
+    if contains_nan_scores:
+        info("The metric scores observed for some fold test splits contain 'nan' values. \
+            This can occur when the test set does not meet the requirements \
+            for a particular metric, such as having no valid instances of one \
+            task in the test set or not having positive examples for some classification metrics. \
+            Before v1.5.1, the default behavior was to ignore nan values in individual folds or tasks \
+            and still return an overall average for the remaining folds or tasks. The behavior now \
+            is to include them in the average, converting overall average metrics to 'nan' as well.")
 
     # Save scores
     with open(os.path.join(save_dir, TEST_SCORES_FILE_NAME), 'w') as f:
