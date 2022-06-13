@@ -207,6 +207,7 @@ Metrics are used to evaluate the success of the model against the test set as th
 * **Multiclass.** cross_entropy (default), accuracy, f1, mcc.
 * **Spectra.** sid (default), wasserstein.
 
+When a multitask model is used, the metric score used for evaluation at each epoch or for choosing the best set of hyperparameters during hyperparameter search is obtained by taking the mean of the metric scores for each task. Some metrics scale with the magnitude of the targets (most regression metrics), so geometric mean instead of arithmetic mean is used in those cases in order to avoid having the mean score dominated by changes in the larger magnitude task.
 ### Cross validation and ensembling
 
 k-fold cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`. Each trained model will have different data splits. The reported test score will be the average of the metrics from each fold.
