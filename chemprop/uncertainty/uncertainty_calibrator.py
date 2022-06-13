@@ -510,29 +510,35 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             raise ValueError(
                 "MVE Weighting calibration can only be carried out with MVE or Evidential loss function models."
             )
+        if self.num_models == 1:
+            raise ValueError(
+                "MVE Weighting is only useful when weighting between results in an ensemble. Only one model was provided."
+            )
 
     def calibrate(self):
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks)
+        print(self.calibration_predictor.get_individual_vars())
         individual_vars = np.array(
             self.calibration_predictor.get_individual_vars()
         )  # shape(models, data, tasks)
+        print(individual_vars)
         targets = np.array(self.calibration_data.targets())
         errors = uncal_preds - targets
 
         def objective(scaler_values: np.ndarray):
-            scaler_values = np.reshape(softmax(scaler_values), [-1, 1, 1])
+            scaler_values = np.reshape(softmax(scaler_values), [-1, 1, 1])  # (models, 1, 1)
             scaled_vars = np.sum(
                 individual_vars * scaler_values, axis=0, keepdims=False
-            )
+            )  # (data, tasks)
             nll = np.log(2 * np.pi * scaled_vars) / 2 + (errors) ** 2 / (
                 2 * scaled_vars
             )
-            nll = np.sum(nll, axis=0)
+            nll = np.sum(nll)
             return nll
 
-        initial_guess = np.ones_like(self.num_models)
+        initial_guess = np.ones(self.num_models)
         sol = fmin(objective, initial_guess)
         self.var_weighting = softmax(sol)
         if self.regression_calibrator_metric == "stdev":
