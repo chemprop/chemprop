@@ -70,7 +70,7 @@ class MultiReadout(nn.Module):
             )
             self.bond_ffn_base = nn.Sequential(
                 DenseLayers(
-                    first_linear_dim=bond_features_size,
+                    first_linear_dim=2*bond_features_size,
                     hidden_size=bond_hidden_size,
                     num_layers=num_layers - 1,
                     output_size=bond_hidden_size,
@@ -108,7 +108,7 @@ class MultiReadout(nn.Module):
             self.add_module(
                 f"readout_{ind}",
                 FFNAtten(
-                    features_size=bond_features_size,
+                    features_size=2*bond_features_size,
                     hidden_size=bond_hidden_size,
                     num_layers=num_layers,
                     output_size=output_size,
@@ -265,7 +265,6 @@ class FFNAtten(nn.Module):
         elif self.ffn_type == "bond":
             forward_bond = b_hidden[b2br[:, 0]]
             backward_bond = b_hidden[b2br[:, 1]]
-            hidden = torch.cat([forward_bond, backward_bond], dim=1)
             scope = [((start - 1) // 2, size // 2) for start, size in b_scope]
 
         if constraints is not None:
@@ -302,9 +301,11 @@ class FFNAtten(nn.Module):
                 output = self.ffn_readout(hidden)
                 output = output[1:]  # remove the first one which is zero padding
             elif self.ffn_type == "bond":
-                forward_bond_output = self.ffn_readout(forward_bond)
-                backward_bond_output = self.ffn_readout(backward_bond)
-                output = forward_bond_output.add(backward_bond_output)
+                b_hidden_1 = torch.cat([forward_bond, backward_bond], dim=1)
+                b_hidden_2 = torch.cat([backward_bond, forward_bond], dim=1)
+                output_1 = self.ffn_readout(b_hidden_1)
+                output_2 = self.ffn_readout(b_hidden_2)
+                output = (output_1 + output_2) / 2
                 if bond_types is not None:
                     output = output + bond_types.reshape(-1, 1)
 
