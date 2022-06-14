@@ -1071,7 +1071,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        2.06247499,
+        1.74328706,
         'mve',
         'mve_weighting',
         'nll',
