@@ -196,8 +196,8 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             uncal_vars = np.zeros_like(self.uncal_preds)
@@ -205,16 +205,16 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             if self.individual_ensemble_predictions:
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -410,15 +410,15 @@ class MVEPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.individual_vars = individual_vars
@@ -426,8 +426,8 @@ class MVEPredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -556,15 +556,15 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.individual_vars = individual_vars
@@ -572,8 +572,8 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -702,15 +702,15 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.individual_vars = individual_vars
@@ -718,8 +718,8 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -848,15 +848,15 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.individual_vars = individual_vars
@@ -864,8 +864,8 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -995,15 +995,15 @@ class EnsemblePredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
 
@@ -1011,8 +1011,8 @@ class EnsemblePredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )
@@ -1107,15 +1107,15 @@ class DropoutPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_vars = get_reshaped_values(
                 uncal_vars,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
         else:
@@ -1226,8 +1226,8 @@ class ClassPredictor(UncertaintyPredictor):
             self.uncal_preds = get_reshaped_values(
                 uncal_preds,
                 self.test_data,
-                model.atom_targets,
-                model.bond_targets,
+                len(model.atom_targets),
+                len(model.bond_targets),
                 num_tasks,
             )
             self.uncal_confidence = self.uncal_preds
@@ -1235,8 +1235,8 @@ class ClassPredictor(UncertaintyPredictor):
                 self.individual_preds = get_reshaped_individual_preds(
                     individual_preds,
                     self.test_data,
-                    model.atom_targets,
-                    model.bond_targets,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
                     num_tasks,
                     self.num_models,
                 )

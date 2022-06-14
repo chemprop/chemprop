@@ -11,6 +11,7 @@ from sklearn.isotonic import IsotonicRegression
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
+from chemprop.multitask_utils import get_reshaped_values
 
 
 class UncertaintyCalibrator(ABC):
@@ -524,16 +525,21 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         )  # shape(models, data, tasks)
         targets = np.array(self.calibration_data.targets())
         errors = uncal_preds - targets
+        if self.calibration_data.is_atom_bond_targets:
+            individual_vars = [np.array([var.reshape(-1) for var in ind_var]) for ind_var in individual_vars]
+            errors = [np.concatenate(x).reshape(-1) for x in zip(*errors)]
 
         def objective(scaler_values: np.ndarray):
-            scaler_values = np.reshape(softmax(scaler_values), [-1, 1, 1])  # (models, 1, 1)
-            scaled_vars = np.sum(
-                individual_vars * scaler_values, axis=0, keepdims=False
-            )  # (data, tasks)
-            nll = np.log(2 * np.pi * scaled_vars) / 2 + (errors) ** 2 / (
-                2 * scaled_vars
-            )
-            nll = np.sum(nll)
+            scaled_vars = None
+            for ind_vars, s in zip(individual_vars, softmax(scaler_values)):
+                if scaled_vars is None:
+                    scaled_vars = ind_vars * s
+                else:
+                    scaled_vars += ind_vars * s
+            nll = 0
+            for var, error in zip(scaled_vars, errors):
+                for v, e in zip(var, error):
+                    nll += np.log(2 * np.pi * v) / 2 + (e) ** 2 / (2 * v)
             return nll
 
         initial_guess = np.ones(self.num_models)
@@ -547,12 +553,29 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
         uncal_individual_vars = np.array(uncal_predictor.get_individual_vars())
-        weighted_vars = np.sum(
-            uncal_individual_vars * np.reshape(self.var_weighting, [-1, 1, 1]),
-            axis=0,
-            keepdims=False,
-        )
-        weighted_stdev = np.sqrt(weighted_vars) * self.scaling
+        weighted_vars = None
+        for ind_vars, s in zip(uncal_individual_vars, self.var_weighting):
+            if weighted_vars is None:
+                weighted_vars = ind_vars * s
+            else:
+                weighted_vars += ind_vars * s
+        if self.calibration_data.is_atom_bond_targets:
+            sqrt_weighted_vars = [
+                np.array([np.sqrt(var) for var in uncal_var]) for uncal_var in weighted_vars
+            ]
+            weighted_stdev = sqrt_weighted_vars * self.scaling
+            natom_targets = len(self.calibration_data[0].atom_targets) if self.calibration_data[0].atom_targets is not None else 0
+            nbond_targets = len(self.calibration_data[0].bond_targets) if self.calibration_data[0].bond_targets is not None else 0
+            weighted_stdev = get_reshaped_values(
+                weighted_stdev,
+                self.calibration_data,
+                natom_targets,
+                nbond_targets,
+                len(weighted_stdev),
+            )
+            return uncal_preds, weighted_stdev
+        else:
+            weighted_stdev = np.sqrt(weighted_vars) * self.scaling
         return uncal_preds.tolist(), weighted_stdev.tolist()
 
     def nll(
@@ -563,8 +586,18 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
     ):
         preds = np.array(preds)
         targets = np.array(targets)
-        unc_var = np.square(unc)
-        return np.log(2 * np.pi * unc_var) / 2 + (preds - targets) ** 2 / (2 * unc_var)
+        unc = np.array(unc)
+        if self.calibration_data.is_atom_bond_targets:
+            preds = [np.concatenate(x).reshape(-1, 1) for x in zip(*preds)]
+            targets = [np.concatenate(x).reshape(-1, 1) for x in zip(*targets)]
+            unc_var = [np.concatenate(np.square(x)).reshape(-1, 1) for x in zip(*unc)]
+            nll = []
+            for pred, target, var in zip(preds, targets, unc_var):
+                nll.append(np.log(2 * np.pi * var) / 2 + (pred - target) ** 2 / (2 * var))
+        else:
+            unc_var = np.square(unc)
+            nll = np.log(2 * np.pi * unc_var) / 2 + (preds - targets) ** 2 / (2 * unc_var)
+        return nll
 
 
 class PlattCalibrator(UncertaintyCalibrator):

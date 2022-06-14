@@ -176,7 +176,7 @@ def predict_and_save(
     )  # preds and unc are lists of shape(data,tasks)
 
     if calibrator is not None and args.is_atom_bond_targets and args.calibration_method == "isotonic":
-        unc = get_reshaped_values(unc, test_data, args.atom_targets, args.bond_targets, num_tasks)
+        unc = get_reshaped_values(unc, test_data, len(args.atom_targets), len(args.bond_targets), num_tasks)
 
     if args.individual_ensemble_predictions:
         individual_preds = (
