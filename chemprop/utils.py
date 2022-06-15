@@ -9,8 +9,6 @@ import re
 from time import time
 from typing import Any, Callable, List, Tuple
 import collections
-import numpy as np
-from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -129,6 +127,8 @@ def load_checkpoint(
         # Backward compatibility for parameter names
         if re.match(r"(encoder\.encoder\.)([Wc])", loaded_param_name) and not args.reaction_solvent:
             param_name = loaded_param_name.replace("encoder.encoder", "encoder.encoder.0")
+        elif re.match(r"(^ffn)", loaded_param_name):
+            param_name = loaded_param_name.replace("ffn", "readout.dense_layers")
         else:
             param_name = loaded_param_name
 
@@ -214,6 +214,13 @@ def load_frzn_model(
     loaded_state_dict = loaded_mpnn_model["state_dict"]
     loaded_args = loaded_mpnn_model["args"]
 
+    # Backward compatibility for parameter names
+    loaded_state_dict_keys = list(loaded_state_dict.keys())
+    for loaded_param_name in loaded_state_dict_keys:
+        if re.match(r"(^ffn)", loaded_param_name):
+            param_name = loaded_param_name.replace("ffn", "readout.dense_layers")
+            loaded_state_dict[param_name] = loaded_state_dict.pop(loaded_param_name)
+
     model_state_dict = model.state_dict()
 
     if loaded_args.number_of_molecules == 1 and current_args.number_of_molecules == 1:
@@ -238,12 +245,6 @@ def load_frzn_model(
                     [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
                     for i in range(current_args.frzn_ffn_layers)
                 ]
-                old_ffn_param_names = [
-                    [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
-                    for i in range(current_args.frzn_ffn_layers)
-                ]
-                old_ffn_param_names = [item for sublist in old_ffn_param_names for item in sublist]
-                ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
             elif isinstance(model.readout, MultiReadout):  # Atomic/bond properties
                 if model.readout.shared_ffn:
                     ffn_param_names = [
@@ -266,25 +267,13 @@ def load_frzn_model(
                                 [f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.weight", f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.bias"]
                                 for j in range(current_args.frzn_ffn_layers)
                             ])
-                old_ffn_param_names = None
-                ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
+            ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
 
             # Freeze MPNN and FFN layers
             for param_name in encoder_param_names + ffn_param_names:
                 model_state_dict = overwrite_state_dict(
                     param_name, param_name, loaded_state_dict, model_state_dict
                 )
-
-            if old_ffn_param_names is not None and set(old_ffn_param_names) & set(loaded_state_dict.keys()):
-                warn(
-                    'The old model file is deprecated in the future and should \
-                     be carefully used.',
-                    DeprecationWarning,
-                )
-                for old_param_name, param_name in old_ffn_param_names, ffn_param_names:
-                    model_state_dict = overwrite_state_dict(
-                        old_param_name, param_name, loaded_state_dict, model_state_dict
-                    )
 
         if current_args.freeze_first_only:
             debug(
@@ -403,22 +392,6 @@ def load_frzn_model(
                 model_state_dict = overwrite_state_dict(
                     param_name, param_name, loaded_state_dict, model_state_dict
                 )
-
-            old_ffn_param_names = [
-                [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
-                for i in range(current_args.frzn_ffn_layers)
-            ]
-            old_ffn_param_names = [item for sublist in old_ffn_param_names for item in sublist]
-            if set(old_ffn_param_names) & set(loaded_state_dict.keys()):
-                warn(
-                    'The old model file is deprecated in the future and should \
-                     be carefully used.',
-                    DeprecationWarning,
-                )
-                for old_param_name, param_name in old_ffn_param_names, ffn_param_names:
-                    model_state_dict = overwrite_state_dict(
-                        old_param_name, param_name, loaded_state_dict, model_state_dict
-                    )
 
         if current_args.frzn_ffn_layers >= current_args.ffn_num_layers:
             raise ValueError(
