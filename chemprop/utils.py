@@ -343,7 +343,7 @@ def load_frzn_model(
             ]
             encoder_param_names = [item for sublist in encoder_param_names for item in sublist]
             ffn_param_names = [
-                [f"ffn.{i+3+1}.weight", f"ffn.{i+3+1}.bias"]
+                [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
                 for i in range(current_args.frzn_ffn_layers)
             ]
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
