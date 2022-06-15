@@ -61,7 +61,7 @@ class MPNEncoder(nn.Module):
         self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
 
         # hidden state readout
-        self.W_o_a = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+        self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
         if self.is_atom_bond_targets:
             self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
@@ -147,7 +147,7 @@ class MPNEncoder(nn.Module):
         nei_a_message = index_select_ND(message, a2x)  # num_atoms x max_num_bonds x hidden
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
-        atom_hiddens = self.act_func(self.W_o_a(a_input))  # num_atoms x hidden
+        atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
         atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
 
         # bond hidden

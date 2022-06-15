@@ -139,8 +139,23 @@ class MoleculeModel(nn.Module):
 
         if args.checkpoint_frzn is not None:
             if args.frzn_ffn_layers > 0:
-                for param in list(self.readout.dense_layers.parameters())[0:2 * args.frzn_ffn_layers]:  # Freeze weights and bias for given number of layers
-                    param.requires_grad = False
+                if self.is_atom_bond_targets:
+                    if args.shared_atom_bond_ffn:
+                        for param in list(self.readout.atom_ffn_base.parameters())[0:2 * args.frzn_ffn_layers]:
+                            param.requires_grad = False
+                        for param in list(self.readout.bond_ffn_base.parameters())[0:2 * args.frzn_ffn_layers]:
+                            param.requires_grad = False
+                    else:
+                        for ffn in self.readout.ffn_list:
+                            if ffn.constraint:
+                                for param in list(ffn.ffn.parameters())[0:2 * args.frzn_ffn_layers]:
+                                    param.requires_grad = False
+                            else:
+                                for param in list(ffn.ffn_readout.parameters())[0:2 * args.frzn_ffn_layers]:
+                                    param.requires_grad = False
+                else:
+                    for param in list(self.readout.dense_layers.parameters())[0:2 * args.frzn_ffn_layers]:  # Freeze weights and bias for given number of layers
+                        param.requires_grad = False
 
     def fingerprint(self,
                     batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],

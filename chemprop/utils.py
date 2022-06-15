@@ -10,6 +10,7 @@ from time import time
 from typing import Any, Callable, List, Tuple
 import collections
 import numpy as np
+from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -21,6 +22,7 @@ from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
+from chemprop.models.ffn import DenseLayers, MultiReadout
 
 
 def makedirs(path: str, isfile: bool = False) -> None:
@@ -218,6 +220,8 @@ def load_frzn_model(
             "encoder.encoder.0.W_h.weight",
             "encoder.encoder.0.W_o.weight",
             "encoder.encoder.0.W_o.bias",
+            "encoder.encoder.0.W_o_b.weight",
+            "encoder.encoder.0.W_o_b.bias",
         ]
         if current_args.checkpoint_frzn is not None:
             # Freeze the MPNN
@@ -227,17 +231,58 @@ def load_frzn_model(
                 )
 
         if current_args.frzn_ffn_layers > 0:
-            ffn_param_names = [
-                [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
-                for i in range(current_args.frzn_ffn_layers)
-            ]
-            ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
+            if isinstance(model.readout, DenseLayers):  # Molecule properties
+                ffn_param_names = [
+                    [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
+                    for i in range(current_args.frzn_ffn_layers)
+                ]
+                old_ffn_param_names = [
+                    [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
+                    for i in range(current_args.frzn_ffn_layers)
+                ]
+                old_ffn_param_names = [item for sublist in old_ffn_param_names for item in sublist]
+                ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
+            elif isinstance(model.readout, MultiReadout):  # Atomic/bond properties
+                if model.readout.shared_ffn:
+                    ffn_param_names = [
+                        [f"readout.atom_ffn_base.0.dense_layers.{i*3+1}.weight", f"readout.atom_ffn_base.0.dense_layers.{i*3+1}.bias",
+                        f"readout.bond_ffn_base.0.dense_layers.{i*3+1}.weight", f"readout.bond_ffn_base.0.dense_layers.{i*3+1}.bias"]
+                        for i in range(current_args.frzn_ffn_layers)
+                    ]
+                else:
+                    ffn_param_names = []
+                    nmodels = len(model.readout.ffn_list)
+                    for i in range(nmodels):
+                        readout = getattr(model.readout.ffn_list.module, 'readout_' + str(i))
+                        if readout.constraint:
+                            ffn_param_names.extend([
+                                [f"readout.readout_{i}.ffn.0.dense_layers.{j*3+1}.weight", f"readout.readout_{i}.ffn.0.dense_layers.{j*3+1}.bias"]
+                                for j in range(current_args.frzn_ffn_layers)
+                            ])
+                        else:
+                            ffn_param_names.extend([
+                                [f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.weight", f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.bias"]
+                                for j in range(current_args.frzn_ffn_layers)
+                            ])
+                old_ffn_param_names = None
+                ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
 
             # Freeze MPNN and FFN layers
             for param_name in encoder_param_names + ffn_param_names:
                 model_state_dict = overwrite_state_dict(
                     param_name, param_name, loaded_state_dict, model_state_dict
                 )
+
+            if old_ffn_param_names is not None and set(old_ffn_param_names) & set(loaded_state_dict.keys()):
+                warn(
+                    'The old model file is deprecated in the future and should \
+                     be carefully used.',
+                    DeprecationWarning,
+                )
+                for old_param_name, param_name in old_ffn_param_names, ffn_param_names:
+                    model_state_dict = overwrite_state_dict(
+                        old_param_name, param_name, loaded_state_dict, model_state_dict
+                    )
 
         if current_args.freeze_first_only:
             debug(
@@ -347,7 +392,7 @@ def load_frzn_model(
             ]
             encoder_param_names = [item for sublist in encoder_param_names for item in sublist]
             ffn_param_names = [
-                [f"ffn.{i+3+1}.weight", f"ffn.{i+3+1}.bias"]
+                [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
                 for i in range(current_args.frzn_ffn_layers)
             ]
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
@@ -356,6 +401,22 @@ def load_frzn_model(
                 model_state_dict = overwrite_state_dict(
                     param_name, param_name, loaded_state_dict, model_state_dict
                 )
+
+            old_ffn_param_names = [
+                [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
+                for i in range(current_args.frzn_ffn_layers)
+            ]
+            old_ffn_param_names = [item for sublist in old_ffn_param_names for item in sublist]
+            if set(old_ffn_param_names) & set(loaded_state_dict.keys()):
+                warn(
+                    'The old model file is deprecated in the future and should \
+                     be carefully used.',
+                    DeprecationWarning,
+                )
+                for old_param_name, param_name in old_ffn_param_names, ffn_param_names:
+                    model_state_dict = overwrite_state_dict(
+                        old_param_name, param_name, loaded_state_dict, model_state_dict
+                    )
 
         if current_args.frzn_ffn_layers >= current_args.ffn_num_layers:
             raise ValueError(

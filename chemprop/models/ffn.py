@@ -55,6 +55,7 @@ class MultiReadout(nn.Module):
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
         super(MultiReadout, self).__init__()
+        self.shared_ffn = shared_ffn
 
         if num_layers > 1 and shared_ffn:
             self.atom_ffn_base = nn.Sequential(
