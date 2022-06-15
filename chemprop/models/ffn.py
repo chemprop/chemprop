@@ -273,9 +273,11 @@ class FFNAtten(nn.Module):
                 output_hidden = self.ffn(hidden)
                 output = self.ffn_readout(output_hidden)
             elif self.ffn_type == "bond":
-                forward_bond_hidden = self.ffn(forward_bond)
-                backward_bond_hidden = self.ffn(backward_bond)
-                output_hidden = forward_bond_hidden.add(backward_bond_hidden)
+                b_hidden_1 = torch.cat([forward_bond, backward_bond], dim=1)
+                b_hidden_2 = torch.cat([backward_bond, forward_bond], dim=1)
+                output_1 = self.ffn(b_hidden_1)
+                output_2 = self.ffn(b_hidden_2)
+                output_hidden = (output_1 + output_2) / 2
                 output = self.ffn_readout(output_hidden)
                 if bond_types is not None:
                     output = output + bond_types.reshape(-1, 1)
