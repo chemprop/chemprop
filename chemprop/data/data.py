@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset, Sampler
 from rdkit import Chem
 
-from .scaler import StandardScaler
+from .scaler import StandardScaler, AtomBondScaler
 from chemprop.features import get_features_generator
 from chemprop.features import BatchMolGraph, MolGraph
 from chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol
@@ -57,6 +57,8 @@ class MoleculeDatapoint:
     def __init__(self,
                  smiles: List[str],
                  targets: List[Optional[float]] = None,
+                 atom_targets: List[Optional[float]] = None,
+                 bond_targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  data_weight: float = None,
                  gt_targets: List[bool] = None,
@@ -67,11 +69,16 @@ class MoleculeDatapoint:
                  atom_features: np.ndarray = None,
                  atom_descriptors: np.ndarray = None,
                  bond_features: np.ndarray = None,
+                 bond_descriptors: np.ndarray = None,
+                 constraints: np.ndarray = None,
+                 raw_constraints: np.ndarray = None,
                  overwrite_default_atom_features: bool = False,
                  overwrite_default_bond_features: bool = False):
         """
         :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
+        :param atom_targets: A list of targets for the atomic properties.
+        :param bond_targets: A list of targets for the bond properties.
         :param row: The raw CSV row containing the information for this molecule.
         :param data_weight: Weighting of the datapoint for the loss function.
         :param gt_targets: Indicates whether the targets are an inequality regression target of the form ">x".
@@ -79,10 +86,12 @@ class MoleculeDatapoint:
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
         :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
-        :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
-        :param bond_features: A numpy array containing additional bond features to featurize the molecule
-        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features
-        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features
+        :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule.
+        :param bond_descriptors: A numpy array containing additional bond descriptors to featurize the molecule.
+        :param constraints: A numpy array containing constraints applied to different atomic/bond properties.
+        :param raw_constraints: A numpy array containing constraints in raw data.
+        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features.
+        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features.
 
         """
         if features is not None and features_generator is not None:
@@ -90,13 +99,18 @@ class MoleculeDatapoint:
 
         self.smiles = smiles
         self.targets = targets
+        self.atom_targets = atom_targets
+        self.bond_targets = bond_targets
         self.row = row
         self.features = features
         self.features_generator = features_generator
         self.phase_features = phase_features
         self.atom_descriptors = atom_descriptors
+        self.bond_descriptors = bond_descriptors
         self.atom_features = atom_features
         self.bond_features = bond_features
+        self.constraints = constraints
+        self.raw_constraints = raw_constraints
         self.overwrite_default_atom_features = overwrite_default_atom_features
         self.overwrite_default_bond_features = overwrite_default_bond_features
         self.is_mol_list = [is_mol(s) for s in smiles]
@@ -148,13 +162,18 @@ class MoleculeDatapoint:
             self.atom_features = np.where(np.isnan(self.atom_features), replace_token, self.atom_features)
 
         # Fix nans in bond_descriptors
+        if self.bond_descriptors is not None:
+            self.bond_descriptors = np.where(np.isnan(self.bond_descriptors), replace_token, self.bond_descriptors)
+
+        # Fix nans in bond_features
         if self.bond_features is not None:
             self.bond_features = np.where(np.isnan(self.bond_features), replace_token, self.bond_features)
 
         # Save a copy of the raw features and targets to enable different scaling later on
-        self.raw_features, self.raw_targets = self.features, self.targets
-        self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_features = \
-            self.atom_descriptors, self.atom_features, self.bond_features
+        self.raw_features, self.raw_targets, self.raw_atom_targets, self.raw_bond_targets = \
+            self.features, self.targets, self.atom_targets, self.bond_targets
+        self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_descriptors, self.raw_bond_features = \
+            self.atom_descriptors, self.atom_features, self.bond_descriptors, self.bond_features
 
     @property
     def mol(self) -> List[Union[Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]]:
@@ -175,6 +194,33 @@ class MoleculeDatapoint:
         """
         return len(self.smiles)
 
+    @property
+    def number_of_atoms(self) -> int:
+        """
+        Gets the number of atoms in the :class:`MoleculeDatapoint`.
+
+        :return: A list of number of atoms for each molecule.
+        """
+        return [len(self.mol[i].GetAtoms()) for i in range(self.number_of_molecules)]
+
+    @property
+    def number_of_bonds(self) -> List[int]:
+        """
+        Gets the number of bonds in the :class:`MoleculeDatapoint`.
+
+        :return: A list of number of bonds for each molecule.
+        """
+        return [len(self.mol[i].GetBonds()) for i in range(self.number_of_molecules)]
+
+    @property
+    def bond_types(self) -> List[List[float]]:
+        """
+        Gets the bond types in the :class:`MoleculeDatapoint`.
+
+        :return: A list of bond types for each molecule.
+        """
+        return [[b.GetBondTypeAsDouble() for b in self.mol[i].GetBonds()] for i in range(self.number_of_molecules)]
+
     def set_features(self, features: np.ndarray) -> None:
         """
         Sets the features of the molecule.
@@ -187,7 +233,7 @@ class MoleculeDatapoint:
         """
         Sets the atom descriptors of the molecule.
 
-        :param atom_descriptors: A 1D numpy array of features for the molecule.
+        :param atom_descriptors: A 1D numpy array of atom descriptors for the molecule.
         """
         self.atom_descriptors = atom_descriptors
 
@@ -195,15 +241,23 @@ class MoleculeDatapoint:
         """
         Sets the atom features of the molecule.
 
-        :param atom_features: A 1D numpy array of features for the molecule.
+        :param atom_features: A 1D numpy array of atom features for the molecule.
         """
         self.atom_features = atom_features
+
+    def set_bond_descriptors(self, bond_descriptors: np.ndarray) -> None:
+        """
+        Sets the atom descriptors of the molecule.
+
+        :param bond_descriptors: A 1D numpy array of bond descriptors for the molecule.
+        """
+        self.bond_descriptors = bond_descriptors
 
     def set_bond_features(self, bond_features: np.ndarray) -> None:
         """
         Sets the bond features of the molecule.
 
-        :param bond_features: A 1D numpy array of features for the molecule.
+        :param bond_features: A 1D numpy array of bond features for the molecule.
         """
         self.bond_features = bond_features
 
@@ -233,9 +287,10 @@ class MoleculeDatapoint:
 
     def reset_features_and_targets(self) -> None:
         """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        self.features, self.targets = self.raw_features, self.raw_targets
-        self.atom_descriptors, self.atom_features, self.bond_features = \
-            self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_features
+        self.features, self.targets, self.atom_targets, self.bond_targets = \
+            self.raw_features, self.raw_targets, self.raw_atom_targets, self.raw_bond_targets
+        self.atom_descriptors, self.atom_features, self.bond_descriptors, self.bond_features = \
+            self.raw_atom_descriptors, self.raw_atom_features, self.raw_bond_descriptors, self.raw_bond_features
 
 
 class MoleculeDataset(Dataset):
@@ -281,6 +336,45 @@ class MoleculeDataset(Dataset):
         :return: The number of molecules.
         """
         return self._data[0].number_of_molecules if len(self._data) > 0 else None
+
+    @property
+    def number_of_atoms(self) -> List[List[int]]:
+        """
+        Gets the number of atoms in each :class:`MoleculeDatapoint`.
+
+        :return: A list of number of atoms for each molecule.
+        """
+        return [d.number_of_atoms for d in self._data]
+
+    @property
+    def number_of_bonds(self) -> List[List[int]]:
+        """
+        Gets the number of bonds in each :class:`MoleculeDatapoint`.
+
+        :return: A list of number of bonds for each molecule.
+        """
+        return [d.number_of_bonds for d in self._data]
+
+    @property
+    def bond_types(self) -> List[List[float]]:
+        """
+        Gets the bond types in each :class:`MoleculeDatapoint`.
+
+        :return: A list of bond types for each molecule.
+        """
+        return [d.bond_types for d in self._data]
+
+    @property
+    def is_atom_bond_targets(self) -> bool:
+        """
+        Gets the Boolean whether this is atomic/bond properties prediction.
+
+        :return: A Boolean value.
+        """
+        if self._data[0].atom_targets is None and self._data[0].bond_targets is None:
+            return False
+        else:
+            return True
 
     def batch_graph(self) -> List[BatchMolGraph]:
         r"""
@@ -379,6 +473,33 @@ class MoleculeDataset(Dataset):
 
         return [d.bond_features for d in self._data]
 
+    def bond_descriptors(self) -> List[np.ndarray]:
+        """
+        Returns the bond descriptors associated with each molecule (if they exit).
+
+        :return: A list of 2D numpy arrays containing the bond descriptors
+                 for each molecule or None if there are no features.
+        """
+        if len(self._data) == 0 or self._data[0].bond_descriptors is None:
+            return None
+
+        return [d.bond_descriptors for d in self._data]
+
+    def constraints(self) -> List[np.ndarray]:
+        """
+        Return the constraints applied in atomic/bond properties prediction.
+        """
+        constraints = []
+        for d in self._data:
+            if d.constraints is None :
+                natom_targets = len(d.atom_targets) if d.atom_targets is not None else 0
+                nbond_targets = len(d.bond_targets) if d.bond_targets is not None else 0
+                ntargets = natom_targets + nbond_targets
+                constraints.append([None] * ntargets)
+            else:
+                constraints.append(d.constraints)
+        return constraints
+
     def data_weights(self) -> List[float]:
         """
         Returns the loss weighting associated with each datapoint.
@@ -387,6 +508,20 @@ class MoleculeDataset(Dataset):
             return [1. for d in self._data]
 
         return [d.data_weight for d in self._data]
+
+    def atom_bond_data_weights(self) -> List[List[float]]:
+        """
+        Returns the loss weighting associated with each datapoint for atomic/bond properties prediction.
+        """
+        targets = self.targets()
+        data_weights = self.data_weights()
+        atom_bond_data_weights = [[] for i in targets[0]]
+        for i, tb in enumerate(targets):
+            weight = data_weights[i]
+            for j, x in enumerate(tb): 
+                atom_bond_data_weights[j] += [1. * weight] * len(x)
+
+        return atom_bond_data_weights
 
     def targets(self) -> List[List[Optional[float]]]:
         """
@@ -452,6 +587,15 @@ class MoleculeDataset(Dataset):
         return len(self._data[0].atom_features[0]) \
             if len(self._data) > 0 and self._data[0].atom_features is not None else None
 
+    def bond_descriptors_size(self) -> int:
+        """
+        Returns the size of custom additional bond descriptors vector associated with the molecules.
+
+        :return: The size of the additional bond descriptor vector.
+        """
+        return len(self._data[0].bond_descriptors[0]) \
+            if len(self._data) > 0 and self._data[0].bond_descriptors is not None else None
+
     def bond_features_size(self) -> int:
         """
         Returns the size of custom additional bond features vector associated with the molecules.
@@ -462,7 +606,7 @@ class MoleculeDataset(Dataset):
             if len(self._data) > 0 and self._data[0].bond_features is not None else None
 
     def normalize_features(self, scaler: StandardScaler = None, replace_nan_token: int = 0,
-                           scale_atom_descriptors: bool = False, scale_bond_features: bool = False) -> StandardScaler:
+                           scale_atom_descriptors: bool = False, scale_bond_descriptors: bool = False) -> StandardScaler:
         """
         Normalizes the features of the dataset using a :class:`~chemprop.data.StandardScaler`.
 
@@ -478,13 +622,13 @@ class MoleculeDataset(Dataset):
                        data and is then used.
         :param replace_nan_token: A token to use to replace NaN entries in the features.
         :param scale_atom_descriptors: If the features that need to be scaled are atom features rather than molecule.
-        :param scale_bond_features: If the features that need to be scaled are bond descriptors rather than molecule.
+        :param scale_bond_descriptors: If the features that need to be scaled are bond features rather than molecule.
         :return: A fitted :class:`~chemprop.data.StandardScaler`. If a :class:`~chemprop.data.StandardScaler`
                  is provided as a parameter, this is the same :class:`~chemprop.data.StandardScaler`. Otherwise,
                  this is a new :class:`~chemprop.data.StandardScaler` that has been fit on this dataset.
         """
         if len(self._data) == 0 or \
-                (self._data[0].features is None and not scale_bond_features and not scale_atom_descriptors):
+                (self._data[0].features is None and not scale_bond_descriptors and not scale_atom_descriptors):
             return None
 
         if scaler is None:
@@ -492,7 +636,9 @@ class MoleculeDataset(Dataset):
                 features = np.vstack([d.raw_atom_descriptors for d in self._data])
             elif scale_atom_descriptors and not self._data[0].atom_features is None:
                 features = np.vstack([d.raw_atom_features for d in self._data])
-            elif scale_bond_features:
+            elif scale_bond_descriptors and not self._data[0].bond_descriptors is None:
+                features = np.vstack([d.raw_bond_descriptors for d in self._data])
+            elif scale_bond_descriptors and not self._data[0].bond_features is None:
                 features = np.vstack([d.raw_bond_features for d in self._data])
             else:
                 features = np.vstack([d.raw_features for d in self._data])
@@ -505,7 +651,10 @@ class MoleculeDataset(Dataset):
         elif scale_atom_descriptors and not self._data[0].atom_features is None:
             for d in self._data:
                 d.set_atom_features(scaler.transform(d.raw_atom_features))
-        elif scale_bond_features:
+        elif scale_bond_descriptors and not self._data[0].bond_descriptors is None:
+            for d in self._data:
+                d.set_bond_descriptors(scaler.transform(d.raw_bond_descriptors))
+        elif scale_bond_descriptors and not self._data[0].bond_features is None:
             for d in self._data:
                 d.set_bond_features(scaler.transform(d.raw_bond_features))
         else:
@@ -517,17 +666,47 @@ class MoleculeDataset(Dataset):
     def normalize_targets(self) -> StandardScaler:
         """
         Normalizes the targets of the dataset using a :class:`~chemprop.data.StandardScaler`.
-
         The :class:`~chemprop.data.StandardScaler` subtracts the mean and divides by the standard deviation
         for each task independently.
-
         This should only be used for regression datasets.
-
         :return: A :class:`~chemprop.data.StandardScaler` fitted to the targets.
         """
         targets = [d.raw_targets for d in self._data]
         scaler = StandardScaler().fit(targets)
         scaled_targets = scaler.transform(targets).tolist()
+        self.set_targets(scaled_targets)
+
+        return scaler
+
+    def normalize_atom_bond_targets(self) -> AtomBondScaler:
+        """
+        Normalizes the targets of the dataset using a :class:`~chemprop.data.AtomBondScaler`.
+
+        The :class:`~chemprop.data.AtomBondScaler` subtracts the mean and divides by the standard deviation
+        for each task independently.
+
+        This should only be used for regression datasets.
+
+        :return: A :class:`~chemprop.data.AtomBondScaler` fitted to the targets.
+        """
+        atom_targets = self._data[0].atom_targets
+        bond_targets = self._data[0].bond_targets
+        n_atom_targets = len(atom_targets) if atom_targets is not None else 0
+        n_bond_targets = len(bond_targets) if bond_targets is not None else 0
+        n_atoms, n_bonds = self.number_of_atoms, self.number_of_bonds
+
+        targets = [d.raw_targets for d in self._data]
+        targets = [np.concatenate(x).reshape([-1, 1]) for x in zip(*targets)]
+        scaler = AtomBondScaler(
+            n_atom_targets=n_atom_targets,
+            n_bond_targets=n_bond_targets,
+        ).fit(targets)
+        scaled_targets = scaler.transform(targets)
+        for i in range(n_atom_targets):
+            scaled_targets[i] = np.split(np.array(scaled_targets[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+        for i in range(n_bond_targets):
+            scaled_targets[i+n_atom_targets] = np.split(np.array(scaled_targets[i+n_atom_targets]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+        scaled_targets = np.array(scaled_targets).T
         self.set_targets(scaled_targets)
 
         return scaler

@@ -410,7 +410,7 @@ class ChempropTests(TestCase):
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.mean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
-    
+
     def test_predict_individual_ensemble(self):
         with TemporaryDirectory() as save_dir:
             # Train
@@ -1072,7 +1072,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        2.06247499,
+        1.74328706,
         'mve',
         'mve_weighting',
         'nll',
@@ -1197,6 +1197,77 @@ class ChempropTests(TestCase):
             )
             evaluation_scores_data=pd.read_csv(eval_path)
             self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
+
+    @parameterized.expand([
+        (
+                'chemprop_atomic_bond_targets',
+                'chemprop',
+                7.109813,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints',
+                'chemprop',
+                7.087752,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_no_shared_atom_bond_ffn',
+                'chemprop',
+                6.708733,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_shared_atom_bond_ffn']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints_no_adding_bond_types',
+                'chemprop',
+                7.210681,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_adding_bond_types']
+        ),
+        (
+                'chemprop_atomic_bond_targets_weights_ffn_num_layers',
+                'chemprop',
+                7.040880,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--weights_ffn_num_layers', '3']
+        )
+    ])
+    def test_train_multi_task_regression_atomic_bond_targets(self,
+                                                             name: str,
+                                                             model_type: str,
+                                                             expected_score: float,
+                                                             train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'rmse'
+            self.train(
+                dataset_type = 'regression',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 10)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
 
 if __name__ == '__main__':

@@ -39,7 +39,7 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
     if args.atom_descriptors == 'feature':
         set_extra_atom_fdim(train_args.atom_features_size)
 
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == 'feature':
         set_extra_bond_fdim(train_args.bond_features_size)
 
     set_explicit_h(train_args.explicit_h)
@@ -108,17 +108,17 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
 
     for index, checkpoint_path in enumerate(tqdm(args.checkpoint_paths, total=len(args.checkpoint_paths))):
         model = load_checkpoint(checkpoint_path, device=args.device)
-        scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler = load_scalers(args.checkpoint_paths[index])
+        scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler = load_scalers(args.checkpoint_paths[index])
 
         # Normalize features
-        if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_feature_scaling:
+        if args.features_scaling or train_args.atom_descriptor_scaling or train_args.bond_descriptor_scaling:
             test_data.reset_features_and_targets()
             if args.features_scaling:
                 test_data.normalize_features(features_scaler)
             if train_args.atom_descriptor_scaling and args.atom_descriptors is not None:
                 test_data.normalize_features(atom_descriptor_scaler, scale_atom_descriptors=True)
-            if train_args.bond_feature_scaling and args.bond_features_size > 0:
-                test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+            if train_args.bond_descriptor_scaling and args.bond_descriptors is not None:
+                test_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
 
         # Make fingerprints
         model_fp = model_fingerprint(
@@ -193,13 +193,14 @@ def model_fingerprint(model: MoleculeModel,
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch = \
-            batch.batch_graph(), batch.features(), batch.atom_descriptors(), batch.atom_features(), batch.bond_features()
+        mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_descriptors_batch, bond_features_batch = \
+            batch.batch_graph(), batch.features(), batch.atom_descriptors(), batch.atom_features(), batch.bond_descriptors(), batch.bond_features()
 
         # Make predictions
         with torch.no_grad():
             batch_fp = model.fingerprint(mol_batch, features_batch, atom_descriptors_batch,
-                                atom_features_batch, bond_features_batch, fingerprint_type)
+                                         atom_features_batch, bond_descriptors_batch,
+                                         bond_features_batch, fingerprint_type)
 
         # Collect vectors
         batch_fp = batch_fp.data.cpu().tolist()

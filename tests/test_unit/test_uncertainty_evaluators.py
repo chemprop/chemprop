@@ -30,26 +30,26 @@ def multiclass_metric(request):
 
 @pytest.fixture
 def nll_regression_evaluator():
-    return build_uncertainty_evaluator("nll", None, "ensemble", "regression", "mse", None)
+    return build_uncertainty_evaluator("nll", None, "ensemble", "regression", "mse", None, False)
 
 
 @pytest.fixture
 def nll_classification_evaluator():
     return build_uncertainty_evaluator(
-        "nll", None, "classification", "classification", "binary_cross_entropy", None
+        "nll", None, "classification", "classification", "binary_cross_entropy", None, False
     )
 
 
 @pytest.fixture
 def miscal_regression_evaluator():
     return build_uncertainty_evaluator(
-        "miscalibration_area", None, "ensemble", "regression", "mse", None
+        "miscalibration_area", None, "ensemble", "regression", "mse", None, False
     )
 
 
 @pytest.fixture
 def spearman_evaluator():
-    return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None)
+    return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None, False)
 
 
 # Tests
@@ -57,7 +57,7 @@ def test_build_regression_metric(regression_metric):
     """
     Tests the build_uncertainty_evaluator function's acceptance of the different regression evaluators.
     """
-    assert build_uncertainty_evaluator(regression_metric, None, None, "regression", None, None)
+    assert build_uncertainty_evaluator(regression_metric, None, None, "regression", None, None, False)
 
 
 def test_build_classification_metric(classification_metric):
@@ -65,7 +65,7 @@ def test_build_classification_metric(classification_metric):
     Tests the build_uncertainty_evaluator function's acceptance of the different classification evaluators.
     """
     assert build_uncertainty_evaluator(
-        classification_metric, None, None, "classification", None, None
+        classification_metric, None, None, "classification", None, None, False
     )
 
 
@@ -73,7 +73,7 @@ def test_build_multiclass_metric(multiclass_metric):
     """
     Tests the build_uncertainty_evaluator function's acceptance of the different multiclass evaluators.
     """
-    assert build_uncertainty_evaluator(multiclass_metric, None, None, "multiclass", None, None)
+    assert build_uncertainty_evaluator(multiclass_metric, None, None, "multiclass", None, None, False)
 
 
 @pytest.mark.parametrize("metric", [str(uuid.uuid4()) for _ in range(3)])
@@ -82,7 +82,7 @@ def test_build_unsupported_metrics(metric, dataset_type):
     Tests build_uncertainty_evaluator function's unsupported error for unknown metric strings.
     """
     with pytest.raises(NotImplementedError):
-        build_uncertainty_evaluator(metric, None, None, dataset_type, None, None)
+        build_uncertainty_evaluator(metric, None, None, dataset_type, None, None, False)
 
 
 @pytest.mark.parametrize("targets,preds,uncs,likelihood", [([[0]], [[0]], [[1]], [0.3989])])

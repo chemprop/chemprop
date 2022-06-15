@@ -5,9 +5,10 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import pandas as pd
 
-from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_data_weights, \
-    get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data, split_data
+from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_mixed_task_names, \
+    get_data_weights, get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data, split_data
 
 class TestGetHeader(TestCase):
     """
@@ -161,6 +162,53 @@ class TestGetTaskNames(TestCase):
             ignore_columns=['column2','column3'],
         )
         self.assertEqual(task_names, ['column4'])
+
+
+class TestGetMixedTaskNames(TestCase):
+    """
+    Tests of the get_mixed_task_names function.
+    """
+    def setUp(self):
+        self.data_path = 'tests/data/atomic_bond_regression.csv'
+
+    def test_default_no_arguments(self):
+        """Testing default behavior no arguments"""
+        atom_target_names, bond_target_names, molecule_target_names = get_mixed_task_names(
+            path=self.data_path,
+            smiles_columns=None,
+            target_columns=None,
+            ignore_columns=None,
+            add_h=True,
+        )
+        self.assertEqual(atom_target_names, ['hirshfeld_charges', 'hirshfeld_charges_plus1', 'hirshfeld_charges_minus1', 'hirshfeld_spin_density_plus1', 'hirshfeld_spin_density_minus1', 'hirshfeld_charges_fukui_neu', 'hirshfeld_charges_fukui_elec', 'NMR'])
+        self.assertEqual(bond_target_names, ['bond_length_matrix', 'bond_index_matrix'])
+        self.assertEqual(molecule_target_names, ['homo', 'lumo'])
+
+    def test_specified_target_columns(self):
+        """Test behavior with target columns specified"""
+        atom_target_names, bond_target_names, molecule_target_names = get_mixed_task_names(
+            path=self.data_path,
+            smiles_columns=None,
+            target_columns=['hirshfeld_charges', 'bond_length_matrix'],
+            ignore_columns=None,
+            add_h=True,
+        )
+        self.assertEqual(atom_target_names, ['hirshfeld_charges'])
+        self.assertEqual(bond_target_names, ['bond_length_matrix'])
+        self.assertEqual(molecule_target_names, [])
+
+    def test_ignore_columns(self):
+        """Test behavior with ignore columns specified"""
+        atom_target_names, bond_target_names, molecule_target_names = get_mixed_task_names(
+            path=self.data_path,
+            smiles_columns=None,
+            target_columns=None,
+            ignore_columns=['hirshfeld_charges','bond_length_matrix'],
+            add_h=True,
+        )
+        self.assertEqual(atom_target_names, ['hirshfeld_charges_plus1', 'hirshfeld_charges_minus1', 'hirshfeld_spin_density_plus1', 'hirshfeld_spin_density_minus1', 'hirshfeld_charges_fukui_neu', 'hirshfeld_charges_fukui_elec', 'NMR'])
+        self.assertEqual(bond_target_names, ['bond_index_matrix'])
+        self.assertEqual(molecule_target_names, ['homo', 'lumo'])
 
 
 class TestGetDataWeights(TestCase):
