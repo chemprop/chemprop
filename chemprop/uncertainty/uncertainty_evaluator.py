@@ -53,6 +53,7 @@ class UncertaintyEvaluator(ABC):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ) -> List[float]:
         """
         Evaluate the performance of uncertainty predictions against the model target values.
@@ -60,6 +61,8 @@ class UncertaintyEvaluator(ABC):
         :param targets:  The target values for prediction.
         :param preds: The prediction values of a model on the test set.
         :param uncertainties: The estimated uncertainty values, either calibrated or uncalibrated, of a model on the test set.
+        :param mask: Whether the values in targets were provided.
+
         :return: A list of metric values for each model task.
         """
 
@@ -74,6 +77,7 @@ class MetricEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
         return evaluate_predictions(
             preds=uncertainties,
@@ -102,17 +106,20 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
         if self.calibrator is None:  # uncalibrated regression uncertainties are variances
             uncertainties = np.array(uncertainties)
             preds = np.array(preds)
-            targets = np.array(targets)
+            targets = np.array(targets, dtype=float)
+            mask = np.array(mask, dtype=bool)
             nll = np.log(2 * np.pi * uncertainties) / 2 \
                 + (preds - targets) ** 2 / (2 * uncertainties)
+            nll = np.where(mask, nll, 0.)
             return np.mean(nll, axis=0).tolist()
         else:
             nll = self.calibrator.nll(
-                preds=preds, unc=uncertainties, targets=targets
+                preds=preds, unc=uncertainties, targets=targets, mask=mask
             )  # shape(data, task)
             return np.mean(nll, axis=0).tolist()
 
@@ -135,11 +142,14 @@ class NLLClassEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
-        targets = np.array(targets)
+        targets = np.array(targets, dtype=float)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         likelihood = uncertainties * targets + (1 - uncertainties) * (1 - targets)
         nll = -1 * np.log(likelihood)
+        nll = np.where(mask, nll, 0.)
         return np.mean(nll, axis=0).tolist()
 
 
@@ -161,18 +171,22 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
         targets = np.array(targets, dtype=int)  # shape(data, tasks)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         nll = np.zeros_like(targets)
         for i in range(targets.shape[1]):
             task_preds = uncertainties[:, i]
             task_targets = targets[:, i]  # shape(data)
+            task_mask = mask[:, i]
             bin_targets = np.zeros_like(preds[:, 0, :])  # shape(data, classes)
             bin_targets[np.arange(targets.shape[0]), task_targets] = 1
             task_likelihood = np.sum(bin_targets * task_preds, axis=1)
             task_nll = -1 * np.log(task_likelihood)
+            task_nll = np.where(task_mask, task_nll, 0.)
             nll[:, i] = task_nll
         return np.mean(nll, axis=0).tolist()
 
@@ -195,8 +209,10 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
-        targets = np.array(targets)  # shape(data, tasks)
+        targets = np.array(targets, dtype=float)  # shape(data, tasks)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
@@ -220,7 +236,8 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                     / np.expand_dims(original_scaling, axis=0)
                     * np.expand_dims(bin_scaling, axis=0)
                 )  # shape(data, tasks)
-                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
+                # Assumes only nan source is masked targets. Once minimum numpy is 1.2, can use np.mean(where=mask).
+                bin_fraction = np.nanmean(bin_unc >= abs_error, axis=0)
                 fractions[:, i] = bin_fraction
 
             self.calibrator.regression_calibrator_metric = original_metric
@@ -261,8 +278,10 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
-        targets = np.array(targets)  # shape(data, tasks)
+        targets = np.array(targets, dtype=float)  # shape(data, tasks)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
@@ -335,16 +354,21 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         targets: List[List[float]],
         preds: List[List[float]],
         uncertainties: List[List[float]],
+        mask: List[List[bool]],
     ):
-        targets = np.array(targets)  # shape(data, tasks)
+        targets = np.array(targets, dtype=float)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
+        mask = np.array(mask, dtype=bool)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
         num_tasks = targets.shape[1]
         spearman_coeffs = []
         for i in range(num_tasks):
-            spmn = spearmanr(uncertainties[:, i], abs_error[:, i]).correlation
+            task_mask = mask[:, i]
+            task_unc = uncertainties[:, i][task_mask]
+            task_abs_error = abs_error[:, i][task_mask]
+            spmn = spearmanr(task_unc, task_abs_error).correlation
             spearman_coeffs.append(spmn)
         return spearman_coeffs
 
