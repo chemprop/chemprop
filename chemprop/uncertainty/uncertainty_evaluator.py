@@ -284,53 +284,52 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
-        abs_error = np.abs(preds - targets)  # shape(data, tasks)
+        error = np.abs(preds - targets)  # shape(data, tasks)
 
-        sort_record = np.rec.fromarrays([uncertainties, abs_error], names="i, j")
-        sort_record.sort(axis=0)
-        uncertainties = sort_record["i"]
-        abs_error = sort_record["j"]
-
-        # get stdev scaling
-        if self.calibrator is not None:
-            original_metric = self.calibrator.regression_calibrator_metric
-            original_scaling = self.calibrator.scaling
-
-        # 100 bins
-        split_unc = np.array_split(
-            uncertainties, 100, axis=0
-        )  # shape(list100, data, tasks)
-        split_error = np.array_split(abs_error, 100, axis=0)
+        # get stdev scaling then revert if interval
+        if self.calibrator is not None and self.calibration_method != "tscaling":
+            if self.calibrator.regression_calibrator_metric == "interval":
+                original_metric = self.calibrator.regression_calibrator_metric
+                original_scaling = self.calibrator.scaling
+                self.calibrator.regression_calibrator_metric = "stdev"
+                self.calibrator.calibrate()
+                stdev_scaling = self.calibrator.scaling
+                self.calibrator.regression_calibrator_metric = original_metric
+                self.calibrator.scaling = original_scaling
+            else:  # stdev metric
+                stdev_scaling = self.calibrator.scaling
 
         mean_vars = np.zeros([preds.shape[1], 100])  # shape(tasks, 100)
         rmses = np.zeros_like(mean_vars)
 
-        for i in range(100):
-            if self.calibrator is None:  # starts as a variance
-                mean_vars[:, i] = np.mean(split_unc[i], axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
-            elif self.calibration_method == "tscaling":  # convert back to sample stdev
-                bin_unc = split_unc[i] / np.expand_dims(original_scaling, axis=0)
-                bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
-                mean_vars[:, i] = np.mean(bin_var, axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
-            else:
-                self.calibrator.regression_calibrator_metric = "stdev"
-                self.calibrator.calibrate()
+        for i in range(targets.shape[1]):
+            task_mask = mask[:, i]  # shape(data)
+            task_unc = uncertainties[:, i][task_mask]
+            task_error = error[:, i][task_mask]
 
-                stdev_scaling = self.calibrator.scaling
+            sort_idx = np.argsort(task_unc)
+            task_unc = task_unc[sort_idx]
+            task_error = task_error[sort_idx]
 
-                self.calibrator.regression_calibrator_metric = original_metric
-                self.calibrator.scaling = original_scaling
+            # 100 bins
+            split_unc = np.array_split(task_unc, 100)  # shape(list100, data/100)
+            split_error = np.array_split(task_error, 100)
 
-                bin_unc = split_unc[i]
-                bin_unc = (
-                    bin_unc
-                    / np.expand_dims(original_scaling, axis=0)
-                    * np.expand_dims(stdev_scaling, axis=0)
-                )  # convert from interval to stdev as needed
-                mean_vars[:, i] = np.mean(np.square(bin_unc), axis=0)
-                rmses[:, i] = np.sqrt(np.mean(np.square(split_error[i]), axis=0))
+            for j in range(100):
+                if self.calibrator is None:  # starts as a variance
+                    mean_vars[i, j] = np.mean(split_unc[j])
+                    rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
+                elif self.calibration_method == "tscaling":  # convert back to sample stdev
+                    bin_unc = split_unc[j] / original_scaling[i]
+                    bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
+                    mean_vars[i, j] = np.mean(bin_var)
+                    rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
+                else:  # stdev metric
+                    bin_unc = split_unc[j]
+                    bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
+                    mean_vars[i, j] = np.mean(np.square(bin_unc))
+                    rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
+
         ence = np.mean(np.abs(mean_vars - rmses) / mean_vars, axis=1)
         return ence.tolist()
 
