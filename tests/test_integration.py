@@ -1072,7 +1072,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        2.06247499,
+        -2.195778,
         'mve',
         'mve_weighting',
         'nll',
@@ -1141,7 +1141,7 @@ class ChempropTests(TestCase):
             )
             evaluation_scores_data=pd.read_csv(eval_path)
 
-            self.assertAlmostEqual(evaluation_scores_data['homo'][0], expected_score, delta=expected_score * DELTA)
+            self.assertAlmostEqual(evaluation_scores_data['homo'][0], expected_score, delta=np.abs(expected_score * DELTA))
 
     @parameterized.expand([(
         0.62062329,
