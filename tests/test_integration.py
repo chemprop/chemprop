@@ -1000,7 +1000,7 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([(
-        101.8037,
+        266.73784,
         'ensemble',
         None,
         'nll',
@@ -1008,7 +1008,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.749264,
+        -2.193892,
         'mve',
         None,
         'nll',
@@ -1016,7 +1016,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.93262,
+        -2.118322,
         'evidential_epistemic',
         None,
         'nll',
@@ -1024,7 +1024,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.936139,
+        -2.183295,
         'evidential_aleatoric',
         None,
         'nll',
@@ -1032,7 +1032,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.9502012,
+        -2.2026327,
         'evidential_total',
         None,
         'nll',
@@ -1048,7 +1048,7 @@ class ChempropTests(TestCase):
     #     [],
     # ),
     (
-        2.350392723,
+        0.1665795,
         'ensemble',
         'zscaling',
         'nll',
@@ -1056,7 +1056,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.8707739,
+        -0.161436,
         'ensemble',
         'tscaling',
         'nll',
@@ -1064,7 +1064,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.2245133,
+        40.217924,
         'ensemble',
         'zelikman_interval',
         'ence',
@@ -1080,7 +1080,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        0.38442,
+        0.44518036,
         'ensemble',
         None,
         'miscalibration_area',
@@ -1088,7 +1088,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        166.80048,
+        23603.5337,
         'ensemble',
         None,
         'ence',
@@ -1114,13 +1114,17 @@ class ChempropTests(TestCase):
         predict_flags: List[str] = None,
     ):
         with TemporaryDirectory() as save_dir:
+            data_path = os.path.join(TEST_DATA_DIR, 'regression_multitask.csv')
+            train_flags.extend(['--data_path', data_path])
+
             self.train(
                 dataset_type='regression',
                 metric='rmse',
                 save_dir=save_dir,
                 flags=train_flags,
             )
-            test_path = os.path.join(TEST_DATA_DIR, 'regression.csv')
+
+            test_path = os.path.join(TEST_DATA_DIR, 'regression_multitask_gaps.csv')
             eval_path = os.path.join(save_dir, 'eval_scores.csv')
             predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
             if uncertainty_method is not None:
@@ -1136,7 +1140,8 @@ class ChempropTests(TestCase):
                 flags=predict_flags,
             )
             evaluation_scores_data=pd.read_csv(eval_path)
-            self.assertAlmostEqual(evaluation_scores_data['logSolubility'][0], expected_score, delta=expected_score * DELTA)
+
+            self.assertAlmostEqual(evaluation_scores_data['homo'][0], expected_score, delta=expected_score * DELTA)
 
     @parameterized.expand([(
         0.62062329,
