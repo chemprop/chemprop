@@ -217,40 +217,51 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
 
+        # using 101 bin edges, hardcoded
         fractions = np.zeros([preds.shape[1], 101])  # shape(tasks, 101)
         fractions[:, 100] = 1
 
         if self.calibrator is not None:
-            # using 101 bin edges, hardcoded
             original_metric = self.calibrator.regression_calibrator_metric
             original_scaling = self.calibrator.scaling
             original_interval = self.calibrator.interval_percentile
+
+            bin_scaling = []
 
             for i in range(1, 100):
                 self.calibrator.regression_calibrator_metric = "interval"
                 self.calibrator.interval_percentile = i
                 self.calibrator.calibrate()
-                bin_scaling = self.calibrator.scaling
-                bin_unc = (
-                    uncertainties
-                    / np.expand_dims(original_scaling, axis=0)
-                    * np.expand_dims(bin_scaling, axis=0)
-                )  # shape(data, tasks)
-                # Assumes only nan source is masked targets. Once minimum numpy is 1.2, can use np.mean(where=mask).
-                bin_fraction = np.nanmean(bin_unc >= abs_error, axis=0)
-                fractions[:, i] = bin_fraction
+                bin_scaling.append(self.calibrator.scaling)
 
+            for j in range(targets.shape[1]):
+                task_mask = mask[:, j]
+                task_error = abs_error[:, j][task_mask]
+                task_unc = uncertainties[:, j][task_mask]
+
+                for i in range(1, 100):
+                    bin_unc = task_unc / original_scaling[j] * bin_scaling[i][j]
+                    bin_fraction = np.mean(bin_unc >= task_error)
+                    fractions[j, i] = bin_fraction
+            
+            # return calibration settings to original state
             self.calibrator.regression_calibrator_metric = original_metric
             self.calibrator.scaling = original_scaling
             self.calibrator.interval_percentile = original_interval
 
         else:  # uncertainties are uncalibrated variances
-            std = np.sqrt(uncertainties)
+            bin_scaling = []
             for i in range(1, 100):
-                bin_scaling = erfinv(i / 100) * np.sqrt(2)
-                bin_unc = std * bin_scaling
-                bin_fraction = np.mean(bin_unc >= abs_error, axis=0)
-                fractions[:, i] = bin_fraction
+                bin_scaling.append(erfinv(i / 100) * np.sqrt(2))
+            for j in range(targets.shape[1]):
+                task_mask = mask[:, j]
+                task_error = abs_error[:, j][task_mask]
+                task_unc = uncertainties[:, j][task_mask]
+                for i in range(1, 100):
+                    bin_unc = np.sqrt(task_unc) * bin_scaling[i]
+                    bin_fraction = np.mean(bin_unc >= task_error)
+                    fractions[j, i] = bin_fraction
+
         # trapezoid rule
         auce = np.sum(
             0.01 * np.abs(fractions - np.expand_dims(np.arange(101) / 100, axis=0)),

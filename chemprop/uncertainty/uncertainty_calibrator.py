@@ -305,27 +305,21 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets(), dtype=float)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
         abs_zscore_preds = np.abs(uncal_preds - targets) / np.sqrt(uncal_vars)
-        if self.regression_calibrator_metric == "interval":
-            interval_scaling = np.nanpercentile(
-                abs_zscore_preds, self.interval_percentile, axis=0
-            )
-            self.scaling = interval_scaling
-        else:
-            symmetric_z = np.concatenate(
-                [abs_zscore_preds, -1 * abs_zscore_preds], axis=0
-            )
-            # Assumes only nan source is masked targets. Once minimum numpy is 1.2, can use np.std(where=mask).
-            std_scaling = np.nanstd(symmetric_z, axis=0)
-            self.scaling = std_scaling
-        # histogram parameters for nll calculation
         self.num_tasks = targets.shape[1]
         self.histogram_parameters = []
+        self.scaling = np.zeros(self.num_tasks)
         for i in range(self.num_tasks):
-            task_preds = abs_zscore_preds[:, i]
-            task_preds = task_preds[mask[:, i]]
-            h_params = np.histogram(
-                task_preds, bins='auto', density=True
-            )
+            task_mask = mask[:, i]
+            task_preds = abs_zscore_preds[:, i][task_mask]
+            if self.regression_calibrator_metric == "interval":
+                interval_scaling = np.percentile(task_preds, self.interval_percentile)
+                self.scaling[i] = interval_scaling
+            else:
+                symmetric_z = np.concatenate([task_preds, -1 * task_preds])
+                std_scaling = np.std(symmetric_z, axis=0)
+                self.scaling[i] = std_scaling
+            # histogram parameters for nll calculation
+            h_params = np.histogram(task_preds, bins='auto', density=True)
             self.histogram_parameters.append(h_params)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
