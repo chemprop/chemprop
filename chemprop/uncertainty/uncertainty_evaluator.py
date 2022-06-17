@@ -250,7 +250,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
             self.calibrator.interval_percentile = original_interval
 
         else:  # uncertainties are uncalibrated variances
-            bin_scaling = []
+            bin_scaling = [0]
             for i in range(1, 100):
                 bin_scaling.append(erfinv(i / 100) * np.sqrt(2))
             for j in range(targets.shape[1]):
