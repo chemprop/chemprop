@@ -4,7 +4,6 @@ from typing import Callable
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
