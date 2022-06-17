@@ -226,7 +226,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
             original_scaling = self.calibrator.scaling
             original_interval = self.calibrator.interval_percentile
 
-            bin_scaling = []
+            bin_scaling = [0]
 
             for i in range(1, 100):
                 self.calibrator.regression_calibrator_metric = "interval"
