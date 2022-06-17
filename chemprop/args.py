@@ -913,6 +913,23 @@ class HyperoptArgs(TrainArgs):
     manual_trial_dirs: List[str] = None
     """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
     Results will be considered as part of the trial history of the hyperparameter search."""
+    search_parameter_keywords: List[str] = ["basic"]
+    """The model parameters over which to search for an optimal hyperparameter configuration.
+    Some options are bundles of parameters or otherwise special parameter operations.
+
+    Special keywords:
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
+        linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value.
+            If either of the component words are entered in separately, both are searched independently.
+        learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs. The search for init_lr and final_lr values
+            are a fraction of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+        all - include search for all 13 inidividual keyword options
+
+    Individual supported parameters:
+        activation, aggregation, aggregation_norm, batch_size, depth,
+        dropout, ffn_hidden_size, ffn_num_layers, final_lr, hidden_size,
+        init_lr, max_lr, warmup_epochs
+    """
 
     def process_args(self) -> None:
         super(HyperoptArgs, self).process_args()
@@ -922,6 +939,41 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
+
+        # Construct set of search parameters
+        supported_keywords = [
+            "basic", "learning_rate", "linked_hidden_size", "all",
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr", "hidden_size",
+            "init_lr", "max_lr", "warmup_epochs"
+        ]
+        supported_parameters = [
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr_ratio", "hidden_size",
+            "init_lr_ratio", "linked_hidden_size", "max_lr", "warmup_epochs_ratio"
+        ]
+        unsupported_keywords = set(self.search_parameter_keywords) - set(supported_keywords)
+        if len(unsupported_keywords) != 0:
+            raise NotImplementedError(
+                f"Keywords for what hyperparameters to include in the search are designated \
+                    with the argument `--search_parameter_keywords`. The following unsupported\
+                    keywords were received: {unsupported_keywords}. The available supported\
+                    keywords are: {supported_keywords}"
+            )
+        search_parameters = set()
+        if "all" in self.search_parameter_keywords:
+            search_parameters.update(supported_parameters)
+        if "basic" in self.search_parameter_keywords:
+            search_parameters.update(["depth", "ffn_num_layers", "dropout", "linked_hidden_size"])
+        if "learning_rate" in self.search_parameter_keywords:
+            search_parameters.update(["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs_ratio"])
+        for kw in self.search_parameter_keywords:
+            if kw in supported_parameters:
+                search_parameters.add(kw)
+        if "linked_hidden_size" in search_parameters and ("hidden_size" in search_parameters or "ffn_hidden_size" in search_parameters):
+            search_parameters.remove("linked_hidden_size")
+            search_parameters.update(["hidden_size", "ffn_hidden_size"])
+        self.search_parameters = list(search_parameters)
 
 
 class SklearnTrainArgs(TrainArgs):
