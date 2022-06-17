@@ -31,7 +31,7 @@ NUM_FOLDS = 3
 NUM_ITER = 2
 SIZE = 10
 DEPTH = 2
-DELTA = 0.015
+DELTA = 0.025
 
 
 class ChempropTests(TestCase):
@@ -955,7 +955,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                3.428215603,
+                3.34822937696,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'),'--features_generator', 'morgan']
         ),
