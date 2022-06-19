@@ -140,7 +140,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets(), dtype=float)
-        mask = np.array(self.calibration_data.mask())
+        mask = np.array(self.calibration_data.mask(), dtype=bool)
         self.scaling = np.zeros(targets.shape[1])
 
         for i in range(targets.shape[1]):
@@ -227,7 +227,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets(), dtype=float)
-        mask = np.array(self.calibration_data.mask())
+        mask = np.array(self.calibration_data.mask(), dtype=bool)
         self.scaling = np.zeros(targets.shape[1])
 
         for i in range(targets.shape[1]):
