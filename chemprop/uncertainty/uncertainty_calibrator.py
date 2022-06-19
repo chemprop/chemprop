@@ -147,7 +147,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             task_mask = mask[:, i]
             task_targets = targets[:, i][task_mask]
             task_preds = uncal_preds[:, i][task_mask]
-            task_vars = uncal_vars[:, i][task_preds]
+            task_vars = uncal_vars[:, i][task_mask]
             task_errors = task_preds - task_targets
             task_zscore = task_errors / np.sqrt(task_vars)
 
@@ -234,7 +234,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
             task_mask = mask[:, i]
             task_targets = targets[:, i][task_mask]
             task_preds = uncal_preds[:, i][task_mask]
-            task_vars = uncal_vars[:, i][task_preds]
+            task_vars = uncal_vars[:, i][task_mask]
             std_error_of_mean = np.sqrt(
                 task_vars / (self.num_models - 1)
             )  # reduced for number of samples and include Bessel's correction
