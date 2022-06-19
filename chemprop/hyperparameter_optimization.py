@@ -15,16 +15,7 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.train import cross_validate, run_training
 from chemprop.utils import create_logger, makedirs, timeit
-from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, get_hyperopt_seed, load_manual_trials
-
-
-SPACE = {
-    'hidden_size': hp.quniform('hidden_size', low=300, high=2400, q=100),
-    'depth': hp.quniform('depth', low=2, high=6, q=1),
-    'dropout': hp.quniform('dropout', low=0.0, high=0.4, q=0.05),
-    'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
-}
-INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
+from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, get_hyperopt_seed, load_manual_trials, build_search_space
 
 
 @timeit(logger_name=HYPEROPT_LOGGER_NAME)
@@ -46,6 +37,10 @@ def hyperopt(args: HyperoptArgs) -> None:
     """
     # Create logger
     logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
+
+    # Build search space
+    logger.info(f"Creating search space using parameters {args.search_parameters}.")
+    space = build_search_space(search_parameters=args.search_parameters, train_epochs=args.epochs)
 
     # Load in manual trials
     if args.manual_trial_dirs is not None:

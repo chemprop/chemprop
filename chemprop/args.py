@@ -950,7 +950,7 @@ class HyperoptArgs(TrainArgs):
         supported_parameters = [
             "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
             "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr_ratio", "hidden_size",
-            "init_lr_ratio", "linked_hidden_size", "max_lr", "warmup_epochs_ratio"
+            "init_lr_ratio", "linked_hidden_size", "max_lr", "warmup_epochs"
         ]
         unsupported_keywords = set(self.search_parameter_keywords) - set(supported_keywords)
         if len(unsupported_keywords) != 0:
@@ -966,10 +966,14 @@ class HyperoptArgs(TrainArgs):
         if "basic" in self.search_parameter_keywords:
             search_parameters.update(["depth", "ffn_num_layers", "dropout", "linked_hidden_size"])
         if "learning_rate" in self.search_parameter_keywords:
-            search_parameters.update(["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs_ratio"])
+            search_parameters.update(["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"])
         for kw in self.search_parameter_keywords:
             if kw in supported_parameters:
                 search_parameters.add(kw)
+        if "init_lr" in self.search_parameter_keywords:
+            search_parameters.add("init_lr_ratio")
+        if "final_lr" in self.search_parameter_keywords:
+            search_parameters.add("final_lr_ratio")
         if "linked_hidden_size" in search_parameters and ("hidden_size" in search_parameters or "ffn_hidden_size" in search_parameters):
             search_parameters.remove("linked_hidden_size")
             search_parameters.update(["hidden_size", "ffn_hidden_size"])
