@@ -141,27 +141,31 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
         targets = np.array(self.calibration_data.targets(), dtype=float)
         mask = np.array(self.calibration_data.mask())
-        errors = uncal_preds - targets
-        errors = np.where(mask, errors, 0.)
-        zscore_preds = errors / np.sqrt(uncal_vars)
+        self.scaling = np.zeros(targets.shape[1])
 
-        def objective(scaler_values: np.ndarray):
-            scaled_vars = uncal_vars * np.expand_dims(scaler_values, axis=0) ** 2
-            nll = np.log(2 * np.pi * scaled_vars) / 2 \
-                + (errors) ** 2 / (2 * scaled_vars)
-            nll = np.sum(nll, axis=0)
-            return nll
+        for i in range(targets.shape[1]):
+            task_mask = mask[:, i]
+            task_targets = targets[:, i][task_mask]
+            task_preds = uncal_preds[:, i][task_mask]
+            task_vars = uncal_vars[:, i][task_preds]
+            task_errors = task_preds - task_targets
+            task_zscore = task_errors / np.sqrt(task_vars)
 
-        initial_guess = np.std(zscore_preds, axis=0, keepdims=False)
-        sol = least_squares(objective, initial_guess)
-        stdev_scaling = sol.x
-        if self.regression_calibrator_metric == "stdev":
-            self.scaling = stdev_scaling
-        else:  # interval
-            interval_scaling = (
-                stdev_scaling * erfinv(self.interval_percentile / 100) * np.sqrt(2)
-            )
-            self.scaling = interval_scaling
+            def objective(scaler_value: float):
+                scaled_vars = task_vars * scaler_value ** 2
+                nll = np.log(2 * np.pi * scaled_vars) / 2 \
+                    + (task_errors) ** 2 / (2 * scaled_vars)
+                return nll.sum()
+
+            initial_guess = np.std(task_zscore)
+            sol = fmin(objective, initial_guess)
+
+            if self.regression_calibrator_metric == "stdev":
+                self.scaling[i] = sol
+            else:  # interval
+                self.scaling[i] = (
+                    sol * erfinv(self.interval_percentile / 100) * np.sqrt(2)
+                )
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
@@ -222,33 +226,38 @@ class TScalingCalibrator(UncertaintyCalibrator):
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks)
         uncal_vars = np.array(self.calibration_predictor.get_uncal_vars())
-        std_error_of_mean = np.sqrt(
-            uncal_vars / (self.num_models - 1)
-        )  # reduced for number of samples and include Bessel's correction
         targets = np.array(self.calibration_data.targets(), dtype=float)
         mask = np.array(self.calibration_data.mask())
-        errors = uncal_preds - targets
-        errors = np.where(mask, errors, 0.)
-        tscore_preds = errors / std_error_of_mean
+        self.scaling = np.zeros(targets.shape[1])
 
-        def objective(scaler_values: np.ndarray):
-            scaled_std = std_error_of_mean * np.expand_dims(scaler_values, axis=0)
-            likelihood = t.pdf(
-                x=errors, df=self.num_models - 1, scale=scaled_std
-            )  # scipy t distribution pdf
-            nll = -1 * np.sum(np.log(likelihood), axis=0)
-            return nll
+        for i in range(targets.shape[1]):
+            task_mask = mask[:, i]
+            task_targets = targets[:, i][task_mask]
+            task_preds = uncal_preds[:, i][task_mask]
+            task_vars = uncal_vars[:, i][task_preds]
+            std_error_of_mean = np.sqrt(
+                task_vars / (self.num_models - 1)
+            )  # reduced for number of samples and include Bessel's correction
+            task_errors = task_preds - task_targets
+            task_tscore = task_errors / std_error_of_mean
 
-        initial_guess = np.std(tscore_preds, axis=0, keepdims=False)
-        sol = least_squares(objective, initial_guess)
-        stdev_scaling = sol.x
-        if self.regression_calibrator_metric == "stdev":
-            self.scaling = stdev_scaling
-        else:  # interval
-            interval_scaling = stdev_scaling * t.ppf(
-                (self.interval_percentile / 100 + 1) / 2, df=self.num_models - 1
-            )
-            self.scaling = interval_scaling
+            def objective(scaler_value: np.ndarray):
+                scaled_std = std_error_of_mean * scaler_value
+                likelihood = t.pdf(
+                    x=task_errors, df=self.num_models - 1, scale=scaled_std
+                )  # scipy t distribution pdf
+                nll = -1 * np.sum(np.log(likelihood), axis=0)
+                return nll
+
+            initial_guess = np.std(task_tscore)
+            stdev_scaling = fmin(objective, initial_guess)
+            if self.regression_calibrator_metric == "stdev":
+                self.scaling[i] = stdev_scaling
+            else:  # interval
+                interval_scaling = stdev_scaling * t.ppf(
+                    (self.interval_percentile / 100 + 1) / 2, df=self.num_models - 1
+                )
+                self.scaling[i] = interval_scaling
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
