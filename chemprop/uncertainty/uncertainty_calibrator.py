@@ -419,7 +419,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             def objective(scaler_values: np.ndarray):
                 scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (models, 1)
                 scaled_vars = np.sum(
-                    individual_vars * scaler_values, axis=0, keepdims=False
+                    task_ind_vars * scaler_values, axis=0, keepdims=False
                 )  # (data, tasks)
                 nll = np.log(2 * np.pi * scaled_vars) / 2 + (task_errors) ** 2 / (
                     2 * scaled_vars
