@@ -154,22 +154,30 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
     :param hyperopt_args: The arguments for the hyperparameter optimization job.
     :return: A hyperopt trials object including all the loaded manual trials.
     """
-    matching_args = [ # manual trials must occupy the same space as the hyperparameter optimization search. This is a non-extensive list of arguments to check to see if they are consistent.
-        'number_of_molecules',
-        'aggregation',
-        'num_folds',
-        'ensemble_size',
-        'max_lr',
-        'init_lr',
-        'final_lr',
-        'activation',
-        'metric',
-        'bias',
-        'epochs',
-        'explicit_h',
-        'reaction',
-        'split_type',
-        'warmup_epochs',
+    # manual trials must occupy the same space as the hyperparameter optimization search. This is a non-extensive list of arguments to check to see if they are consistent.
+    matching_args = [ 
+        ('number_of_molecules', None),
+        ('aggregation', 'aggregation'),
+        ('num_folds', None),
+        ('ensemble_size', None),
+        ('max_lr', 'max_lr'),
+        ('init_lr', 'init_lr_ratio'),
+        ('final_lr', 'final_lr_ratio'),
+        ('activation', 'activation'),
+        ('metric', None),
+        ('bias', None),
+        ('epochs', None),
+        ('explicit_h', None),
+        ('adding_h', None),
+        ('reaction', None),
+        ('split_type', None),
+        ('warmup_epochs', 'warmup_epochs'),
+        ('split_sizes', None),
+        ('aggregation_norm', 'aggregation_norm'),
+        ('batch_size', 'batch_size'),
+        ('depth', 'depth'),
+        ('dropout', 'dropout'),
+        ('ffn_num_layers', 'ffn_num_layers'),
     ]
 
     manual_trials_data = []
@@ -189,12 +197,20 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
             trial_args = json.load(f)
 
         # Check for differences in manual trials and hyperopt space
-        if 'hidden_size' in param_keys:
+        if 'linked_hidden_size' in param_keys:
             if trial_args['hidden_size'] != trial_args['ffn_hidden_size']:
                 raise ValueError(f'The manual trial in {trial_dir} has a hidden_size {trial_args["hidden_size"]} '
                 f'that does not match its ffn_hidden_size {trial_args["ffn_hidden_size"]}, as it would in hyperparameter search.')
-        for arg in matching_args:
-            if arg not in param_keys:
+        elif 'hidden_size' not in param_keys or 'ffn_hidden_size' not in param_keys:
+            if 'hidden_size' not in param_keys:
+                if getattr(hyperopt_args,'hidden_size') != trial_args['hidden_size']:
+                    raise ValueError(f'Manual trial {trial_dir} has different training argument hidden_size than the hyperparameter optimization search trials.')
+            if 'ffn_hidden_size' not in param_keys:
+                if getattr(hyperopt_args,'ffn_hidden_size') != trial_args['ffn_hidden_size']:
+                    raise ValueError(f'Manual trial {trial_dir} has different training argument ffn_hidden_size than the hyperparameter optimization search trials.')
+
+        for arg, space_parameter in matching_args:
+            if space_parameter not in param_keys:
                 if getattr(hyperopt_args,arg) != trial_args[arg]:
                     raise ValueError(f'Manual trial {trial_dir} has different training argument {arg} than the hyperparameter optimization search trials.')
 
