@@ -41,10 +41,14 @@ def hyperopt(args: HyperoptArgs) -> None:
     # Build search space
     logger.info(f"Creating search space using parameters {args.search_parameters}.")
     space = build_search_space(search_parameters=args.search_parameters, train_epochs=args.epochs)
+    int_keys = [
+        "batch_size", "depth", "ffn_hidden_size", "ffn_num_layers",
+        "hidden_size", "linked_hidden_size", "warmup_epochs"
+    ]
 
     # Load in manual trials
     if args.manual_trial_dirs is not None:
-        manual_trials = load_manual_trials(args.manual_trial_dirs, SPACE.keys(), args)
+        manual_trials = load_manual_trials(manual_trial_dirs=args.manual_trial_dirs, param_keys=space.keys(), hyperopt_args=args)
         logger.info(f'{len(manual_trials)} manual trials included in hyperparameter search.')
     else:
         manual_trials = None
@@ -55,8 +59,9 @@ def hyperopt(args: HyperoptArgs) -> None:
     # Define hyperparameter optimization
     def objective(hyperparams: Dict[str, Union[int, float]], seed: int) -> Dict:
         # Convert hyperparams from float to int when necessary
-        for key in INT_KEYS:
-            hyperparams[key] = int(hyperparams[key])
+        for key in int_keys:
+            if key in hyperparams:
+                hyperparams[key] = int(hyperparams[key])
 
         # Copy args
         hyper_args = deepcopy(args)
@@ -124,7 +129,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         fmin(
             fmin_objective,
-            SPACE,
+            space,
             algo=partial(tpe.suggest, n_startup_jobs=args.startup_random_iters),
             max_evals=len(trials) + 1,
             trials=trials,
