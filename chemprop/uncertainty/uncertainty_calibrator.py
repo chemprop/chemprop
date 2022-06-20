@@ -407,23 +407,29 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         )  # shape(models, data, tasks)
         targets = np.array(self.calibration_data.targets(), dtype=float)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
-        errors = uncal_preds - targets
-        errors = np.where(mask, errors, 0.)
+        self.var_weighting = np.zeros([self.num_models, targets.shape[1]])  # shape(models, tasks)
 
-        def objective(scaler_values: np.ndarray):
-            scaler_values = np.reshape(softmax(scaler_values), [-1, 1, 1])  # (models, 1, 1)
-            scaled_vars = np.sum(
-                individual_vars * scaler_values, axis=0, keepdims=False
-            )  # (data, tasks)
-            nll = np.log(2 * np.pi * scaled_vars) / 2 + (errors) ** 2 / (
-                2 * scaled_vars
-            )
-            nll = np.sum(nll)
-            return nll
+        for i in range(targets.shape[1]):
+            task_mask = mask[:, i]
+            task_targets = targets[:, i][task_mask]
+            task_preds = uncal_preds[:, i][task_mask]
+            task_ind_vars = individual_vars[:, :, i][:, task_mask]
+            task_errors = task_preds - task_targets
 
-        initial_guess = np.ones(self.num_models)
-        sol = fmin(objective, initial_guess)
-        self.var_weighting = softmax(sol)
+            def objective(scaler_values: np.ndarray):
+                scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (models, 1)
+                scaled_vars = np.sum(
+                    individual_vars * scaler_values, axis=0, keepdims=False
+                )  # (data, tasks)
+                nll = np.log(2 * np.pi * scaled_vars) / 2 + (task_errors) ** 2 / (
+                    2 * scaled_vars
+                )
+                nll = np.sum(nll)
+                return nll
+
+            initial_guess = np.ones(self.num_models)
+            sol = fmin(objective, initial_guess)
+            self.var_weighting[:,i] = softmax(sol)
         if self.regression_calibrator_metric == "stdev":
             self.scaling = 1
         else:  # interval
@@ -431,12 +437,12 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
-        uncal_individual_vars = np.array(uncal_predictor.get_individual_vars())
+        uncal_individual_vars = np.array(uncal_predictor.get_individual_vars())  # shape(models, data, tasks)
         weighted_vars = np.sum(
-            uncal_individual_vars * np.reshape(self.var_weighting, [-1, 1, 1]),
+            uncal_individual_vars * np.expand_dims(self.var_weighting, 1),
             axis=0,
             keepdims=False,
-        )
+        )  #shape(data, tasks)
         weighted_stdev = np.sqrt(weighted_vars) * self.scaling
         return uncal_preds.tolist(), weighted_stdev.tolist()
 
