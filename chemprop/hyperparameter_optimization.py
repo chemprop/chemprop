@@ -74,7 +74,14 @@ def hyperopt(args: HyperoptArgs) -> None:
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
 
-        hyper_args.ffn_hidden_size = hyper_args.hidden_size
+        if 'linked_hidden_size' in hyperparams:
+            hyper_args.ffn_hidden_size = hyperparams['linked_hidden_size']
+            hyper_args.hidden_size = hyperparams['linked_hidden_size']
+        
+        if 'init_lr_ratio' in hyperparams:
+            hyper_args.init_lr = hyperparams['max_lr'] * hyperparams['init_lr_ratio']
+        if 'final_lr_ratio' in hyperparams:
+            hyper_args.final_lr = hyperparams['max_lr'] * hyperparams['final_lr_ratio']
 
         # Cross validate
         mean_score, std_score = cross_validate(args=hyper_args, train_func=run_training)
