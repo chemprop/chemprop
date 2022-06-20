@@ -420,7 +420,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
                 scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (models, 1)
                 scaled_vars = np.sum(
                     task_ind_vars * scaler_values, axis=0, keepdims=False
-                )  # (data, tasks)
+                )  # shape(data)
                 nll = np.log(2 * np.pi * scaled_vars) / 2 + (task_errors) ** 2 / (
                     2 * scaled_vars
                 )
@@ -442,7 +442,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             uncal_individual_vars * np.expand_dims(self.var_weighting, 1),
             axis=0,
             keepdims=False,
-        )  #shape(data, tasks)
+        )  # shape(data, tasks)
         weighted_stdev = np.sqrt(weighted_vars) * self.scaling
         return uncal_preds.tolist(), weighted_stdev.tolist()
 
