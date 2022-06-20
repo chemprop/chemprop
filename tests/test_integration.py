@@ -1055,7 +1055,7 @@ class ChempropTests(TestCase):
     #     [],
     # ),
     (
-        0.157970811,
+        -1.8791989,
         'ensemble',
         'zscaling',
         'nll',
@@ -1063,7 +1063,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -0.439917556,
+        -2.1554446,
         'ensemble',
         'tscaling',
         'nll',
