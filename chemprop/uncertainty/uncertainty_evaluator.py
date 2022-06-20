@@ -236,8 +236,8 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
 
             for j in range(targets.shape[1]):
                 task_mask = mask[:, j]
-                task_error = abs_error[:, j][task_mask]
-                task_unc = uncertainties[:, j][task_mask]
+                task_error = abs_error[task_mask, j]
+                task_unc = uncertainties[task_mask, j]
 
                 for i in range(1, 100):
                     bin_unc = task_unc / original_scaling[j] * bin_scaling[i][j]
@@ -255,8 +255,8 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                 bin_scaling.append(erfinv(i / 100) * np.sqrt(2))
             for j in range(targets.shape[1]):
                 task_mask = mask[:, j]
-                task_error = abs_error[:, j][task_mask]
-                task_unc = uncertainties[:, j][task_mask]
+                task_error = abs_error[task_mask, j]
+                task_unc = uncertainties[task_mask, j]
                 for i in range(1, 100):
                     bin_unc = np.sqrt(task_unc) * bin_scaling[i]
                     bin_fraction = np.mean(bin_unc >= task_error)
@@ -315,8 +315,8 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]  # shape(data)
-            task_unc = uncertainties[:, i][task_mask]
-            task_error = error[:, i][task_mask]
+            task_unc = uncertainties[task_mask, i]
+            task_error = error[task_mask, i]
 
             sort_idx = np.argsort(task_unc)
             task_unc = task_unc[sort_idx]
@@ -376,8 +376,8 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         spearman_coeffs = []
         for i in range(num_tasks):
             task_mask = mask[:, i]
-            task_unc = uncertainties[:, i][task_mask]
-            task_abs_error = abs_error[:, i][task_mask]
+            task_unc = uncertainties[task_mask, i]
+            task_abs_error = abs_error[task_mask, i]
             spmn = spearmanr(task_unc, task_abs_error).correlation
             spearman_coeffs.append(spmn)
         return spearman_coeffs

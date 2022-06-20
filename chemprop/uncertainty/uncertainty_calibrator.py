@@ -145,9 +145,9 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]
-            task_preds = uncal_preds[:, i][task_mask]
-            task_vars = uncal_vars[:, i][task_mask]
+            task_targets = targets[task_mask, i]
+            task_preds = uncal_preds[task_mask, i]
+            task_vars = uncal_vars[task_mask, i]
             task_errors = task_preds - task_targets
             task_zscore = task_errors / np.sqrt(task_vars)
 
@@ -232,9 +232,9 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]
-            task_preds = uncal_preds[:, i][task_mask]
-            task_vars = uncal_vars[:, i][task_mask]
+            task_targets = targets[task_mask, i]
+            task_preds = uncal_preds[task_mask, i]
+            task_vars = uncal_vars[task_mask, i]
             std_error_of_mean = np.sqrt(
                 task_vars / (self.num_models - 1)
             )  # reduced for number of samples and include Bessel's correction
@@ -319,7 +319,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         self.scaling = np.zeros(self.num_tasks)
         for i in range(self.num_tasks):
             task_mask = mask[:, i]
-            task_preds = abs_zscore_preds[:, i][task_mask]
+            task_preds = abs_zscore_preds[task_mask, i]
             if self.regression_calibrator_metric == "interval":
                 interval_scaling = np.percentile(task_preds, self.interval_percentile)
                 self.scaling[i] = interval_scaling
@@ -411,9 +411,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]
-            task_preds = uncal_preds[:, i][task_mask]
-            task_ind_vars = individual_vars[:, :, i][:, task_mask]
+            task_targets = targets[task_mask, i]
+            task_preds = uncal_preds[task_mask, i]
+            task_ind_vars = individual_vars[:, task_mask, i]
             task_errors = task_preds - task_targets
 
             def objective(scaler_values: np.ndarray):
@@ -510,8 +510,8 @@ class PlattCalibrator(UncertaintyCalibrator):
         platt_parameters = []
         for i in range(num_tasks):
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]
-            task_preds = uncal_preds[:, i][task_mask]
+            task_targets = targets[task_mask, i]
+            task_preds = uncal_preds[task_mask, i]
             if class_size_correction:
                 task_targets[task_targets == 0] = negative_target[i]
                 task_targets[task_targets == 1] = positive_target[i]
@@ -584,8 +584,8 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         isotonic_models = []
         for i in range(num_tasks):
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]
-            task_preds = uncal_preds[:, i][task_mask]
+            task_targets = targets[task_mask, i]
+            task_preds = uncal_preds[task_mask, i]
 
             isotonic_model = IsotonicRegression(y_min=0, y_max=1, out_of_bounds="clip")
             isotonic_model.fit(task_preds, task_targets)
@@ -645,8 +645,8 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         for i in range(self.num_tasks):
             isotonic_models.append([])
             task_mask = mask[:, i]
-            task_targets = targets[:, i][task_mask]  # shape(data)
-            task_preds = uncal_preds[:, i][task_mask]
+            task_targets = targets[task_mask, i]  # shape(data)
+            task_preds = uncal_preds[task_mask, i]
             for j in range(self.num_classes):
                 class_preds = task_preds[:, j]  # shape(data)
                 positive_class_targets = task_targets == j
