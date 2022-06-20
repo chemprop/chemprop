@@ -167,7 +167,7 @@ def hyperopt(args: HyperoptArgs) -> None:
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
-    save_config(config_path=args.config_save_path, hyperparams_dict=best_result['hyperparams'])
+    save_config(config_path=args.config_save_path, hyperparams_dict=best_result['hyperparams'], max_lr=args.max_lr)
 
 
 def chemprop_hyperopt() -> None:

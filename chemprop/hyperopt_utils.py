@@ -289,16 +289,18 @@ def save_config(config_path: str, hyperparams_dict: dict, max_lr: float) -> None
         if key == "linked_hidden_size":
             save_dict["hidden_size"] = hyperparams_dict["linked_hidden_size"]
             save_dict["ffn_hidden_size"] = hyperparams_dict["linked_hidden_size"]
-        if key == "init_lr_ratio":
+        elif key == "init_lr_ratio":
             if "max_lr" not in hyperparams_dict:
                 save_dict["init_lr"] = hyperparams_dict[key] * max_lr
             else:
                 save_dict["init_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
-        if key == "final_lr_ratio":
+        elif key == "final_lr_ratio":
             if "max_lr" not in hyperparams_dict:
                 save_dict["final_lr"] = hyperparams_dict[key] * max_lr
             else:
                 save_dict["final_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
+        else:
+            save_dict[key] = hyperparams_dict[key]
 
     with open(config_path, 'w') as f:
         json.dump(save_dict, f, indent=4, sort_keys=True)
