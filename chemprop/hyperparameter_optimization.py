@@ -120,11 +120,11 @@ def hyperopt(args: HyperoptArgs) -> None:
     for i in range(args.num_iters):
         # run fmin and load trials in single steps to allow for parallel operation
         trials = load_trials(dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials)
-        if len(trials) >0 and list(space.keys()) != list(trials.vals.keys()):
+        if len(trials) >0 and set(space.keys()) != set(trials.vals.keys()):
             raise ValueError(
                 f"Loaded hyperopt checkpoints files must be searching over the same parameters as \
-                    the hyperparameter optimizatoin job. Loaded trials covered variation in the parameters {list(trials.vals.keys())}. \
-                    The current search is over the parameters {list(space.keys())}."
+                    the hyperparameter optimization job. Loaded trials covered variation in the parameters {set(trials.vals.keys())}. \
+                    The current search is over the parameters {set(space.keys())}."
             )
         if len(trials) >= args.num_iters:
             break
