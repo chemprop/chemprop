@@ -272,3 +272,33 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
     trials = Trials()
     trials = merge_trials(trials=trials, new_trials_data=manual_trials_data)
     return trials
+
+def save_config(config_path: str, hyperparams_dict: dict, max_lr: float) -> None:
+    """
+    Saves the hyperparameters for the best trial to a config json file.
+
+    :param config_path: File path for the config json file.
+    :param hyperparams_dict: A dictionary of hyperparameters found during the search.
+    :param max_lr: The maximum learning rate value, to be used if not a search parameter.
+    """
+    makedirs(config_path, isfile=True)
+
+    save_dict = {}
+
+    for key in hyperparams_dict:
+        if key == "linked_hidden_size":
+            save_dict["hidden_size"] = hyperparams_dict["linked_hidden_size"]
+            save_dict["ffn_hidden_size"] = hyperparams_dict["linked_hidden_size"]
+        if key == "init_lr_ratio":
+            if "max_lr" not in hyperparams_dict:
+                save_dict["init_lr"] = hyperparams_dict[key] * max_lr
+            else:
+                save_dict["init_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
+        if key == "final_lr_ratio":
+            if "max_lr" not in hyperparams_dict:
+                save_dict["final_lr"] = hyperparams_dict[key] * max_lr
+            else:
+                save_dict["final_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
+
+    with open(config_path, 'w') as f:
+        json.dump(save_dict, f, indent=4, sort_keys=True)

@@ -15,7 +15,8 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.train import cross_validate, run_training
 from chemprop.utils import create_logger, makedirs, timeit
-from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, get_hyperopt_seed, load_manual_trials, build_search_space
+from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, \
+    get_hyperopt_seed, load_manual_trials, build_search_space, save_config
 
 
 @timeit(logger_name=HYPEROPT_LOGGER_NAME)
@@ -166,10 +167,7 @@ def hyperopt(args: HyperoptArgs) -> None:
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
-    makedirs(args.config_save_path, isfile=True)
-
-    with open(args.config_save_path, 'w') as f:
-        json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
+    save_config(config_path=args.config_save_path, hyperparams_dict=best_result['hyperparams'])
 
 
 def chemprop_hyperopt() -> None:
