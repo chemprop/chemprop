@@ -50,11 +50,32 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
     :param trials_data: The contents of a hyperopt trials object, `Trials.trials`.
     :return: A hyperopt trials object, merged from the two inputs.
     """
-    max_tid = 0
     if len(trials.trials) > 0:
         max_tid = max([trial['tid'] for trial in trials.trials])
+        trial_keys = list(trials.vals.keys())
+        for trial in trials.trials:
+            new_trial_keys = list(trial['misc']['vals'].keys())
+            if trial_keys != new_trial_keys:
+                raise ValueError(
+                    f"Hyperopt trials with different search spaces cannot be combined. \
+                        Across the loaded previous trials, the parameters {trial_keys} \
+                        were included in the seach space space of some trial. At least one \
+                        trial includes only the parameters {new_trial_keys}."
+                )
+    else:
+        trial_keys = None
+        max_tid = 0
 
     for trial in new_trials_data:
+        new_trial_keys = list(trial['misc']['vals'].keys())
+        if trial_keys is None:
+            trial_keys = new_trial_keys
+        elif new_trial_keys != trial_keys:
+            raise ValueError(
+                f"Hyperopt trials with different search spaces cannot be combined. \
+                    A new trial searching for parameters {new_trial_keys} was merged \
+                    with another trial for parameters {trial_keys}"
+            )
         tid = trial['tid'] + max_tid + 1 #trial id needs to be unique among this list of ids.
         hyperopt_trial = Trials().new_trial_docs(
                 tids=[None],
