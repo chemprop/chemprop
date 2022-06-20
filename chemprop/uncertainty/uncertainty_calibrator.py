@@ -351,9 +351,9 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         nll = np.zeros_like(preds)
         for i in range(self.num_tasks):
             task_mask = mask[:, i]
-            task_preds = preds[:, i]
-            task_targets = targets[:, i]
-            task_stdev = unc[:, i] / self.scaling[i]
+            task_preds = preds[task_mask, i]
+            task_targets = targets[task_mask, i]
+            task_stdev = unc[task_mask, i] / self.scaling[i]
             task_abs_z = np.abs(task_preds - task_targets) / task_stdev
             bin_edges = self.histogram_parameters[i][1]
             bin_magnitudes = self.histogram_parameters[i][0]
@@ -363,7 +363,6 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
             pred_bins = np.searchsorted(bin_edges, task_abs_z)
             # magnitude adjusted by stdev scale of the distribution and symmetry assumption
             task_likelihood = bin_magnitudes[pred_bins] / task_stdev / 2
-            task_likelihood = np.where(task_mask, task_likelihood, 0.)
             nll[:, i] = -1 * np.log(task_likelihood)
         return nll
 
@@ -688,13 +687,12 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         nll = np.zeros_like(targets)
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
-            task_preds = unc[:, i]
-            task_targets = targets[:, i]  # shape(data)
+            task_preds = unc[task_mask, i]
+            task_targets = targets[task_mask, i]  # shape(data)
             bin_targets = np.zeros_like(preds[:, 0, :])  # shape(data, classes)
             bin_targets[np.arange(targets.shape[0]), task_targets] = 1
             task_likelihood = np.sum(bin_targets * task_preds, axis=1)
             task_nll = -1 * np.log(task_likelihood)
-            task_nll = np.where(task_mask, task_nll, 0.)
             nll[:, i] = task_nll
         return nll
 
