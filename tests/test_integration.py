@@ -1007,7 +1007,7 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([(
-        8976.559752,
+        9450.06996,
         'ensemble',
         None,
         'nll',
@@ -1015,7 +1015,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -1.979151164,
+        -2.0835368,
         'mve',
         None,
         'nll',
@@ -1023,7 +1023,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -2.018537104,
+        -2.12500003,
         'evidential_epistemic',
         None,
         'nll',
@@ -1031,7 +1031,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -1.980981524,
+        -2.0854637,
         'evidential_aleatoric',
         None,
         'nll',
@@ -1039,7 +1039,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -1.912175759,
+        -2.0130289,
         'evidential_total',
         None,
         'nll',
@@ -1055,7 +1055,7 @@ class ChempropTests(TestCase):
     #     [],
     # ),
     (
-        -1.8791989,
+        -1.9783182,
         'ensemble',
         'zscaling',
         'nll',
@@ -1063,7 +1063,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -2.1554446,
+        6.94374243,
         'ensemble',
         'tscaling',
         'nll',
@@ -1079,7 +1079,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        -1.98497503,
+        -2.0896678,
         'mve',
         'mve_weighting',
         'nll',
