@@ -1,12 +1,11 @@
 """Optimizes hyperparameters using Bayesian optimization."""
 
 from copy import deepcopy
-import json
 from typing import Dict, Union
 import os
 from functools import partial
 
-from hyperopt import fmin, hp, tpe, Trials
+from hyperopt import fmin, tpe, Trials
 import numpy as np
 
 from chemprop.args import HyperoptArgs
@@ -49,7 +48,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
     # Load in manual trials
     if args.manual_trial_dirs is not None:
-        manual_trials = load_manual_trials(manual_trial_dirs=args.manual_trial_dirs, param_keys=space.keys(), hyperopt_args=args)
+        manual_trials = load_manual_trials(manual_trials_dirs=args.manual_trial_dirs, param_keys=space.keys(), hyperopt_args=args)
         logger.info(f'{len(manual_trials)} manual trials included in hyperparameter search.')
     else:
         manual_trials = None
