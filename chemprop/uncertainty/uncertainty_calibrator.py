@@ -105,7 +105,7 @@ class UncertaintyCalibrator(ABC):
         unc: List[List[float]],
         targets: List[List[float]],
         mask: List[List[bool]],
-    ):
+    ) -> List[float]:
         """
         Takes in calibrated predictions and uncertainty parameters and returns the log probability density of that result.
         """
@@ -184,11 +184,17 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         preds = np.array(preds)
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
-        nll = (
-            np.log(2 * np.pi * unc_var) / 2
-            + (preds - targets) ** 2 / (2 * unc_var)
-        )
-        nll = np.where(mask, nll, 0.)
+        nll = []
+        for i in targets.shape[1]:
+            task_mask = mask[:, i]
+            task_preds = preds[task_mask, i]
+            task_targets = targets[task_mask, i]
+            task_unc = unc_var[task_mask, i]
+            task_nll = (
+                np.log(2 * np.pi * task_unc) / 2
+                + (task_preds - task_targets) ** 2 / (2 * task_unc)
+            )
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -274,11 +280,20 @@ class TScalingCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
+        unc = np.square(unc)
+        preds = np.array(preds)
+        targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
-        nll = -1 * t.logpdf(
-            x=np.array(preds) - np.array(targets, dtype=float), scale=unc, df=self.num_models - 1
-        )
-        nll = np.where(mask, nll, 0.)
+        nll = []
+        for i in targets.shape[1]:
+            task_mask = mask[:, i]
+            task_preds = preds[task_mask, i]
+            task_targets = targets[task_mask, i]
+            task_unc = unc[task_mask, i]
+            task_nll = -1 * t.logpdf(
+                x=task_preds - task_targets, scale=task_unc, df=self.num_models - 1
+            )
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -348,7 +363,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         unc = np.array(unc)
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
-        nll = np.zeros_like(preds)
+        nll = []
         for i in range(self.num_tasks):
             task_mask = mask[:, i]
             task_preds = preds[task_mask, i]
@@ -363,7 +378,8 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
             pred_bins = np.searchsorted(bin_edges, task_abs_z)
             # magnitude adjusted by stdev scale of the distribution and symmetry assumption
             task_likelihood = bin_magnitudes[pred_bins] / task_stdev / 2
-            nll[:, i] = -1 * np.log(task_likelihood)
+            task_nll = -1 * np.log(task_likelihood)
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -452,13 +468,21 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
+        unc_var = np.square(unc)
         preds = np.array(preds)
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
-        unc_var = np.square(unc)
-        nll = np.log(2 * np.pi * unc_var) / 2 \
-            + (preds - targets) ** 2 / (2 * unc_var)
-        nll = np.where(mask, nll, 0.)
+        nll = []
+        for i in targets.shape[1]:
+            task_mask = mask[:, i]
+            task_preds = preds[task_mask, i]
+            task_targets = targets[task_mask, i]
+            task_unc = unc_var[task_mask, i]
+            task_nll = (
+                np.log(2 * np.pi * task_unc) / 2
+                + (task_preds - task_targets) ** 2 / (2 * task_unc)
+            )
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -548,9 +572,15 @@ class PlattCalibrator(UncertaintyCalibrator):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
-        likelihood = unc * targets + (1 - unc) * (1 - targets)
-        nll = -1 * np.log(likelihood)
-        nll = np.where(mask, nll, 0.)
+        nll = []
+        for i in targets.shape[1]:
+            task_mask = mask[:, i]
+            task_targets = targets[task_mask, i]
+            task_unc = unc[task_mask, i]
+
+            likelihood = task_unc * task_targets + (1 - task_unc) * (1 - task_targets)
+            task_nll = -1 * np.log(likelihood)
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -606,9 +636,15 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
-        likelihood = unc * targets + (1 - unc) * (1 - targets)
-        nll = -1 * np.log(likelihood)
-        nll = np.where(mask, nll, 0.)
+        nll = []
+        for i in targets.shape[1]:
+            task_mask = mask[:, i]
+            task_targets = targets[task_mask, i]
+            task_unc = unc[task_mask, i]
+
+            likelihood = task_unc * task_targets + (1 - task_unc) * (1 - task_targets)
+            task_nll = -1 * np.log(likelihood)
+            nll.append(task_nll.mean())
         return nll
 
 
@@ -684,7 +720,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
         preds = np.array(preds)
-        nll = np.zeros_like(targets)
+        nll = []
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_preds = unc[task_mask, i]
@@ -693,7 +729,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
             bin_targets[np.arange(targets.shape[0]), task_targets] = 1
             task_likelihood = np.sum(bin_targets * task_preds, axis=1)
             task_nll = -1 * np.log(task_likelihood)
-            nll[:, i] = task_nll
+            nll.append(task_nll.mean())
         return nll
 
 
