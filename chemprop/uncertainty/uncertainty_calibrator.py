@@ -185,7 +185,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         nll = []
-        for i in targets.shape[1]:
+        for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_preds = preds[task_mask, i]
             task_targets = targets[task_mask, i]
@@ -285,7 +285,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         nll = []
-        for i in targets.shape[1]:
+        for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_preds = preds[task_mask, i]
             task_targets = targets[task_mask, i]
@@ -473,7 +473,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         nll = []
-        for i in targets.shape[1]:
+        for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_preds = preds[task_mask, i]
             task_targets = targets[task_mask, i]
@@ -573,7 +573,7 @@ class PlattCalibrator(UncertaintyCalibrator):
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
         nll = []
-        for i in targets.shape[1]:
+        for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_targets = targets[task_mask, i]
             task_unc = unc[task_mask, i]
@@ -637,7 +637,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
         nll = []
-        for i in targets.shape[1]:
+        for i in range(targets.shape[1]):
             task_mask = mask[:, i]
             task_targets = targets[task_mask, i]
             task_unc = unc[task_mask, i]
