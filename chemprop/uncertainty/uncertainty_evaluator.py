@@ -190,11 +190,11 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         preds = np.array(preds)
         nll = []
         for i in range(targets.shape[1]):
-            task_preds = uncertainties[:, i]
-            task_targets = targets[:, i]  # shape(data)
             task_mask = mask[:, i]
-            bin_targets = np.zeros_like(preds[:, 0, :])  # shape(data, classes)
-            bin_targets[np.arange(targets.shape[0]), task_targets] = 1
+            task_preds = uncertainties[task_mask, i]
+            task_targets = targets[task_mask, i]  # shape(data)
+            bin_targets = np.zeros_like(task_preds)  # shape(data, classes)
+            bin_targets[np.arange(task_targets.shape[0]), task_targets] = 1
             task_likelihood = np.sum(bin_targets * task_preds, axis=1)
             task_nll = -1 * np.log(task_likelihood)
             nll.append(task_nll.mean())
