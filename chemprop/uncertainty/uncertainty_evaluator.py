@@ -187,7 +187,6 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         targets = np.array(targets, dtype=int)  # shape(data, tasks)
         mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
-        preds = np.array(preds)
         nll = []
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
