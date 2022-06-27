@@ -26,10 +26,12 @@ from chemprop.features import load_features
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
-EPOCHS = 3
+EPOCHS = 10
 NUM_FOLDS = 3
 NUM_ITER = 2
-DELTA = 0.015
+SIZE = 10
+DEPTH = 2
+DELTA = 0.025
 
 
 class ChempropTests(TestCase):
@@ -49,6 +51,9 @@ class ChempropTests(TestCase):
             '--seed', str(SEED),
             '--metric', metric,
             '--save_dir', save_dir,
+            '--hidden_size', str(SIZE),
+            '--ffn_hidden_size', str(SIZE),
+            '--depth', str(DEPTH),
             '--quiet',
             '--empty_cache'
         ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
@@ -218,34 +223,34 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'rmse',
-                1.64048879,
+                2.338310289,
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
                 'rmse',
-                1.70756238,
+                2.2983865,
                 ['--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'rmse',
-                1.99633537,
+                2.0438637,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'rmse',
-                1.06655898,
+                2.14015989,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
         ),
         (
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
-                2.9177008,
+                5.52281852,
                 [
                     '--loss_function', 'bounded_mse',
                     '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
@@ -281,42 +286,42 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.4908104,
+                0.52783634,
                 ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'auc',
-                0.4733686,
+                0.519689086,
                 ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'auc',
-                0.4573833,
+                0.466828424,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_mcc_metric',
                 'chemprop',
                 'mcc',
-                0.0352518,
+                0.014589067,
                 ['--metric', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_f1_metric',
                 'chemprop',
                 'f1',
-                0.02777778,
+                0.190841899,
                 ['--metric', 'f1', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_mcc_loss',
                 'chemprop',
                 'auc',
-                0.74079357,
+                0.55505265,
                 ['--loss_function', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         )
     ])
@@ -356,19 +361,19 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                1.1261400
+                2.4145471
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                4.1756080,
+                2.4703284,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.47390878,
+                1.51978455,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         )
@@ -440,20 +445,20 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                0.1804146,
+                0.238491358,
                 ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                0.26773606,
+                0.254056869,
                 ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.0778546,
+                0.3071592294,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         )
@@ -616,7 +621,7 @@ class ChempropTests(TestCase):
         (
             'spectra',
             'chemprop',
-            0.00520246,
+            0.09920149,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -626,7 +631,7 @@ class ChempropTests(TestCase):
         (
             'spectra_excluded_targets',
             'chemprop',
-            0.003938459,
+            0.08912992,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -636,7 +641,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.0065630322,
+            0.0747605825,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -673,7 +678,7 @@ class ChempropTests(TestCase):
         (
             'spectra',
             'chemprop',
-            0.0041501114,
+            0.074686983,
             0,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
@@ -687,7 +692,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.0053274466,
+            0.076007918,
             284,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
@@ -750,25 +755,25 @@ class ChempropTests(TestCase):
         (
                 'chemprop_reaction',
                 'chemprop',
-                2.1235725,
+                2.3338595,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv')]
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
-                2.0610431,
+                2.18239804,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                2.8446566,
+                3.122113679,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--features_generator', 'morgan']
         ),
         (
                 'chemprop_reaction_explicit_h',
                 'chemprop',
-                2.2980834,
+                2.34536046,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h']
          )
     ])
@@ -801,7 +806,7 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.699453,
+                0.6644781145,
                 ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
         )
     ])
@@ -832,14 +837,16 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                2805.4368779,
+                31.669185768,
                 ['--fingerprint_type', 'MPN'],
+                ['--split_sizes', '0.4', '0.3', '0.3'],
         ),
         (
                 'chemprop',
                 'chemprop',
-                2689.55376,
+                26.903715076,
                 ['--fingerprint_type', 'last_FFN'],
+                ['--split_sizes', '0.4', '0.3', '0.3']
         )
     ])
     def test_single_task_fingerprint(self,
@@ -941,35 +948,35 @@ class ChempropTests(TestCase):
     @parameterized.expand([(
                 'chemprop_reaction_solvent',
                 'chemprop',
-                2.912189,
+                3.0195756,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv')]
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                3.7687076,
+                3.34822937696,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'),'--features_generator', 'morgan']
         ),
         (
                 'chemprop_reaction_solvent_explicit_h',
                 'chemprop',
-                2.805125,
+                3.01241762,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h']
          ),
         (
                 'chemprop_reaction_solvent_explicit_h_adding_h',
                 'chemprop',
-                2.8814398,
+                2.984292677,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h', '--adding_h']
         ),
         (
                 'chemprop_reaction_solvent_diff_mpn_size',
                 'chemprop',
-                2.9015592,
+                2.730379557,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--hidden_size', '500',
                  '--hidden_size_solvent', '250']
@@ -1000,7 +1007,7 @@ class ChempropTests(TestCase):
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([(
-        101.8037,
+        9450.06996,
         'ensemble',
         None,
         'nll',
@@ -1008,7 +1015,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.749264,
+        -2.0835368,
         'mve',
         None,
         'nll',
@@ -1016,7 +1023,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.93262,
+        -2.12500003,
         'evidential_epistemic',
         None,
         'nll',
@@ -1024,7 +1031,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.936139,
+        -2.0854637,
         'evidential_aleatoric',
         None,
         'nll',
@@ -1032,7 +1039,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.9502012,
+        -2.0130289,
         'evidential_total',
         None,
         'nll',
@@ -1048,7 +1055,7 @@ class ChempropTests(TestCase):
     #     [],
     # ),
     (
-        2.350392723,
+        -1.9783182,
         'ensemble',
         'zscaling',
         'nll',
@@ -1056,7 +1063,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.8707739,
+        6.94374243,
         'ensemble',
         'tscaling',
         'nll',
@@ -1064,7 +1071,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        1.2245133,
+        39.07013967,
         'ensemble',
         'zelikman_interval',
         'ence',
@@ -1072,7 +1079,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        2.06247499,
+        -2.0896678,
         'mve',
         'mve_weighting',
         'nll',
@@ -1080,7 +1087,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        0.38442,
+        0.486563126,
         'ensemble',
         None,
         'miscalibration_area',
@@ -1088,7 +1095,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        166.80048,
+        757883.0509,
         'ensemble',
         None,
         'ence',
@@ -1114,13 +1121,17 @@ class ChempropTests(TestCase):
         predict_flags: List[str] = None,
     ):
         with TemporaryDirectory() as save_dir:
+            data_path = os.path.join(TEST_DATA_DIR, 'regression_multitask.csv')
+            train_flags.extend(['--data_path', data_path])
+
             self.train(
                 dataset_type='regression',
                 metric='rmse',
                 save_dir=save_dir,
                 flags=train_flags,
             )
-            test_path = os.path.join(TEST_DATA_DIR, 'regression.csv')
+
+            test_path = os.path.join(TEST_DATA_DIR, 'regression_multitask_gaps.csv')
             eval_path = os.path.join(save_dir, 'eval_scores.csv')
             predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
             if uncertainty_method is not None:
@@ -1136,10 +1147,11 @@ class ChempropTests(TestCase):
                 flags=predict_flags,
             )
             evaluation_scores_data=pd.read_csv(eval_path)
-            self.assertAlmostEqual(evaluation_scores_data['logSolubility'][0], expected_score, delta=expected_score * DELTA)
+
+            self.assertAlmostEqual(evaluation_scores_data['homo'][0], expected_score, delta=np.abs(expected_score * DELTA))
 
     @parameterized.expand([(
-        0.62062329,
+        0.66787529,
         'classification',
         'platt',
         'nll',
@@ -1147,7 +1159,7 @@ class ChempropTests(TestCase):
         ['--number_of_molecules', '2'],
     ),
     (
-        0.60075398,
+        0.6411087455,
         'classification',
         'isotonic',
         'nll',
@@ -1155,7 +1167,7 @@ class ChempropTests(TestCase):
         ['--number_of_molecules', '2'],
     ),
     (
-        0.67181467,
+        0.6254826255,
         'classification',
         'isotonic',
         'accuracy',
