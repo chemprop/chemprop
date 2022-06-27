@@ -68,11 +68,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         # Update args with hyperparams
         if args.save_dir is not None:
-            if len(hyperparams) > 5:
-                folder_name = f'trial_seed_{seed}'
-            else:
-                folder_name = '_'.join(f'{key}_{value}' for key, value in hyperparams.items())
-            hyper_args.save_dir = os.path.join(hyper_args.save_dir, folder_name)
+            folder_name = f'trial_seed_{seed}'
 
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
