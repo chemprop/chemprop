@@ -33,7 +33,7 @@ def build_search_space(search_parameters: List[str], train_epochs: int = None) -
         "init_lr_ratio": hp.loguniform("init_lr_ratio", low=np.log(1e-4), high=0.),
         "linked_hidden_size": hp.quniform("linked_hidden_size", low=300, high=2400, q=100),
         "max_lr": hp.loguniform("max_lr", low=np.log(1e-6), high=np.log(1e-2)),
-        "warmup_epochs": hp.uniform("warmup_epochs", low=1, high=0.5 * train_epochs)
+        "warmup_epochs": hp.quniform("warmup_epochs", low=1, high=train_epochs // 2, q=1)
     }
     space = {}
     for key in search_parameters:
@@ -59,7 +59,7 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
                 raise ValueError(
                     f"Hyperopt trials with different search spaces cannot be combined. \
                         Across the loaded previous trials, the parameters {trial_keys} \
-                        were included in the seach space space of some trial. At least one \
+                        were included in the search space of some trials. At least one \
                         trial includes only the parameters {new_trial_keys}."
                 )
     else:
@@ -169,14 +169,15 @@ def get_hyperopt_seed(seed: int, dir_path: str) -> int:
 def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyperopt_args: HyperoptArgs) -> Trials:
     """
     Function for loading in manual training runs as trials for inclusion in hyperparameter search.
-    Trials must be consistent in all arguments with trials that would be generated in hyperparameter optimization.
+    Trials must be consistent with trials that would be generated in hyperparameter optimization.
+    Parameters that are part of the search space do not have to match, but all others do.
 
     :param manual_trials_dirs: A list of paths to save directories for the manual trials, as would include test_scores.csv and args.json.
     :param param_keys: A list of the parameters included in the hyperparameter optimization.
     :param hyperopt_args: The arguments for the hyperparameter optimization job.
     :return: A hyperopt trials object including all the loaded manual trials.
     """
-    # manual trials must occupy the same space as the hyperparameter optimization search. This is a non-extensive list of arguments to check to see if they are consistent.
+    # Non-extensive list of arguments that need to match between the manual trials and the search space.
     matching_args = [ 
         ('number_of_molecules', None),
         ('aggregation', 'aggregation'),
@@ -233,7 +234,7 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
 
         for arg, space_parameter in matching_args:
             if space_parameter not in param_keys:
-                if getattr(hyperopt_args,arg) != trial_args[arg]:
+                if getattr(hyperopt_args, arg) != trial_args[arg]:
                     raise ValueError(f'Manual trial {trial_dir} has different training argument {arg} than the hyperparameter optimization search trials.')
 
         # Construct data dict
