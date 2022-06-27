@@ -410,7 +410,7 @@ Note that the hyperparameter optimization script sees all the data given to it. 
 
 ### Choosing the Search Parameters
 
-The parameter space being searched can be changed to include different sets of model hyperparameters. These can be selected using the argument `--parameter_search_keywords <list-of-keywords>`. The available keywords are listed below. Some keywords refer to bundles of parameters or other special behavior.
+The parameter space being searched can be changed to include different sets of model hyperparameters. These can be selected using the argument `--search_parameter_keywords <list-of-keywords>`. The available keywords are listed below. Some keywords refer to bundles of parameters or other special behavior.
 
 Special keywords
 * basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
@@ -422,7 +422,7 @@ Individual supported parameters
 
 Choosing to include additional search parameters should be undertaken carefully. The number of possible parameter combinations increases combinatorially with the addition of more hyperparameters, so the search for an optimal configuration will become more difficult accordingly. The recommendation from Hyperopt is to use at least 10 trials per hyperparameter for an appropriate search as a rule of thumb, but even more will be necessary at higher levels of search complexity or to obtain better convergence to the optimal hyperparameters. Steps to reduce the complexity of a search space should be considered, such as excluding low-sensitivity parameters or those for which a judgement can be made ahead of time. Splitting the search for learning rates into a secondary search after other parameters have been set can also reduce complexity. The `all` search option should only be used in situations where the dataset is small and a very large number of trials can be used.
 
-The search space for init_lr and final_lr values are defined as fractions of the max_lr value. The search space for warmup_epochs is set by fraction of the `--epochs` training argument. The performance with different learning rate parameters is sensitive to the number of data, the batch_size, and the number of training epochs and may need to be re-optimized if those are changed. The search for aggregation_norm values is only relevant when the aggregation function is set to norm and can otherwise be neglected. If a separate training argument is provided that is included in the search parameters, the search will overwrite the specified value (e.g., `--depth 5 --parameter_search_keywords depth`).
+The search space for init_lr and final_lr values are defined as fractions of the max_lr value. The search space for warmup_epochs is set by fraction of the `--epochs` training argument. The performance with different learning rate parameters is sensitive to the number of data, the batch_size, and the number of training epochs and may need to be re-optimized if those are changed. The search for aggregation_norm values is only relevant when the aggregation function is set to norm and can otherwise be neglected. If a separate training argument is provided that is included in the search parameters, the search will overwrite the specified value (e.g., `--depth 5 --search_parameter_keywords depth`).
 
 ### Checkpoints and Parallel Operation
 
