@@ -908,8 +908,9 @@ class HyperoptArgs(TrainArgs):
     hyperopt_checkpoint_dir: str = None
     """Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted.
     Can also be used to run multiple instances in parallel if they share the same checkpoint directory."""
-    startup_random_iters: int = 10
-    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest."""
+    startup_random_iters: int = None
+    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest.
+    By default will be half the total number of trials."""
     manual_trial_dirs: List[str] = None
     """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
     Results will be considered as part of the trial history of the hyperparameter search."""
@@ -939,6 +940,10 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
+        
+        # Set number of startup random trials
+        if self.startup_random_iters is None:
+            self.startup_random_iters = self.num_iters // 2
 
         # Construct set of search parameters
         supported_keywords = [

@@ -437,7 +437,7 @@ Parallel instances of hyperparameter optimization that share a checkpoint direct
 
 ### Random or Directed Search
 
-As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int, default=10>`. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
+As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int>`. By default, the number or random trials will be half the number of total trials. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
 
 
 ### Manual Trials
