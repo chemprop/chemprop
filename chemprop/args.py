@@ -922,7 +922,7 @@ class HyperoptArgs(TrainArgs):
         linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value.
             If either of the component words are entered in separately, both are searched independently.
         learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs. The search for init_lr and final_lr values
-            are a fraction of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+            are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
         all - include search for all 13 inidividual keyword options
 
     Individual supported parameters:
