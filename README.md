@@ -48,6 +48,10 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Uncertainty Calibration](#uncertainty-calibration)
   * [Uncertainty Evaluation Metrics](#uncertainty-evaluation-metrics)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
+  * [Choosing the Search Parameters](#choosing-the-search-parameters)
+  * [Checkpoints and Parallel Operation](#checkpoints-and-parallel-operation)
+  * [Random or Directed Search](#random-or-directed-search)
+  * [Manual Trials](#manual-trials)
 - [Encode Fingerprint Latent Representation](#encode-fingerprint-latent-representation)
 - [Interpreting Model Prediction](#interpreting)
 - [TensorBoard](#tensorboard)
@@ -410,7 +414,7 @@ Note that the hyperparameter optimization script sees all the data given to it. 
 
 ### Choosing the Search Parameters
 
-The parameter space being searched can be changed to include different sets of model hyperparameters. These can be selected using the argument `--search_parameter_keywords <list-of-keywords>`. The available keywords are listed below. Some keywords refer to bundles of parameters or other special behavior.
+The parameter space being searched can be changed to include different sets of model hyperparameters. These can be selected using the argument `--search_parameter_keywords <list-of-keywords>`. The available keywords are listed below. Some keywords refer to bundles of parameters or other special behavior. Note that the search ranges for each parameter is hardcoded and can be viewed or changed in `chemprop/hyperopt_utils.py`.
 
 Special keywords
 * basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
