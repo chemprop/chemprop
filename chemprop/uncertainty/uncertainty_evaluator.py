@@ -307,17 +307,15 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
         error = np.abs(preds - targets)  # shape(data, tasks)
 
         # get stdev scaling then revert if interval
-        if self.calibrator is not None and self.calibration_method != "tscaling":
-            if self.calibrator.regression_calibrator_metric == "interval":
-                original_metric = self.calibrator.regression_calibrator_metric
-                original_scaling = self.calibrator.scaling
+        if self.calibrator is not None:
+            original_metric = self.calibrator.regression_calibrator_metric
+            original_scaling = self.calibrator.scaling
+            if self.calibration_method != "tscaling" and self.calibrator.regression_calibrator_metric == "interval":
                 self.calibrator.regression_calibrator_metric = "stdev"
                 self.calibrator.calibrate()
                 stdev_scaling = self.calibrator.scaling
                 self.calibrator.regression_calibrator_metric = original_metric
                 self.calibrator.scaling = original_scaling
-            else:  # stdev metric
-                stdev_scaling = self.calibrator.scaling
 
         mean_vars = np.zeros([preds.shape[1], 100])  # shape(tasks, 100)
         rmses = np.zeros_like(mean_vars)
@@ -344,9 +342,10 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                     bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
                     mean_vars[i, j] = np.mean(bin_var)
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
-                else:  # stdev metric
+                else:
                     bin_unc = split_unc[j]
-                    bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
+                    if self.calibrator.regression_calibrator_metric == "interval":
+                        bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
                     mean_vars[i, j] = np.mean(np.square(bin_unc))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
 

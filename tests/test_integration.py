@@ -1046,14 +1046,14 @@ class ChempropTests(TestCase):
         ['--loss_function', 'evidential'],
         [],
     ),
-    # (
-    #     8.843267,
-    #     'dropout',
-    #     None,
-    #     'nll',
-    #     ['--num_folds', '1'],
-    #     [],
-    # ),
+    (
+        20.50925,
+        'dropout',
+        'zscaling',
+        'ence',
+        ['--num_folds', '1'],
+        [],
+    ),
     (
         -1.9783182,
         'ensemble',
