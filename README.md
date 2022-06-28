@@ -154,7 +154,7 @@ CCN1C(=O)NC(c2ccccc2)C1=O,0,,0
 
 By default, it is assumed that the SMILES are in the first column (can be changed using `--number_of_molecules`) and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the `--smiles_columns <column_1> ...` and `--target_columns <column_1> <column_2> ...` flags, respectively.
 
-Datasets from [MoleculeNet](http://moleculenet.ai/) and a 450K subset of ChEMBL from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
+Datasets from [MoleculeNet](https://moleculenet.org/) and a 450K subset of ChEMBL from [http://www.bioinf.jku.at/research/lsc/index.html](http://www.bioinf.jku.at/research/lsc/index.html) have been preprocessed and are available in `data.tar.gz`. To uncompress them, run `tar xvzf data.tar.gz`.
 
 ## Training
 
@@ -383,7 +383,7 @@ The uncertainty of predictions made in Chemprop can be estimated by several diff
 
 ### Uncertainty Calibration
 
-Uncertainty predictions may be calibrated to improve their performance on new predictions. Calibration methods are selected using `--calibration_method <method>`, options provided below. An additional dataset to use in calibration is provided through `--calibration_path <path>`, along with necessary features like `--calibration_features_path <path>`.
+Uncertainty predictions may be calibrated to improve their performance on new predictions. Calibration methods are selected using `--calibration_method <method>`, options provided below. An additional dataset to use in calibration is provided through `--calibration_path <path>`, along with necessary features like `--calibration_features_path <path>`. As with the data used in training, calibration data for multitask models are allowed to have gaps and missing targets in the data.
 
 **Regression** Calibrated regression outputs can be in the form of a standard deviation or an interval, as specified with the argument `--regression_calibrator_metric <"stdev" or "interval">`. The interval can be set using `--calibration_interval_percentile <float>` in the range (1,100).
 * `zscaling` Assumes that errors are normally distributed according to the estimated variance for each prediction. Applies a constant multiple to all stdev or interval outputs in order to minimize the negative log likelihood for the normal distributions. (https://arxiv.org/abs/1905.11659)
@@ -396,7 +396,7 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 
 ### Uncertainty Evaluation Metrics
 
-The performance of uncertainty predictions (calibrated or uncalibrated) as evaluated on the test set using different evaluation metrics as specified with `--evaluation_methods <[methods]>`. Evaluation scores will be saved at the path provided with `--evaluation_scores_path <path.csv>`. If no path is provided to save the scores, then the results will only appear in the output trace. Multiple evaluation methods can be provided and they will be calculated separately for each model task. Evaluation is only available when the target values are provided with the data in `--test_path <path.csv>`.
+The performance of uncertainty predictions (calibrated or uncalibrated) as evaluated on the test set using different evaluation metrics as specified with `--evaluation_methods <[methods]>`. Evaluation scores will be saved at the path provided with `--evaluation_scores_path <path.csv>`. If no path is provided to save the scores, then the results will only appear in the output trace. Multiple evaluation methods can be provided and they will be calculated separately for each model task. Evaluation is only available when the target values are provided with the data in `--test_path <path.csv>`. As with the data used in training, evaluation data for multitask models are allowed to have gaps and missing targets in the data.
 
 * Any valid classification or multiclass metric. Because classification and multiclass outputs are inherently probabilistic, any metric used to assess them during training is appropriate to evaluate the confidences produced after calibration.
 * `nll` Returns the average negative log likelihood of the real target as indicated by the uncertainty predictions. Enabled for regression, classification, and multiclass dataset types.

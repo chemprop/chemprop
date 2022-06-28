@@ -530,6 +530,23 @@ class MoleculeDataset(Dataset):
         :return: A list of lists of floats (or None) containing the targets.
         """
         return [d.targets for d in self._data]
+    
+    def mask(self) -> List[List[bool]]:
+        """
+        Returns whether the targets associated with each molecule and task are present.
+
+        :return: A list of list of booleans associated with targets.
+        """
+        targets = self.targets()
+        if self.is_atom_bond_targets:
+            mask = []
+            for dt in zip(*targets):
+                dt = np.concatenate(dt)
+                mask.append([x is not None for x in dt])
+        else:
+            mask = [[t is not None for t in dt] for dt in targets]
+            mask = list(zip(*mask))
+        return mask
 
     def gt_targets(self) -> List[np.ndarray]:
         """

@@ -85,68 +85,70 @@ def test_build_unsupported_metrics(metric, dataset_type):
         build_uncertainty_evaluator(metric, None, None, dataset_type, None, None, False)
 
 
-@pytest.mark.parametrize("targets,preds,uncs,likelihood", [([[0]], [[0]], [[1]], [0.3989])])
-def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, likelihood):
+@pytest.mark.parametrize("targets,preds,uncs,mask,likelihood", [([[0]], [[0]], [[1]], [[1]], [0.3989])])
+def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, mask, likelihood):
     """
     Tests the result of the NLL regression UncertaintyEvaluator.
     """
-    nll_calc = np.array(nll_regression_evaluator.evaluate(targets, preds, uncs))
+    nll_calc = np.array(nll_regression_evaluator.evaluate(targets, preds, uncs, mask))
     likelihood_calc = np.exp(-1 * nll_calc)
 
     np.testing.assert_array_almost_equal(likelihood, likelihood_calc, decimal=4)
 
 
 @pytest.mark.parametrize(
-    "targets,preds,uncs,likelihood",
-    [([[1]], [[0.8]], [[0.8]], [0.8]), ([[0]], [[0.8]], [[0.8]], [0.2])],
+    "targets,preds,uncs,mask,likelihood",
+    [([[1]], [[0.8]], [[0.8]], [[1]], [0.8]), ([[0]], [[0.8]], [[0.8]], [[1]], [0.2])],
 )
-def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs, likelihood):
+def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs, mask, likelihood):
     """
     Tests the result of the NLL classification UncertaintyEvaluator.
     """
-    nll_calc = np.array(nll_classification_evaluator.evaluate(targets, preds, uncs))
+    nll_calc = np.array(nll_classification_evaluator.evaluate(targets, preds, uncs, mask))
     likelihood_calc = np.exp(-1 * nll_calc)
 
     np.testing.assert_array_almost_equal(likelihood, likelihood_calc)
 
 
 @pytest.mark.parametrize(
-    "targets,preds,uncs,area_exp",
+    "targets,preds,uncs,mask,area_exp",
     [
-        (np.zeros((100, 1)), np.zeros((100, 1)), np.ones((100, 1)), [0.495]),
-        (np.full((100, 1), 100), np.zeros((100, 1)), np.ones((100, 1)), [0.495]),
+        (np.zeros((100, 1)), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
+        (np.full((100, 1), 100), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
     ],
 )
-def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, area_exp):
+def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, mask, area_exp):
     """
     Tests the result of the miscalibration_area UncertaintyEvaluator.
     """
-    area = miscal_regression_evaluator.evaluate(targets, preds, uncs)
+    area = miscal_regression_evaluator.evaluate(targets, preds, uncs, mask)
 
     np.testing.assert_array_almost_equal(area, area_exp)
 
 
 @pytest.mark.parametrize(
-    "targets,preds,uncs,spearman_exp",
+    "targets,preds,uncs,mask,spearman_exp",
     [
         (
             np.arange(1, 101).reshape((100, 1)),
             np.zeros((100, 1)),
             np.arange(1, 101).reshape((100, 1)),
+            np.full((100, 1), True, dtype=bool),
             [1],
         ),
         (
             np.arange(1, 101).reshape((100, 1)),
             np.zeros((100, 1)),
             -np.arange(1, 101).reshape((100, 1)),
+            np.full((100, 1), True, dtype=bool),
             [-1],
         ),
     ],
 )
-def test_spearman_regression(spearman_evaluator, targets, preds, uncs, spearman_exp):
+def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spearman_exp):
     """
     Tests the result of the spearman rank correlation UncertaintyEvaluator.
     """
-    area = spearman_evaluator.evaluate(targets, preds, uncs)
+    area = spearman_evaluator.evaluate(targets, preds, uncs, mask)
 
     np.testing.assert_array_almost_equal(area, spearman_exp)

@@ -219,7 +219,7 @@ def predict_and_save(
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
-                targets=evaluation_data.targets(), preds=preds, uncertainties=unc
+                targets=evaluation_data.targets(), preds=preds, uncertainties=unc, mask=evaluation_data.mask()
             )
             evaluations.append(evaluation)
             print(

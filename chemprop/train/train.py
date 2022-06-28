@@ -51,18 +51,18 @@ def train(model: MoleculeModel,
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_descriptors_batch, bond_features_batch, constraints_batch, data_weights_batch = \
-            batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
+        mol_batch, features_batch, target_batch, mask_batch, atom_descriptors_batch, atom_features_batch, bond_descriptors_batch, bond_features_batch, constraints_batch, data_weights_batch = \
+            batch.batch_graph(), batch.features(), batch.targets(), batch.mask(), batch.atom_descriptors(), \
             batch.atom_features(), batch.bond_descriptors(), batch.bond_features(), batch.constraints(), batch.data_weights()
 
         if model.is_atom_bond_targets:
-            masks, targets = [], []
-            for tb in zip(*target_batch):
-                tb = np.concatenate(tb)
-                masks.append(torch.tensor([x is not None for x in tb], dtype=torch.bool))
-                targets.append(torch.tensor([0 if x is None else x for x in tb], dtype=torch.float))
+            targets = []
+            for dt in zip(*target_batch):
+                dt = np.concatenate(dt)
+                targets.append(torch.tensor([0 if x is None else x for x in dt], dtype=torch.float))
+            masks = [torch.tensor(mask, dtype=torch.bool) for mask in mask_batch]
             if args.target_weights is not None:
-                target_weights = [torch.ones(1, 1) * i for i in args.target_weights]  # shape(tasks,1)
+                target_weights = [torch.ones(1, 1) * i for i in args.target_weights]  # shape(tasks, 1)
             else:
                 target_weights = [torch.ones(1, 1) for i in targets]
             data_weights = batch.atom_bond_data_weights()
@@ -102,7 +102,7 @@ def train(model: MoleculeModel,
                 else:
                     bond_types_batch.append(None)
         else:
-            masks = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool)  # shape(batch, tasks)
+            masks = torch.tensor(mask_batch, dtype=torch.bool)  # shape(batch, tasks)
             targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])  # shape(batch, tasks)
 
             if args.target_weights is not None:
