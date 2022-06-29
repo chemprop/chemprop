@@ -195,7 +195,6 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
         ('reaction', None),
         ('split_type', None),
         ('warmup_epochs', 'warmup_epochs'),
-        ('split_sizes', None),
         ('aggregation_norm', 'aggregation_norm'),
         ('batch_size', 'batch_size'),
         ('depth', 'depth'),
@@ -236,6 +235,9 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
             if 'ffn_hidden_size' not in param_keys:
                 if getattr(hyperopt_args,'ffn_hidden_size') != trial_args['ffn_hidden_size']:
                     raise ValueError(f'Manual trial {trial_dir} has different training argument ffn_hidden_size than the hyperparameter optimization search trials.')
+        
+        if getattr(hyperopt_args, 'split_sizes') != list(trial_args['split_sizes']):
+            raise ValueError(f'Manual trial {trial_dir} has different training argument split_sizes than the hyperparameter optimization search trials.')
 
         for arg, space_parameter in matching_args:
             if space_parameter not in param_keys:
