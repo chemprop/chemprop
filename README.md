@@ -418,7 +418,7 @@ The parameter space being searched can be changed to include different sets of m
 
 Special keywords
 * basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
-* linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value. If either of the component words are entered in separately, both are searched independently.
+* linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value. This allows search through both but with one fewer degree of freedom.
 * learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs.
 * all - include search for all inidividual keyword options
 Individual supported parameters
