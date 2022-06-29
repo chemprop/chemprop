@@ -23,7 +23,7 @@ def build_search_space(search_parameters: List[str], train_epochs: int = None) -
         "activation": hp.choice("activation", options=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU']),
         "aggregation": hp.choice("aggregation", options=["mean", "sum", "norm"]),
         "aggregation_norm": hp.quniform("aggregation_norm", low=1, high=200, q=1),
-        "batch_size": hp.quniform("batch_size", low=10, high=200, q=10),
+        "batch_size": hp.quniform("batch_size", low=5, high=200, q=5),
         "depth": hp.quniform("depth", low=2, high=6, q=1),
         "dropout": hp.quniform("dropout", low=0.0, high=0.4, q=0.05),
         "ffn_hidden_size": hp.quniform("ffn_hidden_size", low=300, high=2400, q=100),
@@ -243,8 +243,19 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
                     raise ValueError(f'Manual trial {trial_dir} has different training argument {arg} than the hyperparameter optimization search trials.')
 
         # Construct data dict
-        param_dict = {key: trial_args[key] for key in param_keys}
-        vals_dict = {key: [param_dict[key]] for key in param_keys}
+        param_dict = {}
+        vals_dict = {}
+        for key in param_keys:
+            if key == 'init_lr_ratio':
+                param_value = trial_args['init_lr'] / trial_args['max_lr']
+            elif key == 'final_lr_ratio':
+                param_value = trial_args['final_lr'] / trial_args['max_lr']
+            elif key == 'linked_hidden_size':
+                param_value = trial_args['hidden_size']
+            else:
+                param_value = trial_args[key]
+            param_dict[key] = param_value
+            vals_dict[key] = [param_value]
         idxs_dict = {key: [i] for key in param_keys}
         results_dict = {
             'loss': loss,
