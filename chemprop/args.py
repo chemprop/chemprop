@@ -2,7 +2,7 @@ import json
 import os
 from tempfile import TemporaryDirectory
 import pickle
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from typing_extensions import Literal
 from packaging import version
 from warnings import warn
@@ -641,13 +641,13 @@ class TrainArgs(CommonArgs):
         # Validate split size entry and set default values
         if self.split_sizes is None:
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
-                self.split_sizes = (0.8, 0.1, 0.1)
+                self.split_sizes = [0.8, 0.1, 0.1]
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
-                self.split_sizes = (0.8, 0., 0.2)
+                self.split_sizes = [0.8, 0., 0.2]
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
-                self.split_sizes = (0.8, 0.2, 0.)
+                self.split_sizes = [0.8, 0.2, 0.]
             else: # both separate data paths are provided
-                self.split_sizes = (1., 0., 0.)
+                self.split_sizes = [1., 0., 0.]
 
         else:
             if not np.isclose(sum(self.split_sizes), 1):
@@ -669,7 +669,7 @@ class TrainArgs(CommonArgs):
 
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], 0., self.split_sizes[1])
+                    self.split_sizes = [self.split_sizes[0], 0., self.split_sizes[1]]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] != 0.:
@@ -677,7 +677,7 @@ class TrainArgs(CommonArgs):
 
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], self.split_sizes[1], 0.)
+                    self.split_sizes = [self.split_sizes[0], self.split_sizes[1], 0.]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] == 0.:
@@ -687,7 +687,7 @@ class TrainArgs(CommonArgs):
 
 
             else: # both separate data paths are provided
-                if self.split_sizes != (1., 0., 0.):
+                if self.split_sizes != [1., 0., 0.]:
                     raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided. Received split sizes: {self.split_sizes}')
 
         # Test settings
