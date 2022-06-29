@@ -201,6 +201,11 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
         ('depth', 'depth'),
         ('dropout', 'dropout'),
         ('ffn_num_layers', 'ffn_num_layers'),
+        ('dataset_type', None),
+        ('multiclass_num_classes', None),
+        ('features_generator', None),
+        ('no_features_scaling', None),
+        ('features_only', None),
     ]
 
     manual_trials_data = []
