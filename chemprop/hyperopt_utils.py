@@ -52,9 +52,9 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
     """
     if len(trials.trials) > 0:
         max_tid = max([trial['tid'] for trial in trials.trials])
-        trial_keys = list(trials.vals.keys())
+        trial_keys = set(trials.vals.keys())
         for trial in trials.trials:
-            new_trial_keys = list(trial['misc']['vals'].keys())
+            new_trial_keys = set(trial['misc']['vals'].keys())
             if trial_keys != new_trial_keys:
                 raise ValueError(
                     f"Hyperopt trials with different search spaces cannot be combined. \
@@ -67,7 +67,7 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
         max_tid = 0
 
     for trial in new_trials_data:
-        new_trial_keys = list(trial['misc']['vals'].keys())
+        new_trial_keys = set(trial['misc']['vals'].keys())
         if trial_keys is None:
             trial_keys = new_trial_keys
         elif new_trial_keys != trial_keys:
