@@ -2,7 +2,7 @@ import json
 import os
 from tempfile import TemporaryDirectory
 import pickle
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from typing_extensions import Literal
 from packaging import version
 from warnings import warn
