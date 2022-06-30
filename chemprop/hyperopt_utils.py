@@ -5,10 +5,42 @@ from typing import List, Dict
 import csv
 import json
 
-from hyperopt import Trials
+from hyperopt import Trials, hp
+import numpy as np
 
 from chemprop.constants import HYPEROPT_SEED_FILE_NAME
 from chemprop.utils import makedirs
+
+def build_search_space(search_parameters: List[str], train_epochs: int = None) -> dict:
+    """
+    Builds the parameter space to be searched with hyperopt trials.
+
+    :param search_parameters: A list of parameters to be included in the search space.
+    :param train_epochs: The total number of epochs to be used in training.
+    :return: A dictionary keyed by the parameter names of hyperopt search functions.
+    """
+    available_spaces = {
+        "activation": hp.choice("activation", options=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU']),
+        "aggregation": hp.choice("aggregation", options=["mean", "sum", "norm"]),
+        "aggregation_norm": hp.quniform("aggregation_norm", low=1, high=200, q=1),
+        "batch_size": hp.quniform("batch_size", low=5, high=200, q=5),
+        "depth": hp.quniform("depth", low=2, high=6, q=1),
+        "dropout": hp.quniform("dropout", low=0.0, high=0.4, q=0.05),
+        "ffn_hidden_size": hp.quniform("ffn_hidden_size", low=300, high=2400, q=100),
+        "ffn_num_layers": hp.quniform("ffn_num_layers", low=1, high=3, q=1),
+        "final_lr_ratio": hp.loguniform("final_lr_ratio", low=np.log(1e-4), high=0.),
+        "hidden_size": hp.quniform("hidden_size", low=300, high=2400, q=100),
+        "init_lr_ratio": hp.loguniform("init_lr_ratio", low=np.log(1e-4), high=0.),
+        "linked_hidden_size": hp.quniform("linked_hidden_size", low=300, high=2400, q=100),
+        "max_lr": hp.loguniform("max_lr", low=np.log(1e-6), high=np.log(1e-2)),
+        "warmup_epochs": hp.quniform("warmup_epochs", low=1, high=train_epochs // 2, q=1)
+    }
+    space = {}
+    for key in search_parameters:
+        space[key] = available_spaces[key]
+
+    return space
+
 
 def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
     """
@@ -18,11 +50,32 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
     :param trials_data: The contents of a hyperopt trials object, `Trials.trials`.
     :return: A hyperopt trials object, merged from the two inputs.
     """
-    max_tid = 0
     if len(trials.trials) > 0:
         max_tid = max([trial['tid'] for trial in trials.trials])
+        trial_keys = set(trials.vals.keys())
+        for trial in trials.trials:
+            new_trial_keys = set(trial['misc']['vals'].keys())
+            if trial_keys != new_trial_keys:
+                raise ValueError(
+                    f"Hyperopt trials with different search spaces cannot be combined. \
+                        Across the loaded previous trials, the parameters {trial_keys} \
+                        were included in the search space of some trials. At least one \
+                        trial includes only the parameters {new_trial_keys}."
+                )
+    else:
+        trial_keys = None
+        max_tid = 0
 
     for trial in new_trials_data:
+        new_trial_keys = set(trial['misc']['vals'].keys())
+        if trial_keys is None:
+            trial_keys = new_trial_keys
+        elif new_trial_keys != trial_keys:
+            raise ValueError(
+                f"Hyperopt trials with different search spaces cannot be combined. \
+                    A new trial searching for parameters {new_trial_keys} was merged \
+                    with another trial for parameters {trial_keys}"
+            )
         tid = trial['tid'] + max_tid + 1 #trial id needs to be unique among this list of ids.
         hyperopt_trial = Trials().new_trial_docs(
                 tids=[None],
@@ -116,29 +169,43 @@ def get_hyperopt_seed(seed: int, dir_path: str) -> int:
 def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyperopt_args: HyperoptArgs) -> Trials:
     """
     Function for loading in manual training runs as trials for inclusion in hyperparameter search.
-    Trials must be consistent in all arguments with trials that would be generated in hyperparameter optimization.
+    Trials must be consistent with trials that would be generated in hyperparameter optimization.
+    Parameters that are part of the search space do not have to match, but all others do.
 
     :param manual_trials_dirs: A list of paths to save directories for the manual trials, as would include test_scores.csv and args.json.
     :param param_keys: A list of the parameters included in the hyperparameter optimization.
     :param hyperopt_args: The arguments for the hyperparameter optimization job.
     :return: A hyperopt trials object including all the loaded manual trials.
     """
-    matching_args = [ # manual trials must occupy the same space as the hyperparameter optimization search. This is a non-extensive list of arguments to check to see if they are consistent.
-        'number_of_molecules',
-        'aggregation',
-        'num_folds',
-        'ensemble_size',
-        'max_lr',
-        'init_lr',
-        'final_lr',
-        'activation',
-        'metric',
-        'bias',
-        'epochs',
-        'explicit_h',
-        'reaction',
-        'split_type',
-        'warmup_epochs',
+    # Non-extensive list of arguments that need to match between the manual trials and the search space.
+    matching_args = [ 
+        ('number_of_molecules', None),
+        ('aggregation', 'aggregation'),
+        ('num_folds', None),
+        ('ensemble_size', None),
+        ('max_lr', 'max_lr'),
+        ('init_lr', 'init_lr_ratio'),
+        ('final_lr', 'final_lr_ratio'),
+        ('activation', 'activation'),
+        ('metric', None),
+        ('bias', None),
+        ('epochs', None),
+        ('explicit_h', None),
+        ('adding_h', None),
+        ('reaction', None),
+        ('split_type', None),
+        ('warmup_epochs', 'warmup_epochs'),
+        ('aggregation_norm', 'aggregation_norm'),
+        ('batch_size', 'batch_size'),
+        ('depth', 'depth'),
+        ('dropout', 'dropout'),
+        ('ffn_num_layers', 'ffn_num_layers'),
+        ('dataset_type', None),
+        ('multiclass_num_classes', None),
+        ('features_generator', None),
+        ('no_features_scaling', None),
+        ('features_only', None),
+        ('split_sizes', None)
     ]
 
     manual_trials_data = []
@@ -158,18 +225,37 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
             trial_args = json.load(f)
 
         # Check for differences in manual trials and hyperopt space
-        if 'hidden_size' in param_keys:
+        if 'linked_hidden_size' in param_keys:
             if trial_args['hidden_size'] != trial_args['ffn_hidden_size']:
                 raise ValueError(f'The manual trial in {trial_dir} has a hidden_size {trial_args["hidden_size"]} '
                 f'that does not match its ffn_hidden_size {trial_args["ffn_hidden_size"]}, as it would in hyperparameter search.')
-        for arg in matching_args:
-            if arg not in param_keys:
-                if getattr(hyperopt_args,arg) != trial_args[arg]:
+        elif 'hidden_size' not in param_keys or 'ffn_hidden_size' not in param_keys:
+            if 'hidden_size' not in param_keys:
+                if getattr(hyperopt_args,'hidden_size') != trial_args['hidden_size']:
+                    raise ValueError(f'Manual trial {trial_dir} has different training argument hidden_size than the hyperparameter optimization search trials.')
+            if 'ffn_hidden_size' not in param_keys:
+                if getattr(hyperopt_args,'ffn_hidden_size') != trial_args['ffn_hidden_size']:
+                    raise ValueError(f'Manual trial {trial_dir} has different training argument ffn_hidden_size than the hyperparameter optimization search trials.')
+
+        for arg, space_parameter in matching_args:
+            if space_parameter not in param_keys:
+                if getattr(hyperopt_args, arg) != trial_args[arg]:
                     raise ValueError(f'Manual trial {trial_dir} has different training argument {arg} than the hyperparameter optimization search trials.')
 
         # Construct data dict
-        param_dict = {key: trial_args[key] for key in param_keys}
-        vals_dict = {key: [param_dict[key]] for key in param_keys}
+        param_dict = {}
+        vals_dict = {}
+        for key in param_keys:
+            if key == 'init_lr_ratio':
+                param_value = trial_args['init_lr'] / trial_args['max_lr']
+            elif key == 'final_lr_ratio':
+                param_value = trial_args['final_lr'] / trial_args['max_lr']
+            elif key == 'linked_hidden_size':
+                param_value = trial_args['hidden_size']
+            else:
+                param_value = trial_args[key]
+            param_dict[key] = param_value
+            vals_dict[key] = [param_value]
         idxs_dict = {key: [i] for key in param_keys}
         results_dict = {
             'loss': loss,
@@ -203,3 +289,35 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
     trials = Trials()
     trials = merge_trials(trials=trials, new_trials_data=manual_trials_data)
     return trials
+
+def save_config(config_path: str, hyperparams_dict: dict, max_lr: float) -> None:
+    """
+    Saves the hyperparameters for the best trial to a config json file.
+
+    :param config_path: File path for the config json file.
+    :param hyperparams_dict: A dictionary of hyperparameters found during the search.
+    :param max_lr: The maximum learning rate value, to be used if not a search parameter.
+    """
+    makedirs(config_path, isfile=True)
+
+    save_dict = {}
+
+    for key in hyperparams_dict:
+        if key == "linked_hidden_size":
+            save_dict["hidden_size"] = hyperparams_dict["linked_hidden_size"]
+            save_dict["ffn_hidden_size"] = hyperparams_dict["linked_hidden_size"]
+        elif key == "init_lr_ratio":
+            if "max_lr" not in hyperparams_dict:
+                save_dict["init_lr"] = hyperparams_dict[key] * max_lr
+            else:
+                save_dict["init_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
+        elif key == "final_lr_ratio":
+            if "max_lr" not in hyperparams_dict:
+                save_dict["final_lr"] = hyperparams_dict[key] * max_lr
+            else:
+                save_dict["final_lr"] = hyperparams_dict[key] * hyperparams_dict["max_lr"]
+        else:
+            save_dict[key] = hyperparams_dict[key]
+
+    with open(config_path, 'w') as f:
+        json.dump(save_dict, f, indent=4, sort_keys=True)

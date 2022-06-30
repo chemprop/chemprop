@@ -1,12 +1,11 @@
 """Optimizes hyperparameters using Bayesian optimization."""
 
 from copy import deepcopy
-import json
 from typing import Dict, Union
 import os
 from functools import partial
 
-from hyperopt import fmin, hp, tpe, Trials
+from hyperopt import fmin, tpe, Trials
 import numpy as np
 
 from chemprop.args import HyperoptArgs
@@ -15,16 +14,8 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.train import cross_validate, run_training
 from chemprop.utils import create_logger, makedirs, timeit
-from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, get_hyperopt_seed, load_manual_trials
-
-
-SPACE = {
-    'hidden_size': hp.quniform('hidden_size', low=300, high=2400, q=100),
-    'depth': hp.quniform('depth', low=2, high=6, q=1),
-    'dropout': hp.quniform('dropout', low=0.0, high=0.4, q=0.05),
-    'ffn_num_layers': hp.quniform('ffn_num_layers', low=1, high=3, q=1)
-}
-INT_KEYS = ['hidden_size', 'depth', 'ffn_num_layers']
+from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, \
+    get_hyperopt_seed, load_manual_trials, build_search_space, save_config
 
 
 @timeit(logger_name=HYPEROPT_LOGGER_NAME)
@@ -47,9 +38,17 @@ def hyperopt(args: HyperoptArgs) -> None:
     # Create logger
     logger = create_logger(name=HYPEROPT_LOGGER_NAME, save_dir=args.log_dir, quiet=True)
 
+    # Build search space
+    logger.info(f"Creating search space using parameters {args.search_parameters}.")
+    space = build_search_space(search_parameters=args.search_parameters, train_epochs=args.epochs)
+    int_keys = [
+        "batch_size", "depth", "ffn_hidden_size", "ffn_num_layers",
+        "hidden_size", "linked_hidden_size", "warmup_epochs"
+    ]
+
     # Load in manual trials
     if args.manual_trial_dirs is not None:
-        manual_trials = load_manual_trials(args.manual_trial_dirs, SPACE.keys(), args)
+        manual_trials = load_manual_trials(manual_trials_dirs=args.manual_trial_dirs, param_keys=space.keys(), hyperopt_args=args)
         logger.info(f'{len(manual_trials)} manual trials included in hyperparameter search.')
     else:
         manual_trials = None
@@ -60,21 +59,29 @@ def hyperopt(args: HyperoptArgs) -> None:
     # Define hyperparameter optimization
     def objective(hyperparams: Dict[str, Union[int, float]], seed: int) -> Dict:
         # Convert hyperparams from float to int when necessary
-        for key in INT_KEYS:
-            hyperparams[key] = int(hyperparams[key])
+        for key in int_keys:
+            if key in hyperparams:
+                hyperparams[key] = int(hyperparams[key])
 
         # Copy args
         hyper_args = deepcopy(args)
 
         # Update args with hyperparams
         if args.save_dir is not None:
-            folder_name = '_'.join(f'{key}_{value}' for key, value in hyperparams.items())
+            folder_name = f'trial_seed_{seed}'
             hyper_args.save_dir = os.path.join(hyper_args.save_dir, folder_name)
 
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
 
-        hyper_args.ffn_hidden_size = hyper_args.hidden_size
+        if 'linked_hidden_size' in hyperparams:
+            hyper_args.ffn_hidden_size = hyperparams['linked_hidden_size']
+            hyper_args.hidden_size = hyperparams['linked_hidden_size']
+        
+        if 'init_lr_ratio' in hyperparams:
+            hyper_args.init_lr = hyperparams['max_lr'] * hyperparams['init_lr_ratio']
+        if 'final_lr_ratio' in hyperparams:
+            hyper_args.final_lr = hyperparams['max_lr'] * hyperparams['final_lr_ratio']
 
         # Cross validate
         mean_score, std_score = cross_validate(args=hyper_args, train_func=run_training)
@@ -110,6 +117,12 @@ def hyperopt(args: HyperoptArgs) -> None:
     for i in range(args.num_iters):
         # run fmin and load trials in single steps to allow for parallel operation
         trials = load_trials(dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials)
+        if len(trials) > 0 and set(space.keys()) != set(trials.vals.keys()):
+            raise ValueError(
+                f"Loaded hyperopt checkpoints files must be searching over the same parameters as \
+                    the hyperparameter optimization job. Loaded trials covered variation in the parameters {set(trials.vals.keys())}. \
+                    The current search is over the parameters {set(space.keys())}."
+            )
         if len(trials) >= args.num_iters:
             break
 
@@ -129,7 +142,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         fmin(
             fmin_objective,
-            SPACE,
+            space,
             algo=partial(tpe.suggest, n_startup_jobs=args.startup_random_iters),
             max_evals=len(trials) + 1,
             trials=trials,
@@ -150,10 +163,7 @@ def hyperopt(args: HyperoptArgs) -> None:
     logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
 
     # Save best hyperparameter settings as JSON config file
-    makedirs(args.config_save_path, isfile=True)
-
-    with open(args.config_save_path, 'w') as f:
-        json.dump(best_result['hyperparams'], f, indent=4, sort_keys=True)
+    save_config(config_path=args.config_save_path, hyperparams_dict=best_result['hyperparams'], max_lr=args.max_lr)
 
 
 def chemprop_hyperopt() -> None:
