@@ -26,10 +26,12 @@ from chemprop.features import load_features
 
 TEST_DATA_DIR = 'tests/data'
 SEED = 0
-EPOCHS = 3
+EPOCHS = 10
 NUM_FOLDS = 3
 NUM_ITER = 2
-DELTA = 0.015
+SIZE = 10
+DEPTH = 2
+DELTA = 0.025
 
 
 class ChempropTests(TestCase):
@@ -49,6 +51,9 @@ class ChempropTests(TestCase):
             '--seed', str(SEED),
             '--metric', metric,
             '--save_dir', save_dir,
+            '--hidden_size', str(SIZE),
+            '--ffn_hidden_size', str(SIZE),
+            '--depth', str(DEPTH),
             '--quiet',
             '--empty_cache'
         ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
@@ -218,34 +223,34 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'rmse',
-                1.64048879,
+                2.338310289,
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
                 'rmse',
-                1.70756238,
+                2.2983865,
                 ['--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'rmse',
-                1.99633537,
+                2.0438637,
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'rmse',
-                1.06655898,
+                2.14015989,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
         ),
         (
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
-                2.9177008,
+                5.52281852,
                 [
                     '--loss_function', 'bounded_mse',
                     '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
@@ -259,7 +264,6 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/train_single_regression/{name}'
             # Train
             self.train(
                 dataset_type='regression',
@@ -271,10 +275,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -282,41 +286,42 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.63495735,
+                0.52783634,
+                ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
                 'auc',
-                0.5827042,
-                ['--features_generator', 'morgan']
+                0.519689086,
+                ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'auc',
-                0.63613397,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling']
+                0.466828424,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_mcc_metric',
                 'chemprop',
                 'mcc',
-                0.0352518,
+                0.014589067,
                 ['--metric', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_f1_metric',
                 'chemprop',
                 'f1',
-                0.02777778,
+                0.190841899,
                 ['--metric', 'f1', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         ),
         (
                 'chemprop_mcc_loss',
                 'chemprop',
                 'auc',
-                0.74079357,
+                0.55505265,
                 ['--loss_function', 'mcc', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_common.csv'), '--class_balance']
         )
     ])
@@ -327,7 +332,6 @@ class ChempropTests(TestCase):
                                              expected_score: float,
                                              train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/train_multi_class/{name}'
             # Train
             self.train(
                 dataset_type='classification',
@@ -339,9 +343,8 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
-
-            mean_score = test_scores.mean()
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
+            mean_score = np.mean(np.array(test_scores))
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -358,19 +361,19 @@ class ChempropTests(TestCase):
         (
                 'chemprop',
                 'chemprop',
-                1.1261400
+                2.4145471
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                4.1756080,
+                2.4703284,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.47390878,
+                1.51978455,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         )
@@ -382,7 +385,6 @@ class ChempropTests(TestCase):
                                             train_flags: List[str] = None,
                                             predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/pred_single_regression/{name}'
             # Train
             dataset_type = 'regression'
             self.train(
@@ -411,27 +413,53 @@ class ChempropTests(TestCase):
 
             pred, true = pred.drop(columns=['smiles']), true.drop(columns=['smiles'])
             pred, true = pred.to_numpy(), true.to_numpy()
-            mse = float(np.nanmean((pred - true) ** 2))
+            mse = float(np.mean((pred - true) ** 2))
             self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
+    
+    def test_predict_individual_ensemble(self):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            dataset_type = 'regression'
+            self.train(
+                dataset_type=dataset_type,
+                metric='rmse',
+                save_dir=save_dir,
+            )
+
+            # Predict
+            preds_path = os.path.join(save_dir, 'preds.csv')
+            self.predict(
+                dataset_type=dataset_type,
+                preds_path=preds_path,
+                save_dir=save_dir,
+                flags=['--individual_ensemble_predictions']
+            )
+
+            pred = pd.read_csv(preds_path)
+            columns = list(pred.columns)
+            expected_columns = ['smiles', 'logSolubility'] + [f'logSolubility_model_{idx}' for idx in range(NUM_FOLDS)]
+            self.assertTrue(columns == expected_columns)
+
 
     @parameterized.expand([
         (
                 'chemprop',
                 'chemprop',
-                0.07072509
+                0.238491358,
+                ['--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                0.07685293,
-                ['--features_generator', 'morgan'],
+                0.254056869,
+                ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_generator', 'morgan']
         ),
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.072059973,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling'],
+                0.3071592294,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         )
     ])
@@ -442,7 +470,6 @@ class ChempropTests(TestCase):
                                                train_flags: List[str] = None,
                                                predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/pred_multi_class/{name}'
             # Train
             dataset_type = 'classification'
             self.train(
@@ -476,7 +503,6 @@ class ChempropTests(TestCase):
 
     def test_chemprop_hyperopt(self):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/hyperopt'
             # Train
             config_save_path = os.path.join(save_dir, 'config.json')
             self.hyperopt(
@@ -489,7 +515,7 @@ class ChempropTests(TestCase):
             with open(config_save_path) as f:
                 config = json.load(f)
 
-            parameters = {'depth': (2, 6), 'hidden_size': (300, 2400), 'ffn_num_layers': (1, 3), 'dropout': (0.0, 0.4)}
+            parameters = {'depth': (2, 6), 'hidden_size': (300, 2400), 'ffn_hidden_size': (300, 2400), 'ffn_num_layers': (1, 3), 'dropout': (0.0, 0.4)}
 
             self.assertEqual(set(config.keys()), set(parameters.keys()))
 
@@ -511,7 +537,6 @@ class ChempropTests(TestCase):
                                               train_flags: List[str] = None,
                                               interpret_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/interpret_single_regression/{name}'
             # Train
             dataset_type = 'regression'
             self.train(
@@ -596,7 +621,7 @@ class ChempropTests(TestCase):
         (
             'spectra',
             'chemprop',
-            0.00520246,
+            0.09920149,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -606,7 +631,7 @@ class ChempropTests(TestCase):
         (
             'spectra_excluded_targets',
             'chemprop',
-            0.003938459,
+            0.08912992,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -616,7 +641,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.0065630322,
+            0.0747605825,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
@@ -631,7 +656,6 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/train_spectra/{name}'
             # Train
             metric = 'sid'
             self.train(
@@ -644,17 +668,17 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
         (
             'spectra',
             'chemprop',
-            0.0041501114,
+            0.074686983,
             0,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
@@ -668,7 +692,7 @@ class ChempropTests(TestCase):
         (
             'spectra_phase_features',
             'chemprop',
-            0.0053274466,
+            0.076007918,
             284,
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
@@ -689,7 +713,6 @@ class ChempropTests(TestCase):
                                             train_flags: List[str] = None,
                                             predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/pred_spectra/{name}'
             # Train
             dataset_type = 'spectra'
             self.train(
@@ -732,25 +755,25 @@ class ChempropTests(TestCase):
         (
                 'chemprop_reaction',
                 'chemprop',
-                2.1235725,
+                2.3338595,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv')]
         ),
         (
                 'chemprop_scaffold_split',
                 'chemprop',
-                2.0610431,
+                2.18239804,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--split_type', 'scaffold_balanced']
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                2.8446566,
+                3.122113679,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--features_generator', 'morgan']
         ),
         (
                 'chemprop_reaction_explicit_h',
                 'chemprop',
-                2.2980834,
+                2.34536046,
                 ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'), '--explicit_h']
          )
     ])
@@ -760,7 +783,6 @@ class ChempropTests(TestCase):
                                           expected_score: float,
                                           train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
-            save_dir = f'../test/train_single_reaction/{name}'
             # Train
             metric = 'rmse'
             self.train(
@@ -773,10 +795,10 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
     @parameterized.expand([
@@ -784,7 +806,7 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'chemprop',
                 'auc',
-                0.699453,
+                0.6644781145,
                 ['--number_of_molecules', '2', '--data_path', os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')]
         )
     ])
@@ -806,23 +828,25 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
     @parameterized.expand([
         (
                 'chemprop',
                 'chemprop',
-                3473.79893,
+                31.669185768,
                 ['--fingerprint_type', 'MPN'],
+                ['--split_sizes', '0.4', '0.3', '0.3'],
         ),
         (
                 'chemprop',
                 'chemprop',
-                3504.50003,
+                26.903715076,
                 ['--fingerprint_type', 'last_FFN'],
+                ['--split_sizes', '0.4', '0.3', '0.3']
         )
     ])
     def test_single_task_fingerprint(self,
@@ -924,35 +948,35 @@ class ChempropTests(TestCase):
     @parameterized.expand([(
                 'chemprop_reaction_solvent',
                 'chemprop',
-                2.912189,
+                3.0195756,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv')]
         ),
         (
                 'chemprop_morgan_features_generator',
                 'chemprop',
-                3.7687076,
+                3.34822937696,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'),'--features_generator', 'morgan']
         ),
         (
                 'chemprop_reaction_solvent_explicit_h',
                 'chemprop',
-                2.805125,
+                3.01241762,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h']
          ),
         (
                 'chemprop_reaction_solvent_explicit_h_adding_h',
                 'chemprop',
-                2.8814398,
+                2.984292677,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h', '--adding_h']
         ),
         (
                 'chemprop_reaction_solvent_diff_mpn_size',
                 'chemprop',
-                2.9015592,
+                2.730379557,
                 ['--reaction_solvent', '--number_of_molecules', '2',
                  '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--hidden_size', '500',
                  '--hidden_size_solvent', '250']
@@ -976,11 +1000,216 @@ class ChempropTests(TestCase):
 
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
-            test_scores = test_scores_data[f'Mean {metric}']
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
             self.assertEqual(len(test_scores), 1)
 
-            mean_score = test_scores.mean()
+            mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
+
+    @parameterized.expand([(
+        9450.06996,
+        'ensemble',
+        None,
+        'nll',
+        [],
+        [],
+    ),
+    (
+        -2.0835368,
+        'mve',
+        None,
+        'nll',
+        ['--loss_function', 'mve'],
+        [],
+    ),
+    (
+        -2.12500003,
+        'evidential_epistemic',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    (
+        -2.0854637,
+        'evidential_aleatoric',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    (
+        -2.0130289,
+        'evidential_total',
+        None,
+        'nll',
+        ['--loss_function', 'evidential'],
+        [],
+    ),
+    (
+        20.50925,
+        'dropout',
+        'zscaling',
+        'ence',
+        ['--num_folds', '1'],
+        [],
+    ),
+    (
+        -1.9783182,
+        'ensemble',
+        'zscaling',
+        'nll',
+        [],
+        [],
+    ),
+    (
+        6.94374243,
+        'ensemble',
+        'tscaling',
+        'nll',
+        ['--num_folds','5'],
+        [],
+    ),
+    (
+        39.07013967,
+        'ensemble',
+        'zelikman_interval',
+        'ence',
+        [],
+        [],
+    ),
+    (
+        -2.0896678,
+        'mve',
+        'mve_weighting',
+        'nll',
+        ['--loss_function', 'mve'],
+        [],
+    ),
+    (
+        0.486563126,
+        'ensemble',
+        None,
+        'miscalibration_area',
+        [],
+        [],
+    ),
+    (
+        757883.0509,
+        'ensemble',
+        None,
+        'ence',
+        [],
+        [],
+    ),
+    # (
+    #     0.0239197,
+    #     'ensemble',
+    #     None,
+    #     'spearman',
+    #     [],
+    #     [],
+    # ),
+    ])
+    def test_uncertainty_regression(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            data_path = os.path.join(TEST_DATA_DIR, 'regression_multitask.csv')
+            train_flags.extend(['--data_path', data_path])
+
+            self.train(
+                dataset_type='regression',
+                metric='rmse',
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+
+            test_path = os.path.join(TEST_DATA_DIR, 'regression_multitask_gaps.csv')
+            eval_path = os.path.join(save_dir, 'eval_scores.csv')
+            predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(['--uncertainty_method', uncertainty_method,])
+            if calibration_method is not None:
+                predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
+            if evaluation_methods is not None:
+                predict_flags.extend(['--evaluation_methods', evaluation_methods])
+            self.predict(
+                dataset_type='regression',
+                preds_path=os.path.join(save_dir, 'preds.csv'),
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores_data=pd.read_csv(eval_path)
+
+            self.assertAlmostEqual(evaluation_scores_data['homo'][0], expected_score, delta=np.abs(expected_score * DELTA))
+
+    @parameterized.expand([(
+        0.66787529,
+        'classification',
+        'platt',
+        'nll',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    (
+        0.6411087455,
+        'classification',
+        'isotonic',
+        'nll',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    (
+        0.6254826255,
+        'classification',
+        'isotonic',
+        'accuracy',
+        ['--number_of_molecules', '2'],
+        ['--number_of_molecules', '2'],
+    ),
+    ])
+    def test_uncertainty_class(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            test_path = os.path.join(TEST_DATA_DIR, 'classification_multimolecule.csv')
+            train_flags.extend(['--data_path', test_path])
+            self.train(
+                dataset_type='classification',
+                metric='binary_cross_entropy',
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+            eval_path = os.path.join(save_dir, 'eval_scores.csv')
+            predict_flags.extend(['--evaluation_scores_path', eval_path, '--test_path', test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(['--uncertainty_method', uncertainty_method,])
+            if calibration_method is not None:
+                predict_flags.extend(['--calibration_method', calibration_method, '--calibration_path', test_path])
+            if evaluation_methods is not None:
+                predict_flags.extend(['--evaluation_methods', evaluation_methods])
+            self.predict(
+                dataset_type='regression',
+                preds_path=os.path.join(save_dir, 'preds.csv'),
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores_data=pd.read_csv(eval_path)
+            self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
+
 
 if __name__ == '__main__':
     unittest.main()

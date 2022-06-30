@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]  # TODO: fix windows permissions issues and add windows-latest
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7, 3.8]
         exclude:
         # excludes node 8 on macOS
           - os: macos-latest

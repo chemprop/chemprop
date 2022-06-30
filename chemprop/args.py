@@ -4,9 +4,12 @@ from tempfile import TemporaryDirectory
 import pickle
 from typing import List, Optional
 from typing_extensions import Literal
+from packaging import version
+from warnings import warn
 
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+import numpy as np
 
 import chemprop.data.utils
 from chemprop.data import set_cache_mol, empty_cache
@@ -229,7 +232,7 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy','cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -370,11 +373,11 @@ class TrainArgs(CommonArgs):
     """
     Choices for construction of atom and bond features for reactions
     :code:`reac_prod`: concatenates the reactants feature with the products feature.
-    :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products. 
-    :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products. 
+    :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products.
+    :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products.
     :code:`reac_prod_balance`: concatenates the reactants feature with the products feature, balances imbalanced reactions.
-    :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions. 
-    :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions. 
+    :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
+    :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.
     """
     reaction_solvent: bool = False
     """
@@ -428,9 +431,9 @@ class TrainArgs(CommonArgs):
     """Turn off atom feature scaling."""
     frzn_ffn_layers: int = 0
     """
-    Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), 
+    Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn),
     where n is specified in the input.
-    Automatically also freezes mpnn weights. 
+    Automatically also freezes mpnn weights.
     """
     freeze_first_only: bool = False
     """
@@ -526,7 +529,7 @@ class TrainArgs(CommonArgs):
 
         global temp_save_dir  # Prevents the temporary directory from being deleted upon function return
 
-        #Adapt the number of molecules for reaction_solvent mode
+        # Adapt the number of molecules for reaction_solvent mode
         if self.reaction_solvent is True and self.number_of_molecules != 2:
             raise ValueError('In reaction_solvent mode, --number_of_molecules 2 must be specified.')
 
@@ -544,11 +547,11 @@ class TrainArgs(CommonArgs):
                 for key, value in config.items():
                     setattr(self, key, value)
 
-        #Check whether the number of input columns is two for the reaction_solvent mode
+        # Check whether the number of input columns is two for the reaction_solvent mode
         if self.reaction_solvent is True and len(self.smiles_columns) != 2:
             raise ValueError(f'In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
 
-        #Validate reaction/reaction_solvent mode
+        # Validate reaction/reaction_solvent mode
         if self.reaction is True and self.reaction_solvent is True:
             raise ValueError('Only reaction or reaction_solvent mode can be used, not both.')
         
@@ -638,17 +641,20 @@ class TrainArgs(CommonArgs):
         # Validate split size entry and set default values
         if self.split_sizes is None:
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
-                self.split_sizes = (0.8, 0.1, 0.1)
+                self.split_sizes = [0.8, 0.1, 0.1]
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
-                self.split_sizes = (0.8, 0., 0.2)
+                self.split_sizes = [0.8, 0., 0.2]
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
-                self.split_sizes = (0.8, 0.2, 0.)
+                self.split_sizes = [0.8, 0.2, 0.]
             else: # both separate data paths are provided
-                self.split_sizes = (1., 0., 0.)
+                self.split_sizes = [1., 0., 0.]
 
         else:
-            if sum(self.split_sizes) != 1.:
+            if not np.isclose(sum(self.split_sizes), 1):
                 raise ValueError(f'Provided split sizes of {self.split_sizes} do not sum to 1.')
+            if any([size < 0 for size in self.split_sizes]):
+                raise ValueError(f'Split sizes must be non-negative. Received split sizes: {self.split_sizes}')
+
 
             if len(self.split_sizes) not in [2,3]:
                 raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
@@ -656,33 +662,33 @@ class TrainArgs(CommonArgs):
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
                 if len(self.split_sizes) != 3:
                     raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
-                if 0. in self.split_sizes:
-                    raise ValueError(f'Provided split sizes must be nonzero if no separate data files are provided. Received split sizes of {self.split_sizes}.')
+                if self.split_sizes[0] == 0.:
+                    raise ValueError(f'Provided split size for train split must be nonzero. Received split size {self.split_sizes[0]}')
+                if self.split_sizes[1] == 0.:
+                    raise ValueError(f'Provided split size for validation split must be nonzero. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], 0., self.split_sizes[1])
+                    self.split_sizes = [self.split_sizes[0], 0., self.split_sizes[1]]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] != 0.:
-                    raise ValueError('Provided split size for validation split must be 0 because validation set is provided separately.')
-                if self.split_sizes[2] == 0.:
-                    raise ValueError('Provided split size for test split must be nonzero.')
+                    raise ValueError(f'Provided split size for validation split must be 0 because validation set is provided separately. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], self.split_sizes[1], 0.)
+                    self.split_sizes = [self.split_sizes[0], self.split_sizes[1], 0.]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] == 0.:
                     raise ValueError('Provided split size for validation split must be nonzero.')
                 if self.split_sizes[2] != 0.:
-                    raise ValueError('Provided split size for test split must be 0 because test set is provided separately.')
+                    raise ValueError(f'Provided split size for test split must be 0 because test set is provided separately. Received split size {self.split_sizes[2]}')
 
 
             else: # both separate data paths are provided
-                if self.split_sizes != (1., 0., 0.):
-                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided.')
+                if self.split_sizes != [1., 0., 0.]:
+                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided. Received split sizes: {self.split_sizes}')
 
         # Test settings
         if self.test:
@@ -729,6 +735,7 @@ class TrainArgs(CommonArgs):
         if self.split_key_molecule >= self.number_of_molecules:
             raise ValueError('The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. ')
 
+
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
 
@@ -739,9 +746,46 @@ class PredictArgs(CommonArgs):
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False
-    """Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
+    """Deprecated. Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path."""
     individual_ensemble_predictions: bool = False
     """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
+    # Uncertainty arguments
+    uncertainty_method: Literal[
+        'mve',
+        'ensemble',
+        'evidential_epistemic',
+        'evidential_aleatoric',
+        'evidential_total',
+        'classification',
+        'dropout',
+        'spectra_roundrobin',
+    ] = None
+    """The method of calculating uncertainty."""
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
+    """Methods used for calibrating the uncertainty calculated with uncertainty method."""
+    evaluation_methods: List[str] = None
+    """The methods used for evaluating the uncertainty performance if the test data provided includes targets.
+    Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric."""
+    evaluation_scores_path: str = None
+    """Location to save the results of uncertainty evaluations."""
+    uncertainty_dropout_p: float = 0.1
+    """The probability to use for Monte Carlo dropout uncertainty estimation."""
+    dropout_sampling_size: int = 10
+    """The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training."""
+    calibration_interval_percentile: float = 95
+    """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
+    regression_calibrator_metric: Literal['stdev', 'interval'] = None
+    """Regression calibrators can output either a stdev or an inverval. """
+    calibration_path: str = None
+    """Path to data file to be used for uncertainty calibration."""
+    calibration_features_path: str = None
+    """Path to features data to be used with the uncertainty calibration dataset."""
+    calibration_phase_features_path: str = None
+    """ """
+    calibration_atom_descriptors_path: str = None
+    """Path to the extra atom descriptors."""
+    calibration_bond_features_path: str = None
+    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
 
     @property
     def ensemble_size(self) -> int:
@@ -750,6 +794,15 @@ class PredictArgs(CommonArgs):
 
     def process_args(self) -> None:
         super(PredictArgs, self).process_args()
+
+        if self.regression_calibrator_metric is None:
+            if self.calibration_method == 'zelikman_interval':
+                self.regression_calibrator_metric = 'interval'
+            else:
+                self.regression_calibrator_metric = 'stdev'
+
+        if self.uncertainty_method == 'dropout' and version.parse(torch.__version__) < version.parse('1.9.0'):
+            raise ValueError('Dropout uncertainty is only supported for pytorch versions >= 1.9.0')
 
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.test_path,
@@ -760,6 +813,41 @@ class PredictArgs(CommonArgs):
         if self.checkpoint_paths is None or len(self.checkpoint_paths) == 0:
             raise ValueError('Found no checkpoints. Must specify --checkpoint_path <path> or '
                              '--checkpoint_dir <dir> containing at least one checkpoint.')
+
+        if self.ensemble_variance == True:
+            if self.uncertainty_method in ['ensemble', None]:
+                warn(
+                    'The `--ensemble_variance` argument is deprecated and should \
+                        be replaced with `--uncertainty_method ensemble`.',
+                    DeprecationWarning,
+                )
+                self.uncertainty_method = 'ensemble'
+            else:
+                raise ValueError(
+                    f'Only one uncertainty method can be used at a time. \
+                        The arguement `--ensemble_variance` was provided along \
+                        with the uncertainty method {self.uncertainty_method}. The `--ensemble_variance` \
+                        argument is deprecated and should be replaced with `--uncertainty_method ensemble`.'
+                )
+
+        if self.calibration_interval_percentile <= 1 or self.calibration_interval_percentile >= 100:
+            raise ValueError('The calibration interval must be a percentile value in the range (1,100).')
+
+        if self.uncertainty_dropout_p < 0 or self.uncertainty_dropout_p > 1:
+            raise ValueError('The dropout probability must be in the range (0,1).')
+
+        if self.dropout_sampling_size <= 1:
+            raise ValueError('The argument `--dropout_sampling_size` must be an integer greater than 1.')
+
+        # Validate that features provided for the prediction test set are also provided for the calibration set
+        for (features_argument, base_features_path, cal_features_path) in [
+            ('`--features_path`', self.features_path, self.calibration_features_path),
+            ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
+            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
+            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
+        ]:
+            if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
+                raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')
 
 
 class InterpretArgs(CommonArgs):
@@ -804,7 +892,7 @@ class InterpretArgs(CommonArgs):
 class FingerprintArgs(PredictArgs):
     """:class:`FingerprintArgs` includes :class:`PredictArgs` with additional arguments for the generation of latent fingerprint vectors."""
 
-    fingerprint_type: Literal['MPN','last_FFN'] = 'MPN'
+    fingerprint_type: Literal['MPN', 'last_FFN'] = 'MPN'
     """Choice of which type of latent fingerprint vector to use. Default is the output of the MPNN, excluding molecular features"""
 
 
@@ -820,11 +908,29 @@ class HyperoptArgs(TrainArgs):
     hyperopt_checkpoint_dir: str = None
     """Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted.
     Can also be used to run multiple instances in parallel if they share the same checkpoint directory."""
-    startup_random_iters: int = 10
-    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest."""
+    startup_random_iters: int = None
+    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest.
+    By default will be half the total number of trials."""
     manual_trial_dirs: List[str] = None
     """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
     Results will be considered as part of the trial history of the hyperparameter search."""
+    search_parameter_keywords: List[str] = ["basic"]
+    """The model parameters over which to search for an optimal hyperparameter configuration.
+    Some options are bundles of parameters or otherwise special parameter operations.
+
+    Special keywords:
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
+        linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value.
+            If either of the component words are entered in separately, both are searched independently.
+        learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs. The search for init_lr and final_lr values
+            are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+        all - include search for all 13 inidividual keyword options
+
+    Individual supported parameters:
+        activation, aggregation, aggregation_norm, batch_size, depth,
+        dropout, ffn_hidden_size, ffn_num_layers, final_lr, hidden_size,
+        init_lr, max_lr, warmup_epochs
+    """
 
     def process_args(self) -> None:
         super(HyperoptArgs, self).process_args()
@@ -834,6 +940,49 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
+        
+        # Set number of startup random trials
+        if self.startup_random_iters is None:
+            self.startup_random_iters = self.num_iters // 2
+
+        # Construct set of search parameters
+        supported_keywords = [
+            "basic", "learning_rate", "linked_hidden_size", "all",
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr", "hidden_size",
+            "init_lr", "max_lr", "warmup_epochs"
+        ]
+        supported_parameters = [
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr_ratio", "hidden_size",
+            "init_lr_ratio", "linked_hidden_size", "max_lr", "warmup_epochs"
+        ]
+        unsupported_keywords = set(self.search_parameter_keywords) - set(supported_keywords)
+        if len(unsupported_keywords) != 0:
+            raise NotImplementedError(
+                f"Keywords for what hyperparameters to include in the search are designated \
+                    with the argument `--search_parameter_keywords`. The following unsupported\
+                    keywords were received: {unsupported_keywords}. The available supported\
+                    keywords are: {supported_keywords}"
+            )
+        search_parameters = set()
+        if "all" in self.search_parameter_keywords:
+            search_parameters.update(supported_parameters)
+        if "basic" in self.search_parameter_keywords:
+            search_parameters.update(["depth", "ffn_num_layers", "dropout", "linked_hidden_size"])
+        if "learning_rate" in self.search_parameter_keywords:
+            search_parameters.update(["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"])
+        for kw in self.search_parameter_keywords:
+            if kw in supported_parameters:
+                search_parameters.add(kw)
+        if "init_lr" in self.search_parameter_keywords:
+            search_parameters.add("init_lr_ratio")
+        if "final_lr" in self.search_parameter_keywords:
+            search_parameters.add("final_lr_ratio")
+        if "linked_hidden_size" in search_parameters and ("hidden_size" in search_parameters or "ffn_hidden_size" in search_parameters):
+            search_parameters.remove("linked_hidden_size")
+            search_parameters.update(["hidden_size", "ffn_hidden_size"])
+        self.search_parameters = list(search_parameters)
 
 
 class UncertaintyArgs(PredictArgs):

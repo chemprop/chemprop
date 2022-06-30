@@ -335,6 +335,11 @@ def get_data(path: str,
     # Load data
     with open(path) as f:
         reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        if any([c not in fieldnames for c in smiles_columns]):
+            raise ValueError(f'Data file did not contain all provided smiles columns: {smiles_columns}. Data file field names are: {fieldnames}')
+        if any([c not in fieldnames for c in target_columns]):
+            raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
 
         all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
@@ -510,7 +515,9 @@ def split_data(data: MoleculeDataset,
              validation, and test splits of the data.
     """
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+        raise ValueError(f"Split sizes do not sum to 1. Received train/val/test splits: {sizes}")
+    if any([size < 0 for size in sizes]):
+        raise ValueError(f"Split sizes must be non-negative. Received train/val/test splits: {sizes}")
 
     random = Random(seed)
 
@@ -534,11 +541,11 @@ def split_data(data: MoleculeDataset,
 
     elif split_type in {'cv', 'cv-no-test'}:
         if num_folds <= 1 or num_folds > len(data):
-            raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
+            raise ValueError(f'Number of folds for cross-validation must be between 2 and the number of valid datapoints ({len(data)}), inclusive.')
 
         random = Random(0)
 
-        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
+        indices = np.tile(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
         random.shuffle(indices)
         test_index = seed % num_folds
         val_index = (seed + 1) % num_folds

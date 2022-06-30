@@ -1,14 +1,14 @@
-from .run_uncertainty import run_uncertainty, chemprop_uncertainty
 from .uncertainty_estimator import UncertaintyEstimator
-from .uncertainty_calibrator import uncertainty_calibrator_builder, UncertaintyCalibrator
-from .uncertainty_predictor import uncertainty_predictor_builder, UncertaintyPredictor
+from .uncertainty_calibrator import build_uncertainty_calibrator, UncertaintyCalibrator
+from .uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
+from .uncertainty_evaluator import build_uncertainty_evaluator, UncertaintyEvaluator
 
 __all__ = [
-    'run_uncertainty',
-    'chemprop_uncertainty',
     'UncertaintyEstimator',
-    'uncertainty_calibrator_builder',
+    'build_uncertainty_calibrator',
     'UncertaintyCalibrator',
-    'uncertainty_predictor_builder',
-    'UncertaintyPredictor'
+    'build_uncertainty_predictor',
+    'UncertaintyPredictor',
+    'build_uncertainty_evaluator',
+    'UncertaintyEvaluator'
 ]

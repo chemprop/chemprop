@@ -45,11 +45,11 @@ def train(model: MoleculeModel,
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        mol_batch, features_batch, target_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, data_weights_batch = \
-            batch.batch_graph(), batch.features(), batch.targets(), batch.atom_descriptors(), \
+        mol_batch, features_batch, target_batch, mask_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, data_weights_batch = \
+            batch.batch_graph(), batch.features(), batch.targets(), batch.mask(), batch.atom_descriptors(), \
             batch.atom_features(), batch.bond_features(), batch.data_weights()
 
-        mask = torch.tensor([[x is not None for x in tb] for tb in target_batch], dtype=torch.bool) # shape(batch, tasks)
+        mask = torch.tensor(mask_batch, dtype=torch.bool) # shape(batch, tasks)
         targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch]) # shape(batch, tasks)
 
         if args.target_weights is not None:
@@ -90,7 +90,7 @@ def train(model: MoleculeModel,
             loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
         elif args.dataset_type == 'multiclass':
             targets = targets.long()
-            if args.loss_function == 'evidential':
+            if args.loss_function == 'dirichlet':
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
             else:
                 target_losses = []
@@ -102,7 +102,9 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == 'bounded_mse':
             loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
-        elif args.loss_function == 'evidential' # regression or classification
+        elif args.loss_function == 'evidential':
+            loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+        elif args.loss_function == 'dirichlet': # classification
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
