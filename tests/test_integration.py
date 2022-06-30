@@ -515,7 +515,7 @@ class ChempropTests(TestCase):
             with open(config_save_path) as f:
                 config = json.load(f)
 
-            parameters = {'depth': (2, 6), 'hidden_size': (300, 2400), 'ffn_num_layers': (1, 3), 'dropout': (0.0, 0.4)}
+            parameters = {'depth': (2, 6), 'hidden_size': (300, 2400), 'ffn_hidden_size': (300, 2400), 'ffn_num_layers': (1, 3), 'dropout': (0.0, 0.4)}
 
             self.assertEqual(set(config.keys()), set(parameters.keys()))
 
