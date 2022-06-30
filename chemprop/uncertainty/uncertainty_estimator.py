@@ -64,4 +64,4 @@ class UncertaintyEstimator:
         """
         
         """
-        return self.predictor.get_individual_ensemble_predictions()
+        return self.predictor.get_individual_preds()

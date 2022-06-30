@@ -42,7 +42,10 @@ def cross_validate(args: TrainArgs,
     init_seed = args.seed
     save_dir = args.save_dir
     args.task_names = get_task_names(path=args.data_path, smiles_columns=args.smiles_columns,
-                                     target_columns=args.target_columns, ignore_columns=args.ignore_columns)
+                                     target_columns=args.target_columns, ignore_columns=args.ignore_columns,
+                                     loss_function=args.loss_function)
+
+    args.quantiles = [args.alpha/2] * (args.num_tasks//2) + [1 - args.alpha/2] * (args.num_tasks//2)
 
     # Print command line
     debug('Command line')
@@ -76,8 +79,9 @@ def cross_validate(args: TrainArgs,
         args=args,
         logger=logger,
         skip_none_targets=True,
-        data_weights_path=args.data_weights_path
+        data_weights_path=args.data_weights_path,
     )
+
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
 
