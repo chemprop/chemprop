@@ -514,7 +514,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             individual_vars = [np.array([np.concatenate(individual_vars[j][i][:, :]) for j in range(self.num_models)]) for i in range(len(mask))]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
+            uncal_preds = np.array(list(zip(*uncal_preds)))
             individual_vars = [individual_vars[:, :, i] for i in range(len(mask))]
+            targets = np.array(list(zip(*targets)))
         self.var_weighting = np.zeros([self.num_models, len(mask)])  # shape(models, tasks)
 
         for i in range(len(mask)):
