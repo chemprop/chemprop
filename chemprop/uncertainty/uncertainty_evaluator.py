@@ -42,7 +42,10 @@ class UncertaintyEvaluator(ABC):
             raise NotImplementedError(
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
-        if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in ["classification", "multiclass"]:
+        if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in [
+            "classification",
+            "multiclass",
+        ]:
             raise NotImplementedError(
                 "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
@@ -278,7 +281,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                     bin_unc = task_unc / original_scaling[j] * bin_scaling[i][j]
                     bin_fraction = np.mean(bin_unc >= task_error)
                     fractions[j, i] = bin_fraction
-            
+
             # return calibration settings to original state
             self.calibrator.regression_calibrator_metric = original_metric
             self.calibrator.scaling = original_scaling
@@ -342,17 +345,18 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
             preds = np.array(list(zip(*preds)))
             error = np.array(list(zip(*error)))
         # get stdev scaling then revert if interval
-        if self.calibrator is not None and self.calibration_method != "tscaling":
-            if self.calibrator.regression_calibrator_metric == "interval":
-                original_metric = self.calibrator.regression_calibrator_metric
-                original_scaling = self.calibrator.scaling
+        if self.calibrator is not None:
+            original_metric = self.calibrator.regression_calibrator_metric
+            original_scaling = self.calibrator.scaling
+            if (
+                self.calibration_method != "tscaling"
+                and self.calibrator.regression_calibrator_metric == "interval"
+            ):
                 self.calibrator.regression_calibrator_metric = "stdev"
                 self.calibrator.calibrate()
                 stdev_scaling = self.calibrator.scaling
                 self.calibrator.regression_calibrator_metric = original_metric
                 self.calibrator.scaling = original_scaling
-            else:  # stdev metric
-                stdev_scaling = self.calibrator.scaling
 
         mean_vars = np.zeros([len(mask), 100])  # shape(tasks, 100)
         rmses = np.zeros_like(mean_vars)
@@ -379,9 +383,10 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                     bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
                     mean_vars[i, j] = np.mean(bin_var)
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
-                else:  # stdev metric
+                else:
                     bin_unc = split_unc[j]
-                    bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
+                    if self.calibrator.regression_calibrator_metric == "interval":
+                        bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
                     mean_vars[i, j] = np.mean(np.square(bin_unc))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
 
@@ -464,12 +469,7 @@ def build_uncertainty_evaluator(
         "f1",
         "mcc",
     ]
-    multiclass_metrics = [
-        "cross_entropy",
-        "accuracy",
-        "f1",
-        "mcc"
-    ]
+    multiclass_metrics = ["cross_entropy", "accuracy", "f1", "mcc"]
     if dataset_type == "classification" and evaluation_method in classification_metrics:
         evaluator_class = MetricEvaluator
     elif dataset_type == "multiclass" and evaluation_method in multiclass_metrics:
