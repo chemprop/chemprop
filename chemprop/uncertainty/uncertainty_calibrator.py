@@ -762,7 +762,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        return None
+        raise NotImplementedError
 
     @staticmethod
     def nonconformity_scores(uncal_preds):
@@ -866,7 +866,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        return None
+        raise NotImplementedError
     
     @staticmethod
     def nonconformity_scores(uncal_preds):
@@ -883,7 +883,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
     def calibrate(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds())  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=bool)  # shape(data, tasks)
-        (self.num_data, self.num_tasks) = targets.shape
+        self.num_data, self.num_tasks = targets.shape
 
         has_zeros = np.sum(targets==0, axis=1) > 0
         inds_zeros = targets[has_zeros] == 0
@@ -935,7 +935,7 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        return None
+        raise NotImplementedError
 
     @staticmethod
     def get_preds(predictor: UncertaintyPredictor):
