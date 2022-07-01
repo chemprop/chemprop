@@ -67,7 +67,7 @@ def train(model: MoleculeModel,
         # Run model
         model.zero_grad()
         preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch)
-
+        
         # Move tensors to correct device
         torch_device = preds.device
         mask = mask.to(torch_device)
@@ -106,6 +106,10 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         elif args.loss_function == 'dirichlet': # classification
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
+        elif args.loss_function == 'quantile':
+            loss = loss_func(preds, targets, args.quantile) * target_weights * data_weights * mask
+        elif args.loss_function == 'quantile_interval':
+            loss = loss_func(preds, targets, torch.tensor([args.quantiles]).to(torch_device)) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
         loss = loss.sum() / mask.sum()
