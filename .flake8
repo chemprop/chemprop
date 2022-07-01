@@ -4,9 +4,3 @@ max-line-length = 100
 max-complexity = 18
 per-file-ignores =
     __init__.py: F401
-    main.py: W605
-exclude = 
-    pyscreener/docking/dock/scripts
-    test
-    scripts
-    build
