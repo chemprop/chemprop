@@ -118,6 +118,7 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
             preds = np.array(preds)
             targets = np.array(targets)
             mask = np.array(mask)
+            num_tasks = len(mask)
             if self.is_atom_bond_targets:
                 uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
                 preds = [np.concatenate(x) for x in zip(*preds)]
@@ -127,7 +128,7 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
                 preds = np.array(list(zip(*preds)))
                 targets = np.array(list(zip(*targets)))
             nll = []
-            for i in range(len(mask)):
+            for i in range(num_tasks):
                 task_mask = mask[i]
                 task_unc = uncertainties[i][task_mask]
                 task_preds = preds[i][task_mask]
@@ -165,6 +166,7 @@ class NLLClassEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)
         mask = np.array(mask)
+        num_tasks = len(mask)
         uncertainties = np.array(uncertainties)
         if self.is_atom_bond_targets:
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
@@ -173,7 +175,7 @@ class NLLClassEvaluator(UncertaintyEvaluator):
             uncertainties = np.array(list(zip(*uncertainties)))
             targets = np.array(list(zip(*targets)))
         nll = []
-        for i in range(len(mask)):
+        for i in range(num_tasks):
             task_mask = mask[i]
             task_unc = uncertainties[i][task_mask]
             task_targets = targets[i][task_mask]
@@ -205,9 +207,10 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)  # shape(data, tasks)
         mask = np.array(mask)
+        num_tasks = len(mask)
         uncertainties = np.array(uncertainties)
         nll = []
-        for i in range(len(mask)):
+        for i in range(num_tasks):
             task_mask = mask[:, i]
             task_preds = uncertainties[task_mask, i]
             task_targets = targets[task_mask, i]  # shape(data)
@@ -241,6 +244,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)  # shape(data, tasks)
         mask = np.array(mask)
+        num_tasks = len(mask)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
@@ -256,7 +260,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
             preds = np.array(list(zip(*preds)))
             abs_error = np.array(list(zip(*abs_error)))
         # using 101 bin edges, hardcoded
-        fractions = np.zeros([len(mask), 101])  # shape(tasks, 101)
+        fractions = np.zeros([num_tasks, 101])  # shape(tasks, 101)
         fractions[:, 100] = 1
 
         if self.calibrator is not None:
@@ -272,7 +276,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
                 self.calibrator.calibrate()
                 bin_scaling.append(self.calibrator.scaling)
 
-            for j in range(len(mask)):
+            for j in range(num_tasks):
                 task_mask = mask[j]
                 task_error = abs_error[j][task_mask]
                 task_unc = uncertainties[j][task_mask]
@@ -291,7 +295,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
             bin_scaling = [0]
             for i in range(1, 100):
                 bin_scaling.append(erfinv(i / 100) * np.sqrt(2))
-            for j in range(len(mask)):
+            for j in range(num_tasks):
                 task_mask = mask[j]
                 task_error = abs_error[j][task_mask]
                 task_unc = uncertainties[j][task_mask]
@@ -331,6 +335,7 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
     ):
         targets = np.array(targets)  # shape(data, tasks)
         mask = np.array(mask)
+        num_tasks = len(mask)
         uncertainties = np.array(uncertainties)
         preds = np.array(preds)
         error = np.abs(preds - targets)  # shape(data, tasks)
@@ -358,10 +363,10 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                 self.calibrator.regression_calibrator_metric = original_metric
                 self.calibrator.scaling = original_scaling
 
-        mean_vars = np.zeros([len(mask), 100])  # shape(tasks, 100)
+        mean_vars = np.zeros([num_tasks, 100])  # shape(tasks, 100)
         rmses = np.zeros_like(mean_vars)
 
-        for i in range(len(mask)):
+        for i in range(num_tasks):
             task_mask = mask[i]  # shape(data)
             task_unc = uncertainties[i][task_mask]
             task_error = error[i][task_mask]
@@ -418,6 +423,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         targets = np.array(targets)  # shape(data, tasks)
         uncertainties = np.array(uncertainties)
         mask = np.array(mask)
+        num_tasks = len(mask)
         preds = np.array(preds)
         abs_error = np.abs(preds - targets)  # shape(data, tasks)
         spearman_coeffs = []
@@ -427,7 +433,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         else:
             uncertainties = np.array(list(zip(*uncertainties)))
             abs_error = np.array(list(zip(*abs_error)))
-        for i in range(len(mask)):
+        for i in range(num_tasks):
             task_mask = mask[i]
             task_unc = uncertainties[i][task_mask]
             task_abs_error = abs_error[i][task_mask]
