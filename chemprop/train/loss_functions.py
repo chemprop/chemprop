@@ -22,6 +22,8 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "bounded_mse": bounded_mse_loss,
             "mve": normal_mve,
             "evidential": evidential_loss,
+            "quantile": quantile_loss,
+            "quantile_interval": quantile_loss_batch,
         },
         "classification": {
             "binary_cross_entropy": nn.BCEWithLogitsLoss(reduction="none"),
@@ -383,11 +385,32 @@ def normal_mve(pred_values, targets):
     :return: A tensor loss value.
     """
     # Unpack combined prediction values
-    pred_means, pred_var = torch.split(pred_values, pred_values.shape[1]//2, dim=1)
-    pred_means = pred_means.to(pred_values.device)
-    pred_var = pred_var.to(pred_values.device)
+    pred_means, pred_var = torch.split(pred_values, pred_values.shape[1] // 2, dim=1)
 
-    return torch.log(2*np.pi*pred_var) / 2 + (pred_means - targets)**2 / (2 * pred_var)
+    return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (
+        2 * pred_var
+    )
+
+def quantile_loss(pred_values, targets, quantile=0.5):
+    """
+    Pinball loss at desired quantile.
+    """
+    error = targets - pred_values
+
+    return torch.max((quantile - 1) * error, quantile * error)
+
+def quantile_loss_batch(pred_values, targets, quantiles):
+    """
+    Batched pinball loss at desired quantiles.
+    """
+    assert(pred_values.shape[0] == targets.shape[0])
+    assert(pred_values.shape[1] == targets.shape[1])
+    assert(pred_values.shape[1] == quantiles.shape[1])
+
+    error = targets - pred_values
+
+    return torch.max((quantiles - 1) * error, quantiles * error)
+
 
 
 # evidential classification
@@ -401,51 +424,14 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
 
     :return: Loss
     """
-    def KL(alpha):
-        """
-        Compute KL for Dirichlet defined by alpha to uniform dirichlet
-        :alpha: parameters for Dirichlet
-
-        :return: KL
-        """
-        beta = torch.ones_like(alpha)
-        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
-        S_beta = torch.sum(beta, dim=-1, keepdim=True)
-
-        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
-        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
-
-        # digamma terms
-        dg_alpha = torch.digamma(alpha)
-        dg_S_alpha = torch.digamma(S_alpha)
-
-        # KL
-        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-        return kl
-
+    torch_device = alphas.device
     num_tasks = target_labels.shape[1]
     num_classes = 2
     alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
 
-    y_one_hot = torch.eye(num_classes)[target_labels.long()]
-    if target_labels.is_cuda:
-        y_one_hot = y_one_hot.cuda()
+    y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
-    # SOS term
-    S = torch.sum(alphas, dim=-1, keepdim=True)
-    p = alphas / S
-    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
-    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
-    SOS = A + B
-
-    # KL
-    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
-    KL = lam * KL(alpha_hat)
-
-    #loss = torch.mean(SOS + KL)
-    loss = SOS + KL
-    loss = torch.mean(loss, dim=-1)
-    return loss
+    return dirichlet_common_loss(alphas=alphas, y_one_hot=y_one_hot, lam=lam)
 
 
 def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
@@ -457,47 +443,60 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 
     :return: Loss
     """
-    def KL(alpha):
-        """
-        Compute KL for Dirichlet defined by alpha to uniform dirichlet
-        :alpha: parameters for Dirichlet
-
-        :return: KL
-        """
-        beta = torch.ones_like(alpha)
-        S_alpha = torch.sum(alpha, dim=-1, keepdim=True)
-        S_beta = torch.sum(beta, dim=-1, keepdim=True)
-
-        ln_alpha = torch.lgamma(S_alpha)-torch.sum(torch.lgamma(alpha), dim=-1, keepdim=True)
-        ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
-
-        # digamma terms
-        dg_alpha = torch.digamma(alpha)
-        dg_S_alpha = torch.digamma(S_alpha)
-
-        # KL
-        kl = ln_alpha + ln_beta + torch.sum((alpha - beta)*(dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-        return kl
-
-    num_tasks = target_labels.shape[1]
+    torch_device = alphas.device
     num_classes = alphas.shape[2]
 
-    y_one_hot = torch.eye(num_classes)[target_labels.long()]
-    if target_labels.is_cuda:
-        y_one_hot = y_one_hot.cuda()
+    y_one_hot = torch.eye(num_classes, device=torch_device)[target_labels.long()]
 
+    return dirichlet_common_loss(alphas=alphas, y_one_hot=y_one_hot, lam=lam)
+
+
+def dirichlet_common_loss(alphas, y_one_hot, lam=0):
+    """
+    Use Evidential Learning Dirichlet loss from Sensoy et al. This function follows
+    after the classification and multiclass specific functions that reshape the 
+    alpha inputs and create one-hot targets.
+
+    :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
+    :param y_one_hot: Digital labels to predict in shape(datapoints, tasks, classes).
+    :lambda: coefficient to weight KL term
+
+    :return: Loss
+    """
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
     p = alphas / S
-    A = torch.sum(torch.pow((y_one_hot - p), 2), dim=-1, keepdim=True)
-    B = torch.sum((p*(1 - p)) / (S+1), dim=-1, keepdim=True)
+    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
+    B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
     SOS = A + B
 
-    # KL
-    alpha_hat = y_one_hot + (1-y_one_hot)*alphas
-    KL = lam * KL(alpha_hat)
+    alpha_hat = y_one_hot + (1 - y_one_hot) * alphas
 
-    #loss = torch.mean(SOS + KL)
+    beta = torch.ones_like(alpha_hat)
+    S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
+    S_beta = torch.sum(beta, dim=-1, keepdim=True)
+
+    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
+        torch.lgamma(alpha_hat), dim=-1, keepdim=True
+    )
+    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
+        S_beta
+    )
+
+    # digamma terms
+    dg_alpha = torch.digamma(alpha_hat)
+    dg_S_alpha = torch.digamma(S_alpha)
+
+    # KL
+    KL = (
+        ln_alpha
+        + ln_beta
+        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+    )
+
+    KL = lam * KL
+
+    # loss = torch.mean(SOS + KL)
     loss = SOS + KL
     loss = torch.mean(loss, dim=-1)
     return loss
@@ -519,25 +518,25 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
 
     :return: Loss
     """
-    # Unpack combined prediction values\
-    mu, v, alpha, beta = np.split(pred_values, 4, axis=1)
-    torch_device = pred_values.device
-    mu, v, alpha, beta = mu.to(torch_device), v.to(torch_device), alpha.to(torch_device), beta.to(torch_device)
+    # Unpack combined prediction values
+    mu, v, alpha, beta = torch.split(pred_values, pred_values.shape[1] // 4, dim=1)
 
     # Calculate NLL loss
-    twoBlambda = 2*beta*(1+v)
-    nll = 0.5*torch.log(np.pi/v) \
-        - alpha*torch.log(twoBlambda) \
-        + (alpha+0.5) * torch.log(v*(targets-mu)**2 + twoBlambda) \
-        + torch.lgamma(alpha) \
-        - torch.lgamma(alpha+0.5)
+    twoBlambda = 2 * beta * (1 + v)
+    nll = (
+        0.5 * torch.log(np.pi / v)
+        - alpha * torch.log(twoBlambda)
+        + (alpha + 0.5) * torch.log(v * (targets - mu) ** 2 + twoBlambda)
+        + torch.lgamma(alpha)
+        - torch.lgamma(alpha + 0.5)
+    )
 
-    L_NLL = nll #torch.mean(nll, dim=-1)
+    L_NLL = nll  # torch.mean(nll, dim=-1)
 
     # Calculate regularizer based on absolute error of prediction
     error = torch.abs((targets - mu))
     reg = error * (2 * v + alpha)
-    L_REG = reg #torch.mean(reg, dim=-1)
+    L_REG = reg  # torch.mean(reg, dim=-1)
 
     # Loss = L_NLL + L_REG
     # TODO If we want to optimize the dual- of the objective use the line below:

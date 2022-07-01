@@ -165,6 +165,7 @@ def predict_and_save(
         dataset_type=args.dataset_type,
         loss_function=args.loss_function,
         uncertainty_dropout_p=args.uncertainty_dropout_p,
+        alpha=args.alpha,
         dropout_sampling_size=args.dropout_sampling_size,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
@@ -182,7 +183,7 @@ def predict_and_save(
     if args.evaluation_methods is not None:
 
         evaluation_data = get_data(
-            path=args.test_path,
+            path=args.data_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
             features_path=args.features_path,
@@ -241,6 +242,10 @@ def predict_and_save(
             num_tasks = num_tasks * args.multiclass_num_classes
         if args.uncertainty_method == "spectra_roundrobin":
             num_unc_tasks = 1
+        elif args.calibration_method == "conformal_regression":
+            num_unc_tasks = 2 * num_tasks
+        elif args.calibration_method == "conformal" and args.dataset_type == "classification":
+            num_unc_tasks = 2 * num_tasks
         else:
             num_unc_tasks = num_tasks
 
@@ -275,18 +280,39 @@ def predict_and_save(
                 for column, smiles in zip(smiles_columns, datapoint.smiles):
                     datapoint.row[column] = smiles
 
+            print_task_names = task_names
             # Add predictions columns
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
+            elif args.calibration_method == "conformal_regression":
+                unc_names = [task_name + "_lower_bound" for task_name in task_names] \
+                + [task_name + "_upper_bound" for task_name in task_names]
+            elif args.calibration_method == "conformal_quantile_regression":
+                #unc_names = [task_names[i] + "_conformal_quantile_regression_lower_bound" for i in range(0, num_tasks//2)] \
+                #+ [task_names[i] + "_conformal_quantile_regression_upper_bound" for i in range(num_tasks//2, num_tasks)]
+                unc_names = [task_names[i] + "_lower_bound" for i in range(0, num_tasks//2)] \
+                + [task_names[i] + "_upper_bound" for i in range(num_tasks//2, num_tasks)]
+                print_task_names = [task_names[i] + "_quantile_lower_bound" for i in range(0, num_tasks//2)] \
+                + [task_names[i] + "_quantile_upper_bound" for i in range(num_tasks//2, num_tasks)]
+            elif args.calibration_method == "conformal" and args.dataset_type == "classification":
+                unc_names = [task_name + "_conformal_in_set" for task_name in task_names] \
+                + [task_name + "_conformal_out_set" for task_name in task_names]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
-
-            for pred_name, unc_name, pred, un in zip(
-                task_names, unc_names, d_preds, d_unc
+ 
+            # Separate loop because in conformal_regression, unc_names, d_unc should be twice the length of task_names, d_preds
+            for pred_name, pred in zip(
+                print_task_names, d_preds
             ):
-                datapoint.row[pred_name] = pred
-                if args.uncertainty_method is not None:
+                if args.calibration_method not in ["conformal_regression", "conformal_quantile_regression"]:
+                    datapoint.row[pred_name] = pred
+
+            for unc_name, un in zip(
+                unc_names, d_unc
+            ):
+                if args.uncertainty_method is not None or args.calibration_method is not None: #args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']
                     datapoint.row[unc_name] = un
+
             if args.individual_ensemble_predictions:
                 for pred_name, model_preds in zip(task_names, ind_preds):
                     for idx, pred in enumerate(model_preds):
@@ -392,12 +418,16 @@ def make_predictions(
         args, smiles
     )
 
+    if args.uncertainty_method is not None and args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']:
+        raise ValueError('Conformal regression is not compatible with an uncertainty method')
+
     if args.uncertainty_method is None and (args.calibration_method is not None or args.evaluation_methods is not None):
         if args.dataset_type in ['classification', 'multiclass']:
             args.uncertainty_method = 'classification'
+        elif args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']:
+            args.uncertainty_method = None
         else:
             raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
-
 
     if calibrator is None and args.calibration_path is not None:
 
@@ -441,6 +471,7 @@ def make_predictions(
             dataset_type=args.dataset_type,
             loss_function=args.loss_function,
             uncertainty_dropout_p=args.uncertainty_dropout_p,
+            alpha=args.alpha,
             dropout_sampling_size=args.dropout_sampling_size,
             spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
         )

@@ -25,6 +25,7 @@ class UncertaintyPredictor(ABC):
         dataset_type: str,
         loss_function: str,
         uncertainty_dropout_p: float,
+        alpha: float,
         dropout_sampling_size: int,
         individual_ensemble_predictions: bool = False,
         spectra_phase_mask: List[List[bool]] = None,
@@ -40,6 +41,7 @@ class UncertaintyPredictor(ABC):
         self.individual_vars = None
         self.num_models = num_models
         self.uncertainty_dropout_p = uncertainty_dropout_p
+        self.alpha = alpha 
         self.dropout_sampling_size = dropout_sampling_size
         self.individual_ensemble_predictions = individual_ensemble_predictions
         self.spectra_phase_mask = spectra_phase_mask
@@ -798,6 +800,7 @@ def build_uncertainty_predictor(
     dataset_type: str,
     loss_function: str,
     uncertainty_dropout_p: float,
+    alpha: float,
     dropout_sampling_size: int,
     individual_ensemble_predictions: bool,
     spectra_phase_mask: List[List[bool]],
@@ -835,6 +838,7 @@ def build_uncertainty_predictor(
             dataset_type=dataset_type,
             loss_function=loss_function,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            alpha=alpha,
             dropout_sampling_size=dropout_sampling_size,
             individual_ensemble_predictions=individual_ensemble_predictions,
             spectra_phase_mask=spectra_phase_mask,

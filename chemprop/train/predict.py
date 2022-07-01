@@ -38,8 +38,8 @@ def predict(
         model.apply(activate_dropout_)
 
     preds = []
-    
-    var, lambdas, alphas, betas = [], [], [], [] # only used if returning uncertainty parameters
+
+    var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
 
     var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
 

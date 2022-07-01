@@ -232,7 +232,7 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet', 'quantile', 'quantile_interval'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -418,6 +418,10 @@ class TrainArgs(CommonArgs):
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
     evidential_regularization: float = 0
     """Value used in regularization for evidential loss function. Value used in literature was 1."""
+    quantile: float = 0.5
+    """Quantile for quantile loss"""
+    alpha: float = 0.1
+    """Target error bounds for quantile interval loss"""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
@@ -487,8 +491,17 @@ class TrainArgs(CommonArgs):
 
     @property
     def num_tasks(self) -> int:
-        """The number of tasks being trained on."""
+        """Quantiles to train on."""
         return len(self.task_names) if self.task_names is not None else 0
+
+    @property
+    def quantiles(self) -> List[float]:
+        """A list of names of the tasks being trained on."""
+        return self._quantiles
+
+    @quantiles.setter
+    def quantiles(self, quantiles: List[float]) -> None:
+        self._quantiles = quantiles
 
     @property
     def features_size(self) -> int:
@@ -761,7 +774,7 @@ class PredictArgs(CommonArgs):
         'spectra_roundrobin',
     ] = None
     """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
+    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic', 'conformal', 'conformal_adaptive', 'conformal_regression', 'conformal_quantile_regression'] = None
     """Methods used for calibrating the uncertainty calculated with uncertainty method."""
     evaluation_methods: List[str] = None
     """The methods used for evaluating the uncertainty performance if the test data provided includes targets.
@@ -770,6 +783,8 @@ class PredictArgs(CommonArgs):
     """Location to save the results of uncertainty evaluations."""
     uncertainty_dropout_p: float = 0.1
     """The probability to use for Monte Carlo dropout uncertainty estimation."""
+    alpha: float = 0.1
+    """Target error rate for conformal prediction."""
     dropout_sampling_size: int = 10
     """The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training."""
     calibration_interval_percentile: float = 95
@@ -983,65 +998,6 @@ class HyperoptArgs(TrainArgs):
             search_parameters.remove("linked_hidden_size")
             search_parameters.update(["hidden_size", "ffn_hidden_size"])
         self.search_parameters = list(search_parameters)
-
-
-class UncertaintyArgs(PredictArgs):
-    """:class: `UncertaintyArgs` includes :class:`PredictArgs` along with additional arguments used for estimating and calibrating uncertainty"""
-
-    uncertainty_method: Literal[
-        'mve',
-        'ensemble',
-        'evidential_epistemic',
-        'evidential_aleatoric',
-        'evidential_total',
-        'classification',
-        'dropout',
-    ] = None
-    """The method of calculating uncertainty."""
-    calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None
-    """Sampling size for Monte Carlo dropout uncertainty estimation. Must be greater than 1."""
-    dropout_sampling_size: int = 10
-    """The method used for calibrating uncertainty estimates"""
-    calibration_interval_percentile: float = 95
-    """Sets the percentile used in the calibration methods. Must be in the range (1,100)."""
-    regression_calibrator_metric: Literal['stdev', 'interval'] = 'stdev'
-    """Regression calibrators that assume a particular distribution, such as a gaussian, can output either a stdev or an inverval. """
-    calibration_path: str = None
-    """Path to data file to be used for uncertainty calibration."""
-    calibration_features_path: str = None
-    """Path to features data to be used with the uncertainty calibration dataset."""
-    calibration_phase_features_path: str = None
-    """ """
-    calibration_atom_descriptors_path: str = None
-    """Path to the extra atom descriptors."""
-    calibration_bond_features_path: str = None
-    """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
-
-    def process_args(self) -> None:
-        super(UncertaintyArgs, self).process_args()
-
-        if self.ensemble_variance == True and self.uncertainty_method != 'ensemble':
-            raise ValueError('The `--ensemble_variance` method of uncertainty quantification should be replaced with '
-                             '`--uncertainty_method ensemble` for dedicated uncertainty jobs.')
-        
-        if self.calibration_interval_percentile <= 1 or self.calibration_interval_percentile >= 100:
-            raise ValueError('The calibration interval must be a percentile value in the range (1,100).')
-
-        if self.individual_ensemble_predictions == True:
-            raise ValueError('The argument `--individual_ensemble_predictions` is not supported in uncertainty jobs.')
-
-        if self.dropout_sampling_size <= 1:
-            raise ValueError('The argument `--dropout_sampling_size` must be an integer greater than 1.')
-
-        # Validate that features provided for the prediction test set are also provided for the calibration set
-        for (features_argument, base_features_path, cal_features_path) in [
-            ('`--features_path`', self.features_path, self.calibration_features_path),
-            ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
-            ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
-            ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
-        ]:
-            if base_features_path is not None and self.calibration_path is not None and cal_features_path is None:
-                    raise ValueError(f'Additional features were provided using the argument {features_argument}. The same kinds of features must be provided for the calibration dataset.')
 
 
 class SklearnTrainArgs(TrainArgs):

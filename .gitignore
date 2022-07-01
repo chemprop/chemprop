@@ -4,6 +4,9 @@
 *.vscode
 *.csv
 *.pt
+conformal/
+test_plan/
+test_plan/data
 *.json
 *.sqlite3
 chemprop.egg-info

@@ -4,7 +4,7 @@ from typing import Iterator, List
 import numpy as np
 from chemprop.data.data import MoleculeDataLoader
 from scipy.special import erfinv, softmax, logit, expit
-from scipy.optimize import fmin
+from scipy.optimize import least_squares, fmin
 from scipy.stats import t
 from sklearn.isotonic import IsotonicRegression
 
@@ -23,6 +23,7 @@ class UncertaintyCalibrator(ABC):
     def __init__(
         self,
         uncertainty_method: str,
+        calibration_method: str,
         interval_percentile: int,
         regression_calibrator_metric: str,
         calibration_data: MoleculeDataset,
@@ -33,6 +34,7 @@ class UncertaintyCalibrator(ABC):
         dataset_type: str,
         loss_function: str,
         uncertainty_dropout_p: float,
+        alpha: float,
         dropout_sampling_size: int,
         spectra_phase_mask: List[List[bool]],
     ):
@@ -42,8 +44,10 @@ class UncertaintyCalibrator(ABC):
         self.interval_percentile = interval_percentile
         self.dataset_type = dataset_type
         self.uncertainty_method = uncertainty_method
+        self.calibration_method = calibration_method
         self.loss_function = loss_function
         self.num_models = num_models
+        self.alpha = alpha
 
         self.raise_argument_errors()
 
@@ -57,6 +61,7 @@ class UncertaintyCalibrator(ABC):
             loss_function=loss_function,
             uncertainty_method=uncertainty_method,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            alpha=alpha,
             dropout_sampling_size=dropout_sampling_size,
             individual_ensemble_predictions=False,
             spectra_phase_mask=spectra_phase_mask,
@@ -746,6 +751,7 @@ def build_uncertainty_calibrator(
     dataset_type: str,
     loss_function: str,
     uncertainty_dropout_p: float,
+    alpha: float,
     dropout_sampling_size: int,
     spectra_phase_mask: List[List[bool]],
 ) -> UncertaintyCalibrator:
@@ -768,9 +774,11 @@ def build_uncertainty_calibrator(
         "zelikman_interval": ZelikmanCalibrator,
         "mve_weighting": MVEWeightingCalibrator,
         "platt": PlattCalibrator,
-        "isotonic": IsotonicCalibrator
-        if dataset_type == "classification"
-        else IsotonicMulticlassCalibrator,
+        "conformal": ConformalMultilabelCalibrator if dataset_type == "classification" else ConformalMulticlassCalibrator,
+        "conformal_adaptive": ConformalAdaptiveMulticlassCalibrator,
+        "conformal_regression": ConformalRegressionCalibrator,
+        "conformal_quantile_regression": ConformalQuantileRegressionCalibrator,
+        "isotonic": IsotonicCalibrator if dataset_type == "classification" else IsotonicMulticlassCalibrator,
     }
 
     calibrator_class = supported_calibrators.get(calibration_method, None)
@@ -782,6 +790,7 @@ def build_uncertainty_calibrator(
     else:
         calibrator = calibrator_class(
             uncertainty_method=uncertainty_method,
+            calibration_method=calibration_method,
             regression_calibrator_metric=regression_calibrator_metric,
             interval_percentile=interval_percentile,
             calibration_data=calibration_data,
@@ -792,6 +801,7 @@ def build_uncertainty_calibrator(
             dataset_type=dataset_type,
             loss_function=loss_function,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            alpha=alpha,
             dropout_sampling_size=dropout_sampling_size,
             spectra_phase_mask=spectra_phase_mask,
         )

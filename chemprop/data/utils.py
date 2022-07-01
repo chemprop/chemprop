@@ -65,7 +65,8 @@ def preprocess_smiles_columns(path: str,
 def get_task_names(path: str,
                    smiles_columns: Union[str, List[str]] = None,
                    target_columns: List[str] = None,
-                   ignore_columns: List[str] = None) -> List[str]:
+                   ignore_columns: List[str] = None,
+                   loss_function: str = None) -> List[str]:
     """
     Gets the task names from a data CSV file.
 
@@ -93,6 +94,9 @@ def get_task_names(path: str,
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
 
     target_names = [column for column in columns if column not in ignore_columns]
+
+    if loss_function == 'quantile_interval':
+        target_names = target_names * 2
 
     return target_names
 
@@ -239,7 +243,8 @@ def get_data(path: str,
              store_row: bool = False,
              logger: Logger = None,
              loss_function: str = None,
-             skip_none_targets: bool = False) -> MoleculeDataset:
+             skip_none_targets: bool = False,
+             double: bool = False) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -324,7 +329,9 @@ def get_data(path: str,
             smiles_columns=smiles_columns,
             target_columns=target_columns,
             ignore_columns=ignore_columns,
+            loss_function=loss_function,
         )
+    
 
     # Find targets provided as inequalities
     if loss_function == 'bounded_mse':
