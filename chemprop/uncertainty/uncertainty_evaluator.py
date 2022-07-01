@@ -207,7 +207,7 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         mask = np.array(mask)
         uncertainties = np.array(uncertainties)
         nll = []
-        for i in range(targets.shape[1]):
+        for i in range(len(mask)):
             task_mask = mask[:, i]
             task_preds = uncertainties[task_mask, i]
             task_targets = targets[task_mask, i]  # shape(data)
@@ -291,7 +291,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
             bin_scaling = [0]
             for i in range(1, 100):
                 bin_scaling.append(erfinv(i / 100) * np.sqrt(2))
-            for j in range(targets.shape[1]):
+            for j in range(len(mask)):
                 task_mask = mask[j]
                 task_error = abs_error[j][task_mask]
                 task_unc = uncertainties[j][task_mask]

@@ -511,10 +511,10 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         mask = np.array(self.calibration_data.mask())
         if self.calibration_data.is_atom_bond_targets:
             uncal_preds = [np.concatenate(x) for x in zip(*uncal_preds)]
-            individual_vars = [np.array([np.concatenate(ind_var[:, :, i]) for i in range(self.num_models)]) for ind_var in individual_vars]
+            individual_vars = [np.array([np.concatenate(individual_vars[j][i][:, :]) for j in range(self.num_models)]) for i in range(len(mask))]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
-            individual_vars = [individual_vars[:, :, i] for i in range(self.num_models)]
+            individual_vars = [individual_vars[:, :, i] for i in range(len(mask))]
         self.var_weighting = np.zeros([self.num_models, len(mask)])  # shape(models, tasks)
 
         for i in range(len(mask)):
