@@ -8,3 +8,5 @@
 *.sqlite3
 chemprop.egg-info
 docs/build
+conformal/
+test_plan/

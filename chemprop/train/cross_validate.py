@@ -6,6 +6,7 @@ import os
 import sys
 from typing import Callable, Dict, List, Tuple
 import subprocess
+import torch
 
 import numpy as np
 import pandas as pd
@@ -47,6 +48,7 @@ def cross_validate(args: TrainArgs,
                                      loss_function=args.loss_function)
 
     args.quantiles = [args.alpha/2] * (args.num_tasks//2) + [1 - args.alpha/2] * (args.num_tasks//2)
+    args.quantiles_tensor = torch.tensor(args.quantiles)
 
     # Print command line
     debug('Command line')

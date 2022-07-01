@@ -293,8 +293,7 @@ def predict_and_save(
                 unc_names = [task_name + "_conformal_in_set" for task_name in task_names] + [task_name + "_conformal_out_set" for task_name in task_names]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
- 
-            # Separate loop because in conformal_regression, unc_names, d_unc should be twice the length of task_names, d_preds
+
             for pred_name, pred in zip(print_task_names, d_preds):
                 if args.calibration_method not in ["conformal_regression", "conformal_quantile_regression"]:
                     datapoint.row[pred_name] = pred

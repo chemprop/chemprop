@@ -742,6 +742,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
     """
     Conformal Calibrator. Outputs binary values for whether each class should be included in the
     conformal set for each task.
+    As discussed in https://arxiv.org/abs/2107.07511.
     """
     @property
     def label(self):
@@ -778,7 +779,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
     def calibrate(self):
         uncal_preds = np.array(self.calibration_predictor.get_uncal_preds())  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=int)  # shape(data, tasks)
-        mask = ~np.isnan(targets) # keep track of invalid data shape(data, tasks)
+        mask = ~np.isnan(targets)
         targets = np.nan_to_num(targets, copy=True, nan=0.0, posinf=None, neginf=None)
         num_data = targets.shape[0]
         self.num_tasks = targets.shape[1]
@@ -788,17 +789,10 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         self.qhats = []
 
         for task_id in range(self.num_tasks):
-            # Extract scores for true targets for current task
             task_scores = np.take_along_axis(all_scores[:, task_id], np.expand_dims(targets[:, task_id], -1), axis=1).squeeze(axis=1)
-
-            # Only keep valid data
             task_scores = task_scores[mask[:, task_id]] # shape(valid_data)
-            
-            # Pad scores with +Inf and sort
-            task_scores = np.append(task_scores, np.Inf)
+            task_scores = np.append(task_scores, np.inf)
             task_scores = np.sort(task_scores)
-
-            #Compute empirical quantile
             qhat = np.quantile(task_scores, 1 - self.alpha / self.num_tasks)
             self.qhats.append(qhat)
 
@@ -815,6 +809,7 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
     """
     Adaptive Conformal Calibrator. Outputs binary values for whether each class should be
     included in the conformal set for each task.
+    As discussed in https://arxiv.org/abs/2107.07511.
     """
     @property
     def label(self):
@@ -837,14 +832,9 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
         Returns:                                                                                                                                                                                                                                                                  
             scores: [num_examples, num_tasks, num_classes]                                                                                                                                                                                                                        
         """
-        # Sort indices from high to low
         sort_inds = np.argsort(-uncal_preds, axis=2)
-
-        # Sort and calculate scores
         sorted_preds = np.take_along_axis(uncal_preds, sort_inds, axis=2)
         sorted_scores = sorted_preds.cumsum(axis=2)
-
-        # Unsort and return
         unsort_inds = np.argsort(sort_inds, axis=2)
         unsorted_scores = np.take_along_axis(sorted_scores, unsort_inds, axis=2)
         return unsorted_scores
@@ -852,7 +842,11 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
 
 class ConformalMultilabelCalibrator(UncertaintyCalibrator):
     """
-    Conformal Calibrator.
+    Conformal Calibrator for Multilabel datasets. Creates conformal in-set and conformal out-set such that
+    for 1-alpha proportion of datapoints, the set of labels is bounded by the in-set and out-set. That is,
+    the conformal in-set is contained in the set of actual labels and the set of actual labels is contained 
+    in the conformal out-set.
+    As discussed in https://arxiv.org/abs/2004.10181.
     """
     @property
     def label(self):
@@ -891,18 +885,16 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets(), dtype=bool)  # shape(data, tasks)
         (self.num_data, self.num_tasks) = targets.shape
 
-        # Calculate calibration scores for in set
         has_zeros = np.sum(targets==0, axis=1) > 0
         inds_zeros = targets[has_zeros] == 0
         scores_in = self.nonconformity_scores(uncal_preds[has_zeros])
-        masked_scores_in = scores_in * inds_zeros + np.nan_to_num(np.Inf * (1 - inds_zeros).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
+        masked_scores_in = scores_in * inds_zeros + np.nan_to_num(np.inf * (1 - inds_zeros).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
         calibration_scores_in = np.min(masked_scores_in, axis=1)
 
-        # Calculate calibration scores for out set
         has_ones = np.sum(targets==1, axis=1) > 0
         inds_ones = targets[has_ones] == 1
         scores_out = self.nonconformity_scores(uncal_preds[has_ones])
-        masked_scores_out = scores_out * inds_ones + np.nan_to_num(-np.Inf * (1 - inds_ones).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
+        masked_scores_out = scores_out * inds_ones + np.nan_to_num(-np.inf * (1 - inds_ones).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
         calibration_scores_out = np.max(masked_scores_out, axis=1)
         
         self.tout = np.quantile(calibration_scores_out, 1 - self.alpha / 2)
@@ -921,7 +913,9 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
 class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
     """
-    Conformal Quantile Regression Calibrator.
+    Conformal Calibrator for regression datasets. Outputs interval of variable size, centered around
+    quantile outputs of model, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
+    As discussed in https://arxiv.org/abs/2107.07511.
     """
     @property
     def label(self):
@@ -961,7 +955,7 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
             uncal_preds_upper = uncal_preds[:, task_id + self.num_tasks]
 
             calibration_scores = np.maximum(uncal_preds_lower - targets_task_id, targets_task_id - uncal_preds_upper)
-            calibration_scores = np.append(calibration_scores, np.Inf)
+            calibration_scores = np.append(calibration_scores, np.inf)
             calibration_scores = np.sort(np.absolute(calibration_scores))
             self.qhats.append(np.quantile(calibration_scores, 1 - self.alpha / self.num_tasks))
 
@@ -983,7 +977,9 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
 
 class ConformalRegressionCalibrator(ConformalQuantileRegressionCalibrator):
     """
-    Conformal Regression Calibrator.
+    Conformal Calibrator for regression datasets. Outputs interval of fixed size, centered around
+    model prediction, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
+    As discussed in https://arxiv.org/abs/2107.07511.
     """
     @property
     def label(self):
@@ -1000,7 +996,6 @@ class ConformalRegressionCalibrator(ConformalQuantileRegressionCalibrator):
     def get_preds(predictor: UncertaintyPredictor):
         preds = np.array(predictor.get_uncal_preds())
 
-        # duplicate preds to simulate upper and lower quantile
         preds_duplicated = np.concatenate((preds, preds), axis=1)
         return preds_duplicated
 

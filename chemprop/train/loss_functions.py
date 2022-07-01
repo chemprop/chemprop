@@ -22,7 +22,6 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "bounded_mse": bounded_mse_loss,
             "mve": normal_mve,
             "evidential": evidential_loss,
-            "quantile": quantile_loss,
             "quantile_interval": quantile_loss_batch,
         },
         "classification": {
