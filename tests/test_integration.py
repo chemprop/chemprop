@@ -1214,7 +1214,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_atomic_bond_targets',
                 'chemprop',
-                7.109813,
+                8.710007,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--is_atom_bond_targets',
                  '--adding_h']
@@ -1222,7 +1222,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_atomic_bond_targets_constraints',
                 'chemprop',
-                7.087752,
+                8.435722,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
                  '--is_atom_bond_targets',
@@ -1231,7 +1231,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_atomic_bond_targets_no_shared_atom_bond_ffn',
                 'chemprop',
-                6.708733,
+                8.619740,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--is_atom_bond_targets',
                  '--adding_h',
@@ -1240,7 +1240,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_atomic_bond_targets_constraints_no_adding_bond_types',
                 'chemprop',
-                7.210681,
+                8.780137,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--is_atom_bond_targets',
                  '--adding_h',
@@ -1249,7 +1249,7 @@ class ChempropTests(TestCase):
         (
                 'chemprop_atomic_bond_targets_weights_ffn_num_layers',
                 'chemprop',
-                7.040880,
+                8.765641,
                 ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
                  '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
                  '--is_atom_bond_targets',
