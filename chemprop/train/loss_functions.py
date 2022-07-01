@@ -391,21 +391,10 @@ def normal_mve(pred_values, targets):
         2 * pred_var
     )
 
-def quantile_loss(pred_values, targets, quantile=0.5):
-    """
-    Pinball loss at desired quantile.
-    """
-    error = targets - pred_values
-
-    return torch.max((quantile - 1) * error, quantile * error)
-
 def quantile_loss_batch(pred_values, targets, quantiles):
     """
     Batched pinball loss at desired quantiles.
     """
-    assert(pred_values.shape[0] == targets.shape[0])
-    assert(pred_values.shape[1] == targets.shape[1])
-    assert(pred_values.shape[1] == quantiles.shape[1])
 
     error = targets - pred_values
 

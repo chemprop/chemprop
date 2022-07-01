@@ -41,8 +41,6 @@ def predict(
 
     var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
 
-    var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
-
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
         batch: MoleculeDataset
