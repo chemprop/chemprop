@@ -539,9 +539,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             sol = fmin(objective, initial_guess)
             self.var_weighting[:, i] = softmax(sol)
         if self.regression_calibrator_metric == "stdev":
-            self.scaling = 1
+            self.scaling = np.repeat(1, len(mask))
         else:  # interval
-            self.scaling = erfinv(self.interval_percentile / 100) * np.sqrt(2)
+            self.scaling = np.repeat(erfinv(self.interval_percentile / 100) * np.sqrt(2), len(mask))
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
