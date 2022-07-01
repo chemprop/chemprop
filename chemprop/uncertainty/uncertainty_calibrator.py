@@ -789,7 +789,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         self.qhats = []
 
         for task_id in range(self.num_tasks):
-            task_scores = np.take_along_axis(all_scores[:, task_id], np.expand_dims(targets[:, task_id], -1), axis=1).squeeze(axis=1)
+            task_scores = np.take_along_axis(all_scores[:, task_id], targets[:, task_id].reshape(-1, 1), axis=1).squeeze(1)
             task_scores = task_scores[mask[:, task_id]] # shape(valid_data)
             task_scores = np.append(task_scores, np.inf)
             task_scores = np.sort(task_scores)
@@ -885,16 +885,16 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets(), dtype=bool)  # shape(data, tasks)
         self.num_data, self.num_tasks = targets.shape
 
-        has_zeros = np.sum(targets==0, axis=1) > 0
+        has_zeros = np.any(targets==0, axis=1)
         inds_zeros = targets[has_zeros] == 0
         scores_in = self.nonconformity_scores(uncal_preds[has_zeros])
-        masked_scores_in = scores_in * inds_zeros + np.nan_to_num(np.inf * (1 - inds_zeros).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
+        masked_scores_in = scores_in * inds_zeros + np.nan_to_num(np.inf * (1 - inds_zeros).astype(float))
         calibration_scores_in = np.min(masked_scores_in, axis=1)
 
-        has_ones = np.sum(targets==1, axis=1) > 0
+        has_ones = np.any(targets==1, axis=1)
         inds_ones = targets[has_ones] == 1
         scores_out = self.nonconformity_scores(uncal_preds[has_ones])
-        masked_scores_out = scores_out * inds_ones + np.nan_to_num(-np.inf * (1 - inds_ones).astype(float), copy=True, nan=0.0, posinf=None, neginf=None)
+        masked_scores_out = scores_out * inds_ones + np.nan_to_num(-np.inf * (1 - inds_ones).astype(float))
         calibration_scores_out = np.max(masked_scores_out, axis=1)
         
         self.tout = np.quantile(calibration_scores_out, 1 - self.alpha / 2)
