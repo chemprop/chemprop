@@ -85,7 +85,7 @@ def test_build_unsupported_metrics(metric, dataset_type):
         build_uncertainty_evaluator(metric, None, None, dataset_type, None, None, False)
 
 
-@pytest.mark.parametrize("targets,preds,uncs,mask,likelihood", [([[0]], [[0]], [[1]], [[1]], [0.3989])])
+@pytest.mark.parametrize("targets,preds,uncs,mask,likelihood", [([[0]], [[0]], [[1]], [[True]], [0.3989])])
 def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, mask, likelihood):
     """
     Tests the result of the NLL regression UncertaintyEvaluator.
@@ -98,7 +98,7 @@ def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, mask, li
 
 @pytest.mark.parametrize(
     "targets,preds,uncs,mask,likelihood",
-    [([[1]], [[0.8]], [[0.8]], [[1]], [0.8]), ([[0]], [[0.8]], [[0.8]], [[1]], [0.2])],
+    [([[1]], [[0.8]], [[0.8]], [[True]], [0.8]), ([[0]], [[0.8]], [[0.8]], [[True]], [0.2])],
 )
 def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs, mask, likelihood):
     """
@@ -113,8 +113,8 @@ def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs,
 @pytest.mark.parametrize(
     "targets,preds,uncs,mask,area_exp",
     [
-        (np.zeros((100, 1)), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
-        (np.full((100, 1), 100), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
+        (np.zeros((100, 1)), np.zeros((100, 1)), np.ones((100, 1)), np.full((1, 100), True, dtype=bool), [0.495]),
+        (np.full((100, 1), 100), np.zeros((100, 1)), np.ones((100, 1)), np.full((1, 100), True, dtype=bool), [0.495]),
     ],
 )
 def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, mask, area_exp):
@@ -133,14 +133,14 @@ def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, ma
             np.arange(1, 101).reshape((100, 1)),
             np.zeros((100, 1)),
             np.arange(1, 101).reshape((100, 1)),
-            np.full((100, 1), True, dtype=bool),
+            np.full((1, 100), True, dtype=bool),
             [1],
         ),
         (
             np.arange(1, 101).reshape((100, 1)),
             np.zeros((100, 1)),
             -np.arange(1, 101).reshape((100, 1)),
-            np.full((100, 1), True, dtype=bool),
+            np.full((1, 100), True, dtype=bool),
             [-1],
         ),
     ],
