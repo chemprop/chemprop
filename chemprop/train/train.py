@@ -102,6 +102,7 @@ def train(model: MoleculeModel,
                 else:
                     bond_types_batch.append(None)
         else:
+            mask_batch = np.transpose(mask_batch).tolist()
             masks = torch.tensor(mask_batch, dtype=torch.bool)  # shape(batch, tasks)
             targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])  # shape(batch, tasks)
 
