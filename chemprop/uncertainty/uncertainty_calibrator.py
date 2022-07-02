@@ -153,6 +153,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
             uncal_vars = np.array(list(zip(*uncal_vars)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         self.scaling = np.zeros(self.num_tasks)
 
@@ -214,6 +215,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         else:
             unc_var = np.array(list(zip(*unc_var)))
             preds = np.array(list(zip(*preds)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         nll = []
         for i in range(self.num_tasks):
@@ -276,6 +278,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
             uncal_vars = np.array(list(zip(*uncal_vars)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         self.scaling = np.zeros(self.num_tasks)
 
@@ -345,6 +348,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
         else:
             unc = np.array(list(zip(*unc)))
             preds = np.array(list(zip(*preds)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         nll = []
         for i in range(self.num_tasks):
@@ -399,6 +403,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
             uncal_vars = np.array(list(zip(*uncal_vars)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         self.histogram_parameters = []
         self.scaling = np.zeros(self.num_tasks)
@@ -453,6 +458,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
         else:
             preds = np.array(list(zip(*preds)))
             unc = np.array(list(zip(*unc)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         nll = []
         for i in range(self.num_tasks):
@@ -520,6 +526,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
             individual_vars = [individual_vars[:, :, i] for i in range(self.num_tasks)]
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         self.var_weighting = np.zeros([self.num_models, self.num_tasks])  # shape(models, tasks)
 
@@ -607,6 +614,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         else:
             unc_var = np.array(list(zip(*unc_var)))
             preds = np.array(list(zip(*preds)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         nll = []
         for i in range(self.num_tasks):
@@ -649,6 +657,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
         mask = np.array(self.calibration_data.mask())
         self.num_tasks = len(mask)
@@ -710,7 +719,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             + np.expand_dims(self.platt_b, axis=0)
         )
         return uncal_preds.tolist(), cal_preds.tolist()
-    
+
     def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]], mask: List[List[bool]]):
         targets = np.array(targets)
         unc = np.array(unc)
@@ -719,6 +728,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             targets = [np.concatenate(x) for x in zip(*targets)]
             unc = [np.concatenate(x) for x in zip(*unc)]
         else:
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
             unc = np.array(list(zip(*unc)))
         nll = []
@@ -765,6 +775,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
             uncal_preds = np.array(list(zip(*uncal_preds)))
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
 
         isotonic_models = []
@@ -807,6 +818,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
             targets = [np.concatenate(x) for x in zip(*targets)]
             unc = [np.concatenate(x) for x in zip(*unc)]
         else:
+            targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
             unc = np.array(list(zip(*unc)))
         nll = []
@@ -845,7 +857,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks, num_classes)
-        targets = np.array(self.calibration_data.targets())  # shape(data, tasks)
+        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
         mask = np.array(self.calibration_data.mask())
         self.num_tasks = len(mask)
         self.num_classes = uncal_preds.shape[2]
@@ -890,7 +902,7 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         return uncal_preds.tolist(), cal_preds.tolist()
 
     def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]], mask: List[List[bool]]):
-        targets = np.array(targets)  # shape(data, tasks)
+        targets = np.array(targets, dtype=int)  # shape(data, tasks)
         mask = np.array(mask)
         unc = np.array(unc)
         preds = np.array(preds)
