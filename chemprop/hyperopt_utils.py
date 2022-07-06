@@ -4,6 +4,7 @@ import pickle
 from typing import List, Dict
 import csv
 import json
+import logging
 
 from hyperopt import Trials, hp
 import numpy as np
@@ -119,18 +120,25 @@ def load_trials(dir_path: str, previous_trials: Trials = None) -> Trials:
     return loaded_trials
 
 
-def save_trials(dir_path: str, trials: Trials, hyperopt_seed: int) -> None:
+def save_trials(dir_path: str, trials: Trials, hyperopt_seed: int, logger: logging.Logger = None) -> None:
     """
     Saves hyperopt trial data as a `.pkl` file.
 
     :param dir_path: Path to the directory containing hyperopt checkpoint files.
     :param trials: A trials object containing information on a completed hyperopt iteration.
     """
+    if logger is None:
+        info = print
+    else:
+        info = logger.info
+
     new_fname = f'{hyperopt_seed}.pkl'
     existing_files = os.listdir(dir_path)
     if new_fname in existing_files:
-        raise ValueError(f'When saving trial with unique seed {hyperopt_seed}, found that a trial with this seed already exists.')
-    pickle.dump(trials, open(os.path.join(dir_path, new_fname), 'wb'))
+        info(f'When saving trial with unique seed {hyperopt_seed}, found that a trial with this seed already exists. ' \
+            'This trial was not saved.')
+    else:
+        pickle.dump(trials, open(os.path.join(dir_path, new_fname), 'wb'))
 
 
 def get_hyperopt_seed(seed: int, dir_path: str) -> int:
