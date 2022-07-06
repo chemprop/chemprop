@@ -272,6 +272,7 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
             'std_score': std_score,
             'hyperparams': param_dict,
             'num_params': 0,
+            'seed': - (i + 1),
         }
         misc_dict = {
             'tid': i,
@@ -297,6 +298,7 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
     trials = Trials()
     trials = merge_trials(trials=trials, new_trials_data=manual_trials_data)
     return trials
+
 
 def save_config(config_path: str, hyperparams_dict: dict, max_lr: float) -> None:
     """
