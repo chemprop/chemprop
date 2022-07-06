@@ -150,7 +150,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         # Create a trials object with only the last instance by merging the last data with an empty trials object
         last_trial = merge_trials(Trials(), [trials.trials[-1]])
-        save_trials(args.hyperopt_checkpoint_dir, last_trial, hyperopt_seed)
+        save_trials(args.hyperopt_checkpoint_dir, last_trial, hyperopt_seed, logger)
 
     # Report best result
     all_trials = load_trials(dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials)
