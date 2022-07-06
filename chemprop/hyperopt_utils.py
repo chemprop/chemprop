@@ -255,15 +255,21 @@ def load_manual_trials(manual_trials_dirs: List[str], param_keys: List[str], hyp
         vals_dict = {}
         for key in param_keys:
             if key == 'init_lr_ratio':
-                param_value = trial_args['init_lr'] / trial_args['max_lr']
+                param_value = val_value = trial_args['init_lr'] / trial_args['max_lr']
             elif key == 'final_lr_ratio':
-                param_value = trial_args['final_lr'] / trial_args['max_lr']
+                param_value = val_value = trial_args['final_lr'] / trial_args['max_lr']
             elif key == 'linked_hidden_size':
-                param_value = trial_args['hidden_size']
-            else:
+                param_value = val_value = trial_args['hidden_size']
+            elif key == 'aggregation':
                 param_value = trial_args[key]
+                val_value = ["mean", "sum", "norm"].index(param_value)
+            elif key == 'activation':
+                param_value = trial_args[key]
+                val_value = ['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'].index(param_value)
+            else:
+                param_value = val_value = trial_args[key]
             param_dict[key] = param_value
-            vals_dict[key] = [param_value]
+            vals_dict[key] = [val_value]
         idxs_dict = {key: [i] for key in param_keys}
         results_dict = {
             'loss': loss,
