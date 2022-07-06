@@ -143,6 +143,7 @@ def get_mixed_task_names(path: str,
             mol = make_mol(smiles[0], False, add_h)
             for column in target_names:
                 value = row[column]
+                value = value.replace('None', 'null')
                 target = np.array(json.loads(value))
 
                 is_atom_target, is_bond_target, is_molecule_target = False, False, False
@@ -479,6 +480,7 @@ def get_data(path: str,
                     else:
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
                 elif '[' in value or ']' in value:
+                    value = value.replace('None', 'null')
                     target = np.array(json.loads(value))
                     if len(target.shape) == 1 and column in args.atom_targets:  # Atom targets saved as 1D list
                         atom_targets.append(target)
