@@ -40,19 +40,32 @@ def hyperopt(args: HyperoptArgs) -> None:
 
     # Build search space
     logger.info(f"Creating search space using parameters {args.search_parameters}.")
-    space = build_search_space(search_parameters=args.search_parameters, train_epochs=args.epochs)
+    space = build_search_space(
+        search_parameters=args.search_parameters, train_epochs=args.epochs
+    )
     int_keys = [
-        "batch_size", "depth", "ffn_hidden_size", "ffn_num_layers",
-        "hidden_size", "linked_hidden_size", "warmup_epochs"
+        "batch_size",
+        "depth",
+        "ffn_hidden_size",
+        "ffn_num_layers",
+        "hidden_size",
+        "linked_hidden_size",
+        "warmup_epochs",
     ]
 
     # Load in manual trials
     if args.manual_trial_dirs is not None:
-        manual_trials = load_manual_trials(manual_trials_dirs=args.manual_trial_dirs, param_keys=space.keys(), hyperopt_args=args)
-        logger.info(f'{len(manual_trials)} manual trials included in hyperparameter search.')
+        manual_trials = load_manual_trials(
+            manual_trials_dirs=args.manual_trial_dirs,
+            param_keys=space.keys(),
+            hyperopt_args=args,
+        )
+        logger.info(
+            f"{len(manual_trials)} manual trials included in hyperparameter search."
+        )
     else:
         manual_trials = None
-        logger.info('No manual trials loaded as part of hyperparameter search')
+        logger.info("No manual trials loaded as part of hyperparameter search")
 
     makedirs(args.hyperopt_checkpoint_dir)
 
@@ -68,20 +81,20 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         # Update args with hyperparams
         if args.save_dir is not None:
-            folder_name = f'trial_seed_{seed}'
+            folder_name = f"trial_seed_{seed}"
             hyper_args.save_dir = os.path.join(hyper_args.save_dir, folder_name)
 
         for key, value in hyperparams.items():
             setattr(hyper_args, key, value)
 
-        if 'linked_hidden_size' in hyperparams:
-            hyper_args.ffn_hidden_size = hyperparams['linked_hidden_size']
-            hyper_args.hidden_size = hyperparams['linked_hidden_size']
-        
-        if 'init_lr_ratio' in hyperparams:
-            hyper_args.init_lr = hyperparams['max_lr'] * hyperparams['init_lr_ratio']
-        if 'final_lr_ratio' in hyperparams:
-            hyper_args.final_lr = hyperparams['max_lr'] * hyperparams['final_lr_ratio']
+        if "linked_hidden_size" in hyperparams:
+            hyper_args.ffn_hidden_size = hyperparams["linked_hidden_size"]
+            hyper_args.hidden_size = hyperparams["linked_hidden_size"]
+
+        if "init_lr_ratio" in hyperparams:
+            hyper_args.init_lr = hyperparams["max_lr"] * hyperparams["init_lr_ratio"]
+        if "final_lr_ratio" in hyperparams:
+            hyper_args.final_lr = hyperparams["max_lr"] * hyperparams["final_lr_ratio"]
 
         # Cross validate
         mean_score, std_score = cross_validate(args=hyper_args, train_func=run_training)
@@ -89,34 +102,38 @@ def hyperopt(args: HyperoptArgs) -> None:
         # Record results
         temp_model = MoleculeModel(hyper_args)
         num_params = param_count(temp_model)
-        logger.info(f'Trial results with seed {seed}')
+        logger.info(f"Trial results with seed {seed}")
         logger.info(hyperparams)
-        logger.info(f'num params: {num_params:,}')
-        logger.info(f'{mean_score} +/- {std_score} {hyper_args.metric}')
+        logger.info(f"num params: {num_params:,}")
+        logger.info(f"{mean_score} +/- {std_score} {hyper_args.metric}")
 
         # Deal with nan
         if np.isnan(mean_score):
-            if hyper_args.dataset_type == 'classification':
+            if hyper_args.dataset_type == "classification":
                 mean_score = 0
             else:
-                raise ValueError('Can\'t handle nan score for non-classification dataset.')
+                raise ValueError(
+                    "Can't handle nan score for non-classification dataset."
+                )
 
         loss = (1 if hyper_args.minimize_score else -1) * mean_score
 
         return {
-            'loss': loss,
-            'status': 'ok',
-            'mean_score': mean_score,
-            'std_score': std_score,
-            'hyperparams': hyperparams,
-            'num_params': num_params,
-            'seed': seed,
+            "loss": loss,
+            "status": "ok",
+            "mean_score": mean_score,
+            "std_score": std_score,
+            "hyperparams": hyperparams,
+            "num_params": num_params,
+            "seed": seed,
         }
 
     # Iterate over a number of trials
     for i in range(args.num_iters):
         # run fmin and load trials in single steps to allow for parallel operation
-        trials = load_trials(dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials)
+        trials = load_trials(
+            dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials
+        )
         if len(trials) > 0 and set(space.keys()) != set(trials.vals.keys()):
             raise ValueError(
                 f"Loaded hyperopt checkpoints files must be searching over the same parameters as \
@@ -127,18 +144,24 @@ def hyperopt(args: HyperoptArgs) -> None:
             break
 
         # Set a unique random seed for each trial. Pass it into objective function for logging purposes.
-        hyperopt_seed = get_hyperopt_seed(seed=args.seed, dir_path=args.hyperopt_checkpoint_dir)
+        hyperopt_seed = get_hyperopt_seed(
+            seed=args.seed, dir_path=args.hyperopt_checkpoint_dir
+        )
         fmin_objective = partial(objective, seed=hyperopt_seed)
-        os.environ['HYPEROPT_FMIN_SEED'] = str(hyperopt_seed) # this environment variable changes the seed in fmin
+        os.environ["HYPEROPT_FMIN_SEED"] = str(
+            hyperopt_seed
+        )  # this environment variable changes the seed in fmin
 
         # Log the start of the trial
-        logger.info(f'Initiating trial with seed {hyperopt_seed}')
-        logger.info(f'Loaded {len(trials)} previous trials')
+        logger.info(f"Initiating trial with seed {hyperopt_seed}")
+        logger.info(f"Loaded {len(trials)} previous trials")
         if len(trials) < args.startup_random_iters:
             random_remaining = args.startup_random_iters - len(trials)
-            logger.info(f'Parameters assigned with random search, {random_remaining} random trials remaining')
+            logger.info(
+                f"Parameters assigned with random search, {random_remaining} random trials remaining"
+            )
         else:
-            logger.info(f'Parameters assigned with TPE directed search')
+            logger.info(f"Parameters assigned with TPE directed search")
 
         fmin(
             fmin_objective,
@@ -153,17 +176,28 @@ def hyperopt(args: HyperoptArgs) -> None:
         save_trials(args.hyperopt_checkpoint_dir, last_trial, hyperopt_seed, logger)
 
     # Report best result
-    all_trials = load_trials(dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials)
+    all_trials = load_trials(
+        dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials
+    )
     results = all_trials.results
-    results = [result for result in results if not np.isnan(result['mean_score'])]
-    best_result = min(results, key=lambda result: (1 if args.minimize_score else -1) * result['mean_score'])
+    results = [result for result in results if not np.isnan(result["mean_score"])]
+    best_result = min(
+        results,
+        key=lambda result: (1 if args.minimize_score else -1) * result["mean_score"],
+    )
     logger.info(f'Best trial, with seed {best_result["seed"]}')
-    logger.info(best_result['hyperparams'])
+    logger.info(best_result["hyperparams"])
     logger.info(f'num params: {best_result["num_params"]:,}')
-    logger.info(f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}')
+    logger.info(
+        f'{best_result["mean_score"]} +/- {best_result["std_score"]} {args.metric}'
+    )
 
     # Save best hyperparameter settings as JSON config file
-    save_config(config_path=args.config_save_path, hyperparams_dict=best_result['hyperparams'], max_lr=args.max_lr)
+    save_config(
+        config_path=args.config_save_path,
+        hyperparams_dict=best_result["hyperparams"],
+        max_lr=args.max_lr,
+    )
 
 
 def chemprop_hyperopt() -> None:
