@@ -96,10 +96,10 @@ def mcc_class_loss(
     :param mask: A tensor of shape `b x t` with boolean values indicating whether the loss for this prediction is considered in the gradient descent
     :return: A tensor of shape `b x t` containing loss values.
     """
-    TP = torch.sum(targets * predictions * data_weights * mask, axis=0)
-    FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis=0)
-    FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis=0)
-    TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis=0)
+    TP = (targets * predictions * data_weights * mask).sum(0)
+    FP = ((1 - targets) * predictions * data_weights * mask).sum(0)
+    FN = (targets * (1 - predictions) * data_weights * mask).sum(0)
+    TN = ((1 - targets) * (1 - predictions) * data_weights * mask).sum(0)
     loss = 1 - ((TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
 
     return loss
@@ -114,26 +114,25 @@ def mcc_multiclass_loss(
     """
     A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
 
-    :param predictions: Model predictions with shape(batch_size, classes).
-    :param targets: Target values with shape(batch_size).
-    :param data_weights: A tensor with float values indicating how heavily to weight each datapoint in training with shape(batch_size, 1)
-    :param mask: A tensor with boolean values indicating whether the loss for this prediction is considered in the gradient descent with shape(batch_size).
+    :param predictions: a tensor of  shape `b x c` containing the model predictions.
+    :param targets: a tensor of shape `b`, where `b` is the batch size containing the target values.
+    :param data_weights: tensor of shape `b x 1` containing the weight of the respective training 
+        datapoint
+    :param mask: A tensor of shape `b` with boolean values indicating whether the loss for this 
+        prediction is considered in the gradient descent.
     :return: A tensor value for the loss.
     """
-    # targets shape (batch)
-    # preds shape(batch, classes)
     mask = mask.unsqueeze(1)
     bin_targets = torch.zeros_like(predictions, device=predictions.device)
-    bin_targets[torch.arange(predictions.shape[0]), targets] = 1
+    bin_targets[range(len(predictions)), targets] = 1
 
     c = torch.sum(predictions * bin_targets * data_weights * mask)
     s = torch.sum(predictions * data_weights * mask)
     pt = torch.sum(
-        torch.sum(predictions * data_weights * mask, axis=0)
-        * torch.sum(bin_targets * data_weights * mask, axis=0)
+        (predictions * data_weights * mask).sum(0) * (bin_targets * data_weights * mask).sum(0)
     )
-    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
-    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
+    p2 = torch.sum((predictions * data_weights * mask).sum(0) ** 2)
+    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask).sum(0) ** 2)
     loss = 1 - (c * s - pt) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
 
     return loss
@@ -148,37 +147,34 @@ def sid_loss(
     """
     Loss function for use with spectra data type.
 
-    :param model_spectra: The predicted spectra output from a model with shape (batch_size,spectrum_length).
-    :param target_spectra: The target spectra with shape (batch_size,spectrum_length). Values must be normalized so that each spectrum sums to 1.
-    :param mask: Tensor with boolean indications of where the spectrum output should not be excluded with shape (batch_size,spectrum_length).
-    :param threshold: Loss function requires that values are positive and nonzero. Values below the threshold will be replaced with the threshold value.
-    :return: A tensor containing loss values for the batch with shape (batch_size,spectrum_length).
+    :param model_spectra: The predicted spectra output from a model with shape `b x l`, where `b`
+        is the batch size and `l` is the spectrum length.
+    :param target_spectra: The target spectra with shape `b x l`. Values must be normalized so that 
+        each spectrum sums to 1.
+    :param mask: Tensor with boolean indications of where the spectrum output should not be 
+        excluded with shape `b x l`.
+    :param threshold: Loss function requires that values are positive and nonzero. Values below the 
+        threshold will be replaced with the threshold value.
+    :return: A tensor containing loss values for the batch with shape `b x l`
     """
-    # Move new tensors to torch device
     device = model_spectra.device
-
-    # Normalize the model spectra before comparison
     zero_sub = torch.zeros_like(model_spectra, device=device)
     one_sub = torch.ones_like(model_spectra, device=device)
+    
     if threshold is not None:
-        threshold_sub = torch.full(model_spectra.shape, threshold, device=device)
-        model_spectra = torch.where(
-            model_spectra < threshold, threshold_sub, model_spectra
-        )
+        model_spectra = model_spectra.clamp(threshold, None)
+
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
 
-    # Calculate loss value
     target_spectra = torch.where(mask, target_spectra, one_sub)
-    model_spectra = torch.where(
-        mask, model_spectra, one_sub
-    )  # losses in excluded regions will be zero because log(1/1) = 0.
-    loss = torch.mul(
-        torch.log(torch.div(model_spectra, target_spectra)), model_spectra
-    ) + torch.mul(torch.log(torch.div(target_spectra, model_spectra)), target_spectra)
+    model_spectra = torch.where(mask, model_spectra, one_sub)
 
-    return loss
+    return (
+        torch.mul(torch.div(model_spectra, target_spectra).log(), model_spectra) 
+        + torch.mul(torch.div(target_spectra, model_spectra).log(), target_spectra)
+    )
 
 
 def wasserstein_loss(
@@ -196,21 +192,16 @@ def wasserstein_loss(
     :param threshold: Loss function requires that values are positive and nonzero. Values below the threshold will be replaced with the threshold value.
     :return: A tensor containing loss values for the batch with shape (batch_size,spectrum_length).
     """
-    # Move new tensors to torch device
     device = model_spectra.device
-
-    # Normalize the model spectra before comparison
     zero_sub = torch.zeros_like(model_spectra, device=device)
+
     if threshold is not None:
-        threshold_sub = torch.full(model_spectra.shape, threshold, device=device)
-        model_spectra = torch.where(
-            model_spectra < threshold, threshold_sub, model_spectra
-        )
+        model_spectra = torch.clamp(model_spectra, threshold, None)
+
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
 
-    # Calculate loss value
     target_cum = torch.cumsum(target_spectra, axis=1)
     model_cum = torch.cumsum(model_spectra, axis=1)
     loss = torch.abs(target_cum - model_cum)
@@ -220,11 +211,11 @@ def wasserstein_loss(
 
 def normal_mve(pred_values, targets):
     """
-    Use the negative log likelihood function of a normal distribution as a loss function used for making
-    simultaneous predictions of the mean and error distribution variance simultaneously.
+    Use the negative log likelihood function of a normal distribution as a loss function used for 
+    making simultaneous predictions of the mean and error distribution variance simultaneously.
 
     :param pred_values: Combined predictions of means and variances of shape(data, tasks*2).
-                        Means are first in dimension 1, followed by variances.
+        Means are first in dimension 1, followed by variances.
     :return: A tensor loss value.
     """
     pred_means, pred_var = torch.split(pred_values, pred_values.shape[1] // 2, dim=1)
@@ -244,7 +235,7 @@ def dirichlet_class_loss(alphas, target_labels, lam=0):
     """
     num_tasks = target_labels.shape[1]
     num_classes = 2
-    alphas = torch.reshape(alphas, (alphas.shape[0], num_tasks, num_classes))
+    alphas = torch.reshape(alphas, (len(alphas), num_tasks, num_classes))
 
     y_one_hot = torch.eye(num_classes, device=alphas.device)[target_labels.long()]
 
@@ -279,10 +270,9 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
 
     :return: Loss
     """
-    # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
     p = alphas / S
-    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
+    A = torch.sum((y_one_hot - p) ** 2, dim=-1, keepdim=True)
     B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
     L_sos = A + B
 
@@ -292,18 +282,16 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
     S_beta = torch.sum(beta, dim=-1, keepdim=True)
 
-    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
-        torch.lgamma(alpha_hat), dim=-1, keepdim=True
+    ln_alpha = (
+        torch.lgamma(S_alpha) - torch.sum(torch.lgamma(alpha_hat), dim=-1, keepdim=True)
     )
-    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
-        S_beta
+    ln_beta = (
+        torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
     )
 
-    # digamma terms
     dg_alpha = torch.digamma(alpha_hat)
     dg_S_alpha = torch.digamma(S_alpha)
 
-    # KL
     L_kl = (
         ln_alpha
         + ln_beta
@@ -311,33 +299,26 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     )
     L_kl = lam * L_kl
 
-    loss = torch.mean(L_sos + L_kl, dim=-1)
-
-    return loss
+    return torch.mean(L_sos + L_kl, dim=-1)
 
 
 # updated evidential regression loss (evidential_loss_new from Amini repo)
 def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     """
-    Use Deep Evidential Regression negative log likelihood loss + evidential
-        regularizer
+    Use Deep Evidential Regression negative log likelihood loss and evidential regularizer
 
-    :param pred_values: Combined prediction values for mu, v, alpha, and beta parameters in shape(data, tasks*4).
-                        Order in dimension 1 is mu, v, alpha, beta.
-    :mu: pred mean parameter for NIG
-    :v: pred lam parameter for NIG
-    :alpha: predicted parameter for NIG
-    :beta: Predicted parmaeter for NIG
-    :targets: Outputs to predict
+    :param pred_values: a tensor of shape `b x 4t`, where `b` is the batch size and `t` is the 
+        number of tasks, containing prediction values for mu, v, alpha, and beta, respectively
+    :param targets: a tensor of shape `b` containing the corresponding targets
+    :param lam: the weight of the regularization term
+    :param epsilon:
 
-    :return: Loss
+    :return: a tensor of shape `b` containing the evidential loss value for each input
     """
-    # Unpack combined prediction values
     mu, v, alpha, beta = torch.split(pred_values, pred_values.shape[1] // 4, dim=1)
 
-    # Calculate NLL loss
     twoBlambda = 2 * beta * (1 + v)
-    nll = (
+    L_nll = (
         0.5 * torch.log(torch.pi / v)
         - alpha * torch.log(twoBlambda)
         + (alpha + 0.5) * torch.log(v * (targets - mu) ** 2 + twoBlambda)
@@ -345,15 +326,7 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
         - torch.lgamma(alpha + 0.5)
     )
 
-    L_nll = nll  # torch.mean(nll, dim=-1)
-
-    # Calculate regularizer based on absolute error of prediction
     error = torch.abs((targets - mu))
-    reg = error * (2 * v + alpha)
-    L_reg = reg  # torch.mean(reg, dim=-1)
+    L_reg = error * (2 * v + alpha)
 
-    # Loss = L_NLL + L_REG
-    # TODO If we want to optimize the dual- of the objective use the line below:
-    loss = L_nll + lam * (L_reg - epsilon)
-
-    return loss
+    return L_nll + lam * (L_reg - epsilon)
