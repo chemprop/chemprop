@@ -34,10 +34,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "mcc": mcc_multiclass_loss,
             "dirichlet": dirichlet_multiclass_loss,
         },
-        "spectra": {
-            "sid": sid_loss,
-            "wasserstein": wasserstein_loss,
-        },
+        "spectra": {"sid": sid_loss, "wasserstein": wasserstein_loss},
     }
 
     # Error if no loss function supported
@@ -78,19 +75,14 @@ def bounded_mse_loss(
     )
 
     predictions = torch.where(
-        torch.logical_and(predictions > targets, greater_than_target),
-        targets,
-        predictions,
+        torch.logical_and(predictions > targets, greater_than_target), targets, predictions
     )
 
     return nn.functional.mse_loss(predictions, targets, reduction="none")
 
 
 def mcc_class_loss(
-    predictions: torch.tensor,
-    targets: torch.tensor,
-    data_weights: torch.tensor,
-    mask: torch.tensor,
+    predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor
 ) -> torch.tensor:
     """
     A classification loss using a soft version of the Matthews Correlation Coefficient.
@@ -107,17 +99,12 @@ def mcc_class_loss(
     FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis=0)
     FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis=0)
     TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis=0)
-    loss = 1 - (
-        (TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-    )
+    loss = 1 - ((TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
     return loss
 
 
 def mcc_multiclass_loss(
-    predictions: torch.tensor,
-    targets: torch.tensor,
-    data_weights: torch.tensor,
-    mask: torch.tensor,
+    predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor
 ) -> torch.tensor:
     """
     A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
@@ -142,7 +129,7 @@ def mcc_multiclass_loss(
     )
     p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
     t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
-    loss = 1 - (c * s - pt) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
+    loss = 1 - (c * s - pt) / torch.sqrt((s**2 - p2) * (s**2 - t2))
     return loss
 
 
@@ -169,9 +156,7 @@ def sid_loss(
     one_sub = torch.ones_like(model_spectra, device=torch_device)
     if threshold is not None:
         threshold_sub = torch.full(model_spectra.shape, threshold, device=torch_device)
-        model_spectra = torch.where(
-            model_spectra < threshold, threshold_sub, model_spectra
-        )
+        model_spectra = torch.where(model_spectra < threshold, threshold_sub, model_spectra)
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
@@ -210,9 +195,7 @@ def wasserstein_loss(
     zero_sub = torch.zeros_like(model_spectra, device=torch_device)
     if threshold is not None:
         threshold_sub = torch.full(model_spectra.shape, threshold, device=torch_device)
-        model_spectra = torch.where(
-            model_spectra < threshold, threshold_sub, model_spectra
-        )
+        model_spectra = torch.where(model_spectra < threshold, threshold_sub, model_spectra)
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
@@ -237,9 +220,7 @@ def normal_mve(pred_values, targets):
     # Unpack combined prediction values
     pred_means, pred_var = torch.split(pred_values, pred_values.shape[1] // 2, dim=1)
 
-    return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (
-        2 * pred_var
-    )
+    return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (2 * pred_var)
 
 
 # evidential classification
@@ -283,7 +264,7 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     """
     Use Evidential Learning Dirichlet loss from Sensoy et al. This function follows
-    after the classification and multiclass specific functions that reshape the 
+    after the classification and multiclass specific functions that reshape the
     alpha inputs and create one-hot targets.
 
     :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
@@ -295,7 +276,7 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     # SOS term
     S = torch.sum(alphas, dim=-1, keepdim=True)
     p = alphas / S
-    A = torch.sum((y_one_hot - p)**2, dim=-1, keepdim=True)
+    A = torch.sum((y_one_hot - p) ** 2, dim=-1, keepdim=True)
     B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
     SOS = A + B
 
@@ -305,12 +286,8 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
     S_beta = torch.sum(beta, dim=-1, keepdim=True)
 
-    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
-        torch.lgamma(alpha_hat), dim=-1, keepdim=True
-    )
-    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(
-        S_beta
-    )
+    ln_alpha = torch.lgamma(S_alpha) - torch.sum(torch.lgamma(alpha_hat), dim=-1, keepdim=True)
+    ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
 
     # digamma terms
     dg_alpha = torch.digamma(alpha_hat)

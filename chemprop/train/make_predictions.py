@@ -5,25 +5,50 @@ from typing import List, Optional, Union, Tuple
 import numpy as np
 
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
+from chemprop.data import (
+    get_data,
+    get_data_from_smiles,
+    MoleculeDataLoader,
+    MoleculeDataset,
+    StandardScaler,
+)
+from chemprop.utils import (
+    load_args,
+    load_checkpoint,
+    load_scalers,
+    makedirs,
+    timeit,
+    update_prediction_args,
+)
+from chemprop.features import (
+    set_extra_atom_fdim,
+    set_extra_bond_fdim,
+    set_reaction,
+    set_explicit_h,
+    set_adding_hs,
+    reset_featurization_parameters,
+)
 from chemprop.models import MoleculeModel
-from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
+from chemprop.uncertainty import (
+    UncertaintyCalibrator,
+    build_uncertainty_calibrator,
+    UncertaintyEstimator,
+    build_uncertainty_evaluator,
+)
 
 
 def load_model(args: PredictArgs, generator: bool = False):
     """
-    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler 
+    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler
     objects is returned (memory efficient), else the full list (holding all models in memory, necessary for preloading).
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
     :param generator: A boolean to return a generator instead of a list of models and scalers.
-    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or 
+    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or
                  generator object of scalers, the number of tasks and their respective names.
     """
-    print('Loading training args')
+    print("Loading training args")
     train_args = load_args(args.checkpoint_paths[0])
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
@@ -32,11 +57,10 @@ def load_model(args: PredictArgs, generator: bool = False):
 
     # Load model and scalers
     models = (
-        load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths
+        load_checkpoint(checkpoint_path, device=args.device)
+        for checkpoint_path in args.checkpoint_paths
     )
-    scalers = (
-        load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths
-    )
+    scalers = (load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths)
     if not generator:
         models = list(models)
         scalers = list(scalers)
@@ -57,9 +81,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]]):
     print("Loading data")
     if smiles is not None:
         full_data = get_data_from_smiles(
-            smiles=smiles,
-            skip_invalid_smiles=False,
-            features_generator=args.features_generator,
+            smiles=smiles, skip_invalid_smiles=False, features_generator=args.features_generator
         )
     else:
         full_data = get_data(
@@ -80,9 +102,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]]):
             full_to_valid_indices[full_index] = valid_index
             valid_index += 1
 
-    test_data = MoleculeDataset(
-        [full_data[i] for i in sorted(full_to_valid_indices.keys())]
-    )
+    test_data = MoleculeDataset([full_data[i] for i in sorted(full_to_valid_indices.keys())])
 
     print(f"Test size = {len(test_data):,}")
 
@@ -214,12 +234,13 @@ def predict_and_save(
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
-                targets=evaluation_data.targets(), preds=preds, uncertainties=unc, mask=evaluation_data.mask()
+                targets=evaluation_data.targets(),
+                preds=preds,
+                uncertainties=unc,
+                mask=evaluation_data.mask(),
             )
             evaluations.append(evaluation)
-            print(
-                f"Using evaluation method {evaluator.evaluation_method}: {evaluation}"
-            )
+            print(f"Using evaluation method {evaluator.evaluation_method}: {evaluation}")
     else:
         evaluations = None
 
@@ -267,9 +288,7 @@ def predict_and_save(
                 d_preds = np.array(d_preds).reshape((num_tasks))
                 d_unc = np.array(d_unc).reshape((num_unc_tasks))
                 if args.individual_ensemble_predictions:
-                    ind_preds = ind_preds.reshape(
-                        (num_tasks, len(args.checkpoint_paths))
-                    )
+                    ind_preds = ind_preds.reshape((num_tasks, len(args.checkpoint_paths)))
 
             # If extra columns have been dropped, add back in SMILES columns
             if args.drop_extra_columns:
@@ -285,21 +304,37 @@ def predict_and_save(
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
             elif args.calibration_method == "conformal_regression":
-                unc_names = [task_name + "_lower_bound" for task_name in task_names] + [task_name + "_upper_bound" for task_name in task_names]
+                unc_names = [task_name + "_lower_bound" for task_name in task_names] + [
+                    task_name + "_upper_bound" for task_name in task_names
+                ]
             elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [task_names[i] + "_lower_bound" for i in range(0, num_tasks//2)] + [task_names[i] + "_upper_bound" for i in range(num_tasks//2, num_tasks)]
-                print_task_names = [task_names[i] + "_quantile_lower_bound" for i in range(0, num_tasks//2)] + [task_names[i] + "_quantile_upper_bound" for i in range(num_tasks//2, num_tasks)]
+                unc_names = [task_names[i] + "_lower_bound" for i in range(0, num_tasks // 2)] + [
+                    task_names[i] + "_upper_bound" for i in range(num_tasks // 2, num_tasks)
+                ]
+                print_task_names = [
+                    task_names[i] + "_quantile_lower_bound" for i in range(0, num_tasks // 2)
+                ] + [
+                    task_names[i] + "_quantile_upper_bound"
+                    for i in range(num_tasks // 2, num_tasks)
+                ]
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
-                unc_names = [task_name + "_conformal_in_set" for task_name in task_names] + [task_name + "_conformal_out_set" for task_name in task_names]
+                unc_names = [task_name + "_conformal_in_set" for task_name in task_names] + [
+                    task_name + "_conformal_out_set" for task_name in task_names
+                ]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
 
             for pred_name, pred in zip(print_task_names, d_preds):
-                if args.calibration_method not in ["conformal_regression", "conformal_quantile_regression"]:
+                if args.calibration_method not in [
+                    "conformal_regression",
+                    "conformal_quantile_regression",
+                ]:
                     datapoint.row[pred_name] = pred
 
             for unc_name, un in zip(unc_names, d_unc):
-                if args.uncertainty_method is not None or args.calibration_method is not None: #args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']
+                if (
+                    args.uncertainty_method is not None or args.calibration_method is not None
+                ):  # args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']
                     datapoint.row[unc_name] = un
             if args.individual_ensemble_predictions:
                 for pred_name, model_preds in zip(task_names, ind_preds):
@@ -346,12 +381,7 @@ def make_predictions(
     args: PredictArgs,
     smiles: List[List[str]] = None,
     model_objects: Tuple[
-        PredictArgs,
-        TrainArgs,
-        List[MoleculeModel],
-        List[StandardScaler],
-        int,
-        List[str],
+        PredictArgs, TrainArgs, List[MoleculeModel], List[StandardScaler], int, List[str],
     ] = None,
     calibrator: UncertaintyCalibrator = None,
     return_invalid_smiles: bool = True,
@@ -379,43 +409,36 @@ def make_predictions(
     :return: A list of lists of target predictions. If returning uncertainty, a tuple containing first prediction values then uncertainty estimates.
     """
     if model_objects:
-        (
-            args,
-            train_args,
-            models,
-            scalers,
-            num_tasks,
-            task_names,
-        ) = model_objects
+        (args, train_args, models, scalers, num_tasks, task_names) = model_objects
     else:
-        (
-            args,
-            train_args,
-            models,
-            scalers,
-            num_tasks,
-            task_names,
-        ) = load_model(args, generator=True)
+        (args, train_args, models, scalers, num_tasks, task_names) = load_model(
+            args, generator=True
+        )
 
     num_models = len(args.checkpoint_paths)
 
     set_features(args, train_args)
 
     # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
-    full_data, test_data, test_data_loader, full_to_valid_indices = load_data(
-        args, smiles
-    )
+    full_data, test_data, test_data_loader, full_to_valid_indices = load_data(args, smiles)
 
-    if args.uncertainty_method is not None and args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']:
-        raise ValueError('Conformal regression is not compatible with an uncertainty method')
+    if args.uncertainty_method is not None and args.calibration_method in [
+        "conformal_regression",
+        "conformal_quantile_regression",
+    ]:
+        raise ValueError("Conformal regression is not compatible with an uncertainty method")
 
-    if args.uncertainty_method is None and (args.calibration_method is not None or args.evaluation_methods is not None):
-        if args.dataset_type in ['classification', 'multiclass']:
-            args.uncertainty_method = 'classification'
-        elif args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']:
+    if args.uncertainty_method is None and (
+        args.calibration_method is not None or args.evaluation_methods is not None
+    ):
+        if args.dataset_type in ["classification", "multiclass"]:
+            args.uncertainty_method = "classification"
+        elif args.calibration_method in ["conformal_regression", "conformal_quantile_regression"]:
             args.uncertainty_method = None
         else:
-            raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
+            raise ValueError(
+                "Cannot calibrate or evaluate uncertainty without selection of an uncertainty method."
+            )
 
     if calibrator is None and args.calibration_path is not None:
 
@@ -433,9 +456,7 @@ def make_predictions(
         )
 
         calibration_data_loader = MoleculeDataLoader(
-            dataset=calibration_data,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
+            dataset=calibration_data, batch_size=args.batch_size, num_workers=args.num_workers
         )
 
         if isinstance(models, List) and isinstance(scalers, List):

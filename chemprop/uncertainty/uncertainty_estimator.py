@@ -51,9 +51,7 @@ class UncertaintyEstimator:
 
         if calibrator is not None:
             self.label = calibrator.label
-            cal_preds, cal_unc = calibrator.apply_calibration(
-                uncal_predictor=self.predictor
-            )
+            cal_preds, cal_unc = calibrator.apply_calibration(uncal_predictor=self.predictor)
             return cal_preds, cal_unc
         else:
             uncal_preds = self.predictor.get_uncal_preds()
