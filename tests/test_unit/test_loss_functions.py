@@ -11,6 +11,7 @@ from chemprop.train.loss_functions import (
     evidential_loss,
     get_loss_func,
     normal_mve,
+    quantile_loss_batch,
 )
 
 
@@ -20,7 +21,7 @@ def dataset_type(request):
     return request.param
 
 
-@pytest.fixture(params=["mse", "bounded_mse", "mve", "evidential"])
+@pytest.fixture(params=["mse", "bounded_mse", "mve", "evidential", "quantile_interval"])
 def regression_function(request):
     return request.param
 
@@ -235,3 +236,23 @@ def test_evidential_wrong_dimensions(alphas, targets):
     """
     with pytest.raises(RuntimeError):
         evidential_loss(alphas, targets)
+
+
+
+@pytest.mark.parametrize(
+    "preds,targets,quantiles,expected_loss",
+    [(
+        torch.tensor([0, 0.5, 1], dtype=float),
+        torch.tensor([0, 0, 0], dtype=float),
+        torch.tensor([0.25, 0.5, 0.75], dtype=float),
+        [0, 0.25, 0.25],
+    )]
+)
+def test_quantile(preds, targets, quantiles, expected_loss):
+    """
+    Test on the evidential loss function for regression.
+    Note these values were not hand derived, just testing for
+    dimensional consistency.
+    """
+    loss = quantile_loss_batch(preds, targets, quantiles)
+    np.testing.assert_array_almost_equal(loss, expected_loss, decimal=4)
