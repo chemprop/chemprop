@@ -141,6 +141,9 @@ def mcc_multiclass_loss(
     )
     p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
     t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
+    if (s ** 2 == p2) or (s ** 2 == t2):
+        raise ValueError("All predictions or all targets in this batch belong to the same class. This will result in an MCC of Inf, so training cannot continue. \
+Please choose a different loss function.")
     loss = 1 - (c * s - pt) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
     return loss
 
