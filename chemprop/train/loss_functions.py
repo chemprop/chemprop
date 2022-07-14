@@ -127,24 +127,31 @@ def mcc_multiclass_loss(
     :param mask: A tensor with boolean values indicating whether the loss for this prediction is considered in the gradient descent with shape(batch_size).
     :return: A tensor value for the loss.
     """
-    # targets shape (batch)
-    # preds shape(batch, classes)
     torch_device = predictions.device
     mask = mask.unsqueeze(1)
+
     bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
-    c = torch.sum(predictions * bin_targets * data_weights * mask)
-    s = torch.sum(predictions * data_weights * mask)
-    pt = torch.sum(
-        torch.sum(predictions * data_weights * mask, axis=0)
-        * torch.sum(bin_targets * data_weights * mask, axis=0)
-    )
-    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
-    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
-    if (s ** 2 == p2) or (s ** 2 == t2):
-        raise ValueError("All predictions or all targets in this batch belong to the same class. This will result in an MCC of Inf, so training cannot continue. \
-Please choose a different loss function.")
-    loss = 1 - (c * s - pt) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
+
+    pred_classes = predictions.argmax(dim=1)
+    bin_preds = torch.zeros_like(predictions, device=torch_device)
+    bin_preds[torch.arange(predictions.shape[0]), pred_classes] = 1
+
+    t_sum = torch.sum(bin_targets * data_weights * mask, axis=0)  # number of times each class truly occurred
+    p_sum = torch.sum(bin_preds * data_weights * mask, axis=0)  # number of times each class was predicted
+
+    n_correct = torch.sum(bin_preds * bin_targets * data_weights * mask)  # total number of samples correctly predicted
+    n_samples = torch.sum(predictions * data_weights * mask)  # total number of samples
+
+    cov_ytyp = n_correct * n_samples - torch.dot(p_sum, t_sum)
+    cov_ypyp = n_samples ** 2 - torch.dot(p_sum, p_sum)
+    cov_ytyt = n_samples ** 2 - torch.dot(t_sum, t_sum)
+
+    if cov_ypyp * cov_ytyt == 0:
+        loss = torch.tensor(0.0, dtype=torch.float64)
+    else:
+        loss = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
+        
     return loss
 
 
