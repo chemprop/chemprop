@@ -133,18 +133,20 @@ def mcc_multiclass_loss(
     bin_preds = torch.zeros_like(predictions, device=torch_device)
     bin_preds[:len(predictions), pred_classes] = 1
 
-    t_sum = torch.sum(bin_targets * data_weights * mask, axis=0)  # number of times each class truly occurred
-    p_sum = torch.sum(bin_preds * data_weights * mask, axis=0)  # number of times each class was predicted
+    masked_data_weights = data_weights * mask
 
-    n_correct = torch.sum(bin_preds * bin_targets * data_weights * mask)  # total number of samples correctly predicted
-    n_samples = torch.sum(predictions * data_weights * mask)  # total number of samples
+    t_sum = torch.sum(bin_targets * masked_data_weights, axis=0)  # number of times each class truly occurred
+    p_sum = torch.sum(bin_preds * masked_data_weights, axis=0)  # number of times each class was predicted
+
+    n_correct = torch.sum(bin_preds * bin_targets * masked_data_weights)  # total number of samples correctly predicted
+    n_samples = torch.sum(predictions * masked_data_weights)  # total number of samples
 
     cov_ytyp = n_correct * n_samples - torch.dot(p_sum, t_sum)
     cov_ypyp = n_samples**2 - torch.dot(p_sum, p_sum)
     cov_ytyt = n_samples**2 - torch.dot(t_sum, t_sum)
 
     if cov_ypyp * cov_ytyt == 0:
-        loss = torch.tensor(0.0, dtype=torch.float64)
+        loss = torch.tensor(0.0, dtype=torch.float)
     else:
         loss = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
 
