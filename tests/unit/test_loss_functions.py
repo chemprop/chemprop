@@ -5,13 +5,25 @@ import numpy as np
 import torch
 import pytest
 
-from chemprop.train.loss_functions import (
+import sys
+sys.path.append("/lrlhps/users/l031729/repo/chemprop/chemprop/train")
+from loss_functions import (
     bounded_mse_loss,
     dirichlet_class_loss,
     evidential_loss,
     get_loss_func,
+    mcc_multiclass_loss,
     normal_mve,
 )
+
+# from chemprop.train.loss_functions import (
+#     bounded_mse_loss,
+#     dirichlet_class_loss,
+#     evidential_loss,
+#     get_loss_func,
+#     mcc_multiclass_loss,
+#     normal_mve,
+# )
 
 
 # Fixtures
@@ -235,3 +247,91 @@ def test_evidential_wrong_dimensions(alphas, targets):
     """
     with pytest.raises(RuntimeError):
         evidential_loss(alphas, targets)
+
+
+@pytest.mark.parametrize(
+    "predictions,targets,data_weights,mask",
+    [
+        (
+            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor([0, 0, 0], dtype=int),
+            torch.tensor([[1], [1], [1]], dtype=float),
+            torch.tensor([True, True, True], dtype=bool),
+        ),
+        (
+            torch.tensor([[0.8, 0.1, 0.1], [0.7, 0.2, 0.1], [0.6, 0.3, 0.1]], dtype=float),
+            torch.tensor([1, 2, 0], dtype=int),
+            torch.tensor([[1], [1], [1]], dtype=float),
+            torch.tensor([True, True, True], dtype=bool),
+        ),
+    ]
+)
+def test_multiclass_mcc_inf(predictions, targets, data_weights, mask):
+    """
+    Test on the multiclass MCC loss function for cases
+    where all predictions or targets in a batch are
+    the same (loss formula is Inf, but should return 0,
+    following sklearn convention).
+    """
+    loss = mcc_multiclass_loss(predictions, targets, data_weights, mask)
+    np.testing.assert_almost_equal(loss.item(), 0.0)
+
+
+@pytest.mark.parametrize(
+    "predictions,targets,data_weights,mask,expected_loss",
+    [
+        (
+            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor([2, 0, 2], dtype=int),
+            torch.tensor([[1], [1], [1]], dtype=float),
+            torch.tensor([True, True, True], dtype=bool),
+            0.6123724356957946,
+        ),
+    ]
+)
+def test_multiclass_mcc(predictions, targets, data_weights, mask, expected_loss):
+    """
+    Test the multiclass MCC loss function by comparing to sklearn's result.
+    """
+    loss = mcc_multiclass_loss(predictions, targets, data_weights, mask)
+    np.testing.assert_almost_equal(loss.item(), expected_loss)
+
+
+@pytest.mark.parametrize(
+    "predictions,targets,data_weights,mask,expected_loss",
+    [
+        (
+            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor([2, 0, 2], dtype=int),
+            torch.tensor([[0.5], [1], [1.5]], dtype=float),
+            torch.tensor([True, True, True], dtype=bool),
+            0.7462025072446364,
+        ),
+    ]
+)
+def test_multiclass_mcc_sample_weights(predictions, targets, data_weights, mask, expected_loss):
+    """
+    Test the multiclass MCC loss function with sample weights by comparing to sklearn's result.
+    """
+    loss = mcc_multiclass_loss(predictions, targets, data_weights, mask)
+    np.testing.assert_almost_equal(loss.item(), expected_loss)
+
+
+@pytest.mark.parametrize(
+    "predictions,targets,data_weights,mask,expected_loss",
+    [
+        (
+            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor([2, 0, 2], dtype=int),
+            torch.tensor([[1], [1], [1]], dtype=float),
+            torch.tensor([False, True, True], dtype=bool),
+            1.0,
+        ),
+    ]
+)
+def test_multiclass_mcc_mask(predictions, targets, data_weights, mask, expected_loss):
+    """
+    Test the multiclass MCC loss function with sample weights by comparing to sklearn's result.
+    """
+    loss = mcc_multiclass_loss(predictions, targets, data_weights, mask)
+    np.testing.assert_almost_equal(loss.item(), expected_loss)
