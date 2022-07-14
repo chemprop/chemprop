@@ -48,7 +48,7 @@ def test_get_regression_function(regression_function):
     """
     args = SimpleNamespace(
         loss_function=regression_function,
-        dataset_type='regression',
+        dataset_type="regression",
     )
     assert get_loss_func(args)
 
@@ -59,7 +59,7 @@ def test_get_class_function(classification_function):
     """
     args = SimpleNamespace(
         loss_function=classification_function,
-        dataset_type='classification',
+        dataset_type="classification",
     )
     assert get_loss_func(args)
 
@@ -70,7 +70,7 @@ def test_get_multiclass_function(multiclass_function):
     """
     args = SimpleNamespace(
         loss_function=multiclass_function,
-        dataset_type='multiclass',
+        dataset_type="multiclass",
     )
     assert get_loss_func(args)
 
@@ -81,7 +81,7 @@ def test_get_spectra_function(spectra_function):
     """
     args = SimpleNamespace(
         loss_function=spectra_function,
-        dataset_type='spectra',
+        dataset_type="spectra",
     )
     assert get_loss_func(args)
 
@@ -91,9 +91,7 @@ def test_get_unsupported_function(dataset_type):
     Tests the error triggering for unsupported loss functions in get_loss_func.
     """
     with pytest.raises(ValueError):
-        args = SimpleNamespace(
-            dataset_type=dataset_type, loss_function="dummy_loss"
-        )
+        args = SimpleNamespace(dataset_type=dataset_type, loss_function="dummy_loss")
         get_loss_func(args=args)
 
 
@@ -105,23 +103,23 @@ def test_get_unsupported_function(dataset_type):
             torch.zeros([2, 2], dtype=float),
             torch.zeros([2, 2], dtype=bool),
             torch.zeros([2, 2], dtype=bool),
-            15
+            15,
         ),
         (
             torch.tensor([[-3, 2], [1, -1]], dtype=float),
             torch.zeros([2, 2], dtype=float),
             torch.zeros([2, 2], dtype=bool),
             torch.ones([2, 2], dtype=bool),
-            10
+            10,
         ),
         (
             torch.tensor([[-3, 2], [1, -1]], dtype=float),
             torch.zeros([2, 2], dtype=float),
             torch.ones([2, 2], dtype=bool),
             torch.zeros([2, 2], dtype=bool),
-            5
+            5,
         ),
-    ]
+    ],
 )
 def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
     """
@@ -133,11 +131,13 @@ def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
 
 @pytest.mark.parametrize(
     "preds,targets,likelihood",
-    [(
-        torch.tensor([[0, 1]], dtype=float),
-        torch.zeros([1, 1], dtype=float),
-        [[0.3989]],
-    )]
+    [
+        (
+            torch.tensor([[0, 1]], dtype=float),
+            torch.zeros([1, 1], dtype=float),
+            [[0.3989]],
+        )
+    ],
 )
 def test_mve(preds, targets, likelihood):
     """
@@ -151,19 +151,9 @@ def test_mve(preds, targets, likelihood):
 @pytest.mark.parametrize(
     "alphas,target_labels,lam,expected_loss",
     [
-        (
-            torch.tensor([[2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0,
-            [[0.6]]
-        ),
-        (
-            torch.tensor([[2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0.2,
-            [[0.63862943]]
-        )
-    ]
+        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0, [[0.6]]),
+        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0.2, [[0.63862943]]),
+    ],
 )
 def test_dirichlet(alphas, target_labels, lam, expected_loss):
     """
@@ -182,7 +172,7 @@ def test_dirichlet(alphas, target_labels, lam, expected_loss):
             torch.ones([1, 1], dtype=float),
             torch.ones([1, 1], dtype=float),
         ),
-    ]
+    ],
 )
 def test_dirichlet_wrong_dimensions(alphas, target_labels):
     """
@@ -196,19 +186,9 @@ def test_dirichlet_wrong_dimensions(alphas, target_labels):
 @pytest.mark.parametrize(
     "alphas,targets,lam,expected_loss",
     [
-        (
-            torch.tensor([[2, 2, 2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0,
-            [[1.56893861]]
-        ),
-        (
-            torch.tensor([[2, 2, 2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0.2,
-            [[2.768938541]]
-        )
-    ]
+        (torch.tensor([[2, 2, 2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0, [[1.56893861]]),
+        (torch.tensor([[2, 2, 2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0.2, [[2.768938541]]),
+    ],
 )
 def test_evidential(alphas, targets, lam, expected_loss):
     """
@@ -227,7 +207,7 @@ def test_evidential(alphas, targets, lam, expected_loss):
             torch.ones([2, 2], dtype=float),
             torch.ones([2, 2], dtype=float),
         ),
-    ]
+    ],
 )
 def test_evidential_wrong_dimensions(alphas, targets):
     """
@@ -253,7 +233,7 @@ def test_evidential_wrong_dimensions(alphas, targets):
             torch.tensor([[1], [1], [1]], dtype=float),
             torch.tensor([True, True, True], dtype=bool),
         ),
-    ]
+    ],
 )
 def test_multiclass_mcc_inf(predictions, targets, data_weights, mask):
     """
@@ -276,7 +256,7 @@ def test_multiclass_mcc_inf(predictions, targets, data_weights, mask):
             torch.tensor([True, True, True], dtype=bool),
             0.6123724356957946,
         ),
-    ]
+    ],
 )
 def test_multiclass_mcc(predictions, targets, data_weights, mask, expected_loss):
     """
@@ -296,7 +276,7 @@ def test_multiclass_mcc(predictions, targets, data_weights, mask, expected_loss)
             torch.tensor([True, True, True], dtype=bool),
             0.7462025072446364,
         ),
-    ]
+    ],
 )
 def test_multiclass_mcc_sample_weights(predictions, targets, data_weights, mask, expected_loss):
     """
@@ -316,7 +296,7 @@ def test_multiclass_mcc_sample_weights(predictions, targets, data_weights, mask,
             torch.tensor([False, True, True], dtype=bool),
             1.0,
         ),
-    ]
+    ],
 )
 def test_multiclass_mcc_mask(predictions, targets, data_weights, mask, expected_loss):
     """
