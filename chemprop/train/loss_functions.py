@@ -127,11 +127,11 @@ def mcc_multiclass_loss(
     mask = mask.unsqueeze(1)
 
     bin_targets = torch.zeros_like(predictions, device=torch_device)
-    bin_targets[torch.arange(predictions.shape[0]), targets] = 1
+    bin_targets[:len(predictions), targets] = 1
 
     pred_classes = predictions.argmax(dim=1)
     bin_preds = torch.zeros_like(predictions, device=torch_device)
-    bin_preds[torch.arange(predictions.shape[0]), pred_classes] = 1
+    bin_preds[:len(predictions), pred_classes] = 1
 
     t_sum = torch.sum(bin_targets * data_weights * mask, axis=0)  # number of times each class truly occurred
     p_sum = torch.sum(bin_preds * data_weights * mask, axis=0)  # number of times each class was predicted
