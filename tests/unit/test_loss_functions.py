@@ -5,9 +5,7 @@ import numpy as np
 import torch
 import pytest
 
-import sys
-sys.path.append("/lrlhps/users/l031729/repo/chemprop/chemprop/train")
-from loss_functions import (
+from chemprop.train.loss_functions import (
     bounded_mse_loss,
     dirichlet_class_loss,
     evidential_loss,
@@ -15,15 +13,6 @@ from loss_functions import (
     mcc_multiclass_loss,
     normal_mve,
 )
-
-# from chemprop.train.loss_functions import (
-#     bounded_mse_loss,
-#     dirichlet_class_loss,
-#     evidential_loss,
-#     get_loss_func,
-#     mcc_multiclass_loss,
-#     normal_mve,
-# )
 
 
 # Fixtures
