@@ -68,9 +68,7 @@ def bounded_mse_loss(
     :param greater_than_target: A tensor with boolean values indicating whether the target is a greater-than inequality.
     :return: A tensor containing loss values of shape(batch_size, tasks).
     """
-    predictions = torch.where(
-        torch.logical_and(predictions < targets, less_than_target), targets, predictions
-    )
+    predictions = torch.where(torch.logical_and(predictions < targets, less_than_target), targets, predictions)
 
     predictions = torch.where(
         torch.logical_and(predictions > targets, greater_than_target),
@@ -261,7 +259,7 @@ def dirichlet_multiclass_loss(alphas, target_labels, lam=0):
 def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     """
     Use Evidential Learning Dirichlet loss from Sensoy et al. This function follows
-    after the classification and multiclass specific functions that reshape the 
+    after the classification and multiclass specific functions that reshape the
     alpha inputs and create one-hot targets.
 
     :param alphas: Predicted parameters for Dirichlet in shape(datapoints, task, classes).
