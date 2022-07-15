@@ -127,11 +127,11 @@ def mcc_multiclass_loss(
     mask = mask.unsqueeze(1)
 
     bin_targets = torch.zeros_like(predictions, device=torch_device)
-    bin_targets[:len(predictions), targets] = 1
+    bin_targets[torch.arange(predictions.shape[0]), targets] = 1
 
     pred_classes = predictions.argmax(dim=1)
     bin_preds = torch.zeros_like(predictions, device=torch_device)
-    bin_preds[:len(predictions), pred_classes] = 1
+    bin_preds[torch.arange(predictions.shape[0]), pred_classes] = 1
 
     masked_data_weights = data_weights * mask
 
