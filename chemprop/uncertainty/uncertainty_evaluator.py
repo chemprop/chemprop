@@ -398,6 +398,109 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         return spearman_coeffs
 
 
+class ConformalRegressionEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal regression intervals.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal Regression Evaluator is only for regression dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]], # shape (data, tasks)
+        preds: List[List[float]],
+        uncertainties: List[List[float]], # shape (data, 2*tasks)
+        mask: List[List[bool]],
+    ):
+        targets = np.array(targets)
+        uncertainties = np.array(uncertainties)
+        num_tasks = targets.shape[1]
+        results = []
+
+        for task_id in range(num_tasks):
+            unc_task_id_lower = uncertainties[:, task_id]
+            unc_task_id_upper = uncertainties[:, task_id + num_tasks]
+            targets_task_id = targets[:, task_id]
+            task_results = np.logical_and(unc_task_id_lower <= targets_task_id, targets_task_id <= unc_task_id_upper)
+            results.append(task_results.sum() / task_results.shape[0])
+
+        return results
+
+
+class ConformalMulticlassEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal prediction on multiclass datasets.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "multiclass":
+            raise ValueError(
+                "Conformal Multiclass Evaluator is only for multiclass dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]], # shape(data, tasks)
+        preds: List[List[float]], # shape(data, tasks, num_classes)
+        uncertainties: List[List[float]], # shape(data, tasks, num_classes)
+        mask: List[List[bool]],
+    ):
+        targets = np.array(targets, dtype=int)
+        uncertainties = np.array(uncertainties)
+        num_tasks = targets.shape[1]
+        results = []
+
+        for task_id in range(num_tasks):
+            task_results = np.take_along_axis(
+                uncertainties[:, task_id], targets[:, task_id].reshape(-1, 1), axis=1
+            ).squeeze(1)
+            results.append(task_results.sum() / task_results.shape[0])
+
+        return results
+
+
+class ConformalMultilabelEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal prediction on multilabel datasets.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "classification":
+            raise ValueError(
+                "Conformal Multilabel Evaluator is only for multiclass dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]], # shape(data, tasks)
+        preds: List[List[float]], # shape(data, tasks, num_classes)
+        uncertainties: List[List[float]], # shape(data, tasks, num_classes)
+        mask: List[List[bool]],
+    ):
+        targets = np.array(targets, dtype=float)
+        targets = np.nan_to_num(targets, nan=0)
+        print(targets)
+        uncertainties = np.array(uncertainties)
+        num_tasks = targets.shape[1]
+        results = []
+
+        for task_id in range(num_tasks):
+            unc_task_id_in = uncertainties[:, task_id]
+            unc_task_id_out = uncertainties[:, task_id + num_tasks]
+            targets_task_id = targets[:, task_id]
+            task_results = np.logical_and(unc_task_id_in <= targets_task_id, targets_task_id <= unc_task_id_out)
+            results.append(task_results.sum() / task_results.shape[0])
+
+        return results
+
+
 def build_uncertainty_evaluator(
     evaluation_method: str,
     calibration_method: str,
@@ -420,6 +523,11 @@ def build_uncertainty_evaluator(
         "miscalibration_area": CalibrationAreaEvaluator,
         "ence": ExpectedNormalizedErrorEvaluator,
         "spearman": SpearmanEvaluator,
+        "conformal_coverage": {
+            "regression": ConformalRegressionEvaluator,
+            "multiclass": ConformalMulticlassEvaluator,
+            "classification": ConformalMultilabelEvaluator,
+        }[dataset_type],
     }
 
     classification_metrics = [

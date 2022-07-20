@@ -776,7 +776,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         targets = np.array(self.calibration_data.targets(), dtype=int)  # shape(data, tasks)
         mask = ~np.isnan(targets)
         targets = np.nan_to_num(targets)
-        num_data, self.num_task, self.num_classes = uncal_preds.shape[:3]
+        num_data, self.num_tasks, self.num_classes = uncal_preds.shape[:3]
 
         all_scores = self.nonconformity_scores(uncal_preds)
         self.qhats = []

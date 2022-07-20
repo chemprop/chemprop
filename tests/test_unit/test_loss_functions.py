@@ -241,18 +241,36 @@ def test_evidential_wrong_dimensions(alphas, targets):
 
 @pytest.mark.parametrize(
     "preds,targets,quantiles,expected_loss",
-    [(
-        torch.tensor([0, 0.5, 1], dtype=float),
-        torch.tensor([0, 0, 0], dtype=float),
-        torch.tensor([0.25, 0.5, 0.75], dtype=float),
-        [0, 0.25, 0.25],
-    )]
+    [
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 0, 0], dtype=float),
+            torch.tensor([0.25, 0.5, 0.75], dtype=float),
+            [0, 0.25, 0.25],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0.5, 0.5, 0.5], dtype=float),
+            torch.tensor([0, 1, 1], dtype=float),
+            [0, 0, 0],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0.5, 0.5, 0.5], dtype=float),
+            torch.tensor([1, 0, 0], dtype=float),
+            [0.5, 0, 0.5],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 1, 1], dtype=float),
+            [0, 0, 0],
+        ),
+    ]
 )
 def test_quantile(preds, targets, quantiles, expected_loss):
     """
     Test on the evidential loss function for regression.
-    Note these values were not hand derived, just testing for
-    dimensional consistency.
     """
     loss = quantile_loss_batch(preds, targets, quantiles)
     np.testing.assert_array_almost_equal(loss, expected_loss, decimal=4)
