@@ -46,10 +46,7 @@ def test_get_regression_function(regression_function):
     """
     Tests the get_loss_func function for regression.
     """
-    args = SimpleNamespace(
-        loss_function=regression_function,
-        dataset_type='regression',
-    )
+    args = SimpleNamespace(loss_function=regression_function, dataset_type="regression")
     assert get_loss_func(args)
 
 
@@ -57,10 +54,7 @@ def test_get_class_function(classification_function):
     """
     Tests the get_loss_func function for classification.
     """
-    args = SimpleNamespace(
-        loss_function=classification_function,
-        dataset_type='classification',
-    )
+    args = SimpleNamespace(loss_function=classification_function, dataset_type="classification")
     assert get_loss_func(args)
 
 
@@ -68,10 +62,7 @@ def test_get_multiclass_function(multiclass_function):
     """
     Tests the get_loss_func function for multiclass.
     """
-    args = SimpleNamespace(
-        loss_function=multiclass_function,
-        dataset_type='multiclass',
-    )
+    args = SimpleNamespace(loss_function=multiclass_function, dataset_type="multiclass")
     assert get_loss_func(args)
 
 
@@ -79,10 +70,7 @@ def test_get_spectra_function(spectra_function):
     """
     Tests the get_loss_func function for spectra.
     """
-    args = SimpleNamespace(
-        loss_function=spectra_function,
-        dataset_type='spectra',
-    )
+    args = SimpleNamespace(loss_function=spectra_function, dataset_type="spectra")
     assert get_loss_func(args)
 
 
@@ -91,9 +79,7 @@ def test_get_unsupported_function(dataset_type):
     Tests the error triggering for unsupported loss functions in get_loss_func.
     """
     with pytest.raises(ValueError):
-        args = SimpleNamespace(
-            dataset_type=dataset_type, loss_function="dummy_loss"
-        )
+        args = SimpleNamespace(dataset_type=dataset_type, loss_function="dummy_loss")
         get_loss_func(args=args)
 
 
@@ -105,23 +91,23 @@ def test_get_unsupported_function(dataset_type):
             torch.zeros([2, 2], dtype=float),
             torch.zeros([2, 2], dtype=bool),
             torch.zeros([2, 2], dtype=bool),
-            15
+            15,
         ),
         (
             torch.tensor([[-3, 2], [1, -1]], dtype=float),
             torch.zeros([2, 2], dtype=float),
             torch.zeros([2, 2], dtype=bool),
             torch.ones([2, 2], dtype=bool),
-            10
+            10,
         ),
         (
             torch.tensor([[-3, 2], [1, -1]], dtype=float),
             torch.zeros([2, 2], dtype=float),
             torch.ones([2, 2], dtype=bool),
             torch.zeros([2, 2], dtype=bool),
-            5
+            5,
         ),
-    ]
+    ],
 )
 def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
     """
@@ -133,11 +119,7 @@ def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
 
 @pytest.mark.parametrize(
     "preds,targets,likelihood",
-    [(
-        torch.tensor([[0, 1]], dtype=float),
-        torch.zeros([1, 1], dtype=float),
-        [[0.3989]],
-    )]
+    [(torch.tensor([[0, 1]], dtype=float), torch.zeros([1, 1], dtype=float), [[0.3989]])],
 )
 def test_mve(preds, targets, likelihood):
     """
@@ -151,19 +133,9 @@ def test_mve(preds, targets, likelihood):
 @pytest.mark.parametrize(
     "alphas,target_labels,lam,expected_loss",
     [
-        (
-            torch.tensor([[2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0,
-            [[0.6]]
-        ),
-        (
-            torch.tensor([[2, 2]], dtype=float),
-            torch.ones([1, 1], dtype=float),
-            0.2,
-            [[0.63862943]]
-        )
-    ]
+        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0, [[0.6]]),
+        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0.2, [[0.63862943]]),
+    ],
 )
 def test_dirichlet(alphas, target_labels, lam, expected_loss):
     """
@@ -176,13 +148,7 @@ def test_dirichlet(alphas, target_labels, lam, expected_loss):
 
 
 @pytest.mark.parametrize(
-    "alphas,target_labels",
-    [
-        (
-            torch.ones([1, 1], dtype=float),
-            torch.ones([1, 1], dtype=float),
-        ),
-    ]
+    "alphas,target_labels", [(torch.ones([1, 1], dtype=float), torch.ones([1, 1], dtype=float))]
 )
 def test_dirichlet_wrong_dimensions(alphas, target_labels):
     """
@@ -200,15 +166,15 @@ def test_dirichlet_wrong_dimensions(alphas, target_labels):
             torch.tensor([[2, 2, 2, 2]], dtype=float),
             torch.ones([1, 1], dtype=float),
             0,
-            [[1.56893861]]
+            [[1.56893861]],
         ),
         (
             torch.tensor([[2, 2, 2, 2]], dtype=float),
             torch.ones([1, 1], dtype=float),
             0.2,
-            [[2.768938541]]
-        )
-    ]
+            [[2.768938541]],
+        ),
+    ],
 )
 def test_evidential(alphas, targets, lam, expected_loss):
     """
@@ -221,13 +187,7 @@ def test_evidential(alphas, targets, lam, expected_loss):
 
 
 @pytest.mark.parametrize(
-    "alphas,targets",
-    [
-        (
-            torch.ones([2, 2], dtype=float),
-            torch.ones([2, 2], dtype=float),
-        ),
-    ]
+    "alphas,targets", [(torch.ones([2, 2], dtype=float), torch.ones([2, 2], dtype=float))]
 )
 def test_evidential_wrong_dimensions(alphas, targets):
     """
@@ -236,7 +196,6 @@ def test_evidential_wrong_dimensions(alphas, targets):
     """
     with pytest.raises(RuntimeError):
         evidential_loss(alphas, targets)
-
 
 
 @pytest.mark.parametrize(
@@ -266,7 +225,7 @@ def test_evidential_wrong_dimensions(alphas, targets):
             torch.tensor([0, 1, 1], dtype=float),
             [0, 0, 0],
         ),
-    ]
+    ],
 )
 def test_quantile(preds, targets, quantiles, expected_loss):
     """
