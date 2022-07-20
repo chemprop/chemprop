@@ -70,9 +70,7 @@ def bounded_mse_loss(
     :param greater_than_target: A tensor with boolean values indicating whether the target is a greater-than inequality.
     :return: A tensor containing loss values of shape(batch_size, tasks).
     """
-    predictions = torch.where(
-        torch.logical_and(predictions < targets, less_than_target), targets, predictions
-    )
+    predictions = torch.where(torch.logical_and(predictions < targets, less_than_target), targets, predictions)
 
     predictions = torch.where(
         torch.logical_and(predictions > targets, greater_than_target), targets, predictions
@@ -115,21 +113,31 @@ def mcc_multiclass_loss(
     :param mask: A tensor with boolean values indicating whether the loss for this prediction is considered in the gradient descent with shape(batch_size).
     :return: A tensor value for the loss.
     """
-    # targets shape (batch)
-    # preds shape(batch, classes)
     torch_device = predictions.device
     mask = mask.unsqueeze(1)
+
     bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
-    c = torch.sum(predictions * bin_targets * data_weights * mask)
-    s = torch.sum(predictions * data_weights * mask)
-    pt = torch.sum(
-        torch.sum(predictions * data_weights * mask, axis=0)
-        * torch.sum(bin_targets * data_weights * mask, axis=0)
-    )
-    p2 = torch.sum(torch.sum(predictions * data_weights * mask, axis=0) ** 2)
-    t2 = torch.sum(torch.sum(bin_targets * data_weights * mask, axis=0) ** 2)
-    loss = 1 - (c * s - pt) / torch.sqrt((s**2 - p2) * (s**2 - t2))
+    pred_classes = predictions.argmax(dim=1)
+    bin_preds = torch.zeros_like(predictions, device=torch_device)
+    bin_preds[torch.arange(predictions.shape[0]), pred_classes] = 1
+
+    masked_data_weights = data_weights * mask
+
+    t_sum = torch.sum(bin_targets * masked_data_weights, axis=0)  # number of times each class truly occurred
+    p_sum = torch.sum(bin_preds * masked_data_weights, axis=0)  # number of times each class was predicted
+
+    n_correct = torch.sum(bin_preds * bin_targets * masked_data_weights)  # total number of samples correctly predicted
+    n_samples = torch.sum(predictions * masked_data_weights)  # total number of samples
+
+    cov_ytyp = n_correct * n_samples - torch.dot(p_sum, t_sum)
+    cov_ypyp = n_samples**2 - torch.dot(p_sum, p_sum)
+    cov_ytyt = n_samples**2 - torch.dot(t_sum, t_sum)
+
+    if cov_ypyp * cov_ytyt == 0:
+        loss = torch.tensor(0.0)
+    else:
+        loss = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
     return loss
 
 
@@ -163,12 +171,10 @@ def sid_loss(
 
     # Calculate loss value
     target_spectra = torch.where(mask, target_spectra, one_sub)
-    model_spectra = torch.where(
-        mask, model_spectra, one_sub
-    )  # losses in excluded regions will be zero because log(1/1) = 0.
-    loss = torch.mul(
-        torch.log(torch.div(model_spectra, target_spectra)), model_spectra
-    ) + torch.mul(torch.log(torch.div(target_spectra, model_spectra)), target_spectra)
+    model_spectra = torch.where(mask, model_spectra, one_sub)  # losses in excluded regions will be zero because log(1/1) = 0.
+    loss = torch.mul(torch.log(torch.div(model_spectra, target_spectra)), model_spectra) + torch.mul(
+        torch.log(torch.div(target_spectra, model_spectra)), target_spectra
+    )
 
     return loss
 
@@ -294,11 +300,7 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     dg_S_alpha = torch.digamma(S_alpha)
 
     # KL
-    KL = (
-        ln_alpha
-        + ln_beta
-        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
-    )
+    KL = ln_alpha + ln_beta + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
 
     KL = lam * KL
 
