@@ -518,6 +518,7 @@ class TrainArgs(CommonArgs):
         self._crossval_index_sets = None
         self._task_names = None
         self._quantiles = None
+        self._quantiles_tensor = None
         self._num_tasks = None
         self._features_size = None
         self._train_data_size = None
@@ -587,7 +588,7 @@ class TrainArgs(CommonArgs):
 
     @property
     def quantiles_tensor(self) -> List[float]:
-        """A list of quantiles to be being trained on."""
+        """A list of quantiles to be being trained on as torch tensor."""
         return self._quantiles_tensor
 
     @quantiles_tensor.setter
