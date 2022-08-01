@@ -586,6 +586,15 @@ class TrainArgs(CommonArgs):
         self._quantiles = quantiles
 
     @property
+    def quantiles_tensor(self) -> List[float]:
+        """A list of quantiles to be being trained on."""
+        return self._quantiles_tensor
+
+    @quantiles_tensor.setter
+    def quantiles_tensor(self, quantiles_tensor: List[float]) -> None:
+        self._quantiles_tensor = quantiles_tensor
+
+    @property
     def features_size(self) -> int:
         """The dimensionality of the additional molecule-level features."""
         return self._features_size

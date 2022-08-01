@@ -2,7 +2,6 @@
 *.idea
 *.DS_Store
 *.vscode
-*.csv
 *.pt
 *.json
 *.sqlite3

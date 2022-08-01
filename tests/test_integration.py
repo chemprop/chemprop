@@ -233,7 +233,7 @@ class ChempropTests(TestCase):
             command_line = " ".join(raw_args[1:])
             print(f"python fingerprint.py {command_line}")
             chemprop_fingerprint()
-
+    
     @parameterized.expand(
         [
             ("sklearn_random_forest", "random_forest", "rmse", 1.582733),
@@ -1391,7 +1391,7 @@ class ChempropTests(TestCase):
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
             np.testing.assert_array_almost_equal(evaluation_scores, scores)
-
+    
     @parameterized.expand(
         [
             ([[0.900013]], None, "conformal", "conformal_coverage", "0.1", [], []),
