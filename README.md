@@ -389,7 +389,6 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 * `conformal` Generates a set of possible classes for each prediction such that the true class has probability 1-alpha of falling in the set. The user can control the desired error rate using the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the basic conformal method. (https://arxiv.org/abs/2107.07511)
 * `conformal_adaptive` Generates a set of possible classes for each prediction such that the true class has probability 1-alpha of falling in the set. The user can control the desired error rate using the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the adaptive conformal method. (https://arxiv.org/abs/2107.07511)
 
-
 ### Uncertainty Evaluation Metrics
 
 The performance of uncertainty predictions (calibrated or uncalibrated) as evaluated on the test set using different evaluation metrics as specified with `--evaluation_methods <[methods]>`. Evaluation scores will be saved at the path provided with `--evaluation_scores_path <path.csv>`. If no path is provided to save the scores, then the results will only appear in the output trace. Multiple evaluation methods can be provided and they will be calculated separately for each model task. Evaluation is only available when the target values are provided with the data in `--test_path <path.csv>`. As with the data used in training, evaluation data for multitask models are allowed to have gaps and missing targets in the data.
