@@ -8,9 +8,7 @@ from packaging import version
 from warnings import warn
 
 import torch
-from tap import (
-    Tap,
-)  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+from tap import Tap
 import numpy as np
 
 import chemprop.data.utils
