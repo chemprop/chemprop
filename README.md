@@ -197,11 +197,10 @@ By default, both random and scaffold split the data into 80% train, 10% validati
 ### Loss functions
 
 The loss functions available for training are dependent on the selected dataset type. Loss functions other than the defaults can be selected from the supported options with the argument `--loss_function <function>`.
-* **Regression.** mse (default), bounded_mse, mve (mean-variance estimation, a.k.a. heteroscedastic loss), evidential.
+* **Regression.** mse (default), bounded_mse, mve (mean-variance estimation, a.k.a. heteroscedastic loss), evidential, quantile_interval (Pinball loss, specify margins with `--alpha <float>`).
 * **Classification.** binary_cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient), dirichlet (a.k.a. evidential classification)
 * **Multiclass.** cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
 * **Spectra.** sid (default, spectral information divergence), wasserstein (First-order Wasserstein distance a.k.a. earthmover's distance.)
-* **Quantile Loss.** quantile_interval (Pinball loss, specify margins with `--alpha <float>`.)
 
 The regression loss functions `mve` and `evidential` function by minimizing the negative log likelihood of a predicted uncertainty distribution. If used during training, the uncertainty predictions from these loss functions can be used for uncertainty prediction during prediction tasks.
 ### Metrics
@@ -380,14 +379,17 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 * `tscaling` Similar to zscaling. Assumes that the errors are normally distributed, but accounts for the ensemble size and uncertainty in the sample variance by using a sample-size reduced t-distribution in the negative log likelihood. Works best when errors are mostly due to variability between model instances and not dataset noise or model bias.
 * `zelikman_interval` Assumes that the error distribution is the same for each prediction but scaled by the uncalibrated standard deviation for each. Multiplies the uncalibrated standard deviation by a factor necessary to cover the specified interval of the calibration set. Does not assume a Gaussian distribution. Intended for use with intervals but can return a stdev as well. (https://arxiv.org/abs/2005.12496)
 * `mve_weighting` For use with ensembles of models trained with mve or evidential loss function. Uses a weighted average of the predicted variances to achieve a minimum negative log likelihood of predictions. (https://doi.org/10.1186/s13321-021-00551-x)
-* `conformal_regression` Generates an interval of fixed size for each prediction such that the actual value has probability $1-\alpha$ of falling in the interval. The desired error rate is controlled using the parameter `--alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2107.07511)
-* `conformal_quantile_regression` Generates an interval for each prediction based on quantile regressions of the data. The desired error rate is controlled using the parameter `--alpha <float>` which is set by default to 0.1. The loaded model should output quantile predictions. (The trained model should output $\alpha/2$ and $1-\alpha/2$ quantiles.) Such a model model can be trained with parameters `--loss_function quantile_interval` and `--alpha <float>` where $\alpha$ is the desired error rate. (https://arxiv.org/abs/2107.07511)
+* `conformal_regression` Generates a symmetric interval of fixed size for each prediction such that the actual value has probability $1-\alpha$ of falling in the interval. The desired error rate is controlled using the parameter `--alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2107.07511)
+* `conformal_quantile_regression` Similar to `conformal_regression` but generates an interval of variable size for each prediction based on quantile predictions of the data. The model should be trained with parameters `--loss_function quantile_interval` and `--alpha <float>` where $\alpha$ is the desired error rate. `--alpha <float>`is set by default to 0.1. The trained model will output the $\alpha/2$ and $1-\alpha/2$ quantiles according to pinball loss. (https://arxiv.org/abs/2107.07511)
 
 **Classification**
 * `platt` Uses a linear scaling before the sigmoid function in prediction to minimize the negative log likelihood of the predictions. If the model checkpoint was generated after Chemprop v1.5.0, then a Bayesian correction is applied to account for the class balance in the training set during prediction. Implemented for classification but not multiclass datasets. (https://arxiv.org/abs/1706.04599)
 * `isotonic` Fits an isotonic regression model to the predictions. Prediction outputs are transformed using a stepped histogram-style to match the empirical probability observed in the calibration data. Number and size of the histogram bins are procedurally decided. Histogram bins are wider in the regions of the model output that are less reliable in ordering confidence. Implemented for both classification and multiclass datasets. (https://arxiv.org/abs/1706.04599)
-* `conformal` Generates a set of possible classes for each prediction such that the true class has probability 1-alpha of falling in the set. The user can control the desired error rate using the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the basic conformal method. (https://arxiv.org/abs/2107.07511)
-* `conformal_adaptive` Generates a set of possible classes for each prediction such that the true class has probability 1-alpha of falling in the set. The user can control the desired error rate using the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the adaptive conformal method. (https://arxiv.org/abs/2107.07511)
+* `conformal` Generates a pair of sets of labels $in_set \subset out_set$ such that the true set of labels $S$ satisfies the property $in_set \include S \include out_set$ with probability at least $1-\alpha$. The desired error rate $\alpha$ can be controlled with the parameter `--alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2004.10181)
+
+**Multiclass**
+* `conformal` Generates a set of possible classes for each prediction such that the true class has probability $1-\alpha$ of falling in the set. The desired error rate $\alpha$ can be controlled with the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the basic conformal method. (https://arxiv.org/abs/2107.07511)
+* `conformal_adaptive` Generates a set of possible classes for each prediction such that the true class has probability 1-alpha of falling in the set. The desired error rate $\alpha$ can be controlled with the parameter `--alpha <float>` which is set by default to 0.1. Set generated using the adaptive conformal method. (https://arxiv.org/abs/2107.07511)
 
 
 ### Uncertainty Evaluation Metrics

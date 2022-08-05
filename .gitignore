@@ -2,10 +2,9 @@
 *.idea
 *.DS_Store
 *.vscode
+*.csv
 *.pt
 *.json
 *.sqlite3
 chemprop.egg-info
 docs/build
-conformal/
-test_plan/
