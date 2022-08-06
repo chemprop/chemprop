@@ -360,10 +360,4 @@ def quantile_loss_batch(pred_values: torch.Tensor, targets: torch.Tensor, quanti
 
     error = pred_values - targets
 
-    print("pred_values: ", pred_values.shape)
-    print("targets: ", targets.shape)
-    print("quantiles: ", quantiles.shape)
-    print("error: ", error.shape)
-    print("results: ", torch.max((1 - quantiles) * error, -quantiles * error).shape)
-
     return torch.max((1 - quantiles) * error, -quantiles * error)
