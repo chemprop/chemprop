@@ -62,7 +62,6 @@ def cross_validate(
     args.quantiles = [args.alpha / 2] * (args.num_tasks // 2) + [1 - args.alpha / 2] * (
         args.num_tasks // 2
     )
-    args.quantiles_tensor = torch.tensor(args.quantiles)
 
     # Print command line
     debug("Command line")

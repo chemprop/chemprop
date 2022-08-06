@@ -100,7 +100,6 @@ def train(
         targets = targets.to(torch_device)
         target_weights = target_weights.to(torch_device)
         data_weights = data_weights.to(torch_device)
-        args.quantiles_tensor = args.quantiles_tensor.to(torch_device)
         if args.loss_function == "bounded_mse":
             lt_target_batch = lt_target_batch.to(torch_device)
             gt_target_batch = gt_target_batch.to(torch_device)
@@ -168,8 +167,9 @@ def train(
         elif args.loss_function == "quantile":
             loss = loss_func(preds, targets, args.quantile) * target_weights * data_weights * mask
         elif args.loss_function == "quantile_interval":
+            quantiles_tensor = torch.Tensor(args.quantiles).to_(torch_device)
             loss = (
-                loss_func(preds, targets, args.quantiles_tensor)
+                loss_func(preds, targets, quantiles_tensor)
                 * target_weights
                 * data_weights
                 * mask
