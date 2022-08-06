@@ -446,11 +446,21 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        targets: List[List[float]], # shape(data, tasks)
-        preds: List[List[float]], # shape(data, tasks, num_classes)
-        uncertainties: List[List[float]], # shape(data, tasks, num_classes)
+        targets: List[List[float]],
+        preds: List[List[float]],
+        uncertainties: List[List[float]],
         mask: List[List[bool]],
     ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks, num_classes)
+            uncertainties: shape(data, tasks, num_classes)
+            mask: shape(data, tasks, num_classes)
+
+        Returns:
+            Conformal coverage for each task
+        """
         targets = np.array(targets, dtype=int)
         uncertainties = np.array(uncertainties)
         num_tasks = targets.shape[1]
@@ -474,19 +484,28 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
         super().raise_argument_errors()
         if self.dataset_type != "classification":
             raise ValueError(
-                "Conformal Multilabel Evaluator is only for multiclass dataset types."
+                "Conformal Multilabel Evaluator is only for classification dataset types."
             )
 
     def evaluate(
         self,
-        targets: List[List[float]], # shape(data, tasks)
-        preds: List[List[float]], # shape(data, tasks, num_classes)
-        uncertainties: List[List[float]], # shape(data, tasks, num_classes)
+        targets: List[List[float]],
+        preds: List[List[float]],
+        uncertainties: List[List[float]],
         mask: List[List[bool]],
     ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks, num_classes)
+            uncertainties: shape(data, tasks, num_classes)
+            mask: shape(data, tasks, num_classes)
+
+        Returns:
+            Conformal coverage for each task
+        """
         targets = np.array(targets, dtype=float)
         targets = np.nan_to_num(targets, nan=0)
-        print(targets)
         uncertainties = np.array(uncertainties)
         num_tasks = targets.shape[1]
         results = []

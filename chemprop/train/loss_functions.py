@@ -353,11 +353,17 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     return loss
 
 
-def quantile_loss_batch(pred_values, targets, quantiles):
+def quantile_loss_batch(pred_values: torch.Tensor, targets: torch.Tensor, quantiles: torch.Tensor):
     """
     Batched pinball loss at desired quantiles.
     """
 
-    error = targets - pred_values
+    error = pred_values - targets
 
-    return torch.max((quantiles - 1) * error, quantiles * error)
+    print("pred_values: ", pred_values.shape)
+    print("targets: ", targets.shape)
+    print("quantiles: ", quantiles.shape)
+    print("error: ", error.shape)
+    print("results: ", torch.max((1 - quantiles) * error, -quantiles * error).shape)
+
+    return torch.max((1 - quantiles) * error, -quantiles * error)

@@ -278,7 +278,6 @@ class TrainArgs(CommonArgs):
         "mve",
         "evidential",
         "dirichlet",
-        "quantile",
         "quantile_interval",
     ] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
@@ -482,8 +481,6 @@ class TrainArgs(CommonArgs):
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
     evidential_regularization: float = 0
     """Value used in regularization for evidential loss function. Value used in literature was 1."""
-    quantile: float = 0.5
-    """Quantile for quantile loss"""
     alpha: float = 0.1
     """Target error bounds for quantile interval loss"""
     overwrite_default_atom_features: bool = False
@@ -691,36 +688,11 @@ class TrainArgs(CommonArgs):
             )
 
         for metric in self.metrics:
-            if not any(
-                [
-                    (
-                        self.dataset_type == "classification"
-                        and metric
-                        in ["auc", "prc-auc", "accuracy", "binary_cross_entropy", "f1", "mcc"]
-                    ),
-                    (
-                        self.dataset_type == "regression"
-                        and metric
-                        in [
-                            "rmse",
-                            "mae",
-                            "mse",
-                            "r2",
-                            "bounded_rmse",
-                            "bounded_mae",
-                            "bounded_mse",
-                        ]
-                    ),
-                    (
-                        self.dataset_type == "multiclass"
-                        and metric in ["cross_entropy", "accuracy", "f1", "mcc"]
-                    ),
-                    (self.dataset_type == "spectra" and metric in ["sid", "wasserstein"]),
-                ]
-            ):
-                raise ValueError(
-                    f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".'
-                )
+            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']), 
+                     (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']), 
+                     (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
+                     (self.dataset_type == 'spectra' and metric in ['sid','wasserstein'])]):
+                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
 
         if self.loss_function is None:
             if self.dataset_type == "classification":
@@ -876,30 +848,10 @@ class TrainArgs(CommonArgs):
 
         # Validate features are provided for separate validation or test set for each of the kinds of additional features
         for (features_argument, base_features_path, val_features_path, test_features_path) in [
-            (
-                "`--features_path`",
-                self.features_path,
-                self.separate_val_features_path,
-                self.separate_test_features_path,
-            ),
-            (
-                "`--phase_features_path`",
-                self.phase_features_path,
-                self.separate_val_phase_features_path,
-                self.separate_test_phase_features_path,
-            ),
-            (
-                "`--atom_descriptors_path`",
-                self.atom_descriptors_path,
-                self.separate_val_atom_descriptors_path,
-                self.separate_test_atom_descriptors_path,
-            ),
-            (
-                "`--bond_features_path`",
-                self.bond_features_path,
-                self.separate_val_bond_features_path,
-                self.separate_test_bond_features_path,
-            ),
+            ('`--features_path`', self.features_path, self.separate_val_features_path, self.separate_test_features_path),
+             ('`--phase_features_path`', self.phase_features_path, self.separate_val_phase_features_path, self.separate_test_phase_features_path),
+             ('`--atom_descriptors_path`', self.atom_descriptors_path, self.separate_val_atom_descriptors_path, self.separate_test_atom_descriptors_path),
+             ('`--bond_features_path`', self.bond_features_path, self.separate_val_bond_features_path, self.separate_test_bond_features_path)
         ]:
             if base_features_path is not None:
                 if self.separate_val_path is not None and val_features_path is None:
@@ -1075,22 +1027,10 @@ class PredictArgs(CommonArgs):
 
         # Validate that features provided for the prediction test set are also provided for the calibration set
         for (features_argument, base_features_path, cal_features_path) in [
-            ("`--features_path`", self.features_path, self.calibration_features_path),
-            (
-                "`--phase_features_path`",
-                self.phase_features_path,
-                self.calibration_phase_features_path,
-            ),
-            (
-                "`--atom_descriptors_path`",
-                self.atom_descriptors_path,
-                self.calibration_atom_descriptors_path,
-            ),
-            (
-                "`--bond_features_path`",
-                self.bond_features_path,
-                self.calibration_bond_features_path,
-            ),
+            ('`--features_path`', self.features_path, self.calibration_features_path),
+             ('`--phase_features_path`', self.phase_features_path, self.calibration_phase_features_path),
+             ('`--atom_descriptors_path`', self.atom_descriptors_path, self.calibration_atom_descriptors_path),
+             ('`--bond_features_path`', self.bond_features_path, self.calibration_bond_features_path)
         ]:
             if (
                 base_features_path is not None
