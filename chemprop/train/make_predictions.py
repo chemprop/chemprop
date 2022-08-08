@@ -185,7 +185,7 @@ def predict_and_save(
         dataset_type=args.dataset_type,
         loss_function=args.loss_function,
         uncertainty_dropout_p=args.uncertainty_dropout_p,
-        alpha=args.alpha,
+        conformal_alpha=args.conformal_alpha,
         dropout_sampling_size=args.dropout_sampling_size,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
@@ -480,7 +480,7 @@ def make_predictions(
             dataset_type=args.dataset_type,
             loss_function=args.loss_function,
             uncertainty_dropout_p=args.uncertainty_dropout_p,
-            alpha=args.alpha,
+            conformal_alpha=args.conformal_alpha,
             dropout_sampling_size=args.dropout_sampling_size,
             spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
         )

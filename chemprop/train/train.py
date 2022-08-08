@@ -167,7 +167,7 @@ def train(
         elif args.loss_function == "quantile":
             loss = loss_func(preds, targets, args.quantile) * target_weights * data_weights * mask
         elif args.loss_function == "quantile_interval":
-            quantiles_tensor = torch.Tensor(args.quantiles).to_(torch_device)
+            quantiles_tensor = torch.Tensor(args.quantiles).to(torch_device)
             loss = (
                 loss_func(preds, targets, quantiles_tensor)
                 * target_weights

@@ -481,7 +481,7 @@ class TrainArgs(CommonArgs):
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
     evidential_regularization: float = 0
     """Value used in regularization for evidential loss function. Value used in literature was 1."""
-    alpha: float = 0.1
+    quantile_loss_alpha: float = 0.1
     """Target error bounds for quantile interval loss"""
     overwrite_default_atom_features: bool = False
     """
@@ -936,7 +936,7 @@ class PredictArgs(CommonArgs):
     """Location to save the results of uncertainty evaluations."""
     uncertainty_dropout_p: float = 0.1
     """The probability to use for Monte Carlo dropout uncertainty estimation."""
-    alpha: float = 0.1
+    conformal_alpha: float = 0.1
     """Target error rate for conformal prediction."""
     dropout_sampling_size: int = 10
     """The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training."""

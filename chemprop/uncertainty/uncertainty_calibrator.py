@@ -37,7 +37,7 @@ class UncertaintyCalibrator(ABC):
         dataset_type: str,
         loss_function: str,
         uncertainty_dropout_p: float,
-        alpha: float,
+        conformal_alpha: float,
         dropout_sampling_size: int,
         spectra_phase_mask: List[List[bool]],
     ):
@@ -50,7 +50,7 @@ class UncertaintyCalibrator(ABC):
         self.calibration_method = calibration_method
         self.loss_function = loss_function
         self.num_models = num_models
-        self.alpha = alpha
+        self.conformal_alpha = conformal_alpha
 
         self.raise_argument_errors()
 
@@ -64,7 +64,7 @@ class UncertaintyCalibrator(ABC):
             loss_function=loss_function,
             uncertainty_method=uncertainty_method,
             uncertainty_dropout_p=uncertainty_dropout_p,
-            alpha=alpha,
+            conformal_alpha=conformal_alpha,
             dropout_sampling_size=dropout_sampling_size,
             individual_ensemble_predictions=False,
             spectra_phase_mask=spectra_phase_mask,
@@ -788,7 +788,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
             task_scores = task_scores[mask[:, task_id]]  # shape(valid_data)
             task_scores = np.append(task_scores, np.inf)
             task_scores = np.sort(task_scores)
-            qhat = np.quantile(task_scores, 1 - self.alpha / self.num_tasks)
+            qhat = np.quantile(task_scores, 1 - self.conformal_alpha / self.num_tasks)
             self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
@@ -898,8 +898,8 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         )
         calibration_scores_out = np.max(masked_scores_out, axis=1)
 
-        self.tout = np.quantile(calibration_scores_out, 1 - self.alpha / 2)
-        self.tin = np.quantile(calibration_scores_in, self.alpha / 2)
+        self.tout = np.quantile(calibration_scores_out, 1 - self.conformal_alpha / 2)
+        self.tin = np.quantile(calibration_scores_in, self.conformal_alpha / 2)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
@@ -961,7 +961,7 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
             )
             calibration_scores = np.append(calibration_scores, np.inf)
             calibration_scores = np.sort(np.absolute(calibration_scores))
-            self.qhats.append(np.quantile(calibration_scores, 1 - self.alpha / self.num_tasks))
+            self.qhats.append(np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks))
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = self.get_preds(uncal_predictor)  # shape(data, task)
@@ -1018,7 +1018,7 @@ def build_uncertainty_calibrator(
     dataset_type: str,
     loss_function: str,
     uncertainty_dropout_p: float,
-    alpha: float,
+    conformal_alpha: float,
     dropout_sampling_size: int,
     spectra_phase_mask: List[List[bool]],
 ) -> UncertaintyCalibrator:
@@ -1072,7 +1072,7 @@ def build_uncertainty_calibrator(
             dataset_type=dataset_type,
             loss_function=loss_function,
             uncertainty_dropout_p=uncertainty_dropout_p,
-            alpha=alpha,
+            conformal_alpha=conformal_alpha,
             dropout_sampling_size=dropout_sampling_size,
             spectra_phase_mask=spectra_phase_mask,
         )

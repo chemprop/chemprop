@@ -59,7 +59,7 @@ def cross_validate(
         loss_function=args.loss_function,
     )
 
-    args.quantiles = [args.alpha / 2] * (args.num_tasks // 2) + [1 - args.alpha / 2] * (
+    args.quantiles = [args.quantile_loss_alpha / 2] * (args.num_tasks // 2) + [1 - args.quantile_loss_alpha / 2] * (
         args.num_tasks // 2
     )
 

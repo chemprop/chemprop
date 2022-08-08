@@ -1356,7 +1356,7 @@ class ChempropTests(TestCase):
         uncertainty_method: str,
         calibration_method: str,
         evaluation_methods: str,
-        alpha: str,
+        conformal_alpha: str,
         train_flags: List[str] = None,
         predict_flags: List[str] = None,
     ):
@@ -1373,8 +1373,8 @@ class ChempropTests(TestCase):
             predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
             if uncertainty_method is not None:
                 predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if alpha is not None:
-                predict_flags.extend(["--alpha", alpha])
+            if conformal_alpha is not None:
+                predict_flags.extend(["--conformal_alpha", conformal_alpha])
             if calibration_method is not None:
                 predict_flags.extend(
                     ["--calibration_method", calibration_method, "--calibration_path", test_path]
@@ -1404,7 +1404,7 @@ class ChempropTests(TestCase):
         uncertainty_method: str,
         calibration_method: str,
         evaluation_methods: str,
-        alpha: str,
+        conformal_alpha: str,
         train_flags: List[str] = None,
         predict_flags: List[str] = None,
     ):
@@ -1424,8 +1424,8 @@ class ChempropTests(TestCase):
             predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
             if uncertainty_method is not None:
                 predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if alpha is not None:
-                predict_flags.extend(["--alpha", alpha])
+            if conformal_alpha is not None:
+                predict_flags.extend(["--conformal_alpha", conformal_alpha])
             if calibration_method is not None:
                 predict_flags.extend(
                     ["--calibration_method", calibration_method, "--calibration_path", test_path]
@@ -1462,7 +1462,7 @@ class ChempropTests(TestCase):
         uncertainty_method: str,
         calibration_method: str,
         evaluation_methods: str,
-        alpha: str,
+        conformal_alpha: str,
         train_flags: List[str] = None,
         predict_flags: List[str] = None,
     ):
@@ -1479,8 +1479,8 @@ class ChempropTests(TestCase):
             predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
             if uncertainty_method is not None:
                 predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if alpha is not None:
-                predict_flags.extend(["--alpha", alpha])
+            if conformal_alpha is not None:
+                predict_flags.extend(["--conformal_alpha", conformal_alpha])
             if calibration_method is not None:
                 predict_flags.extend(
                     ["--calibration_method", calibration_method, "--calibration_path", test_path]
