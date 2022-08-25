@@ -1007,7 +1007,7 @@ class SklearnTrainArgs(TrainArgs):
     """How to impute missing data (None means no imputation)."""
 
 
-class SklearnPredictArgs(Tap):
+class SklearnPredictArgs(CommonArgs):
     """:class:`SklearnPredictArgs` contains arguments used for predicting with a trained scikit-learn model."""
 
     test_path: str

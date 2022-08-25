@@ -21,6 +21,7 @@ def predict_sklearn(args: SklearnPredictArgs) -> None:
     """
     print('Loading data')
     data = get_data(path=args.test_path,
+                    features_path=args.features_path,
                     smiles_columns=args.smiles_columns,
                     target_columns=[],
                     ignore_columns=[],
