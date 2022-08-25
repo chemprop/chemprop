@@ -85,9 +85,6 @@ class MoleculeDatapoint:
         :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features
 
         """
-        if features is not None and features_generator is not None:
-            raise ValueError('Cannot provide both loaded features and a features generator.')
-
         self.smiles = smiles
         self.targets = targets
         self.row = row
@@ -113,7 +110,10 @@ class MoleculeDatapoint:
 
         # Generate additional features if given a generator
         if self.features_generator is not None:
-            self.features = []
+            if self.features is None:
+                self.features = []
+            else:
+                self.features = list(self.features)
 
             for fg in self.features_generator:
                 features_generator = get_features_generator(fg)
