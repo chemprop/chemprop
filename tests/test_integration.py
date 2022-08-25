@@ -247,6 +247,13 @@ class ChempropTests(TestCase):
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
         ),
         (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                'rmse',
+                1.59283050,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
@@ -302,6 +309,13 @@ class ChempropTests(TestCase):
                 'auc',
                 0.466828424,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                'auc',
+                0.499183589,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
         ),
         (
                 'chemprop_mcc_metric',
@@ -376,6 +390,13 @@ class ChempropTests(TestCase):
                 1.51978455,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                0.59545263,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         )
     ])
     def test_predict_single_task_regression(self,
@@ -458,9 +479,16 @@ class ChempropTests(TestCase):
         (
                 'chemprop_rdkit_features_path',
                 'chemprop',
-                0.3071592294,
+                0.307159229,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                0.193924687,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         )
     ])
     def test_predict_multi_task_classification(self,
