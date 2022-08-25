@@ -240,6 +240,20 @@ class ChempropTests(TestCase):
                 ['--features_generator', 'morgan']
         ),
         (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                'rmse',
+                0.691494,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                'rmse',
+                1.022634,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 'rmse',
@@ -383,6 +397,20 @@ class ChempropTests(TestCase):
                 2.4703284,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
+        ),
+        (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                0.2954347,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                0.4112432,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         ),
         (
                 'chemprop_rdkit_features_path',
