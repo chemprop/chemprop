@@ -1,10 +1,11 @@
 from torch import Tensor, nn
+from chemprop.models.v2.encoders.molecule import molecule_encoder
 
 from chemprop.nn_utils import get_activation_function
 from chemprop.models.v2.encoders import MPNEncoder
 
 
-class MoleculeModel(nn.Module):
+class MPNN(nn.Module):
     def __init__(
         self,
         encoder: MPNEncoder,
@@ -22,8 +23,8 @@ class MoleculeModel(nn.Module):
             encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
 
+    @staticmethod
     def build_ffn(
-        self,
         d_i: int,
         d_o: int,
         d_h: int = 300,
@@ -59,3 +60,23 @@ class MoleculeModel(nn.Module):
         `forward()` function
         """
         return self.ffn(self.encoder(*args))
+
+
+def mpnn(
+    num_tasks: int,
+    bond_messages: bool = True,
+    *args,
+    ffn_hidden_dim: int = 300,
+    ffn_num_layers: int = 1,
+    dropout: float = 0,
+    activation: str = "relu",
+    **kwargs
+):
+    return MPNN(
+        molecule_encoder(bond_messages, *args, **kwargs),
+        num_tasks,
+        ffn_hidden_dim,
+        ffn_num_layers,
+        dropout,
+        activation
+    )

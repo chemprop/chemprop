@@ -7,12 +7,12 @@ from .encoders import (
     BondMessageEncoder,
 )
 from .models import (
-    MoleculeModel,
-    ClassificationMoleculeModel,
-    DirichletClassificationModel,
-    MulticlassMoleculeModel,
-    DirichletMulticlassModel,
-    RegressionMoleculeModel,
-    MveRegressionMoleculeModel,
-    SpectralMoleculeModel,
+    MPNN,
+    ClassificationMPNN,
+    DirichletClassificationMPNN,
+    MulticlassMPNN,
+    DirichletMulticlassMPNN,
+    RegressionMPNN,
+    MveRegressionMPNN,
+    SpectralMPNN,
 )

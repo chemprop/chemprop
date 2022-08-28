@@ -1,10 +1,10 @@
 from torch import Tensor, nn
 
 from chemprop.models.v2.encoders.base import MPNEncoder
-from chemprop.models.v2.models.base import MoleculeModel
+from chemprop.models.v2.models.base import MPNN
 
 
-class MulticlassMoleculeModel(MoleculeModel):
+class MulticlassMPNN(MPNN):
     def __init__(
         self,
         encoder: MPNEncoder,
@@ -30,7 +30,7 @@ class MulticlassMoleculeModel(MoleculeModel):
         return Y
 
 
-class DirichletMulticlassModel(MulticlassMoleculeModel):
+class DirichletMulticlassMPNN(MulticlassMPNN):
     def __init__(
         self,
         encoder: MPNEncoder,

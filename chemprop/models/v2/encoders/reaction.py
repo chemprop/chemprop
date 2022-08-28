@@ -41,11 +41,9 @@ class ReactionEncoder(MPNEncoder):
         else:
             self.encoders = nn.ModuleList(encoders)
 
-        self.__output_dim = sum(encoder.output_dim for encoder in self.encoders)
-
     @property
     def output_dim(self) -> int:
-        self.__output_dim
+        return sum(encoder.output_dim for encoder in self.encoders)
 
     def forward(self, reactant_batches: Iterable[MoleculeEncoderInput]) -> Tensor:
         """Encode the reactant_batch
@@ -61,7 +59,7 @@ class ReactionEncoder(MPNEncoder):
             reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder
             and a MoleculeEncoder would be the call signature:
 
-            >>> inputs = X_v, X_e, a2b, ..., X_v_d
+            >>> inputs: tuple = X_v, X_e, a2b, ..., X_vd
             >>> mol_enc: MoleculeEncoder
             >>> rxn_enc: ReactionEncoder
             >>> H_mol = mol_enc(*inputs)
@@ -73,7 +71,7 @@ class ReactionEncoder(MPNEncoder):
         -------
         Tensor
             a Tensor of shape `b x d_o` containing the reaction encodings, where `b` is the number
-            of reactions in the batch, and `d_o` is the `output_dim` of the encoder
+            of reactions in the batch, and `d_o` is the `output_dim` of this encoder
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
         Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_batches)]
@@ -91,3 +89,14 @@ class ReactionEncoder(MPNEncoder):
             encoders = [molecule_encoder(*args, **kwargs)]
 
         return cls(encoders, n_mols, shared)
+
+
+def reaction_encoder(
+    n_mols: int, shared: bool = False, *args, **kwargs
+):
+    if not shared:
+        encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
+    else:
+        encoders = [molecule_encoder(*args, **kwargs)]
+
+    return ReactionEncoder(encoders, n_mols, shared)
