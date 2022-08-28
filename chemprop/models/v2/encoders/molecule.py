@@ -26,7 +26,10 @@ MoleculeEncoderInput = tuple[
 class MoleculeEncoder(MPNEncoder):
     def __init__(
         self,
+        d_v: int,
+        d_e: int,
         d_h: int = 300,
+        bias: bool = False,
         depth: int = 3,
         undirected: bool = False,
         # layers_per_message: int,
@@ -168,7 +171,7 @@ class BondMessageEncoder(MoleculeEncoder):
         d_vd: Optional[int] = None,
     ):
         super().__init__(
-            d_h, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
+            d_v, d_e, d_h, bias, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
         )
 
         self.W_i = nn.Linear(d_e, d_h, bias)
@@ -229,7 +232,7 @@ class AtomMessageEncoder(MoleculeEncoder):
         d_vd: Optional[int] = None,
     ):
         super().__init__(
-            d_h, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
+            d_v, d_e, d_h, bias, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
         )
         self.W_i = nn.Linear(d_v, d_h, bias)
         self.W_h = nn.Linear(d_e + d_h, d_h, bias)

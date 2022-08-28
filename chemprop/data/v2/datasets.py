@@ -252,7 +252,7 @@ class ReactionDataset(MolGraphDataset):
 
     @property
     def smiles(self) -> list[str]:
-        return [d.smi for d in self.data]
+        return [d.smis for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
@@ -260,4 +260,4 @@ class ReactionDataset(MolGraphDataset):
 
     @property
     def number_of_molecules(self) -> int:
-        return 1
+        return self.data[0].number_of_molecules

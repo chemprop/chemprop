@@ -69,8 +69,6 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     ----------
     smi : str
         the SMILES string of the molecule
-    mol : Chem.Mol
-        the rdkit molecule of the input
     atom_features : Optional[np.ndarray], default=None
         a numpy array containing additional atom features to use when featurizing the molecule
     bond_features : Optional[np.ndarray], default=None
@@ -96,6 +94,13 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
+    
+    Attributes
+    ----------
+    _all input parameters_
+    mol : Chem.Mol
+        the rdkit molecule of the input
+
     """
 
     atom_features: np.ndarray = None

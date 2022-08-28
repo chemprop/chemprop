@@ -12,15 +12,17 @@ from chemprop.featurizers.v2 import MolGraph
 from chemprop.models.v2 import MoleculeEncoderInput
 
 
-def collate_graphs(mgs: Sequence[MolGraph]) -> MoleculeEncoderInput:
+def collate_graphs(mgs_ys: Sequence[MolGraph]) -> tuple[MoleculeEncoderInput, np.ndarray]:
+    mgs, ys = zip(*mgs_ys)
+
     n_atoms = 1
     n_bonds = 1
     a_scope = []
     b_scope = []
 
     # All start with zero padding so that indexing with zero padding returns zeros
-    X_vs = [np.zeros(mgs[0].X_v.shape[0])]
-    X_es = [np.zeros(mgs[0].X_e.shape[0])]
+    X_vs = [np.zeros((1, mgs[0].X_v.shape[1]))]
+    X_es = [np.zeros((1, mgs[0].X_e.shape[1]))]
     a2b = [[]]
     b2a = [0]
     b2revb = [0]
@@ -29,16 +31,9 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> MoleculeEncoderInput:
         X_vs.append(mg.X_v)
         X_es.append(mg.X_e)
 
-        # for a in range(mg.n_atoms):
-        #     a2b.append([b + n_bonds for b in mg.a2b[a]])
-
-        # for b in range(mg.n_bonds):
-        #     b2a.append(n_atoms + mg.b2a[b])
-        #     b2revb.append(n_bonds + mg.b2revb[b])
-
-        a2b.extend([[b + n_bonds for b in mg.a2b[a]] for a in range(mg.n_atoms)])
-        b2a.extend([n_atoms + mg.b2a[b] for b in range(mg.n_bonds)])
-        b2revb.extend([n_bonds + mg.b2revb[b] for b in range(mg.n_bonds)])
+        a2b.extend([b + n_bonds for b in mg.a2b[a]] for a in range(mg.n_atoms))
+        b2a.extend(n_atoms + mg.b2a[b] for b in range(mg.n_bonds))
+        b2revb.extend(n_bonds + mg.b2revb[b] for b in range(mg.n_bonds))
 
         a_scope.append((n_atoms, mg.n_atoms))
         b_scope.append((n_bonds, mg.n_bonds))
@@ -59,7 +54,7 @@ def collate_graphs(mgs: Sequence[MolGraph]) -> MoleculeEncoderInput:
     b2revb = torch.tensor(b2revb, dtype=torch.long)
     a2a = b2a[a2b]
 
-    return X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a
+    return (X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a), np.stack(ys)
 
 
 class MolGraphDataLoader(DataLoader):
