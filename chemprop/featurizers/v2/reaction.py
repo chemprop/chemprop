@@ -42,45 +42,45 @@ class ReactionMode(Enum):
 
 
 def map_reac_to_prod(
-    mol_reac: Chem.Mol, mol_prod: Chem.Mol
+    reactants: Chem.Mol, products: Chem.Mol
 ) -> tuple[dict[int, int], list[int], list[int]]:
     """Map atom indices between corresponding atoms in the reactant and product molecules
 
     Parameters
     ----------
-    mol_reac
+    reactants
         An RDKit molecule of the reactants
-    mol_prod
+    products
         An RDKit molecule of the products
 
     Returns
     -------
     r2p : dict[int, int]
         A dictionary of corresponding atom indices from reactant atoms to product atoms
-    pids : list[int]
+    pdt_idxs : list[int]
         atom indices of poduct atoms
-    rids : [int]
+    rct_idxs : list[int]
         atom indices of reactant atoms
     """
-    pids = []
+    pdt_idxs = []
     prod_map_to_id = {}
-    mapnos_reac = {a.GetAtomMapNum() for a in mol_reac.GetAtoms()}
+    mapnos_reac = {a.GetAtomMapNum() for a in reactants.GetAtoms()}
 
-    for a in mol_prod.GetAtoms():
+    for a in products.GetAtoms():
         mapno = a.GetAtomMapNum()
         i = a.GetIdx()
 
         if mapno > 0:
             prod_map_to_id[mapno] = i
             if mapno not in mapnos_reac:
-                pids.append(i)
+                pdt_idxs.append(i)
         else:
-            pids.append(i)
+            pdt_idxs.append(i)
 
-    rids = []
+    rct_idxs = []
     r2p = {}
 
-    for a in mol_reac.GetAtoms():
+    for a in reactants.GetAtoms():
         mapno = a.GetAtomMapNum()
         i = a.GetIdx()
 
@@ -88,11 +88,11 @@ def map_reac_to_prod(
             try:
                 r2p[i] = prod_map_to_id[mapno]
             except KeyError:
-                rids.append(i)
+                rct_idxs.append(i)
         else:
-            rids.append(i)
+            rct_idxs.append(i)
 
-    return r2p, pids, rids
+    return r2p, pdt_idxs, rct_idxs
 
 
 class ReactionFeaturizer(MolGraphFeaturizer):

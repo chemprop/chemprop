@@ -1,4 +1,3 @@
-from functools import cached_property
 from typing import Optional, Sequence
 
 import numpy as np
@@ -54,7 +53,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
             self.hybridization,
         ]
 
-    @cached_property
+    @property
     def subfeatures(self) -> dict[str, slice]:
         names = (
             "atomic_num",

@@ -56,13 +56,13 @@ class DatapointBase(ABC):
 
 
 @dataclass
-class _MoleculeDatapointBase:
+class MoleculeDatapointMixin:
     smi: str
     mol: Chem.Mol = field(init=False)
 
 
 @dataclass
-class MoleculeDatapoint(DatapointBase, _MoleculeDatapointBase):
+class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     """A `MoleculeDatapoint` contains a single molecule and its associated features and targets.
 
     Parameters
@@ -134,12 +134,12 @@ class MoleculeDatapoint(DatapointBase, _MoleculeDatapointBase):
 
 
 @dataclass
-class _ReactionDatapointBase:
+class ReactionDatapointMixin:
     smis: list[str]
     mols: list[Chem.Mol] = field(init=False)
 
 
-class ReactionDatapoint(DatapointBase, _ReactionDatapointBase):
+class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     """
     Parameters
     ----------

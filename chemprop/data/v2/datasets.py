@@ -19,11 +19,6 @@ class MolGraphDataset(Dataset, ABC):
             raise ValueError("arg: `data` was None!")
 
         self.data = data
-        super().__init__()
-
-    @abstractmethod
-    def __getitem__(self, idx) -> MolGraph:
-        pass
 
     def __len__(self) -> int:
         return len(self.data)
@@ -261,7 +256,7 @@ class ReactionDataset(MolGraphDataset):
 
     @property
     def mols(self) -> list[Chem.Mol]:
-        return [d.mol for d in self.data]
+        return [d.mols for d in self.data]
 
     @property
     def number_of_molecules(self) -> int:

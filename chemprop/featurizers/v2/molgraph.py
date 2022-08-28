@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import numpy as np
 
 
-@dataclass
-class MolGraph:
+class MolGraph(NamedTuple):
     """A `MolGraph` represents the graph structure and featurization of a single molecule.
 
     Attributes

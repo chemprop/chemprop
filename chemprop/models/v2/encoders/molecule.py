@@ -249,7 +249,7 @@ class AtomMessageEncoder(MoleculeEncoder):
         return H
 
 
-def build_molecule_encoder(bond_messages: bool, *args, **kwargs):
+def molecule_encoder(bond_messages: bool, *args, **kwargs):
     if bond_messages:
         return BondMessageEncoder(*args, **kwargs)
 

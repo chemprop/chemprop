@@ -10,7 +10,7 @@ from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.encoders.molecule import (
     MoleculeEncoder,
     MoleculeEncoderInput,
-    build_molecule_encoder,
+    molecule_encoder,
 )
 
 
@@ -86,8 +86,8 @@ class ReactionEncoder(MPNEncoder):
         cls, n_mols: int, shared: bool = False, *args, **kwargs
     ) -> ReactionEncoder:
         if not shared:
-            encoders = [build_molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
+            encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
         else:
-            encoders = [build_molecule_encoder(*args, **kwargs)]
+            encoders = [molecule_encoder(*args, **kwargs)]
 
         return cls(encoders, n_mols, shared)
