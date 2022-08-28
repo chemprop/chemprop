@@ -125,26 +125,19 @@ class ReactionFeaturizer(MolGraphFeaturizer):
     def __init__(
         self,
         mode: ReactionMode,
-        atom_feautrizer: Optional[AtomFeaturizer] = None,
+        atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
         atom_messages: bool = False,
     ):
-        self.mode = mode
-        self.atom_featurizer = atom_feautrizer or AtomFeaturizer()
-        self.bond_featurizer = bond_featurizer or BondFeaturizer()
-        self.atom_fdim = len(self.atom_featurizer)
-        self.bond_fdim = len(self.bond_featurizer)
-        self.atom_messages = atom_messages
+        super().__init__(atom_featurizer, bond_featurizer, atom_messages)
 
+        self.mode = mode
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
 
-    def __call__(self, *args, **kwargs) -> MolGraph:
-        return self.featurize(*args, **kwargs)
-
     def featurize(
         self,
-        reaction: tuple[Chem.Mol],
+        reaction: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ):
@@ -152,7 +145,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
         Parameters
         ----------
-        reaction : tuple[Chem.Mol]
+        reaction : tuple[Chem.Mol, Chem.Mol]
             a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
             1st element is the product
         atom_features_extra : Optional[np.ndarray], default=None
@@ -195,9 +188,8 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                     for a in reactant.GetAtoms()
                 ]
             )
-            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
-                -1, self.atom_fdim
-            )
+            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
+            D = D.reshape(-1, self.atom_fdim)
             X_v_p = np.concatenate((C, D))
         else:  # balance
             # Reactant: regular atom features for each atom in the reactants, copy features from
@@ -220,9 +212,8 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                     for a in reactant.GetAtoms()
                 ]
             )
-            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
-                -1, self.atom_fdim
-            )
+            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
+            D = D.reshape(-1, self.atom_fdim)
             X_v_p = np.concatenate((C, D))
 
         m = min(len(X_v_r), len(X_v_p))
@@ -335,5 +326,6 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                 # b2a.extend([a1, a2])
                 # b2revb.extend([b21, b12])
                 n_bonds += 2
-
+        X_e = np.array(X_e)
+        
         return MolGraph(n_atoms, n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)

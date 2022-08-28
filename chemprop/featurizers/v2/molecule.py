@@ -45,21 +45,16 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
         self,
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
+        atom_messages: bool = False,
         extra_atom_fdim: int = 0,
         extra_bond_fdim: int = 0,
-        atom_messages: bool = False,
     ):
-        self.atom_featurizer = atom_featurizer or AtomFeaturizer()
-        self.bond_featurizer = bond_featurizer or BondFeaturizer()
-        self.atom_fdim = len(self.atom_featurizer) + extra_atom_fdim
-        self.bond_fdim = len(self.bond_featurizer) + extra_bond_fdim
-        self.atom_messages = atom_messages
+        super().__init__(atom_featurizer, bond_featurizer, atom_messages)
 
+        self.atom_fdim += extra_atom_fdim
+        self.bond_fdim += extra_bond_fdim
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
-
-    def __call__(self, *args, **kwargs) -> MolGraph:
-        return self.featurize(*args, **kwargs)
 
     def featurize(
         self,
@@ -94,7 +89,6 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
         for a1 in range(n_atoms):
             for a2 in range(a1 + 1, n_atoms):
                 bond = mol.GetBondBetweenAtoms(a1, a2)
-
                 if bond is None:
                     continue
 
