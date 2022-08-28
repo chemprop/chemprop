@@ -1,5 +1,4 @@
 from torch import Tensor, nn
-from chemprop.models.v2.encoders.molecule import molecule_encoder
 
 from chemprop.nn_utils import get_activation_function
 from chemprop.models.v2.encoders import MPNEncoder
@@ -56,27 +55,6 @@ class MPNN(nn.Module):
     def forward(self, *args) -> Tensor:
         """Generate predictions for the input batch.
 
-        NOTE: the input signature to this function is the same as the input `MoleculeModel`'s
-        `forward()` function
+        NOTE: the input signature to this function matches the underlying `encoder.forward()`
         """
         return self.ffn(self.encoder(*args))
-
-
-def mpnn(
-    num_tasks: int,
-    bond_messages: bool = True,
-    *args,
-    ffn_hidden_dim: int = 300,
-    ffn_num_layers: int = 1,
-    dropout: float = 0,
-    activation: str = "relu",
-    **kwargs
-):
-    return MPNN(
-        molecule_encoder(bond_messages, *args, **kwargs),
-        num_tasks,
-        ffn_hidden_dim,
-        ffn_num_layers,
-        dropout,
-        activation
-    )

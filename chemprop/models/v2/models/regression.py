@@ -6,7 +6,7 @@ from chemprop.models.v2.models.base import MPNN
 
 
 class RegressionMPNN(MPNN):
-    """The RegressionMoleculeModel is just an alias for a base MoleculeModel"""
+    """The RegressionMoleculeModel is just an alias for a base MPNN"""
 
 
 class MveRegressionMPNN(RegressionMPNN):

@@ -63,7 +63,7 @@ class MoleculeEncoder(MPNEncoder):
         return self.__output_dim
 
     def cat_descriptors(self, H_v: Tensor, X_vd: Tensor) -> Tensor:
-        """Concatenate the atom descriptors F_v_d onto the hidden representations H_v
+        """Concatenate the atom descriptors `X_vd` onto the hidden representations `H_v`
 
         Parameters
         ----------
@@ -278,8 +278,10 @@ class AtomMessageEncoder(MoleculeEncoder):
         return H
 
 
-def molecule_encoder(bond_messages: bool = True, *args, **kwargs):
+def molecule_encoder(d_v: int, d_e: int, bond_messages: bool = True, *args, **kwargs):
     if bond_messages:
-        return BondMessageEncoder(*args, **kwargs)
+        encoder = BondMessageEncoder(d_v, d_e, *args, **kwargs)
+    else:
+        encoder = AtomMessageEncoder(d_v, d_e, *args, **kwargs)
 
-    return AtomMessageEncoder(*args, **kwargs)
+    return encoder
