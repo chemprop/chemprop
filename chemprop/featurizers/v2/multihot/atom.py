@@ -7,7 +7,7 @@ from chemprop.featurizers.v2.multihot.base import MultiHotFeaturizer
 
 
 class AtomFeaturizer(MultiHotFeaturizer):
-    """An AtomFeaturizer calculates feature vectors of RDKit atoms. """
+    """An AtomFeaturizer calculates feature vectors of RDKit atoms."""
 
     def __init__(
         self,
@@ -34,12 +34,18 @@ class AtomFeaturizer(MultiHotFeaturizer):
 
     def __len__(self):
         return (
-            len(self.atomic_num) + 1
-            + len(self.degree) + 1
-            + len(self.formal_charge) + 1
-            + len(self.chiral_tag) + 1
-            + len(self.num_Hs) + 1
-            + len(self.hybridization) + 1
+            len(self.atomic_num)
+            + 1
+            + len(self.degree)
+            + 1
+            + len(self.formal_charge)
+            + 1
+            + len(self.chiral_tag)
+            + 1
+            + len(self.num_Hs)
+            + 1
+            + len(self.hybridization)
+            + 1
         ) + 2
 
     @property

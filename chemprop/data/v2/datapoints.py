@@ -94,7 +94,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
-    
+
     Attributes
     ----------
     _all input parameters_

@@ -171,7 +171,17 @@ class BondMessageEncoder(MoleculeEncoder):
         d_vd: Optional[int] = None,
     ):
         super().__init__(
-            d_v, d_e, d_h, bias, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
+            d_v,
+            d_e,
+            d_h,
+            bias,
+            depth,
+            undirected,
+            dropout,
+            activation,
+            aggregation,
+            atom_descriptors,
+            d_vd,
         )
 
         self.W_i = nn.Linear(d_e, d_h, bias)
@@ -232,7 +242,17 @@ class AtomMessageEncoder(MoleculeEncoder):
         d_vd: Optional[int] = None,
     ):
         super().__init__(
-            d_v, d_e, d_h, bias, depth, undirected, dropout, activation, aggregation, atom_descriptors, d_vd
+            d_v,
+            d_e,
+            d_h,
+            bias,
+            depth,
+            undirected,
+            dropout,
+            activation,
+            aggregation,
+            atom_descriptors,
+            d_vd,
         )
         self.W_i = nn.Linear(d_v, d_h, bias)
         self.W_h = nn.Linear(d_e + d_h, d_h, bias)

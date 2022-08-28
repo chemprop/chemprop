@@ -7,6 +7,7 @@ import numpy as np
 class MultiHotFeaturizer(ABC):
     """A MultiHotFeaturizer calculates feature vectors of arbitrary objects by concatenation of
     multiple feature vectors"""
+
     def __call__(self, x) -> np.ndarray:
         return self.featurize(x)
 
@@ -29,7 +30,7 @@ class MultiHotFeaturizer(ABC):
 
     @staticmethod
     def one_hot_index(x, xs: Sequence) -> tuple[int, int]:
-        """return the index of a one hot encoding of `x` given choices `xs` and the length of the 
+        """return the index of a one hot encoding of `x` given choices `xs` and the length of the
         uncompressed encoding"""
         n = len(xs)
         return xs.index(x) if x in xs else n, n + 1

@@ -91,9 +91,7 @@ class ReactionEncoder(MPNEncoder):
         return cls(encoders, n_mols, shared)
 
 
-def reaction_encoder(
-    n_mols: int, shared: bool = False, *args, **kwargs
-):
+def reaction_encoder(n_mols: int, shared: bool = False, *args, **kwargs):
     if not shared:
         encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
     else:

@@ -327,5 +327,5 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                 # b2revb.extend([b21, b12])
                 n_bonds += 2
         X_e = np.array(X_e)
-        
+
         return MolGraph(n_atoms, n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)

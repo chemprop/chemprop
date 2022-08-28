@@ -45,7 +45,7 @@ class BondFeaturizer(MultiHotFeaturizer):
         bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
         if bt_bit != size:
             x[i + bt_bit] = 1
-        i += (size -1)
+        i += size - 1
 
         x[i] = int(b.GetIsConjugated())
         x[i + 1] = int(b.IsInRing())
