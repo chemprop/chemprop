@@ -8,7 +8,7 @@ from chemprop.args import SklearnPredictArgs, SklearnTrainArgs
 from chemprop.data import get_data
 from chemprop.featurizers import get_features_generator
 from chemprop.sklearn_train import predict
-from chemprop.utils import makedirs, timeit
+from chemprop.utils.utils import makedirs, timeit
 
 
 @timeit()

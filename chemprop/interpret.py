@@ -7,7 +7,7 @@ from rdkit import Chem
 from chemprop.args import InterpretArgs
 from chemprop.data import get_data_from_smiles, get_header, get_smiles, MoleculeDataLoader, MoleculeDataset
 from chemprop.train import predict
-from chemprop.utils import load_args, load_checkpoint, load_scalers, timeit
+from chemprop.utils.utils import load_args, load_checkpoint, load_scalers, timeit
 
 
 MIN_ATOMS = 15
