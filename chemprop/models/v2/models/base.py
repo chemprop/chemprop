@@ -8,7 +8,7 @@ class MPNN(nn.Module):
     def __init__(
         self,
         encoder: MPNEncoder,
-        num_tasks: int,
+        n_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
         dropout: float = 0.0,
@@ -17,16 +17,17 @@ class MPNN(nn.Module):
         super().__init__()
 
         self.encoder = encoder
-        self.num_tasks = num_tasks
+        self.n_tasks = n_tasks
+        self.n_targets = n_tasks
         self.ffn = self.build_ffn(
-            encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+            encoder.output_dim, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
 
     @staticmethod
     def build_ffn(
-        d_i: int,
-        d_o: int,
-        d_h: int = 300,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str = "relu",
@@ -35,12 +36,12 @@ class MPNN(nn.Module):
         activation = get_activation_function(activation)
 
         if n_layers == 0:
-            layers = [dropout, nn.Linear(d_i, d_o)]
+            layers = [dropout, nn.Linear(input_dim, output_dim)]
         else:
-            layers = [dropout, nn.Linear(d_i, d_h)]
+            layers = [dropout, nn.Linear(input_dim, hidden_dim)]
             for _ in range(1, n_layers):
-                layers.extend([activation, dropout, nn.Linear(d_h, d_h)])
-            layers.extend([activation, dropout, nn.Linear(d_h, d_o)])
+                layers.extend([activation, dropout, nn.Linear(hidden_dim, hidden_dim)])
+            layers.extend([activation, dropout, nn.Linear(hidden_dim, output_dim)])
 
         return nn.Sequential(*layers)
 

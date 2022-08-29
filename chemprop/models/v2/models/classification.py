@@ -5,31 +5,23 @@ from chemprop.models.v2.models.base import MPNN
 
 
 class ClassificationMPNN(MPNN):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        # Y = self.sigmoid(Y)
-        return Y
+    """Single-task regresssion/classification networks are architecturally identical"""
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
     def __init__(
         self,
         encoder: MPNEncoder,
-        num_tasks: int,
+        n_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
         dropout: float = 0.0,
         activation: str = "relu",
     ):
         super().__init__(
-            encoder, 2 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+            encoder, 2 * n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
-
+        self.n_targets = n_tasks
         self.softplus = nn.Softplus()
 
     def forward(self, *args) -> Tensor:
