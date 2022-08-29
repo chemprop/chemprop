@@ -12,7 +12,7 @@ from typing_extensions import Literal
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data import get_smiles, MoleculeDatapoint, MoleculeDataset, split_data
-from chemprop.utils import makedirs
+from chemprop.utils.utils import makedirs
 
 
 class Args(Tap):
