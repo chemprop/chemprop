@@ -16,11 +16,11 @@ from chemprop.featurizers import get_features_generator
 class DatapointBase(ABC):
     """A `DatapointBase` is the base datapoint for both molecule- and reaction-type data"""
 
-    targets: np.ndarray
+    targets: Optional[np.ndarray] = None
     row: OrderedDict = None
     data_weight: float = 1
-    gt_targets: List[bool] = None
-    lt_targets: List[bool] = None
+    gt_targets: Optional[np.ndarray] = None
+    lt_targets: Optional[np.ndarray] = None
     features: Optional[np.ndarray] = None
     features_generators: InitVar[Optional[List[str]]] = None
     phase_features: List[float] = None

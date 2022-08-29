@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Iterable, Optional
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.datasets import MolGraphDataset
+from chemprop.data.v2.datasets import MolGraphDatasetBase
 from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.featurizers.v2 import MolGraph
 from chemprop.models.v2 import MoleculeEncoderInput
 
 
-def collate_graphs(mgs_ys: Sequence[MolGraph]) -> tuple[MoleculeEncoderInput, np.ndarray]:
-    mgs, ys = zip(*mgs_ys)
+def collate_batch(
+    batch: Iterable[tuple[MolGraph, np.ndarray, float, np.ndarray, np.ndarray]]
+) -> tuple[MoleculeEncoderInput, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    mgs, ys, weights, gt_targets, lt_targets = zip(*batch)
 
     n_atoms = 1
     n_bonds = 1
@@ -54,7 +56,13 @@ def collate_graphs(mgs_ys: Sequence[MolGraph]) -> tuple[MoleculeEncoderInput, np
     b2revb = torch.tensor(b2revb, dtype=torch.long)
     a2a = b2a[a2b]
 
-    return (X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a), np.stack(ys)
+    return (
+        (X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a),
+        np.array(ys, dtype=float),
+        np.array(weights),
+        None if lt_targets[0] is None else np.array(lt_targets),
+        None if gt_targets[0] is None else np.array(gt_targets)
+    )
 
 
 class MolGraphDataLoader(DataLoader):
@@ -80,7 +88,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dset: MolGraphDataset,
+        dset: MolGraphDatasetBase,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -104,7 +112,7 @@ class MolGraphDataLoader(DataLoader):
             self.sampler is None and self.shuffle,
             self.sampler,
             num_workers=num_workers,
-            collate_fn=collate_graphs,
+            collate_fn=collate_batch,
         )
 
     @property
@@ -118,7 +126,7 @@ class MolGraphDataLoader(DataLoader):
         return np.array([self.dset.data[i].targets for i in self.sampler])
 
     @property
-    def gt_targets(self) -> list[list[Optional[bool]]]:
+    def gt_targets(self) -> Optional[np.ndarray]:
         """whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -126,13 +134,13 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dset.data[0], "gt_targets"):
+        if self.dset.data[0].gt_targets is None:
             return None
 
-        return [self.dset.data[i].gt_targets for i in self.sampler]
+        return np.array([self.dset.data[i].gt_targets for i in self.sampler])
 
     @property
-    def lt_targets(self) -> list[list[Optional[bool]]]:
+    def lt_targets(self) -> Optional[np.ndarray]:
         """for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -140,10 +148,10 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dset.data[0], "lt_targets"):
+        if self.dset.data[0].lt_targets is None:
             return None
 
-        return [self.dset.data[i].lt_targets for i in self.sampler]
+        return np.array([self.dset.data[i].lt_targets for i in self.sampler])
 
     @property
     def iter_size(self) -> int:

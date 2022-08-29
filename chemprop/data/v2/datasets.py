@@ -13,7 +13,7 @@ from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint, Reacti
 from chemprop.featurizers.v2.reaction import ReactionFeaturizer
 
 
-class MolGraphDataset(Dataset, ABC):
+class MolGraphDatasetBase(Dataset):
     def __init__(self, data: Sequence[DatapointBase]):
         if data is None:
             raise ValueError("arg: `data` was None!")
@@ -105,7 +105,7 @@ class MolGraphDataset(Dataset, ABC):
             d.reset_features_and_targets()
 
 
-class MoleculeDataset(MolGraphDataset):
+class MoleculeDataset(MolGraphDatasetBase):
     """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to
     their attributes.
 
@@ -124,7 +124,13 @@ class MoleculeDataset(MolGraphDataset):
     def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
         d = self.data[idx]
 
-        return self.featurizer(d.mol, d.atom_features, d.bond_features), d.targets
+        return (
+            self.featurizer(d.mol, d.atom_features, d.bond_features),
+            d.targets,
+            d.data_weight,
+            d.lt_targets,
+            d.gt_targets
+        )
 
     @property
     def smiles(self) -> list[str]:
@@ -229,7 +235,7 @@ class MoleculeDataset(MolGraphDataset):
         return scaler
 
 
-class ReactionDataset(MolGraphDataset):
+class ReactionDataset(MolGraphDatasetBase):
     """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to
     their attributes.
 
