@@ -323,13 +323,14 @@ def predict_and_save(
                 ]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
-
+            """
             for pred_name, pred in zip(print_task_names, d_preds):
                 if args.calibration_method not in [
                     "conformal_regression",
                     "conformal_quantile_regression",
                 ]:
                     datapoint.row[pred_name] = pred
+            """
 
             for unc_name, un in zip(unc_names, d_unc):
                 if (
