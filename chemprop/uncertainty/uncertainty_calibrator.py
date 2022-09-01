@@ -912,10 +912,11 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         return uncal_preds.tolist(), cal_preds.tolist()
 
 
-class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
+class ConformalRegressionCalibrator(UncertaintyCalibrator):
     """
-    Conformal Calibrator for regression datasets. Outputs interval of variable size, centered around
-    quantile outputs of model, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
+    Conformal Calibrator for regression datasets. Used for both conformal regression and conformal quantile regression.
+    Outputs interval of variable size, centered around quantile outputs of model, for each datapoint. Intervals 
+    should cover 1-alpha proportion of datapoints.
     As discussed in https://arxiv.org/abs/2107.07511.
     """
 
@@ -984,99 +985,6 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
         return uncal_preds.tolist(), intervals.tolist()
 
 
-class ConformalQuantileRegressionCalibratorOld(UncertaintyCalibrator):
-    """
-    Conformal Calibrator for regression datasets. Outputs interval of variable size, centered around
-    quantile outputs of model, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
-    As discussed in https://arxiv.org/abs/2107.07511.
-    """
-
-    @property
-    def label(self):
-        return "conformal_quantile_regression"
-
-    def raise_argument_errors(self):
-        super().raise_argument_errors()
-        if self.dataset_type != "regression":
-            raise ValueError(
-                "Conformal Quantile Regression is only implemented for regression dataset types."
-            )
-
-    def nll(
-        self,
-        preds: List[List[float]],
-        unc: List[List[float]],
-        targets: List[List[float]],
-        mask: List[List[bool]],
-    ):
-        raise NotImplementedError
-
-    @staticmethod
-    def get_preds(predictor: UncertaintyPredictor):
-        return np.array(predictor.get_uncal_preds())
-
-    def calibrate(self):
-        uncal_preds = self.get_preds(self.calibration_predictor)  # shape(data, 2 * tasks)
-        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
-        targets = np.nan_to_num(targets)
-
-        self.num_tasks = uncal_preds.shape[1] // 2
-        self.qhats = []
-
-        for task_id in range(self.num_tasks):
-            targets_task_id = targets[:, task_id]
-            uncal_preds_lower = uncal_preds[:, task_id]
-            uncal_preds_upper = uncal_preds[:, task_id + self.num_tasks]
-
-            calibration_scores = np.maximum(
-                uncal_preds_lower - targets_task_id, targets_task_id - uncal_preds_upper
-            )
-            calibration_scores = np.append(calibration_scores, np.inf)
-            calibration_scores = np.sort(np.absolute(calibration_scores))
-            self.qhats.append(np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks))
-
-    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, 2 * task)
-        num_data = uncal_preds.shape[0]
-        intervals = np.zeros((2 * self.num_tasks, num_data), dtype=float)
-
-        for task_id in range(self.num_tasks):
-            uncal_preds_lower = uncal_preds[:, task_id]
-            uncal_preds_upper = uncal_preds[:, task_id + self.num_tasks]
-
-            intervals[task_id] = uncal_preds_lower - self.qhats[task_id]
-            intervals[task_id + self.num_tasks] = uncal_preds_upper + self.qhats[task_id]
-
-        intervals = np.transpose(intervals)
-        return self.reformat_preds(uncal_preds).tolist(), intervals.tolist()
-
-
-class ConformalRegressionCalibrator(ConformalQuantileRegressionCalibratorOld):
-    """
-    Conformal Calibrator for regression datasets. Outputs interval of fixed size, centered around
-    model prediction, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
-    As discussed in https://arxiv.org/abs/2107.07511.
-    """
-
-    @property
-    def label(self):
-        return f"{self.uncertainty_method}_conformal_regression"
-
-    def raise_argument_errors(self):
-        super().raise_argument_errors()
-        if self.dataset_type != "regression":
-            raise ValueError(
-                "Conformal Regression is only implemented for regression dataset types."
-            )
-
-    @staticmethod
-    def get_preds(predictor: UncertaintyPredictor):
-        preds = np.array(predictor.get_uncal_preds())
-
-        preds_duplicated = np.concatenate((preds, preds), axis=1)
-        return preds_duplicated
-
-
 def build_uncertainty_calibrator(
     calibration_method: str,
     uncertainty_method: str,
@@ -1117,9 +1025,8 @@ def build_uncertainty_calibrator(
         if dataset_type == "classification"
         else ConformalMulticlassCalibrator,
         "conformal_adaptive": ConformalAdaptiveMulticlassCalibrator,
-        #"conformal_regression": ConformalRegressionCalibrator,
-        "conformal_regression": ConformalQuantileRegressionCalibrator,
-        "conformal_quantile_regression": ConformalQuantileRegressionCalibrator,
+        "conformal_regression": ConformalRegressionCalibrator,
+        "conformal_quantile_regression": ConformalRegressionCalibrator,
         "isotonic": IsotonicCalibrator
         if dataset_type == "classification"
         else IsotonicMulticlassCalibrator,
