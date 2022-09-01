@@ -304,36 +304,22 @@ def predict_and_save(
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
             elif args.calibration_method == "conformal_regression":
-                unc_names = [task_name + "_lower_bound" for task_name in task_names] + [
-                    task_name + "_upper_bound" for task_name in task_names
+                unc_names = [task_name + "_conformal_" + str(args.conformal_alpha) + "_lower_bound" for task_name in task_names] + [
+                    task_name + "_conformal_" + str(args.conformal_alpha) + "_upper_bound" for task_name in task_names
                 ]
             elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [task_names[i] + "_lower_bound" for i in range(0, num_tasks // 2)] + [
-                    task_names[i] + "_upper_bound" for i in range(num_tasks // 2, num_tasks)
+                unc_names = [task_names[i] + "_conformal_quantile_" + str(args.conformal_alpha) + "_lower_bound" for i in range(0, num_tasks // 2)] + [
+                    task_names[i] + "_conformal_quantile_" + str(args.conformal_alpha) + "_upper_bound" for i in range(num_tasks // 2, num_tasks)
                 ]
-                """
-                print_task_names = [
-                    task_names[i] + "_quantile_lower_bound" for i in range(0, num_tasks // 2)
-                ] + [
-                    task_names[i] + "_quantile_upper_bound"
-                    for i in range(num_tasks // 2, num_tasks)
-                ]
-                """
+
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
-                unc_names = [task_name + "_conformal_in_set" for task_name in task_names] + [
-                    task_name + "_conformal_out_set" for task_name in task_names
+                unc_names = [task_name + "_conformal_" + str(args.conformal_alpha) + "_in_set" for task_name in task_names] + [
+                    task_name + "_conformal_" + str(args.conformal_alpha) + "_out_set" for task_name in task_names
                 ]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
             
             for pred_name, pred in zip(print_task_names, d_preds):
-                """
-                if args.calibration_method not in [
-                    "conformal_regression",
-                    "conformal_quantile_regression",
-                ]:
-                    datapoint.row[pred_name] = pred
-                """
                 datapoint.row[pred_name] = pred
             
 
