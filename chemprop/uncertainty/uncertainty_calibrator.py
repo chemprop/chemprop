@@ -1117,7 +1117,8 @@ def build_uncertainty_calibrator(
         if dataset_type == "classification"
         else ConformalMulticlassCalibrator,
         "conformal_adaptive": ConformalAdaptiveMulticlassCalibrator,
-        "conformal_regression": ConformalRegressionCalibrator,
+        #"conformal_regression": ConformalRegressionCalibrator,
+        "conformal_regression": ConformalQuantileRegressionCalibrator,
         "conformal_quantile_regression": ConformalQuantileRegressionCalibrator,
         "isotonic": IsotonicCalibrator
         if dataset_type == "classification"

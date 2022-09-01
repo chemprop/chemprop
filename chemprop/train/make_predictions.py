@@ -440,7 +440,7 @@ def make_predictions(
         if args.dataset_type in ["classification", "multiclass"]:
             args.uncertainty_method = "classification"
         elif args.calibration_method == "conformal_regression":
-            args.uncertainty_method = None
+            args.uncertainty_method = "conformal_regression"
         elif args.calibration_method == "conformal_quantile_regression":
             args.uncertainty_method = "conformal_quantile_regression"
         else:

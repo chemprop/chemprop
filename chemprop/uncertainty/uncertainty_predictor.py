@@ -38,6 +38,7 @@ class UncertaintyPredictor(ABC):
         self.loss_function = loss_function
         self.uncal_preds = None
         self.uncal_vars = None
+        self.uncal_intervals = None
         self.uncal_confidence = None
         self.individual_vars = None
         self.num_models = num_models
@@ -197,8 +198,14 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
             preds_new[:, task_id] = preds_new[:, task_id]/2
 
         return preds_new
-        
-        
+
+    @staticmethod
+    def make_intervals(preds):
+        """
+        Make uncalibrated intervals from the uncalibrated predictions.
+        """
+
+        return preds[:].tolist()
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -245,14 +252,39 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
                     )
 
         self.uncal_preds = (sum_preds / self.num_models)
-        self.uncal_vars = self.uncal_preds[:].tolist()
+        self.uncal_intervals = self.make_intervals(self.uncal_preds)
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
 
         self.uncal_preds = self.reformat_preds(self.uncal_preds).tolist()
 
     def get_uncal_output(self):
-        return self.uncal_vars
+        return self.uncal_intervals
+
+
+class ConformalRegressionPredictor(ConformalQuantileRegressionPredictor):
+    """
+    Class that is used for basic conformal regression. Reformats preds to be midpoint
+    of interval and outputs uncalibrated interval size 0 as the uncal_output.
+    """
+
+    @staticmethod
+    def reformat_preds(preds):
+        """
+        Reformat preds so to midpoint of quantiles
+        """
+
+        return preds
+
+    @staticmethod
+    def make_intervals(preds):
+        """
+        Make uncalibrated intervals from the uncalibrated predictions.
+        """
+
+        intervals = np.concatenate((preds[:], preds[:]), axis=1)
+
+        return intervals.tolist()
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
@@ -865,6 +897,7 @@ def build_uncertainty_predictor(
         "dropout": DropoutPredictor,
         "spectra_roundrobin": RoundRobinSpectraPredictor,
         "conformal_quantile_regression": ConformalQuantileRegressionPredictor,
+        "conformal_regression": ConformalRegressionPredictor,
     }
 
     predictor_class = supported_predictors.get(uncertainty_method, None)
