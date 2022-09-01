@@ -943,6 +943,78 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
     def get_preds(predictor: UncertaintyPredictor):
         return np.array(predictor.get_uncal_preds())
 
+    @staticmethod
+    def get_interval(predictor: UncertaintyPredictor):
+        return np.array(predictor.get_uncal_output())
+
+    def calibrate(self):
+        uncal_interval = self.get_interval(self.calibration_predictor)
+        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
+        targets = np.nan_to_num(targets)
+
+        self.num_tasks = uncal_interval.shape[1] // 2
+        self.qhats = []
+
+        for task_id in range(self.num_tasks):
+            targets_task_id = targets[:, task_id]
+            uncal_interval_lower = uncal_interval[:, task_id]
+            uncal_interval_upper = uncal_interval[:, task_id + self.num_tasks]
+
+            calibration_scores = np.maximum(
+                uncal_interval_lower - targets_task_id, targets_task_id - uncal_interval_upper
+            )
+            calibration_scores = np.append(calibration_scores, np.inf)
+            calibration_scores = np.sort(np.absolute(calibration_scores))
+            self.qhats.append(np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks))
+
+    def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
+        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, 2 * task)
+        uncal_interval = self.get_interval(uncal_predictor)
+        num_data = uncal_interval.shape[0]
+        intervals = np.zeros((2 * self.num_tasks, num_data), dtype=float)
+
+        for task_id in range(self.num_tasks):
+            uncal_interval_lower = uncal_interval[:, task_id]
+            uncal_interval_upper = uncal_interval[:, task_id + self.num_tasks]
+
+            intervals[task_id] = uncal_interval_lower - self.qhats[task_id]
+            intervals[task_id + self.num_tasks] = uncal_interval_upper + self.qhats[task_id]
+
+        intervals = np.transpose(intervals)
+        return uncal_preds.tolist(), intervals.tolist()
+
+
+class ConformalQuantileRegressionCalibratorOld(UncertaintyCalibrator):
+    """
+    Conformal Calibrator for regression datasets. Outputs interval of variable size, centered around
+    quantile outputs of model, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.
+    As discussed in https://arxiv.org/abs/2107.07511.
+    """
+
+    @property
+    def label(self):
+        return "conformal_quantile_regression"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal Quantile Regression is only implemented for regression dataset types."
+            )
+
+    def nll(
+        self,
+        preds: List[List[float]],
+        unc: List[List[float]],
+        targets: List[List[float]],
+        mask: List[List[bool]],
+    ):
+        raise NotImplementedError
+
+    @staticmethod
+    def get_preds(predictor: UncertaintyPredictor):
+        return np.array(predictor.get_uncal_preds())
+
     def calibrate(self):
         uncal_preds = self.get_preds(self.calibration_predictor)  # shape(data, 2 * tasks)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
@@ -964,7 +1036,7 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
             self.qhats.append(np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks))
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, task)
+        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, 2 * task)
         num_data = uncal_preds.shape[0]
         intervals = np.zeros((2 * self.num_tasks, num_data), dtype=float)
 
@@ -976,10 +1048,10 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
             intervals[task_id + self.num_tasks] = uncal_preds_upper + self.qhats[task_id]
 
         intervals = np.transpose(intervals)
-        return uncal_preds.tolist(), intervals.tolist()
+        return self.reformat_preds(uncal_preds).tolist(), intervals.tolist()
 
 
-class ConformalRegressionCalibrator(ConformalQuantileRegressionCalibrator):
+class ConformalRegressionCalibrator(ConformalQuantileRegressionCalibratorOld):
     """
     Conformal Calibrator for regression datasets. Outputs interval of fixed size, centered around
     model prediction, for each datapoint. Intervals should cover 1-alpha proportion of datapoints.

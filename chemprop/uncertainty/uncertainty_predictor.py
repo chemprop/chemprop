@@ -172,6 +172,89 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         return self.uncal_vars
 
 
+class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
+    """
+    Class that is used for conformal quantile regression. Reformats preds to be midpoint
+    of interval and outputs the interval as the uncal_output.
+    """
+
+    @property
+    def label(self):
+        return "no_uncertainty_method"
+
+    @staticmethod
+    def reformat_preds(preds):
+        """
+        Reformat preds so to midpoint of quantiles
+        """
+
+        (num_data, num_tasks) = preds.shape
+
+        preds_new = np.zeros((num_data, num_tasks//2))
+
+        for task_id in range(num_tasks//2):
+            preds_new[:, task_id] = preds[:, task_id] + preds[:, task_id + num_tasks//2]
+            preds_new[:, task_id] = preds_new[:, task_id]/2
+
+        return preds_new
+        
+        
+
+    def calculate_predictions(self):
+        for i, (model, scaler_list) in enumerate(
+            tqdm(zip(self.models, self.scalers), total=self.num_models)
+        ):
+            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            if (
+                features_scaler is not None
+                or atom_descriptor_scaler is not None
+                or bond_feature_scaler is not None
+            ):
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        atom_descriptor_scaler, scale_atom_descriptors=True
+                    )
+                if bond_feature_scaler is not None:
+                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+
+            preds = predict(
+                model=model,
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                return_unc_parameters=False,
+            )
+            if self.dataset_type == "spectra":
+                preds = normalize_spectra(
+                    spectra=preds,
+                    phase_features=self.test_data.phase_features(),
+                    phase_mask=self.spectra_phase_mask,
+                    excluded_sub_value=float("nan"),
+                )
+            if i == 0:
+                sum_preds = np.array(preds)
+                if self.individual_ensemble_predictions:
+                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+            else:
+                sum_preds += np.array(preds)
+                if self.individual_ensemble_predictions:
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
+
+        self.uncal_preds = (sum_preds / self.num_models)
+        self.uncal_vars = self.uncal_preds[:].tolist()
+        if self.individual_ensemble_predictions:
+            self.individual_preds = individual_preds.tolist()
+
+        self.uncal_preds = self.reformat_preds(self.uncal_preds).tolist()
+
+    def get_uncal_output(self):
+        return self.uncal_vars
+
+
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
     """
     A class predicting uncertainty for spectra outputs from an ensemble of models. Output is
@@ -781,6 +864,7 @@ def build_uncertainty_predictor(
         "evidential_aleatoric": EvidentialAleatoricPredictor,
         "dropout": DropoutPredictor,
         "spectra_roundrobin": RoundRobinSpectraPredictor,
+        "conformal_quantile_regression": ConformalQuantileRegressionPredictor,
     }
 
     predictor_class = supported_predictors.get(uncertainty_method, None)

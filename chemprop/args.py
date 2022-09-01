@@ -890,11 +890,6 @@ class TrainArgs(CommonArgs):
                 "The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. "
             )
 
-        if not 0 <= self.conformal_alpha <= 1:
-            raise ValueError(
-                "conformal_alpha should be in the range [0,1]"
-            )
-
 
 class PredictArgs(CommonArgs):
     """:class:`PredictArgs` includes :class:`CommonArgs` along with additional arguments used for predicting with a Chemprop model."""
@@ -919,6 +914,7 @@ class PredictArgs(CommonArgs):
         "classification",
         "dropout",
         "spectra_roundrobin",
+        "conformal_quantile_regression",
     ] = None
     """The method of calculating uncertainty."""
     calibration_method: Literal[
