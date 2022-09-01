@@ -312,6 +312,11 @@ def predict_and_save(
                     task_names[i] + "_conformal_quantile_" + str(args.conformal_alpha) + "_upper_bound" for i in range(num_tasks // 2, num_tasks)
                 ]
 
+            elif args.uncertainty_method == "conformal_quantile_regression" and args.calibration_method is None:
+                unc_names = [task_names[i] + "_quantile_" + str(args.conformal_alpha/2) for i in range(0, num_tasks // 2)] + [
+                    task_names[i] + "_quantile_" + str(1 - args.conformal_alpha/2) for i in range(num_tasks // 2, num_tasks)
+                ]
+
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
                 unc_names = [task_name + "_conformal_" + str(args.conformal_alpha) + "_in_set" for task_name in task_names] + [
                     task_name + "_conformal_" + str(args.conformal_alpha) + "_out_set" for task_name in task_names
@@ -433,6 +438,9 @@ def make_predictions(
             raise ValueError(
                 "Cannot calibrate or evaluate uncertainty without selection of an uncertainty method."
             )
+
+    if args.calibration_method is None and args.loss_function == "quantile_interval":
+        args.uncertainty_method = "conformal_quantile_regression"
 
     if calibrator is None and args.calibration_path is not None:
 
