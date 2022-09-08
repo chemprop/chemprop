@@ -16,6 +16,7 @@ def evaluate_predictions(preds: List[List[float]],
                          dataset_type: str,
                          gt_targets: List[List[bool]] = None,
                          lt_targets: List[List[bool]] = None,
+                         quantiles: List[float] = None,
                          logger: logging.Logger = None) -> Dict[str, List[float]]:
     """
     Evaluates predictions using a metric function after filtering out invalid targets.
@@ -27,6 +28,7 @@ def evaluate_predictions(preds: List[List[float]],
     :param dataset_type: Dataset type.
     :param gt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
     :param lt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
+    :param quantiles: A list of quantiles for use in pinball evaluation of quantile_interval metric.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
     """
@@ -47,6 +49,7 @@ def evaluate_predictions(preds: List[List[float]],
                 if targets[j][i] is not None:  # Skip those without targets
                     valid_preds[i].append(preds[j][i])
                     valid_targets[i].append(targets[j][i])
+
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
@@ -79,6 +82,11 @@ def evaluate_predictions(preds: List[List[float]],
                                                     labels=list(range(len(valid_preds[i][0])))))
                 elif metric in ['bounded_rmse', 'bounded_mse', 'bounded_mae']:
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i], gt_targets[i], lt_targets[i]))
+                elif metric == 'quantile':
+                    if not quantiles:
+                        raise ValueError("quantile metric evaluation requires quantiles parameter")
+
+                    results[metric].append(metric_func(valid_targets[i], valid_preds[i], quantiles[i]))
                 else:
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
 
@@ -92,8 +100,9 @@ def evaluate(model: MoleculeModel,
              num_tasks: int,
              metrics: List[str],
              dataset_type: str,
-             loss_function: str,
+             loss_function: str, # DELETE
              scaler: StandardScaler = None,
+             quantiles: List[float] = None,
              logger: logging.Logger = None) -> Dict[str, List[float]]:
     """
     Evaluates an ensemble of models on a dataset by making predictions and then evaluating the predictions.
@@ -104,6 +113,7 @@ def evaluate(model: MoleculeModel,
     :param metrics: A list of names of metric functions.
     :param dataset_type: Dataset type.
     :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
+    :param quantiles: A list of quantiles for use in pinball evaluation of quantile_interval metric.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
 
@@ -122,6 +132,7 @@ def evaluate(model: MoleculeModel,
         scaler=scaler
     )
     
+    """
     if loss_function == "quantile_interval":
         preds = np.array(preds)
         num_tasks = num_tasks//2
@@ -131,6 +142,7 @@ def evaluate(model: MoleculeModel,
             preds_new[:, task_id] = preds_new[:, task_id]/2
 
         preds = preds_new.tolist()
+    """
 
     results = evaluate_predictions(
         preds=preds,
@@ -141,6 +153,7 @@ def evaluate(model: MoleculeModel,
         logger=logger,
         gt_targets=gt_targets,
         lt_targets=lt_targets,
+        quantiles=quantiles,
     )
 
     return results

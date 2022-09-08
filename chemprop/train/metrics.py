@@ -42,6 +42,9 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     if metric == 'mse':
         return mean_squared_error
 
+    if metric == 'quantile':
+        return quantile
+
     if metric == 'mae':
         return mean_absolute_error
 
@@ -117,6 +120,23 @@ def rmse(targets: List[float], preds: List[float]) -> float:
     :return: The computed rmse.
     """
     return mean_squared_error(targets, preds, squared=False)
+
+
+def quantile(targets: List[float], preds: List[float], quantile: float):
+    """
+    Batched pinball loss at desired quantile.
+
+    :param targets: A list of targets.
+    :param preds: A list of predictions.
+    :param quantile: The quantile value to run pinball loss on
+    :return: The computed quantile loss.
+    """
+    num_data = len(preds)
+    error = [preds[i] - targets[i] for i in range(num_data)]
+
+    return [max((1-quantile) * error[i], -quantile * error[i]) for i in range(num_data)]
+
+
 
 
 def bounded_rmse(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:

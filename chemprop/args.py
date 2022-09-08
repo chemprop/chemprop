@@ -33,6 +33,7 @@ Metric = Literal[
     "bounded_rmse",
     "bounded_mae",
     "bounded_mse",
+    "quantile",
 ]
 
 
@@ -536,6 +537,7 @@ class TrainArgs(CommonArgs):
             "bounded_mse",
             "bounded_mae",
             "bounded_rmse",
+            "quantile",
         }
 
     @property
@@ -666,6 +668,8 @@ class TrainArgs(CommonArgs):
                 self.metric = "sid"
             elif self.dataset_type == "regression" and self.loss_function == "bounded_mse":
                 self.metric = "bounded_mse"
+            elif self.dataset_type == "regression" and self.loss_function == "quantile_interval":
+                self.metric = "quantile"
             elif self.dataset_type == "regression":
                 self.metric = "rmse"
             else:
@@ -679,10 +683,13 @@ class TrainArgs(CommonArgs):
 
         for metric in self.metrics:
             if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']), 
-                     (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']), 
+                     (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse', 'quantile']), 
                      (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
                      (self.dataset_type == 'spectra' and metric in ['sid','wasserstein'])]):
                  raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
+
+            if metric == "quantile" and self.loss_function != "quantile_interval":
+                raise ValueError(f'Metric quantile is only compatible with quantile_interval loss.')
 
         if self.loss_function is None:
             if self.dataset_type == "classification":

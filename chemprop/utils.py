@@ -790,7 +790,7 @@ def multitask_mean(
     :axis: The axis along which to take the mean.
     :return: The combined score across the tasks.
     """
-    scale_dependent_metrics = ["rmse", "mae", "mse", "bounded_rmse", "bounded_mae", "bounded_mse"]
+    scale_dependent_metrics = ["rmse", "mae", "mse", "bounded_rmse", "bounded_mae", "bounded_mse", "quantile"]
     nonscale_dependent_metrics = [
         "auc", "prc-auc", "r2", "accuracy", "cross_entropy",
         "binary_cross_entropy", "sid", "wasserstein", "f1", "mcc",

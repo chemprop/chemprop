@@ -294,6 +294,7 @@ def run_training(args: TrainArgs,
                 dataset_type=args.dataset_type,
                 loss_function=args.loss_function,
                 scaler=scaler,
+                quantiles=args.quantiles,
                 logger=logger
             )
 
@@ -337,6 +338,7 @@ def run_training(args: TrainArgs,
                 dataset_type=args.dataset_type,
                 gt_targets=test_data.gt_targets(),
                 lt_targets=test_data.lt_targets(),
+                quantiles=args.quantiles,
                 logger=logger
             )
 
@@ -372,7 +374,8 @@ def run_training(args: TrainArgs,
             dataset_type=args.dataset_type,
             gt_targets=test_data.gt_targets(),
             lt_targets=test_data.lt_targets(),
-            logger=logger
+            quantiles=args.quantiles,
+            logger=logger,
         )
 
     for metric, scores in ensemble_scores.items():
