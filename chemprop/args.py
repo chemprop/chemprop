@@ -16,33 +16,13 @@ from chemprop.data import set_cache_mol, empty_cache
 from chemprop.features import get_available_features_generators
 
 
-Metric = Literal[
-    "auc",
-    "prc-auc",
-    "rmse",
-    "mae",
-    "mse",
-    "r2",
-    "accuracy",
-    "cross_entropy",
-    "binary_cross_entropy",
-    "sid",
-    "wasserstein",
-    "f1",
-    "mcc",
-    "bounded_rmse",
-    "bounded_mae",
-    "bounded_mse",
-    "quantile",
-]
+Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
 
 
-def get_checkpoint_paths(
-    checkpoint_path: Optional[str] = None,
-    checkpoint_paths: Optional[List[str]] = None,
-    checkpoint_dir: Optional[str] = None,
-    ext: str = ".pt",
-) -> Optional[List[str]]:
+def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
+                         checkpoint_paths: Optional[List[str]] = None,
+                         checkpoint_dir: Optional[str] = None,
+                         ext: str = '.pt') -> Optional[List[str]]:
     """
     Gets a list of checkpoint paths either from a single checkpoint path or from a directory of checkpoints.
 
@@ -58,9 +38,7 @@ def get_checkpoint_paths(
     :return: A list of paths to checkpoints or None if no checkpoint path(s)/dir are provided.
     """
     if sum(var is not None for var in [checkpoint_dir, checkpoint_path, checkpoint_paths]) > 1:
-        raise ValueError(
-            "Can only specify one of checkpoint_dir, checkpoint_path, and checkpoint_paths"
-        )
+        raise ValueError('Can only specify one of checkpoint_dir, checkpoint_path, and checkpoint_paths')
 
     if checkpoint_path is not None:
         return [checkpoint_path]
@@ -77,9 +55,7 @@ def get_checkpoint_paths(
                     checkpoint_paths.append(os.path.join(root, fname))
 
         if len(checkpoint_paths) == 0:
-            raise ValueError(
-                f'Failed to find any checkpoints with extension "{ext}" in directory "{checkpoint_dir}"'
-            )
+            raise ValueError(f'Failed to find any checkpoints with extension "{ext}" in directory "{checkpoint_dir}"')
 
         return checkpoint_paths
 
@@ -119,7 +95,7 @@ class CommonArgs(Tap):
     """Number of workers for the parallel data loading (0 means sequential)."""
     batch_size: int = 50
     """Batch size."""
-    atom_descriptors: Literal["feature", "descriptor"] = None
+    atom_descriptors: Literal['feature', 'descriptor'] = None
     """
     Custom extra atom descriptors.
     :code:`feature`: used as atom features to featurize a given molecule.
@@ -148,13 +124,13 @@ class CommonArgs(Tap):
     def device(self) -> torch.device:
         """The :code:`torch.device` on which to load and process data and models."""
         if not self.cuda:
-            return torch.device("cpu")
+            return torch.device('cpu')
 
-        return torch.device("cuda", self.gpu)
+        return torch.device('cuda', self.gpu)
 
     @device.setter
     def device(self, device: torch.device) -> None:
-        self.cuda = device.type == "cuda"
+        self.cuda = device.type == 'cuda'
         self.gpu = device.index
 
     @property
@@ -206,8 +182,8 @@ class CommonArgs(Tap):
         self._bond_features_size = bond_features_size
 
     def configure(self) -> None:
-        self.add_argument("--gpu", choices=list(range(torch.cuda.device_count())))
-        self.add_argument("--features_generator", choices=get_available_features_generators())
+        self.add_argument('--gpu', choices=list(range(torch.cuda.device_count())))
+        self.add_argument('--features_generator', choices=get_available_features_generators())
 
     def process_args(self) -> None:
         # Load checkpoint paths
@@ -218,34 +194,22 @@ class CommonArgs(Tap):
         )
 
         # Validate features
-        if (
-            self.features_generator is not None
-            and "rdkit_2d_normalized" in self.features_generator
-            and self.features_scaling
-        ):
-            raise ValueError(
-                "When using rdkit_2d_normalized features, --no_features_scaling must be specified."
-            )
+        if self.features_generator is not None and 'rdkit_2d_normalized' in self.features_generator and self.features_scaling:
+            raise ValueError('When using rdkit_2d_normalized features, --no_features_scaling must be specified.')
 
         # Validate atom descriptors
         if (self.atom_descriptors is None) != (self.atom_descriptors_path is None):
-            raise ValueError(
-                "If atom_descriptors is specified, then an atom_descriptors_path must be provided "
-                "and vice versa."
-            )
+            raise ValueError('If atom_descriptors is specified, then an atom_descriptors_path must be provided '
+                             'and vice versa.')
 
         if self.atom_descriptors is not None and self.number_of_molecules > 1:
-            raise NotImplementedError(
-                "Atom descriptors are currently only supported with one molecule "
-                "per input (i.e., number_of_molecules = 1)."
-            )
+            raise NotImplementedError('Atom descriptors are currently only supported with one molecule '
+                                      'per input (i.e., number_of_molecules = 1).')
 
         # Validate bond descriptors
         if self.bond_features_path is not None and self.number_of_molecules > 1:
-            raise NotImplementedError(
-                "Bond descriptors are currently only supported with one molecule "
-                "per input (i.e., number_of_molecules = 1)."
-            )
+            raise NotImplementedError('Bond descriptors are currently only supported with one molecule '
+                                      'per input (i.e., number_of_molecules = 1).')
 
         set_cache_mol(not self.no_cache_mol)
 
@@ -266,21 +230,9 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
-    dataset_type: Literal["regression", "classification", "multiclass", "spectra"]
+    dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal[
-        "mse",
-        "bounded_mse",
-        "binary_cross_entropy",
-        "cross_entropy",
-        "mcc",
-        "sid",
-        "wasserstein",
-        "mve",
-        "evidential",
-        "dirichlet",
-        "quantile_interval",
-    ] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -294,16 +246,7 @@ class TrainArgs(CommonArgs):
     """Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function"""
     target_weights: List[float] = None
     """Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns."""
-    split_type: Literal[
-        "random",
-        "scaffold_balanced",
-        "predetermined",
-        "crossval",
-        "cv",
-        "cv-no-test",
-        "index_predetermined",
-        "random_with_repeated_smiles",
-    ] = "random"
+    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'] = 'random'
     """Method of splitting the data into train/val/test."""
     split_sizes: List[float] = None
     """Split proportions for train/validation/test sets."""
