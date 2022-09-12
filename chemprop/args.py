@@ -8,7 +8,7 @@ from packaging import version
 from warnings import warn
 
 import torch
-from tap import Tap
+from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 import numpy as np
 
 import chemprop.data.utils
@@ -326,7 +326,7 @@ class TrainArgs(CommonArgs):
     Only relevant if :code:`number_of_molecules > 1`"""
     dropout: float = 0.0
     """Dropout probability."""
-    activation: Literal["ReLU", "LeakyReLU", "PReLU", "tanh", "SELU", "ELU"] = "ReLU"
+    activation: Literal['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'] = 'ReLU'
     """Activation function."""
     atom_messages: bool = False
     """Centers messages on atoms instead of on bonds."""
@@ -361,7 +361,7 @@ class TrainArgs(CommonArgs):
     """
     ensemble_size: int = 1
     """Number of models in ensemble."""
-    aggregation: Literal["mean", "sum", "norm"] = "mean"
+    aggregation: Literal['mean', 'sum', 'norm'] = 'mean'
     """Aggregation scheme for atomic vectors into molecular vectors"""
     aggregation_norm: int = 100
     """For norm aggregation, number by which to divide summed up atomic features"""
@@ -369,14 +369,7 @@ class TrainArgs(CommonArgs):
     """
     Whether to adjust MPNN layer to take reactions as input instead of molecules.
     """
-    reaction_mode: Literal[
-        "reac_prod",
-        "reac_diff",
-        "prod_diff",
-        "reac_prod_balance",
-        "reac_diff_balance",
-        "prod_diff_balance",
-    ] = "reac_diff"
+    reaction_mode: Literal['reac_prod', 'reac_diff', 'prod_diff', 'reac_prod_balance', 'reac_diff_balance', 'prod_diff_balance'] = 'reac_diff'
     """
     Choices for construction of atom and bond features for reactions
     :code:`reac_prod`: concatenates the reactants feature with the products feature.
@@ -419,7 +412,7 @@ class TrainArgs(CommonArgs):
     """Maximum magnitude of gradient during training."""
     class_balance: bool = False
     """Trains with an equal number of positives and negatives in each batch."""
-    spectra_activation: Literal["exp", "softplus"] = "exp"
+    spectra_activation: Literal['exp', 'softplus'] = 'exp'
     """Indicates which function to use in dataset_type spectra training to constrain outputs to be positive."""
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
@@ -469,28 +462,12 @@ class TrainArgs(CommonArgs):
     @property
     def minimize_score(self) -> bool:
         """Whether the model should try to minimize the score metric or maximize it."""
-        return self.metric in {
-            "rmse",
-            "mae",
-            "mse",
-            "cross_entropy",
-            "binary_cross_entropy",
-            "sid",
-            "wasserstein",
-            "bounded_mse",
-            "bounded_mae",
-            "bounded_rmse",
-            "quantile",
-        }
+        return self.metric in {'rmse', 'mae', 'mse', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'bounded_mse', 'bounded_mae', 'bounded_rmse'}
 
     @property
     def use_input_features(self) -> bool:
         """Whether the model is using additional molecule-level features."""
-        return (
-            self.features_generator is not None
-            or self.features_path is not None
-            or self.phase_features_path is not None
-        )
+        return self.features_generator is not None or self.features_path is not None or self.phase_features_path is not None
 
     @property
     def num_lrs(self) -> int:
@@ -566,7 +543,7 @@ class TrainArgs(CommonArgs):
 
         # Adapt the number of molecules for reaction_solvent mode
         if self.reaction_solvent is True and self.number_of_molecules != 2:
-            raise ValueError("In reaction_solvent mode, --number_of_molecules 2 must be specified.")
+            raise ValueError('In reaction_solvent mode, --number_of_molecules 2 must be specified.')
 
         # Process SMILES columns
         self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
@@ -584,14 +561,12 @@ class TrainArgs(CommonArgs):
 
         # Check whether the number of input columns is two for the reaction_solvent mode
         if self.reaction_solvent is True and len(self.smiles_columns) != 2:
-            raise ValueError(
-                f"In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)"
-            )
+            raise ValueError(f'In reaction_solvent mode, exactly two smiles column must be provided (one for reactions, and one for molecules)')
 
         # Validate reaction/reaction_solvent mode
         if self.reaction is True and self.reaction_solvent is True:
-            raise ValueError("Only reaction or reaction_solvent mode can be used, not both.")
-
+            raise ValueError('Only reaction or reaction_solvent mode can be used, not both.')
+  
         # Create temporary directory as save directory if not provided
         if self.save_dir is None:
             temp_save_dir = TemporaryDirectory()
@@ -616,13 +591,11 @@ class TrainArgs(CommonArgs):
             elif self.dataset_type == "regression":
                 self.metric = "rmse"
             else:
-                raise ValueError(f"Dataset type {self.dataset_type} is not supported.")
+                raise ValueError(f'Dataset type {self.dataset_type} is not supported.')
 
         if self.metric in self.extra_metrics:
-            raise ValueError(
-                f"Metric {self.metric} is both the metric and is in extra_metrics. "
-                f"Please only include it once."
-            )
+            raise ValueError(f'Metric {self.metric} is both the metric and is in extra_metrics. '
+                             f'Please only include it once.')
 
         for metric in self.metrics:
             if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']), 
@@ -635,31 +608,23 @@ class TrainArgs(CommonArgs):
                 raise ValueError(f'Metric quantile is only compatible with quantile_interval loss.')
 
         if self.loss_function is None:
-            if self.dataset_type == "classification":
-                self.loss_function = "binary_cross_entropy"
-            elif self.dataset_type == "multiclass":
-                self.loss_function = "cross_entropy"
-            elif self.dataset_type == "spectra":
-                self.loss_function = "sid"
-            elif self.dataset_type == "regression":
-                self.loss_function = "mse"
+            if self.dataset_type == 'classification':
+                self.loss_function = 'binary_cross_entropy'
+            elif self.dataset_type == 'multiclass':
+                self.loss_function = 'cross_entropy'
+            elif self.dataset_type == 'spectra':
+                self.loss_function = 'sid'
+            elif self.dataset_type == 'regression':
+                self.loss_function = 'mse'
             else:
-                raise ValueError(
-                    f"Default loss function not configured for dataset type {self.dataset_type}."
-                )
+                raise ValueError(f"Default loss function not configured for dataset type {self.dataset_type}.")
 
-        if self.loss_function != "bounded_mse" and any(
-            metric in ["bounded_mse", "bounded_rmse", "bounded_mae"] for metric in self.metrics
-        ):
-            raise ValueError(
-                "Bounded metrics can only be used in conjunction with the regression loss function bounded_mse."
-            )
+        if self.loss_function != 'bounded_mse' and any(metric in ['bounded_mse', 'bounded_rmse', 'bounded_mae'] for metric in self.metrics):
+            raise ValueError('Bounded metrics can only be used in conjunction with the regression loss function bounded_mse.')
 
         # Validate class balance
-        if self.class_balance and self.dataset_type != "classification":
-            raise ValueError(
-                "Class balance can only be applied if the dataset type is classification."
-            )
+        if self.class_balance and self.dataset_type != 'classification':
+            raise ValueError('Class balance can only be applied if the dataset type is classification.')
 
         # Validate features
         if self.features_only and not (self.features_generator or self.features_path):
@@ -673,25 +638,16 @@ class TrainArgs(CommonArgs):
 
         # Handle MPN variants
         if self.atom_messages and self.undirected:
-            raise ValueError(
-                "Undirected is unnecessary when using atom_messages "
-                "since atom_messages are by their nature undirected."
-            )
+            raise ValueError('When using features_only, a features_generator or features_path must be provided.')
 
         # Validate split type settings
-        if (
-            not (self.split_type == "predetermined")
-            == (self.folds_file is not None)
-            == (self.test_fold_index is not None)
-        ):
-            raise ValueError(
-                "When using predetermined split type, must provide folds_file and test_fold_index."
-            )
+        if not (self.split_type == 'predetermined') == (self.folds_file is not None) == (self.test_fold_index is not None):
+            raise ValueError('When using predetermined split type, must provide folds_file and test_fold_index.')
 
-        if not (self.split_type == "crossval") == (self.crossval_index_dir is not None):
-            raise ValueError("When using crossval split type, must provide crossval_index_dir.")
+        if not (self.split_type == 'crossval') == (self.crossval_index_dir is not None):
+            raise ValueError('When using crossval split type, must provide crossval_index_dir.')
 
-        if not (self.split_type in ["crossval", "index_predetermined"]) == (
+        if not (self.split_type in ['crossval', 'index_predetermined']) == (
             self.crossval_index_file is not None
         ):
             raise ValueError(
@@ -706,37 +662,27 @@ class TrainArgs(CommonArgs):
 
         # Validate split size entry and set default values
         if self.split_sizes is None:
-            if (
-                self.separate_val_path is None and self.separate_test_path is None
-            ):  # separate data paths are not provided
+            if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
                 self.split_sizes = [0.8, 0.1, 0.1]
-            elif (
-                self.separate_val_path is not None and self.separate_test_path is None
-            ):  # separate val path only
-                self.split_sizes = [0.8, 0.0, 0.2]
-            elif (
-                self.separate_val_path is None and self.separate_test_path is not None
-            ):  # separate test path only
-                self.split_sizes = [0.8, 0.2, 0.0]
-            else:  # both separate data paths are provided
-                self.split_sizes = [1.0, 0.0, 0.0]
+            elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
+                 self.split_sizes = [0.8, 0., 0.2]
+             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
+                 self.split_sizes = [0.8, 0.2, 0.]
+             else: # both separate data paths are provided
+                 self.split_sizes = [1., 0., 0.]
 
         else:
             if not np.isclose(sum(self.split_sizes), 1):
-                raise ValueError(f"Provided split sizes of {self.split_sizes} do not sum to 1.")
+                raise ValueError(f'Provided split sizes of {self.split_sizes} do not sum to 1.')
             if any([size < 0 for size in self.split_sizes]):
                 raise ValueError(
                     f"Split sizes must be non-negative. Received split sizes: {self.split_sizes}"
                 )
 
             if len(self.split_sizes) not in [2, 3]:
-                raise ValueError(
-                    f"Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s)."
-                )
+                raise ValueError(f"Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).")
 
-            if (
-                self.separate_val_path is None and self.separate_test_path is None
-            ):  # separate data paths are not provided
+            if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
                 if len(self.split_sizes) != 3:
                     raise ValueError(
                         f"Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s)."
