@@ -12,7 +12,7 @@ from chemprop.train.loss_functions import (
     get_loss_func,
     mcc_multiclass_loss,
     normal_mve,
-    quantile_loss_batch,
+    quantile_loss,
 )
 
 
@@ -252,7 +252,7 @@ def test_quantile(preds, targets, quantiles, expected_loss):
     """
     Test on the evidential loss function for regression.
     """
-    loss = quantile_loss_batch(preds, targets, quantiles)
+    loss = quantile_loss(preds, targets, quantiles)
     np.testing.assert_array_almost_equal(loss, expected_loss, decimal=4)
 
 @pytest.mark.parametrize(
