@@ -34,7 +34,10 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "mcc": mcc_multiclass_loss,
             "dirichlet": dirichlet_multiclass_loss,
         },
-        "spectra": {"sid": sid_loss, "wasserstein": wasserstein_loss},
+        "spectra": {
+            "sid": sid_loss,
+            "wasserstein": wasserstein_loss,
+        },
     }
 
     # Error if no loss function supported
@@ -73,14 +76,19 @@ def bounded_mse_loss(
     predictions = torch.where(torch.logical_and(predictions < targets, less_than_target), targets, predictions)
 
     predictions = torch.where(
-        torch.logical_and(predictions > targets, greater_than_target), targets, predictions
+        torch.logical_and(predictions > targets, greater_than_target),
+        targets,
+        predictions,
     )
 
     return nn.functional.mse_loss(predictions, targets, reduction="none")
 
 
 def mcc_class_loss(
-    predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor
+    predictions: torch.tensor,
+    targets: torch.tensor,
+    data_weights: torch.tensor,
+    mask: torch.tensor,
 ) -> torch.tensor:
     """
     A classification loss using a soft version of the Matthews Correlation Coefficient.
@@ -102,7 +110,10 @@ def mcc_class_loss(
 
 
 def mcc_multiclass_loss(
-    predictions: torch.tensor, targets: torch.tensor, data_weights: torch.tensor, mask: torch.tensor
+    predictions: torch.tensor,
+    targets: torch.tensor,
+    data_weights: torch.tensor,
+    mask: torch.tensor,
 ) -> torch.tensor:
     """
     A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
@@ -118,6 +129,7 @@ def mcc_multiclass_loss(
 
     bin_targets = torch.zeros_like(predictions, device=torch_device)
     bin_targets[torch.arange(predictions.shape[0]), targets] = 1
+
     pred_classes = predictions.argmax(dim=1)
     bin_preds = torch.zeros_like(predictions, device=torch_device)
     bin_preds[torch.arange(predictions.shape[0]), pred_classes] = 1
@@ -138,6 +150,7 @@ def mcc_multiclass_loss(
         loss = torch.tensor(0.0)
     else:
         loss = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
+
     return loss
 
 
