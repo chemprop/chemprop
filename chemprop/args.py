@@ -232,7 +232,7 @@ class TrainArgs(CommonArgs):
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
     dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet', 'quantile_interval'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -754,9 +754,9 @@ class TrainArgs(CommonArgs):
                 "The index provided with the argument `--split_key_molecule` must be less than the number of molecules. Note that this index begins with 0 for the first molecule. "
             )
 
-        if not 0 <= self.conformal_alpha <= 0.5:
+        if not 0 <= self.quantile_loss_alpha <= 0.5:
             raise ValueError(
-                "conformal_alpha should be in the range [0,0.5]"
+                "quantile_loss_alpha should be in the range [0,0.5]"
             )
 
 
@@ -805,6 +805,8 @@ class PredictArgs(CommonArgs):
     """Location to save the results of uncertainty evaluations."""
     uncertainty_dropout_p: float = 0.1
     """The probability to use for Monte Carlo dropout uncertainty estimation."""
+    conformal_alpha: float = 0.1
+    """Target error rate for conformal prediction."""
     dropout_sampling_size: int = 10
     """The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training."""
     calibration_interval_percentile: float = 95
