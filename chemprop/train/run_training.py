@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from tensorboardX import SummaryWriter
 import torch
-from tqdm import trange
+from tqdm.auto import trange
 from torch.optim.lr_scheduler import ExponentialLR
 
 from .evaluate import evaluate, evaluate_predictions
@@ -21,7 +21,7 @@ from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, Molecul
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
-    save_checkpoint, save_smiles_splits, load_frzn_model
+    save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean
 
 
 def run_training(args: TrainArgs,
@@ -145,6 +145,20 @@ def run_training(args: TrainArgs,
 
     debug(f'Total size = {len(data):,} | '
           f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
+
+    if len(val_data) == 0:
+        raise ValueError('The validation data split is empty. During normal chemprop training (non-sklearn functions), \
+            a validation set is required to conduct early stopping according to the selected evaluation metric. This \
+            may have occurred because validation data provided with `--separate_val_path` was empty or contained only invalid molecules.')
+
+    if len(test_data) == 0:
+        debug('The test data split is empty. This may be either because splitting with no test set was selected, \
+            such as with `cv-no-test`, or because test data provided with `--separate_test_path` was empty or contained only invalid molecules. \
+            Performance on the test set will not be evaluated and metric scores will return `nan` for each task.')
+        empty_test_set = True
+    else:
+        empty_test_set = False
+
 
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
@@ -283,10 +297,10 @@ def run_training(args: TrainArgs,
             )
 
             for metric, scores in val_scores.items():
-                # Average validation score
-                avg_val_score = np.nanmean(scores)
-                debug(f'Validation {metric} = {avg_val_score:.6f}')
-                writer.add_scalar(f'validation_{metric}', avg_val_score, n_iter)
+                # Average validation score\
+                mean_val_score = multitask_mean(scores, metric=metric)
+                debug(f'Validation {metric} = {mean_val_score:.6f}')
+                writer.add_scalar(f'validation_{metric}', mean_val_score, n_iter)
 
                 if args.show_individual_scores:
                     # Individual validation scores
@@ -295,10 +309,10 @@ def run_training(args: TrainArgs,
                         writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
 
             # Save model checkpoint if improved validation score
-            avg_val_score = np.nanmean(val_scores[args.metric])
-            if args.minimize_score and avg_val_score < best_score or \
-                    not args.minimize_score and avg_val_score > best_score:
-                best_score, best_epoch = avg_val_score, epoch
+            mean_val_score = multitask_mean(val_scores[args.metric], metric=args.metric)
+            if args.minimize_score and mean_val_score < best_score or \
+                    not args.minimize_score and mean_val_score > best_score:
+                best_score, best_epoch = mean_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
                                 atom_descriptor_scaler, bond_feature_scaler, args)
 
@@ -306,13 +320,51 @@ def run_training(args: TrainArgs,
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
 
-        test_preds = predict(
-            model=model,
-            data_loader=test_data_loader,
-            scaler=scaler
-        )
-        test_scores = evaluate_predictions(
-            preds=test_preds,
+        if empty_test_set:
+            info(f'Model {model_idx} provided with no test set, no metric evaluation will be performed.')
+        else:
+            test_preds = predict(
+                model=model,
+                data_loader=test_data_loader,
+                scaler=scaler
+            )
+            test_scores = evaluate_predictions(
+                preds=test_preds,
+                targets=test_targets,
+                num_tasks=args.num_tasks,
+                metrics=args.metrics,
+                dataset_type=args.dataset_type,
+                gt_targets=test_data.gt_targets(),
+                lt_targets=test_data.lt_targets(),
+                logger=logger
+            )
+
+            if len(test_preds) != 0:
+                sum_test_preds += np.array(test_preds)
+
+            # Average test score
+            for metric, scores in test_scores.items():
+                avg_test_score = np.nanmean(scores)
+                info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
+                writer.add_scalar(f'test_{metric}', avg_test_score, 0)
+
+                if args.show_individual_scores and args.dataset_type != 'spectra':
+                    # Individual test scores
+                    for task_name, test_score in zip(args.task_names, scores):
+                        info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
+                        writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
+        writer.close()
+
+    # Evaluate ensemble on test set
+    if empty_test_set:
+        ensemble_scores = {
+            metric: [np.nan for task in args.task_names] for metric in args.metrics
+        }
+    else:
+        avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
+
+        ensemble_scores = evaluate_predictions(
+            preds=avg_test_preds,
             targets=test_targets,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
@@ -322,40 +374,10 @@ def run_training(args: TrainArgs,
             logger=logger
         )
 
-        if len(test_preds) != 0:
-            sum_test_preds += np.array(test_preds)
-
-        # Average test score
-        for metric, scores in test_scores.items():
-            avg_test_score = np.nanmean(scores)
-            info(f'Model {model_idx} test {metric} = {avg_test_score:.6f}')
-            writer.add_scalar(f'test_{metric}', avg_test_score, 0)
-
-            if args.show_individual_scores and args.dataset_type != 'spectra':
-                # Individual test scores
-                for task_name, test_score in zip(args.task_names, scores):
-                    info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
-                    writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
-        writer.close()
-
-    # Evaluate ensemble on test set
-    avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
-
-    ensemble_scores = evaluate_predictions(
-        preds=avg_test_preds,
-        targets=test_targets,
-        num_tasks=args.num_tasks,
-        metrics=args.metrics,
-        dataset_type=args.dataset_type,
-        gt_targets=test_data.gt_targets(),
-        lt_targets=test_data.lt_targets(),
-        logger=logger
-    )
-
     for metric, scores in ensemble_scores.items():
         # Average ensemble score
-        avg_ensemble_test_score = np.nanmean(scores)
-        info(f'Ensemble test {metric} = {avg_ensemble_test_score:.6f}')
+        mean_ensemble_test_score = multitask_mean(scores, metric=metric)
+        info(f'Ensemble test {metric} = {mean_ensemble_test_score:.6f}')
 
         # Individual ensemble scores
         if args.show_individual_scores:
@@ -367,7 +389,7 @@ def run_training(args: TrainArgs,
         json.dump(ensemble_scores, f, indent=4, sort_keys=True)
 
     # Optionally save test preds
-    if args.save_preds:
+    if args.save_preds and not empty_test_set:
         test_preds_dataframe = pd.DataFrame(data={'smiles': test_data.smiles()})
 
         for i, task_name in enumerate(args.task_names):

@@ -9,6 +9,7 @@ from warnings import warn
 
 import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+import numpy as np
 
 import chemprop.data.utils
 from chemprop.data import set_cache_mol, empty_cache
@@ -648,17 +649,20 @@ class TrainArgs(CommonArgs):
         # Validate split size entry and set default values
         if self.split_sizes is None:
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
-                self.split_sizes = (0.8, 0.1, 0.1)
+                self.split_sizes = [0.8, 0.1, 0.1]
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
-                self.split_sizes = (0.8, 0., 0.2)
+                self.split_sizes = [0.8, 0., 0.2]
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
-                self.split_sizes = (0.8, 0.2, 0.)
+                self.split_sizes = [0.8, 0.2, 0.]
             else: # both separate data paths are provided
-                self.split_sizes = (1., 0., 0.)
+                self.split_sizes = [1., 0., 0.]
 
         else:
-            if sum(self.split_sizes) != 1.:
+            if not np.isclose(sum(self.split_sizes), 1):
                 raise ValueError(f'Provided split sizes of {self.split_sizes} do not sum to 1.')
+            if any([size < 0 for size in self.split_sizes]):
+                raise ValueError(f'Split sizes must be non-negative. Received split sizes: {self.split_sizes}')
+
 
             if len(self.split_sizes) not in [2,3]:
                 raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
@@ -666,33 +670,33 @@ class TrainArgs(CommonArgs):
             if self.separate_val_path is None and self.separate_test_path is None: # separate data paths are not provided
                 if len(self.split_sizes) != 3:
                     raise ValueError(f'Three values should be provided for train/val/test split sizes. Instead received {len(self.split_sizes)} value(s).')
-                if 0. in self.split_sizes:
-                    raise ValueError(f'Provided split sizes must be nonzero if no separate data files are provided. Received split sizes of {self.split_sizes}.')
+                if self.split_sizes[0] == 0.:
+                    raise ValueError(f'Provided split size for train split must be nonzero. Received split size {self.split_sizes[0]}')
+                if self.split_sizes[1] == 0.:
+                    raise ValueError(f'Provided split size for validation split must be nonzero. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is not None and self.separate_test_path is None: # separate val path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], 0., self.split_sizes[1])
+                    self.split_sizes = [self.split_sizes[0], 0., self.split_sizes[1]]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] != 0.:
-                    raise ValueError('Provided split size for validation split must be 0 because validation set is provided separately.')
-                if self.split_sizes[2] == 0.:
-                    raise ValueError('Provided split size for test split must be nonzero.')
+                    raise ValueError(f'Provided split size for validation split must be 0 because validation set is provided separately. Received split size {self.split_sizes[1]}')
 
             elif self.separate_val_path is None and self.separate_test_path is not None: # separate test path only
                 if len(self.split_sizes) == 2: # allow input of just 2 values
-                    self.split_sizes = (self.split_sizes[0], self.split_sizes[1], 0.)
+                    self.split_sizes = [self.split_sizes[0], self.split_sizes[1], 0.]
                 if self.split_sizes[0] == 0.:
                     raise ValueError('Provided split size for train split must be nonzero.')
                 if self.split_sizes[1] == 0.:
                     raise ValueError('Provided split size for validation split must be nonzero.')
                 if self.split_sizes[2] != 0.:
-                    raise ValueError('Provided split size for test split must be 0 because test set is provided separately.')
+                    raise ValueError(f'Provided split size for test split must be 0 because test set is provided separately. Received split size {self.split_sizes[2]}')
 
 
             else: # both separate data paths are provided
-                if self.split_sizes != (1., 0., 0.):
-                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided.')
+                if self.split_sizes != [1., 0., 0.]:
+                    raise ValueError(f'Separate data paths were provided for val and test splits. Split sizes should not also be provided. Received split sizes: {self.split_sizes}')
 
         # Test settings
         if self.test:
@@ -912,11 +916,29 @@ class HyperoptArgs(TrainArgs):
     hyperopt_checkpoint_dir: str = None
     """Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted.
     Can also be used to run multiple instances in parallel if they share the same checkpoint directory."""
-    startup_random_iters: int = 10
-    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest."""
+    startup_random_iters: int = None
+    """The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest.
+    By default will be half the total number of trials."""
     manual_trial_dirs: List[str] = None
     """Paths to save directories for manually trained models in the same search space as the hyperparameter search.
     Results will be considered as part of the trial history of the hyperparameter search."""
+    search_parameter_keywords: List[str] = ["basic"]
+    """The model parameters over which to search for an optimal hyperparameter configuration.
+    Some options are bundles of parameters or otherwise special parameter operations.
+
+    Special keywords:
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
+        linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value.
+            If either of the component words are entered in separately, both are searched independently.
+        learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs. The search for init_lr and final_lr values
+            are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+        all - include search for all 13 inidividual keyword options
+
+    Individual supported parameters:
+        activation, aggregation, aggregation_norm, batch_size, depth,
+        dropout, ffn_hidden_size, ffn_num_layers, final_lr, hidden_size,
+        init_lr, max_lr, warmup_epochs
+    """
 
     def process_args(self) -> None:
         super(HyperoptArgs, self).process_args()
@@ -926,6 +948,49 @@ class HyperoptArgs(TrainArgs):
             self.log_dir = self.save_dir
         if self.hyperopt_checkpoint_dir is None:
             self.hyperopt_checkpoint_dir = self.log_dir
+        
+        # Set number of startup random trials
+        if self.startup_random_iters is None:
+            self.startup_random_iters = self.num_iters // 2
+
+        # Construct set of search parameters
+        supported_keywords = [
+            "basic", "learning_rate", "linked_hidden_size", "all",
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr", "hidden_size",
+            "init_lr", "max_lr", "warmup_epochs"
+        ]
+        supported_parameters = [
+            "activation", "aggregation", "aggregation_norm", "batch_size", "depth",
+            "dropout", "ffn_hidden_size", "ffn_num_layers", "final_lr_ratio", "hidden_size",
+            "init_lr_ratio", "linked_hidden_size", "max_lr", "warmup_epochs"
+        ]
+        unsupported_keywords = set(self.search_parameter_keywords) - set(supported_keywords)
+        if len(unsupported_keywords) != 0:
+            raise NotImplementedError(
+                f"Keywords for what hyperparameters to include in the search are designated \
+                    with the argument `--search_parameter_keywords`. The following unsupported\
+                    keywords were received: {unsupported_keywords}. The available supported\
+                    keywords are: {supported_keywords}"
+            )
+        search_parameters = set()
+        if "all" in self.search_parameter_keywords:
+            search_parameters.update(supported_parameters)
+        if "basic" in self.search_parameter_keywords:
+            search_parameters.update(["depth", "ffn_num_layers", "dropout", "linked_hidden_size"])
+        if "learning_rate" in self.search_parameter_keywords:
+            search_parameters.update(["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"])
+        for kw in self.search_parameter_keywords:
+            if kw in supported_parameters:
+                search_parameters.add(kw)
+        if "init_lr" in self.search_parameter_keywords:
+            search_parameters.add("init_lr_ratio")
+        if "final_lr" in self.search_parameter_keywords:
+            search_parameters.add("final_lr_ratio")
+        if "linked_hidden_size" in search_parameters and ("hidden_size" in search_parameters or "ffn_hidden_size" in search_parameters):
+            search_parameters.remove("linked_hidden_size")
+            search_parameters.update(["hidden_size", "ffn_hidden_size"])
+        self.search_parameters = list(search_parameters)
 
 
 class SklearnTrainArgs(TrainArgs):

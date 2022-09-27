@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.linear_model import SGDClassifier, SGDRegressor
-from tqdm import trange, tqdm
+from tqdm.auto import trange, tqdm
 
 from chemprop.args import SklearnTrainArgs
 from chemprop.data import MoleculeDataset, split_data, get_task_names, get_data

@@ -2,7 +2,7 @@ import csv
 import pickle
 
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from chemprop.args import SklearnPredictArgs, SklearnTrainArgs
 from chemprop.data import get_data

@@ -6,7 +6,7 @@ import warnings
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import numpy as np
 
 from .data import MoleculeDataset, make_mol

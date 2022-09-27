@@ -6,7 +6,7 @@ import sys
 from typing import Tuple, List
 
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from typing_extensions import Literal
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))

@@ -1,6 +1,6 @@
 from typing import List, Callable, Union
 
-from tqdm import trange
+from tqdm.auto import trange
 import torch
 import numpy as np
 import torch.nn as nn

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Iterator, List
 
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
 from chemprop.models import MoleculeModel

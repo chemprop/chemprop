@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 import torch
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from chemprop.args import FingerprintArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset

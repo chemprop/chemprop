@@ -1,7 +1,7 @@
 from typing import List
 import csv
 
-from tqdm import trange
+from tqdm.auto import trange
 import numpy as np
 
 

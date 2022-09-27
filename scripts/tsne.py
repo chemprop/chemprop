@@ -11,7 +11,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from sklearn.manifold import TSNE
 from tap import Tap
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 

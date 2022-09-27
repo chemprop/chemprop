@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 import numpy as np
 from scipy.stats import wilcoxon
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.train import evaluate_predictions
