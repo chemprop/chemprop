@@ -134,7 +134,7 @@ def quantile(targets: List[float], preds: List[float], quantile: float):
     num_data = len(preds)
     error = [preds[i] - targets[i] for i in range(num_data)]
 
-    return [max((1-quantile) * error[i], -quantile * error[i]) for i in range(num_data)]
+    return np.mean([max((1-quantile) * error[i], -quantile * error[i]) for i in range(num_data)])
 
 
 
