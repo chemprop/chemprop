@@ -144,7 +144,7 @@ def hyperopt(args: HyperoptArgs) -> None:
 
         # Set a unique random seed for each trial. Pass it into objective function for logging purposes.
         hyperopt_seed = get_hyperopt_seed(
-            seed=args.seed, dir_path=args.hyperopt_checkpoint_dir
+            seed=args.hyperopt_seed, dir_path=args.hyperopt_checkpoint_dir
         )
         fmin_objective = partial(objective, seed=hyperopt_seed)
         os.environ["HYPEROPT_FMIN_SEED"] = str(
