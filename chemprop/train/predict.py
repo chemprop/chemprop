@@ -7,6 +7,7 @@ import numpy as np
 from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import activate_dropout
+from chemprop.utils import fit_to_physical_property
 
 
 def predict(
@@ -60,6 +61,9 @@ def predict(
                 bond_features_batch,
             )
 
+        if model.physical_prior:
+            batch_preds = fit_to_physical_property(batch_preds,model.physical_prior,batch.phys_features())
+        
         batch_preds = batch_preds.data.cpu().numpy()
 
         if model.loss_function == "mve":

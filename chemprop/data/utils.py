@@ -239,7 +239,8 @@ def get_data(path: str,
              store_row: bool = False,
              logger: Logger = None,
              loss_function: str = None,
-             skip_none_targets: bool = False) -> MoleculeDataset:
+             skip_none_targets: bool = False,
+             physical_prior: str = None,) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -256,6 +257,7 @@ def get_data(path: str,
                           in place of :code:`args.features_path`.
     :param features_generator: A list of features generators to use. If provided, it is used
                                in place of :code:`args.features_generator`.
+    :param physical_prior: Type of physical prior, used for the physics informed features (Arrhenius, etc)
     :param phase_features_path: A path to a file containing phase features as applicable to spectra.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
     :param bond_features_path: The path to the file containing the custom bond features.
@@ -284,6 +286,7 @@ def get_data(path: str,
             else args.bond_features_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
+        physical_prior = physical_prior if physical_prior else args.physical_prior
 
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
@@ -341,7 +344,7 @@ def get_data(path: str,
         if any([c not in fieldnames for c in target_columns]):
             raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
 
-        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
+        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt, all_phys_features = [], [], [], [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
             smiles = [row[c] for c in smiles_columns]
 
@@ -382,6 +385,14 @@ def get_data(path: str,
 
             if store_row:
                 all_rows.append(row)
+                                
+            if physical_prior in ['arrhenius', 'vft']:
+                # For Arrhenius or VFT models there has to be a extra temperature 
+                # feature that is kept separate from the other features
+                try:
+                    all_phys_features.append(float(row['temperature']))
+                except:
+                    raise ValueError(f'Molecule {smiles} does not have a temperature value, necessary for Arrhenius/VFT training.')
 
             if len(all_smiles) >= max_data_size:
                 break
@@ -421,7 +432,8 @@ def get_data(path: str,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_features=bond_features[i] if bond_features is not None else None,
                 overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
-                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
+                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False,
+                phys_features=all_phys_features[i] if all_phys_features else None,
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                                total=len(all_smiles))
         ])

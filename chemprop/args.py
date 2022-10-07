@@ -113,6 +113,13 @@ class CommonArgs(Tap):
     """
     Whether to empty all caches before training or predicting. This is necessary if multiple jobs are run within a single script and the atom or bond features change.
     """
+    physical_prior: Literal['None', 'arrhenius', 'vtf'] = 'None'
+    """
+    Determines if the model should learn the properties with a phyisical equation.
+    Currently implemented Arrhenius or Vogel-Fulcher-Tammann equations for predicting 
+    conductivity (viscosity could be added through simple modifications). 
+    In the future other types of phyiscial formulas could be implemented as well.
+    """
 
     def __init__(self, *args, **kwargs):
         super(CommonArgs, self).__init__(*args, **kwargs)
@@ -215,6 +222,9 @@ class CommonArgs(Tap):
 
         if self.empty_cache:
             empty_cache()
+            
+        if self.physical_prior is not None:
+            self.ignore_columns = ['temperature']
 
 
 class TrainArgs(CommonArgs):

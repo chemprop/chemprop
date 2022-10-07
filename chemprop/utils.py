@@ -807,3 +807,88 @@ def multitask_mean(
                 This metric must be added to the appropriate list in the multitask_mean\
                 function in `chemprop/utils.py` in order to be used."
         )
+
+def arr_conductivity(logA,Ea,temp):
+    """
+    Computes conductivity from Arrhenius fit parameters.
+
+    :param logA: logA value for fit.
+    :param Ea: Ea value for fit.
+    :param temp: temperature values for each point.
+    :return: ionic conductivity calculation.
+    """
+    R = 8.3145/1000 #ideal gas const in kJ/mol/K
+    temp = temp + 273 # convert temp to K
+    e = np.exp(1)
+    C = np.log10(e)/R
+    
+    cond = logA - C*Ea/temp
+    
+    return cond.unsqueeze(1) 
+
+def vtf_conductivity(logA,Ea,T0,temp):
+    """
+    Computes conductivity from VTF fit parameters.
+
+    :param logA: logA value for fit.
+    :param Ea: Ea value for fit.
+    :param T0: T0 fit value.
+    :param temp: temperature values for each point.
+    :return: ionic conductivity calculation.
+    """
+    R = 8.3145/1000 #ideal gas const in kJ/mol/K
+    temp = temp + 273 # convert temp to K
+    e = np.exp(1)
+    C = np.log10(e)/R
+    
+    cond = logA - C*Ea/(temp - T0)
+    
+    return cond.unsqueeze(1) 
+    
+def fit_to_physical_property(preds,prior_type,extra_param):
+    """
+    Computes a property from a physical equation.
+    Currently works on Arrhenius or VTF parameters.
+
+    :param preds: parameters outputs of model.
+    :param prior_type: arrhenius or vtf parameters
+    :param extra_param: extra parameter for fitting, ex, temperature
+    :return: ionic conductivity values.
+    """
+    if type(preds) is list:
+        preds = torch.tensor(preds)
+    extra_param = torch.FloatTensor(extra_param).to(preds.device)
+    
+    if prior_type=="arrhenius":
+        return arr_conductivity(preds[:,0], preds[:,1], extra_param)
+    elif prior_type == "vtf":
+        return vtf_conductivity(preds[:,0], preds[:,1], preds[:,2], extra_param)
+    else:
+        return preds
+
+def arrhenius_regularization(logA, Ea):
+    """
+    adds arrhenius regularization term to loss function.
+
+    :param logA: logA output from model.
+    :param Ea: Ea output from model.
+    :return: regularization term to force logA vs Ea linear behavior
+    """
+    
+    reg_term = 0.0
+    #fit terms and int range taken from experimental fit data and correlation between Ea and logA
+    slope = 6.62702
+    intercept = 31.7662
+    int_range = 30
+
+    #get expected value of Ea
+    exp_Ea = logA * slope + intercept
+    
+    #get absolute value of all residuals, subtract 15 from each
+    residuals = torch.abs(exp_Ea - Ea) - int_range
+    
+    #zero out all residuals within certain distance of fit line
+    #eg don't punish for values within 15 units of fit line
+    residuals = torch.max(residuals,torch.zeros(residuals.shape).to(residuals.device))
+   
+    return reg_term*torch.sum(residuals)

@@ -1209,6 +1209,36 @@ class ChempropTests(TestCase):
             )
             evaluation_scores_data=pd.read_csv(eval_path)
             self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
+    
+    @parameterized.expand(
+        1.368,
+        ['--physical_prior', 'arrhenius'],
+    )
+    def test_physical_prior(
+        self,
+        expected_score,
+        train_flags
+    ):
+        with TemporaryDirectory() as save_dir:
+            metric = "mae"
+            
+            data_path = os.path.join(TEST_DATA_DIR, 'regression_physical_prior.csv')
+            features_path = os.path.join(TEST_DATA_DIR, 'regression_physical_prior_features.csv')
+            train_flags.extend(['--data_path', data_path])
+            train_flags.extend(['--features_path', data_path])
+            
+            self.train(
+                dataset_type='regression',
+                metric='mae',
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = np.array(test_scores_data[f'Mean {metric}'])
+
+            mean_score = np.mean(test_scores)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
 
 if __name__ == '__main__':

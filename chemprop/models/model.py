@@ -23,6 +23,7 @@ class MoleculeModel(nn.Module):
         self.classification = args.dataset_type == 'classification'
         self.multiclass = args.dataset_type == 'multiclass'
         self.loss_function = args.loss_function
+        self.physical_prior = args.physical_prior
 
         if hasattr(args, 'train_class_sizes'):
             self.train_class_sizes = args.train_class_sizes
@@ -36,6 +37,10 @@ class MoleculeModel(nn.Module):
         self.output_size = args.num_tasks
         if self.multiclass:
             self.output_size *= args.multiclass_num_classes
+        if self.physical_prior == "arrhenius":
+            self.output_size *= 2 # returns ln(A) and E_{a} of the Arrhenius equation
+        if self.physical_prior == "vft":
+            self.output_size *= 3 # returns ln(A), E_{a} and T_{0} of the Vogel-Fulcher-Tammann equation
         if self.loss_function == 'mve':
             self.output_size *= 2  # return means and variances
         if self.loss_function == 'dirichlet' and self.classification:

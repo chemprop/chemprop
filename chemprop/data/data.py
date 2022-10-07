@@ -68,7 +68,8 @@ class MoleculeDatapoint:
                  atom_descriptors: np.ndarray = None,
                  bond_features: np.ndarray = None,
                  overwrite_default_atom_features: bool = False,
-                 overwrite_default_bond_features: bool = False):
+                 overwrite_default_bond_features: bool = False,
+                 phys_features: List[float] = None):
         """
         :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
@@ -78,6 +79,7 @@ class MoleculeDatapoint:
         :param lt_targets: Indicates whether the targets are an inequality regression target of the form "<x".
         :param features: A numpy array containing additional features (e.g., Morgan fingerprint).
         :param features_generator: A list of features generators to use.
+        :param phys_features: Values of the final layer concatentation feature in the phyisical prior case
         :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
         :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule
         :param bond_features: A numpy array containing additional bond features to featurize the molecule
@@ -99,6 +101,7 @@ class MoleculeDatapoint:
         self.bond_features = bond_features
         self.overwrite_default_atom_features = overwrite_default_atom_features
         self.overwrite_default_bond_features = overwrite_default_bond_features
+        self.phys_features = phys_features
         self.is_mol_list = [is_mol(s) for s in smiles]
         self.is_reaction_list = [is_reaction(x) for x in self.is_mol_list]
         self.is_explicit_h_list = [is_explicit_h(x) for x in self.is_mol_list]
@@ -427,6 +430,15 @@ class MoleculeDataset(Dataset):
             return None
 
         return [d.lt_targets for d in self._data]
+                
+    def phys_features(self) -> List[List[Optional[float]]]:
+        """
+        Returns the physics based features associated with each datapoint.
+        In the case of Arrhenius and VFT the feature is supposed to be temperature
+
+        :return: A list of lists of floats (or None) containing the properties.
+        """
+        return [d.phys_features for d in self._data]
 
     def num_tasks(self) -> int:
         """

@@ -12,6 +12,7 @@ from chemprop.args import TrainArgs
 from chemprop.data import MoleculeDataLoader, MoleculeDataset
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
+from chemprop.utils import fit_to_physical_property, arrhenius_regularization
 
 
 def train(model: MoleculeModel,
@@ -100,6 +101,16 @@ def train(model: MoleculeModel,
                 loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
         elif args.dataset_type == 'spectra':
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
+        elif args.physical_prior == 'arrhenius':
+            loss = loss_func(
+                fit_to_physical_property(preds,args.physical_prior,batch.phys_features()),
+                targets
+                ) * target_weights * data_weights + arrhenius_regularization(preds[:,0],preds[:,1])
+        elif args.physical_prior == 'vtf':
+            loss = loss_func(
+                fit_to_physical_property(preds,args.physical_prior,batch.phys_features()),
+                targets
+                ) * target_weights * data_weights
         elif args.loss_function == 'bounded_mse':
             loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
         elif args.loss_function == 'evidential':

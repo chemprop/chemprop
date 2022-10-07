@@ -21,7 +21,7 @@ from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, Molecul
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
-    save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean
+    save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean, fit_to_physical_property
 
 
 def run_training(args: TrainArgs,
