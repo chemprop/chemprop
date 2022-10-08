@@ -1,3 +1,4 @@
+from itertools import chain
 from torch import Tensor, nn
 
 from chemprop.nn_utils import get_activation_function
@@ -34,16 +35,17 @@ class MPNN(nn.Module):
     ) -> nn.Sequential:
         dropout = nn.Dropout(dropout)
         activation = get_activation_function(activation)
+        layers = [hidden_dim] * n_layers
 
-        if n_layers == 0:
-            layers = [dropout, nn.Linear(input_dim, output_dim)]
-        else:
-            layers = [dropout, nn.Linear(input_dim, hidden_dim)]
-            for _ in range(1, n_layers):
-                layers.extend([activation, dropout, nn.Linear(hidden_dim, hidden_dim)])
-            layers.extend([activation, dropout, nn.Linear(hidden_dim, output_dim)])
+        layers = [input_dim, *layers, output_dim]
+        ffn = list(
+            chain(
+                *((dropout, nn.Linear(d1, d2), activation)
+                for d1, d2 in zip(layers[:-1], layers[1:]))
+            )
+        )
 
-        return nn.Sequential(*layers)
+        return nn.Sequential(*ffn[:-1])
 
     def fingerprint(self, *args) -> Tensor:
         """Calculate the learned fingerprint for the input molecules/reactions"""
