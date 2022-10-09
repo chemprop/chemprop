@@ -1,6 +1,7 @@
 from argparse import Namespace
 import csv
 from datetime import timedelta
+from enum import Enum
 from functools import wraps
 import logging
 import os
@@ -20,6 +21,19 @@ from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
+
+
+class AutoName(Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+    
+    @classmethod
+    def get(cls, name: str):
+        try:
+            return cls[name.upper()]
+        except KeyError:
+            names = [x.value for x in cls]
+            raise ValueError(f"Invalid name! got: '{name}'. expected one of: {tuple(names)}")
 
 
 def makedirs(path: str, isfile: bool = False) -> None:
