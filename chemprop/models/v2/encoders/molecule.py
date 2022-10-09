@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from ctypes import Union
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 import torch
 from torch import Tensor, nn
@@ -19,8 +18,8 @@ MoleculeEncoderInput = tuple[BatchMolGraph, Optional[Tensor]]
 class MoleculeEncoder(MPNEncoder):
     def __init__(
         self,
-        d_v: int = _DEFAULT_ATOM_FDIM,
-        d_e: int = _DEFAULT_BOND_FDIM,
+        d_v: int,
+        d_e: int,
         d_h: int = 300,
         bias: bool = False,
         depth: int = 3,
@@ -211,10 +210,34 @@ class AtomMessageEncoder(MoleculeEncoder):
         return H
 
 
-def molecule_encoder(d_v: int, d_e: int, bond_messages: bool = True, *args, **kwargs):
-    if bond_messages:
-        encoder = BondMessageEncoder(d_v, d_e, *args, **kwargs)
-    else:
-        encoder = AtomMessageEncoder(d_v, d_e, *args, **kwargs)
+def molecule_encoder(
+    d_v: int = _DEFAULT_ATOM_FDIM,
+    d_e: int = _DEFAULT_BOND_FDIM,
+    bond_messages: bool = True,
+    *args,
+    **kwargs
+) -> MoleculeEncoder:
+    """Build a `MoleculeEncoder`
 
-    return encoder
+    NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the 
+    `MoleculeFeaturizer` object that you will be using to prepare data. The default values should
+    only be used if you are using a *default* `MoleculeFeaturizer` (i.e., `MoleculeFeaturizer()`)
+
+    Parameters
+    ----------
+    d_v : int, default=_DEFAULT_ATOM_FDIM
+        the dimension of the atom features
+    d_e : int, default=_DEFAULT_BOND_FDIM
+        the dimension of the bond features
+    bond_messages : bool, optional
+        whether to pass messages on bonds, by default True
+    *args, **kwargs
+        positional and keyword arguments to pass to the initializer
+
+    Returns
+    -------
+    MoleculeEncoder
+    """
+    encoder_cls = BondMessageEncoder if bond_messages else AtomMessageEncoder
+
+    return encoder_cls(d_v, d_e, *args, **kwargs)
