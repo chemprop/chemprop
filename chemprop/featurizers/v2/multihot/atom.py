@@ -7,24 +7,41 @@ from chemprop.featurizers.v2.multihot.base import MultiHotFeaturizer
 
 
 class AtomFeaturizer(MultiHotFeaturizer):
-    """An AtomFeaturizer calculates feature vectors of RDKit atoms."""
+    """An AtomFeaturizer calculates feature vectors of RDKit atoms.
+
+    Parameters
+    ----------
+    max_atomic_num : int, default=100
+        the maximum atomic number categorized, by 
+    degrees : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
+        the categories for the atomic degree 
+    formal_charges : Optional[Sequence[int]], default=[-1, -2, 1, 2, 0]
+        the categories for formal charge of an atom
+    chiral_tags : Optional[Sequence[int]], default=[0, 1, 2, 3]
+        the categories for the chirality of an atom
+    num_Hs : Optional[Sequence[int]], default=[0, 1, 2, 3, 4]
+        the categories for the number of hydrogens attached to an atom
+    hybridizations : Optional[Sequence[HybridizationType]], default=[SP, SP2, SP3, SP3D, SP3D2]
+        the categories for the hybridization of an atom
+    """
 
     def __init__(
         self,
         max_atomic_num: int = 100,
-        degree: Optional[Sequence[int]] = None,
-        formal_charge: Optional[Sequence[int]] = None,
-        chiral_tag: Optional[Sequence[int]] = None,
+        degrees: Optional[Sequence[int]] = None,
+        formal_charges: Optional[Sequence[int]] = None,
+        chiral_tags: Optional[Sequence[int]] = None,
         num_Hs: Optional[Sequence[int]] = None,
-        hybridization: Optional[Sequence[HybridizationType]] = None,
+        hybridizations: Optional[Sequence[HybridizationType]] = None,
     ):
+
         self.max_atomic_num = max_atomic_num
-        self.atomic_num = range(max_atomic_num)
-        self.degree = degree or range(6)
-        self.formal_charge = formal_charge or [-1, -2, 1, 2, 0]
-        self.chiral_tag = chiral_tag or range(4)
+        self.atomic_nums = range(max_atomic_num)
+        self.degrees = degrees or range(6)
+        self.formal_charges = formal_charges or [-1, -2, 1, 2, 0]
+        self.chiral_tags = chiral_tags or range(4)
         self.num_Hs = num_Hs or range(5)
-        self.hybridization = hybridization or [
+        self.hybridizations = hybridizations or [
             HybridizationType.SP,
             HybridizationType.SP2,
             HybridizationType.SP3,
@@ -34,29 +51,29 @@ class AtomFeaturizer(MultiHotFeaturizer):
 
     def __len__(self):
         return (
-            len(self.atomic_num)
+            len(self.atomic_nums)
             + 1
-            + len(self.degree)
+            + len(self.degrees)
             + 1
-            + len(self.formal_charge)
+            + len(self.formal_charges)
             + 1
-            + len(self.chiral_tag)
+            + len(self.chiral_tags)
             + 1
             + len(self.num_Hs)
             + 1
-            + len(self.hybridization)
+            + len(self.hybridizations)
             + 1
         ) + 2
 
     @property
     def choicess(self) -> list[Sequence]:
         return [
-            self.atomic_num,
-            self.degree,
-            self.formal_charge,
-            self.chiral_tag,
+            self.atomic_nums,
+            self.degrees,
+            self.formal_charges,
+            self.chiral_tags,
             self.num_Hs,
-            self.hybridization,
+            self.hybridizations,
         ]
 
     @property
@@ -84,12 +101,12 @@ class AtomFeaturizer(MultiHotFeaturizer):
             return x
 
         bits_sizes = [
-            self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_num),
-            self.one_hot_index(a.GetTotalDegree(), self.degree),
-            self.one_hot_index(a.GetFormalCharge(), self.formal_charge),
-            self.one_hot_index(int(a.GetChiralTag()), self.chiral_tag),
+            self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_nums),
+            self.one_hot_index(a.GetTotalDegree(), self.degrees),
+            self.one_hot_index(a.GetFormalCharge(), self.formal_charges),
+            self.one_hot_index(int(a.GetChiralTag()), self.chiral_tags),
             self.one_hot_index(int(a.GetTotalNumHs()), self.num_Hs),
-            self.one_hot_index(int(a.GetHybridization()), self.hybridization),
+            self.one_hot_index(int(a.GetHybridization()), self.hybridizations),
         ]
 
         i = 0
@@ -107,7 +124,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         if a is None:
             return x
 
-        bit, _ = self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_num)
+        bit, _ = self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_nums)
         x[bit] = 1
 
         return x

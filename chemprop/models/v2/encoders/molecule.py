@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 
 import torch
 from torch import Tensor, nn
-from chemprop.featurizers.v2.molgraph import BatchMolGraph
+from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
 
 from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.encoders.utils import Aggregation
@@ -19,8 +19,8 @@ MoleculeEncoderInput = tuple[BatchMolGraph, Optional[Tensor]]
 class MoleculeEncoder(MPNEncoder):
     def __init__(
         self,
-        d_v: int,
-        d_e: int,
+        d_v: int = _DEFAULT_ATOM_FDIM,
+        d_e: int = _DEFAULT_BOND_FDIM,
         d_h: int = 300,
         bias: bool = False,
         depth: int = 3,
