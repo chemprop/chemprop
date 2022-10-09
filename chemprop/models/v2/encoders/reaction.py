@@ -19,17 +19,17 @@ class ReactionEncoder(MPNEncoder):
         super().__init__()
 
         if len(encoders) == 0:
-            raise ValueError("arg `encoders` was empty!")
+            raise ValueError("arg 'encoders' was empty!")
 
         if shared:
             if len(encoders) > 1:
                 warnings.warn(
-                    "More than 1 encoder was supplied but `shared` was True! "
+                    "More than 1 encoder was supplied but 'shared' was True! "
                     "Using only the 0th encoder."
                 )
         elif len(encoders) != n_mols:
             raise ValueError(
-                "arg `n_mols` must be equal to `len(encoders)` if `shared` is False! "
+                "arg 'n_mols' must be equal to `len(encoders)` if 'shared' is False! "
                 f"got: {n_mols} and {len(encoders)}, respectively."
             )
 
@@ -45,12 +45,12 @@ class ReactionEncoder(MPNEncoder):
     def output_dim(self) -> int:
         return sum(encoder.output_dim for encoder in self.encoders)
 
-    def forward(self, reactant_batches: Iterable[MoleculeEncoderInput]) -> Tensor:
+    def forward(self, reactant_inputs: Iterable[MoleculeEncoderInput]) -> Tensor:
         """Encode the reactant_batch
 
         Parameters
         ----------
-        reactant_batch : Iterable[MoleculeEncoderInput]
+        reactant_inputs : Iterable[MoleculeEncoderInput]
             an Iterable of length `n` containing inputs to a MoleculeEncoder, where `n` is the
             number of molecules in each reaction (== `self.n_mols`). I.e., to encode a batch of
             3-component reactions, the 0th entry of `reactant_batches` will be the batched inputs of
@@ -59,11 +59,11 @@ class ReactionEncoder(MPNEncoder):
             reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder
             and a MoleculeEncoder would be the call signature:
 
-            >>> inputs: tuple = X_v, X_e, a2b, ..., X_vd
+            >>> batch: tuple[BatchMolGraph, X_vd]
             >>> mol_enc: MoleculeEncoder
             >>> rxn_enc: ReactionEncoder
-            >>> H_mol = mol_enc(*inputs)
-            >>> H_rxn = rxn_enc([inputs])
+            >>> H_mol = mol_enc(*batch)
+            >>> H_rxn = rxn_enc([batch])
             >>> H_mol.shape == H_rxn.shape
             True
 
@@ -74,7 +74,7 @@ class ReactionEncoder(MPNEncoder):
             of reactions in the batch, and `d_o` is the `output_dim` of this encoder
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
-        Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_batches)]
+        Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_inputs)]
         H = torch.cat(Hs, 1)
 
         return H
