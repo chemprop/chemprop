@@ -167,7 +167,8 @@ def get_mixed_task_names(path: str,
                     bond_target_names.append(column)
                 elif is_molecule_target:
                     molecule_target_names.append(column)
-            break
+            if len(atom_target_names) + len(bond_target_names) + len(molecule_target_names) == len(target_names):
+                break
 
     return atom_target_names, bond_target_names, molecule_target_names
 
