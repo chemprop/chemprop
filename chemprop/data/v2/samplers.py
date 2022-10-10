@@ -10,7 +10,7 @@ class SeededSampler(Sampler):
 
     def __init__(self, N: int, seed: int):
         if seed is None:
-            raise ValueError("arg `seed` was `None`! A SeededSampler must be seeded!")
+            raise ValueError("arg 'seed' was `None`! A SeededSampler must be seeded!")
 
         self.idxs = np.arange(N)
         self.rg = np.random.default_rng(seed)

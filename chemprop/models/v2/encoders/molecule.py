@@ -10,7 +10,7 @@ from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_
 from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.encoders.utils import Aggregation
 from chemprop.nn_utils import get_activation_function
-
+from chemprop.utils.expections import InvalidShapeError
 
 MoleculeEncoderInput = tuple[BatchMolGraph, Optional[Tensor]]
 
@@ -24,7 +24,7 @@ class MoleculeEncoder(MPNEncoder):
         bias: bool = False,
         depth: int = 3,
         undirected: bool = False,
-        # layers_per_message: int,
+        # layers_per_message: int = 1,
         dropout: float = 0,
         activation: str = "relu",
         aggregation: Union[str, Aggregation] = Aggregation.MEAN,
@@ -89,17 +89,14 @@ class MoleculeEncoder(MPNEncoder):
 
         Raises
         ------
-        ValueError
+        InvalidShapeError
             if `X_vd` is of incorrect shape
         """
         try:
             H_vd = torch.cat((H_v, X_vd), 1)
             H_v = self.fc_vd(H_vd)
         except RuntimeError:
-            raise ValueError(
-                "arg 'X_vd' has incorrect shape! "
-                f"got: `{' x '.join(map(str, X_vd.shape))}`. expected: `{len(H_v)} x {self.d_vd}`"
-            )
+            raise InvalidShapeError('X_vd', X_vd.shape, [len(H_v), self.d_vd])
 
         H_v = self.dropout(H_v)
 
