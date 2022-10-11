@@ -1,5 +1,5 @@
-from abc import abstractmethod
-from typing import Callable, Optional
+from abc import ABC, abstractmethod
+from typing import Optional
 
 import torch
 from torch import Tensor
@@ -8,7 +8,7 @@ from torch.nn import functional as F
 from chemprop.utils.mixins import RegistryMixin
 
 
-class LossFunction(Callable, RegistryMixin):
+class LossFunction(ABC, RegistryMixin):
     registry = {}
 
     def __init__(self, **kwargs):
@@ -69,7 +69,6 @@ class EvidentialLoss(LossFunction):
     alias = "regression-evidential"
     
     def __init__(self, v_reg: float = 0, eps: float = 1e-8, **kwargs):
-        super().__init__(**kwargs)
         self.v_reg = v_reg
         self.eps = eps
 
@@ -132,20 +131,18 @@ class MulticlassMCCLoss(MCCLossBase):
         bin_targets = torch.zeros_like(preds, device=preds.device)
         bin_targets[range(len(preds)), targets] = 1
 
-        c = torch.sum(preds * bin_targets * weights * mask)
-        s = torch.sum(preds * weights * mask)
-        pt = torch.sum(
-            (preds * weights * mask).sum(0) * (bin_targets * weights * mask).sum(0)
-        )
-        p2 = torch.sum((preds * weights * mask).sum(0) ** 2)
-        t2 = torch.sum(torch.sum(bin_targets * weights * mask).sum(0) ** 2)
+        c = (preds * bin_targets * weights * mask).sum()
+        s = (preds * weights * mask).sum()
+        p_tot = ((preds * weights * mask).sum(0) * (bin_targets * weights * mask).sum(0)).sum()
+        p2 = ((preds * weights * mask).sum(0) ** 2).sum()
+        t2 = (torch.sum(bin_targets * weights * mask).sum(0) ** 2).sum()
         
-        return 1 - (c * s - pt) / ((s ** 2 - p2) * (s ** 2 - t2)).sqrt()
+        return 1 - (c * s - p_tot) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
 
 
 class SpectralLoss(LossFunction):
     def __init__(self, threshold: Optional[float] = None, **kwargs):
-        super().__init__(**kwargs)
+        self.threshold = threshold
 
     @abstractmethod
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -155,24 +152,18 @@ class SpectralLoss(LossFunction):
 class SIDSpectralLoss(SpectralLoss):
     alias = "spectral-sid"
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        device = preds.device
-        zero_sub = torch.zeros_like(preds, device=device)
-        one_sub = torch.ones_like(preds, device=device)
-        
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
 
-        preds = preds.masked_scatter(~mask, zero_sub)
-        preds_sum = torch.sum(preds, axis=1, keepdim=True)
-        preds_norm = torch.div(preds, preds_sum)
+        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
-        targets = targets.masked_scatter(~mask, one_sub)
-        preds_norm = preds_norm.masked_scatter(~mask, one_sub)
+        targets = targets.masked_fill(~mask, 1)
+        preds_norm = preds_norm.masked_fill(~mask, 1)
 
         return (
-            preds_norm.div(targets).log().mul(preds_norm) 
-            + targets.div(preds_norm).log().mul(targets)
+            torch.log(preds_norm / targets) * preds_norm
+            + torch.log(targets / preds_norm) * targets
         )
 
 
@@ -180,22 +171,16 @@ class WassersteinSpectralLoss(SpectralLoss):
     alias = "spectral-wasserstein"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        device = preds.device
-        zero_sub = torch.zeros_like(preds, device=device)
-
         if self.threshold is not None:
-            preds = preds.clamp(self.threshold)
+            preds = preds.clamp(min=self.threshold)
 
-        preds = preds.masked_scatter(~mask, zero_sub)
-        preds_sum = torch.sum(preds, axis=1, keepdim=True)
-        preds_norm = torch.div(preds, preds_sum)
+        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
         return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))
 
 
 class DirichletLossBase(LossFunction):
     def __init__(self, v_kl: float = 0., **kwargs):
-        super().__init__(**kwargs)
         self.v_kl = v_kl
 
     def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
@@ -261,5 +246,5 @@ def get_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
         combos = {tuple(k.split("-")) for k in LossFunction.registry.keys()}
         raise ValueError(
             f"dataset type '{dataset_type}' does not support loss function '{loss_function}'! "
-            f"Expected one of (`daaset_type`, `loss_function`) combos: {combos}"
+            f"Expected one of (`dataset_type`, `loss_function`) combos: {combos}"
         )
