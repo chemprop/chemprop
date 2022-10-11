@@ -1210,10 +1210,15 @@ class ChempropTests(TestCase):
             evaluation_scores_data=pd.read_csv(eval_path)
             self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
     
-    @parameterized.expand(
+    @parameterized.expand([(
         1.368,
         ['--physical_prior', 'arrhenius'],
+    ),
+    (
+        1.328,
+        ['--physical_prior', 'vtf'],
     )
+    ])
     def test_physical_prior(
         self,
         expected_score,
@@ -1225,7 +1230,7 @@ class ChempropTests(TestCase):
             data_path = os.path.join(TEST_DATA_DIR, 'regression_physical_prior.csv')
             features_path = os.path.join(TEST_DATA_DIR, 'regression_physical_prior_features.csv')
             train_flags.extend(['--data_path', data_path])
-            train_flags.extend(['--features_path', data_path])
+            train_flags.extend(['--features_path', features_path])
             
             self.train(
                 dataset_type='regression',

@@ -434,7 +434,7 @@ class MoleculeDataset(Dataset):
     def phys_features(self) -> List[List[Optional[float]]]:
         """
         Returns the physics based features associated with each datapoint.
-        In the case of Arrhenius and VFT the feature is supposed to be temperature
+        In the case of Arrhenius and VTF the feature is supposed to be temperature
 
         :return: A list of lists of floats (or None) containing the properties.
         """

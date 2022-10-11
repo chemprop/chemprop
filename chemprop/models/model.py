@@ -39,7 +39,7 @@ class MoleculeModel(nn.Module):
             self.output_size *= args.multiclass_num_classes
         if self.physical_prior == "arrhenius":
             self.output_size *= 2 # returns ln(A) and E_{a} of the Arrhenius equation
-        if self.physical_prior == "vft":
+        if self.physical_prior == "vtf":
             self.output_size *= 3 # returns ln(A), E_{a} and T_{0} of the Vogel-Fulcher-Tammann equation
         if self.loss_function == 'mve':
             self.output_size *= 2  # return means and variances

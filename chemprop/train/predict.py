@@ -61,7 +61,7 @@ def predict(
                 bond_features_batch,
             )
 
-        if model.physical_prior:
+        if model.physical_prior in ["arrhenius", "vtf"]:
             batch_preds = fit_to_physical_property(batch_preds,model.physical_prior,batch.phys_features())
         
         batch_preds = batch_preds.data.cpu().numpy()

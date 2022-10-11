@@ -386,13 +386,13 @@ def get_data(path: str,
             if store_row:
                 all_rows.append(row)
                                 
-            if physical_prior in ['arrhenius', 'vft']:
-                # For Arrhenius or VFT models there has to be a extra temperature 
+            if physical_prior in ['arrhenius', 'vtf']:
+                # For Arrhenius or VTF models there has to be a extra temperature 
                 # feature that is kept separate from the other features
                 try:
                     all_phys_features.append(float(row['temperature']))
                 except:
-                    raise ValueError(f'Molecule {smiles} does not have a temperature value, necessary for Arrhenius/VFT training.')
+                    raise ValueError(f'Molecule {smiles} does not have a temperature value, necessary for Arrhenius/VTF training.')
 
             if len(all_smiles) >= max_data_size:
                 break
