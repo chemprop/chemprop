@@ -42,11 +42,15 @@ class DirichletMulticlassMPNN(MulticlassMPNN):
         activation: str = "relu",
     ):
         super().__init__(
-            encoder, 2 * n_tasks, n_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
+            encoder, n_tasks, n_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
         self.n_tasks = n_tasks
         self.softplus = nn.Softplus()
 
+    @property
+    def n_targets(self) -> int:
+        return 2
+        
     def forward(self, *args) -> Tensor:
         Y = super().forward(*args)
         Y = self.softplus(Y) + 1

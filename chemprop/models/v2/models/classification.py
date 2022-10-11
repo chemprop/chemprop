@@ -19,10 +19,13 @@ class DirichletClassificationMPNN(ClassificationMPNN):
         activation: str = "relu",
     ):
         super().__init__(
-            encoder, 2 * n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+            encoder, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
-        self.n_targets = n_tasks
         self.softplus = nn.Softplus()
+
+    @property
+    def n_targets(self) -> int:
+        return 2
 
     def forward(self, *args) -> Tensor:
         Y = super().forward(*args)

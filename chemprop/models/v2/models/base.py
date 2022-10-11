@@ -23,10 +23,23 @@ class MPNN(nn.Module):
 
         self.encoder = encoder
         self.n_tasks = n_tasks
-        self.n_targets = n_tasks
         self.ffn = self.build_ffn(
-            encoder.output_dim, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
+            encoder.output_dim,
+            n_tasks * self.n_targets,
+            ffn_hidden_dim,
+            ffn_num_layers,
+            dropout,
+            activation
         )
+
+    @property
+    def n_targets(self) -> int:
+        """The number of targets to predict per task.
+        
+        NOTE: this is *not* related to the number of classes to predict.  It is used as a multiplier
+        for the output dimension of the MPNN
+        """
+        return 1
 
     @staticmethod
     def build_ffn(
