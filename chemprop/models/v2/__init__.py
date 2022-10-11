@@ -1,7 +1,7 @@
 from .encoders import (
     MPNEncoder,
     MoleculeEncoder,
-    MoleculeEncoderInput,
+    MolecularInput,
     ReactionEncoder,
     AtomMessageEncoder,
     BondMessageEncoder,

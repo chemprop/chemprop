@@ -9,10 +9,11 @@ from torch import Tensor, nn
 from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.encoders.molecule import (
     MoleculeEncoder,
-    MoleculeEncoderInput,
+    MolecularInput,
     molecule_encoder,
 )
 
+ReactionInput = Iterable[MolecularInput]
 
 class ReactionEncoder(MPNEncoder):
     def __init__(self, encoders: Iterable[MoleculeEncoder], n_mols: int, shared: bool = False):
@@ -21,13 +22,12 @@ class ReactionEncoder(MPNEncoder):
         if len(encoders) == 0:
             raise ValueError("arg 'encoders' was empty!")
 
-        if shared:
-            if len(encoders) > 1:
-                warnings.warn(
-                    "More than 1 encoder was supplied but 'shared' was True! "
-                    "Using only the 0th encoder."
-                )
-        elif len(encoders) != n_mols:
+        if shared and len(encoders) > 1:
+            warnings.warn(
+                "More than 1 encoder was supplied but 'shared' was True! "
+                "Using only the 0th encoder..."
+            )
+        elif not shared and len(encoders) != n_mols:
             raise ValueError(
                 "arg 'n_mols' must be equal to `len(encoders)` if 'shared' is False! "
                 f"got: {n_mols} and {len(encoders)}, respectively."
@@ -45,7 +45,7 @@ class ReactionEncoder(MPNEncoder):
     def output_dim(self) -> int:
         return sum(encoder.output_dim for encoder in self.encoders)
 
-    def forward(self, reactant_inputs: Iterable[MoleculeEncoderInput]) -> Tensor:
+    def forward(self, reactant_inputs: Iterable[MolecularInput]) -> Tensor:
         """Encode the reactant_batch
 
         Parameters
@@ -59,13 +59,15 @@ class ReactionEncoder(MPNEncoder):
             reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder
             and a MoleculeEncoder would be the call signature:
 
-            >>> batch: tuple[BatchMolGraph, X_vd]
-            >>> mol_enc: MoleculeEncoder
-            >>> rxn_enc: ReactionEncoder
-            >>> H_mol = mol_enc(*batch)
-            >>> H_rxn = rxn_enc([batch])
-            >>> H_mol.shape == H_rxn.shape
-            True
+        Example
+        -------
+        >>> batch: tuple[BatchMolGraph, Optional[Tensor]]
+        >>> mol_enc = molecule_encoder()
+        >>> rxn_enc = ReactionEncoder([mol_enc], n_mols=1)
+        >>> H_mol = mol_enc(*batch)
+        >>> H_rxn = rxn_enc([batch])
+        >>> H_mol.shape == H_rxn.shape
+        True
 
         Returns
         -------
@@ -78,17 +80,6 @@ class ReactionEncoder(MPNEncoder):
         H = torch.cat(Hs, 1)
 
         return H
-
-    @classmethod
-    def from_mol_encoder_args(
-        cls, n_mols: int, shared: bool = False, *args, **kwargs
-    ) -> ReactionEncoder:
-        if not shared:
-            encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
-        else:
-            encoders = [molecule_encoder(*args, **kwargs)]
-
-        return cls(encoders, n_mols, shared)
 
 
 def reaction_encoder(n_mols: int, shared: bool = False, *args, **kwargs):

@@ -12,7 +12,7 @@ from chemprop.models.v2.encoders.utils import Aggregation
 from chemprop.nn_utils import get_activation_function
 from chemprop.utils.expections import InvalidShapeError
 
-MoleculeEncoderInput = tuple[BatchMolGraph, Optional[Tensor]]
+MolecularInput = tuple[BatchMolGraph, Optional[Tensor]]
 
 
 class MoleculeEncoder(MPNEncoder):
@@ -58,9 +58,9 @@ class MoleculeEncoder(MPNEncoder):
         Parameters
         ----------
         d_v : int
-            the input vertex feature dimension
+            the vertex feature dimension
         d_e : int
-            the input edge feature dimension
+            the edge feature dimension
         d_h : int
             the hidden dimension during message passing
         bias: bool

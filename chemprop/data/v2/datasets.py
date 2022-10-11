@@ -129,9 +129,9 @@ class MoleculeDataset(MolGraphDatasetBase):
         the featurizer with which to generate MolGraphs of the input
     """
 
-    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: MoleculeFeaturizer):
+    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizer]):
         super().__init__(data)
-        self.featurizer = featurizer
+        self.featurizer = featurizer or MoleculeFeaturizer()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]

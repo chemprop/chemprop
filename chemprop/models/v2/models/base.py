@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import Optional
+import pdb
+from typing import Optional, Union
 
 import torch
 from torch import Tensor, nn
+from chemprop.models.v2.encoders import MolecularInput, ReactionInput
 
 from chemprop.nn_utils import get_activation_function
 from chemprop.models.v2.encoders import MPNEncoder
@@ -70,22 +72,28 @@ class MPNN(nn.Module):
 
         return nn.Sequential(*ffn[:-1])
 
-    def fingerprint(self, *args, X_f: Optional[Tensor] = None) -> Tensor:
+    def fingerprint(
+        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+    ) -> Tensor:
         """Calculate the learned fingerprint for the input molecules/reactions"""
-        H = self.encoder(*args)
+        H = self.encoder(*inputs)
         if X_f is not None:
             H = torch.cat((H, X_f), 1)
 
         return H
 
-    def encoding(self, *args, X_f: Optional[Tensor] = None) -> Tensor:
+    def encoding(
+        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+    ) -> Tensor:
         """Calculate the encoding ("hidden representation") for the input molecules/reactions"""
-        return self.ffn[:-1](self.fingerprint(*args, X_f))
+        return self.ffn[:-1](self.fingerprint(*inputs, X_f))
 
-    def forward(self, *args, X_f: Optional[Tensor] = None) -> Tensor:
+    def forward(
+        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+    ) -> Tensor:
         """Generate predictions for the input batch.
 
-        NOTE: the signature of `*args` the underlying `encoder.forward()`
+        NOTE: the type signature of `input` matches the underlying `encoder.forward()`
         """
-        return self.ffn(self.fingerprint(*args, X_f))
+        return self.ffn(self.fingerprint(inputs, X_f))
 
