@@ -30,10 +30,10 @@ class AutoName(Enum):
         return name
     
     @classmethod
-    def get(cls, name: Union[str, AutoName]):
-        if isinstance(name, AutoName):
+    def get(cls, name: Union[str, AutoName]) -> AutoName:
+        if isinstance(name, cls):
             return name
-            
+
         try:
             return cls[name.upper()]
         except KeyError:
