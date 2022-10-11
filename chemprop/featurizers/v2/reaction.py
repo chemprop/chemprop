@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import Optional
+from enum import auto
+from typing import Optional, Union
 import warnings
 import numpy as np
 from rdkit import Chem
-from chemprop.featurizers.v2.base import MolGraphFeaturizer
 
 from chemprop.featurizers.v2.molgraph import MolGraph
+from chemprop.featurizers.v2.base import MolGraphFeaturizer
 from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
+from chemprop.utils.utils import AutoName
 
 
-class ReactionMode(Enum):
+class ReactionMode(AutoName):
     """The manner in which a reaction should be featurized into a `MolGraph`
 
     REAC_PROD
@@ -110,8 +111,8 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
     Parameters
     ----------
-    mode : ReactionMode
-        the mode by which to featurize the reaction
+    mode : Union[str, ReactionMode]
+        the mode by which to featurize the reaction as either the string code or enum value
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
@@ -124,14 +125,14 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
     def __init__(
         self,
-        mode: ReactionMode,
+        mode: Union[str, ReactionMode],
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
         atom_messages: bool = False,
     ):
         super().__init__(atom_featurizer, bond_featurizer, atom_messages)
 
-        self.mode = mode
+        self.mode = mode if isinstance(mode, ReactionMode) else ReactionMode.get(mode)
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
 

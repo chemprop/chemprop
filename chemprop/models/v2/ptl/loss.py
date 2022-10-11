@@ -180,28 +180,32 @@ class WassersteinSpectralLoss(SpectralLoss):
 
 
 class DirichletLossBase(LossFunction):
+    """Uses the loss function from [1]_
+
+    References
+    ----------
+    .. [1] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+    classification uncertainty." Advances in neural information processing systems, 31, 2018. doi:
+    https://doi.org/10.48550/arXiv.1806.01768
+    """
     def __init__(self, v_kl: float = 0., **kwargs):
         self.v_kl = v_kl
 
     def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
-        S = torch.sum(preds, dim=-1, keepdim=True)
+        S = preds.sum(-1, keepdim=True)
         p = preds / S
-        A = torch.sum((targets - p) ** 2, dim=-1, keepdim=True)
+        A = (targets - p).square().sum(dim=-1, keepdim=True)
         B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
         L_sos = A + B
 
         alpha_hat = targets + (1 - targets) * preds
 
         beta = torch.ones_like(alpha_hat)
-        S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
-        S_beta = torch.sum(beta, dim=-1, keepdim=True)
+        S_alpha = alpha_hat.sum(-1, keepdim=True)
+        S_beta = beta.sum(dim=-1, keepdim=True)
 
-        ln_alpha = (
-            torch.lgamma(S_alpha) - torch.sum(torch.lgamma(alpha_hat), dim=-1, keepdim=True)
-        )
-        ln_beta = (
-            torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
-        )
+        ln_alpha = S_alpha.lgamma() - alpha_hat.lgamma().sum(-1, keepdim=True)
+        ln_beta = beta.lgamma().sum(-1, keepdim=True) - S_beta.lgamma()
 
         dg_alpha = torch.digamma(alpha_hat)
         dg_S_alpha = torch.digamma(S_alpha)
