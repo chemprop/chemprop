@@ -18,9 +18,7 @@ class DirichletClassificationMPNN(ClassificationMPNN):
         dropout: float = 0.0,
         activation: str = "relu",
     ):
-        super().__init__(
-            encoder, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
+        super().__init__(encoder, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation)
         self.softplus = nn.Softplus()
 
     @property

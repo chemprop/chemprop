@@ -28,7 +28,6 @@ class MoleculeEncoder(MPNEncoder):
         dropout: float = 0,
         activation: str = "relu",
         aggregation: Union[str, Aggregation] = Aggregation.MEAN,
-        atom_descriptors: Optional[str] = None,
         d_vd: Optional[int] = None,
     ):
         super().__init__()
@@ -45,7 +44,7 @@ class MoleculeEncoder(MPNEncoder):
 
         self.__output_dim = d_h
 
-        if atom_descriptors == "descriptor":
+        if d_vd is not None:
             self.d_vd = d_vd
             self.__output_dim += d_vd
             self.fc_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
