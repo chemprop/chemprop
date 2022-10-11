@@ -1,5 +1,4 @@
 from __future__ import annotations
-import pdb
 
 from typing import Iterable, Optional
 
@@ -8,25 +7,24 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.datasets import MolGraphDatasetBase
+from chemprop.data.v2.datasets import Datum, MolGraphDatasetBase
 from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
-from chemprop.featurizers.v2 import MolGraph
 from chemprop.featurizers.v2.molgraph import BatchMolGraph
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
+TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
 
 
-def collate_batch(
-    batch: Iterable[tuple[MolGraph, np.ndarray, float, np.ndarray, np.ndarray]]
-) -> TrainingBatch:
-    mgs, ys, weights, gt_targets, lt_targets = zip(*batch)
+def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
+    mgs, atom_descriptors, features, ys, weights, gt_targets, lt_targets = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
+        None if atom_descriptors[0] is None else torch.from_numpy(np.array(atom_descriptors, "f4")),
+        None if features[0] is None else torch.from_numpy(np.array(features, "f4")),
         torch.from_numpy(np.array(ys, "f4")),
         torch.from_numpy(np.array(weights, "f4")),
-        None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets)),
-        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets))
+        None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets, "f4")),
+        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4"))
     )
 
 
