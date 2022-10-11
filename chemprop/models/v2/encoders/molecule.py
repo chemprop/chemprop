@@ -39,7 +39,7 @@ class MoleculeEncoder(MPNEncoder):
 
         self.dropout = nn.Dropout(dropout)
         self.act = get_activation_function(activation)
-        self.agg = Aggregation.get(aggregation) if isinstance(aggregation, str) else aggregation
+        self.agg = Aggregation.get(aggregation)
 
         self.cached_zero_vector = nn.Parameter(torch.zeros(d_h), requires_grad=False)
 

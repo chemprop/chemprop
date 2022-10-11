@@ -132,7 +132,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
     ):
         super().__init__(atom_featurizer, bond_featurizer, atom_messages)
 
-        self.mode = mode if isinstance(mode, ReactionMode) else ReactionMode.get(mode)
+        self.mode = ReactionMode.get(mode)
         if not self.atom_messages:
             self.bond_fdim += self.atom_fdim
 

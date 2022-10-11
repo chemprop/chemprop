@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from argparse import Namespace
 import csv
 from datetime import timedelta
@@ -8,7 +10,7 @@ import os
 import pickle
 import re
 from time import time
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, Union
 import collections
 
 import torch
@@ -28,7 +30,10 @@ class AutoName(Enum):
         return name
     
     @classmethod
-    def get(cls, name: str):
+    def get(cls, name: Union[str, AutoName]):
+        if isinstance(name, AutoName):
+            return name
+            
         try:
             return cls[name.upper()]
         except KeyError:
