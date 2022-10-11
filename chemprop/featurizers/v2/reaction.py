@@ -133,7 +133,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         super().__init__(atom_featurizer, bond_featurizer, atom_messages)
 
         self.mode = ReactionMode.get(mode)
-        if not self.atom_messages:
+        if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
     def featurize(
@@ -308,12 +308,12 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                         x_e_p = self.bond_featurizer(bond_prod)
                         x_e = np.hstack((x_e_p, x_e_d))
 
-                if self.atom_messages:
-                    X_e.append(x_e)
-                    X_e.append(x_e)
-                else:
+                if self.bond_messages:
                     X_e.append(np.hstack((X_v[a1], x_e)))
                     X_e.append(np.hstack((X_v[a2], x_e)))
+                else:
+                    X_e.append(x_e)
+                    X_e.append(x_e)
 
                 b12 = n_bonds
                 b21 = b12 + 1
