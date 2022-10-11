@@ -10,6 +10,17 @@ from chemprop.models.v2.encoders import MPNEncoder
 
 
 class MPNN(nn.Module):
+    """An `MPNN` is comprised an `MPNEncoder` and an FFN top-model. The former calculates learned
+    encodings from an input molecular graph, and the latter takes these encodings as input to 
+    calculate a final prediction. The full model is trained end-to-end.
+
+    An `MPNN` takes a input a molecular graph and outputs a tensor of shape `b x t * s`, where `b`
+    the size of the batch (i.e., number of molecules in the graph,) `t` is the number of tasks to
+    predict, and `s` is the number of targets to predict per task.
+
+    NOTE: the number of targets `s` is *not* related to the number of classes to predict.  It is used as a multiplier for the output dimension of the MPNN when the predictions correspond to a
+    parameterized distribution, e.g., MVE regression, for which `s` is 2. Typically, this is just 1.
+    """
     def __init__(
         self,
         encoder: MPNEncoder,
@@ -34,11 +45,6 @@ class MPNN(nn.Module):
 
     @property
     def n_targets(self) -> int:
-        """The number of targets to predict per task.
-        
-        NOTE: this is *not* related to the number of classes to predict.  It is used as a multiplier
-        for the output dimension of the MPNN
-        """
         return 1
 
     @staticmethod

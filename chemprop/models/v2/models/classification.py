@@ -5,7 +5,7 @@ from chemprop.models.v2.models.base import MPNN
 
 
 class ClassificationMPNN(MPNN):
-    """Single-task regresssion/classification networks are architecturally identical"""
+    """A `ClassificationMPNN` is an alias for a base `MPNN`"""
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
