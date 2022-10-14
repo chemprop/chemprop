@@ -8,7 +8,7 @@ from torch import Tensor, nn
 
 from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
 from chemprop.models.v2.encoders.base import MessagePassingBlock
-from chemprop.models.v2.utils import Aggregation
+from chemprop.models.v2.encoders.modules import build_readout
 from chemprop.nn_utils import get_activation_function
 from chemprop.utils.exceptions import InvalidShapeError
 
@@ -60,7 +60,8 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         # layers_per_message: int = 1,
         dropout: float = 0,
         activation: str = "relu",
-        aggregation: Union[str, Aggregation] = Aggregation.MEAN,
+        aggregation: str = "mean",
+        norm: float = 100,
         d_vd: Optional[int] = None,
     ):
         super().__init__()
@@ -71,7 +72,7 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
 
         self.dropout = nn.Dropout(dropout)
         self.act = get_activation_function(activation)
-        self.agg = Aggregation.get(aggregation)
+        self.readout = build_readout(aggregation, norm)
 
         self.cached_zero_vector = nn.Parameter(torch.zeros(d_h), requires_grad=False)
 
@@ -133,21 +134,6 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         H_v = self.dropout(H_v)
 
         return H_v  # V x (d_h + d_vd)
-
-    def readout(self, H_v: Tensor, sizes: Iterable[int]) -> Tensor:
-        h_vs = torch.split(H_v, sizes)
-        hs = [h_v.sum(0) if size > 0 else self.cached_zero_vector for h_v, size in zip(h_vs, sizes)]
-
-        if self.agg == Aggregation.MEAN:
-            hs = [h / size if size > 0 else h for h, size in zip(hs, sizes)]
-        elif self.agg == Aggregation.NORM:
-            hs = [h / self.aggregation_norm if size > 0 else h for h, size in zip(hs, sizes)]
-        elif self.agg == Aggregation.SUM:
-            pass
-        else:
-            raise RuntimeError
-
-        return torch.stack(hs, 0)
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, X_vd: Optional[Tensor] = None) -> Tensor:
