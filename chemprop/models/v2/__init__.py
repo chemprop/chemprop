@@ -2,7 +2,7 @@ from .modules import (
     MessagePassingBlock,
     MolecularMessagePassingBlock,
     MolecularInput,
-    ReactionMessagePassingBlock,
+    CompositeMessagePassingBlock,
     AtomMessageBlock,
     BondMessageBlock,
 )
