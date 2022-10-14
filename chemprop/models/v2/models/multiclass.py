@@ -1,4 +1,5 @@
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from chemprop.models.v2.modules import MessagePassingBlock
 from chemprop.models.v2.models.base import MPNN
@@ -45,7 +46,6 @@ class DirichletMulticlassMPNN(MulticlassMPNN):
             encoder, n_tasks, n_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
         self.n_tasks = n_tasks
-        self.softplus = nn.Softplus()
 
     @property
     def n_targets(self) -> int:
@@ -53,6 +53,6 @@ class DirichletMulticlassMPNN(MulticlassMPNN):
         
     def forward(self, *args) -> Tensor:
         Y = super().forward(*args)
-        Y = self.softplus(Y) + 1
+        Y = F.softplus(Y) + 1
 
         return Y

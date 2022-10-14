@@ -1,14 +1,19 @@
+from abc import ABC, abstractmethod
 from itertools import chain
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
+import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
+from chemprop.data.v2.dataloader import TrainingBatch
 
-from chemprop.nn_utils import get_activation_function
+from chemprop.nn_utils import NoamLR, get_activation_function
 from chemprop.models.v2.modules import MessagePassingBlock, MolecularInput, ReactionInput
+from chemprop.models.v2.models.loss import LossFunction
+from chemprop.models.v2.models.metrics import Metric
 
 
-class MPNN(nn.Module):
+class MPNN(ABC, pl.LightningModule):
     """An `MPNN` is comprised of a `MessagePassingBlock` and an FFN top-model. The former
     calculates learned encodings from an input molecule/reaction graph, and the latter takes these
     encodings as input to calculate a final prediction. The full model is trained end-to-end.
@@ -21,6 +26,7 @@ class MPNN(nn.Module):
     used as a multiplier for the output dimension of the MPNN when the predictions correspond to a
     parameterized distribution, e.g., MVE regression, for which `s` is 2. Typically, this is just 1.
     """
+
     def __init__(
         self,
         encoder: MessagePassingBlock,
@@ -29,8 +35,17 @@ class MPNN(nn.Module):
         ffn_num_layers: int = 1,
         dropout: float = 0.0,
         activation: str = "relu",
+        criterion: Optional[Union[str, LossFunction]] = None,
+        metrics: Optional[Iterable[Union[str, Metric]]] = None,
+        task_weights: Optional[Tensor] = None,
+        warmup_epochs: int = 2,
+        num_lrs: int = 1,
+        init_lr: float = 1e-4,
+        max_lr: float = 1e-3,
+        final_lr: float = 1e-4,
     ):
         super().__init__()
+        self.save_hyperparameters()
 
         self.encoder = encoder
         self.n_tasks = n_tasks
@@ -40,8 +55,38 @@ class MPNN(nn.Module):
             ffn_hidden_dim,
             ffn_num_layers,
             dropout,
-            activation
+            activation,
         )
+
+        self.criterion = criterion
+        self.metrics = metrics
+
+        self.task_weights = task_weights if task_weights is not None else torch.ones(self.n_tasks)
+
+        self.warmup_epochs = warmup_epochs
+        self.num_lrs = num_lrs
+        self.init_lr = init_lr
+        self.max_lr = max_lr
+        self.final_lr = final_lr
+
+    @property
+    def criterion(self) -> LossFunction:
+        return self.__criterion
+
+    @criterion.setter
+    @abstractmethod
+    def criterion(self, criterion: Optional[Union[str, LossFunction]]):
+        """Set the criterion with which to train this MPNN using its string alias or initialized
+        `LossFunction` object"""
+
+    @property
+    def metrics(self) -> Iterable[Metric]:
+        return self.__metrics
+
+    @metrics.setter
+    @abstractmethod
+    def metrics(self, metrics: Optional[Iterable[Union[str, Metric]]]):
+        pass
 
     @property
     def n_targets(self) -> int:
@@ -63,8 +108,10 @@ class MPNN(nn.Module):
         layers = [input_dim, *layers, output_dim]
         ffn = list(
             chain(
-                *((dropout, nn.Linear(d1, d2), activation)
-                for d1, d2 in zip(layers[:-1], layers[1:]))
+                *(
+                    (dropout, nn.Linear(d1, d2), activation)
+                    for d1, d2 in zip(layers[:-1], layers[1:])
+                )
             )
         )
 
@@ -89,9 +136,79 @@ class MPNN(nn.Module):
     def forward(
         self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
     ) -> Tensor:
-        """Generate predictions for the input batch.
+        """Generate predictions for the input molecules/reactions.
 
         NOTE: the type signature of `input` matches the underlying `encoder.forward()`
         """
         return self.ffn(self.fingerprint(inputs, X_f))
 
+    def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
+        loss = self.criterion(
+            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
+        )
+
+        return loss * weights * mask
+
+    def training_step(self, batch: TrainingBatch, batch_idx):
+        bmg, X_vd, features, targets, weights, lt_targets, gt_targets = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
+        preds = self(bmg, X_vd, X_f=features)
+
+        L = self.calc_loss(preds, targets, mask, weights, lt_targets, gt_targets)
+        L = L * self.task_weights
+
+        return L.sum() / mask.sum()
+
+    def validation_step(self, batch: TrainingBatch, batch_idx) -> Tensor:
+        bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
+
+        mask = targets.isfinite()
+        preds = self(bmg, X_vd, X_f=features)
+
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0):
+        bmg, X_vd, features, *_ = batch
+
+        return self(bmg, X_vd, X_f=features)
+
+    def configure_optimizers(self):
+        opt = nn.optim.Adam(self.parameters(), self.init_lr)
+
+        lr_sched = NoamLR(
+            optimizer=opt,
+            warmup_epochs=[self.warmup_epochs],
+            total_epochs=[self.trainer.max_epochs] * self.num_lrs,
+            steps_per_epoch=self.num_training_steps,
+            init_lr=[self.init_lr],
+            max_lr=[self.max_lr],
+            final_lr=[self.final_lr],
+        )
+        lr_sched_config = {
+            "scheduler": lr_sched,
+            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
+        }
+
+        return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+
+    @property
+    def num_training_steps(self) -> int:
+        """Total training steps inferred from datamodule and devices."""
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+
+        if isinstance(limit_batches, int):
+            batches = min(batches, limit_batches)
+        else:
+            batches = int(limit_batches * batches)
+
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return (batches // effective_accum) * self.trainer.max_epochs
