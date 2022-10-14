@@ -111,28 +111,31 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
     Parameters
     ----------
-    mode : Union[str, ReactionMode]
-        the mode by which to featurize the reaction as either the string code or enum value
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
     bond_featurizer : BondFeaturizer, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
-    atom_messages : bool, default=False
-        whether to prepare the `MolGraph` for use with atom-based messages
+    bond_messages : bool, default=True
+        whether to prepare the `MolGraph`s for use with bond-based message-passing
+    mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
+        the mode by which to featurize the reaction as either the string code or enum value
     """
 
     def __init__(
         self,
-        mode: Union[str, ReactionMode],
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
-        atom_messages: bool = False,
+        bond_messages: bool = True,
+        mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
     ):
-        super().__init__(atom_featurizer, bond_featurizer, atom_messages)
+        super().__init__(atom_featurizer, bond_featurizer, bond_messages)
 
         self.mode = ReactionMode.get(mode)
+        self.atom_fdim += len(self.atom_feautrizer) - self.atom_featurizer.max_atomic_num - 1
+        self.bond_fdim *= 2
+
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
@@ -141,7 +144,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         reaction: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
-    ):
+    ) -> MolGraph:
         """Featurize the input reaction into a molecular graph
 
         Parameters
