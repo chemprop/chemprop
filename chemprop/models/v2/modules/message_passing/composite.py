@@ -26,7 +26,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
     blocks : Iterable[MolecularMessagePassingBlock]
         the invidual message-passing blocks for each input
     n_components : int
-        the number of components (reactants + products) in each input
+        the number of components in each input
     shared : bool, default=False
         whether one block will be shared among all components in an input. If not, a separate
         block will be learned for each component.
@@ -45,12 +45,11 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
 
         if shared and len(blocks) > 1:
             warnings.warn(
-                "More than 1 encoder was supplied but 'shared' was True! "
-                "Using only the 0th encoder..."
+                "More than 1 block was supplied but 'shared' was True! Using only the 0th block..."
             )
         elif not shared and len(blocks) != n_components:
             raise ValueError(
-                "arg 'n_mols' must be equal to `len(blocks)` if 'shared' is False! "
+                "arg 'n_components' must be equal to `len(blocks)` if 'shared' is False! "
                 f"got: {n_components} and {len(blocks)}, respectively."
             )
 
@@ -72,12 +71,12 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
         Parameters
         ----------
         inputss : Iterable[MolecularInput]
-            an Iterable of length `n` containing inputs to a MoleculeEncoder, where `n` is the
-            number of components in each reaction (== `self.n_components`). I.e., to encode a batch
-            of 3-component inputs, the 0th entry of `inputss` will be the batched inputs of
-            the 0th component of each input, the 1st entry will be the 1st component, etc. Each
-            component would itself be a batch of length `b`. In other words, if you were to 
-            (hypothetically) encode a batch of single component inputs (i.e., a batch of 
+            an Iterable of length `n` containing inputs to a `MolecularMessagePassingBlock`, where
+            `n` is the number of components in each reaction (== `self.n_components`). I.e., to
+            encode a batch of 3-component inputs, the 0th entry of `inputss` will be the batched
+            inputs of the 0th component of each input, the 1st entry will be the 1st component,
+            etc. Each component would itself be a batch of length `b`. In other words, if you were
+            to (hypothetically) encode a batch of single component inputs (i.e., a batch of
             molecules), the only difference between a `CompositeMessagePassingBlock` and a 
             `MolecularMessagePassingBlock` would be the call signature
 
