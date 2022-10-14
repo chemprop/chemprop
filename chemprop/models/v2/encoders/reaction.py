@@ -16,36 +16,51 @@ from chemprop.models.v2.encoders.molecule import (
 ReactionInput = Iterable[MolecularInput]
 
 class ReactionMessagePassingBlock(MessagePassingBlock):
+    """A `ReactionMessagePassingBlock` performs message-passing on each individual molecule in the reaction and then concatenates the representation of each molecule to construct a
+    reaction-level representation
+    
+    Inputs
+    ------
+    blocks : Iterable[MolecularMessagePassingBlock]
+        the invidual msesage-passing blocks for each molecule
+    n_mols : int
+        the number of molecules (reactants + products) in each reaction
+    shared : bool, default=False
+        whether one block will be shared among all molecules in a reaction. If not, a separate
+        block will be learned for each molecule. I.e. for two-component reactions producing one
+        product, then three blocks will be learned (= 2 + 1) if `shared` is `False`.
+    """
+
     def __init__(
-        self, encoders: Iterable[MolecularMessagePassingBlock], n_mols: int, shared: bool = False
+        self, blocks: Iterable[MolecularMessagePassingBlock], n_mols: int, shared: bool = False
     ):
         super().__init__()
 
-        if len(encoders) == 0:
-            raise ValueError("arg 'encoders' was empty!")
+        if len(blocks) == 0:
+            raise ValueError("arg 'blocks' was empty!")
 
-        if shared and len(encoders) > 1:
+        if shared and len(blocks) > 1:
             warnings.warn(
                 "More than 1 encoder was supplied but 'shared' was True! "
                 "Using only the 0th encoder..."
             )
-        elif not shared and len(encoders) != n_mols:
+        elif not shared and len(blocks) != n_mols:
             raise ValueError(
-                "arg 'n_mols' must be equal to `len(encoders)` if 'shared' is False! "
-                f"got: {n_mols} and {len(encoders)}, respectively."
+                "arg 'n_mols' must be equal to `len(blocks)` if 'shared' is False! "
+                f"got: {n_mols} and {len(blocks)}, respectively."
             )
 
         self.n_mols = n_mols
         self.shared = shared
 
         if self.shared:
-            self.encoders = nn.ModuleList([encoders[0]] * n_mols)
+            self.blocks = nn.ModuleList([blocks[0]] * n_mols)
         else:
-            self.encoders = nn.ModuleList(encoders)
+            self.blocks = nn.ModuleList(blocks)
 
     @property
     def output_dim(self) -> int:
-        return sum(encoder.output_dim for encoder in self.encoders)
+        return sum(block.output_dim for block in self.blocks)
 
     def forward(self, reactant_inputs: Iterable[MolecularInput]) -> Tensor:
         """Encode the reactant_batch
@@ -78,13 +93,13 @@ class ReactionMessagePassingBlock(MessagePassingBlock):
             of reactions in the batch, and `d_o` is the `output_dim` of this encoder
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
-        Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_inputs)]
+        Hs = [block(*inputs) for block, inputs in zip(self.blocks, reactant_inputs)]
         H = torch.cat(Hs, 1)
 
         return H
 
 
-def reaction_encoder(n_mols: int, shared: bool = False, *args, **kwargs):
+def reaction_block(n_mols: int, shared: bool = False, *args, **kwargs):
     if not shared:
         encoders = [molecule_block(*args, **kwargs) for _ in range(n_mols)]
     else:
