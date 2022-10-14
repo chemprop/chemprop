@@ -6,8 +6,8 @@ from typing import Iterable
 import torch
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MessagePassingBlock
-from chemprop.models.v2.encoders.molecule import (
+from chemprop.models.v2.modules.base import MessagePassingBlock
+from chemprop.models.v2.modules.molecule import (
     MolecularMessagePassingBlock,
     MolecularInput,
     molecule_block,

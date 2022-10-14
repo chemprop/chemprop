@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Iterable, Optional, Union
+from typing import Optional
 
 import torch
 from torch import Tensor, nn
 
 from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
-from chemprop.models.v2.encoders.base import MessagePassingBlock
-from chemprop.models.v2.encoders.modules import build_readout
+from chemprop.models.v2.modules.base import MessagePassingBlock
+from chemprop.models.v2.modules.modules import build_readout
 from chemprop.nn_utils import get_activation_function
 from chemprop.utils.exceptions import InvalidShapeError
 
