@@ -1,13 +1,13 @@
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MPNEncoder
+from chemprop.models.v2.encoders.base import MessagePassingBlock
 from chemprop.models.v2.models.base import MPNN
 
 
 class MulticlassMPNN(MPNN):
     def __init__(
         self,
-        encoder: MPNEncoder,
+        encoder: MessagePassingBlock,
         n_tasks: int,
         n_classes: int,
         ffn_hidden_dim: int = 300,
@@ -33,7 +33,7 @@ class MulticlassMPNN(MPNN):
 class DirichletMulticlassMPNN(MulticlassMPNN):
     def __init__(
         self,
-        encoder: MPNEncoder,
+        encoder: MessagePassingBlock,
         n_tasks: int,
         n_classes: int,
         ffn_hidden_dim: int = 300,

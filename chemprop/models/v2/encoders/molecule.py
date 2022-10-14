@@ -5,17 +5,50 @@ from typing import Iterable, Optional, Union
 
 import torch
 from torch import Tensor, nn
-from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
 
-from chemprop.models.v2.encoders.base import MPNEncoder
-from chemprop.models.v2.encoders.utils import Aggregation
+from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
+from chemprop.models.v2.encoders.base import MessagePassingBlock
+from chemprop.models.v2.utils import Aggregation
 from chemprop.nn_utils import get_activation_function
-from chemprop.utils.expections import InvalidShapeError
+from chemprop.utils.exceptions import InvalidShapeError
 
 MolecularInput = tuple[BatchMolGraph, Optional[Tensor]]
 
 
-class MoleculeEncoder(MPNEncoder):
+class MolecularMessagePassingBlock(MessagePassingBlock):
+    """The message-passing block in an MPNN operating on molecules
+
+    NOTE: this class is an abstract base class and cannot be instantiated
+
+    Parameters
+    ----------
+    d_v : int
+        the feature dimension of the vertices
+    d_e : int
+        the feature dimension of the edges
+    d_h : int, default=30
+        the hidden dimension during message passing
+    bias : bool, optional
+        whether to add a learned bias term to the weight matrices, by default False
+    depth : int, default=3
+        the number of message passing iterations
+    undirected : bool, default=False
+        whether messages should be bassed on undirected edges
+    dropout : float, default=0
+        the dropout probability
+    activation : str, default="relu"
+        the activation function to use
+    aggregation : Union[str, Aggregation], default=Aggregation.MEAN
+        the aggregation function to use during readout
+    d_vd : Optional[int], default=None
+        the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
+    
+    See also
+    --------
+    `AtomMessageEncoder`
+
+    `BondMessageEncoder`
+    """
     def __init__(
         self,
         d_v: int,
@@ -61,9 +94,9 @@ class MoleculeEncoder(MPNEncoder):
             the vertex feature dimension
         d_e : int
             the edge feature dimension
-        d_h : int
+        d_h : int, default=300
             the hidden dimension during message passing
-        bias: bool
+        bias: bool, deafault=False
             whether to add a learned bias to the matrices
         """
 
@@ -124,7 +157,7 @@ class MoleculeEncoder(MPNEncoder):
         ----------
         bmg: BatchMolGraph
             the batch of `MolGraphs` to encode
-        X_vd : Optional[Tensor]
+        X_vd : Optional[Tensor], default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
             transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms` + 1,
@@ -138,7 +171,7 @@ class MoleculeEncoder(MPNEncoder):
         """
 
 
-class BondMessageEncoder(MoleculeEncoder):
+class BondMessageBlock(MolecularMessagePassingBlock):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         self.W_i = nn.Linear(d_e, d_h, bias)
         self.W_h = nn.Linear(d_h, d_h, bias)
@@ -171,7 +204,7 @@ class BondMessageEncoder(MoleculeEncoder):
         return H
 
 
-class AtomMessageEncoder(MoleculeEncoder):
+class AtomMessageBlock(MolecularMessagePassingBlock):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         self.W_i = nn.Linear(d_v, d_h, bias)
         self.W_h = nn.Linear(d_e + d_h, d_h, bias)
@@ -206,14 +239,14 @@ class AtomMessageEncoder(MoleculeEncoder):
         return H
 
 
-def molecule_encoder(
+def molecule_block(
     d_v: int = _DEFAULT_ATOM_FDIM,
     d_e: int = _DEFAULT_BOND_FDIM,
     bond_messages: bool = True,
     *args,
     **kwargs
-) -> MoleculeEncoder:
-    """Build a `MoleculeEncoder`
+) -> MolecularMessagePassingBlock:
+    """Build a `MolecularMessagePassingBlock`
 
     NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the 
     `MoleculeFeaturizer` object that you will be using to prepare data. The default values should
@@ -226,14 +259,14 @@ def molecule_encoder(
     d_e : int, default=_DEFAULT_BOND_FDIM
         the dimension of the bond features
     bond_messages : bool, optional
-        whether to pass messages on bonds, by default True
+        whether to pass messages on bonds, default=True
     *args, **kwargs
-        positional and keyword arguments to pass to the initializer
+        positional- and keyword-arguments to pass to the `MolecularMessagePassingBlock.__init__()`
 
     Returns
     -------
     MoleculeEncoder
     """
-    encoder_cls = BondMessageEncoder if bond_messages else AtomMessageEncoder
+    encoder_cls = BondMessageBlock if bond_messages else AtomMessageBlock
 
     return encoder_cls(d_v, d_e, *args, **kwargs)

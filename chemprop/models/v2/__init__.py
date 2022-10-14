@@ -1,10 +1,10 @@
 from .encoders import (
-    MPNEncoder,
-    MoleculeEncoder,
+    MessagePassingBlock,
+    MolecularMessagePassingBlock,
     MolecularInput,
-    ReactionEncoder,
-    AtomMessageEncoder,
-    BondMessageEncoder,
+    ReactionMessagePassingBlock,
+    AtomMessageBlock,
+    BondMessageBlock,
 )
 from .models import (
     MPNN,

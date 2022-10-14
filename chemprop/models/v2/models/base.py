@@ -1,6 +1,4 @@
-from abc import ABC, abstractmethod
 from itertools import chain
-import pdb
 from typing import Optional, Union
 
 import torch
@@ -8,13 +6,13 @@ from torch import Tensor, nn
 from chemprop.models.v2.encoders import MolecularInput, ReactionInput
 
 from chemprop.nn_utils import get_activation_function
-from chemprop.models.v2.encoders import MPNEncoder
+from chemprop.models.v2.encoders import MessagePassingBlock
 
 
 class MPNN(nn.Module):
-    """An `MPNN` is comprised an `MPNEncoder` and an FFN top-model. The former calculates learned
-    encodings from an input molecular graph, and the latter takes these encodings as input to 
-    calculate a final prediction. The full model is trained end-to-end.
+    """An `MPNN` is comprised aa `MessagePassingBlock` and an FFN top-model. The former calculates 
+    learned encodings from an input molecular graph, and the latter takes these encodings as input
+    to calculate a final prediction. The full model is trained end-to-end.
 
     An `MPNN` takes a input a molecular graph and outputs a tensor of shape `b x t * s`, where `b`
     the size of the batch (i.e., number of molecules in the graph,) `t` is the number of tasks to
@@ -25,7 +23,7 @@ class MPNN(nn.Module):
     """
     def __init__(
         self,
-        encoder: MPNEncoder,
+        encoder: MessagePassingBlock,
         n_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,

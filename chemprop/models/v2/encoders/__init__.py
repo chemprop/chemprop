@@ -1,3 +1,3 @@
-from .base import MPNEncoder
-from .molecule import MoleculeEncoder, MolecularInput, AtomMessageEncoder, BondMessageEncoder, molecule_encoder
-from .reaction import ReactionEncoder, ReactionInput, reaction_encoder
+from .base import MessagePassingBlock
+from .molecule import MolecularMessagePassingBlock, MolecularInput, AtomMessageBlock, BondMessageBlock, molecule_block
+from .reaction import ReactionMessagePassingBlock, ReactionInput, reaction_encoder

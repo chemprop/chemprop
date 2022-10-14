@@ -6,17 +6,19 @@ from typing import Iterable
 import torch
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MPNEncoder
+from chemprop.models.v2.encoders.base import MessagePassingBlock
 from chemprop.models.v2.encoders.molecule import (
-    MoleculeEncoder,
+    MolecularMessagePassingBlock,
     MolecularInput,
-    molecule_encoder,
+    molecule_block,
 )
 
 ReactionInput = Iterable[MolecularInput]
 
-class ReactionEncoder(MPNEncoder):
-    def __init__(self, encoders: Iterable[MoleculeEncoder], n_mols: int, shared: bool = False):
+class ReactionMessagePassingBlock(MessagePassingBlock):
+    def __init__(
+        self, encoders: Iterable[MolecularMessagePassingBlock], n_mols: int, shared: bool = False
+    ):
         super().__init__()
 
         if len(encoders) == 0:
@@ -84,8 +86,8 @@ class ReactionEncoder(MPNEncoder):
 
 def reaction_encoder(n_mols: int, shared: bool = False, *args, **kwargs):
     if not shared:
-        encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
+        encoders = [molecule_block(*args, **kwargs) for _ in range(n_mols)]
     else:
-        encoders = [molecule_encoder(*args, **kwargs)]
+        encoders = [molecule_block(*args, **kwargs)]
 
-    return ReactionEncoder(encoders, n_mols, shared)
+    return ReactionMessagePassingBlock(encoders, n_mols, shared)
