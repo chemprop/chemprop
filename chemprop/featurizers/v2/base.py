@@ -15,6 +15,8 @@ class MolGraphFeaturizer(ABC):
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
         bond_messages: bool = False,
+        *args,
+        **kwargs
     ):
         self.atom_featurizer = atom_featurizer or AtomFeaturizer()
         self.bond_featurizer = bond_featurizer or BondFeaturizer()

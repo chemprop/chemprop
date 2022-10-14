@@ -5,8 +5,8 @@ import numpy as np
 
 
 class MultiHotFeaturizer(ABC):
-    """A MultiHotFeaturizer calculates feature vectors of arbitrary objects by concatenation of
-    multiple feature vectors"""
+    """A `MultiHotFeaturizer` calculates feature vectors of arbitrary objects by concatenating
+    multiple one-hot feature vectors"""
 
     def __call__(self, x) -> np.ndarray:
         return self.featurize(x)
@@ -18,7 +18,7 @@ class MultiHotFeaturizer(ABC):
     @property
     @abstractmethod
     def subfeatures(self) -> Mapping[str, slice]:
-        """a map from subfeature name to the slice in the calculated feature vector"""
+        """a map from subfeature name to the slice in the output feature vectors"""
 
     @abstractmethod
     def featurize(self, x) -> np.ndarray:

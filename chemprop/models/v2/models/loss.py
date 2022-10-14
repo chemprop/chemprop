@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -15,8 +17,8 @@ class LossFunction(ABC, RegistryMixin):
         pass
 
     @abstractmethod
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
-        """Calculate the loss function value given predicted and target values
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+        """Calculate the *unreduced* loss function value given predicted and target values
 
         Parameters
         ----------
@@ -38,7 +40,7 @@ class LossFunction(ABC, RegistryMixin):
 class MSELoss(LossFunction):
     alias = "regression-mse"
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.mse_loss(preds, targets, reduction="none")
 
 
@@ -46,18 +48,34 @@ class BoundedMSELoss(MSELoss):
     alias = "regression-bounded"
 
     def __call__(
-        self, preds: Tensor, targets: Tensor, lt_targets: Tensor, gt_targets: Tensor, **kwargs
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor,
+        lt_targets: Tensor,
+        gt_targets: Tensor,
+        **kwargs
     ) -> Tensor:
         preds = torch.where(torch.logical_and(preds < targets, lt_targets), targets, preds)
-        preds = torch.where(torch.logical_and(preds > targets, gt_targets), targets, preds,)
+        preds = torch.where(torch.logical_and(preds > targets, gt_targets), targets, preds)
 
         return super().__call__(preds, targets)
 
 
 class MVELoss(LossFunction):
+    """Calculate the loss using Eq. 9 from [1]_
+    
+    References
+    ----------
+    .. [1] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target probability
+    distribution." Proceedings of 1994 IEEE International Conference on Neural Networks, 1994
+    https://doi.org/10.1109/icnn.1994.374138
+    """
+
+
     alias = "regression-mve"
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         pred_means, pred_vars = preds.split(preds.shape[1] // 2, dim=1)
 
         return (
@@ -72,7 +90,7 @@ class EvidentialLoss(LossFunction):
         self.v_reg = v_reg
         self.eps = eps
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         mu, v, alpha, beta = preds.split(preds.shape[1] // 4, dim=1)
 
         twoBlambda = 2 * beta * (1 + v)
@@ -90,19 +108,19 @@ class EvidentialLoss(LossFunction):
 
 
 class BCELoss(LossFunction):
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 class CrossEntropyLoss(LossFunction):
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.cross_entropy(preds, targets, reduction="none")
 
         
 class MCCLossBase(LossFunction):
     @abstractmethod
     def __call__(
-        self, preds: Tensor, targets: Tensor, weights: Tensor, mask: Tensor, **kwargs
+        self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, **kwargs
     ) -> Tensor:
         pass
 
@@ -111,7 +129,7 @@ class ClassificationMCCLoss(MCCLossBase):
     alias = "classification-mcc"
 
     def __call__(
-        self, preds: Tensor, targets: Tensor, weights: Tensor, mask: Tensor, **kwargs
+        self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, **kwargs
     ) -> Tensor:
         TP = (targets * preds * weights * mask).sum(0)
         FP = ((1 - targets) * preds * weights * mask).sum(0)
@@ -191,7 +209,7 @@ class DirichletLossBase(LossFunction):
     def __init__(self, v_kl: float = 0., **kwargs):
         self.v_kl = v_kl
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         S = preds.sum(-1, keepdim=True)
         p = preds / S
         A = (targets - p).square().sum(dim=-1, keepdim=True)
@@ -222,7 +240,7 @@ class DirichletLossBase(LossFunction):
 class DirichletClassificationLoss(DirichletLossBase):
     alias = "classification-dirichlet"
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         num_tasks = targets.shape[1]
         num_classes = 2
         preds = preds.reshape(len(preds), num_tasks, num_classes)
@@ -235,7 +253,7 @@ class DirichletClassificationLoss(DirichletLossBase):
 class DirichletMulticlassLoss(DirichletLossBase):
     alias = "multiclass-dirichlet"
 
-    def __call__(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
 
         return super().__call__(preds, y_one_hot)

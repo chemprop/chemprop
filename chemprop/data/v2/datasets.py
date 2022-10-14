@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Iterable, Optional
 
 import numpy as np
 from rdkit import Chem
@@ -8,18 +8,15 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
-from chemprop.data.v2.datapoints import DatapointBase, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.v2.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.featurizers.v2.reaction import ReactionFeaturizer
-
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
 
-class MolGraphDatasetBase(Dataset):
-    def __init__(self, data: Sequence[DatapointBase]):
-        if data is None:
-            raise ValueError("arg: 'data' was `None`!")
 
-        self.data = data
+class MolGraphDatasetBase(Dataset):
+    def __getitem__(self, idx: int) -> Datum:
+        pass
 
     def __len__(self) -> int:
         return len(self.data)
@@ -118,19 +115,18 @@ class MolGraphDatasetBase(Dataset):
 
 
 class MoleculeDataset(MolGraphDatasetBase):
-    """A `MoleculeDataset` contains a list of `MoleculeDatapoint`s with access to
-    their attributes.
+    """A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
     Parameters
     ----------
-    data : Sequence[MoleculeDatapoint]
-        the dataset from which to load
-    featurizer : MoleculeFeaturizer
-        the featurizer with which to generate MolGraphs of the input
+    data : Iterable[MoleculeDatapoint]
+        the data from which to create a dataset
+    featurizer : ReactionFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
     """
 
-    def __init__(self, data: Sequence[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizer]):
-        super().__init__(data)
+    def __init__(self, data: Iterable[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizer]):
+        self.data = list(data)
         self.featurizer = featurizer or MoleculeFeaturizer()
 
     def __getitem__(self, idx: int) -> Datum:
@@ -225,10 +221,10 @@ class MoleculeDataset(MolGraphDatasetBase):
 
     @property
     def atom_descriptors_size(self) -> Optional[int]:
-        if len(self.data) > 0 and self.data[0].descriptors is None:
+        if len(self.data) > 0 and self.data[0].atom_descriptors is None:
             return None
 
-        return len(self.data[0].descriptors[0])
+        return len(self.data[0].atom_descriptors[0])
 
     def normalize(
         self, key: str = "features", scaler: Optional[StandardScaler] = None
@@ -268,25 +264,32 @@ class MoleculeDataset(MolGraphDatasetBase):
 
 
 class ReactionDataset(MolGraphDatasetBase):
-    """A `ReactionDataset` contains a list of `ReactionDatapoint`s with access to
-    their attributes.
+    """A `MolgraphDataset` composed of `ReactionDatapoint`s
 
     Parameters
     ----------
-    data : Sequence[ReactionDatapoint]
-        the dataset from which to load
-    featurizer : MoleculeFeaturizer
-        the featurizer with which to generate MolGraphs of the input
+    data : Iterable[ReactionDatapoint]
+        the data from which to create a dataset
+    featurizer : ReactionFeaturizer
+        the featurizer with which to generate MolGraphs of the reactions
     """
 
-    def __init__(self, data: Sequence[ReactionDatapoint], featurizer: ReactionFeaturizer):
-        super().__init__(data)
+    def __init__(self, data: Iterable[ReactionDatapoint], featurizer: ReactionFeaturizer):
+        self.data = list(data)
         self.featurizer = featurizer
 
-    def __getitem__(self, idx: int) -> tuple[MolGraph, np.ndarray]:
+    def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
 
-        return self.featurizer(d.mols, d.atom_features, d.bond_features), d.targets
+        return (
+            self.featurizer(d.mols, d.atom_features, d.bond_features),
+            None,
+            d.features,
+            d.targets,
+            d.data_weight,
+            d.lt_targets,
+            d.gt_targets
+        )
 
     @property
     def smiles(self) -> list[str]:

@@ -158,6 +158,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         self.atom_features = self._atom_features
         self.bond_features = self._bond_features
 
+
 @dataclass
 class ReactionDatapointMixin:
     smis: list[str]
