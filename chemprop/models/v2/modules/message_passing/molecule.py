@@ -7,10 +7,10 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.featurizers.v2 import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
-from chemprop.models.v2.modules.base import MessagePassingBlock
-from chemprop.models.v2.modules.readout import build_readout
 from chemprop.nn_utils import get_activation_function
 from chemprop.utils.exceptions import InvalidShapeError
+from chemprop.models.v2.modules.readout import build_readout
+from chemprop.models.v2.modules.message_passing.base import MessagePassingBlock
 
 MolecularInput = tuple[BatchMolGraph, Optional[Tensor]]
 

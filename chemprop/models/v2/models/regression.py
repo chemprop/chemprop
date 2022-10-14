@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MessagePassingBlock
+from chemprop.models.v2.modules import MessagePassingBlock
 from chemprop.models.v2.models.base import MPNN
 
 

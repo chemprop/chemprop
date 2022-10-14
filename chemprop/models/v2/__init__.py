@@ -1,4 +1,4 @@
-from .encoders import (
+from .modules import (
     MessagePassingBlock,
     MolecularMessagePassingBlock,
     MolecularInput,
