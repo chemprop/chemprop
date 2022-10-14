@@ -14,7 +14,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
     registry = {}
 
     def __init__(self, *args, **kwargs):
-        pass
+        super().__init__()
 
     def forward(self, H_v: Tensor, sizes: Iterable[int]) -> Tensor:
         """Aggregate node-level representations into a graph-level representation
@@ -31,7 +31,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
         Parameters
         ----------
         H_v : Tensor
-            A tensor of shape `SUM(sizes) x d` containing the stacked node-level representations of 
+            A tensor of shape `sum(sizes) x d` containing the stacked node-level representations of 
             `b` graphs
         sizes : Iterable[int]
             an iterable of length `b` containing the number of nodes in each of the `b` graphs,
@@ -70,7 +70,8 @@ class NormReadout(Readout):
 
     def __init__(self, *args, norm: float = 100, **kwargs):
         self.norm = norm
-
+        super().__init__(*args, **kwargs)
+        
     def aggregate(self, Hs: Iterable[Tensor]):
         return [H.sum(0) / self.norm if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
 
