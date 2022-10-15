@@ -19,7 +19,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
     def forward(self, H_v: Tensor, sizes: Iterable[int]) -> Tensor:
         """Aggregate node-level representations into a graph-level representation
 
-        The input to this function is a stacked tensor containing the node-level representations for
+        The input `H_v` is a stacked tensor containing the node-level representations for
         `b` separate graphs. I.e., if `H_v` is a tensor of shape `10 x 4` and `sizes` is equal to
         `[3, 4, 3]`, then `H[:3]`,` H[3:7]`, and `H[7:]` correspond to the node-level
         represenataions of the three stacked graphs. The output of this function will then be a
@@ -59,6 +59,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
 
 class MeanReadout(Readout):
     """Take the mean node-level representation as the graph-level representation"""
+
     alias = "mean"
 
     def aggregate(self, Hs: Iterable[Tensor]):
@@ -66,6 +67,9 @@ class MeanReadout(Readout):
 
 
 class NormReadout(Readout):
+    """Take the summed node-level representation divided by a normalization constant as the 
+    graph-level representation"""
+
     alias = "norm"
 
     def __init__(self, *args, norm: float = 100, **kwargs):
@@ -77,6 +81,8 @@ class NormReadout(Readout):
 
 
 class SumReadout(Readout):
+    """Take the summed node-level representation as the graph-level representation"""
+
     alias = "sum"
 
     def aggregate(self, Hs: Iterable[Tensor]):

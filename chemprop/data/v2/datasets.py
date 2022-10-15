@@ -22,6 +22,10 @@ class MolGraphDatasetBase(Dataset):
         return len(self.data)
 
     @property
+    def _targets(self) -> np.ndarray:
+        return np.array([d._targets for d in self.data])
+
+    @property
     def targets(self) -> np.ndarray:
         return np.array([d.targets for d in self.data])
 
@@ -90,7 +94,7 @@ class MolGraphDatasetBase(Dataset):
 
         return len(self.data[0].features)
 
-    def normalize_targets(self) -> StandardScaler:
+    def normalize_targets(self, scaler: Optional[StandardScaler] = None) -> StandardScaler:
         """Normalizes the targets of the dataset using a `StandardScaler`
 
         The StandardScaler subtracts the mean and divides by the standard deviation for each task
@@ -102,7 +106,7 @@ class MolGraphDatasetBase(Dataset):
             a scaler fit to the targets.
         """
         targets = np.array([d._targets for d in self.data])
-        scaler = StandardScaler().fit(targets)
+        scaler = (scaler or StandardScaler()).fit(targets)
         scaled_targets = scaler.transform(targets)
         self.targets = scaled_targets
 

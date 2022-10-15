@@ -86,7 +86,8 @@ class MPNN(ABC, pl.LightningModule):
     @metrics.setter
     @abstractmethod
     def metrics(self, metrics: Optional[Iterable[Union[str, Metric]]]):
-        pass
+        """Set the evaluation metrics for this MPNN using their string aliases or initialized
+        `Metric` objects"""
 
     @property
     def n_targets(self) -> int:
@@ -162,13 +163,30 @@ class MPNN(ABC, pl.LightningModule):
 
         return L.sum() / mask.sum()
 
-    def validation_step(self, batch: TrainingBatch, batch_idx) -> Tensor:
+    def validation_step(self, batch: TrainingBatch, batch_idx) -> tuple[list[Tensor], int]:
         bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
 
         mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
         preds = self(bmg, X_vd, X_f=features)
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0):
+        val_losses = [
+            metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
+            for metric in self.metrics
+        ]
+
+        for metric, l in zip(self.metrics, val_losses):
+            self.log(f"val/{metric.name}", l, on_epoch=True)
+        # return val_losses, len(bmg)
+
+    # def validation_epoch_end(self, outputs):
+    #     val_losses, Ns = zip(*outputs)
+    #     L = torch.tensor(val_losses)
+    #     N = torch.tensor(Ns).unsqueeze(1)
+    #     losses = (L * N).sum(0) / N.sum()
+
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         bmg, X_vd, features, *_ = batch
 
         return self(bmg, X_vd, X_f=features)

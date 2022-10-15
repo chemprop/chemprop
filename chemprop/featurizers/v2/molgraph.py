@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ctypes import Union
 
 from dataclasses import InitVar, dataclass, field
 from typing import Iterable, NamedTuple, Optional
@@ -122,3 +123,14 @@ class BatchMolGraph:
         self.b2a = torch.tensor(b2a, dtype=torch.long)
         self.b2revb = torch.tensor(b2revb, dtype=torch.long)
         self.a2a = self.b2a[self.a2b]
+
+    def __len__(self) -> int:
+        return len(self.a_scope)
+    
+    def to(self, device: Union[str, torch.device]):
+        self.X_v = self.X_v.to(device)
+        self.X_e = self.X_e.to(device)
+        self.a2b = self.a2b.to(device)
+        self.b2a = self.b2a.to(device)
+        self.b2revb = self.b2revb.to(device)
+        self.a2a = self.a2a.to(device)
