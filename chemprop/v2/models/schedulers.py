@@ -17,7 +17,7 @@ class NoamLR(_LRScheduler):
     course of the remaining :code:`total_steps - warmup_steps` (where :code:`total_steps =
     total_epochs * steps_per_epoch`). This is roughly based on the learning rate
     schedule from [1]_, section 5.3.
-    
+
     Parameters
     -----------
     optimizer : Optimizer
@@ -34,7 +34,7 @@ class NoamLR(_LRScheduler):
         The maximum learning rate (achieved after :code:`warmup_epochs`).
     final_lr : list[float]
         The final learning rate (achieved after :code:`total_epochs`).
-    
+
     References
     ----------
     .. [1] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, Ł. and Polosukhin, I. "Attention is all you need." Advances in neural information processing systems, 2017, 30. https://arxiv.org/abs/1706.03762
@@ -48,16 +48,18 @@ class NoamLR(_LRScheduler):
         steps_per_epoch: int,
         init_lr: list[float],
         max_lr: list[float],
-        final_lr: list[float]
+        final_lr: list[float],
     ):
-        lengths = np.array([
-            len(optimizer.param_groups),
-            len(warmup_epochs),
-            len(total_epochs),
-            len(init_lr),
-            len(max_lr),
-            len(final_lr)
-        ])
+        lengths = np.array(
+            [
+                len(optimizer.param_groups),
+                len(warmup_epochs),
+                len(total_epochs),
+                len(init_lr),
+                len(max_lr),
+                len(final_lr),
+            ]
+        )
         if not (np.diff(lengths) == 0).all():
             raise ValueError(
                 "Number of param groups must match length of: "
@@ -81,7 +83,8 @@ class NoamLR(_LRScheduler):
         self.total_steps = self.total_epochs * self.steps_per_epoch
         self.linear_increment = (self.max_lr - self.init_lr) / self.warmup_steps
 
-        self.exponential_gamma = (self.final_lr / self.max_lr) ** (1 / (self.total_steps - self.warmup_steps))
+        cooldown_steps = self.total_steps - self.warmup_steps
+        self.gamma = (self.final_lr / self.max_lr) ** (1 / cooldown_steps)
 
         super(NoamLR, self).__init__(optimizer)
 
@@ -90,7 +93,7 @@ class NoamLR(_LRScheduler):
         return list(self.lr)
 
     def step(self, current_step: int = None):
-        """Update the learning rate by taking a step
+        """Step the learning rate
 
         Parameters
         ----------
@@ -106,9 +109,9 @@ class NoamLR(_LRScheduler):
             if self.current_step <= self.warmup_steps[i]:
                 self.lr[i] = self.init_lr[i] + self.current_step * self.linear_increment[i]
             elif self.current_step <= self.total_steps[i]:
-                self.lr[i] = self.max_lr[i] * (self.exponential_gamma[i] ** (self.current_step - self.warmup_steps[i]))
+                decay_term = self.gamma[i] ** (self.current_step - self.warmup_steps[i])
+                self.lr[i] = self.max_lr[i] * decay_term
             else:
                 self.lr[i] = self.final_lr[i]
 
-            self.optimizer.param_groups[i]['lr'] = self.lr[i]
-
+            self.optimizer.param_groups[i]["lr"] = self.lr[i]

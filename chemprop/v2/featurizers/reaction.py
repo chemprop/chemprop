@@ -140,7 +140,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
-    #TODO(degraff): make this function more readable
+    # TODO(degraff): make this function more readable
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
