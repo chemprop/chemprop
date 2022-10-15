@@ -1,7 +1,6 @@
 from torch import Tensor, nn
 
 from chemprop.models.v2.models.base import MPNN
-from chemprop.models.v2.models.metrics import SIDMetric
 
 
 class Exp(nn.Module):

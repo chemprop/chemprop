@@ -163,7 +163,7 @@ class SIDMetric(ThresholdedMetric):
         )[mask].mean()
 
 
-class SIDMetric(ThresholdedMetric):
+class WassersteinMetric(ThresholdedMetric):
     alias = "wasserstein"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
