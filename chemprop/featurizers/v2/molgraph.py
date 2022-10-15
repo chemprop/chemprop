@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+
 class MolGraph(NamedTuple):
     """A `MolGraph` represents the graph structure and featurization of a single molecule.
 
@@ -24,7 +25,7 @@ class MolGraph(NamedTuple):
     a2b : list[tuple[int]]
         A list of length `V` that maps from an atom index to a list of incoming bond indices.
     b2a : np.ndarray
-        A list of length `E` that maps from a bond index to the index of the atom the bond 
+        A list of length `E` that maps from a bond index to the index of the atom the bond
         originates from.
     b2revb : np.ndarray
         A list of length `E` that maps from a bond index to the index of the reverse bond.
@@ -46,9 +47,9 @@ class MolGraph(NamedTuple):
 @dataclass
 class BatchMolGraph:
     """A `BatchMolGraph` is a singular `MolGraph` composed of a batch of individual `MolGraphs`.
-    
+
     It has all the attributes of a `MolGraph` with the addition of `a_scope` and `b_scope`. These
-    define the atom and bond-scope of each original `MolGraph` in the batched `MolGraph`, 
+    define the atom and bond-scope of each original `MolGraph` in the batched `MolGraph`,
     respectively. This class is intended for use with data loading, so it uses `Tensors`s to
     store data
 
@@ -118,7 +119,7 @@ class BatchMolGraph:
         max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
         self.a2b = torch.tensor(
             [a2b[a] + [0] * (max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)],
-            dtype=torch.long
+            dtype=torch.long,
         )
         self.b2a = torch.tensor(b2a, dtype=torch.long)
         self.b2revb = torch.tensor(b2revb, dtype=torch.long)
@@ -126,7 +127,7 @@ class BatchMolGraph:
 
     def __len__(self) -> int:
         return len(self.a_scope)
-    
+
     def to(self, device: Union[str, torch.device]):
         self.X_v = self.X_v.to(device)
         self.X_e = self.X_e.to(device)

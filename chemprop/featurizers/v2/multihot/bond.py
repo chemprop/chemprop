@@ -12,11 +12,11 @@ class BondFeaturizer(MultiHotFeaturizer):
     Parameters
     ----------
     bond_types : Optional[Sequence[BondType]], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
-        the known bond types 
+        the known bond types
     stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
         the known bond stereochemistries. For an explanation of the values, see https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
     """
-    
+
     def __init__(
         self,
         bond_types: Optional[Sequence[BondType]] = None,

@@ -24,7 +24,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         torch.from_numpy(np.array(ys, "f4")),
         torch.from_numpy(np.array(weights, "f4")).unsqueeze(1),
         None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets, "f4")),
-        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4"))
+        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4")),
     )
 
 

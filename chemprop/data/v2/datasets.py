@@ -143,7 +143,7 @@ class MoleculeDataset(MolGraphDatasetBase):
             d.targets,
             d.data_weight,
             d.lt_targets,
-            d.gt_targets
+            d.gt_targets,
         )
 
     @property
@@ -233,7 +233,7 @@ class MoleculeDataset(MolGraphDatasetBase):
     def normalize(
         self, key: str = "features", scaler: Optional[StandardScaler] = None
     ) -> StandardScaler:
-        valid_keys =  ('features', 'atom_features', 'bond_features', 'atom_descriptors', 'all')
+        valid_keys = ("features", "atom_features", "bond_features", "atom_descriptors", "all")
         if key.lower() not in valid_keys:
             raise ValueError(f"Invalid feature key! got: {key}. expected one of: {valid_keys}")
 
@@ -250,7 +250,7 @@ class MoleculeDataset(MolGraphDatasetBase):
 
         if X is None:
             return scaler
-        
+
         if scaler is None:
             scaler = StandardScaler().fit(X)
         X_normalized = scaler.transform(X)
@@ -292,7 +292,7 @@ class ReactionDataset(MolGraphDatasetBase):
             d.targets,
             d.data_weight,
             d.lt_targets,
-            d.gt_targets
+            d.gt_targets,
         )
 
     @property

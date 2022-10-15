@@ -154,7 +154,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         """Resets the features (atom, bond, and molecule) and targets to their raw values."""
         self.features = self._features
         self.targets = self._targets
-        self.atom_descriptors =self._atom_descriptors
+        self.atom_descriptors = self._atom_descriptors
         self.atom_features = self._atom_features
         self.bond_features = self._bond_features
 

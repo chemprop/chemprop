@@ -12,9 +12,9 @@ class AtomFeaturizer(MultiHotFeaturizer):
     Parameters
     ----------
     max_atomic_num : int, default=100
-        the maximum atomic number categorized, by 
+        the maximum atomic number categorized, by
     degrees : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
-        the categories for the atomic degree 
+        the categories for the atomic degree
     formal_charges : Optional[Sequence[int]], default=[-1, -2, 1, 2, 0]
         the categories for formal charge of an atom
     chiral_tags : Optional[Sequence[int]], default=[0, 1, 2, 3]
