@@ -1,4 +1,14 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "chemprop/_version.py"
+
 [tool.black]
 line-length = 100
-target-version = ["py37"]
+target-version = ["py38"]
 skip-magic-trailing-comma = true
+
+[tool.pytest.ini_options]
+addopts = "--cov chemprop"
