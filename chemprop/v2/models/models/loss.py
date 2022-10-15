@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.utils.mixins import RegistryMixin
+from chemprop.v2.utils.mixins import RegistryMixin
 
 
 class LossFunction(ABC, RegistryMixin):
