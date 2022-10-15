@@ -9,7 +9,7 @@ from chemprop.models.v2.models.base import MPNN
 class RegressionMPNN(MPNN):
     _DATASET_TYPE = "regression"
     _DEFAULT_CRITERION = "mse"
-    _DEFAULT_METRIC = "rmse"    
+    _DEFAULT_METRIC = "rmse"
 
 
 class MveRegressionMPNN(RegressionMPNN):

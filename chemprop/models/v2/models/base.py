@@ -206,7 +206,7 @@ class MPNN(ABC, pl.LightningModule):
         
         return l
 
-    def validation_step(self, batch: TrainingBatch, batch_idx) -> tuple[list[Tensor], int]:
+    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
         bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
 
         mask = targets.isfinite()
@@ -220,6 +220,23 @@ class MPNN(ABC, pl.LightningModule):
             for metric in self.metrics
         ]
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
+
+    def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
+        preds = self((bmg, X_vd), X_f=features)
+        preds = preds[:, ::self.n_targets]
+
+        losses = [
+            metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
+            for metric in self.metrics
+        ]
+        metric2loss = {f"{m.alias}": l for m, l in zip(self.metrics, losses)}
+
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     # def validation_epoch_end(self, outputs):

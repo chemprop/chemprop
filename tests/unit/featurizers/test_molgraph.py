@@ -47,7 +47,7 @@ def bond_features_extra(mol, extra):
 
 @pytest.fixture
 def mol_featurizer(atom_messages):
-    return MoleculeFeaturizer(atom_messages=atom_messages)
+    return MoleculeFeaturizer(bond_messages=not atom_messages)
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_atom_fdim(extra):
 
 
 def test_bond_fdim(atom_messages, extra):
-    mf = MoleculeFeaturizer(extra_bond_fdim=extra, atom_messages=atom_messages)
+    mf = MoleculeFeaturizer(extra_bond_fdim=extra, bond_messages=atom_messages)
 
     if atom_messages:
         assert mf.bond_fdim == len(mf.bond_featurizer) + extra
