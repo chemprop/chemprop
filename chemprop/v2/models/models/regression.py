@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.models.v2.models.base import MPNN
+from chemprop.v2.models.models.base import MPNN
 
 
 class RegressionMPNN(MPNN):
