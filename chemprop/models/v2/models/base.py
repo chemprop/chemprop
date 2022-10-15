@@ -1,15 +1,16 @@
 from abc import ABC, abstractmethod
 from itertools import chain
+import pdb
 from typing import Iterable, Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from torch import Tensor, nn
+from torch import Tensor, nn, optim
 from chemprop.data.v2.dataloader import TrainingBatch
 
 from chemprop.nn_utils import NoamLR, get_activation_function
-from chemprop.models.v2.modules import MessagePassingBlock, MolecularInput, ReactionInput
-from chemprop.models.v2.models.loss import LossFunction
+from chemprop.models.v2.modules import MessagePassingBlock, MolecularInput
+from chemprop.models.v2.models.loss import LossFunction, build_loss
 from chemprop.models.v2.models.metrics import Metric
 
 
@@ -29,7 +30,7 @@ class MPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        encoder: MessagePassingBlock,
+        mpn_block: MessagePassingBlock,
         n_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
@@ -45,12 +46,11 @@ class MPNN(ABC, pl.LightningModule):
         final_lr: float = 1e-4,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["mpn_block"])
 
-        self.encoder = encoder
-        self.n_tasks = n_tasks
+        self.mpn_block = mpn_block
         self.ffn = self.build_ffn(
-            encoder.output_dim,
+            mpn_block.output_dim,
             n_tasks * self.n_targets,
             ffn_hidden_dim,
             ffn_num_layers,
@@ -58,10 +58,13 @@ class MPNN(ABC, pl.LightningModule):
             activation,
         )
 
+        self.n_tasks = n_tasks
         self.criterion = criterion
         self.metrics = metrics
 
-        self.task_weights = task_weights if task_weights is not None else torch.ones(self.n_tasks)
+        if task_weights is None:
+            task_weights = torch.ones(self.n_tasks)
+        self.task_weights = nn.Parameter(task_weights.unsqueeze(0), requires_grad=False)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -69,25 +72,62 @@ class MPNN(ABC, pl.LightningModule):
         self.max_lr = max_lr
         self.final_lr = final_lr
 
+    @classmethod
+    @property
+    @abstractmethod
+    def _DATASET_TYPE(self) -> str:
+        """the dataset type of this MPNN"""
+
+    @classmethod
+    @property
+    @abstractmethod
+    def _DEFAULT_CRITERION(self) -> str:
+        """the default criterion with which to train this MPNN"""
+            
+    @classmethod
+    @property
+    @abstractmethod
+    def _DEFAULT_METRIC(self) -> str:
+        """the default metric with which to evaluate this MPNN"""
+
     @property
     def criterion(self) -> LossFunction:
         return self.__criterion
 
     @criterion.setter
-    @abstractmethod
     def criterion(self, criterion: Optional[Union[str, LossFunction]]):
         """Set the criterion with which to train this MPNN using its string alias or initialized
         `LossFunction` object"""
+
+        if criterion is None:
+            criterion = build_loss(self._DATASET_TYPE, self._DEFAULT_CRITERION)
+        elif isinstance(criterion, str):
+            criterion = build_loss(self._DATASET_TYPE, criterion)
+
+        self.__criterion = criterion
+
 
     @property
     def metrics(self) -> Iterable[Metric]:
         return self.__metrics
 
     @metrics.setter
-    @abstractmethod
     def metrics(self, metrics: Optional[Iterable[Union[str, Metric]]]):
         """Set the evaluation metrics for this MPNN using their string aliases or initialized
         `Metric` objects"""
+        if metrics is None:
+            metrics = [self._DEFAULT_METRIC]
+
+        metrics_ = []
+        for m in metrics:
+            try:
+                metrics_.append(Metric.registry[m]() if isinstance(m, str) else m)
+            except KeyError:
+                raise ValueError(
+                    f"Invalid metric! got: {m}. expected one of: {Metric.registry.keys()}"
+                )
+
+        self.__metrics = metrics_
 
     @property
     def n_targets(self) -> int:
@@ -119,29 +159,29 @@ class MPNN(ABC, pl.LightningModule):
         return nn.Sequential(*ffn[:-1])
 
     def fingerprint(
-        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
     ) -> Tensor:
         """Calculate the learned fingerprint for the input molecules/reactions"""
-        H = self.encoder(*inputs)
+        H = self.mpn_block(*inputs)
         if X_f is not None:
             H = torch.cat((H, X_f), 1)
 
         return H
 
     def encoding(
-        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
     ) -> Tensor:
         """Calculate the encoding ("hidden representation") for the input molecules/reactions"""
-        return self.ffn[:-1](self.fingerprint(*inputs, X_f))
+        return self.ffn[:-1](self.fingerprint(inputs, X_f=X_f))
 
     def forward(
-        self, inputs: Union[MolecularInput, ReactionInput], X_f: Optional[Tensor] = None
+        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions.
 
         NOTE: the type signature of `input` matches the underlying `encoder.forward()`
         """
-        return self.ffn(self.fingerprint(inputs, X_f))
+        return self.ffn(self.fingerprint(inputs, X_f=X_f))
 
     def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
         loss = self.criterion(
@@ -156,12 +196,15 @@ class MPNN(ABC, pl.LightningModule):
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        preds = self(bmg, X_vd, X_f=features)
+        preds = self((bmg, X_vd), X_f=features)
 
         L = self.calc_loss(preds, targets, mask, weights, lt_targets, gt_targets)
         L = L * self.task_weights
 
-        return L.sum() / mask.sum()
+        l = L.sum() / mask.sum()
+        self.log("train/loss", l, prog_bar=True)
+        
+        return l
 
     def validation_step(self, batch: TrainingBatch, batch_idx) -> tuple[list[Tensor], int]:
         bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
@@ -169,16 +212,15 @@ class MPNN(ABC, pl.LightningModule):
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        preds = self(bmg, X_vd, X_f=features)
+        preds = self((bmg, X_vd), X_f=features)
+        preds = preds[:, ::self.n_targets]
 
-        val_losses = [
+        losses = [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
             for metric in self.metrics
         ]
-
-        for metric, l in zip(self.metrics, val_losses):
-            self.log(f"val/{metric.name}", l, on_epoch=True)
-        # return val_losses, len(bmg)
+        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     # def validation_epoch_end(self, outputs):
     #     val_losses, Ns = zip(*outputs)
@@ -192,7 +234,7 @@ class MPNN(ABC, pl.LightningModule):
         return self(bmg, X_vd, X_f=features)
 
     def configure_optimizers(self):
-        opt = nn.optim.Adam(self.parameters(), self.init_lr)
+        opt = optim.Adam(self.parameters(), self.init_lr)
 
         lr_sched = NoamLR(
             optimizer=opt,
