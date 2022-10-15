@@ -108,11 +108,15 @@ class EvidentialLoss(LossFunction):
 
 
 class BCELoss(LossFunction):
+    alias = "classification-bce"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 class CrossEntropyLoss(LossFunction):
+    alias = "multiclass-ce"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.cross_entropy(preds, targets, reduction="none")
 
@@ -156,45 +160,6 @@ class MulticlassMCCLoss(MCCLossBase):
         t2 = (torch.sum(bin_targets * weights * mask).sum(0) ** 2).sum()
         
         return 1 - (c * s - p_tot) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
-
-
-class SpectralLoss(LossFunction):
-    def __init__(self, threshold: Optional[float] = None, **kwargs):
-        self.threshold = threshold
-
-    @abstractmethod
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        pass
-
-
-class SIDSpectralLoss(SpectralLoss):
-    alias = "spectral-sid"
-
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
-        if self.threshold is not None:
-            preds = preds.clamp(min=self.threshold)
-
-        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
-
-        targets = targets.masked_fill(~mask, 1)
-        preds_norm = preds_norm.masked_fill(~mask, 1)
-
-        return (
-            torch.log(preds_norm / targets) * preds_norm
-            + torch.log(targets / preds_norm) * targets
-        )
-
-
-class WassersteinSpectralLoss(SpectralLoss):
-    alias = "spectral-wasserstein"
-
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        if self.threshold is not None:
-            preds = preds.clamp(min=self.threshold)
-
-        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
-
-        return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))
 
 
 class DirichletLossBase(LossFunction):
@@ -259,7 +224,7 @@ class DirichletMulticlassLoss(DirichletLossBase):
         return super().__call__(preds, y_one_hot)
 
 
-def get_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
+def build_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
     key = f"{dataset_type.lower()}-{loss_function.lower()}"
 
     try:
@@ -270,3 +235,42 @@ def get_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
             f"dataset type '{dataset_type}' does not support loss function '{loss_function}'! "
             f"Expected one of (`dataset_type`, `loss_function`) combos: {combos}"
         )
+
+
+class SpectralLoss(LossFunction):
+    def __init__(self, threshold: Optional[float] = None, **kwargs):
+        self.threshold = threshold
+
+    @abstractmethod
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+        pass
+
+
+class SIDSpectralLoss(SpectralLoss):
+    alias = "spectral-sid"
+
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
+        if self.threshold is not None:
+            preds = preds.clamp(min=self.threshold)
+
+        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
+
+        targets = targets.masked_fill(~mask, 1)
+        preds_norm = preds_norm.masked_fill(~mask, 1)
+
+        return (
+            torch.log(preds_norm / targets) * preds_norm
+            + torch.log(targets / preds_norm) * targets
+        )
+
+
+class WassersteinSpectralLoss(SpectralLoss):
+    alias = "spectral-wasserstein"
+
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+        if self.threshold is not None:
+            preds = preds.clamp(min=self.threshold)
+
+        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
+
+        return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))

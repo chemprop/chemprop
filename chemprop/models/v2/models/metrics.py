@@ -2,11 +2,21 @@ from abc import ABC, abstractmethod
 
 import torch
 from torch import Tensor
-from torch.nn.functional import cross_entropy
+from torch.nn.functional import cross_entropy, binary_cross_entropy_with_logits
 from torchmetrics import functional as F
 
+from chemprop.utils.mixins import RegistryMixin
 
-class Metric(ABC):
+
+class Metric(ABC, RegistryMixin):
+    """A `Metric` is like a loss function, but it calculates only a single scalar for the entire
+    batch.
+    
+    NOTE(degraff): this can probably be rewritten to subclass from `LossFunction`
+    """
+
+    registry = {}
+
     def __init__(self, **kwargs):
         pass
 
@@ -16,16 +26,22 @@ class Metric(ABC):
 
 
 class MAEMetric(Metric):
+    alias = "mae"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return (preds - targets)[mask].abs().mean()
 
 
 class MSEMetric(Metric):
+    alias = "mse"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return (preds - targets)[mask].square().mean()
 
 
 class RMSEMetric(MSEMetric):
+    alias = "rmse"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return super().__call__(preds, targets, mask).sqrt()
 
@@ -52,28 +68,34 @@ class BoundedMetric(Metric):
 
 
 class BoundedMAEMetric(BoundedMetric, MAEMetric):
-    pass
+    alias = "bounded-mse"
 
 
 class BoundedMSEMetric(BoundedMetric, MSEMetric):
-    pass
+    alias = "bounded-rmse"
 
 
 class BoundedRMSEMetric(BoundedMetric, RMSEMetric):
-    pass
+    alias = "bounded-mae"
 
 
 class R2Metric(Metric):
+    alias = "r2"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.r2_score(preds[mask], targets[mask])
 
 
 class AUROCMetric(Metric):
+    alias = "roc"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.auroc(preds[mask], targets[mask])
 
 
 class AUPRCMetric(Metric):
+    alias = "prc"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         p, r, _ = F.precision_recall(preds, targets)
 
@@ -86,16 +108,28 @@ class ThresholdedMetric(Metric):
 
 
 class AccuracyMetric(ThresholdedMetric):
+    alias = "accuracy"
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.accuracy(preds[mask], targets[mask], threshold=self.threshold)
 
 
 class F1Metric(Metric):
+    alias = "f1"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.f1_score(preds[mask], targets[mask], threshold=self.threshold)
 
 
+class BCEMetric(Metric):
+    alias = "bce"
+
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+        return binary_cross_entropy_with_logits(preds[mask], targets[mask])
+
+
 class MCCMetric(ThresholdedMetric):
+    alias = "mcc"
+
     def __init__(self, threshold: float = 0.5, n_classes: int = 2, **kwargs) -> Tensor:
         super().__init__(threshold, **kwargs)
         self.n_classes = n_classes
@@ -105,12 +139,14 @@ class MCCMetric(ThresholdedMetric):
 
 
 class CrossEntropyMetric(Metric):
+    alias = "ce"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return cross_entropy(preds[mask], targets[mask]).mean()
 
         
 class SIDMetric(ThresholdedMetric):
-    alias = "spectral-sid"
+    alias = "sid"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
         if self.threshold is not None:
@@ -128,7 +164,7 @@ class SIDMetric(ThresholdedMetric):
 
 
 class SIDMetric(ThresholdedMetric):
-    alias = "spectral-wasserstein"
+    alias = "wasserstein"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
