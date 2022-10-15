@@ -171,37 +171,37 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         if bond_features_extra is not None:
             warnings.warn("Extra bond features are currently not supported for reactions")
 
-        reactant, product = reaction
-        ri2pi, pids, rids = map_reac_to_prod(reactant, product)
+        rct, pdt = reaction
+        ri2pi, pids, rids = map_reac_to_prod(rct, pdt)
 
-        A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
-        D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
-        D = D.reshape(-1, self.atom_fdim)   # NOTE(degraff): this line might be bugged
+        A = np.array([self.atom_featurizer(a) for a in rct.GetAtoms()])
+        D = np.array([self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pids])
+        D = D.reshape(-1, self.atom_fdim)  # NOTE(degraff): this line might be bugged
 
         if self.mode in [ReactionMode.REAC_DIFF, ReactionMode.PROD_DIFF, ReactionMode.REAC_PROD]:
             # Reactant: regular atom features for each atom in the reactants, as well as zero
             # features for atoms that are only in the products (indices in pio)
             B = np.array(
-                [self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids]
-            ).reshape(-1, self.atom_fdim)
+                [self.atom_featurizer.featurize_num_only(pdt.GetAtomWithIdx(i)) for i in pids]
+            )
+            B = B.reshape(-1, self.atom_fdim)
 
             # Product: regular atom features for each atom that is in both reactants and products
             # (not in rio), other atom features zero,
             # regular features for atoms that are only in the products (indices in pio)
             C = np.array(
                 [
-                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                    self.atom_featurizer(pdt.GetAtomWithIdx(ri2pi[a.GetIdx()]))
                     if a.GetIdx() not in rids
                     else self.atom_featurizer.featurize_num_only(a)
-                    for a in reactant.GetAtoms()
+                    for a in rct.GetAtoms()
                 ]
             )
         else:  # balance
             # Reactant: regular atom features for each atom in the reactants, copy features from
             #   product side for atoms that are only in the products (:= indices in pio)
-            B = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
-                -1, self.atom_fdim
-            )
+            B = np.array([self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pids])
+            B = B.reshape(-1, self.atom_fdim)
 
             # Product: (1) regular atom features for each atom that is in both reactants and
             #   products (:= indices not in rids), copy features from reactant side for other
@@ -209,12 +209,13 @@ class ReactionFeaturizer(MolGraphFeaturizer):
             #   pio)
             C = np.array(
                 [
-                    self.atom_featurizer(product.GetAtomWithIdx(ri2pi[a.GetIdx()]))
+                    self.atom_featurizer(pdt.GetAtomWithIdx(ri2pi[a.GetIdx()]))
                     if a.GetIdx() not in rids
                     else self.atom_featurizer(a)
-                    for a in reactant.GetAtoms()
+                    for a in rct.GetAtoms()
                 ]
             )
+
         X_v_r = np.concatenate((A, B))
         X_v_p = np.concatenate((C, D))
 
@@ -234,9 +235,11 @@ class ReactionFeaturizer(MolGraphFeaturizer):
             X_v = np.hstack((X_v_r[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
         elif self.mode in [ReactionMode.PROD_DIFF, ReactionMode.PROD_DIFF_BALANCE]:
             X_v = np.hstack((X_v_p[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+        else:
+            raise RuntimeError(f"fell through! reaction mode: {self.mode}.")
 
         n_atoms = len(X_v)
-        n_atoms_reac = reactant.GetNumAtoms()
+        n_atoms_r = rct.GetNumAtoms()
 
         n_bonds = 0
         X_e = []
@@ -246,56 +249,49 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
         for a1 in range(n_atoms):
             for a2 in range(a1 + 1, n_atoms):
-                if a1 >= n_atoms_reac and a2 >= n_atoms_reac:
+                if a1 >= n_atoms_r and a2 >= n_atoms_r:
                     # Both atoms only in product
-                    bond_prod = product.GetBondBetweenAtoms(
-                        pids[a1 - n_atoms_reac], pids[a2 - n_atoms_reac]
-                    )
+                    b_prod = pdt.GetBondBetweenAtoms(pids[a1 - n_atoms_r], pids[a2 - n_atoms_r])
 
                     if self.mode in [
                         ReactionMode.REAC_PROD_BALANCE,
                         ReactionMode.REAC_DIFF_BALANCE,
                         ReactionMode.PROD_DIFF_BALANCE,
                     ]:
-                        bond_reac = bond_prod
+                        b_reac = b_prod
                     else:
-                        bond_reac = None
-                elif a1 < n_atoms_reac and a2 >= n_atoms_reac:
+                        b_reac = None
+                elif a1 < n_atoms_r and a2 >= n_atoms_r:
                     # One atom only in product
-                    bond_reac = None
+                    b_reac = None
 
                     if a1 in ri2pi.keys():
-                        bond_prod = product.GetBondBetweenAtoms(ri2pi[a1], pids[a2 - n_atoms_reac])
+                        b_prod = pdt.GetBondBetweenAtoms(ri2pi[a1], pids[a2 - n_atoms_r])
                     else:
                         # Atom atom only in reactant, the other only in product
-                        bond_prod = None
+                        b_prod = None
                 else:
-                    bond_reac = reactant.GetBondBetweenAtoms(a1, a2)
+                    b_reac = rct.GetBondBetweenAtoms(a1, a2)
 
                     if a1 in ri2pi.keys() and a2 in ri2pi.keys():
                         # Both atoms in both reactant and product
-                        bond_prod = product.GetBondBetweenAtoms(ri2pi[a1], ri2pi[a2])
+                        b_prod = pdt.GetBondBetweenAtoms(ri2pi[a1], ri2pi[a2])
                     else:
                         if self.mode in [
                             ReactionMode.REAC_PROD_BALANCE,
                             ReactionMode.REAC_DIFF_BALANCE,
                             ReactionMode.PROD_DIFF_BALANCE,
                         ]:
-                            if a1 in ri2pi.keys() or a2 in ri2pi.keys():
-                                # One atom only in reactant
-                                bond_prod = None
-                            else:
-                                # Both atoms only in reactant
-                                bond_prod = bond_reac
+                            b_prod = None if a1 in ri2pi.keys() or a2 in ri2pi.keys() else b_reac
                         else:
                             # One or both atoms only in reactant
-                            bond_prod = None
+                            b_prod = None
 
-                if bond_reac is None and bond_prod is None:
+                if b_reac is None and b_prod is None:
                     continue
 
-                x_e_r = self.bond_featurizer(bond_reac)
-                x_e_p = self.bond_featurizer(bond_prod)
+                x_e_r = self.bond_featurizer(b_reac)
+                x_e_p = self.bond_featurizer(b_prod)
 
                 if self.mode in [ReactionMode.REAC_PROD, ReactionMode.REAC_PROD_BALANCE]:
                     x_e = np.hstack((x_e_r, x_e_p))
@@ -303,10 +299,10 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                     x_e_d = x_e_p - x_e_r
 
                     if self.mode in [ReactionMode.REAC_DIFF, ReactionMode.REAC_DIFF_BALANCE]:
-                        x_e_r = self.bond_featurizer(bond_reac)
+                        x_e_r = self.bond_featurizer(b_reac)
                         x_e = np.hstack((x_e_r, x_e_d))
                     else:
-                        x_e_p = self.bond_featurizer(bond_prod)
+                        x_e_p = self.bond_featurizer(b_prod)
                         x_e = np.hstack((x_e_p, x_e_d))
 
                 if self.bond_messages:
@@ -319,15 +315,15 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                 b12 = n_bonds
                 b21 = b12 + 1
                 a2b[a2].append(b12)
-                b2a.append(a1)
                 a2b[a1].append(b21)
-                b2a.append(a2)
-                b2revb.append(b21)
-                b2revb.append(b12)
-
-                # b2a.extend([a1, a2])
-                # b2revb.extend([b21, b12])
+                b2a.extend([a1, a2])
+                b2revb.extend([b21, b12])
                 n_bonds += 2
+                # b2a.append(a1)
+                # b2a.append(a2)
+                # b2revb.append(b12)
+                # b2revb.append(b21)
+
         X_e = np.array(X_e)
 
         return MolGraph(n_atoms, n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)
