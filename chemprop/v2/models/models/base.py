@@ -5,9 +5,9 @@ from typing import Iterable, Optional, Union
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn, optim
-from chemprop.v2.data.dataloader import TrainingBatch
 
 from chemprop.nn_utils import NoamLR, get_activation_function
+from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.models.modules import MessagePassingBlock, MolecularInput
 from chemprop.v2.models.models.loss import LossFunction, build_loss
 from chemprop.v2.models.models.metrics import Metric
