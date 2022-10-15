@@ -42,13 +42,14 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         the aggregation function to use during readout
     d_vd : Optional[int], default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
-    
+
     See also
     --------
     `AtomMessageEncoder`
 
     `BondMessageEncoder`
     """
+
     def __init__(
         self,
         d_v: int,
@@ -88,7 +89,7 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
     @abstractmethod
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         """set up the weight matrices used in the message passing udpate functions
-        
+
         Parameters
         ----------
         d_v : int
@@ -129,7 +130,7 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
             H_vd = torch.cat((H_v, X_vd), 1)
             H_v = self.fc_vd(H_vd)
         except RuntimeError:
-            raise InvalidShapeError('X_vd', X_vd.shape, [len(H_v), self.d_vd])
+            raise InvalidShapeError("X_vd", X_vd.shape, [len(H_v), self.d_vd])
 
         H_v = self.dropout(H_v)
 
@@ -230,11 +231,11 @@ def molecule_block(
     d_e: int = _DEFAULT_BOND_FDIM,
     bond_messages: bool = True,
     *args,
-    **kwargs
+    **kwargs,
 ) -> MolecularMessagePassingBlock:
     """Build a `MolecularMessagePassingBlock`
 
-    NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the 
+    NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the
     `MoleculeFeaturizer` object that you will be using to prepare data. The default values should
     only be used if you are using a *default* `MoleculeFeaturizer` (i.e., `MoleculeFeaturizer()`)
 

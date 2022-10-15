@@ -1,44 +1,49 @@
-import pdb
+import csv
+
 import numpy as np
-import torch
+import pytorch_lightning as pl
+from sklearn.model_selection import train_test_split
 
 from chemprop.data import v2 as data
 from chemprop.featurizers import v2 as featurizers
-from chemprop.models.v2 import encoders, models
-from chemprop.models.v2.ptl import loss
+from chemprop.models.v2 import modules, models
 
 
 featurizer = featurizers.MoleculeFeaturizer()
-molenc = encoders.molecule_encoder()
-rxnenc = encoders.reaction_encoder(1)
-mpnn = models.MPNN(molenc, 1)
-criterion = loss.MSELoss()
+molenc = modules.molecule_block()
+mpnn = models.RegressionMPNN(molenc, 1)
+print(mpnn)
 
-smis = ["c1ccccc1", "CCCC", "CC(=O)C"]
-targets = np.random.rand(len(smis), 1)
-datapoints = [data.MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
-dset = data.MoleculeDataset(datapoints, featurizer)
-train_loader = data.MolGraphDataLoader(dset)
+with open("./data/pdbbind_full.csv") as fid:
+    reader = csv.reader(fid)
+    next(reader)
+    smis, scores = zip(*[(smi, float(score)) for smi, score in reader])
+scores = np.array(scores).reshape(-1, 1)
+all_data = [data.MoleculeDatapoint(smi, target) for smi, target in zip(smis, scores)]
 
-target_weights = torch.ones(targets.shape[1])
-optim = torch.optim.Adam(mpnn.parameters(), 3e-4)
+train_val_data, test_data = train_test_split(all_data, test_size=0.1)
+train_data, val_data = train_test_split(train_val_data, test_size=0.1)
 
-mpnn.train()
-for batch in train_loader:
-    optim.zero_grad()
+train_dset = data.MoleculeDataset(train_data, featurizer)
+scaler = train_dset.normalize_targets()
 
-    bmg, X_vd, X_f, targets, weights, lt_targets, gt_targets = batch
-    mask = torch.isfinite(targets)
+val_dset = data.MoleculeDataset(val_data, featurizer)
+val_dset.normalize_targets(scaler)
+test_dset = data.MoleculeDataset(test_data, featurizer)
+test_dset.normalize_targets(scaler)
 
-    preds = mpnn((bmg, X_vd), X_f)
-    pdb.set_trace()
-    L = criterion(
-        preds, targets, mask=mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
-    )
-    L = L * mask * target_weights
+train_loader = data.MolGraphDataLoader(train_dset, num_workers=4)
+val_loader = data.MolGraphDataLoader(val_dset, num_workers=4, shuffle=False)
+test_loader = data.MolGraphDataLoader(test_dset, num_workers=4, shuffle=False)
 
-    l = L.sum() / mask.sum()
-
-    l.backward()
-    optim.step()
-
+trainer = pl.Trainer(
+    # logger=False,
+    enable_checkpointing=False,
+    enable_progress_bar=True,
+    accelerator="gpu",
+    devices=1,
+    max_epochs=5,
+)
+trainer.fit(mpnn, train_loader, val_loader)
+results = trainer.test(mpnn, test_loader)
+print(results)

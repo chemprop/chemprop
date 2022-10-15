@@ -83,7 +83,7 @@ class MPNN(ABC, pl.LightningModule):
     @abstractmethod
     def _DEFAULT_CRITERION(self) -> str:
         """the default criterion with which to train this MPNN"""
-            
+
     @classmethod
     @property
     @abstractmethod
@@ -105,7 +105,6 @@ class MPNN(ABC, pl.LightningModule):
             criterion = build_loss(self._DATASET_TYPE, criterion)
 
         self.__criterion = criterion
-
 
     @property
     def metrics(self) -> Iterable[Metric]:
@@ -203,7 +202,7 @@ class MPNN(ABC, pl.LightningModule):
 
         l = L.sum() / mask.sum()
         self.log("train/loss", l, prog_bar=True)
-        
+
         return l
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
@@ -213,7 +212,7 @@ class MPNN(ABC, pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         preds = self((bmg, X_vd), X_f=features)
-        preds = preds[:, ::self.n_targets]
+        preds = preds[:, :: self.n_targets]
 
         losses = [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
@@ -229,7 +228,7 @@ class MPNN(ABC, pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         preds = self((bmg, X_vd), X_f=features)
-        preds = preds[:, ::self.n_targets]
+        preds = preds[:, :: self.n_targets]
 
         losses = [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)

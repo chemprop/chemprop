@@ -17,10 +17,10 @@ ReactionInput = Iterable[MolecularInput]
 
 
 class CompositeMessagePassingBlock(MessagePassingBlock):
-    """A `CompositeMessagePassingBlock` performs message-passing on each individual input in a 
+    """A `CompositeMessagePassingBlock` performs message-passing on each individual input in a
     multicomponent input then concatenates the representation of each input to construct a
     global representation
-    
+
     Inputs
     ------
     blocks : Iterable[MolecularMessagePassingBlock]
@@ -36,7 +36,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
         self,
         blocks: Iterable[MolecularMessagePassingBlock],
         n_components: int,
-        shared: bool = False
+        shared: bool = False,
     ):
         super().__init__()
 
@@ -77,7 +77,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
             inputs of the 0th component of each input, the 1st entry will be the 1st component,
             etc. Each component would itself be a batch of length `b`. In other words, if you were
             to (hypothetically) encode a batch of single component inputs (i.e., a batch of
-            molecules), the only difference between a `CompositeMessagePassingBlock` and a 
+            molecules), the only difference between a `CompositeMessagePassingBlock` and a
             `MolecularMessagePassingBlock` would be the call signature
 
         Example

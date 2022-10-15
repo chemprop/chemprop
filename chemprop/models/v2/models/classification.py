@@ -11,10 +11,10 @@ class ClassificationMPNN(MPNN):
 
 class BinaryClassificationMPNN(ClassificationMPNN):
     _DEFAULT_CRITERION = "bce"
-    
+
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0):
         Y = super().predict_step(batch, batch_idx, dataloader_idx)
-        
+
         return Y.sigmoid()
 
 

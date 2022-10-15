@@ -54,7 +54,7 @@ class BoundedMSELoss(MSELoss):
         mask: Tensor,
         lt_targets: Tensor,
         gt_targets: Tensor,
-        **kwargs
+        **kwargs,
     ) -> Tensor:
         preds = torch.where(torch.logical_and(preds < targets, lt_targets), targets, preds)
         preds = torch.where(torch.logical_and(preds > targets, gt_targets), targets, preds)
@@ -64,7 +64,7 @@ class BoundedMSELoss(MSELoss):
 
 class MVELoss(LossFunction):
     """Calculate the loss using Eq. 9 from [1]_
-    
+
     References
     ----------
     .. [1] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target probability
@@ -72,20 +72,20 @@ class MVELoss(LossFunction):
     https://doi.org/10.1109/icnn.1994.374138
     """
 
-
     alias = "regression-mve"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         pred_means, pred_vars = preds.split(preds.shape[1] // 2, dim=1)
 
-        return (
-            torch.log(2 * torch.pi * pred_vars) / 2 + (pred_means - targets) ** 2 / (2 * pred_vars)
-        )
+        A = torch.log(2 * torch.pi * pred_vars) / 2
+        B = (pred_means - targets) ** 2 / (2 * pred_vars)
+
+        return A + B
 
 
 class EvidentialLoss(LossFunction):
     alias = "regression-evidential"
-    
+
     def __init__(self, v_reg: float = 0, eps: float = 1e-8, **kwargs):
         self.v_reg = v_reg
         self.eps = eps
@@ -120,7 +120,7 @@ class CrossEntropyLoss(LossFunction):
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.cross_entropy(preds, targets, reduction="none")
 
-        
+
 class MCCLossBase(LossFunction):
     @abstractmethod
     def __call__(
@@ -139,7 +139,7 @@ class ClassificationMCCLoss(MCCLossBase):
         FP = ((1 - targets) * preds * weights * mask).sum(0)
         TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0)
         FN = (targets * (1 - preds) * weights * mask).sum(0)
-        
+
         return 1 - ((TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))).sqrt()
 
 
@@ -158,8 +158,8 @@ class MulticlassMCCLoss(MCCLossBase):
         p_tot = ((preds * weights * mask).sum(0) * (bin_targets * weights * mask).sum(0)).sum()
         p2 = ((preds * weights * mask).sum(0) ** 2).sum()
         t2 = (torch.sum(bin_targets * weights * mask).sum(0) ** 2).sum()
-        
-        return 1 - (c * s - p_tot) / torch.sqrt((s ** 2 - p2) * (s ** 2 - t2))
+
+        return 1 - (c * s - p_tot) / torch.sqrt((s**2 - p2) * (s**2 - t2))
 
 
 class DirichletLossBase(LossFunction):
@@ -171,7 +171,8 @@ class DirichletLossBase(LossFunction):
     classification uncertainty." Advances in neural information processing systems, 31, 2018. doi:
     https://doi.org/10.48550/arXiv.1806.01768
     """
-    def __init__(self, v_kl: float = 0., **kwargs):
+
+    def __init__(self, v_kl: float = 0.0, **kwargs):
         self.v_kl = v_kl
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -200,7 +201,7 @@ class DirichletLossBase(LossFunction):
         )
 
         return (L_sos + self.v_kl * L_kl).mean(-1)
-    
+
 
 class DirichletClassificationLoss(DirichletLossBase):
     alias = "classification-dirichlet"
@@ -249,7 +250,7 @@ class SpectralLoss(LossFunction):
 class SIDSpectralLoss(SpectralLoss):
     alias = "spectral-sid"
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
 
@@ -259,8 +260,7 @@ class SIDSpectralLoss(SpectralLoss):
         preds_norm = preds_norm.masked_fill(~mask, 1)
 
         return (
-            torch.log(preds_norm / targets) * preds_norm
-            + torch.log(targets / preds_norm) * targets
+            torch.log(preds_norm / targets) * preds_norm + torch.log(targets / preds_norm) * targets
         )
 
 

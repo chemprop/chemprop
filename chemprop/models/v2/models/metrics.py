@@ -11,7 +11,7 @@ from chemprop.utils.mixins import RegistryMixin
 class Metric(ABC, RegistryMixin):
     """A `Metric` is like a loss function, but it calculates only a single scalar for the entire
     batch.
-    
+
     NOTE(degraff): this can probably be rewritten to subclass from `LossFunction`
     """
 
@@ -54,7 +54,7 @@ class BoundedMetric(Metric):
         mask: Tensor,
         gt_targets: Tensor,
         lt_targets: Tensor,
-        **kwargs
+        **kwargs,
     ) -> Tensor:
         preds = self.bound_preds(preds, targets, gt_targets, lt_targets)
 
@@ -63,7 +63,7 @@ class BoundedMetric(Metric):
     def bound_preds(self, preds, targets, gt_targets, lt_targets) -> Tensor:
         preds = torch.where(torch.logical_and(preds < targets, lt_targets), targets, preds)
         preds = torch.where(torch.logical_and(preds > targets, gt_targets), targets, preds)
-        
+
         return preds
 
 
@@ -109,6 +109,7 @@ class ThresholdedMetric(Metric):
 
 class AccuracyMetric(ThresholdedMetric):
     alias = "accuracy"
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.accuracy(preds[mask], targets[mask], threshold=self.threshold)
 
@@ -144,11 +145,11 @@ class CrossEntropyMetric(Metric):
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return cross_entropy(preds[mask], targets[mask]).mean()
 
-        
+
 class SIDMetric(ThresholdedMetric):
     alias = "sid"
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:        
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
 
@@ -158,8 +159,7 @@ class SIDMetric(ThresholdedMetric):
         preds_norm = preds_norm.masked_fill(~mask, 1)
 
         return (
-            torch.log(preds_norm / targets) * preds_norm
-            + torch.log(targets / preds_norm) * targets
+            torch.log(preds_norm / targets) * preds_norm + torch.log(targets / preds_norm) * targets
         )[mask].mean()
 
 

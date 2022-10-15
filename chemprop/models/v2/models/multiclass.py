@@ -60,7 +60,7 @@ class DirichletMulticlassMPNN(MulticlassMPNN):
     @property
     def n_targets(self) -> int:
         return 2
-        
+
     def forward(self, *args) -> Tensor:
         Y = super().forward(*args)
         Y = F.softplus(Y) + 1

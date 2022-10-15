@@ -31,7 +31,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
         Parameters
         ----------
         H_v : Tensor
-            A tensor of shape `sum(sizes) x d` containing the stacked node-level representations of 
+            A tensor of shape `sum(sizes) x d` containing the stacked node-level representations of
             `b` graphs
         sizes : Iterable[int]
             an iterable of length `b` containing the number of nodes in each of the `b` graphs,
@@ -41,7 +41,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
         -------
         Tensor
             a tensor of shape `b x d` containing the graph-level representations of each graph
-        
+
         Raises
         ------
         RuntimeError
@@ -51,7 +51,7 @@ class Readout(ABC, nn.Module, RegistryMixin):
         hs = self.aggregate(H_vs)
 
         return torch.stack(hs)
-    
+
     @abstractmethod
     def aggregate(self, Hs: Iterable[Tensor]):
         pass
@@ -67,7 +67,7 @@ class MeanReadout(Readout):
 
 
 class NormReadout(Readout):
-    """Take the summed node-level representation divided by a normalization constant as the 
+    """Take the summed node-level representation divided by a normalization constant as the
     graph-level representation"""
 
     alias = "norm"
@@ -75,7 +75,7 @@ class NormReadout(Readout):
     def __init__(self, *args, norm: float = 100, **kwargs):
         self.norm = norm
         super().__init__(*args, **kwargs)
-        
+
     def aggregate(self, Hs: Iterable[Tensor]):
         return [H.sum(0) / self.norm if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
 
@@ -86,7 +86,7 @@ class SumReadout(Readout):
     alias = "sum"
 
     def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.sum(0) if H.shape[0] > 0 else torch.zeros(H.shape[1])for H in Hs]
+        return [H.sum(0) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
 
 
 def build_readout(aggregation: str = "mean", norm: float = 100) -> Readout:
@@ -97,5 +97,5 @@ def build_readout(aggregation: str = "mean", norm: float = 100) -> Readout:
             f"Invalid aggregation! got: '{aggregation}'. "
             f"expected one of {set(Readout.registry.keys())}"
         )
-    
+
     return aggr_cls(norm)
