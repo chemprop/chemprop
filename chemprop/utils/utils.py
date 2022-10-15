@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from argparse import Namespace
+import collections
 import csv
 from datetime import timedelta
-from enum import Enum
 from functools import wraps
 import logging
 import os
 import pickle
 import re
 from time import time
-from typing import Any, Callable, List, Tuple, Union
-import collections
+from typing import Any, Callable, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -23,22 +22,6 @@ from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
-
-
-class AutoName(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name
-    
-    @classmethod
-    def get(cls, name: Union[str, AutoName]) -> AutoName:
-        if isinstance(name, cls):
-            return name
-
-        try:
-            return cls[name.upper()]
-        except KeyError:
-            names = [x.value for x in cls]
-            raise ValueError(f"Invalid name! got: '{name}'. expected one of: {tuple(names)}")
 
 
 def makedirs(path: str, isfile: bool = False) -> None:

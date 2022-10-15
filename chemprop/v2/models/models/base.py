@@ -6,11 +6,12 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.nn_utils import NoamLR, get_activation_function
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.models.modules import MessagePassingBlock, MolecularInput
 from chemprop.v2.models.loss import LossFunction, build_loss
 from chemprop.v2.models.metrics import Metric
+from chemprop.v2.models.schedulers import NoamLR
+from chemprop.v2.models.utils import get_activation_function
 
 
 class MPNN(ABC, pl.LightningModule):
