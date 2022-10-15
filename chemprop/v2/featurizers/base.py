@@ -4,9 +4,9 @@ from typing import Optional, Union
 import numpy as np
 from rdkit import Chem
 
-from chemprop.featurizers.v2.molgraph import MolGraph
-from chemprop.featurizers.v2.multihot.atom import AtomFeaturizer
-from chemprop.featurizers.v2.multihot.bond import BondFeaturizer
+from chemprop.v2.featurizers.molgraph import MolGraph
+from chemprop.v2.featurizers.multihot.atom import AtomFeaturizer
+from chemprop.v2.featurizers.multihot.bond import BondFeaturizer
 
 
 class MolGraphFeaturizer(ABC):
