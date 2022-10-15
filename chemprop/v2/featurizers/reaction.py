@@ -174,14 +174,16 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         reactant, product = reaction
         ri2pi, pids, rids = map_reac_to_prod(reactant, product)
 
+        A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
+        D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
+        D = D.reshape(-1, self.atom_fdim)   # NOTE(degraff): this line might be bugged
+
         if self.mode in [ReactionMode.REAC_DIFF, ReactionMode.PROD_DIFF, ReactionMode.REAC_PROD]:
             # Reactant: regular atom features for each atom in the reactants, as well as zero
             # features for atoms that are only in the products (indices in pio)
-            A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
             B = np.array(
                 [self.atom_featurizer.featurize_num_only(product.GetAtomWithIdx(i)) for i in pids]
             ).reshape(-1, self.atom_fdim)
-            X_v_r = np.concatenate((A, B))
 
             # Product: regular atom features for each atom that is in both reactants and products
             # (not in rio), other atom features zero,
@@ -194,17 +196,12 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                     for a in reactant.GetAtoms()
                 ]
             )
-            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
-            D = D.reshape(-1, self.atom_fdim)
-            X_v_p = np.concatenate((C, D))
         else:  # balance
             # Reactant: regular atom features for each atom in the reactants, copy features from
             #   product side for atoms that are only in the products (:= indices in pio)
-            A = np.array([self.atom_featurizer(a) for a in reactant.GetAtoms()])
             B = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids]).reshape(
                 -1, self.atom_fdim
             )
-            X_v_r = np.concatenate((A, B))
 
             # Product: (1) regular atom features for each atom that is in both reactants and
             #   products (:= indices not in rids), copy features from reactant side for other
@@ -218,9 +215,8 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                     for a in reactant.GetAtoms()
                 ]
             )
-            D = np.array([self.atom_featurizer(product.GetAtomWithIdx(i)) for i in pids])
-            D = D.reshape(-1, self.atom_fdim)
-            X_v_p = np.concatenate((C, D))
+        X_v_r = np.concatenate((A, B))
+        X_v_p = np.concatenate((C, D))
 
         m = min(len(X_v_r), len(X_v_p))
 
