@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import auto
 from typing import Optional, Union
 import warnings
+
 import numpy as np
 from rdkit import Chem
 
@@ -139,6 +140,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
+    #TODO(degraff): make this function more readable
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
