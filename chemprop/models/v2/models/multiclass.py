@@ -1,11 +1,16 @@
-from torch import Tensor, nn
+from torch import Tensor
 from torch.nn import functional as F
 
+from chemprop.data.v2.dataloader import TrainingBatch
 from chemprop.models.v2.modules import MessagePassingBlock
 from chemprop.models.v2.models.base import MPNN
 
 
 class MulticlassMPNN(MPNN):
+    _DATASET_TYPE = "multiclass"
+    _DEFAULT_CRITERION = "ce"
+    _DEFAULT_METRIC = "ce"
+
     def __init__(
         self,
         encoder: MessagePassingBlock,
@@ -21,17 +26,22 @@ class MulticlassMPNN(MPNN):
         )
         self.n_tasks = n_tasks
         self.n_classes = n_classes
-        self.softmax = nn.Softmax(2)
 
     def forward(self, *args) -> Tensor:
         Y = super().forward(*args)
         Y.reshape((len(Y), self.n_tasks, self.n_classes))  # b x t x c
-        # Z = self.softmax(Z)
 
         return Y
 
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        Y = super().predict_step(batch, batch_idx, dataloader_idx)
+
+        return Y.softmax(2)
+
 
 class DirichletMulticlassMPNN(MulticlassMPNN):
+    _DEFAULT_CRITERION = "dirichlet"
+
     def __init__(
         self,
         encoder: MessagePassingBlock,

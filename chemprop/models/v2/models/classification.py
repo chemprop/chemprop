@@ -1,24 +1,29 @@
 from torch import Tensor, nn
 
-from chemprop.models.v2.modules import MessagePassingBlock
+from chemprop.data.v2.dataloader import TrainingBatch
 from chemprop.models.v2.models.base import MPNN
 
 
 class ClassificationMPNN(MPNN):
-    """A `ClassificationMPNN` is an alias for a base `MPNN`"""
+    _DATASET_TYPE = "classification"
+    _DEFAULT_METRIC = "auroc"
+
+
+class BinaryClassificationMPNN(ClassificationMPNN):
+    _DEFAULT_CRITERION = "bce"
+    
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0):
+        Y = super().predict_step(batch, batch_idx, dataloader_idx)
+        
+        return Y.sigmoid()
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
-    def __init__(
-        self,
-        encoder: MessagePassingBlock,
-        n_tasks: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ):
-        super().__init__(encoder, n_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation)
+    _DEFAULT_CRITERION = "dirichlet"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.softplus = nn.Softplus()
 
     @property
