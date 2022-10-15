@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.featurizers.v2 import MolGraphFeaturizer, MoleculeFeaturizer, MolGraph, AtomFeaturizer
+from chemprop.v2.featurizers import MolGraphFeaturizer, MoleculeFeaturizer, MolGraph, AtomFeaturizer
 
 
 @pytest.fixture(params=[
