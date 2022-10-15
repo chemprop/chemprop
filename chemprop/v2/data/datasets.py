@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.featurizers.v2 import MolGraph, MoleculeFeaturizer
-from chemprop.data.v2.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.featurizers.v2.reaction import ReactionFeaturizer
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]

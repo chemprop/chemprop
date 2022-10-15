@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from chemprop.data.v2.dataloader import TrainingBatch
+from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.models.models.base import MPNN
 
 

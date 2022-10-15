@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chemprop.data.v2 import MoleculeDataset, MoleculeDatapoint
+from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint
 from chemprop.featurizers.v2 import MoleculeFeaturizer
 
 

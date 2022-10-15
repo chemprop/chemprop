@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chemprop.data.v2 import (
+from chemprop.v2.data import (
     MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
 )
 from chemprop.featurizers.v2 import MoleculeFeaturizer

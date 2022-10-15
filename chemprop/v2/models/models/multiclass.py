@@ -1,7 +1,7 @@
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.data.v2.dataloader import TrainingBatch
+from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.models.modules import MessagePassingBlock
 from chemprop.v2.models.models.base import MPNN
 
