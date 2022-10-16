@@ -119,6 +119,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         return x
 
     def featurize_num_only(self, a: Atom) -> np.ndarray:
+        """featurize the atom with only the atomic number bit set"""
         x = np.zeros(len(self))
 
         if a is None:
