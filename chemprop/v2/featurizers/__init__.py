@@ -1,6 +1,6 @@
 from .base import MolGraphFeaturizerBase
-from .atom import AtomFeaturizer
-from .bond import BondFeaturizer
+from .atom import AtomFeaturizerBase, AtomFeaturizer
+from .bond import BondFeaturizerBase, BondFeaturizer
 from .molgraph import MolGraph, BatchMolGraph
 from .molecule import MoleculeFeaturizerBase, MoleculeFeaturizer
 from .reaction import ReactionFeaturizerBase, ReactionFeaturizer, ReactionMode

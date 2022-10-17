@@ -11,7 +11,7 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
 from chemprop.v2.utils import AutoName
-from chemprop.v2.featurizers.atom import AtomFeaturizerBase
+from chemprop.v2.featurizers.atom import AtomFeaturizer
 from chemprop.v2.featurizers.bond import BondFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
@@ -82,9 +82,13 @@ class ReactionFeaturizerBase(MolGraphFeaturizerBase):
 class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
     """Featurize reactions according to the methodology from [1]_
 
+    NOTE: This class *does not* accept a `BaseAtomFeaturizer` instance. This is because it requries
+    the `featurize_num_only` method, which is only implemented in the concrete `AtomFeaturizer`
+    class
+    
     Attributes
     ----------
-    atom_featurizer : AtomFeaturizerBase
+    atom_featurizer : AtomFeaturizer
     bond_featurizer : BondFeaturizerBase
     atom_fdim : int
         the dimension of atom feature represenatations in this featurizer
@@ -94,7 +98,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizerBase, default=AtomFeaturizer()
+    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
     bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
@@ -114,7 +118,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     def __init__(
         self,
-        atom_featurizer: Optional[AtomFeaturizerBase] = None,
+        atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizerBase] = None,
         bond_messages: bool = True,
         mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
