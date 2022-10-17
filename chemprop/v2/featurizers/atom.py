@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.v2.featurizers.multihot.base import MultiHotFeaturizer
+from chemprop.v2.featurizers.mixins import MultiHotFeaturizer
 
 
 class AtomFeaturizer(MultiHotFeaturizer):

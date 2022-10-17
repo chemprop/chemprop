@@ -1,5 +1,6 @@
 from .base import MolGraphFeaturizerBase
-from .multihot import AtomFeaturizer, BondFeaturizer
+from .atom import AtomFeaturizer
+from .bond import BondFeaturizer
 from .molgraph import MolGraph, BatchMolGraph
 from .molecule import MoleculeFeaturizerBase, MoleculeFeaturizer
 from .reaction import ReactionFeaturizerBase, ReactionFeaturizer, ReactionMode

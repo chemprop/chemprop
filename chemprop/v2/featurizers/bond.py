@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-from chemprop.v2.featurizers.multihot.base import MultiHotFeaturizer
+from chemprop.v2.featurizers.mixins import MultiHotFeaturizer
 
 
 class BondFeaturizer(MultiHotFeaturizer):
@@ -14,7 +14,11 @@ class BondFeaturizer(MultiHotFeaturizer):
     bond_types : Optional[Sequence[BondType]], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
     stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
-        the known bond stereochemistries. For an explanation of the values, see https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
+        the known bond stereochemistries. See [1]_ for more details
+    
+    References
+    ----------
+    .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
     """
 
     def __init__(
