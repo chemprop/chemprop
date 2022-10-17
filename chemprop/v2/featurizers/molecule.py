@@ -6,10 +6,11 @@ from typing import Optional
 import numpy as np
 from rdkit import Chem
 
+from chemprop.v2.featurizers.atom import AtomFeaturizerBase
+from chemprop.v2.featurizers.bond import BondFeaturizerBase
 from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 
 
 class MoleculeFeaturizerBase(MolGraphFeaturizerBase):
@@ -45,8 +46,8 @@ class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):
 
     Attributes
     ----------
-    atom_featurizer : AtomFeaturizer
-    bond_featurizer : BondFeaturizer
+    atom_featurizer : AtomFeaturizerBase
+    bond_featurizer : BondFeaturizerBase
     atom_fdim : int
         the dimension of atom feature represenatations in this featurizer
     bond_fdim : int
@@ -55,10 +56,10 @@ class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
+    atom_featurizer : AtomFeaturizerBase, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
-    bond_featurizer : BondFeaturizer, default=BondFeaturizer()
+    bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
     extra_atom_fdim : int, default=0
@@ -73,8 +74,8 @@ class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):
 
     def __init__(
         self,
-        atom_featurizer: Optional[AtomFeaturizer] = None,
-        bond_featurizer: Optional[BondFeaturizer] = None,
+        atom_featurizer: Optional[AtomFeaturizerBase] = None,
+        bond_featurizer: Optional[BondFeaturizerBase] = None,
         bond_messages: bool = True,
         extra_atom_fdim: int = 0,
         extra_bond_fdim: int = 0,

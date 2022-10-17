@@ -1,13 +1,21 @@
+from abc import ABC, abstractmethod
 from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.v2.featurizers.mixins import MultiHotFeaturizer
+from chemprop.v2.featurizers.multihot import MultiHotFeaturizer
+
+class AtomFeaturizerBase(ABC):
+    """An `AtomFeaturizerBase` calculates feature vectors of RDKit atoms."""
+
+    @abstractmethod
+    def __call__(self, a: Atom) -> np.ndarray:
+        """featurize the atom `a`"""
 
 
-class AtomFeaturizer(MultiHotFeaturizer):
-    """An AtomFeaturizer calculates feature vectors of RDKit atoms.
+class AtomFeaturizer(MultiHotFeaturizer, AtomFeaturizerBase):
+    """An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
 
     Parameters
     ----------

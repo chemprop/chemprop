@@ -4,7 +4,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 
-class MultiHotFeaturizer(ABC):
+class MultiHotFeaturizerMixin(ABC):
     """A `MultiHotFeaturizer` calculates feature vectors of arbitrary objects by concatenating
     multiple one-hot feature vectors"""
 

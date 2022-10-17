@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import abstractmethod
 
 from enum import auto
@@ -8,12 +9,13 @@ import warnings
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
-from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 
+from chemprop.v2.utils import AutoName
+from chemprop.v2.featurizers.atom import AtomFeaturizerBase
+from chemprop.v2.featurizers.bond import BondFeaturizerBase
+from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
-from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
-from chemprop.v2.utils import AutoName
 
 
 class ReactionMode(AutoName):
@@ -82,8 +84,8 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     Attributes
     ----------
-    atom_featurizer : AtomFeaturizer
-    bond_featurizer : BondFeaturizer
+    atom_featurizer : AtomFeaturizerBase
+    bond_featurizer : BondFeaturizerBase
     atom_fdim : int
         the dimension of atom feature represenatations in this featurizer
     bond_fdim : int
@@ -92,10 +94,10 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
+    atom_featurizer : AtomFeaturizerBase, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
-    bond_featurizer : BondFeaturizer, default=BondFeaturizer()
+    bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
     bond_messages : bool, default=True
@@ -112,8 +114,8 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     def __init__(
         self,
-        atom_featurizer: Optional[AtomFeaturizer] = None,
-        bond_featurizer: Optional[BondFeaturizer] = None,
+        atom_featurizer: Optional[AtomFeaturizerBase] = None,
+        bond_featurizer: Optional[BondFeaturizerBase] = None,
         bond_messages: bool = True,
         mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
     ):

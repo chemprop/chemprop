@@ -1,9 +1,18 @@
+from abc import ABC, abstractmethod
 from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-from chemprop.v2.featurizers.mixins import MultiHotFeaturizer
+from chemprop.v2.featurizers.multihot import MultiHotFeaturizer
+
+
+class BondFeaturizerBase(ABC):
+    """An `AtomFeaturizerBase` calculates feature vectors of RDKit atoms."""
+
+    @abstractmethod
+    def __call__(self, b: Bond) -> np.ndarray:
+        """featurize the atom `b`"""
 
 
 class BondFeaturizer(MultiHotFeaturizer):
