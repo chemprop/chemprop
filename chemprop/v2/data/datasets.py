@@ -125,7 +125,7 @@ class MoleculeDataset(MolGraphDatasetBase):
     ----------
     data : Iterable[MoleculeDatapoint]
         the data from which to create a dataset
-    featurizer : ReactionFeaturizer
+    featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the molecules
     """
 
