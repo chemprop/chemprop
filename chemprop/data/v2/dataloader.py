@@ -62,7 +62,7 @@ class MolGraphDataLoader(DataLoader):
 
     Parameters
     ----------
-    dataset : MoleculeDataset
+    dset : MoleculeDataset
         The `MoleculeDataset` containing the molecules to load.
     batch_size : int, default=50
         the batch size to load
