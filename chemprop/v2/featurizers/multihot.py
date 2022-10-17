@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Mapping, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -17,8 +17,9 @@ class MultiHotFeaturizerMixin(ABC):
 
     @property
     @abstractmethod
-    def subfeatures(self) -> Mapping[str, slice]:
-        """a map from subfeature name to the slice in the output feature vectors"""
+    def subfeatures(self) -> Sequence[tuple[str, slice]]:
+        """a list of tuples containing the subfeature name and its respective slice in the output 
+        feature vectors"""
 
     @abstractmethod
     def featurize(self, x) -> np.ndarray:
