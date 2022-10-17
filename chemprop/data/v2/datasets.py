@@ -237,7 +237,7 @@ class ReactionDataset(MolGraphDataset):
     ----------
     data : Sequence[ReactionDatapoint]
         the dataset from which to load
-    featurizer : MoleculeFeaturizer
+    featurizer : ReactionFeaturizer
         the featurizer with which to generate MolGraphs of the input
     """
 

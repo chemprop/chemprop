@@ -135,7 +135,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
                 else:
                     features.append(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
 
-        return np.hstack(self.features)
+        return np.hstack(features)
 
 
 @dataclass
@@ -184,7 +184,7 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
 
     @property
     def number_of_molecules(self) -> int:
-        len(self.smis)
+        return len(self.smis)
 
     def generate_features(self, features_generators: list[str]) -> np.ndarray:
         features = []

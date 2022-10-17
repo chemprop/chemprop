@@ -94,7 +94,7 @@ class MolGraphDataLoader(DataLoader):
         if self.class_balance:
             self.sampler = ClassBalanceSampler(self.dset, seed, self.shuffle)
         elif self.shuffle and seed is not None:
-            self.sampler = SeededSampler(self.dataset, seed)
+            self.sampler = SeededSampler(self.dset, seed)
         else:
             self.sampler = None
 
