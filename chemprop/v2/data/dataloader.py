@@ -33,8 +33,8 @@ class MolGraphDataLoader(DataLoader):
 
     Parameters
     ----------
-    dset : MoleculeDataset
-        The `MoleculeDataset` containing the molecules to load.
+    dataset : MoleculeDataset
+        The dataset containing the molecules to load.
     batch_size : int, default=50
         the batch size to load
     num_workers : int, default=0
@@ -51,14 +51,14 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dset: MolGraphDatasetBase,
+        dataset: MolGraphDatasetBase,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
         seed: Optional[int] = None,
         shuffle: bool = True,
     ):
-        self.dset = dset
+        self.dset = dataset
         self.class_balance = class_balance
         self.shuffle = shuffle
 

@@ -90,7 +90,7 @@ def mcc_class_loss(
     """
     A classification loss using a soft version of the Matthews Correlation Coefficient.
 
-    :param predictions: a tensor of shape `b x t` containing model predictions, where `b` is the batch size and `t` ist the number of tasks
+    :param predictions: a tensor of shape `b x t` containing model predictions, where `b` is the batch size and `t` is the number of tasks
     :param targets: a tensor of shape `b x t` containing target values
     :param data_weights: A tensor of shape `b x 1` containing float values indicating how heavily to weight each datapoint in training with 
     :param mask: A tensor of shape `b x t` with boolean values indicating whether the loss for this prediction is considered in the gradient descent

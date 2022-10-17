@@ -273,9 +273,9 @@ class ReactionDataset(MolGraphDatasetBase):
     Parameters
     ----------
     data : Iterable[ReactionDatapoint]
-        the data from which to create a dataset
+        the dataset from which to load
     featurizer : ReactionFeaturizer
-        the featurizer with which to generate MolGraphs of the reactions
+        the featurizer with which to generate MolGraphs of the input
     """
 
     def __init__(self, data: Iterable[ReactionDatapoint], featurizer: ReactionFeaturizer):
