@@ -1,17 +1,47 @@
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import Optional
 
 import numpy as np
 from rdkit import Chem
 
-from chemprop.v2.featurizers.base import MolGraphFeaturizer
+from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
+from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 
 
-class MoleculeFeaturizer(MolGraphFeaturizer):
-    """A `MoleculeFeaturizer` featurizes molecules (in the form of rdkit molecules) into `MolGraph`s
+class MoleculeFeaturizerBase(MolGraphFeaturizerBase):
+    """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s"""
+
+    @abstractmethod
+    def __call__(
+        self,
+        mol: Chem.Mol,
+        atom_features_extra: Optional[np.ndarray] = None,
+        bond_features_extra: Optional[np.ndarray] = None,
+    ) -> MolGraph:
+        """Featurize the input molecule into a molecular graph
+
+        Parameters
+        ----------
+        mol : Chem.Mol
+            the input molecule
+        atom_features_extra : Optional[np.ndarray], default=None
+            Additional features to concatenate to the calculated atom features
+        bond_features_extra : Optional[np.ndarray], default=None
+            Additional features to concatenate to the calculated bond features
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the molecule
+        """
+
+
+class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):
+    """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s
 
     Attributes
     ----------
@@ -21,7 +51,7 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
         the dimension of atom feature represenatations in this featurizer
     bond_fdim : int
         the dimension of bond feature represenatations in this featurizer
-    atom_messages : bool
+    bond_messages : bool
 
     Parameters
     ----------
@@ -37,8 +67,8 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
-    atom_messages : bool, default=False
-        whether to prepare the `MolGraph` for use with atom-based messages
+    bond_messages : bool, default=True
+        whether to prepare the `MolGraph`s for use with message passing on bonds
     """
 
     def __init__(

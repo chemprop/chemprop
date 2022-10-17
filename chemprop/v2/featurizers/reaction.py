@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import abstractmethod
 
 from enum import auto
 from typing import Iterable, Optional, Sequence, Union
@@ -7,9 +8,10 @@ import warnings
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
+from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.base import MolGraphFeaturizer
+from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
 from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 from chemprop.v2.utils import AutoName
 
@@ -44,8 +46,39 @@ class ReactionMode(AutoName):
     PROD_DIFF_BALANCE = auto()
 
 
-class ReactionFeaturizer(MolGraphFeaturizer):
-    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s
+class ReactionFeaturizerBase(MolGraphFeaturizerBase):
+    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s"""
+
+    @abstractmethod
+    def __call__(
+        self,
+        reaction: tuple[Chem.Mol, Chem.Mol],
+        atom_features_extra: Optional[np.ndarray] = None,
+        bond_features_extra: Optional[np.ndarray] = None,
+    ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        reaction : tuple[Chem.Mol, Chem.Mol]
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : Optional[np.ndarray], default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : Optional[np.ndarray], default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
+
+
+class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
+    """Featurize reactions according to the methodology from [1]_
 
     Attributes
     ----------
@@ -69,6 +102,12 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         whether to prepare the `MolGraph`s for use with bond-based message-passing
     mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
         the mode by which to featurize the reaction as either the string code or enum value
+
+    References
+    ----------
+    .. [1] Heid, E.; Green, W.H. "Machine Learning of Reaction Properties via Learned 
+    Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62, 2101-2110.
+    https://doi.org/10.1021/acs.jcim.1c00975
     """
 
     def __init__(
@@ -101,25 +140,6 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ) -> MolGraph:
-        """Featurize the input reaction into a molecular graph
-
-        Parameters
-        ----------
-        reaction : tuple[Chem.Mol, Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-            1st element is the product
-        atom_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-        bond_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the reaction
-        """
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:

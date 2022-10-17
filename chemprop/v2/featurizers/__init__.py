@@ -1,8 +1,7 @@
-from .base import MolGraphFeaturizer
+from .base import MolGraphFeaturizerBase
 from .multihot import AtomFeaturizer, BondFeaturizer
 from .molgraph import MolGraph, BatchMolGraph
-from .molecule import MoleculeFeaturizer
-from .reaction import ReactionFeaturizer, ReactionMode
+from .molecule import MoleculeFeaturizerBase, MoleculeFeaturizer
+from .reaction import ReactionFeaturizerBase, ReactionFeaturizer, ReactionMode
 
-_DEFAULT_ATOM_FDIM = MoleculeFeaturizer().atom_fdim
-_DEFAULT_BOND_FDIM = MoleculeFeaturizer().bond_fdim
+_DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM = MoleculeFeaturizer().shape
