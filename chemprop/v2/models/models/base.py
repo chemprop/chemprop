@@ -182,13 +182,6 @@ class MPNN(ABC, pl.LightningModule):
         """
         return self.ffn(self.fingerprint(inputs, X_f=X_f))
 
-    def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
-        loss = self.criterion(
-            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
-        )
-
-        return loss * weights * mask
-
     def training_step(self, batch: TrainingBatch, batch_idx):
         bmg, X_vd, features, targets, weights, lt_targets, gt_targets = batch
 
@@ -197,22 +190,21 @@ class MPNN(ABC, pl.LightningModule):
 
         preds = self((bmg, X_vd), X_f=features)
 
-        L = self.calc_loss(preds, targets, mask, weights, lt_targets, gt_targets)
-        L = L * self.task_weights
+        l = self.criterion(
+            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
+        )
 
-        l = L.sum() / mask.sum()
         self.log("train/loss", l, prog_bar=True)
 
         return l
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
-        bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
+        *_, targets, _, lt_targets, gt_targets = batch
+
+        preds, _ = self.predict_step(batch, batch_idx)
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
-
-        preds = self((bmg, X_vd), X_f=features)
-        preds = preds[:, :: self.n_targets]
 
         losses = [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
@@ -222,13 +214,12 @@ class MPNN(ABC, pl.LightningModule):
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        bmg, X_vd, features, targets, _, lt_targets, gt_targets = batch
+        *_, targets, _, lt_targets, gt_targets = batch
+
+        preds, _ = self.predict_step(batch, batch_idx)
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
-
-        preds = self((bmg, X_vd), X_f=features)
-        preds = preds[:, :: self.n_targets]
 
         losses = [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
@@ -238,16 +229,25 @@ class MPNN(ABC, pl.LightningModule):
 
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
-    # def validation_epoch_end(self, outputs):
-    #     val_losses, Ns = zip(*outputs)
-    #     L = torch.tensor(val_losses)
-    #     N = torch.tensor(Ns).unsqueeze(1)
-    #     losses = (L * N).sum(0) / N.sum()
-
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+    def predict_step(
+        self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
+    ) -> tuple[Tensor, ...]:
+        """Return the predictions of the input batch
+        
+        Parameters
+        ----------
+        batch : TrainingBatch
+            the input batch
+        
+        Returns
+        -------
+        tuple[Tensor, ...]
+            an n-tuple containing the predictions in the 0th index and uncertainty parameters for
+            all remaining indices
+        """
         bmg, X_vd, features, *_ = batch
 
-        return self(bmg, X_vd, X_f=features)
+        return self((bmg, X_vd), X_f=features),
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
