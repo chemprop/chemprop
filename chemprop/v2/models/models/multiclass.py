@@ -37,7 +37,7 @@ class MulticlassMPNN(MPNN):
     ) -> tuple[Tensor, ...]:
         Y = super().predict_step(batch, batch_idx, dataloader_idx)[0]
 
-        return Y.softmax(2), 
+        return (Y.softmax(2),)
 
 
 class DirichletMulticlassMPNN(MulticlassMPNN):

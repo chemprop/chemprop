@@ -233,12 +233,12 @@ class MPNN(ABC, pl.LightningModule):
         self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
     ) -> tuple[Tensor, ...]:
         """Return the predictions of the input batch
-        
+
         Parameters
         ----------
         batch : TrainingBatch
             the input batch
-        
+
         Returns
         -------
         tuple[Tensor, ...]
@@ -247,7 +247,7 @@ class MPNN(ABC, pl.LightningModule):
         """
         bmg, X_vd, features, *_ = batch
 
-        return self((bmg, X_vd), X_f=features),
+        return (self((bmg, X_vd), X_f=features),)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)

@@ -15,7 +15,7 @@ class BinaryClassificationMPNN(ClassificationMPNN):
     def predict_step(self, *args, **kwargs) -> tuple[Tensor]:
         Y = super().predict_step(*args, **kwargs)[0]
 
-        return Y.sigmoid(),
+        return (Y.sigmoid(),)
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
