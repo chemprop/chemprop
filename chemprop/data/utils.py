@@ -104,6 +104,7 @@ def get_mixed_task_names(path: str,
                          smiles_columns: Union[str, List[str]] = None,
                          target_columns: List[str] = None,
                          ignore_columns: List[str] = None,
+                         keep_h: bool = None,
                          add_h: bool = None) -> Tuple[List[str], List[str], List[str]]:
     """
     Gets the task names for atomic, bond, and molecule targets separately from a data CSV file.
@@ -119,6 +120,7 @@ def get_mixed_task_names(path: str,
     :param target_columns: Name of the columns containing target values. By default, uses all columns
                            except the :code:`smiles_columns` and the :code:`ignore_columns`.
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
+    :param keep_h: Boolean whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified.
     :param add_h: Boolean whether to add hydrogens to the input smiles.
     :return: A tuple containing the task names of atomic, bond, and molecule properties separately.
     """
@@ -140,7 +142,7 @@ def get_mixed_task_names(path: str,
         for row in reader:
             atom_target_names, bond_target_names, molecule_target_names = [], [], []
             smiles = [row[c] for c in smiles_columns]
-            mol = make_mol(smiles[0], False, add_h)
+            mol = make_mol(smiles[0], keep_h, add_h)
             for column in target_names:
                 value = row[column]
                 value = value.replace('None', 'null')
@@ -491,13 +493,13 @@ def get_data(path: str,
                         targets.append(target)
                     elif len(target.shape) == 2:  # Bond targets saved as 2D list
                         bond_target_arranged = []
-                        mol = make_mol(smiles[0], False, args.adding_h)
+                        mol = make_mol(smiles[0], args.explicit_h, args.adding_h)
                         for bond in mol.GetBonds():
                             bond_target_arranged.append(target[bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()])
                         bond_targets.append(np.array(bond_target_arranged))
                         targets.append(np.array(bond_target_arranged))
                     else:
-                        raise ValueError('Unrecognized targets of column {column} in {path}.')
+                        raise ValueError(f'Unrecognized targets of column {column} in {path}.')
                 else:
                     targets.append(float(value))
 

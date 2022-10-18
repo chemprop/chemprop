@@ -640,6 +640,7 @@ class TrainArgs(CommonArgs):
                 smiles_columns=self.smiles_columns,
                 target_columns=self.target_columns,
                 ignore_columns=self.ignore_columns,
+                keep_h=self.explicit_h,
                 add_h=self.adding_h,
             )
             self.target_columns = self.atom_targets + self.bond_targets
