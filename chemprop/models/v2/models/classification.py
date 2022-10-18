@@ -30,8 +30,7 @@ class DirichletClassificationMPNN(ClassificationMPNN):
     def n_targets(self) -> int:
         return 2
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        Y = self.softplus(Y) + 1
+    def forward(self, *args, **kwargs) -> Tensor:
+        Y = super().forward(*args, **kwargs)
 
-        return Y
+        return self.softplus(Y) + 1

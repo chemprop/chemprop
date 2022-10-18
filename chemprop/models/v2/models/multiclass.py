@@ -1,5 +1,4 @@
-from torch import Tensor
-from torch.nn import functional as F
+from torch import Tensor, nn
 
 from chemprop.data.v2.dataloader import TrainingBatch
 from chemprop.models.v2.modules import MessagePassingBlock
@@ -27,9 +26,9 @@ class MulticlassMPNN(MPNN):
         self.n_tasks = n_tasks
         self.n_classes = n_classes
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        Y.reshape((len(Y), self.n_tasks, self.n_classes))  # b x t x c
+    def forward(self, *args, **kwargs) -> Tensor:
+        Y = super().forward(*args, **kwargs)
+        Y.reshape(-1, self.n_tasks * self.n_targets, self.n_classes)
 
         return Y
 
@@ -42,27 +41,15 @@ class MulticlassMPNN(MPNN):
 class DirichletMulticlassMPNN(MulticlassMPNN):
     _DEFAULT_CRITERION = "dirichlet"
 
-    def __init__(
-        self,
-        encoder: MessagePassingBlock,
-        n_tasks: int,
-        n_classes: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ):
-        super().__init__(
-            encoder, n_tasks, n_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
-        self.n_tasks = n_tasks
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    @property
-    def n_targets(self) -> int:
-        return 2
+        self.softplus = nn.Softplus()
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        Y = F.softplus(Y) + 1
+    def forward(self, *args, **kwargs) -> Tensor:
+        Y = super().forward(*args, **kwargs)
 
-        return Y
+        return self.softplus(Y) + 1
+
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        return MPNN.predict_step(self, batch, batch_idx, dataloader_idx)

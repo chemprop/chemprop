@@ -136,14 +136,16 @@ class MCCMetric(ThresholdedMetric):
         self.n_classes = n_classes
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return F.matthews_corrcoef(preds[mask], targets[mask], self.n_classes, self.threshold)
+        return F.matthews_corrcoef(
+            preds[mask], targets[mask].long(), self.n_classes, self.threshold
+        )
 
 
 class CrossEntropyMetric(Metric):
     alias = "ce"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return cross_entropy(preds[mask], targets[mask]).mean()
+        return cross_entropy(preds[mask], targets[mask].long())
 
 
 class SIDMetric(ThresholdedMetric):

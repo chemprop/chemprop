@@ -181,12 +181,22 @@ class MPNN(ABC, pl.LightningModule):
         """
         return self.ffn(self.fingerprint(inputs, X_f=X_f))
 
-    def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
-        loss = self.criterion(
-            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
-        )
+    # def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
+    #     """Calculate the loss for the given predictions and targets
+        
+    #     NOTE(degraff): this can be improved in the future
 
-        return loss * weights * mask
+    #     Returns
+    #     -------
+    #     Tensor
+    #         a tensor of either shape `b x t` containing the per-sample loss or shape `1 x t`
+    #         containing the per-task loss
+    #     """
+    #     loss = self.criterion(
+    #         preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
+    #     )
+
+    #     return loss * weights * mask
 
     def training_step(self, batch: TrainingBatch, batch_idx):
         bmg, X_vd, features, targets, weights, lt_targets, gt_targets = batch
@@ -196,10 +206,10 @@ class MPNN(ABC, pl.LightningModule):
 
         preds = self((bmg, X_vd), X_f=features)
 
-        L = self.calc_loss(preds, targets, mask, weights, lt_targets, gt_targets)
-        L = L * self.task_weights
+        l = self.criterion(
+            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
+        )
 
-        l = L.sum() / mask.sum()
         self.log("train/loss", l, prog_bar=True)
 
         return l
