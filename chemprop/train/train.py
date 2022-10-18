@@ -88,14 +88,14 @@ def train(
 
         # Calculate losses
         if args.loss_function == "mcc" and args.dataset_type == "classification":
-            loss = loss_func(preds, targets, data_weights, mask) * target_weights.squeeze(0) * mask.sum()
+            loss = loss_func(preds, targets, data_weights, mask) * target_weights.squeeze(0)
         elif args.loss_function == "mcc":  # multiclass dataset type
             targets = targets.long()
             target_losses = []
             for target_index in range(preds.size(1)):
                 target_loss = loss_func(preds[:, target_index, :], targets[:, target_index], data_weights, mask[:, target_index]).unsqueeze(0)
                 target_losses.append(target_loss)
-            loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0) * mask.sum()
+            loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
         elif args.dataset_type == "multiclass":
             targets = targets.long()
             if args.loss_function == "dirichlet":
