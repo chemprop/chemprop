@@ -118,48 +118,57 @@ class CrossEntropyLoss(LossFunction):
     alias = "multiclass-ce"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+        preds = preds.transpose(1, 2)
+        targets = targets.long()
+
         return F.cross_entropy(preds, targets, reduction="none")
 
 
-class MCCLossBase(LossFunction):
-    @abstractmethod
-    def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, **kwargs
-    ) -> Tensor:
-        pass
-
-
-class ClassificationMCCLoss(MCCLossBase):
+class ClassificationMCCLoss(LossFunction):
     alias = "classification-mcc"
 
     def __call__(
         self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, **kwargs
     ) -> Tensor:
-        TP = (targets * preds * weights * mask).sum(0)
-        FP = ((1 - targets) * preds * weights * mask).sum(0)
-        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0)
-        FN = (targets * (1 - preds) * weights * mask).sum(0)
+        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
+        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
+        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
+        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
 
-        return 1 - ((TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))).sqrt()
+        MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)).sqrt()
+
+        return (1 - MCC) / (mask * weights)
 
 
-class MulticlassMCCLoss(MCCLossBase):
+class MulticlassMCCLoss(LossFunction):
     alias = "multiclass-mcc"
 
     def __call__(
         self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, **kwargs
     ) -> Tensor:
-        mask = mask.unsqueeze(1)
-        bin_targets = torch.zeros_like(preds, device=preds.device)
-        bin_targets[range(len(preds)), targets] = 1
+        C = preds.shape[2]
+        bin_targets = torch.eye(C)[targets]
+        bin_preds = torch.eye(C)[preds.argmax(-1)]
+        masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
 
-        c = (preds * bin_targets * weights * mask).sum()
-        s = (preds * weights * mask).sum()
-        p_tot = ((preds * weights * mask).sum(0) * (bin_targets * weights * mask).sum(0)).sum()
-        p2 = ((preds * weights * mask).sum(0) ** 2).sum()
-        t2 = (torch.sum(bin_targets * weights * mask).sum(0) ** 2).sum()
+        p = (bin_preds * masked_data_weights).sum(0)
+        t = (bin_targets * masked_data_weights).sum(0)
+        c = (bin_preds * bin_targets * masked_data_weights).sum((0, 2))
+        s = (preds * masked_data_weights).sum((0, 2))
+        s2 = s.square()
 
-        return 1 - (c * s - p_tot) / torch.sqrt((s**2 - p2) * (s**2 - t2))
+        # the `einsum` calls amount to calculating the batched dot product
+        cov_ytyp = c * s - torch.einsum('ij,ij->i', p, t)
+        cov_ypyp = s2 - torch.einsum('ij,ij->i', p, p)
+        cov_ytyt = s2 - torch.einsum('ij,ij->i', t, t)
+
+        x = (cov_ypyp * cov_ytyt)
+        if x == 0:
+            loss = torch.tensor(0.0)
+        else:
+            loss = 1 - cov_ytyp / x.sqrt()
+
+        return loss
 
 
 class DirichletLossBase(LossFunction):
@@ -172,21 +181,21 @@ class DirichletLossBase(LossFunction):
     https://doi.org/10.48550/arXiv.1806.01768
     """
 
-    def __init__(self, v_kl: float = 0.0, **kwargs):
+    def __init__(self, v_kl: float = 1.0, **kwargs):
         self.v_kl = v_kl
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         S = preds.sum(-1, keepdim=True)
         p = preds / S
-        A = (targets - p).square().sum(dim=-1, keepdim=True)
-        B = torch.sum((p * (1 - p)) / (S + 1), dim=-1, keepdim=True)
+        A = (targets - p).square().sum(-1, keepdim=True)
+        B = ((p * (1 - p)) / (S + 1)).sum(-1, keepdim=True)
         L_sos = A + B
 
         alpha_hat = targets + (1 - targets) * preds
 
         beta = torch.ones_like(alpha_hat)
         S_alpha = alpha_hat.sum(-1, keepdim=True)
-        S_beta = beta.sum(dim=-1, keepdim=True)
+        S_beta = beta.sum(-1, keepdim=True)
 
         ln_alpha = S_alpha.lgamma() - alpha_hat.lgamma().sum(-1, keepdim=True)
         ln_beta = beta.lgamma().sum(-1, keepdim=True) - S_beta.lgamma()
@@ -197,7 +206,7 @@ class DirichletLossBase(LossFunction):
         L_kl = (
             ln_alpha
             + ln_beta
-            + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+            + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), -1, keepdim=True)
         )
 
         return (L_sos + self.v_kl * L_kl).mean(-1)
@@ -222,20 +231,7 @@ class DirichletMulticlassLoss(DirichletLossBase):
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
 
-        return super().__call__(preds, y_one_hot)
-
-
-def build_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
-    key = f"{dataset_type.lower()}-{loss_function.lower()}"
-
-    try:
-        return LossFunction.registry[key](**kwargs)
-    except KeyError:
-        combos = {tuple(k.split("-")) for k in LossFunction.registry.keys()}
-        raise ValueError(
-            f"dataset type '{dataset_type}' does not support loss function '{loss_function}'! "
-            f"Expected one of (`dataset_type`, `loss_function`) combos: {combos}"
-        )
+        return super().__call__(preds, y_one_hot, mask)
 
 
 class SpectralLoss(LossFunction):
@@ -274,3 +270,16 @@ class WassersteinSpectralLoss(SpectralLoss):
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
         return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))
+
+
+def build_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:
+    key = f"{dataset_type.lower()}-{loss_function.lower()}"
+
+    try:
+        return LossFunction.registry[key](**kwargs)
+    except KeyError:
+        combos = {tuple(k.split("-")) for k in LossFunction.registry.keys()}
+        raise ValueError(
+            f"dataset type '{dataset_type}' does not support loss function '{loss_function}'! "
+            f"Expected one of (`dataset_type`, `loss_function`) combos: {combos}"
+        )
