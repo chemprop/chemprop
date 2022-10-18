@@ -110,7 +110,7 @@ def mcc_multiclass_loss(
     mask: Tensor,
 ) -> Tensor:
     """
-    A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
+    A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation (https://scikit-learn.org/stable/modules/model_evaluation.html#matthews-correlation-coefficient).
 
     :param predictions: a tensor of  shape `b x c` containing the model predictions.
     :param targets: a tensor of shape `b`, where `b` is the batch size containing the target values.
