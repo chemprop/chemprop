@@ -115,7 +115,7 @@ def mcc_multiclass_loss(
     mask: torch.tensor,
 ) -> torch.tensor:
     """
-    A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation.
+    A multiclass loss using a soft version of the Matthews Correlation Coefficient. Multiclass definition follows the version in sklearn documentation (https://scikit-learn.org/stable/modules/model_evaluation.html#matthews-correlation-coefficient).
 
     :param predictions: Model predictions with shape(batch_size, classes).
     :param targets: Target values with shape(batch_size).
@@ -148,7 +148,8 @@ def mcc_multiclass_loss(
     if cov_ypyp * cov_ytyt == 0:
         loss = torch.tensor(0.0)
     else:
-        loss = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
+        mcc = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
+        loss = 1 - mcc
 
     return loss
 
