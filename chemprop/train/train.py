@@ -108,7 +108,10 @@ def train(model: MoleculeModel,
             loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
-        loss = loss.sum() / mask.sum()
+        if args.loss_function == "mcc":
+            loss = loss.mean()
+        else:
+            loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
         iter_count += 1
