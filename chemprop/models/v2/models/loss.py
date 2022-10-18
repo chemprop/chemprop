@@ -40,7 +40,7 @@ class LossFunction(ABC, RegistryMixin):
         Returns
         -------
         Tensor
-            a scalar containing the loss
+            a scalar containing the fully reduced loss
         """
         L = self.calc(preds, targets, mask=mask, **kwargs)
         L = L * w_d * w_t * mask
@@ -294,9 +294,7 @@ class SIDSpectralLoss(SpectralLoss):
         targets = targets.masked_fill(~mask, 1)
         preds_norm = preds_norm.masked_fill(~mask, 1)
 
-        return (
-            torch.log(preds_norm / targets) * preds_norm + torch.log(targets / preds_norm) * targets
-        )
+        return (preds_norm / targets).log() * preds_norm + (targets / preds_norm).log() * targets
 
 
 class WassersteinSpectralLoss(SpectralLoss):
@@ -308,7 +306,7 @@ class WassersteinSpectralLoss(SpectralLoss):
 
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
-        return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))
+        return (targets.cumsum(1) - preds_norm.cumsum(1)).abs()
 
 
 def build_loss(dataset_type: str, loss_function: str, **kwargs) -> LossFunction:

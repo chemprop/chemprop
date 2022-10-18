@@ -32,10 +32,12 @@ class MulticlassMPNN(MPNN):
 
         return Y
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
-        Y = super().predict_step(batch, batch_idx, dataloader_idx)
+    def predict_step(
+        self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
+    ) -> tuple[Tensor, ...]:
+        Y = super().predict_step(batch, batch_idx, dataloader_idx)[0]
 
-        return Y.softmax(2)
+        return Y.softmax(2), 
 
 
 class DirichletMulticlassMPNN(MulticlassMPNN):
@@ -51,5 +53,10 @@ class DirichletMulticlassMPNN(MulticlassMPNN):
 
         return self.softplus(Y) + 1
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
-        return MPNN.predict_step(self, batch, batch_idx, dataloader_idx)
+    def predict_step(
+        self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
+    ) -> tuple[Tensor, ...]:
+        alphas = MPNN.predict_step(self, batch, batch_idx, dataloader_idx)[0]
+        preds = alphas / alphas.sum(2, keepdim=True)
+
+        return preds, alphas

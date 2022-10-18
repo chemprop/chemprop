@@ -12,10 +12,10 @@ class ClassificationMPNN(MPNN):
 class BinaryClassificationMPNN(ClassificationMPNN):
     _DEFAULT_CRITERION = "bce"
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0):
-        Y = super().predict_step(batch, batch_idx, dataloader_idx)
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor]:
+        Y = super().predict_step(*args, **kwargs)[0]
 
-        return Y.sigmoid()
+        return Y.sigmoid(),
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
@@ -34,3 +34,11 @@ class DirichletClassificationMPNN(ClassificationMPNN):
         Y = super().forward(*args, **kwargs)
 
         return self.softplus(Y) + 1
+
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor, Tensor]:
+        alphas = super().predict_step(*args, **kwargs)[0]
+
+        alphas = alphas.reshape(-1, self.n_tasks, 2)
+        preds = alphas[..., 1] / alphas.sum(-1)
+
+        return preds, alphas
