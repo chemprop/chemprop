@@ -110,16 +110,18 @@ class EvidentialLoss(LossFunction):
     def calc(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
         mu, v, alpha, beta = preds.split(preds.shape[1] // 4, dim=1)
 
+        residuals = targets - mu
         twoBlambda = 2 * beta * (1 + v)
+
         L_nll = (
-            0.5 * torch.log(torch.pi / v)
-            - alpha * torch.log(twoBlambda)
-            + (alpha + 0.5) * torch.log(v * (targets - mu) ** 2 + twoBlambda)
+            0.5 * (torch.pi / v).log()
+            - alpha * twoBlambda.log()
+            + (alpha + 0.5) * torch.log(v * residuals ** 2 + twoBlambda)
             + torch.lgamma(alpha)
             - torch.lgamma(alpha + 0.5)
         )
 
-        L_reg = (2 * v + alpha) * (targets - mu).abs()
+        L_reg = (2 * v + alpha) * residuals.abs()
 
         return L_nll + self.v_reg * (L_reg - self.eps)
 
@@ -216,44 +218,41 @@ class MulticlassMCCLoss(MCCLossBase):
 
 
 class DirichletLossBase(LossFunction):
-    """Uses the loss function from [1]_
+    """Uses the loss function from [1]_ based on the implementation at [2]_
 
     References
     ----------
     .. [1] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
-    classification uncertainty." Advances in neural information processing systems, 31, 2018.
-    https://doi.org/10.48550/arXiv.1806.01768
+    classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+    .. [2] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
-    def __init__(self, v_kl: float = 1.0, **kwargs):
+    def __init__(self, v_kl: float = 0.2, **kwargs):
         self.v_kl = v_kl
 
     def calc(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
         S = preds.sum(-1, keepdim=True)
         p = preds / S
-        A = (targets - p).square().sum(-1, keepdim=True)
+
+        A = ((targets - p)**2).sum(-1, keepdim=True)
         B = ((p * (1 - p)) / (S + 1)).sum(-1, keepdim=True)
-        L_sos = A + B
 
-        alpha_hat = targets + (1 - targets) * preds
+        L_mse = A + B
 
-        beta = torch.ones_like(alpha_hat)
-        S_alpha = alpha_hat.sum(-1, keepdim=True)
+        alpha = targets + (1 - targets) * preds
+        beta = torch.ones_like(alpha)
+        S_alpha = alpha.sum(-1, keepdim=True)
         S_beta = beta.sum(-1, keepdim=True)
 
-        ln_alpha = S_alpha.lgamma() - alpha_hat.lgamma().sum(-1, keepdim=True)
+        ln_alpha = S_alpha.lgamma() - alpha.lgamma().sum(-1, keepdim=True)
         ln_beta = beta.lgamma().sum(-1, keepdim=True) - S_beta.lgamma()
 
-        dg_alpha = torch.digamma(alpha_hat)
-        dg_S_alpha = torch.digamma(S_alpha)
+        dg0 = torch.digamma(alpha)
+        dg1 = torch.digamma(S_alpha)
 
-        L_kl = (
-            ln_alpha
-            + ln_beta
-            + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), -1, keepdim=True)
-        )
+        L_kl = ln_alpha + ln_beta + torch.sum((alpha - beta) * (dg0 - dg1), -1, keepdim=True)
 
-        return (L_sos + self.v_kl * L_kl).mean(-1)
+        return (L_mse + self.v_kl * L_kl).mean(-1)
 
 
 class DirichletClassificationLoss(DirichletLossBase):
