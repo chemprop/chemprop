@@ -116,7 +116,7 @@ class EvidentialLoss(LossFunction):
         L_nll = (
             0.5 * (torch.pi / v).log()
             - alpha * twoBlambda.log()
-            + (alpha + 0.5) * torch.log(v * residuals ** 2 + twoBlambda)
+            + (alpha + 0.5) * torch.log(v * residuals**2 + twoBlambda)
             + torch.lgamma(alpha)
             - torch.lgamma(alpha + 0.5)
         )
@@ -234,7 +234,7 @@ class DirichletLossBase(LossFunction):
         S = preds.sum(-1, keepdim=True)
         p = preds / S
 
-        A = ((targets - p)**2).sum(-1, keepdim=True)
+        A = ((targets - p) ** 2).sum(-1, keepdim=True)
         B = ((p * (1 - p)) / (S + 1)).sum(-1, keepdim=True)
 
         L_mse = A + B
