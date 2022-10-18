@@ -63,12 +63,7 @@ class BoundedMSELoss(MSELoss):
     alias = "regression-bounded"
 
     def calc(
-        self,
-        preds: Tensor,
-        targets: Tensor,
-        lt_targets: Tensor,
-        gt_targets: Tensor,
-        **kwargs,
+        self, preds: Tensor, targets: Tensor, lt_targets: Tensor, gt_targets: Tensor, **kwargs
     ) -> Tensor:
         preds = torch.where(torch.logical_and(preds < targets, lt_targets), targets, preds)
         preds = torch.where(torch.logical_and(preds > targets, gt_targets), targets, preds)
@@ -101,8 +96,8 @@ class EvidentialLoss(LossFunction):
     """
     References
     ----------
-    .. [1] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.; "Evidential 
-    Deep Learning for Guided Molecular Property Prediction and Discovery." ACS Cent. Sci. 2021, 7, 
+    .. [1] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.; "Evidential
+    Deep Learning for Guided Molecular Property Prediction and Discovery." ACS Cent. Sci. 2021, 7,
     8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
@@ -150,7 +145,7 @@ class MCCLossBase(LossFunction):
     def __call__(
         self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor, w_t: Tensor, **kwargs
     ):
-        if not (0 <= preds.min() and preds.max() <= 1): # transform logits
+        if not (0 <= preds.min() and preds.max() <= 1):  # transform logits
             preds = preds.softmax(2)
 
         L = self.calc(preds, targets.long(), mask=mask, w_d=w_d, **kwargs)
@@ -161,7 +156,7 @@ class MCCLossBase(LossFunction):
 
 class ClassificationMCCLoss(MCCLossBase):
     """Calculate a soft Matthews correlation coefficient loss for binary classification
-    
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Phi_coefficient
@@ -183,7 +178,7 @@ class ClassificationMCCLoss(MCCLossBase):
 
 class MulticlassMCCLoss(MCCLossBase):
     """Calculate a soft Matthews correlation coefficient loss for multiclass classification
-    
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
@@ -207,11 +202,11 @@ class MulticlassMCCLoss(MCCLossBase):
         s2 = s.square()
 
         # the `einsum` calls amount to calculating the batched dot product
-        cov_ytyp = c * s - torch.einsum('ij,ij->i', p, t)
-        cov_ypyp = s2 - torch.einsum('ij,ij->i', p, p)
-        cov_ytyt = s2 - torch.einsum('ij,ij->i', t, t)
+        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t)
+        cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p)
+        cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t)
 
-        x = (cov_ypyp * cov_ytyt)
+        x = cov_ypyp * cov_ytyt
         if x == 0:
             MCC = torch.tensor(0.0, device=device)
         else:

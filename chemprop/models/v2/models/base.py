@@ -183,7 +183,7 @@ class MPNN(ABC, pl.LightningModule):
 
     # def calc_loss(self, preds, targets, mask, weights, lt_targets, gt_targets) -> Tensor:
     #     """Calculate the loss for the given predictions and targets
-        
+
     #     NOTE(degraff): this can be improved in the future
 
     #     Returns
