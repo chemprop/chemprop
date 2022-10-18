@@ -146,7 +146,7 @@ def mcc_multiclass_loss(
     cov_ytyt = n_samples**2 - torch.dot(t_sum, t_sum)
 
     if cov_ypyp * cov_ytyt == 0:
-        loss = torch.tensor(0.0)
+        loss = torch.tensor(1.0)
     else:
         mcc = cov_ytyp / torch.sqrt(cov_ytyt * cov_ypyp)
         loss = 1 - mcc
