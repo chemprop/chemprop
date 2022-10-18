@@ -231,6 +231,19 @@ class MPNN(ABC, pl.LightningModule):
     def predict_step(
         self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
     ) -> tuple[Tensor, ...]:
+        """Return the predictions of the input batch
+        
+        Parameters
+        ----------
+        batch : TrainingBatch
+            the input batch
+        
+        Returns
+        -------
+        tuple[Tensor, ...]
+            an n-tuple containing the predictions in the 0th index and uncertainty parameters for
+            all remaining indices
+        """
         bmg, X_vd, features, *_ = batch
 
         return self((bmg, X_vd), X_f=features),
