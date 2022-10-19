@@ -1,6 +1,6 @@
 from .model import MoleculeModel
 from .mpn import MPN, MPNEncoder
-from .ffn import AttrProxy, MultiReadout, FFNAtten, DenseLayers
+from .ffn import AttrProxy, MultiReadout, FFNAtten
 
 __all__ = [
     'MoleculeModel',
@@ -8,6 +8,5 @@ __all__ = [
     'MPNEncoder',
     'AttrProxy',
     'MultiReadout',
-    'FFNAtten',
-    'DenseLayers'
+    'FFNAtten'
 ]

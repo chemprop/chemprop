@@ -59,7 +59,7 @@ class MultiReadout(nn.Module):
 
         if num_layers > 1 and shared_ffn:
             self.atom_ffn_base = nn.Sequential(
-                DenseLayers(
+                build_ffn(
                     first_linear_dim=atom_features_size,
                     hidden_size=atom_hidden_size,
                     num_layers=num_layers - 1,
@@ -70,7 +70,7 @@ class MultiReadout(nn.Module):
                 activation,
             )
             self.bond_ffn_base = nn.Sequential(
-                DenseLayers(
+                build_ffn(
                     first_linear_dim=2*bond_features_size,
                     hidden_size=bond_hidden_size,
                     num_layers=num_layers - 1,
@@ -191,7 +191,7 @@ class FFNAtten(nn.Module):
             else:
                 if num_layers > 1:
                     self.ffn = nn.Sequential(
-                        DenseLayers(
+                        build_ffn(
                             first_linear_dim=features_size,
                             hidden_size=hidden_size,
                             num_layers=num_layers - 1,
@@ -203,7 +203,7 @@ class FFNAtten(nn.Module):
                     )
                 else:
                     self.ffn = nn.Identity()
-            self.ffn_readout = DenseLayers(
+            self.ffn_readout = build_ffn(
                 first_linear_dim=base_output_size,
                 hidden_size=hidden_size,
                 num_layers=1,
@@ -211,7 +211,7 @@ class FFNAtten(nn.Module):
                 dropout=dropout,
                 activation=activation,
             )
-            self.weights_readout = DenseLayers(
+            self.weights_readout = build_ffn(
                 first_linear_dim=base_output_size,
                 hidden_size=hidden_size,
                 output_size=1,
@@ -223,7 +223,7 @@ class FFNAtten(nn.Module):
             if shared_ffn:
                 self.ffn_readout = nn.Sequential(
                     ffn_base,
-                    DenseLayers(
+                    build_ffn(
                         first_linear_dim=base_output_size,
                         hidden_size=hidden_size,
                         num_layers=1,
@@ -233,7 +233,7 @@ class FFNAtten(nn.Module):
                     ),
                 )
             else:
-                self.ffn_readout = DenseLayers(
+                self.ffn_readout = build_ffn(
                     first_linear_dim=features_size,
                     hidden_size=hidden_size,
                     num_layers=num_layers,
@@ -315,75 +315,58 @@ class FFNAtten(nn.Module):
         return output
 
 
-class DenseLayers(nn.Module):
-    """A :class:`DenseLayers` is a object of dense layers."""
+class nn_exp(nn.Module):
+    def forward(self, x):
+        return x.exp()
 
-    def __init__(
-        self,
-        first_linear_dim: int,
-        hidden_size: int,
-        num_layers: int,
-        output_size: int,
-        dropout: nn.Module,
-        activation: nn.Module,
-        dataset_type: str = None,
-        spectra_activation: str = None,
-    ):
-        """
-        :param first_linear_dim: Dimensionality of fisrt layer.
-        :param hidden_size: Dimensionality of hidden layers.
-        :param num_layers: Number of layers in FFN.
-        :param output_size: The size of output.
-        :param dropout: Dropout probability.
-        :param activation: Activation function.
-        :param dataset_type: Type of dataset.
-        :param spectra_activation: Activation function used in dataset_type spectra training to constrain outputs to be positive.
-        """
-        super(DenseLayers, self).__init__()
-        if num_layers == 1:
-            layers = [
-                dropout,
-                nn.Linear(first_linear_dim, output_size)
-            ]
-        else:
-            layers = [
-                dropout,
-                nn.Linear(first_linear_dim, hidden_size)
-            ]
-            for _ in range(num_layers - 2):
-                layers.extend([
-                    activation,
-                    dropout,
-                    nn.Linear(hidden_size, hidden_size),
-                ])
+def build_ffn(
+    first_linear_dim: int,
+    hidden_size: int,
+    num_layers: int,
+    output_size: int,
+    dropout: nn.Module,
+    activation: nn.Module,
+    dataset_type: str = None,
+    spectra_activation: str = None,
+):
+    """
+    Returns an `nn.Sequential` object of FFN layers.
+
+    :param first_linear_dim: Dimensionality of fisrt layer.
+    :param hidden_size: Dimensionality of hidden layers.
+    :param num_layers: Number of layers in FFN.
+    :param output_size: The size of output.
+    :param dropout: Dropout probability.
+    :param activation: Activation function.
+    :param dataset_type: Type of dataset.
+    :param spectra_activation: Activation function used in dataset_type spectra training to constrain outputs to be positive.
+    """
+    if num_layers == 1:
+        layers = [
+            dropout,
+            nn.Linear(first_linear_dim, output_size)
+        ]
+    else:
+        layers = [
+            dropout,
+            nn.Linear(first_linear_dim, hidden_size)
+        ]
+        for _ in range(num_layers - 2):
             layers.extend([
                 activation,
                 dropout,
-                nn.Linear(hidden_size, output_size),
+                nn.Linear(hidden_size, hidden_size),
             ])
+        layers.extend([
+            activation,
+            dropout,
+            nn.Linear(hidden_size, output_size),
+        ])
 
-        # If spectra model, also include spectra activation
-        if dataset_type == "spectra":
-            if spectra_activation == "softplus":
-                spectra_activation = nn.Softplus()
-            else:  # default exponential activation which must be made into a custom nn module
+    # If spectra model, also include spectra activation
+    if dataset_type == "spectra":
+        spectra_activation = nn.Softplus() if spectra_activation == "softplus" else nn_exp()
+        layers.append(spectra_activation)
 
-                class nn_exp(torch.nn.Module):
-                    def __init__(self):
-                        super(nn_exp, self).__init__()
-
-                    def forward(self, x):
-                        return torch.exp(x)
-
-                spectra_activation = nn_exp()
-            layers.append(spectra_activation)
-
-        self.dense_layers = nn.Sequential(*layers)
-
-    def forward(self, input: torch.tensor) -> torch.tensor:
-        """
-        Runs the :class:`DenseLayers` on input.
-        :param input: A PyTorch tensor containing the encoding of each molecule.
-        :return: The output of the :class:`DenseLayers`.
-        """
-        return self.dense_layers(input)
+    ffn = nn.Sequential(*layers)
+    return ffn

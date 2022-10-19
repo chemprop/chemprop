@@ -22,7 +22,7 @@ from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
-from chemprop.models.ffn import DenseLayers, MultiReadout
+from chemprop.models.ffn import MultiReadout
 
 
 def makedirs(path: str, isfile: bool = False) -> None:
@@ -240,7 +240,7 @@ def load_frzn_model(
                 )
 
         if current_args.frzn_ffn_layers > 0:
-            if isinstance(model.readout, DenseLayers):  # Molecule properties
+            if isinstance(model.readout, nn.Sequential):  # Molecule properties
                 ffn_param_names = [
                     [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
                     for i in range(current_args.frzn_ffn_layers)

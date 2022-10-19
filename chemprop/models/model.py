@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from .mpn import MPN
-from .ffn import DenseLayers, MultiReadout
+from .ffn import build_ffn, MultiReadout
 from chemprop.args import TrainArgs
 from chemprop.features import BatchMolGraph
 from chemprop.nn_utils import get_activation_function, initialize_weights
@@ -128,14 +128,14 @@ class MoleculeModel(nn.Module):
                                         shared_ffn=args.shared_atom_bond_ffn,
                                         weights_ffn_num_layers=args.weights_ffn_num_layers)
         else:
-            self.readout = DenseLayers(first_linear_dim=atom_first_linear_dim,
-                                       hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
-                                       num_layers=args.ffn_num_layers,
-                                       output_size=self.relative_output_size * args.num_tasks,
-                                       dropout=dropout,
-                                       activation=activation,
-                                       dataset_type=args.dataset_type,
-                                       spectra_activation=args.spectra_activation)
+            self.readout = build_ffn(first_linear_dim=atom_first_linear_dim,
+                                     hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
+                                     num_layers=args.ffn_num_layers,
+                                     output_size=self.relative_output_size * args.num_tasks,
+                                     dropout=dropout,
+                                     activation=activation,
+                                     dataset_type=args.dataset_type,
+                                     spectra_activation=args.spectra_activation)
 
         if args.checkpoint_frzn is not None:
             if args.frzn_ffn_layers > 0:
