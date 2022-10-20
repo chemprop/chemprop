@@ -15,16 +15,18 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import compute_gnorm, compute_pnorm, NoamLR
 
 
-def train(model: MoleculeModel,
-          data_loader: MoleculeDataLoader,
-          loss_func: Callable,
-          optimizer: Optimizer,
-          scheduler: _LRScheduler,
-          args: TrainArgs,
-          n_iter: int = 0,
-          atom_bond_scaler: AtomBondScaler = None,
-          logger: logging.Logger = None,
-          writer: SummaryWriter = None) -> int:
+def train(
+    model: MoleculeModel,
+    data_loader: MoleculeDataLoader,
+    loss_func: Callable,
+    optimizer: Optimizer,
+    scheduler: _LRScheduler,
+    args: TrainArgs,
+    n_iter: int = 0,
+    atom_bond_scaler: AtomBondScaler = None,
+    logger: logging.Logger = None,
+    writer: SummaryWriter = None,
+) -> int:
     """
     Trains a model for an epoch.
 
@@ -115,7 +117,7 @@ def train(model: MoleculeModel,
             constraints_batch = None
             bond_types_batch = None
 
-            if args.loss_function == 'bounded_mse':
+            if args.loss_function == "bounded_mse":
                 lt_target_batch = batch.lt_targets()  # shape(batch, tasks)
                 gt_target_batch = batch.gt_targets()  # shape(batch, tasks)
                 lt_target_batch = torch.tensor(lt_target_batch)
@@ -123,7 +125,16 @@ def train(model: MoleculeModel,
 
         # Run model
         model.zero_grad()
-        preds = model(mol_batch, features_batch, atom_descriptors_batch, atom_features_batch, bond_descriptors_batch, bond_features_batch, constraints_batch, bond_types_batch)
+        preds = model(
+            mol_batch,
+            features_batch,
+            atom_descriptors_batch,
+            atom_features_batch,
+            bond_descriptors_batch,
+            bond_features_batch,
+            constraints_batch,
+            bond_types_batch,
+        )
 
         # Move tensors to correct device
         torch_device = args.device
@@ -139,7 +150,7 @@ def train(model: MoleculeModel,
             targets = targets.to(torch_device)
             target_weights = target_weights.to(torch_device)
             data_weights = data_weights.to(torch_device)
-            if args.loss_function == 'bounded_mse':
+            if args.loss_function == "bounded_mse":
                 lt_target_batch = lt_target_batch.to(torch_device)
                 gt_target_batch = gt_target_batch.to(torch_device)
 
@@ -147,15 +158,15 @@ def train(model: MoleculeModel,
         if model.is_atom_bond_targets:
             loss_multi_task = []
             for target, pred, target_weight, data_weight, mask in zip(targets, preds, target_weights, data_weights, masks):
-                if args.loss_function == 'mcc' and args.dataset_type == 'classification':
+                if args.loss_function == "mcc" and args.dataset_type == "classification":
                     loss = loss_func(pred, target, data_weight, mask) * target_weight.squeeze(0)
-                elif args.loss_function == 'bounded_mse':
+                elif args.loss_function == "bounded_mse":
                     raise ValueError(f'Loss function "{args.loss_function}" is not supported with dataset type {args.dataset_type} in atomic/bond properties prediction.')
-                elif args.loss_function in ['binary_cross_entropy', 'mse', 'mve']:
+                elif args.loss_function in ["binary_cross_entropy", "mse", "mve"]:
                     loss = loss_func(pred, target) * target_weight * data_weight * mask
-                elif args.loss_function == 'evidential':
+                elif args.loss_function == "evidential":
                     loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
-                elif args.loss_function == 'dirichlet' and args.dataset_type == 'classification':
+                elif args.loss_function == "dirichlet" and args.dataset_type == "classification":
                     loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
                 else:
                     raise ValueError(f'Dataset type "{args.dataset_type}" is not supported.')
@@ -167,18 +178,18 @@ def train(model: MoleculeModel,
 
             sum(loss_multi_task).backward()
         else:
-            if args.loss_function == 'mcc' and args.dataset_type == 'classification':
+            if args.loss_function == "mcc" and args.dataset_type == "classification":
                 loss = loss_func(preds, targets, data_weights, masks) * target_weights.squeeze(0)
-            elif args.loss_function == 'mcc':  # multiclass dataset type
+            elif args.loss_function == "mcc":  # multiclass dataset type
                 targets = targets.long()
                 target_losses = []
                 for target_index in range(preds.size(1)):
                     target_loss = loss_func(preds[:, target_index, :], targets[:, target_index], data_weights, masks[:, target_index]).unsqueeze(0)
                     target_losses.append(target_loss)
-                loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
-            elif args.dataset_type == 'multiclass':
+                loss = torch.cat(target_losses) * target_weights.squeeze(0)
+            elif args.dataset_type == "multiclass":
                 targets = targets.long()
-                if args.loss_function == 'dirichlet':
+                if args.loss_function == "dirichlet":
                     loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
                 else:
                     target_losses = []
@@ -186,18 +197,21 @@ def train(model: MoleculeModel,
                         target_loss = loss_func(preds[:, target_index, :], targets[:, target_index]).unsqueeze(1)
                         target_losses.append(target_loss)
                     loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * masks
-            elif args.dataset_type == 'spectra':
+            elif args.dataset_type == "spectra":
                 loss = loss_func(preds, targets, masks) * target_weights * data_weights * masks
-            elif args.loss_function == 'bounded_mse':
+            elif args.loss_function == "bounded_mse":
                 loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * masks
-            elif args.loss_function == 'evidential':
+            elif args.loss_function == "evidential":
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
-            elif args.loss_function == 'dirichlet':  # classification
+            elif args.loss_function == "dirichlet":  # classification
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
             else:
                 loss = loss_func(preds, targets) * target_weights * data_weights * masks
 
-            loss = loss.sum() / masks.sum()
+            if args.loss_function == "mcc":
+                loss = loss.mean()
+            else:
+                loss = loss.sum() / masks.sum()
 
             loss_sum += loss.item()
             iter_count += 1
@@ -224,14 +238,14 @@ def train(model: MoleculeModel,
                 loss_avg = loss_sum / iter_count
                 loss_sum = iter_count = 0
 
-            lrs_str = ', '.join(f'lr_{i} = {lr:.4e}' for i, lr in enumerate(lrs))
-            debug(f'Loss = {loss_avg:.4e}, PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}')
+            lrs_str = ", ".join(f"lr_{i} = {lr:.4e}" for i, lr in enumerate(lrs))
+            debug(f"Loss = {loss_avg:.4e}, PNorm = {pnorm:.4f}, GNorm = {gnorm:.4f}, {lrs_str}")
 
             if writer is not None:
-                writer.add_scalar('train_loss', loss_avg, n_iter)
-                writer.add_scalar('param_norm', pnorm, n_iter)
-                writer.add_scalar('gradient_norm', gnorm, n_iter)
+                writer.add_scalar("train_loss", loss_avg, n_iter)
+                writer.add_scalar("param_norm", pnorm, n_iter)
+                writer.add_scalar("gradient_norm", gnorm, n_iter)
                 for i, lr in enumerate(lrs):
-                    writer.add_scalar(f'learning_rate_{i}', lr, n_iter)
+                    writer.add_scalar(f"learning_rate_{i}", lr, n_iter)
 
     return n_iter
