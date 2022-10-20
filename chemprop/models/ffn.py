@@ -38,7 +38,7 @@ class MultiReadout(nn.Module):
         :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
-        super(MultiReadout, self).__init__()
+        super().__init__()
         self.shared_ffn = shared_ffn
 
         if num_layers > 1 and shared_ffn:
@@ -161,7 +161,7 @@ class FFNAtten(nn.Module):
         :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
-        super(FFNAtten, self).__init__()
+        super().__init__()
 
         if num_layers == 1:
             base_output_size = features_size
