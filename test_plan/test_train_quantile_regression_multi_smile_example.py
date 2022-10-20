@@ -11,14 +11,14 @@ if __name__ ==  '__main__':
 
     for alpha in alpha_list:
         arguments = [
-                        '--data_path', 'data/delaney3class1.csv',
-                        #'--data_path', f'data/{file_name}.csv',
+                        #'--data_path', 'data/delaney3class1.csv',
+                        '--data_path', f'data/{file_name}.csv',
                         '--dataset_type', 'regression',
-                        '--save_dir', f'quantile_regression/delaney_checkpoints_3class1_quantile_{alpha}',
-                        #'--save_dir', f'quantile_regression/delaney_checkpoints_{file_name}_quantile_{alpha}',
+                        #'--save_dir', f'quantile_regression/delaney_checkpoints_3class1_quantile_{alpha}',
+                        '--save_dir', f'quantile_regression/delaney_checkpoints_{file_name}_quantile_{alpha}',
                         '--loss_function', 'quantile_interval',
                         '--quantile_loss_alpha', f'{alpha}',
-                        #'--number_of_molecules',  '2'
+                        '--number_of_molecules',  '2'
                     ]
 
         args = chemprop.args.TrainArgs().parse_args(arguments)

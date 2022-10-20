@@ -6,7 +6,6 @@ import os
 import sys
 from typing import Callable, Dict, List, Tuple
 import subprocess
-import torch
 
 import numpy as np
 import pandas as pd
