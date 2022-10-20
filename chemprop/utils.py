@@ -128,7 +128,7 @@ def load_checkpoint(
         if re.match(r"(encoder\.encoder\.)([Wc])", loaded_param_name) and not args.reaction_solvent:
             param_name = loaded_param_name.replace("encoder.encoder", "encoder.encoder.0")
         elif re.match(r"(^ffn)", loaded_param_name):
-            param_name = loaded_param_name.replace("ffn", "readout.dense_layers")
+            param_name = loaded_param_name.replace("ffn", "readout")
         else:
             param_name = loaded_param_name
 
@@ -218,7 +218,7 @@ def load_frzn_model(
     loaded_state_dict_keys = list(loaded_state_dict.keys())
     for loaded_param_name in loaded_state_dict_keys:
         if re.match(r"(^ffn)", loaded_param_name):
-            param_name = loaded_param_name.replace("ffn", "readout.dense_layers")
+            param_name = loaded_param_name.replace("ffn", "readout")
             loaded_state_dict[param_name] = loaded_state_dict.pop(loaded_param_name)
 
     model_state_dict = model.state_dict()
@@ -242,29 +242,29 @@ def load_frzn_model(
         if current_args.frzn_ffn_layers > 0:
             if isinstance(model.readout, nn.Sequential):  # Molecule properties
                 ffn_param_names = [
-                    [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
+                    [f"readout.{i*3+1}.weight", f"readout.{i*3+1}.bias"]
                     for i in range(current_args.frzn_ffn_layers)
                 ]
             elif isinstance(model.readout, MultiReadout):  # Atomic/bond properties
                 if model.readout.shared_ffn:
                     ffn_param_names = [
-                        [f"readout.atom_ffn_base.0.dense_layers.{i*3+1}.weight", f"readout.atom_ffn_base.0.dense_layers.{i*3+1}.bias",
-                        f"readout.bond_ffn_base.0.dense_layers.{i*3+1}.weight", f"readout.bond_ffn_base.0.dense_layers.{i*3+1}.bias"]
+                        [f"readout.atom_ffn_base.0.{i*3+1}.weight", f"readout.atom_ffn_base.0.{i*3+1}.bias",
+                        f"readout.bond_ffn_base.0.{i*3+1}.weight", f"readout.bond_ffn_base.0.{i*3+1}.bias"]
                         for i in range(current_args.frzn_ffn_layers)
                     ]
                 else:
                     ffn_param_names = []
                     nmodels = len(model.readout.ffn_list)
                     for i in range(nmodels):
-                        readout = getattr(model.readout.ffn_list.module, 'readout_' + str(i))
+                        readout = model.readout.ffn_list[i]
                         if readout.constraint:
                             ffn_param_names.extend([
-                                [f"readout.readout_{i}.ffn.0.dense_layers.{j*3+1}.weight", f"readout.readout_{i}.ffn.0.dense_layers.{j*3+1}.bias"]
+                                [f"readout.ffn_list.{i}.ffn.0.{j*3+1}.weight", f"readout.ffn_list.{i}.ffn.0.{j*3+1}.bias"]
                                 for j in range(current_args.frzn_ffn_layers)
                             ])
                         else:
                             ffn_param_names.extend([
-                                [f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.weight", f"readout.readout_{i}.ffn_readout.0.0.dense_layers.{j*3+1}.bias"]
+                                [f"readout.ffn_list.{i}.ffn_readout.{j*3+1}.weight", f"readout.ffn_list.{i}.ffn_readout.{j*3+1}.bias"]
                                 for j in range(current_args.frzn_ffn_layers)
                             ])
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
@@ -383,7 +383,7 @@ def load_frzn_model(
             ]
             encoder_param_names = [item for sublist in encoder_param_names for item in sublist]
             ffn_param_names = [
-                [f"readout.dense_layers.{i*3+1}.weight", f"readout.dense_layers.{i*3+1}.bias"]
+                [f"readout.{i*3+1}.weight", f"readout.{i*3+1}.bias"]
                 for i in range(current_args.frzn_ffn_layers)
             ]
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]

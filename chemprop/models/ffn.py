@@ -5,22 +5,6 @@ import torch.nn as nn
 import re
 
 
-class AttrProxy(object):
-    """Translates index lookups into attribute lookups."""
-
-    def __init__(self, module, prefix):
-        self.module = module
-        self.prefix = prefix
-
-    def __len__(self):
-        return len([x for x in self.module.__dict__['_modules'].keys() if re.match(f'{self.prefix}\d+', x)])
-
-    def __getitem__(self, item):
-        if item >= len(self):
-            raise IndexError
-        return getattr(self.module, self.prefix + str(item))
-
-
 class MultiReadout(nn.Module):
     """A fake list of FFNs for reading out as suggested in
     https://discuss.pytorch.org/t/list-of-nn-module-in-a-nn-module/219/3"""
@@ -86,9 +70,9 @@ class MultiReadout(nn.Module):
 
         ind = 0
 
+        ffn_list = []
         for constraint in atom_constraints:
-            self.add_module(
-                f"readout_{ind}",
+            ffn_list.append(
                 FFNAtten(
                     features_size=atom_features_size,
                     hidden_size=atom_hidden_size,
@@ -101,13 +85,12 @@ class MultiReadout(nn.Module):
                     ffn_type="atom",
                     shared_ffn=shared_ffn,
                     weights_ffn_num_layers=weights_ffn_num_layers,
-                ),
+                )
             )
             ind += 1
 
         for constraint in bond_constraints:
-            self.add_module(
-                f"readout_{ind}",
+            ffn_list.append(
                 FFNAtten(
                     features_size=2*bond_features_size,
                     hidden_size=bond_hidden_size,
@@ -120,11 +103,11 @@ class MultiReadout(nn.Module):
                     ffn_type="bond",
                     shared_ffn=shared_ffn,
                     weights_ffn_num_layers=weights_ffn_num_layers,
-                ),
+                )
             )
             ind += 1
 
-        self.ffn_list = AttrProxy(self, "readout_")
+        self.ffn_list = nn.ModuleList(ffn_list)
 
     def forward(
         self,

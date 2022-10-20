@@ -154,7 +154,7 @@ class MoleculeModel(nn.Module):
                                 for param in list(ffn.ffn_readout.parameters())[0:2 * args.frzn_ffn_layers]:
                                     param.requires_grad = False
                 else:
-                    for param in list(self.readout.dense_layers.parameters())[0:2 * args.frzn_ffn_layers]:  # Freeze weights and bias for given number of layers
+                    for param in list(self.readout.parameters())[0:2 * args.frzn_ffn_layers]:  # Freeze weights and bias for given number of layers
                         param.requires_grad = False
 
     def fingerprint(self,
@@ -185,7 +185,7 @@ class MoleculeModel(nn.Module):
             return self.encoder(batch, features_batch, atom_descriptors_batch, atom_features_batch,
                                 bond_descriptors_batch, bond_features_batch)
         elif fingerprint_type == 'last_FFN':
-            return self.readout.dense_layers[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
+            return self.readout[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
                                                   atom_features_batch, bond_descriptors_batch, bond_features_batch))
         else:
             raise ValueError(f'Unsupported fingerprint type {fingerprint_type}.')
