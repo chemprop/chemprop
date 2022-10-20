@@ -845,7 +845,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return f"conformal_multilabel"
+        return f"conformal_{args.conformal_alpha)}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -920,7 +920,8 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return "conformal_quantile_regression"
+        #return "conformal_quantile_regression"
+        return f"conformal_{args.conformal_alpha)}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
