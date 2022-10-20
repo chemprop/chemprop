@@ -144,13 +144,6 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 scaler=scaler,
                 return_unc_parameters=False,
             )
-            if self.dataset_type == "spectra":
-                preds = normalize_spectra(
-                    spectra=preds,
-                    phase_features=self.test_data.phase_features(),
-                    phase_mask=self.spectra_phase_mask,
-                    excluded_sub_value=float("nan"),
-                )
             if i == 0:
                 sum_preds = np.array(preds)
                 if self.individual_ensemble_predictions:
@@ -182,6 +175,13 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
     @property
     def label(self):
         return "no_uncertainty_method"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal quantile regression is only compatible with regression dataset types."
+            )
 
     @staticmethod
     def reformat_preds(preds):
@@ -233,13 +233,6 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
                 scaler=scaler,
                 return_unc_parameters=False,
             )
-            if self.dataset_type == "spectra":
-                preds = normalize_spectra(
-                    spectra=preds,
-                    phase_features=self.test_data.phase_features(),
-                    phase_mask=self.spectra_phase_mask,
-                    excluded_sub_value=float("nan"),
-                )
             if i == 0:
                 sum_preds = np.array(preds)
                 if self.individual_ensemble_predictions:

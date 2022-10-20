@@ -417,15 +417,26 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
         uncertainties: List[List[float]], # shape (data, 2*tasks)
         mask: List[List[bool]],
     ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks, num_classes)
+            uncertainties: shape(data, 2*tasks, num_classes)
+            mask: shape(data, tasks)
+
+        Returns:
+            Conformal coverage for each task
+        """
         targets = np.array(targets)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
-        num_tasks = targets.shape[1]
+        num_tasks = uncertainties.shape[1]//2
         results = []
 
         for task_id in range(num_tasks):
-            unc_task_id_lower = uncertainties[:, task_id]
-            unc_task_id_upper = uncertainties[:, task_id + num_tasks]
-            targets_task_id = targets[:, task_id]
+            unc_task_id_lower = uncertainties[mask[:, task_id], task_id]
+            unc_task_id_upper = uncertainties[mask[:, task_id], task_id + num_tasks]
+            targets_task_id = targets[mask[:, task_id], task_id]
             task_results = np.logical_and(unc_task_id_lower <= targets_task_id, targets_task_id <= unc_task_id_upper)
             results.append(task_results.sum() / task_results.shape[0])
 
@@ -461,14 +472,15 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
         Returns:
             Conformal coverage for each task
         """
-        targets = np.array(targets, dtype=int)
+        targets = np.array(targets, dtype=float)
+        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
         num_tasks = targets.shape[1]
         results = []
 
         for task_id in range(num_tasks):
             task_results = np.take_along_axis(
-                uncertainties[:, task_id], targets[:, task_id].reshape(-1, 1), axis=1
+                uncertainties[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)
             results.append(task_results.sum() / task_results.shape[0])
 
@@ -505,7 +517,8 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
             Conformal coverage for each task
         """
         targets = np.array(targets, dtype=float)
-        targets = np.nan_to_num(targets, nan=0)
+        targets_out = np.nan_to_num(targets, nan=0)
+        targets_in = np.nan_to_num(targets, nan=1)
         uncertainties = np.array(uncertainties)
         num_tasks = targets.shape[1]
         results = []
@@ -513,8 +526,9 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
         for task_id in range(num_tasks):
             unc_task_id_in = uncertainties[:, task_id]
             unc_task_id_out = uncertainties[:, task_id + num_tasks]
-            targets_task_id = targets[:, task_id]
-            task_results = np.logical_and(unc_task_id_in <= targets_task_id, targets_task_id <= unc_task_id_out)
+            targets_out_task_id = targets_out[:, task_id]
+            targets_in_task_id = targets_in[:, task_id]
+            task_results = np.logical_and(unc_task_id_in <= targets_in_task_id, targets_out_task_id <= unc_task_id_out)
             results.append(task_results.sum() / task_results.shape[0])
 
         return results

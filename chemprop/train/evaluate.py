@@ -131,18 +131,6 @@ def evaluate(model: MoleculeModel,
         data_loader=data_loader,
         scaler=scaler
     )
-    
-    """
-    if loss_function == "quantile_interval":
-        preds = np.array(preds)
-        num_tasks = num_tasks//2
-        preds_new = np.zeros((preds.shape[0], num_tasks))
-        for task_id in range(num_tasks):
-            preds_new[:, task_id] = preds[:, task_id] + preds[:, task_id + num_tasks]
-            preds_new[:, task_id] = preds_new[:, task_id]/2
-
-        preds = preds_new.tolist()
-    """
 
     results = evaluate_predictions(
         preds=preds,

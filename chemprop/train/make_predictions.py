@@ -280,17 +280,16 @@ def predict_and_save(
                 for column, smiles in zip(smiles_columns, datapoint.smiles):
                     datapoint.row[column] = smiles
 
-            print_task_names = task_names # No longer need this?
             # Add predictions columns
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
             elif args.calibration_method == "conformal_regression":
-                unc_names = [task_name + "_conformal_" + str(args.conformal_alpha) + "_lower_bound" for task_name in task_names] + [
-                    task_name + "_conformal_" + str(args.conformal_alpha) + "_upper_bound" for task_name in task_names
+                unc_names = [task_name + f"_{estimator.label}" + "_lower_bound" for task_name in task_names] + [
+                    task_name + f"_{estimator.label}" + "_upper_bound" for task_name in task_names
                 ]
             elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [task_names[i] + "_conformal_quantile_" + str(args.conformal_alpha) + "_lower_bound" for i in range(0, num_tasks // 2)] + [
-                    task_names[i] + "_conformal_quantile_" + str(args.conformal_alpha) + "_upper_bound" for i in range(num_tasks // 2, num_tasks)
+                unc_names = [task_names[i] + f"_{estimator.label}" + "_quantile_lower_bound" for i in range(0, num_tasks // 2)] + [
+                    task_names[i] + f"_{estimator.label}" + "_quantile_upper_bound" for i in range(num_tasks // 2, num_tasks)
                 ]
 
             elif args.uncertainty_method == "conformal_quantile_regression" and args.calibration_method is None:
@@ -299,13 +298,13 @@ def predict_and_save(
                 ]
 
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
-                unc_names = [task_name + "_conformal_" + str(args.conformal_alpha) + "_in_set" for task_name in task_names] + [
-                    task_name + "_conformal_" + str(args.conformal_alpha) + "_out_set" for task_name in task_names
+                unc_names = [task_name + f"_{estimator.label}" + "_in_set" for task_name in task_names] + [
+                    task_name + f"_{estimator.label}" + "_out_set" for task_name in task_names
                 ]
             else:
                 unc_names = [name + f"_{estimator.label}" for name in task_names]
             
-            for pred_name, pred in zip(print_task_names, d_preds):
+            for pred_name, pred in zip(task_names, d_preds):
                 datapoint.row[pred_name] = pred
             
 
