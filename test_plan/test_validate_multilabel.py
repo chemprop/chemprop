@@ -13,6 +13,17 @@ for task in targets.columns[1:]:
 f.write("coverage\n")
 
 for alpha in alpha_list:
+    evals = pd.read_csv(f"multilabel/tox21_eval_conformal_multilabel_{alpha}.csv")
+    f.write(f"{alpha},")
+    for task in targets.columns[1:]:
+        f.write(f"{evals[task][0]},")
+    f.write("\n")
+
+f.close()
+
+"""
+
+for alpha in alpha_list:
     preds = pd.read_csv(f"multilabel_new/tox21_preds_conformal_multilabel_{alpha}.csv")
 
     results = np.full(len(targets.index), True)
@@ -37,3 +48,5 @@ for alpha in alpha_list:
     f.write(f"{coverage}\n")
 
 f.close()
+
+"""

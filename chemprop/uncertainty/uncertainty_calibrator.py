@@ -774,10 +774,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
-        print(targets)
-        #mask = ~np.isnan(targets)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
-        #targets = np.nan_to_num(targets)
         num_data, self.num_tasks, self.num_classes = uncal_preds.shape[:3]
 
         all_scores = self.nonconformity_scores(uncal_preds)
@@ -787,7 +784,6 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
             task_scores = np.take_along_axis(
                 all_scores[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1) # shape(valid_data)
-            #task_scores = task_scores[mask[:, task_id]]  # shape(valid_data)
             task_scores = np.append(task_scores, np.inf)
             task_scores = np.sort(task_scores)
             qhat = np.quantile(task_scores, 1 - self.conformal_alpha / self.num_tasks, method="higher")
@@ -953,7 +949,6 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
     def calibrate(self):
         uncal_interval = self.get_interval(self.calibration_predictor)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
-        #targets = np.nan_to_num(targets)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
 
         self.num_tasks = uncal_interval.shape[1] // 2

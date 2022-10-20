@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pandas import DataFrame as df
 
-alpha_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+alpha_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.45]
 
 targets = pd.read_csv("data/delaney3class3.csv")
 
@@ -11,8 +11,18 @@ f = open("quantile_regression/coverage.csv", "w")
 f.write("alpha,")
 for task in targets.columns[1:]:
     f.write(f"{task}_coverage,")
-f.write("coverage\n")
+f.write("\n")
 
+for alpha in alpha_list:
+    evals = pd.read_csv(f"quantile_regression/delaney_eval_conformal_{alpha}.csv")
+    f.write(f"{alpha},")
+    for task in targets.columns[1:]:
+        f.write(f"{evals[task][0]},")
+    f.write("\n")
+
+f.close()
+
+"""
 for alpha in alpha_list:
     preds = pd.read_csv(f"quantile_regression/delaney_preds_conformal_quantile_{alpha}.csv")
 
@@ -37,3 +47,4 @@ for alpha in alpha_list:
     f.write(f"{coverage}\n")
 
 f.close()
+"""
