@@ -419,9 +419,13 @@ def run_training(args: TrainArgs,
             n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
 
             for i, atom_target in enumerate(args.atom_targets):
-                test_preds_dataframe[atom_target] = np.split(np.array(avg_test_preds[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+                values = np.split(np.array(avg_test_preds[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+                values = [list(v) for v in values]
+                test_preds_dataframe[atom_target] = values
             for i, bond_target in enumerate(args.bond_targets):
-                test_preds_dataframe[bond_target] = np.split(np.array(avg_test_preds[i+len(args.atom_targets)]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+                values = np.split(np.array(avg_test_preds[i+len(args.atom_targets)]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+                values = [list(v) for v in values]
+                test_preds_dataframe[bond_target] = values
         else:
             for i, task_name in enumerate(args.task_names):
                 test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
