@@ -603,11 +603,13 @@ def save_smiles_splits(
 
     features_header = []
     if features_path is not None:
-        for feat_path in features_path:
-            with open(feat_path, "r") as f:
-                reader = csv.reader(f)
-                feat_header = next(reader)
-                features_header.extend(feat_header)
+        extension_sets = set([os.path.splitext(feat_path)[1] for feat_path in features_path])
+        if extension_sets == {'.csv'}:
+            for feat_path in features_path:
+                with open(feat_path, "r") as f:
+                    reader = csv.reader(f)
+                    feat_header = next(reader)
+                    features_header.extend(feat_header)
 
     all_split_indices = []
     for dataset, name in [(train_data, "train"), (val_data, "val"), (test_data, "test")]:
@@ -632,10 +634,13 @@ def save_smiles_splits(
 
         if features_path is not None:
             dataset_features = dataset.features()
-            with open(os.path.join(save_dir, f"{name}_features.csv"), "w") as f:
-                writer = csv.writer(f)
-                writer.writerow(features_header)
-                writer.writerows(dataset_features)
+            if extension_sets == {'.csv'}:
+                with open(os.path.join(save_dir, f"{name}_features.csv"), "w") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(features_header)
+                    writer.writerows(dataset_features)
+            else:
+                np.save(os.path.join(save_dir, f"{name}_features.npy"), dataset_features)
 
         if save_split_indices:
             split_indices = []
