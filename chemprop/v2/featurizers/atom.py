@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.v2.featurizers.multihot import MultiHotFeaturizerMixin
+from chemprop.v2.featurizers.mixins import MultiHotFeaturizerMixin
 
 
 class AtomFeaturizerBase(ABC):

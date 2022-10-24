@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-from chemprop.v2.featurizers.multihot import MultiHotFeaturizerMixin
+from chemprop.v2.featurizers.mixins import MultiHotFeaturizerMixin
 
 
 class BondFeaturizerBase(ABC):

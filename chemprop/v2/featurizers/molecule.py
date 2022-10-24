@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import Optional
 
 import numpy as np
@@ -8,37 +7,9 @@ from rdkit import Chem
 
 from chemprop.v2.featurizers.atom import AtomFeaturizerBase
 from chemprop.v2.featurizers.bond import BondFeaturizerBase
-from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
+from chemprop.v2.featurizers.base import MoleculeFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-
-
-class MoleculeFeaturizerBase(MolGraphFeaturizerBase):
-    """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: Optional[np.ndarray] = None,
-        bond_features_extra: Optional[np.ndarray] = None,
-    ) -> MolGraph:
-        """Featurize the input molecule into a molecular graph
-
-        Parameters
-        ----------
-        mol : Chem.Mol
-            the input molecule
-        atom_features_extra : Optional[np.ndarray], default=None
-            Additional features to concatenate to the calculated atom features
-        bond_features_extra : Optional[np.ndarray], default=None
-            Additional features to concatenate to the calculated bond features
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the molecule
-        """
 
 
 class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):

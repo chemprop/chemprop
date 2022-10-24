@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from abc import abstractmethod
-
 from enum import auto
 from typing import Iterable, Optional, Sequence, Union
 import warnings
@@ -15,7 +13,7 @@ from chemprop.v2.featurizers.atom import AtomFeaturizer
 from chemprop.v2.featurizers.bond import BondFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.base import MolGraphFeaturizerBase
+from chemprop.v2.featurizers.base import ReactionFeaturizerBase
 
 
 class ReactionMode(AutoName):
@@ -48,39 +46,8 @@ class ReactionMode(AutoName):
     PROD_DIFF_BALANCE = auto()
 
 
-class ReactionFeaturizerBase(MolGraphFeaturizerBase):
-    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        reaction: tuple[Chem.Mol, Chem.Mol],
-        atom_features_extra: Optional[np.ndarray] = None,
-        bond_features_extra: Optional[np.ndarray] = None,
-    ) -> MolGraph:
-        """Featurize the input reaction into a molecular graph
-
-        Parameters
-        ----------
-        reaction : tuple[Chem.Mol, Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-            1st element is the product
-        atom_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-        bond_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the reaction
-        """
-
-
 class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
-    """Featurize reactions according to the methodology from [1]_
+    """Featurize reactions using the condensed reaction graph method utilized in [1]_
 
     NOTE: This class *does not* accept a `BaseAtomFeaturizer` instance. This is because it requries
     the `featurize_num_only` method, which is only implemented in the concrete `AtomFeaturizer`
