@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.v2.featurizers.mixins import MultiHotFeaturizerMixin
+from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
 class AtomFeaturizerBase(ABC):
@@ -63,7 +63,6 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
         num_Hs: Optional[Sequence[int]] = None,
         hybridizations: Optional[Sequence[HybridizationType]] = None,
     ):
-
         self.max_atomic_num = max_atomic_num
         self.atomic_nums = range(max_atomic_num)
         self.degrees = degrees or range(6)
@@ -92,7 +91,8 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
             + 1
             + len(self.hybridizations)
             + 1
-        ) + 2
+            + 2
+        )
 
     @property
     def choicess(self) -> list[Sequence]:

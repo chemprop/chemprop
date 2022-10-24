@@ -1,49 +1,18 @@
 from __future__ import annotations
 
-from enum import auto
 from typing import Iterable, Optional, Sequence, Union
 import warnings
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
+from chemprop.v2.featurizers.utils import ReactionMode
 
-from chemprop.v2.utils import AutoName
 from chemprop.v2.featurizers.atom import AtomFeaturizer
 from chemprop.v2.featurizers.bond import BondFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.base import ReactionFeaturizerBase
-
-
-class ReactionMode(AutoName):
-    """The manner in which a reaction should be featurized into a `MolGraph`
-
-    REAC_PROD
-        concatenate the reactant features with the product features.
-    REAC_PROD_BALANCE
-        concatenate the reactant features with the products feature and balances imbalanced
-        reactions.
-    REAC_DIFF
-        concatenates the reactant features with the difference in features between reactants and
-        products
-    REAC_DIFF_BALANCE
-        concatenates the reactant features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    PROD_DIFF
-        concatenates the product features with the difference in features between reactants and
-        products
-    PROD_DIFF_BALANCE
-        concatenates the product features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    """
-
-    REAC_PROD = auto()
-    REAC_PROD_BALANCE = auto()
-    REAC_DIFF = auto()
-    REAC_DIFF_BALANCE = auto()
-    PROD_DIFF = auto()
-    PROD_DIFF_BALANCE = auto()
 
 
 class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
@@ -95,7 +64,6 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
         self.mode = mode
         self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
         self.bond_fdim *= 2
-
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 

@@ -48,7 +48,8 @@ class MoleculeFeaturizerBase(MolGraphFeaturizerBase):
 
         
 class ReactionFeaturizerBase(MolGraphFeaturizerBase):
-    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s"""
+    """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
+    molecules) into `MolGraph`s"""
 
     @abstractmethod
     def __call__(
