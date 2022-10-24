@@ -21,7 +21,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
     NOTE: This class *does not* accept a `BaseAtomFeaturizer` instance. This is because it requries
     the `featurize_num_only` method, which is only implemented in the concrete `AtomFeaturizer`
     class
-    
+
     Attributes
     ----------
     atom_featurizer : AtomFeaturizer
@@ -47,7 +47,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
     References
     ----------
-    .. [1] Heid, E.; Green, W.H. "Machine Learning of Reaction Properties via Learned 
+    .. [1] Heid, E.; Green, W.H. "Machine Learning of Reaction Properties via Learned
     Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62, 2101-2110.
     https://doi.org/10.1021/acs.jcim.1c00975
     """
@@ -70,11 +70,11 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
     @property
     def mode(self) -> ReactionMode:
         return self.__mode
-    
+
     @mode.setter
     def mode(self, m: Union[str, ReactionMode]):
         self.__mode = ReactionMode.get(m)
-        
+
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
@@ -223,7 +223,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
 
             if a1 in ri2pj and a2 in ri2pj:  # Both atoms in both reactant and product
                 b_prod = pdt.GetBondBetweenAtoms(ri2pj[a1], ri2pj[a2])
-            else:   # One or both atoms only in reactant
+            else:  # One or both atoms only in reactant
                 if self.mode in [
                     ReactionMode.REAC_PROD_BALANCE,
                     ReactionMode.REAC_DIFF_BALANCE,

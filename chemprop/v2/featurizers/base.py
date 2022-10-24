@@ -46,7 +46,7 @@ class MoleculeFeaturizerBase(MolGraphFeaturizerBase):
             the molecular graph of the molecule
         """
 
-        
+
 class ReactionFeaturizerBase(MolGraphFeaturizerBase):
     """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
     molecules) into `MolGraph`s"""

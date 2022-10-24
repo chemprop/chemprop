@@ -22,7 +22,7 @@ class MultiHotFeaturizerMixin:
         """return the index of a one hot encoding of `x` given choices `xs` and the length of the
         uncompressed encoding"""
         n = len(xs)
-        
+
         return xs.index(x) if x in xs else n, n + 1
 
 

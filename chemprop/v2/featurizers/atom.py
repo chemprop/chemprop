@@ -35,7 +35,7 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
     | 131-132 | aromatic?       | N            |
     | 132-133 | mass            | N            |
 
-    NOTE: the above signature only applies for the default arguments, as the each slice (save for 
+    NOTE: the above signature only applies for the default arguments, as the each slice (save for
     the final two) can increase in size depending on the input arguments.
 
     Parameters

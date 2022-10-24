@@ -41,7 +41,7 @@ class BondFeaturizer(MultiHotFeaturizerMixin):
         the known bond types
     stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
         the known bond stereochemistries. See [1]_ for more details
-    
+
     References
     ----------
     .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
