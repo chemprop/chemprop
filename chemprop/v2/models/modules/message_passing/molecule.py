@@ -45,9 +45,9 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
 
     See also
     --------
-    `AtomMessageEncoder`
+    `AtomMessageBlock`
 
-    `BondMessageEncoder`
+    `BondMessageBlock`
     """
 
     def __init__(

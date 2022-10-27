@@ -30,7 +30,7 @@ class MPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        mpn_block: MessagePassingBlock,
+        mp_block: MessagePassingBlock,
         n_tasks: int,
         ffn_hidden_dim: int = 300,
         ffn_num_layers: int = 1,
@@ -46,11 +46,11 @@ class MPNN(ABC, pl.LightningModule):
         final_lr: float = 1e-4,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=["mpn_block"])
+        self.save_hyperparameters(ignore=["mp_block"])
 
-        self.mpn_block = mpn_block
+        self.mp_block = mp_block
         self.ffn = self.build_ffn(
-            mpn_block.output_dim,
+            self.mp_block.output_dim,
             n_tasks * self.n_targets,
             ffn_hidden_dim,
             ffn_num_layers,
@@ -142,26 +142,19 @@ class MPNN(ABC, pl.LightningModule):
         activation: str = "relu",
     ) -> nn.Sequential:
         dropout = nn.Dropout(dropout)
-        activation = get_activation_function(activation)
-        layers = [hidden_dim] * n_layers
+        act = get_activation_function(activation)
+        sizes = [input_dim, *([hidden_dim] * n_layers), output_dim]
 
-        layers = [input_dim, *layers, output_dim]
-        ffn = list(
-            chain(
-                *(
-                    (dropout, nn.Linear(d1, d2), activation)
-                    for d1, d2 in zip(layers[:-1], layers[1:])
-                )
-            )
-        )
+        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(sizes[:-1], sizes[1:]))
+        layers = list(chain(*blocks))
 
-        return nn.Sequential(*ffn[:-1])
+        return nn.Sequential(*layers[:-1])
 
     def fingerprint(
         self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
     ) -> Tensor:
         """Calculate the learned fingerprint for the input molecules/reactions"""
-        H = self.mpn_block(*inputs)
+        H = self.mp_block(*inputs)
         if X_f is not None:
             H = torch.cat((H, X_f), 1)
 

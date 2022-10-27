@@ -21,6 +21,11 @@ class AutoName(Enum):
             names = [x.value for x in cls]
             raise ValueError(f"Invalid name! got: '{name}'. expected one of: {tuple(names)}")
 
+    @classmethod
+    @property
+    def choices(cls) -> list[str]:
+        return [e.value.lower() for e in cls]
+
 
 def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.

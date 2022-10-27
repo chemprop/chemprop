@@ -8,7 +8,7 @@ from chemprop.v2.utils import RegistryMixin
 
 
 class Readout(ABC, nn.Module, RegistryMixin):
-    """An `Readout` module aggregates the node-level representations of graph into a single
+    """A `Readout` module aggregates the node-level representations of graph into a single
     graph-level representation"""
 
     registry = {}

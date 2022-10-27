@@ -116,7 +116,7 @@ class EvidentialLoss(LossFunction):
         L_nll = (
             0.5 * (torch.pi / v).log()
             - alpha * twoBlambda.log()
-            + (alpha + 0.5) * torch.log(v * residuals ** 2 + twoBlambda)
+            + (alpha + 0.5) * torch.log(v * residuals**2 + twoBlambda)
             + torch.lgamma(alpha)
             - torch.lgamma(alpha + 0.5)
         )

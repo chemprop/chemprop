@@ -1,3 +1,4 @@
+from typing import Mapping, Optional
 from .modules import (
     MessagePassingBlock,
     MolecularMessagePassingBlock,
@@ -14,5 +15,7 @@ from .models import (
     DirichletMulticlassMPNN,
     RegressionMPNN,
     MveRegressionMPNN,
+    EvidentialMPNN,
     SpectralMPNN,
 )
+from .loss import LossFunction, build_loss

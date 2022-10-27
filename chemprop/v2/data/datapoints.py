@@ -165,14 +165,13 @@ class ReactionDatapointMixin:
     mols: list[Chem.Mol] = field(init=False)
 
 
+@dataclass
 class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     """
     Parameters
     ----------
     smis : list[str]
         the SMILES strings of the reactants and products of the reaction
-    mols : list[Chem.Mol]
-        the rdkit molecules of the reactants and products of the reaction
     targets : np.ndarray
         the targets for the molecule with unknown targets indicated by `nan`s
     row : OrderedDict, default=None
@@ -196,6 +195,12 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
+
+    Attributes
+    ----------
+    _all input parameters_
+    mols : list[Chem.Mol]
+        the RDKit molecules of the reactants and products of the reaction
     """
 
     def __post_init__(self, features_generators: Optional[List[str]]):
