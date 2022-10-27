@@ -10,6 +10,7 @@ from .modules import (
 from .models import (
     MPNN,
     ClassificationMPNN,
+    BinaryClassificationMPNN,
     DirichletClassificationMPNN,
     MulticlassMPNN,
     DirichletMulticlassMPNN,

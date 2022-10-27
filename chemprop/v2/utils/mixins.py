@@ -21,3 +21,16 @@ class RegistryMixin:
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "alias"):
             cls.registry[cls.alias] = cls
+
+
+class FactoryMixin:
+    @classmethod
+    def build(cls, alias: str, *args, **kwargs):
+        try:
+            return cls.registry[alias](*args, **kwargs)
+        except KeyError:
+            raise ValueError(f"Invalid class alias! got: {alias}, expected one of: {cls.valid()}")
+    
+    @classmethod
+    def valid(cls) -> set[str]:
+        return set(cls.registry.keys())
