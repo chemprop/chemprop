@@ -8,7 +8,7 @@ from torch import Tensor, nn
 
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
-from chemprop.v2.models.modules.readout import build_readout
+from chemprop.v2.models.modules.readout import ReadoutFactory
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 from chemprop.v2.models.utils import get_activation_function
 
@@ -73,7 +73,7 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
 
         self.dropout = nn.Dropout(dropout)
         self.act = get_activation_function(activation)
-        self.readout = build_readout(aggregation, norm)
+        self.readout = ReadoutFactory.build(aggregation, norm)
 
         self.cached_zero_vector = nn.Parameter(torch.zeros(d_h), requires_grad=False)
 

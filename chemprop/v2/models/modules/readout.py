@@ -5,6 +5,7 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.v2.utils import RegistryMixin
+from chemprop.v2.utils.mixins import FactoryMixin
 
 
 class Readout(ABC, nn.Module, RegistryMixin):
@@ -89,13 +90,5 @@ class SumReadout(Readout):
         return [H.sum(0) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
 
 
-def build_readout(aggregation: str = "mean", norm: float = 100) -> Readout:
-    try:
-        aggr_cls = Readout.registry[aggregation.lower()]
-    except KeyError:
-        raise ValueError(
-            f"Invalid aggregation! got: '{aggregation}'. "
-            f"expected one of {set(Readout.registry.keys())}"
-        )
-
-    return aggr_cls(norm)
+class ReadoutFactory(Readout, FactoryMixin):
+    pass

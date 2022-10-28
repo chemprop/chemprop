@@ -1,3 +1,24 @@
+import inspect
+from typing import Iterable
+
+
+class ReprMixin:
+    def __repr__(self) -> str:
+        sig = inspect.signature(self.__init__)
+
+        keys = sig.parameters.keys()
+        values = self.get_params()
+        defaults = [p.default for p in sig.parameters.values()]
+
+        items = [(k, v) for k, v, d in zip(keys, values, defaults) if v != d]
+        argspec = ", ".join(f"{k}={repr(v)}" for k, v in items)
+
+        return f"{self.__class__.__name__}({argspec})"
+
+    def get_params(self) -> Iterable:
+        return self.__dict__.values()
+
+
 class RegistryMixin:
     """The `RegistryMixin` class automatically registers all subclasses into a class-level
     registry.
@@ -29,8 +50,11 @@ class FactoryMixin:
         try:
             return cls.registry[alias](*args, **kwargs)
         except KeyError:
-            raise ValueError(f"Invalid class alias! got: {alias}, expected one of: {cls.valid()}")
+            raise ValueError(
+                f"Invalid {cls.__name__}! got: '{alias}', expected one of: {cls.choices}"
+            )
     
     @classmethod
-    def valid(cls) -> set[str]:
+    @property
+    def choices(cls) -> set[str]:
         return set(cls.registry.keys())
