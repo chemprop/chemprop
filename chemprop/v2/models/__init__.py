@@ -1,4 +1,3 @@
-from typing import Mapping, Optional
 from .modules import (
     MessagePassingBlock,
     MolecularMessagePassingBlock,
@@ -20,3 +19,4 @@ from .models import (
     SpectralMPNN,
 )
 from .loss import LossFunction, build_loss
+from .metrics import Metric, MetricFactory

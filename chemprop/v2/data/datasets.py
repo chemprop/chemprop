@@ -7,9 +7,8 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.v2.featurizers.reaction import ReactionFeaturizer, ReactionFeaturizerBase
+from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer, ReactionFeaturizer, ReactionFeaturizerBase
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
 

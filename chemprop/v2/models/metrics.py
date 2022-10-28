@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.nn.functional import cross_entropy, binary_cross_entropy_with_logits
 from torchmetrics import functional as F
 
-from chemprop.v2.utils import RegistryMixin
+from chemprop.v2.utils.mixins import RegistryMixin, FactoryMixin
 
 
 class Metric(ABC, RegistryMixin):
@@ -90,14 +90,14 @@ class AUROCMetric(Metric):
     alias = "roc"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return F.auroc(preds[mask], targets[mask])
+        return F.auroc(preds[mask], targets[mask].long())
 
 
 class AUPRCMetric(Metric):
     alias = "prc"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        p, r, _ = F.precision_recall(preds, targets)
+        p, r, _ = F.precision_recall(preds, targets.long())
 
         return F.auc(r, p)
 
@@ -111,21 +111,21 @@ class AccuracyMetric(ThresholdedMetric):
     alias = "accuracy"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return F.accuracy(preds[mask], targets[mask], threshold=self.threshold)
+        return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
 class F1Metric(Metric):
     alias = "f1"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return F.f1_score(preds[mask], targets[mask], threshold=self.threshold)
+        return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
 class BCEMetric(Metric):
     alias = "bce"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
-        return binary_cross_entropy_with_logits(preds[mask], targets[mask])
+        return binary_cross_entropy_with_logits(preds[mask], targets[mask].long())
 
 
 class MCCMetric(ThresholdedMetric):
@@ -175,3 +175,7 @@ class WassersteinMetric(ThresholdedMetric):
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
         return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))[mask].mean()
+
+
+class MetricFactory(Metric, FactoryMixin):
+    pass

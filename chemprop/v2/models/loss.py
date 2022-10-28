@@ -7,10 +7,10 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.utils import RegistryMixin
+from chemprop.v2.utils.mixins import RegistryMixin, ReprMixin
 
 
-class LossFunction(ABC, RegistryMixin):
+class LossFunction(ABC, RegistryMixin, ReprMixin):
     registry = {}
 
     def __init__(self, **kwargs):
@@ -103,8 +103,8 @@ class EvidentialLoss(LossFunction):
 
     alias = "regression-evidential"
 
-    def __init__(self, v_reg: float = 0.2, eps: float = 1e-8, **kwargs):
-        self.v_reg = v_reg
+    def __init__(self, v_kl: float = 0.2, eps: float = 1e-8, **kwargs):
+        self.v_kl = v_kl
         self.eps = eps
 
     def calc(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
@@ -123,7 +123,10 @@ class EvidentialLoss(LossFunction):
 
         L_reg = (2 * v + alpha) * residuals.abs()
 
-        return L_nll + self.v_reg * (L_reg - self.eps)
+        return L_nll + self.v_kl * (L_reg - self.eps)
+
+    def get_params(self) -> list[tuple[str, float]]:
+        return [("v_kl", self.v_kl), ("eps", self.eps)]
 
 
 class BCELoss(LossFunction):
@@ -254,6 +257,9 @@ class DirichletLossBase(LossFunction):
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
+    def get_params(self) -> list[tuple[str, float]]:
+        return [("v_kl", self.v_kl)]
+
 
 class DirichletClassificationLoss(DirichletLossBase):
     alias = "classification-dirichlet"
@@ -280,6 +286,9 @@ class DirichletMulticlassLoss(DirichletLossBase):
 class SpectralLoss(LossFunction):
     def __init__(self, threshold: Optional[float] = None, **kwargs):
         self.threshold = threshold
+
+    def get_params(self) -> list[tuple[str, float]]:
+        return [("threshold", self.threshold)]
 
 
 class SIDSpectralLoss(SpectralLoss):
