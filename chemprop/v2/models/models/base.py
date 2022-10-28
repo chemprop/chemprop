@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from itertools import chain
+import pdb
 from typing import Iterable, Optional, Union
 
 import pytorch_lightning as pl
@@ -9,7 +10,7 @@ from torch import Tensor, nn, optim
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.models.modules import MessagePassingBlock, MolecularInput
 from chemprop.v2.models.loss import LossFunction, build_loss
-from chemprop.v2.models.metrics import Metric
+from chemprop.v2.models.metrics import Metric, MetricFactory
 from chemprop.v2.models.schedulers import NoamLR
 from chemprop.v2.models.utils import get_activation_function
 
@@ -26,6 +27,8 @@ class MPNN(ABC, pl.LightningModule):
     NOTE: the number of targets `s` is *not* related to the number of classes to predict.  It is
     used as a multiplier for the output dimension of the MPNN when the predictions correspond to a
     parameterized distribution, e.g., MVE regression, for which `s` is 2. Typically, this is just 1.
+    
+    
     """
 
     def __init__(
@@ -36,7 +39,7 @@ class MPNN(ABC, pl.LightningModule):
         ffn_num_layers: int = 1,
         dropout: float = 0.0,
         activation: str = "relu",
-        criterion: Optional[Union[str, LossFunction]] = None,
+        loss_fn: Optional[Union[str, LossFunction]] = None,
         metrics: Optional[Iterable[Union[str, Metric]]] = None,
         task_weights: Optional[Tensor] = None,
         warmup_epochs: int = 2,
@@ -59,7 +62,7 @@ class MPNN(ABC, pl.LightningModule):
         )
 
         self.n_tasks = n_tasks
-        self.criterion = criterion
+        self.criterion = loss_fn
         self.metrics = metrics
 
         if task_weights is None:
@@ -95,16 +98,16 @@ class MPNN(ABC, pl.LightningModule):
         return self.__criterion
 
     @criterion.setter
-    def criterion(self, criterion: Optional[Union[str, LossFunction]]):
+    def criterion(self, loss_fn: Optional[Union[str, LossFunction]]):
         """Set the criterion with which to train this MPNN using its string alias or initialized
         `LossFunction` object"""
 
-        if criterion is None:
-            criterion = build_loss(self._DATASET_TYPE, self._DEFAULT_CRITERION)
-        elif isinstance(criterion, str):
-            criterion = build_loss(self._DATASET_TYPE, criterion)
+        if loss_fn is None:
+            loss_fn = build_loss(self._DATASET_TYPE, self._DEFAULT_CRITERION)
+        elif isinstance(loss_fn, str):
+            loss_fn = build_loss(self._DATASET_TYPE, loss_fn)
 
-        self.__criterion = criterion
+        self.__criterion = loss_fn
 
     @property
     def metrics(self) -> Iterable[Metric]:
@@ -119,12 +122,7 @@ class MPNN(ABC, pl.LightningModule):
 
         metrics_ = []
         for m in metrics:
-            try:
-                metrics_.append(Metric.registry[m]() if isinstance(m, str) else m)
-            except KeyError:
-                raise ValueError(
-                    f"Invalid metric! got: {m}. expected one of: {Metric.registry.keys()}"
-                )
+            metrics_.append(MetricFactory.build(m) if isinstance(m, str) else m)
 
         self.__metrics = metrics_
 
@@ -184,42 +182,37 @@ class MPNN(ABC, pl.LightningModule):
         preds = self((bmg, X_vd), X_f=features)
 
         l = self.criterion(
-            preds, targets, mask, weights=weights, lt_targets=lt_targets, gt_targets=gt_targets
+            preds, targets, mask, weights, self.task_weights,
+            lt_targets=lt_targets, gt_targets=gt_targets
         )
 
         self.log("train/loss", l, prog_bar=True)
 
         return l
 
-    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
-        *_, targets, _, lt_targets, gt_targets = batch
-
-        preds, _ = self.predict_step(batch, batch_idx)
-
+    def evaluate_preds(self, preds, targets, lt_targets, gt_targets) -> list[Tensor]:
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        losses = [
+        return [
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
             for metric in self.metrics
         ]
+        
+    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
+        *_, targets, _, lt_targets, gt_targets = batch
+        preds, *_ = self.predict_step(batch, batch_idx)
+
+        losses = self.evaluate_preds(preds, targets, lt_targets, gt_targets)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         *_, targets, _, lt_targets, gt_targets = batch
+        preds, *_ = self.predict_step(batch, batch_idx)
 
-        preds, _ = self.predict_step(batch, batch_idx)
-
-        mask = targets.isfinite()
-        targets = targets.nan_to_num(nan=0.0)
-
-        losses = [
-            metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
-            for metric in self.metrics
-        ]
+        losses = self.evaluate_preds(preds, targets, lt_targets, gt_targets)
         metric2loss = {f"{m.alias}": l for m, l in zip(self.metrics, losses)}
-
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     def predict_step(
