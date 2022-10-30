@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from itertools import chain
-import pdb
 from typing import Iterable, Optional, Union
 
 import pytorch_lightning as pl
@@ -110,7 +109,10 @@ class MPNN(ABC, pl.LightningModule):
         self.__criterion = loss_fn
 
     @property
-    def metrics(self) -> Iterable[Metric]:
+    def metrics(self) -> list[Metric]:
+        """The metrics this model will use to evaluate predictions during valiation and testing. By
+        convention, the 0th metric will _also_ be logged as 'val_loss' in addition to its true
+        alias"""
         return self.__metrics
 
     @metrics.setter
@@ -205,7 +207,9 @@ class MPNN(ABC, pl.LightningModule):
 
         losses = self.evaluate_preds(preds, targets, lt_targets, gt_targets)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
-        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
+
+        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets))
+        self.log("val_loss", losses[0], on_epoch=True, batch_size=len(targets), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         *_, targets, _, lt_targets, gt_targets = batch

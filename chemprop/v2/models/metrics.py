@@ -20,19 +20,43 @@ class Metric(ABC, RegistryMixin):
     def __init__(self, **kwargs):
         pass
 
+    @property
+    @abstractmethod
+    def minimize(cls) -> bool:
+        "whether this metric should be minimized"
+
     @abstractmethod
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         pass
 
 
-class MAEMetric(Metric):
+class MinimizedMetric(Metric):
+    @classmethod
+    @property
+    def minimize(cls) -> bool:
+        return True
+
+
+class MaximizedMetric(Metric):
+    @classmethod
+    @property
+    def minimize(cls) -> bool:
+        return False
+
+
+class ThresholdedMixin:
+    def __init__(self, threshold: float = 0.5, **kwargs):
+        self.threshold = threshold
+
+
+class MAEMetric(MinimizedMetric):
     alias = "mae"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return (preds - targets)[mask].abs().mean()
 
 
-class MSEMetric(Metric):
+class MSEMetric(MinimizedMetric):
     alias = "mse"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -79,21 +103,21 @@ class BoundedRMSEMetric(BoundedMetric, RMSEMetric):
     alias = "bounded-mae"
 
 
-class R2Metric(Metric):
+class R2Metric(MaximizedMetric):
     alias = "r2"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.r2_score(preds[mask], targets[mask])
 
 
-class AUROCMetric(Metric):
+class AUROCMetric(MaximizedMetric):
     alias = "roc"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long())
 
 
-class AUPRCMetric(Metric):
+class AUPRCMetric(MaximizedMetric):
     alias = "prc"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -102,37 +126,32 @@ class AUPRCMetric(Metric):
         return F.auc(r, p)
 
 
-class ThresholdedMetric(Metric):
-    def __init__(self, threshold: float = 0.5, **kwargs):
-        self.threshold = threshold
-
-
-class AccuracyMetric(ThresholdedMetric):
+class AccuracyMetric(MaximizedMetric, ThresholdedMixin):
     alias = "accuracy"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
-class F1Metric(Metric):
+class F1Metric(MaximizedMetric):
     alias = "f1"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
-class BCEMetric(Metric):
+class BCEMetric(MaximizedMetric):
     alias = "bce"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return binary_cross_entropy_with_logits(preds[mask], targets[mask].long())
 
 
-class MCCMetric(ThresholdedMetric):
+class MCCMetric(MaximizedMetric):
     alias = "mcc"
 
     def __init__(self, threshold: float = 0.5, n_classes: int = 2, **kwargs) -> Tensor:
-        super().__init__(threshold, **kwargs)
+        self.threshold = threshold
         self.n_classes = n_classes
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -141,14 +160,14 @@ class MCCMetric(ThresholdedMetric):
         )
 
 
-class CrossEntropyMetric(Metric):
+class CrossEntropyMetric(MinimizedMetric):
     alias = "ce"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return cross_entropy(preds[mask], targets[mask].long())
 
 
-class SIDMetric(ThresholdedMetric):
+class SIDMetric(MinimizedMetric, ThresholdedMixin):
     alias = "sid"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
@@ -165,7 +184,7 @@ class SIDMetric(ThresholdedMetric):
         )[mask].mean()
 
 
-class WassersteinMetric(ThresholdedMetric):
+class WassersteinMetric(MinimizedMetric, ThresholdedMixin):
     alias = "wasserstein"
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
