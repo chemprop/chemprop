@@ -46,11 +46,11 @@ class MolGraph(NamedTuple):
 
 @dataclass
 class BatchMolGraph:
-    """A `BatchMolGraph` is a singular `MolGraph` composed of a batch of individual `MolGraphs`.
+    """A `BatchMolGraph` represents a batch of individual `MolGraph`s.
 
     It has all the attributes of a `MolGraph` with the addition of `a_scope` and `b_scope`. These
-    define the atom and bond-scope of each original `MolGraph` in the batched `MolGraph`,
-    respectively. This class is intended for use with data loading, so it uses `Tensors`s to
+    define the respective atom- and bond-scope of each individual `MolGraph` within the
+    `BatchMolGraph`. This class is intended for use with data loading, so it uses `Tensors`s to
     store data
 
     NOTE: the `BatchMolGraph` does not currently possess a `b2b` attribute, so it is not a strict
@@ -76,14 +76,22 @@ class BatchMolGraph:
     n_atoms: int = field(init=False)
     n_bonds: int = field(init=False)
     X_v: Tensor = field(init=False)
+    """the atom feature matrix"""
     X_e: Tensor = field(init=False)
+    """the bond feature matrix"""
     a2b: Tensor = field(init=False)
+    """a mapping from atom index to indices of incoming bonds"""
     b2a: Tensor = field(init=False)
+    """a mapping from bond index to index of the originating atom"""
     b2revb: Tensor = field(init=False)
+    """a mapping from bond index to the index of the reverse bond"""
     a2a: Tensor = field(init=False)
+    """a mapping from atom index to the indices of connected atoms"""
     # b2b: Optional[np.ndarray] = field(init=False)
     a_scope: list[tuple[int, int]] = field(init=False)
+    """a list of tuples containing `(start_index, n_atoms)` for each molecule in the batch"""
     b_scope: list[tuple[int, int]] = field(init=False)
+    """a list of tuples containing `(start_index, n_bonds)` for each molecule in the batch"""
 
     def __post_init__(self, mgs: Iterable[MolGraph]):
         self.n_atoms = 1
