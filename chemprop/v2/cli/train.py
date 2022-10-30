@@ -1,9 +1,13 @@
-from argparse import ArgumentError, ArgumentParser
+from argparse import ArgumentError, Namespace
+import logging
 from pathlib import Path
-import pdb
+import sys
 import warnings
 
+from configargparse import ArgumentParser
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
@@ -12,16 +16,30 @@ from chemprop.v2.models import MetricFactory, modules
 from chemprop.v2.featurizers.utils import ReactionMode
 from chemprop.v2.models.loss import LossFunction, build_loss
 
-from chemprop.v2.cli import common
+# from chemprop.v2.cli import common
 from chemprop.v2.cli.utils import (
     build_data_from_files,
     get_mpnn_cls,
     make_dataset,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def add_args(parser: ArgumentParser) -> ArgumentParser:
-    parser.add_argument("-o", "--output-dir", type=Path)
+    parser.add_argument(
+        "-i",
+        "--input",
+        "--data-path",
+        help="path to an input CSV containing SMILES and associated target values",
+    )
+    parser.add_argument("-o", "--output-dir")
+    parser.add_argument(
+        "--logdir",
+        nargs="?",
+        const="chemprop_logs",
+        help="runs will be logged to {logdir}/chemprop_{time}.log. If unspecified, will use 'output_dir'. If only the flag is given (i.e., '--logdir'), then will write to 'chemprop_logs'"
+    )
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
@@ -77,13 +95,6 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
-        "-i",
-        "--input",
-        "--data-path",
-        type=Path,
-        help="path to an input CSV containing SMILES and associated target values",
-    )
-    data_args.add_argument(
         "-d",
         "--dataset-type",
         default="regression",
@@ -116,10 +127,9 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         default=list(),
         help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles-columns` specified",
     )
-    data_args.add_argument("--phase-mask-path", type=Path)
+    data_args.add_argument("--phase-mask-path")
     data_args.add_argument(
         "--data-weights-path",
-        type=Path,
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training.",
     )
     data_args.add_argument("--val-path")
@@ -137,17 +147,14 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument("--rxn-mode", choices=ReactionMode.choices, default="reac_diff")
     featurization_args.add_argument(
         "--atom-features-path",
-        type=Path,
         help="the path to a .npy file containing a _list_ of `N` 2D arrays, where the `i`th array contains the atom features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom features of the `j`th atom in the molecule.",
     )
     featurization_args.add_argument(
         "--bond-features-path",
-        type=Path,
         help="the path to a .npy file containing a _list_ of `N` arrays, where the `i`th array contains the bond features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the bond features of the `j`th bond in the molecule.",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
-        type=Path,
         help="the path to a .npy file containing a _list_ of `N` arrays, where the `i`th array contains the atom descriptors for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom descriptors of the `j`th atom in the molecule.",
     )
     featurization_args.add_argument("--features-generators", nargs="+")
@@ -169,7 +176,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument("-T", "--threshold", type=float, help="spectral threshold limit")
     train_args.add_argument(
-        "--metrics", nargs="+", choices=MetricFactory.choices, help="evaluation metrics"
+        "--metrics", nargs="+", choices=MetricFactory.choices, help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing"
     )
     train_args.add_argument("-tw", "--task-weights", nargs="+", type=float, help="the weight to apply to an individual task in the overall loss")
     train_args.add_argument("--warmup-epochs", type=int, default=2)
@@ -204,10 +211,24 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
+def process_args(args: Namespace):
+    args.input = Path(args.input)
+    args.output_dir = Path(args.output_dir or Path.cwd() / args.input.stem)
+    args.logdir = Path(args.logdir or args.output_dir / "logs")
+
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+    args.logdir.mkdir(exist_ok=True, parents=True)
+
+
+def validate_args(args):
+    pass
+
+
 def main(args):
     bond_messages = not args.atom_messages
     n_components = len(args.smiles_columns)
     n_tasks = len(args.target_columns)
+    bounded = args.loss_function is not None and "bounded" in args.loss_function
 
     if n_components > 1:
         warnings.warn(
@@ -218,7 +239,7 @@ def main(args):
         no_header_row=args.no_header_row,
         smiles_columns=args.smiles_columns,
         target_columns=args.target_columns,
-        bounded="bounded" in args.loss_function,
+        bounded=bounded,
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
@@ -264,7 +285,7 @@ def main(args):
             train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
     else:
         raise ArgumentError("'val_path' must be specified is 'test_path' is provided!")
-        
+    logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
     val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
@@ -272,11 +293,17 @@ def main(args):
     if args.dataset_type == "regression":
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
+        logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
     else:
         scaler = None
 
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.n_cpu)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.n_cpu, shuffle=False)
+    if len(test_data) > 0:
+        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+    else:
+        test_loader = None
 
     mp_kwargs = dict(
         d_h=args.message_hidden_dim,
@@ -288,15 +315,22 @@ def main(args):
         aggregation=args.aggregation,
         norm=args.norm,
     )
-    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
-    criterion = build_loss(
-        args.dataset_type,
-        args.loss_function,
-        v_kl=args.v_kl,
-        threshold=args.threshold,
-        eps=args.eps,
-    )
     mp_block = modules.molecule_block(*train_dset.featurizer.shape, bond_messages, **mp_kwargs)
+
+    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
+
+    if args.loss_function is None:
+        logger.info(f"Using default loss: {mpnn_cls._DEFAULT_CRITERION}")
+        criterion = mpnn_cls._DEFAULT_CRITERION
+    else:
+        criterion = build_loss(
+            args.dataset_type,
+            args.loss_function,
+            v_kl=args.v_kl,
+            threshold=args.threshold,
+            eps=args.eps,
+        )
+
     extra_mpnn_kwargs = dict()
     if args.dataset_type == "multiclass":
         extra_mpnn_kwargs["n_classes"] = args.multiclass_num_classes
@@ -320,33 +354,47 @@ def main(args):
         args.final_lr,
         **extra_mpnn_kwargs,
     )
+    logger.info(model)
 
-    devices = args.n_gpu if torch.cuda.is_available() else 1
+    monitor_mode = "min" if model.metrics[0].minimize else "max"
+    logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
-    print(model)
+    tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
+    checkpointing = ModelCheckpoint(
+        args.output_dir / "chkpts",
+        '{epoch}-{val_loss:.2f}',
+        "val_loss",
+        mode=monitor_mode,
+        save_last=True,
+    )
+    early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
+    
     trainer = pl.Trainer(
-        # logger=False,
-        enable_checkpointing=False,
+        logger=tb_logger,
         enable_progress_bar=True,
         accelerator="auto",
-        devices=devices,
+        devices=args.n_gpu if torch.cuda.is_available() else 1,
         max_epochs=args.epochs,
+        callbacks=[checkpointing, early_stopping]
     )
     trainer.fit(model, train_loader, val_loader)
-
-    if len(test_data) > 0:
-        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+    
+    if test_dset is not None:
         if args.dataset_type == "regression":
             model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+        results = trainer.test(model, test_loader)[0]
+        logger.info(f"Test results: {results}")
 
-        results = trainer.test(model, test_loader)
-        print(model.loc, model.scale)
-
+    p_model = args.output / "model.pt"
+    torch.save(model.state_dict(), p_model)
+    logger.info(f"model state dict saved to '{p_model}'")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     add_args(parser)
 
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
+    process_args(args)
+
     main(args)

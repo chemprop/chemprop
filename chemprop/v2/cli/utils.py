@@ -1,17 +1,16 @@
 import csv
+import logging
 from os import PathLike
-import pdb
 from typing import Mapping, Optional, Sequence, Type
 
 import numpy as np
-from sklearn.model_selection import train_test_split
 
-from chemprop.v2.data import MoleculeDatapoint
-from chemprop.v2.data.datapoints import DatapointBase, ReactionDatapoint
-from chemprop.v2.data.datasets import MolGraphDatasetBase, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers import ReactionFeaturizer
-from chemprop.v2.featurizers.molecule import MoleculeFeaturizer
 from chemprop.v2 import models
+from chemprop.v2.data.datapoints import MoleculeDatapoint, DatapointBase, ReactionDatapoint
+from chemprop.v2.data.datasets import MolGraphDatasetBase, MoleculeDataset, ReactionDataset
+from chemprop.v2.featurizers import ReactionFeaturizer, MoleculeFeaturizer
+
+logger = logging.getLogger(__name__)
 
 
 def optional_float(x: str) -> float:
@@ -38,18 +37,23 @@ def parse_data_csv(
     bounded: bool = False,
 ):
     smiles_cols = smiles_cols or [0]
-    target_cols = target_cols or [1]
 
     with open(path) as fid:
         reader = csv.reader(fid)
 
         if not no_header_row:
             header = next(reader)
-            smiles_names = [header[i] for i in smiles_cols]
+            if target_cols is None:
+                target_cols = [i for i in range(header) if i not in smiles_cols]
+            # smiles_names = [header[i] for i in smiles_cols]
             task_names = [header[i] for i in target_cols]
+            logger.info(f"Parsed tasks: {task_names}")
         else:
-            smiles_names = [f"smiles_{i}" for i in smiles_cols]
+            target_cols = target_cols or [1]
             task_names = [f"task_{i}" for i in target_cols]
+            # smiles_names = [f"smiles_{i}" for i in smiles_cols]
+
+        logger.info(f"Parsed {len(task_names)} targets from {path}")
 
         smiss = []
         raw_targetss = []
@@ -93,6 +97,9 @@ def parse_data_csv(
             )
 
         targetss = np.array(targetss, float)
+        
+    logger.debug(f"{targetss.shape[0]} molecules | {targetss.shape[1]} tasks")
+    logger.debug(f"{np.isfinite(targetss).sum()}/{targetss.size} valid targets")
 
     return smiss, targetss, gt_targetss, lt_targetss
 
@@ -118,7 +125,6 @@ def make_datapoints(
     gt_targetss = [None] * len(smis) if gt_targetss is None else gt_targetss
     lt_targetss = [None] * len(smis) if lt_targetss is None else lt_targetss
     featuress = [None] * len(smis) if featuress is None else featuress
-        
 
     if reaction:
         rxns = [smi.split(">") for smi in smis]
