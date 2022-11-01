@@ -1,3 +1,4 @@
+![ChemProp Logo](docs/source/_static/images/chemprop_logo.svg)
 # Molecular Property Prediction
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)
