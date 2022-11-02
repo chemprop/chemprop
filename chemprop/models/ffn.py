@@ -262,19 +262,20 @@ class FFNAtten(nn.Module):
                 if bond_types is not None:
                     output = output + bond_types.reshape(-1, 1)
 
-            weights = self.weights_readout(output_hidden)
+            u_a = self.weights_readout(output_hidden)
             constrained_output = []
             for i, (start, size) in enumerate(scope):
                 if size == 0:
                     continue
                 else:
-                    cur_weights = weights[start:start+size]
-                    cur_output = output[start:start+size]
+                    u_ai = u_a[start:start+size]
+                    qi = output[start:start+size]
+                    Q = constraints[i]
 
-                    cur_weights = F.softmax(cur_weights, dim=0).flatten()
+                    wi = F.softmax(u_ai, dim=0).flatten()
 
-                    cur_output[:, 0] = cur_output[:, 0] + cur_weights * (constraints[i] - cur_output[:, 0].sum())
-                    constrained_output.append(cur_output)
+                    qi[:, 0] = qi[:, 0] + wi * (Q - qi[:, 0].sum())
+                    constrained_output.append(qi)
 
             output = torch.cat(constrained_output, dim=0)
         else:
