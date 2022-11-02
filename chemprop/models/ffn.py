@@ -274,11 +274,9 @@ class FFNAtten(nn.Module):
                     cur_weights = weights.narrow(0, start, size)
                     cur_output = output.narrow(0, start, size)
 
-                    cur_weights = torch.nn.Softmax(dim=0)(cur_weights).reshape(-1,)
+                    cur_weights = F.softmax(cur_weights, dim=0).flatten()
 
-                    cur_output_sum = cur_output[:, 0].sum()
-
-                    cur_output[:, 0] = cur_output[:, 0] + cur_weights * (constraints[i] - cur_output_sum)
+                    cur_output[:, 0] = cur_output[:, 0] + cur_weights * (constraints[i] - cur_output[:, 0].sum())
                     constrained_output.append(cur_output)
 
             output = torch.cat(constrained_output, dim=0)
@@ -351,5 +349,4 @@ def build_ffn(
         spectra_activation = nn.Softplus() if spectra_activation == "softplus" else nn_exp()
         layers.append(spectra_activation)
 
-    ffn = nn.Sequential(*layers)
-    return ffn
+    return nn.Sequential(*layers)
