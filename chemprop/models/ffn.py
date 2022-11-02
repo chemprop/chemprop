@@ -7,8 +7,7 @@ import re
 
 
 class MultiReadout(nn.Module):
-    """A fake list of FFNs for reading out as suggested in
-    https://discuss.pytorch.org/t/list-of-nn-module-in-a-nn-module/219/3"""
+    """A :class:`MultiReadout` contains a list of FFN for each atom/bond targets prediction."""
 
     def __init__(
         self,
@@ -69,8 +68,6 @@ class MultiReadout(nn.Module):
             self.atom_ffn_base = nn.Identity()
             self.bond_ffn_base = nn.Identity()
 
-        ind = 0
-
         ffn_list = []
         for constraint in atom_constraints:
             ffn_list.append(
@@ -88,7 +85,6 @@ class MultiReadout(nn.Module):
                     weights_ffn_num_layers=weights_ffn_num_layers,
                 )
             )
-            ind += 1
 
         for constraint in bond_constraints:
             ffn_list.append(
@@ -106,16 +102,15 @@ class MultiReadout(nn.Module):
                     weights_ffn_num_layers=weights_ffn_num_layers,
                 )
             )
-            ind += 1
 
         self.ffn_list = nn.ModuleList(ffn_list)
 
     def forward(
         self,
-        input: Tuple[torch.tensor, List, torch.tensor, List, torch.tensor],
-        constraints_batch: List[torch.tensor],
-        bond_types_batch: List[torch.FloatTensor],
-    ) -> List[torch.tensor]:
+        input: Tuple[torch.Tensor, List, torch.Tensor, List, torch.Tensor],
+        constraints_batch: List[torch.Tensor],
+        bond_types_batch: List[torch.Tensor],
+    ) -> List[torch.Tensor]:
         """
         Runs the :class:`MultiReadout` on input.
         :param input: A tuple of atomic and bond information of each molecule.
@@ -130,7 +125,7 @@ class FFNAtten(nn.Module):
     """
     A :class:`FFNAtten` is a multiple feed forward neural networks (NN) to predict
     the atom/bond descriptors. For constrained descriptors, an attention-based
-    constraint is applied. This metthod is from `Regio-selectivity prediction with a
+    constraint is applied. This method is from `Regio-selectivity prediction with a
     machinelearned reaction representation and on-the-fly quantum mechanical descriptors
     <https://pubs.rsc.org/en/content/articlelanding/2021/sc/d0sc04823b>`_, section 2.2.
     """
@@ -230,10 +225,10 @@ class FFNAtten(nn.Module):
 
     def forward(
         self,
-        input: Tuple[torch.tensor, List, torch.tensor, List, torch.tensor],
-        constraints: torch.tensor,
-        bond_types: torch.tensor,
-    ) -> torch.tensor:
+        input: Tuple[torch.Tensor, List, torch.Tensor, List, torch.Tensor],
+        constraints: torch.Tensor,
+        bond_types: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Runs the :class:`FFNAtten` on input.
         :param input: A tuple of atom and bond informations of each molecule.
