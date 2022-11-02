@@ -268,8 +268,8 @@ class FFNAtten(nn.Module):
                 if size == 0:
                     continue
                 else:
-                    cur_weights = weights.narrow(0, start, size)
-                    cur_output = output.narrow(0, start, size)
+                    cur_weights = weights[start:start+size]
+                    cur_output = output[start:start+size]
 
                     cur_weights = F.softmax(cur_weights, dim=0).flatten()
 
