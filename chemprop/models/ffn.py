@@ -311,7 +311,7 @@ def build_ffn(
     activation: nn.Module,
     dataset_type: str = None,
     spectra_activation: str = None,
-):
+) -> nn.Sequential:
     """
     Returns an `nn.Sequential` object of FFN layers.
 
