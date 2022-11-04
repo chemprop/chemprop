@@ -3,7 +3,8 @@ from typing import List, Union
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
+from torch.nn.parameter import Parameter
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -84,20 +85,31 @@ def get_activation_function(activation: str) -> nn.Module:
     :param activation: The name of the activation function.
     :return: The activation function module.
     """
-    if activation == 'ReLU':
+    activation_ = activation.upper()
+    if activation_ == 'RELU':
         return nn.ReLU()
-    elif activation == 'LeakyReLU':
+    if activation_ == 'LEAKYRELU':
         return nn.LeakyReLU(0.1)
-    elif activation == 'PReLU':
+    if activation_ == 'PRELU':
         return nn.PReLU()
-    elif activation == 'tanh':
+    if activation_ == 'TANH':
         return nn.Tanh()
-    elif activation == 'SELU':
+    if activation_ == 'SELU':
         return nn.SELU()
-    elif activation == 'ELU':
+    if activation_ == 'ELU':
         return nn.ELU()
+
+    raise ValueError(
+        f'Invalid activation! got: "{activation}". '
+        f'expected one of: ("relu", "leakyrelu", "prelu", "tanh", "selu", "elu")'
+    )
+
+
+def weight_init(m: nn.Module):
+    if m.dim() == 1:
+        nn.init.constant_(m, 0)
     else:
-        raise ValueError(f'Activation "{activation}" not supported.')
+        nn.init.xavier_normal_(m)
 
 
 def initialize_weights(model: nn.Module) -> None:
