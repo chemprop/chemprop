@@ -1,0 +1,34 @@
+name: publish
+
+on:
+  push:
+    tags:
+      - v**
+
+jobs:
+  publish:
+    name: build and publish to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      
+      - name: Set up python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade build
+
+      - name: build package
+        run: python3 -m build
+
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@v1.5.0
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

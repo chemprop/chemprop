@@ -168,3 +168,4 @@ cython_debug/
 *.sqlite3
 *.yaml
 *.tfevents.*
+chemprop/_version.py
