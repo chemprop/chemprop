@@ -4,7 +4,7 @@ from chemprop.nn_utils import get_activation_function
 from chemprop.models.v2.encoders import MPNEncoder
 
 
-class MoleculeModel(nn.Module):
+class MPNN(nn.Module):
     def __init__(
         self,
         encoder: MPNEncoder,
@@ -22,8 +22,8 @@ class MoleculeModel(nn.Module):
             encoder.output_dim, num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
         )
 
+    @staticmethod
     def build_ffn(
-        self,
         d_i: int,
         d_o: int,
         d_h: int = 300,
@@ -55,7 +55,6 @@ class MoleculeModel(nn.Module):
     def forward(self, *args) -> Tensor:
         """Generate predictions for the input batch.
 
-        NOTE: the input signature to this function is the same as the input `MoleculeModel`'s
-        `forward()` function
+        NOTE: the input signature to this function matches the underlying `encoder.forward()`
         """
         return self.ffn(self.encoder(*args))

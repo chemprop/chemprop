@@ -2,14 +2,14 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.models.v2.encoders.base import MPNEncoder
-from chemprop.models.v2.models.base import MoleculeModel
+from chemprop.models.v2.models.base import MPNN
 
 
-class RegressionMoleculeModel(MoleculeModel):
-    """The RegressionMoleculeModel is just an alias for a base MoleculeModel"""
+class RegressionMPNN(MPNN):
+    """The RegressionMoleculeModel is just an alias for a base MPNN"""
 
 
-class MveRegressionMoleculeModel(RegressionMoleculeModel):
+class MveRegressionMPNN(RegressionMPNN):
     def __init__(
         self,
         encoder: MPNEncoder,
@@ -33,7 +33,7 @@ class MveRegressionMoleculeModel(RegressionMoleculeModel):
         return torch.cat((Y_mean, Y_var), 1)
 
 
-class EvidentialMoleculeModel(RegressionMoleculeModel):
+class EvidentialMPNN(RegressionMPNN):
     def __init__(
         self,
         encoder: MPNEncoder,

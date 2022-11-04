@@ -6,8 +6,12 @@ from typing import Iterable
 import torch
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MPNEncoder, MoleculeEncoder
-from chemprop.models.v2.encoders.molecule import build_molecule_encoder
+from chemprop.models.v2.encoders.base import MPNEncoder
+from chemprop.models.v2.encoders.molecule import (
+    MoleculeEncoder,
+    MoleculeEncoderInput,
+    molecule_encoder,
+)
 
 
 class ReactionEncoder(MPNEncoder):
@@ -37,18 +41,16 @@ class ReactionEncoder(MPNEncoder):
         else:
             self.encoders = nn.ModuleList(encoders)
 
-        self.__output_dim = sum(encoder.output_dim for encoder in self.encoders)
-
     @property
     def output_dim(self) -> int:
-        self.__output_dim
+        return sum(encoder.output_dim for encoder in self.encoders)
 
-    def forward(self, reactant_batches: Iterable[Iterable]) -> Tensor:
+    def forward(self, reactant_batches: Iterable[MoleculeEncoderInput]) -> Tensor:
         """Encode the reactant_batch
 
         Parameters
         ----------
-        reactant_batch : Iterable[Iterable]
+        reactant_batch : Iterable[MoleculeEncoderInput]
             an Iterable of length `n` containing inputs to a MoleculeEncoder, where `n` is the
             number of molecules in each reaction (== `self.n_mols`). I.e., to encode a batch of
             3-component reactions, the 0th entry of `reactant_batches` will be the batched inputs of
@@ -57,7 +59,7 @@ class ReactionEncoder(MPNEncoder):
             reactions (i.e., a batch of molecules), the only difference between a ReactionEncoder
             and a MoleculeEncoder would be the call signature:
 
-            >>> inputs = X_v, X_e, a2b, ..., X_v_d
+            >>> inputs: tuple = X_v, X_e, a2b, ..., X_vd
             >>> mol_enc: MoleculeEncoder
             >>> rxn_enc: ReactionEncoder
             >>> H_mol = mol_enc(*inputs)
@@ -69,7 +71,7 @@ class ReactionEncoder(MPNEncoder):
         -------
         Tensor
             a Tensor of shape `b x d_o` containing the reaction encodings, where `b` is the number
-            of reactions in the batch, and `d_o` is the `output_dim` of the encoder
+            of reactions in the batch, and `d_o` is the `output_dim` of this encoder
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
         Hs = [encoder(*inputs) for encoder, inputs in zip(self.encoders, reactant_batches)]
@@ -82,8 +84,17 @@ class ReactionEncoder(MPNEncoder):
         cls, n_mols: int, shared: bool = False, *args, **kwargs
     ) -> ReactionEncoder:
         if not shared:
-            encoders = [build_molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
+            encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
         else:
-            encoders = [build_molecule_encoder(*args, **kwargs)]
+            encoders = [molecule_encoder(*args, **kwargs)]
 
         return cls(encoders, n_mols, shared)
+
+
+def reaction_encoder(n_mols: int, shared: bool = False, *args, **kwargs):
+    if not shared:
+        encoders = [molecule_encoder(*args, **kwargs) for _ in range(n_mols)]
+    else:
+        encoders = [molecule_encoder(*args, **kwargs)]
+
+    return ReactionEncoder(encoders, n_mols, shared)

@@ -1,5 +1,5 @@
 import chemprop.data
-import chemprop.features
+import chemprop.featurizers
 import chemprop.models
 import chemprop.train
 import chemprop.uncertainty
@@ -17,6 +17,5 @@ import chemprop.sklearn_train
 import chemprop.spectra_utils
 import chemprop.hyperopt_utils
 
-# from chemprop._version import __version__
 
 __version__ = "1.5.1"

@@ -1,10 +1,10 @@
 from torch import Tensor, nn
 
 from chemprop.models.v2.encoders.base import MPNEncoder
-from chemprop.models.v2.models.base import MoleculeModel
+from chemprop.models.v2.models.base import MPNN
 
 
-class ClassificationMoleculeModel(MoleculeModel):
+class ClassificationMPNN(MPNN):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -16,7 +16,7 @@ class ClassificationMoleculeModel(MoleculeModel):
         return Y
 
 
-class DirichletClassificationModel(ClassificationMoleculeModel):
+class DirichletClassificationMPNN(ClassificationMPNN):
     def __init__(
         self,
         encoder: MPNEncoder,
