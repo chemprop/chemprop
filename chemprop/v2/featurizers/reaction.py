@@ -1,56 +1,31 @@
 from __future__ import annotations
 
-from enum import auto
 from typing import Iterable, Optional, Sequence, Union
 import warnings
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
+from chemprop.v2.featurizers.utils import ReactionMode
 
+from chemprop.v2.featurizers.atom import AtomFeaturizer
+from chemprop.v2.featurizers.bond import BondFeaturizerBase
+from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.base import MolGraphFeaturizer
-from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
-from chemprop.v2.utils import AutoName
+from chemprop.v2.featurizers.base import ReactionFeaturizerBase
 
 
-class ReactionMode(AutoName):
-    """The manner in which a reaction should be featurized into a `MolGraph`
+class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
+    """Featurize reactions using the condensed reaction graph method utilized in [1]_
 
-    REAC_PROD
-        concatenate the reactant features with the product features.
-    REAC_PROD_BALANCE
-        concatenate the reactant features with the products feature and balances imbalanced
-        reactions.
-    REAC_DIFF
-        concatenates the reactant features with the difference in features between reactants and
-        products
-    REAC_DIFF_BALANCE
-        concatenates the reactant features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    PROD_DIFF
-        concatenates the product features with the difference in features between reactants and
-        products
-    PROD_DIFF_BALANCE
-        concatenates the product features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    """
-
-    REAC_PROD = auto()
-    REAC_PROD_BALANCE = auto()
-    REAC_DIFF = auto()
-    REAC_DIFF_BALANCE = auto()
-    PROD_DIFF = auto()
-    PROD_DIFF_BALANCE = auto()
-
-
-class ReactionFeaturizer(MolGraphFeaturizer):
-    """A `ReactionFeaturizer` featurizes reactions into `MolGraph`s
+    NOTE: This class *does not* accept a `BaseAtomFeaturizer` instance. This is because it requries
+    the `featurize_num_only` method, which is only implemented in the concrete `AtomFeaturizer`
+    class
 
     Attributes
     ----------
     atom_featurizer : AtomFeaturizer
-    bond_featurizer : BondFeaturizer
+    bond_featurizer : BondFeaturizerBase
     atom_fdim : int
         the dimension of atom feature represenatations in this featurizer
     bond_fdim : int
@@ -62,19 +37,25 @@ class ReactionFeaturizer(MolGraphFeaturizer):
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
-    bond_featurizer : BondFeaturizer, default=BondFeaturizer()
+    bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
     bond_messages : bool, default=True
         whether to prepare the `MolGraph`s for use with bond-based message-passing
     mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
         the mode by which to featurize the reaction as either the string code or enum value
+
+    References
+    ----------
+    .. [1] Heid, E.; Green, W.H. "Machine Learning of Reaction Properties via Learned
+    Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62, 2101-2110.
+    https://doi.org/10.1021/acs.jcim.1c00975
     """
 
     def __init__(
         self,
         atom_featurizer: Optional[AtomFeaturizer] = None,
-        bond_featurizer: Optional[BondFeaturizer] = None,
+        bond_featurizer: Optional[BondFeaturizerBase] = None,
         bond_messages: bool = True,
         mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
     ):
@@ -83,43 +64,23 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         self.mode = mode
         self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
         self.bond_fdim *= 2
-
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
     @property
     def mode(self) -> ReactionMode:
         return self.__mode
-    
+
     @mode.setter
     def mode(self, m: Union[str, ReactionMode]):
         self.__mode = ReactionMode.get(m)
-        
+
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
     ) -> MolGraph:
-        """Featurize the input reaction into a molecular graph
-
-        Parameters
-        ----------
-        reaction : tuple[Chem.Mol, Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-            1st element is the product
-        atom_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-        bond_features_extra : Optional[np.ndarray], default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the reaction
-        """
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
@@ -262,7 +223,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
             if a1 in ri2pj and a2 in ri2pj:  # Both atoms in both reactant and product
                 b_prod = pdt.GetBondBetweenAtoms(ri2pj[a1], ri2pj[a2])
-            else:   # One or both atoms only in reactant
+            else:  # One or both atoms only in reactant
                 if self.mode in [
                     ReactionMode.REAC_PROD_BALANCE,
                     ReactionMode.REAC_DIFF_BALANCE,

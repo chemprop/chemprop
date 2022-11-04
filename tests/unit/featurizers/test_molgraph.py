@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.v2.featurizers import MolGraphFeaturizer, MoleculeFeaturizer, MolGraph, AtomFeaturizer
+from chemprop.v2.featurizers import MolGraphFeaturizerBase, MoleculeFeaturizer, MolGraph, AtomFeaturizer
 
 
 @pytest.fixture(params=[
@@ -62,7 +62,7 @@ def mg(mol, mol_featurizer):
 
 def test_abc():
     with pytest.raises(TypeError):
-        MolGraphFeaturizer()
+        MolGraphFeaturizerBase()
     
 
 def test_atom_fdim(extra):

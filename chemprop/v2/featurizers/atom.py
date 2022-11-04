@@ -1,13 +1,42 @@
+from abc import ABC, abstractmethod
 from typing import Optional, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.v2.featurizers.multihot.base import MultiHotFeaturizer
+from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
-class AtomFeaturizer(MultiHotFeaturizer):
-    """An AtomFeaturizer calculates feature vectors of RDKit atoms.
+class AtomFeaturizerBase(ABC):
+    """An `AtomFeaturizerBase` calculates feature vectors of RDKit atoms."""
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """the length of an atomic feature vector"""
+
+    @abstractmethod
+    def __call__(self, a: Atom) -> np.ndarray:
+        """featurize the atom `a`"""
+
+
+class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
+    """An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
+
+    The featurizations produced by this featurizer have the following (general) signature:
+
+    | slice   | subfeature      | unknown pad? |
+    | ------- | --------------- | ------------ |
+    | 0-101   | atomic number   | Y            |
+    | 101-108 | degree          | Y            |
+    | 108-114 | formal charge   | Y            |
+    | 114-119 | chiral tag      | Y            |
+    | 119-125 | # Hs            | Y            |
+    | 125-131 | hybridization   | Y            |
+    | 131-132 | aromatic?       | N            |
+    | 132-133 | mass            | N            |
+
+    NOTE: the above signature only applies for the default arguments, as the each slice (save for
+    the final two) can increase in size depending on the input arguments.
 
     Parameters
     ----------
@@ -34,7 +63,6 @@ class AtomFeaturizer(MultiHotFeaturizer):
         num_Hs: Optional[Sequence[int]] = None,
         hybridizations: Optional[Sequence[HybridizationType]] = None,
     ):
-
         self.max_atomic_num = max_atomic_num
         self.atomic_nums = range(max_atomic_num)
         self.degrees = degrees or range(6)
@@ -49,7 +77,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
             HybridizationType.SP3D2,
         ]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return (
             len(self.atomic_nums)
             + 1
@@ -63,7 +91,8 @@ class AtomFeaturizer(MultiHotFeaturizer):
             + 1
             + len(self.hybridizations)
             + 1
-        ) + 2
+            + 2
+        )
 
     @property
     def choicess(self) -> list[Sequence]:
@@ -77,7 +106,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         ]
 
     @property
-    def subfeatures(self) -> dict[str, slice]:
+    def subfeatures(self) -> list[str, slice]:
         names = (
             "atomic_num",
             "degree",
@@ -119,7 +148,7 @@ class AtomFeaturizer(MultiHotFeaturizer):
         return x
 
     def featurize_num_only(self, a: Atom) -> np.ndarray:
-        """featurize the atom with only the atomic number bit set"""
+        """featurize the atom and only set the atomic number bit"""
         x = np.zeros(len(self))
 
         if a is None:

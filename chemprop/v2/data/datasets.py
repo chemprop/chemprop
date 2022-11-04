@@ -7,9 +7,9 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizer
+from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.v2.featurizers.reaction import ReactionFeaturizer
+from chemprop.v2.featurizers.reaction import ReactionFeaturizer, ReactionFeaturizerBase
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
 
@@ -129,7 +129,9 @@ class MoleculeDataset(MolGraphDatasetBase):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
-    def __init__(self, data: Iterable[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizer]):
+    def __init__(
+        self, data: Iterable[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizerBase]
+    ):
         self.data = list(data)
         self.featurizer = featurizer or MoleculeFeaturizer()
 
@@ -278,9 +280,11 @@ class ReactionDataset(MolGraphDatasetBase):
         the featurizer with which to generate MolGraphs of the input
     """
 
-    def __init__(self, data: Iterable[ReactionDatapoint], featurizer: ReactionFeaturizer):
+    def __init__(
+        self, data: Iterable[ReactionDatapoint], featurizer: Optional[ReactionFeaturizerBase]
+    ):
         self.data = list(data)
-        self.featurizer = featurizer
+        self.featurizer = featurizer or ReactionFeaturizer()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
