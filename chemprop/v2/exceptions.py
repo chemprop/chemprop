@@ -8,11 +8,11 @@ class InvalidShapeError(ValueError):
             f"got: `{self.pretty_shape(received)}`. expected: `{self.pretty_shape(expected)}`"
         )
         super().__init__(message)
-    
+
     @classmethod
     def pretty_shape(cls, shape: Iterable[int]) -> str:
         """Make a pretty string from an input shape
-        
+
         Example
         --------
         >>> X = np.random.rand(10, 4)
@@ -21,4 +21,4 @@ class InvalidShapeError(ValueError):
         >>> InvalidShapeError.pretty_shape(X.shape)
         '10 x 4'
         """
-        return ' x '.join(map(str, shape))
+        return " x ".join(map(str, shape))

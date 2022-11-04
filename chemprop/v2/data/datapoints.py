@@ -8,7 +8,7 @@ from typing import List, Optional
 import numpy as np
 from rdkit import Chem
 
-from chemprop.rdkit import make_mol
+from chemprop.v2.utils import make_mol
 from chemprop.featurizers import get_features_generator
 
 

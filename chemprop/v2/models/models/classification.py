@@ -1,7 +1,6 @@
 from torch import Tensor, nn
 
-from chemprop.data.v2.dataloader import TrainingBatch
-from chemprop.models.v2.models.base import MPNN
+from chemprop.v2.models.models.base import MPNN
 
 
 class ClassificationMPNN(MPNN):
@@ -15,7 +14,7 @@ class BinaryClassificationMPNN(ClassificationMPNN):
     def predict_step(self, *args, **kwargs) -> tuple[Tensor]:
         Y = super().predict_step(*args, **kwargs)[0]
 
-        return Y.sigmoid(),
+        return (Y.sigmoid(),)
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):

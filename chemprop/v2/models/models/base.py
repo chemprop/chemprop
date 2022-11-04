@@ -5,12 +5,13 @@ from typing import Iterable, Optional, Union
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn, optim
-from chemprop.data.v2.dataloader import TrainingBatch
 
-from chemprop.nn_utils import NoamLR, get_activation_function
-from chemprop.models.v2.modules import MessagePassingBlock, MolecularInput
-from chemprop.models.v2.models.loss import LossFunction, build_loss
-from chemprop.models.v2.models.metrics import Metric
+from chemprop.v2.data.dataloader import TrainingBatch
+from chemprop.v2.models.modules import MessagePassingBlock, MolecularInput
+from chemprop.v2.models.loss import LossFunction, build_loss
+from chemprop.v2.models.metrics import Metric
+from chemprop.v2.models.schedulers import NoamLR
+from chemprop.v2.models.utils import get_activation_function
 
 
 class MPNN(ABC, pl.LightningModule):
@@ -232,12 +233,12 @@ class MPNN(ABC, pl.LightningModule):
         self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
     ) -> tuple[Tensor, ...]:
         """Return the predictions of the input batch
-        
+
         Parameters
         ----------
         batch : TrainingBatch
             the input batch
-        
+
         Returns
         -------
         tuple[Tensor, ...]
@@ -246,7 +247,7 @@ class MPNN(ABC, pl.LightningModule):
         """
         bmg, X_vd, features, *_ = batch
 
-        return self((bmg, X_vd), X_f=features),
+        return (self((bmg, X_vd), X_f=features),)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)

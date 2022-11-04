@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.nn.functional import cross_entropy, binary_cross_entropy_with_logits
 from torchmetrics import functional as F
 
-from chemprop.utils.mixins import RegistryMixin
+from chemprop.v2.utils import RegistryMixin
 
 
 class Metric(ABC, RegistryMixin):

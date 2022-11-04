@@ -7,10 +7,10 @@ import warnings
 import numpy as np
 from rdkit import Chem
 
-from chemprop.featurizers.v2.molgraph import MolGraph
-from chemprop.featurizers.v2.base import MolGraphFeaturizer
-from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
-from chemprop.utils.utils import AutoName
+from chemprop.v2.featurizers.molgraph import MolGraph
+from chemprop.v2.featurizers.base import MolGraphFeaturizer
+from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
+from chemprop.v2.utils import AutoName
 
 
 class ReactionMode(AutoName):
@@ -140,7 +140,7 @@ class ReactionFeaturizer(MolGraphFeaturizer):
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
-    #TODO(degraff): make this function more readable
+    # TODO(degraff): make this function more readable
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],

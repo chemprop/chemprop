@@ -7,9 +7,9 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.datasets import Datum, MolGraphDatasetBase
-from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
-from chemprop.featurizers.v2.molgraph import BatchMolGraph
+from chemprop.v2.data.datasets import Datum, MolGraphDatasetBase
+from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
+from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
 TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
 

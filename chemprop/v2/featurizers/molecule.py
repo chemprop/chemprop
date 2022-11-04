@@ -5,9 +5,9 @@ from typing import Optional
 import numpy as np
 from rdkit import Chem
 
-from chemprop.featurizers.v2.base import MolGraphFeaturizer
-from chemprop.featurizers.v2.molgraph import MolGraph
-from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
+from chemprop.v2.featurizers.base import MolGraphFeaturizer
+from chemprop.v2.featurizers.molgraph import MolGraph
+from chemprop.v2.featurizers.multihot import AtomFeaturizer, BondFeaturizer
 
 
 class MoleculeFeaturizer(MolGraphFeaturizer):

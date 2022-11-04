@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from chemprop.models.v2.models.base import MPNN
+from chemprop.v2.models.models.base import MPNN
 
 
 class Exp(nn.Module):

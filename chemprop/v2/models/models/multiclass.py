@@ -1,8 +1,8 @@
 from torch import Tensor, nn
 
-from chemprop.data.v2.dataloader import TrainingBatch
-from chemprop.models.v2.modules import MessagePassingBlock
-from chemprop.models.v2.models.base import MPNN
+from chemprop.v2.data.dataloader import TrainingBatch
+from chemprop.v2.models.modules import MessagePassingBlock
+from chemprop.v2.models.models.base import MPNN
 
 
 class MulticlassMPNN(MPNN):
@@ -37,7 +37,7 @@ class MulticlassMPNN(MPNN):
     ) -> tuple[Tensor, ...]:
         Y = super().predict_step(batch, batch_idx, dataloader_idx)[0]
 
-        return Y.softmax(2), 
+        return (Y.softmax(2),)
 
 
 class DirichletMulticlassMPNN(MulticlassMPNN):

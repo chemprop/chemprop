@@ -4,9 +4,9 @@ import numpy as np
 import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 
-from chemprop.data import v2 as data
-from chemprop.featurizers import v2 as featurizers
-from chemprop.models.v2 import modules, models
+from chemprop.v2 import data
+from chemprop.v2 import featurizers
+from chemprop.v2.models import modules, models
 
 
 featurizer = featurizers.MoleculeFeaturizer()

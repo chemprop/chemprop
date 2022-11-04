@@ -4,7 +4,7 @@ from typing import Iterable
 import torch
 from torch import Tensor, nn
 
-from chemprop.utils.mixins import RegistryMixin
+from chemprop.v2.utils import RegistryMixin
 
 
 class Readout(ABC, nn.Module, RegistryMixin):
