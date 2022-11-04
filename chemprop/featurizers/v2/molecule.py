@@ -45,15 +45,15 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
         self,
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
-        atom_messages: bool = False,
+        bond_messages: bool = True,
         extra_atom_fdim: int = 0,
         extra_bond_fdim: int = 0,
     ):
-        super().__init__(atom_featurizer, bond_featurizer, atom_messages)
+        super().__init__(atom_featurizer, bond_featurizer, bond_messages)
 
         self.atom_fdim += extra_atom_fdim
         self.bond_fdim += extra_bond_fdim
-        if not self.atom_messages:
+        if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
     def featurize(
@@ -99,12 +99,12 @@ class MoleculeFeaturizer(MolGraphFeaturizer):
                 b12 = i
                 b21 = b12 + 1
 
-                if self.atom_messages:
-                    X_e[b12] = x_e
-                    X_e[b21] = x_e
-                else:
+                if self.bond_messages:
                     X_e[b12] = np.concatenate((X_v[a1], x_e))
                     X_e[b21] = np.concatenate((X_v[a2], x_e))
+                else:
+                    X_e[b12] = x_e
+                    X_e[b21] = x_e
 
                 a2b[a2].append(b12)
                 a2b[a1].append(b21)

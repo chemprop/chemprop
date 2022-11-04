@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from chemprop.data import get_smiles
 from chemprop.featurizers import get_available_features_generators, get_features_generator, load_features, save_features
-from chemprop.utils import makedirs
+from chemprop.utils.utils import makedirs
 
 
 class Args(Tap):

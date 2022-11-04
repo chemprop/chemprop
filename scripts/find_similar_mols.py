@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from chemprop.data import get_data_from_smiles, get_smiles, MoleculeDataLoader
 from chemprop.featurizers import morgan_binary_features_generator
 from chemprop.models import MoleculeModel
-from chemprop.utils import load_checkpoint, makedirs
+from chemprop.utils.utils import load_checkpoint, makedirs
 from chemprop.train import model_fingerprint
 
 

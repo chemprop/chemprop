@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import Optional
+from enum import auto
+from typing import Optional, Union
 import warnings
+
 import numpy as np
 from rdkit import Chem
-from chemprop.featurizers.v2.base import MolGraphFeaturizer
 
 from chemprop.featurizers.v2.molgraph import MolGraph
+from chemprop.featurizers.v2.base import MolGraphFeaturizer
 from chemprop.featurizers.v2.multihot import AtomFeaturizer, BondFeaturizer
+from chemprop.utils.utils import AutoName
 
 
-class ReactionMode(Enum):
+class ReactionMode(AutoName):
     """The manner in which a reaction should be featurized into a `MolGraph`
 
     REAC_PROD
@@ -110,37 +112,41 @@ class ReactionFeaturizer(MolGraphFeaturizer):
 
     Parameters
     ----------
-    mode : ReactionMode
-        the mode by which to featurize the reaction
     atom_featurizer : AtomFeaturizer, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
     bond_featurizer : BondFeaturizer, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
-    atom_messages : bool, default=False
-        whether to prepare the `MolGraph` for use with atom-based messages
+    bond_messages : bool, default=True
+        whether to prepare the `MolGraph`s for use with bond-based message-passing
+    mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
+        the mode by which to featurize the reaction as either the string code or enum value
     """
 
     def __init__(
         self,
-        mode: ReactionMode,
         atom_featurizer: Optional[AtomFeaturizer] = None,
         bond_featurizer: Optional[BondFeaturizer] = None,
-        atom_messages: bool = False,
+        bond_messages: bool = True,
+        mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
     ):
-        super().__init__(atom_featurizer, bond_featurizer, atom_messages)
+        super().__init__(atom_featurizer, bond_featurizer, bond_messages)
 
-        self.mode = mode
-        if not self.atom_messages:
+        self.mode = ReactionMode.get(mode)
+        self.atom_fdim += len(self.atom_feautrizer) - self.atom_featurizer.max_atomic_num - 1
+        self.bond_fdim *= 2
+
+        if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
+    #TODO(degraff): make this function more readable
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: Optional[np.ndarray] = None,
         bond_features_extra: Optional[np.ndarray] = None,
-    ):
+    ) -> MolGraph:
         """Featurize the input reaction into a molecular graph
 
         Parameters
@@ -307,12 +313,12 @@ class ReactionFeaturizer(MolGraphFeaturizer):
                         x_e_p = self.bond_featurizer(bond_prod)
                         x_e = np.hstack((x_e_p, x_e_d))
 
-                if self.atom_messages:
-                    X_e.append(x_e)
-                    X_e.append(x_e)
-                else:
+                if self.bond_messages:
                     X_e.append(np.hstack((X_v[a1], x_e)))
                     X_e.append(np.hstack((X_v[a2], x_e)))
+                else:
+                    X_e.append(x_e)
+                    X_e.append(x_e)
 
                 b12 = n_bonds
                 b21 = b12 + 1

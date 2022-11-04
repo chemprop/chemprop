@@ -9,6 +9,10 @@ class Exp(nn.Module):
 
 
 class SpectralMPNN(MPNN):
+    _DATASET_TYPE = "spectral"
+    _DEFAULT_CRITERION = "sid"
+    _DEFAULT_METRIC = "sid"
+
     def __init__(self, *args, spectral_activation: str = "softplus", **kwargs):
         super().__init__(*args, **kwargs)
         act = nn.Softplus() if spectral_activation == "softplus" else Exp()

@@ -1,39 +1,44 @@
 from torch import Tensor, nn
 
-from chemprop.models.v2.encoders.base import MPNEncoder
+from chemprop.data.v2.dataloader import TrainingBatch
 from chemprop.models.v2.models.base import MPNN
 
 
 class ClassificationMPNN(MPNN):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    _DATASET_TYPE = "classification"
+    _DEFAULT_METRIC = "auroc"
 
-        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        # Y = self.sigmoid(Y)
-        return Y
+class BinaryClassificationMPNN(ClassificationMPNN):
+    _DEFAULT_CRITERION = "bce"
+
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor]:
+        Y = super().predict_step(*args, **kwargs)[0]
+
+        return Y.sigmoid(),
 
 
 class DirichletClassificationMPNN(ClassificationMPNN):
-    def __init__(
-        self,
-        encoder: MPNEncoder,
-        num_tasks: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ):
-        super().__init__(
-            encoder, 2 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
+    _DEFAULT_CRITERION = "dirichlet"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.softplus = nn.Softplus()
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
-        Y = self.softplus(Y) + 1
+    @property
+    def n_targets(self) -> int:
+        return 2
 
-        return Y
+    def forward(self, *args, **kwargs) -> Tensor:
+        Y = super().forward(*args, **kwargs)
+
+        return self.softplus(Y) + 1
+
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor, Tensor]:
+        alphas = super().predict_step(*args, **kwargs)[0]
+
+        alphas = alphas.reshape(-1, self.n_tasks, 2)
+        preds = alphas[..., 1] / alphas.sum(-1)
+
+        return preds, alphas

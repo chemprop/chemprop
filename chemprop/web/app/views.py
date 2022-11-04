@@ -24,7 +24,7 @@ from chemprop.args import PredictArgs, TrainArgs
 from chemprop.constants import MODEL_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_header, get_smiles, get_task_names, validate_data
 from chemprop.train import make_predictions, run_training
-from chemprop.utils import create_logger, load_task_names, load_args
+from chemprop.utils.utils import create_logger, load_task_names, load_args
 
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)

@@ -1,60 +1,57 @@
 import torch
-from torch import Tensor, nn
+from torch import Tensor
+from torch.nn import functional as F
 
-from chemprop.models.v2.encoders.base import MPNEncoder
 from chemprop.models.v2.models.base import MPNN
 
 
 class RegressionMPNN(MPNN):
-    """The RegressionMoleculeModel is just an alias for a base MPNN"""
+    _DATASET_TYPE = "regression"
+    _DEFAULT_CRITERION = "mse"
+    _DEFAULT_METRIC = "rmse"
 
 
 class MveRegressionMPNN(RegressionMPNN):
-    def __init__(
-        self,
-        encoder: MPNEncoder,
-        num_tasks: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ):
-        super().__init__(
-            encoder, 2 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
-        self.softplus = nn.Softplus()
+    _DEFAULT_CRITERION = "mve"
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
+    @property
+    def n_targets(self) -> int:
+        return 2
 
-        Y_mean, Y_var = torch.split(Y, Y.shape[1] // 2, 1)
-        Y_var = self.softplus(Y_var)
+    def forward(self, inputs, X_f) -> Tensor:
+        Y = super().forward(inputs, X_f=X_f)
+
+        Y_mean, Y_var = Y.split(Y.shape[1] // 2, 1)
+        Y_var = F.softplus(Y_var)
 
         return torch.cat((Y_mean, Y_var), 1)
 
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor, ...]:
+        Y = super().predict_step(*args, **kwargs)[0]
+        Y_mean, Y_var = Y.split(Y.shape[1] // 2, dim=1)
+
+        return Y_mean, Y_var
+
 
 class EvidentialMPNN(RegressionMPNN):
-    def __init__(
-        self,
-        encoder: MPNEncoder,
-        num_tasks: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ):
-        super().__init__(
-            encoder, 4 * num_tasks, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
+    _DEFAULT_CRITERION = "evidential"
 
-        self.softplus = nn.Softplus()
+    @property
+    def n_targets(self) -> int:
+        return 4
 
-    def forward(self, *args) -> Tensor:
-        Y = super().forward(*args)
+    def forward(self, inputs, X_f) -> Tensor:
+        Y = super().forward(inputs, X_f)
 
-        means, lambdas, alphas, betas = torch.split(Y, Y.shape[1] // 4, dim=1)
-        lambdas = self.softplus(lambdas)
-        alphas = self.softplus(alphas) + 1
-        betas = self.softplus(betas)
+        means, lambdas, alphas, betas = Y.split(Y.shape[1] // 4, dim=1)
+        lambdas = F.softplus(lambdas)
+        alphas = F.softplus(alphas) + 1
+        betas = F.softplus(betas)
 
         return torch.cat((means, lambdas, alphas, betas), 1)
+
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+        Y = super().predict_step(*args, **kwargs)[0]
+        means, lambdas, alphas, betas = Y.split(Y.shape[1] // 4, 1)
+
+        return means, lambdas, alphas, betas

@@ -1,4 +1,3 @@
-from functools import cached_property
 from typing import Optional, Sequence
 
 import numpy as np
@@ -8,10 +7,20 @@ from chemprop.featurizers.v2.multihot.base import MultiHotFeaturizer
 
 
 class BondFeaturizer(MultiHotFeaturizer):
+    """A `BondFeaturizer` generates multihot featurizations of RDKit bonds
+
+    Parameters
+    ----------
+    bond_types : Optional[Sequence[BondType]], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
+        the known bond types
+    stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
+        the known bond stereochemistries. For an explanation of the values, see https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
+    """
+
     def __init__(
         self,
         bond_types: Optional[Sequence[BondType]] = None,
-        stereo: Optional[Sequence[int]] = None,
+        stereos: Optional[Sequence[int]] = None,
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -19,7 +28,7 @@ class BondFeaturizer(MultiHotFeaturizer):
             BondType.TRIPLE,
             BondType.AROMATIC,
         ]
-        self.stereo = stereo or range(6)
+        self.stereo = stereos or range(6)
 
     def __len__(self):
         return 4 + len(self.bond_types) + len(self.stereo)

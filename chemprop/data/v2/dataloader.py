@@ -1,60 +1,31 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Iterable, Optional
 
 import numpy as np
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.data.v2.datasets import MolGraphDataset
+from chemprop.data.v2.datasets import Datum, MolGraphDatasetBase
 from chemprop.data.v2.samplers import ClassBalanceSampler, SeededSampler
-from chemprop.featurizers.v2 import MolGraph
-from chemprop.models.v2 import MoleculeEncoderInput
+from chemprop.featurizers.v2.molgraph import BatchMolGraph
+
+TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
 
 
-def collate_graphs(mgs_ys: Sequence[MolGraph]) -> tuple[MoleculeEncoderInput, np.ndarray]:
-    mgs, ys = zip(*mgs_ys)
+def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
+    mgs, atom_descriptors, features, ys, weights, gt_targets, lt_targets = zip(*batch)
 
-    n_atoms = 1
-    n_bonds = 1
-    a_scope = []
-    b_scope = []
-
-    # All start with zero padding so that indexing with zero padding returns zeros
-    X_vs = [np.zeros((1, mgs[0].X_v.shape[1]))]
-    X_es = [np.zeros((1, mgs[0].X_e.shape[1]))]
-    a2b = [[]]
-    b2a = [0]
-    b2revb = [0]
-
-    for mg in mgs:
-        X_vs.append(mg.X_v)
-        X_es.append(mg.X_e)
-
-        a2b.extend([b + n_bonds for b in mg.a2b[a]] for a in range(mg.n_atoms))
-        b2a.extend(n_atoms + mg.b2a[b] for b in range(mg.n_bonds))
-        b2revb.extend(n_bonds + mg.b2revb[b] for b in range(mg.n_bonds))
-
-        a_scope.append((n_atoms, mg.n_atoms))
-        b_scope.append((n_bonds, mg.n_bonds))
-
-        n_atoms += mg.n_atoms
-        n_bonds += mg.n_bonds
-
-    X_v = torch.from_numpy(np.concatenate(X_vs)).float()
-    X_e = torch.from_numpy(np.concatenate(X_es)).float()
-
-    # max with 1 to fix a crash in rare case of all single-heavy-atom mols
-    max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
-    a2b = torch.tensor(
-        [a2b[a] + [0] * (max_num_bonds - len(a2b[a])) for a in range(n_atoms)], dtype=torch.long
+    return (
+        BatchMolGraph(mgs),
+        None if atom_descriptors[0] is None else torch.from_numpy(np.array(atom_descriptors, "f4")),
+        None if features[0] is None else torch.from_numpy(np.array(features, "f4")),
+        torch.from_numpy(np.array(ys, "f4")),
+        torch.from_numpy(np.array(weights, "f4")).unsqueeze(1),
+        None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets, "f4")),
+        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4")),
     )
-
-    b2a = torch.tensor(b2a, dtype=torch.long)
-    b2revb = torch.tensor(b2revb, dtype=torch.long)
-    a2a = b2a[a2b]
-
-    return (X_v, X_e, a2b, b2a, b2revb, a_scope, b_scope, a2a), np.stack(ys)
 
 
 class MolGraphDataLoader(DataLoader):
@@ -80,21 +51,21 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: MolGraphDataset,
+        dataset: MolGraphDatasetBase,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
         seed: Optional[int] = None,
-        shuffle: bool = False,
+        shuffle: bool = True,
     ):
         self.dset = dataset
         self.class_balance = class_balance
         self.shuffle = shuffle
 
         if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dset, seed, self.shuffle)
+            self.sampler = ClassBalanceSampler(self.dset.targets, seed, self.shuffle)
         elif self.shuffle and seed is not None:
-            self.sampler = SeededSampler(self.dset, seed)
+            self.sampler = SeededSampler(len(self.dset), seed)
         else:
             self.sampler = None
 
@@ -104,7 +75,7 @@ class MolGraphDataLoader(DataLoader):
             self.sampler is None and self.shuffle,
             self.sampler,
             num_workers=num_workers,
-            collate_fn=collate_graphs,
+            collate_fn=collate_batch,
         )
 
     @property
@@ -118,7 +89,7 @@ class MolGraphDataLoader(DataLoader):
         return np.array([self.dset.data[i].targets for i in self.sampler])
 
     @property
-    def gt_targets(self) -> list[list[Optional[bool]]]:
+    def gt_targets(self) -> Optional[np.ndarray]:
         """whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -126,13 +97,13 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dset.data[0], "gt_targets"):
+        if self.dset.data[0].gt_targets is None:
             return None
 
-        return [self.dset.data[i].gt_targets for i in self.sampler]
+        return np.array([self.dset.data[i].gt_targets for i in self.sampler])
 
     @property
-    def lt_targets(self) -> list[list[Optional[bool]]]:
+    def lt_targets(self) -> Optional[np.ndarray]:
         """for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -140,10 +111,10 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if not hasattr(self.dset.data[0], "lt_targets"):
+        if self.dset.data[0].lt_targets is None:
             return None
 
-        return [self.dset.data[i].lt_targets for i in self.sampler]
+        return np.array([self.dset.data[i].lt_targets for i in self.sampler])
 
     @property
     def iter_size(self) -> int:

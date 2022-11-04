@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from torch import nn
 
 
-class MPNEncoder(nn.Module, ABC):
+class MessagePassingBlock(ABC, nn.Module):
     def __len__(self) -> int:
-        """an alias for the output dimension of the encoder"""
+        """the output dimension of the message passing block"""
         return self.output_dim
 
     @property
