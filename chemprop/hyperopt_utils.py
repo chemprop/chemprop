@@ -8,7 +8,7 @@ import json
 from hyperopt import Trials
 
 from chemprop.constants import HYPEROPT_SEED_FILE_NAME
-from chemprop.utils.utils import makedirs
+from chemprop.utils import makedirs
 
 def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
     """

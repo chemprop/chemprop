@@ -9,7 +9,7 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from tqdm import tqdm
 import numpy as np
 
-from chemprop.data.data import MoleculeDataset, make_mol
+from .data import MoleculeDataset, make_mol
 
 
 def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], include_chirality: bool = False) -> str:
