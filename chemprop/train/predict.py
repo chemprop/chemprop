@@ -61,6 +61,15 @@ def predict(
             natoms, nbonds = np.array(natoms).flatten(), np.array(nbonds).flatten()
             constraints_batch = np.transpose(constraints_batch).tolist()
             device = next(model.parameters()).device
+
+            # If the path to constraints is not given, the constraints matrix needs to be reformatted.
+            if constraints_batch == []:
+                for d in batch._data:
+                    natom_targets = len(model.atom_targets)
+                    nbond_targets = len(model.bond_targets)
+                    ntargets = natom_targets + nbond_targets
+                    constraints_batch.append([None] * ntargets)
+
             ind = 0
             for i in range(len(model.atom_targets)):
                 if not model.atom_constraints[i]:
