@@ -246,7 +246,7 @@ class FFNAtten(nn.Module):
             backward_bond = b_hidden[b2br[:, 1]]
             scope = [((start - 1) // 2, size // 2) for start, size in b_scope]
         else:
-            raise ValueError(f"Unrecognized ffn_type of {self.ffn_type}.")
+            raise RuntimeError(f"Unrecognized ffn_type of {self.ffn_type}.")
 
         if constraints is not None:
             if self.ffn_type == "atom":
