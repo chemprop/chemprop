@@ -268,14 +268,11 @@ class FFNAtten(nn.Module):
                 if size == 0:
                     continue
                 else:
-                    w_ai = W_a[start:start+size]
-                    qi = output[start:start+size]
+                    q_i = output[start:start+size]
+                    w_i = W_a[start:start+size].softmax(0)
                     Q = constraints[i]
-
-                    wi = F.softmax(w_ai, dim=0).flatten()
-
-                    qi[:, 0] = qi[:, 0] + wi * (Q - qi[:, 0].sum())
-                    constrained_output.append(qi)
+                    q_f = q_i + w_i * (Q - q_i.sum())
+                    constrained_output.append(q_f)
 
             output = torch.cat(constrained_output, dim=0)
         else:
