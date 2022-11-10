@@ -294,7 +294,7 @@ class FFNAtten(nn.Module):
         return output
 
 
-class nn_exp(nn.Module):
+class Exp(nn.Module):
     def forward(self, x):
         return x.exp()
 
@@ -344,7 +344,7 @@ def build_ffn(
 
     # If spectra model, also include spectra activation
     if dataset_type == "spectra":
-        spectra_activation = nn.Softplus() if spectra_activation == "softplus" else nn_exp()
+        spectra_activation = nn.Softplus() if spectra_activation == "softplus" else Exp()
         layers.append(spectra_activation)
 
     return nn.Sequential(*layers)
