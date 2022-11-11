@@ -68,64 +68,50 @@ class MultiReadout(nn.Module):
             self.atom_ffn_base = None
             self.bond_ffn_base = None
 
+        atom_ffn_params = {
+            "features_size": atom_features_size,
+            "hidden_size": atom_hidden_size,
+            "num_layers": num_layers,
+            "output_size": output_size,
+            "dropout": dropout,
+            "activation": activation,  
+            "ffn_base": self.atom_ffn_base,
+            "ffn_type": "atom",
+        }
+
+        bond_ffn_params = {
+            "features_size": 2*bond_features_size,
+            "hidden_size": bond_hidden_size,
+            "num_layers": num_layers,
+            "output_size": output_size,
+            "dropout": dropout,
+            "activation": activation,  
+            "ffn_base": self.bond_ffn_base,
+            "ffn_type": "bond",
+        }
+
         ffn_list = []
         for constraint in atom_constraints:
             if constraint:
                 ffn_list.append(
                     FFNAtten(
-                        features_size=atom_features_size,
-                        hidden_size=atom_hidden_size,
-                        num_layers=num_layers,
-                        output_size=output_size,
-                        dropout=dropout,
-                        activation=activation,
-                        ffn_base=self.atom_ffn_base,
-                        ffn_type="atom",
                         weights_ffn_num_layers=weights_ffn_num_layers,
+                        **atom_ffn_params,
                     )
                 )
             else:
-                ffn_list.append(
-                    FFN(
-                        features_size=atom_features_size,
-                        hidden_size=atom_hidden_size,
-                        num_layers=num_layers,
-                        output_size=output_size,
-                        dropout=dropout,
-                        activation=activation,
-                        ffn_base=self.atom_ffn_base,
-                        ffn_type="atom",
-                    )
-                )
+                ffn_list.append(FFN(**atom_ffn_params))
 
         for constraint in bond_constraints:
             if constraint:
                 ffn_list.append(
                     FFNAtten(
-                        features_size=2*bond_features_size,
-                        hidden_size=bond_hidden_size,
-                        num_layers=num_layers,
-                        output_size=output_size,
-                        dropout=dropout,
-                        activation=activation,
-                        ffn_base=self.bond_ffn_base,
-                        ffn_type="bond",
                         weights_ffn_num_layers=weights_ffn_num_layers,
+                        **bond_ffn_params,
                     )
                 )
             else:
-                ffn_list.append(
-                    FFN(
-                        features_size=2*bond_features_size,
-                        hidden_size=bond_hidden_size,
-                        num_layers=num_layers,
-                        output_size=output_size,
-                        dropout=dropout,
-                        activation=activation,
-                        ffn_base=self.bond_ffn_base,
-                        ffn_type="bond",
-                    )
-                )
+                ffn_list.append(FFN(**bond_ffn_params))
 
         self.ffn_list = nn.ModuleList(ffn_list)
 
