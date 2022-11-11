@@ -17,7 +17,7 @@ class MultiReadout(nn.Module):
         bond_hidden_size: int,
         num_layers: int,
         output_size: int,
-        dropout: nn.Module,
+        dropout: float,
         activation: nn.Module,
         atom_constraints: List[bool] = None,
         bond_constraints: List[bool] = None,
@@ -167,7 +167,7 @@ class FFN(nn.Module):
         hidden_size: int,
         num_layers: int,
         output_size: int,
-        dropout: nn.Module,
+        dropout: float,
         activation: nn.Module,
         ffn_base: nn.Module,
         ffn_type: str = "atom",
@@ -267,7 +267,7 @@ class FFNAtten(nn.Module):
         hidden_size: int,
         num_layers: int,
         output_size: int,
-        dropout: nn.Module,
+        dropout: float,
         activation: nn.Module,
         ffn_base: nn.Module,
         ffn_type: str = "atom",
@@ -392,7 +392,7 @@ def build_ffn(
     hidden_size: int,
     num_layers: int,
     output_size: int,
-    dropout: nn.Module,
+    dropout: float,
     activation: nn.Module,
     dataset_type: str = None,
     spectra_activation: str = None,
@@ -411,23 +411,23 @@ def build_ffn(
     """
     if num_layers == 1:
         layers = [
-            dropout,
+            nn.Dropout(dropout),
             nn.Linear(first_linear_dim, output_size)
         ]
     else:
         layers = [
-            dropout,
+            nn.Dropout(dropout),
             nn.Linear(first_linear_dim, hidden_size)
         ]
         for _ in range(num_layers - 2):
             layers.extend([
                 activation,
-                dropout,
+                nn.Dropout(dropout),
                 nn.Linear(hidden_size, hidden_size),
             ])
         layers.extend([
             activation,
-            dropout,
+            nn.Dropout(dropout),
             nn.Linear(hidden_size, output_size),
         ])
 

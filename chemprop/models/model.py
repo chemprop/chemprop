@@ -110,7 +110,6 @@ class MoleculeModel(nn.Module):
         else:
             bond_first_linear_dim = first_linear_dim
 
-        dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
 
         # Create FFN layers
@@ -121,7 +120,7 @@ class MoleculeModel(nn.Module):
                                         bond_hidden_size=args.ffn_hidden_size + args.bond_descriptors_size,
                                         num_layers=args.ffn_num_layers,
                                         output_size=self.relative_output_size,
-                                        dropout=dropout,
+                                        dropout=args.dropout,
                                         activation=activation,
                                         atom_constraints=args.atom_constraints,
                                         bond_constraints=args.bond_constraints,
@@ -132,7 +131,7 @@ class MoleculeModel(nn.Module):
                                      hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
                                      num_layers=args.ffn_num_layers,
                                      output_size=self.relative_output_size * args.num_tasks,
-                                     dropout=dropout,
+                                     dropout=args.dropout,
                                      activation=activation,
                                      dataset_type=args.dataset_type,
                                      spectra_activation=args.spectra_activation)
