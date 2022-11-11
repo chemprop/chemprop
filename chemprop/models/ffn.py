@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,6 @@ class MultiReadout(nn.Module):
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
         super().__init__()
-        self.shared_ffn = shared_ffn
 
         if num_layers > 1 and shared_ffn:
             self.atom_ffn_base = nn.Sequential(
@@ -65,8 +64,8 @@ class MultiReadout(nn.Module):
                 activation,
             )
         else:
-            self.atom_ffn_base = nn.Identity()
-            self.bond_ffn_base = nn.Identity()
+            self.atom_ffn_base = None
+            self.bond_ffn_base = None
 
         ffn_list = []
         for constraint in atom_constraints:
@@ -81,7 +80,6 @@ class MultiReadout(nn.Module):
                         activation=activation,
                         ffn_base=self.atom_ffn_base,
                         ffn_type="atom",
-                        shared_ffn=shared_ffn,
                         weights_ffn_num_layers=weights_ffn_num_layers,
                     )
                 )
@@ -96,7 +94,6 @@ class MultiReadout(nn.Module):
                         activation=activation,
                         ffn_base=self.atom_ffn_base,
                         ffn_type="atom",
-                        shared_ffn=shared_ffn,
                     )
                 )
 
@@ -112,7 +109,6 @@ class MultiReadout(nn.Module):
                         activation=activation,
                         ffn_base=self.bond_ffn_base,
                         ffn_type="bond",
-                        shared_ffn=shared_ffn,
                         weights_ffn_num_layers=weights_ffn_num_layers,
                     )
                 )
@@ -127,7 +123,6 @@ class MultiReadout(nn.Module):
                         activation=activation,
                         ffn_base=self.bond_ffn_base,
                         ffn_type="bond",
-                        shared_ffn=shared_ffn,
                     )
                 )
 
@@ -169,9 +164,8 @@ class FFN(nn.Module):
         output_size: int,
         dropout: float,
         activation: nn.Module,
-        ffn_base: nn.Module,
+        ffn_base: Optional[nn.Module] = None,
         ffn_type: str = "atom",
-        shared_ffn: bool = True,
     ):
         """
         :param features_size: Dimensionality of input features.
@@ -182,13 +176,12 @@ class FFN(nn.Module):
         :param activation: Activation function.
         :param ffn_base: The shared base layers (all but the last) of the FFN between tasks.
         :param ffn_type: The type of target (atom or bond).
-        :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         """
         super().__init__()
 
         base_output_size = features_size if num_layers == 1 else hidden_size
 
-        if shared_ffn:
+        if ffn_base:
             self.ffn_readout = nn.Sequential(
                 ffn_base,
                 build_ffn(
@@ -266,9 +259,8 @@ class FFNAtten(nn.Module):
         output_size: int,
         dropout: float,
         activation: nn.Module,
-        ffn_base: nn.Module,
+        ffn_base: Optional[nn.Module] = None,
         ffn_type: str = "atom",
-        shared_ffn: bool = True,
         weights_ffn_num_layers: int = 2,
     ):
         """
@@ -280,14 +272,13 @@ class FFNAtten(nn.Module):
         :param activation: Activation function.
         :param ffn_base: The shared base layers (all but the last) of the FFN between tasks.
         :param ffn_type: The type of target (atom or bond).
-        :param shared_ffn: Whether to share weights in the ffn between different atom tasks and bond tasks.
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
         super().__init__()
 
         base_output_size = features_size if num_layers == 1 else hidden_size
 
-        if shared_ffn:
+        if ffn_base:
             self.ffn = ffn_base
         else:
             if num_layers > 1:
@@ -304,13 +295,9 @@ class FFNAtten(nn.Module):
                 )
             else:
                 self.ffn = nn.Identity()
-        self.ffn_readout = build_ffn(
-            first_linear_dim=base_output_size,
-            hidden_size=hidden_size,
-            num_layers=1,
-            output_size=output_size,
-            dropout=dropout,
-            activation=activation,
+        self.ffn_readout = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(base_output_size, output_size),
         )
         self.weights_readout = build_ffn(
             first_linear_dim=base_output_size,
