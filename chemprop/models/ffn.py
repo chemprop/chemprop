@@ -186,10 +186,7 @@ class FFN(nn.Module):
         """
         super().__init__()
 
-        if num_layers == 1:
-            base_output_size = features_size
-        else:
-            base_output_size = hidden_size
+        base_output_size = features_size if num_layers == 1 else hidden_size
 
         if shared_ffn:
             self.ffn_readout = nn.Sequential(
@@ -288,10 +285,7 @@ class FFNAtten(nn.Module):
         """
         super().__init__()
 
-        if num_layers == 1:
-            base_output_size = features_size
-        else:
-            base_output_size = hidden_size
+        base_output_size = features_size if num_layers == 1 else hidden_size
 
         if shared_ffn:
             self.ffn = ffn_base
