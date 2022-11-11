@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import re
 
+from chemprop.nn_utils import get_activation_function
 
 class MultiReadout(nn.Module):
     """A :class:`MultiReadout` contains a list of FFN for each atom/bond targets prediction."""
@@ -18,7 +19,7 @@ class MultiReadout(nn.Module):
         num_layers: int,
         output_size: int,
         dropout: float,
-        activation: nn.Module,
+        activation: str,
         atom_constraints: List[bool] = None,
         bond_constraints: List[bool] = None,
         shared_ffn: bool = True,
@@ -50,7 +51,7 @@ class MultiReadout(nn.Module):
                     dropout=dropout,
                     activation=activation,
                 ),
-                activation,
+                get_activation_function(activation),
             )
             self.bond_ffn_base = nn.Sequential(
                 build_ffn(
@@ -61,7 +62,7 @@ class MultiReadout(nn.Module):
                     dropout=dropout,
                     activation=activation,
                 ),
-                activation,
+                get_activation_function(activation),
             )
         else:
             self.atom_ffn_base = None
@@ -163,7 +164,7 @@ class FFN(nn.Module):
         num_layers: int,
         output_size: int,
         dropout: float,
-        activation: nn.Module,
+        activation: str,
         ffn_base: Optional[nn.Module] = None,
         ffn_type: str = "atom",
     ):
@@ -258,7 +259,7 @@ class FFNAtten(nn.Module):
         num_layers: int,
         output_size: int,
         dropout: float,
-        activation: nn.Module,
+        activation: str,
         ffn_base: Optional[nn.Module] = None,
         ffn_type: str = "atom",
         weights_ffn_num_layers: int = 2,
@@ -291,7 +292,7 @@ class FFNAtten(nn.Module):
                         dropout=dropout,
                         activation=activation,
                     ),
-                    activation,
+                    get_activation_function(activation),
                 )
             else:
                 self.ffn = nn.Identity()
@@ -374,7 +375,7 @@ def build_ffn(
     num_layers: int,
     output_size: int,
     dropout: float,
-    activation: nn.Module,
+    activation: str,
     dataset_type: str = None,
     spectra_activation: str = None,
 ) -> nn.Sequential:
@@ -390,6 +391,8 @@ def build_ffn(
     :param dataset_type: Type of dataset.
     :param spectra_activation: Activation function used in dataset_type spectra training to constrain outputs to be positive.
     """
+    activation = get_activation_function(activation)
+
     if num_layers == 1:
         layers = [
             nn.Dropout(dropout),

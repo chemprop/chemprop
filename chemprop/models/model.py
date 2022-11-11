@@ -9,7 +9,7 @@ from .mpn import MPN
 from .ffn import build_ffn, MultiReadout
 from chemprop.args import TrainArgs
 from chemprop.features import BatchMolGraph
-from chemprop.nn_utils import get_activation_function, initialize_weights
+from chemprop.nn_utils import initialize_weights
 
 
 class MoleculeModel(nn.Module):
@@ -110,8 +110,6 @@ class MoleculeModel(nn.Module):
         else:
             bond_first_linear_dim = first_linear_dim
 
-        activation = get_activation_function(args.activation)
-
         # Create FFN layers
         if self.is_atom_bond_targets:
             self.readout = MultiReadout(atom_features_size=atom_first_linear_dim,
@@ -121,7 +119,7 @@ class MoleculeModel(nn.Module):
                                         num_layers=args.ffn_num_layers,
                                         output_size=self.relative_output_size,
                                         dropout=args.dropout,
-                                        activation=activation,
+                                        activation=args.activation,
                                         atom_constraints=args.atom_constraints,
                                         bond_constraints=args.bond_constraints,
                                         shared_ffn=args.shared_atom_bond_ffn,
@@ -132,7 +130,7 @@ class MoleculeModel(nn.Module):
                                      num_layers=args.ffn_num_layers,
                                      output_size=self.relative_output_size * args.num_tasks,
                                      dropout=args.dropout,
-                                     activation=activation,
+                                     activation=args.activation,
                                      dataset_type=args.dataset_type,
                                      spectra_activation=args.spectra_activation)
 
