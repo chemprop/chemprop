@@ -100,7 +100,7 @@ def evaluate(model: MoleculeModel,
              num_tasks: int,
              metrics: List[str],
              dataset_type: str,
-             loss_function: str, # DELETE
+             #loss_function: str, # DELETE
              scaler: StandardScaler = None,
              quantiles: List[float] = None,
              logger: logging.Logger = None) -> Dict[str, List[float]]:

@@ -311,7 +311,7 @@ def predict_and_save(
             for unc_name, un in zip(unc_names, d_unc):
                 if (
                     args.uncertainty_method is not None or args.calibration_method is not None
-                ):  # args.calibration_method in ['conformal_regression', 'conformal_quantile_regression']
+                ):
                     datapoint.row[unc_name] = un
             if args.individual_ensemble_predictions:
                 for pred_name, model_preds in zip(task_names, ind_preds):

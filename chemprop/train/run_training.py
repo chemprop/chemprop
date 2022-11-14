@@ -292,7 +292,7 @@ def run_training(args: TrainArgs,
                 num_tasks=args.num_tasks,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
-                loss_function=args.loss_function,
+                #loss_function=args.loss_function,
                 scaler=scaler,
                 quantiles=args.quantiles,
                 logger=logger

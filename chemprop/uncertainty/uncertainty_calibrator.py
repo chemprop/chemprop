@@ -775,7 +775,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         )  # shape(data, tasks, num_classes)
         targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
-        num_data, self.num_tasks, self.num_classes = uncal_preds.shape[:3]
+        num_data, self.num_tasks, self.num_classes = uncal_preds.shape
 
         all_scores = self.nonconformity_scores(uncal_preds)
         self.qhats = []
@@ -785,7 +785,6 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
                 all_scores[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1) # shape(valid_data)
             task_scores = np.append(task_scores, np.inf)
-            task_scores = np.sort(task_scores)
             qhat = np.quantile(task_scores, 1 - self.conformal_alpha / self.num_tasks, method="higher")
             self.qhats.append(qhat)
 
@@ -920,7 +919,6 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        #return "conformal_quantile_regression"
         return f"conformal_{self.conformal_alpha}"
 
     def raise_argument_errors(self):
@@ -965,23 +963,22 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
                 uncal_interval_lower - targets_task_id, targets_task_id - uncal_interval_upper
             )
             calibration_scores = np.append(calibration_scores, np.inf)
-            calibration_scores = np.sort(np.absolute(calibration_scores))
-            self.qhats.append(np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks, method="higher"))
+            qhat = np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks, method="higher")
+            self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, 2 * task)
-        uncal_interval = self.get_interval(uncal_predictor)
+        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, task)
+        uncal_interval = self.get_interval(uncal_predictor) # shape(data, 2 * task)
         num_data = uncal_interval.shape[0]
-        intervals = np.zeros((2 * self.num_tasks, num_data), dtype=float)
+        intervals = np.zeros((num_data, 2 * self.num_tasks), dtype=float)
 
         for task_id in range(self.num_tasks):
             uncal_interval_lower = uncal_interval[:, task_id]
             uncal_interval_upper = uncal_interval[:, task_id + self.num_tasks]
 
-            intervals[task_id] = uncal_interval_lower - self.qhats[task_id]
-            intervals[task_id + self.num_tasks] = uncal_interval_upper + self.qhats[task_id]
+            intervals[:, task_id] = uncal_interval_lower - self.qhats[task_id]
+            intervals[:, task_id + self.num_tasks] = uncal_interval_upper + self.qhats[task_id]
 
-        intervals = np.transpose(intervals)
         return uncal_preds.tolist(), intervals.tolist()
 
 

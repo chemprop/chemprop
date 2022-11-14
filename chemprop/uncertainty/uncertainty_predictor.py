@@ -188,16 +188,15 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
         """
         Reformat preds so to midpoint of quantiles
         """
+        num_data, num_tasks = preds.shape
 
-        (num_data, num_tasks) = preds.shape
+        reformat_preds = np.zeros([num_data, num_tasks // 2])
 
-        preds_new = np.zeros((num_data, num_tasks//2))
+        for task_id in range(num_tasks // 2):
+            reformat_preds[:, task_id] = preds[:, task_id] + preds[:, task_id + num_tasks // 2]
+            reformat_preds[:, task_id] = reformat_preds[:, task_id] / 2
 
-        for task_id in range(num_tasks//2):
-            preds_new[:, task_id] = preds[:, task_id] + preds[:, task_id + num_tasks//2]
-            preds_new[:, task_id] = preds_new[:, task_id]/2
-
-        return preds_new
+        return reformat_preds
 
     @staticmethod
     def make_intervals(preds):
@@ -244,7 +243,7 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
                         individual_preds, np.expand_dims(preds, axis=-1), axis=-1
                     )
 
-        self.uncal_preds = (sum_preds / self.num_models)
+        self.uncal_preds = sum_preds / self.num_models
         self.uncal_intervals = self.make_intervals(self.uncal_preds)
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
