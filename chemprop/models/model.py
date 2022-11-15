@@ -194,8 +194,8 @@ class MoleculeModel(nn.Module):
                 atom_features_batch: List[np.ndarray] = None,
                 bond_descriptors_batch: List[np.ndarray] = None,
                 bond_features_batch: List[np.ndarray] = None,
-                constraints_batch: List[torch.tensor] = None,
-                bond_types_batch: List[torch.FloatTensor] = None) -> torch.FloatTensor:
+                constraints_batch: List[torch.Tensor] = None,
+                bond_types_batch: List[torch.Tensor] = None) -> torch.Tensor:
         """
         Runs the :class:`MoleculeModel` on input.
 
@@ -208,7 +208,7 @@ class MoleculeModel(nn.Module):
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
         :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
-        :param constraints_batch: A list of torch.tensor which applies constraint on atomic/bond properties.
+        :param constraints_batch: A list of PyTorch tensors which applies constraint on atomic/bond properties.
         :param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`MoleculeModel`, containing a list of property predictions.
         """

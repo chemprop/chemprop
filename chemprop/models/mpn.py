@@ -79,7 +79,7 @@ class MPNEncoder(nn.Module):
     def forward(self,
                 mol_graph: BatchMolGraph,
                 atom_descriptors_batch: List[np.ndarray] = None,
-                bond_descriptors_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                bond_descriptors_batch: List[np.ndarray] = None) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
@@ -253,7 +253,7 @@ class MPN(nn.Module):
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
                 bond_descriptors_batch: List[np.ndarray] = None,
-                bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
+                bond_features_batch: List[np.ndarray] = None) -> torch.Tensor:
         """
         Encodes a batch of molecules.
 

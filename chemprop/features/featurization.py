@@ -556,17 +556,17 @@ class BatchMolGraph:
         self.max_num_bonds = max(1, max(
             len(in_bonds) for in_bonds in a2b))  # max with 1 to fix a crash in rare case of all single-heavy-atom mols
 
-        self.f_atoms = torch.FloatTensor(f_atoms)
-        self.f_bonds = torch.FloatTensor(f_bonds)
-        self.a2b = torch.LongTensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)])
-        self.b2a = torch.LongTensor(b2a)
-        self.b2revb = torch.LongTensor(b2revb)
+        self.f_atoms = torch.tensor(f_atoms, dtype=torch.float32)
+        self.f_bonds = torch.tensor(f_bonds, dtype=torch.float32)
+        self.a2b = torch.tensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)], dtype=torch.long)
+        self.b2a = torch.tensor(b2a, dtype=torch.long)
+        self.b2revb = torch.tensor(b2revb, dtype=torch.long)
         self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
         self.a2a = None  # only needed if using atom messages
         self.b2br = None  # only needed in predictions of atomic/bond targets
 
-    def get_components(self, atom_messages: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor,
-                                                                   torch.LongTensor, torch.LongTensor, torch.LongTensor,
+    def get_components(self, atom_messages: bool = False) -> Tuple[torch.Tensor, torch.Tensor,
+                                                                   torch.Tensor, torch.Tensor, torch.Tensor,
                                                                    List[Tuple[int, int]], List[Tuple[int, int]]]:
         """
         Returns the components of the :class:`BatchMolGraph`.
@@ -595,7 +595,7 @@ class BatchMolGraph:
 
         return self.f_atoms, f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
-    def get_b2b(self) -> torch.LongTensor:
+    def get_b2b(self) -> torch.Tensor:
         """
         Computes (if necessary) and returns a mapping from each bond index to all the incoming bond indices.
 
@@ -609,7 +609,7 @@ class BatchMolGraph:
 
         return self.b2b
 
-    def get_a2a(self) -> torch.LongTensor:
+    def get_a2a(self) -> torch.Tensor:
         """
         Computes (if necessary) and returns a mapping from each atom index to all neighboring atom indices.
 
@@ -624,7 +624,7 @@ class BatchMolGraph:
 
         return self.a2a
 
-    def get_b2br(self) -> torch.LongTensor:
+    def get_b2br(self) -> torch.Tensor:
         """
         Computes (if necessary) and returns a mapping from f_bonds to real bonds in molecule recorded in targets.
 
@@ -637,7 +637,7 @@ class BatchMolGraph:
                 b2br.append(mol_graph.b2br + n_bonds)
                 n_bonds += mol_graph.n_bonds
             b2br = np.concatenate(b2br, axis=0)
-            self.b2br = torch.LongTensor(b2br)
+            self.b2br = torch.tensor(b2br, dtype=torch.long)
 
         return self.b2br
 
