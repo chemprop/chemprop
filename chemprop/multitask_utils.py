@@ -12,16 +12,16 @@ def reshape_values(
     num_tasks: int,
 ) -> List[List[List[float]]]:
     """
-    Reshape the input from shape (num_tasks, numer of atomic/bond properties for each task, 1)
+    Reshape the input from shape (num_tasks, number of atomic/bond properties for each task, 1)
     to shape (data_size, num_tasks, number of atomic/bond properties for this data in each task).
 
-    :param values: List of atomic/bond properteis with shape
-                   (num_tasks, numer of atomic/bond properties for each task, 1).
+    :param values: List of atomic/bond properties with shape
+                   (num_tasks, number of atomic/bond properties for each task, 1).
     :param test_data: A :class:`~chemprop.data.MoleculeDataset` containing valid datapoints.
     :param natom_targets: The number of atomic targets.
     :param nbond_targets: The number of bond targets.
     :param num_tasks: Number of tasks.
-    :return: List of atomic/bond properteis with shape
+    :return: List of atomic/bond properties with shape
              (data_size, num_tasks, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
@@ -51,17 +51,17 @@ def reshape_preds(
     num_models: int,
 ) -> List[List[List[List[float]]]]:
     """
-    Reshape the input from shape (num_tasks, numer of atomic/bond properties for each task, 1, num_models)
+    Reshape the input from shape (num_tasks, number of atomic/bond properties for each task, 1, num_models)
     to shape (data_size, num_tasks, num_models, number of atomic/bond properties for this data in each task).
 
-    :param individual_preds: List of atomic/bond properteis with shape
-                             (num_tasks, numer of atomic/bond properties for each task, 1, num_models).
+    :param individual_preds: List of atomic/bond properties with shape
+                             (num_tasks, number of atomic/bond properties for each task, 1, num_models).
     :param test_data: A :class:`~chemprop.data.MoleculeDataset` containing valid datapoints.
     :param natom_targets: The number of atomic targets.
     :param nbond_targets: The number of bond targets.
     :param num_tasks: Number of tasks.
     :param num_models: Number of models.
-    :return: List of atomic/bond properteis with shape
+    :return: List of atomic/bond properties with shape
              (data_size, num_tasks, num_models, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds

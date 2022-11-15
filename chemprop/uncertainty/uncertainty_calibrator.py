@@ -11,7 +11,7 @@ from sklearn.isotonic import IsotonicRegression
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
-from chemprop.multitask_utils import get_reshaped_values
+from chemprop.multitask_utils import reshape_values
 
 
 class UncertaintyCalibrator(ABC):
@@ -573,7 +573,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             weighted_stdev = sqrt_weighted_vars * self.scaling
             natom_targets = len(self.calibration_data[0].atom_targets) if self.calibration_data[0].atom_targets is not None else 0
             nbond_targets = len(self.calibration_data[0].bond_targets) if self.calibration_data[0].bond_targets is not None else 0
-            weighted_stdev = get_reshaped_values(
+            weighted_stdev = reshape_values(
                 weighted_stdev,
                 self.calibration_data,
                 natom_targets,
