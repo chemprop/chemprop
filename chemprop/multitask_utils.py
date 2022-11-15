@@ -4,7 +4,7 @@ import numpy as np
 from chemprop.data import MoleculeDataset
 
 
-def get_reshaped_values(
+def reshape_values(
     values: List[List[List[float]]],
     test_data: MoleculeDataset,
     natom_targets: int,
@@ -42,7 +42,7 @@ def get_reshaped_values(
     return reshaped_values
 
 
-def get_reshaped_individual_preds(
+def reshape_preds(
     individual_preds: List[List[List[List[float]]]],
     test_data: MoleculeDataset,
     natom_targets: int,
