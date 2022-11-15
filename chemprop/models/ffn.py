@@ -130,10 +130,10 @@ class MultiReadout(nn.Module):
         """
         results = []
         for i, ffn in enumerate(self.ffn_list):
-            if isinstance(ffn, FFN):
-                results.append(ffn(input, bond_types_batch[i]))
-            else:
+            if isinstance(ffn, FFNAtten):
                 results.append(ffn(input, constraints_batch[i], bond_types_batch[i]))
+            else:
+                results.append(ffn(input, bond_types_batch[i]))
         return results
 
 
@@ -169,27 +169,76 @@ class FFN(nn.Module):
         base_output_size = features_size if num_layers == 1 else hidden_size
 
         if ffn_base:
-            self.ffn_readout = nn.Sequential(
-                ffn_base,
-                build_ffn(
-                    first_linear_dim=base_output_size,
-                    hidden_size=hidden_size,
-                    num_layers=1,
-                    output_size=output_size,
-                    dropout=dropout,
-                    activation=activation,
-                ),
-            )
+            self.ffn = ffn_base
         else:
-            self.ffn_readout = build_ffn(
-                first_linear_dim=features_size,
-                hidden_size=hidden_size,
-                num_layers=num_layers,
-                output_size=output_size,
-                dropout=dropout,
-                activation=activation,
-            )
+            if num_layers > 1:
+                self.ffn = nn.Sequential(
+                    build_ffn(
+                        first_linear_dim=features_size,
+                        hidden_size=hidden_size,
+                        num_layers=num_layers - 1,
+                        output_size=hidden_size,
+                        dropout=dropout,
+                        activation=activation,
+                    ),
+                    get_activation_function(activation),
+                )
+            else:
+                self.ffn = nn.Identity()
+        self.ffn_readout = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(base_output_size, output_size),
+        )
         self.ffn_type = ffn_type
+
+    def calc_hidden(
+        self,
+        input: Tuple[torch.Tensor, List, torch.Tensor, List, torch.Tensor],
+    ) -> torch.Tensor:
+        """
+        Calculate the hidden representation for each atom or bond in a molecule.
+        :param input: A tuple of atom and bond informations of each molecule.
+        :return: The hidden representation for each atom or bond in a molecule.
+        """
+        a_hidden, _, b_hidden, _, b2br = input
+
+        if self.ffn_type == "atom":
+            hidden = a_hidden
+        elif self.ffn_type == "bond":
+            forward_bond = b_hidden[b2br[:, 0]]
+            backward_bond = b_hidden[b2br[:, 1]]
+        else:
+            raise RuntimeError(f"Unrecognized ffn_type of {self.ffn_type}.")
+
+        if self.ffn_type == "atom":
+            output_hidden = self.ffn(hidden)
+        elif self.ffn_type == "bond":
+            b_hidden_1 = torch.cat([forward_bond, backward_bond], dim=1)
+            b_hidden_2 = torch.cat([backward_bond, forward_bond], dim=1)
+            output_1 = self.ffn(b_hidden_1)
+            output_2 = self.ffn(b_hidden_2)
+            output_hidden = (output_1 + output_2) / 2
+
+        return output_hidden
+
+    def readout(
+        self,
+        input: torch.Tensor,
+        bond_types: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Runs the :class:`FFN` on input hidden representation.
+        :param input: The hidden representation for each atom or bond in a molecule.
+        :param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
+        :return: The output of the :class:`FFN`, a PyTorch tensor containing a list of property predictions.
+        """
+        output = self.ffn_readout(input)
+        if self.ffn_type == "atom":
+            output = output[1:]  # remove the first one which is zero padding
+        elif self.ffn_type == "bond" and bond_types is not None:
+            output = output + bond_types.reshape(-1, 1)
+
+        return output
 
     def forward(
         self,
@@ -203,33 +252,12 @@ class FFN(nn.Module):
         :param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`FFN`, a PyTorch tensor containing a list of property predictions.
         """
-        a_hidden, a_scope, b_hidden, b_scope, b2br = input
-
-        if self.ffn_type == "atom":
-            hidden = a_hidden
-            scope = a_scope
-        elif self.ffn_type == "bond":
-            forward_bond = b_hidden[b2br[:, 0]]
-            backward_bond = b_hidden[b2br[:, 1]]
-            scope = [((start - 1) // 2, size // 2) for start, size in b_scope]
-        else:
-            raise RuntimeError(f"Unrecognized ffn_type of {self.ffn_type}.")
-
-        if self.ffn_type == "atom":
-            output = self.ffn_readout(hidden)
-            output = output[1:]  # remove the first one which is zero padding
-        elif self.ffn_type == "bond":
-            b_hidden_1 = torch.cat([forward_bond, backward_bond], dim=1)
-            b_hidden_2 = torch.cat([backward_bond, forward_bond], dim=1)
-            output_1 = self.ffn_readout(b_hidden_1)
-            output_2 = self.ffn_readout(b_hidden_2)
-            output = (output_1 + output_2) / 2
-            if bond_types is not None:
-                output = output + bond_types.reshape(-1, 1)
+        output_hidden = self.calc_hidden(input)
+        output = self.readout(output_hidden, bond_types)
 
         return output
 
-class FFNAtten(nn.Module):
+class FFNAtten(FFN):
     """
     A :class:`FFNAtten` is a multiple feed forward neural networks (FFN) to predict
     the atom/bond descriptors with applying constraint on output. An attention-based
@@ -261,31 +289,19 @@ class FFNAtten(nn.Module):
         :param ffn_type: The type of target (atom or bond).
         :param weights_ffn_num_layers: Number of layers in FFN for determining weights used to correct the constrained targets.
         """
-        super().__init__()
+        super().__init__(
+            features_size,
+            hidden_size,
+            num_layers,
+            output_size,
+            dropout,
+            activation,
+            ffn_base,
+            ffn_type,
+        )
 
         base_output_size = features_size if num_layers == 1 else hidden_size
 
-        if ffn_base:
-            self.ffn = ffn_base
-        else:
-            if num_layers > 1:
-                self.ffn = nn.Sequential(
-                    build_ffn(
-                        first_linear_dim=features_size,
-                        hidden_size=hidden_size,
-                        num_layers=num_layers - 1,
-                        output_size=hidden_size,
-                        dropout=dropout,
-                        activation=activation,
-                    ),
-                    get_activation_function(activation),
-                )
-            else:
-                self.ffn = nn.Identity()
-        self.ffn_readout = nn.Sequential(
-            nn.Dropout(dropout),
-            nn.Linear(base_output_size, output_size),
-        )
         self.weights_readout = build_ffn(
             first_linear_dim=base_output_size,
             hidden_size=hidden_size,
@@ -294,7 +310,41 @@ class FFNAtten(nn.Module):
             dropout=dropout,
             activation=activation,
         )
-        self.ffn_type = ffn_type
+
+    def readout(
+        self,
+        input: torch.Tensor,
+        scope: List[Tuple],
+        constraints: torch.Tensor,
+        bond_types: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Runs the :class:`FFNAtten` on hidden representation.
+        :param input: The hidden representation for each atom or bond in a molecule.
+        :param scope: A list of tuples indicating the start and end atom/bond indices for each molecule.
+        :param constraints: A PyTorch tensor which applies constraint on atomic/bond properties.
+        :param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
+        :return: The output of the :class:`FFN`, a PyTorch tensor containing a list of property predictions.
+        """
+        output = self.ffn_readout(input)
+        if self.ffn_type == "bond" and bond_types is not None:
+            output = output + bond_types.reshape(-1, 1)
+
+        W_a = self.weights_readout(input)
+        constrained_output = []
+        for i, (start, size) in enumerate(scope):
+            if size == 0:
+                continue
+            else:
+                q_i = output[start:start+size]
+                w_i = W_a[start:start+size].softmax(0)
+                Q = constraints[i]
+                q_f = q_i + w_i * (Q - q_i.sum())
+                constrained_output.append(q_f)
+
+        output = torch.cat(constrained_output, dim=0)
+
+        return output
 
     def forward(
         self,
@@ -309,44 +359,13 @@ class FFNAtten(nn.Module):
         :param bond_types: A PyTorch tensor storing bond types of each bond determined by RDKit molecules.
         :return: The output of the :class:`FFNAtten`, a PyTorch tensor containing a list of property predictions.
         """
-        a_hidden, a_scope, b_hidden, b_scope, b2br = input
-
+        output_hidden = self.calc_hidden(input)
+        _, a_scope, _, b_scope, _ = input
         if self.ffn_type == "atom":
-            hidden = a_hidden
             scope = a_scope
         elif self.ffn_type == "bond":
-            forward_bond = b_hidden[b2br[:, 0]]
-            backward_bond = b_hidden[b2br[:, 1]]
             scope = [((start - 1) // 2, size // 2) for start, size in b_scope]
-        else:
-            raise RuntimeError(f"Unrecognized ffn_type of {self.ffn_type}.")
-
-        if self.ffn_type == "atom":
-            output_hidden = self.ffn(hidden)
-            output = self.ffn_readout(output_hidden)
-        elif self.ffn_type == "bond":
-            b_hidden_1 = torch.cat([forward_bond, backward_bond], dim=1)
-            b_hidden_2 = torch.cat([backward_bond, forward_bond], dim=1)
-            output_1 = self.ffn(b_hidden_1)
-            output_2 = self.ffn(b_hidden_2)
-            output_hidden = (output_1 + output_2) / 2
-            output = self.ffn_readout(output_hidden)
-            if bond_types is not None:
-                output = output + bond_types.reshape(-1, 1)
-
-        W_a = self.weights_readout(output_hidden)
-        constrained_output = []
-        for i, (start, size) in enumerate(scope):
-            if size == 0:
-                continue
-            else:
-                q_i = output[start:start+size]
-                w_i = W_a[start:start+size].softmax(0)
-                Q = constraints[i]
-                q_f = q_i + w_i * (Q - q_i.sum())
-                constrained_output.append(q_f)
-
-        output = torch.cat(constrained_output, dim=0)
+        output = self.readout(output_hidden, scope, constraints, bond_types)
 
         return output
 
