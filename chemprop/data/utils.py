@@ -55,7 +55,7 @@ def preprocess_smiles_columns(path: str,
         else:
             smiles_columns = [None]*number_of_molecules
     else:
-        if not isinstance(smiles_columns, list):
+        if isinstance(smiles_columns, str):
             smiles_columns = [smiles_columns]
         if os.path.isfile(path):
             columns = get_header(path)
@@ -90,7 +90,7 @@ def get_task_names(path: str,
 
     columns = get_header(path)
 
-    if not isinstance(smiles_columns, list):
+    if isinstance(smiles_columns, str):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
@@ -126,7 +126,7 @@ def get_mixed_task_names(path: str,
     """
     columns = get_header(path)
 
-    if not isinstance(smiles_columns, list):
+    if isinstance(smiles_columns, str):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
@@ -252,7 +252,7 @@ def get_smiles(path: str,
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    if not isinstance(smiles_columns, list) and header:
+    if isinstance(smiles_columns, str) and header:
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns, number_of_molecules=number_of_molecules)
 
     with open(path) as f:
@@ -401,7 +401,7 @@ def get_data(path: str,
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
 
-    if not isinstance(smiles_columns, list):
+    if isinstance(smiles_columns, str):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     max_data_size = max_data_size or float('inf')
