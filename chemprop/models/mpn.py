@@ -31,7 +31,6 @@ class MPNEncoder(nn.Module):
         self.hidden_size = hidden_size or args.hidden_size
         self.bias = bias or args.bias
         self.depth = depth or args.depth
-        self.dropout = args.dropout
         self.layers_per_message = 1
         self.undirected = args.undirected
         self.device = args.device
@@ -40,7 +39,7 @@ class MPNEncoder(nn.Module):
         self.is_atom_bond_targets = args.is_atom_bond_targets
 
         # Dropout
-        self.dropout_layer = nn.Dropout(p=self.dropout)
+        self.dropout = nn.Dropout(args.dropout)
 
         # Activation
         self.act_func = get_activation_function(args.activation)
@@ -140,7 +139,7 @@ class MPNEncoder(nn.Module):
 
             message = self.W_h(message)
             message = self.act_func(input + message)  # num_bonds x hidden_size
-            message = self.dropout_layer(message)  # num_bonds x hidden
+            message = self.dropout(message)  # num_bonds x hidden
 
         # atom hidden
         a2x = a2a if self.atom_messages else a2b
@@ -148,13 +147,13 @@ class MPNEncoder(nn.Module):
         a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
         a_input = torch.cat([f_atoms, a_message], dim=1)  # num_atoms x (atom_fdim + hidden)
         atom_hiddens = self.act_func(self.W_o(a_input))  # num_atoms x hidden
-        atom_hiddens = self.dropout_layer(atom_hiddens)  # num_atoms x hidden
+        atom_hiddens = self.dropout(atom_hiddens)  # num_atoms x hidden
 
         # bond hidden
         if self.is_atom_bond_targets:
             b_input = torch.cat([f_bonds, message], dim=1)  # num_bonds x (bond_fdim + hidden)
             bond_hiddens = self.act_func(self.W_o_b(b_input))  # num_bonds x hidden
-            bond_hiddens = self.dropout_layer(bond_hiddens)  # num_bonds x hidden
+            bond_hiddens = self.dropout(bond_hiddens)  # num_bonds x hidden
 
         # concatenate the atom descriptors
         if atom_descriptors_batch is not None:
@@ -163,7 +162,7 @@ class MPNEncoder(nn.Module):
 
             atom_hiddens = torch.cat([atom_hiddens, atom_descriptors_batch], dim=1)     # num_atoms x (hidden + descriptor size)
             atom_hiddens = self.atom_descriptors_layer(atom_hiddens)                    # num_atoms x (hidden + descriptor size)
-            atom_hiddens = self.dropout_layer(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
+            atom_hiddens = self.dropout(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
 
         # concatenate the bond descriptors
         if bond_descriptors_batch is not None:
@@ -172,7 +171,7 @@ class MPNEncoder(nn.Module):
 
             bond_hiddens = torch.cat([bond_hiddens, bond_descriptors_batch], dim=1)     # num_bonds x (hidden + descriptor size)
             bond_hiddens = self.bond_descriptors_layer(bond_hiddens)                    # num_bonds x (hidden + descriptor size)
-            bond_hiddens = self.dropout_layer(bond_hiddens)                             # num_bonds x (hidden + descriptor size)
+            bond_hiddens = self.dropout(bond_hiddens)                             # num_bonds x (hidden + descriptor size)
 
         # Readout
         if self.is_atom_bond_targets:
