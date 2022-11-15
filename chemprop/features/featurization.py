@@ -556,8 +556,8 @@ class BatchMolGraph:
         self.max_num_bonds = max(1, max(
             len(in_bonds) for in_bonds in a2b))  # max with 1 to fix a crash in rare case of all single-heavy-atom mols
 
-        self.f_atoms = torch.tensor(f_atoms, dtype=torch.float32)
-        self.f_bonds = torch.tensor(f_bonds, dtype=torch.float32)
+        self.f_atoms = torch.tensor(f_atoms, dtype=torch.float)
+        self.f_bonds = torch.tensor(f_bonds, dtype=torch.float)
         self.a2b = torch.tensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)], dtype=torch.long)
         self.b2a = torch.tensor(b2a, dtype=torch.long)
         self.b2revb = torch.tensor(b2revb, dtype=torch.long)
