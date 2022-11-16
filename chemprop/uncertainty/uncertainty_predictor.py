@@ -167,11 +167,11 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -371,11 +371,11 @@ class MVEPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -517,11 +517,11 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -663,11 +663,11 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -809,11 +809,11 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -954,11 +954,11 @@ class EnsemblePredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )
@@ -1193,11 +1193,11 @@ class ClassPredictor(UncertaintyPredictor):
                             self.test_data.number_of_bonds,
                         )
                         individual_preds = []
-                        for atom_target in model.atom_targets:
+                        for _ in model.atom_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_atoms), 1, self.num_models))
                             )
-                        for bond_target in model.bond_targets:
+                        for _ in model.bond_targets:
                             individual_preds.append(
                                 np.zeros((sum(n_bonds), 1, self.num_models))
                             )

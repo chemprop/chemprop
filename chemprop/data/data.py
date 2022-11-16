@@ -515,7 +515,7 @@ class MoleculeDataset(Dataset):
         """
         targets = self.targets()
         data_weights = self.data_weights()
-        atom_bond_data_weights = [[] for i in targets[0]]
+        atom_bond_data_weights = [[] for _ in targets[0]]
         for i, tb in enumerate(targets):
             weight = data_weights[i]
             for j, x in enumerate(tb): 

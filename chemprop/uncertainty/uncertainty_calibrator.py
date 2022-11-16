@@ -583,18 +583,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             return uncal_preds, weighted_stdev
         else:
             weighted_stdev = np.sqrt(weighted_vars) * self.scaling
-        uncal_individual_vars = np.array(uncal_predictor.get_individual_vars())  # shape(models, data, tasks)
-        if self.calibration_data.is_atom_bond_targets:
-            uncal_individual_vars = [np.array([np.concatenate(ind_var[:, :, i]) for i in range(self.num_models)]) for ind_var in uncal_individual_vars]
-            return uncal_preds, weighted_stdev
-        else:
-            weighted_vars = np.sum(
-                uncal_individual_vars * np.expand_dims(self.var_weighting, 1),
-                axis=0,
-                keepdims=False,
-            )  # shape(data, tasks)
-            weighted_stdev = np.sqrt(weighted_vars) * self.scaling
-        return uncal_preds.tolist(), weighted_stdev.tolist()
+            return uncal_preds.tolist(), weighted_stdev.tolist()
 
     def nll(
         self,

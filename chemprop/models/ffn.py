@@ -2,8 +2,6 @@ from typing import List, Tuple, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import re
 
 from chemprop.nn_utils import get_activation_function
 

@@ -5,7 +5,6 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 
 import numpy as np
-import pandas as pd
 
 from chemprop.data import get_header, preprocess_smiles_columns, get_task_names, get_mixed_task_names, \
     get_data_weights, get_smiles, filter_invalid_smiles, MoleculeDataset, MoleculeDatapoint, get_data, split_data

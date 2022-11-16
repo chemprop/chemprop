@@ -64,7 +64,7 @@ def predict(
 
             # If the path to constraints is not given, the constraints matrix needs to be reformatted.
             if constraints_batch == []:
-                for d in batch._data:
+                for _ in batch._data:
                     natom_targets = len(model.atom_targets)
                     nbond_targets = len(model.bond_targets)
                     ntargets = natom_targets + nbond_targets

@@ -265,7 +265,7 @@ class MoleculeModel(nn.Module):
             if self.is_atom_bond_targets:
                 outputs = []
                 for x in output:
-                    outputs.append(nn.functional.softplus(output) + 1)
+                    outputs.append(nn.functional.softplus(x) + 1)
                 return outputs
             else:
                 output = nn.functional.softplus(output) + 1
