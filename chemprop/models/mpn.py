@@ -56,21 +56,18 @@ class MPNEncoder(nn.Module):
         else:
             w_h_input_size = self.hidden_size
 
-        # Shared weight matrix across depths (default)
         self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
 
-        # hidden state readout
         self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
         if self.is_atom_bond_targets:
             self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
 
-        # layer after concatenating the descriptors if args.atom_descriptors == descriptors
         if args.atom_descriptors == 'descriptor':
             self.atom_descriptors_size = args.atom_descriptors_size
             self.atom_descriptors_layer = nn.Linear(self.hidden_size + self.atom_descriptors_size,
                                                     self.hidden_size + self.atom_descriptors_size,)
-        # layer after concatenating the descriptors if args.bond_descriptors == descriptors
+
         if args.bond_descriptors == 'descriptor':
             self.bond_descriptors_size = args.bond_descriptors_size
             self.bond_descriptors_layer = nn.Linear(self.hidden_size + self.bond_descriptors_size,
