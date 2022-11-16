@@ -325,7 +325,7 @@ class MPN(nn.Module):
                     else:
                         encodings.append(self.encoder_solvent(ba))
 
-        output = reduce(lambda x, y: torch.cat((x, y), dim=1), encodings)
+        output = encodings[0] if len(encodings) == 1 else torch.cat(encodings, dim=1)
 
         if self.use_input_features:
             if len(features_batch.shape) == 1:
