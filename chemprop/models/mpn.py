@@ -162,7 +162,7 @@ class MPNEncoder(nn.Module):
             atom_hiddens = self.dropout(atom_hiddens)                             # num_atoms x (hidden + descriptor size)
 
         # concatenate the bond descriptors
-        if bond_descriptors_batch is not None:
+        if self.is_atom_bond_targets and bond_descriptors_batch is not None:
             if len(bond_hiddens) != len(bond_descriptors_batch):
                 raise ValueError('The number of bonds is different from the length of the extra bond features')
 
