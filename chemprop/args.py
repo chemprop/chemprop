@@ -421,6 +421,11 @@ class TrainArgs(CommonArgs):
     Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used
     with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.
     """
+    keeping_atom_map: bool = False
+    """
+    Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with
+    the :code:`is_atom_bond_targets`.
+    """
     is_atom_bond_targets: bool = False
     """
     whether this is atomic/bond properties prediction.

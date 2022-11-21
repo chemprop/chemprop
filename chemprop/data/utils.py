@@ -142,7 +142,7 @@ def get_mixed_task_names(path: str,
         for row in reader:
             atom_target_names, bond_target_names, molecule_target_names = [], [], []
             smiles = [row[c] for c in smiles_columns]
-            mol = make_mol(smiles[0], keep_h, add_h)
+            mol = make_mol(smiles[0], keep_h, add_h, keep_atom_map=False)
             for column in target_names:
                 value = row[column]
                 value = value.replace('None', 'null')
@@ -322,10 +322,11 @@ def get_invalid_smiles_from_list(smiles: List[List[str]], reaction: bool = False
     is_reaction_list = [True if not x and reaction else False for x in is_mol_list]
     is_explicit_h_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
     is_adding_hs_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
+    keep_atom_map_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
 
     for mol_smiles in smiles:
         mols = make_mols(smiles=mol_smiles, reaction_list=is_reaction_list, keep_h_list=is_explicit_h_list,
-                         add_h_list=is_adding_hs_list)
+                         add_h_list=is_adding_hs_list, keep_atom_map_list=keep_atom_map_list)
         if any(s == '' for s in mol_smiles) or \
            any(m is None for m in mols) or \
            any(m.GetNumHeavyAtoms() == 0 for m in mols if not isinstance(m, tuple)) or \
@@ -493,7 +494,7 @@ def get_data(path: str,
                         targets.append(target)
                     elif len(target.shape) == 2:  # Bond targets saved as 2D list
                         bond_target_arranged = []
-                        mol = make_mol(smiles[0], args.explicit_h, args.adding_h)
+                        mol = make_mol(smiles[0], args.explicit_h, args.adding_h, args.keeping_atom_map)
                         for bond in mol.GetBonds():
                             bond_target_arranged.append(target[bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()])
                         bond_targets.append(np.array(bond_target_arranged))

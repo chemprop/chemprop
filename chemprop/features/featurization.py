@@ -46,6 +46,7 @@ class Featurization_parameters:
         self.EXPLICIT_H = False
         self.REACTION = False
         self.ADDING_H = False
+        self.KEEP_ATOM_MAP = False
 
 # Create a global parameter object for reference throughout this module
 PARAMS = Featurization_parameters()
@@ -94,6 +95,13 @@ def set_adding_hs(adding_hs: bool) -> None:
     """
     PARAMS.ADDING_H = adding_hs
 
+def set_keeping_atom_map(keeping_atom_map: bool) -> None:
+    """
+    Sets whether RDKit molecules keep the original atom mapping.
+
+    :param keeping_atom_map: Boolean whether to keep the original atom mapping.
+    """
+    PARAMS.KEEP_ATOM_MAP = keeping_atom_map
 
 def set_reaction(reaction: bool, mode: str) -> None:
     """
@@ -121,7 +129,14 @@ def is_adding_hs(is_mol: bool = True) -> bool:
     if is_mol:
         return PARAMS.ADDING_H
     return False
-    
+
+
+def is_keeping_atom_map(is_mol: bool = True) -> bool:
+    r"""Returns whether to keep the original atom mapping (not for reactions)"""
+    if is_mol:
+        return PARAMS.KEEP_ATOM_MAP
+    return False
+
 
 def is_reaction(is_mol: bool = True) -> bool:
     r"""Returns whether to use reactions as input"""
@@ -327,9 +342,9 @@ class MolGraph:
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
             if self.is_reaction:
-                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs)) 
+                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)) 
             else:
-                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs)
+                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)
 
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
