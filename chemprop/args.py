@@ -647,6 +647,7 @@ class TrainArgs(CommonArgs):
                 ignore_columns=self.ignore_columns,
                 keep_h=self.explicit_h,
                 add_h=self.adding_h,
+                keep_atom_map=self.keeping_atom_map,
             )
             self.target_columns = self.atom_targets + self.bond_targets
             # self.target_columns = self.atom_targets + self.bond_targets + self.molecule_targets  # TODO: Support mixed targets

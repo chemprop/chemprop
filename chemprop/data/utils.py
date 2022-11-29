@@ -105,7 +105,8 @@ def get_mixed_task_names(path: str,
                          target_columns: List[str] = None,
                          ignore_columns: List[str] = None,
                          keep_h: bool = None,
-                         add_h: bool = None) -> Tuple[List[str], List[str], List[str]]:
+                         add_h: bool = None,
+                         keep_atom_map: bool = None) -> Tuple[List[str], List[str], List[str]]:
     """
     Gets the task names for atomic, bond, and molecule targets separately from a data CSV file.
 
@@ -122,6 +123,7 @@ def get_mixed_task_names(path: str,
     :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
     :param keep_h: Boolean whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified.
     :param add_h: Boolean whether to add hydrogens to the input smiles.
+    :param keep_atom_map: Boolean whether to keep the original atom mapping.
     :return: A tuple containing the task names of atomic, bond, and molecule properties separately.
     """
     columns = get_header(path)
@@ -142,7 +144,7 @@ def get_mixed_task_names(path: str,
         for row in reader:
             atom_target_names, bond_target_names, molecule_target_names = [], [], []
             smiles = [row[c] for c in smiles_columns]
-            mol = make_mol(smiles[0], keep_h, add_h, keep_atom_map=False)
+            mol = make_mol(smiles[0], keep_h, add_h, keep_atom_map)
             for column in target_names:
                 value = row[column]
                 value = value.replace('None', 'null')
