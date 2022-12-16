@@ -203,7 +203,9 @@ The loss functions available for training are dependent on the selected dataset 
 * **Multiclass.** cross_entropy (default), mcc (a soft version of Matthews Correlation Coefficient)
 * **Spectra.** sid (default, spectral information divergence), wasserstein (First-order Wasserstein distance a.k.a. earthmover's distance.)
 
-The regression loss functions `mve` and `evidential` function by minimizing the negative log likelihood of a predicted uncertainty distribution. If used during training, the uncertainty predictions from these loss functions can be used for uncertainty prediction during prediction tasks.
+Dropout regularization can be applied regardless of loss function using the argument `--dropout <float>` and providing a dropout fraction between 0 and 1.
+
+The regression loss functions `mve` and `evidential` function by minimizing the negative log likelihood of a predicted uncertainty distribution. If used during training, the uncertainty predictions from these loss functions can be used for uncertainty prediction during prediction tasks. A regularization specific to evidential learning can be applied using the argument `--evidential_regularization <float>`.
 ### Metrics
 
 Metrics are used to evaluate the success of the model against the test set as the final model score and to determine the optimal epoch to save the model at based on the validation set. The primary metric used for both purposes is selected with the argument `--metric <metric>` and additional metrics for test set score only can be added with `--extra_metrics <metric1> <metric2> ...`. Supported metrics are dependent on the dataset type. Unlike loss functions, metrics do not have to be differentiable.
