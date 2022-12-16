@@ -132,6 +132,7 @@ def save_trials(
     Saves hyperopt trial data as a `.pkl` file.
 
     :param dir_path: Path to the directory containing hyperopt checkpoint files.
+    :param hyperopt_seed: The initial seed used for choosing parameters in hyperopt trials.
     :param trials: A trials object containing information on a completed hyperopt iteration.
     """
     if logger is None:
