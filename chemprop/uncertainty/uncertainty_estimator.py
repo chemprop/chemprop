@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Iterator, List
 
 from chemprop.data import MoleculeDataset, StandardScaler
@@ -62,4 +63,4 @@ class UncertaintyEstimator:
         """
         Return separate predictions made by each individual model in an ensemble of models.
         """
-        return self.predictor.get_individual_preds()
+        return np.asarray(self.predictor.get_individual_preds())
