@@ -417,7 +417,8 @@ class TrainArgs(CommonArgs):
     spectra_target_floor: float = 1e-8
     """Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values."""
     evidential_regularization: float = 0
-    """Value used in regularization for evidential loss function. Value used in literature was 1."""
+    """Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. 
+    Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model."""
     overwrite_default_atom_features: bool = False
     """
     Overwrites the default atom descriptors with the new ones instead of concatenating them.
