@@ -206,6 +206,7 @@ def run_training(args: TrainArgs,
         for tb in zip(*test_data.targets()):
             tb = np.concatenate(tb)
             sum_test_preds.append(np.zeros((tb.shape[0], 1)))
+        sum_test_preds = np.array(sum_test_preds, dtype=object)
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -362,7 +363,10 @@ def run_training(args: TrainArgs,
             )
 
             if len(test_preds) != 0:
-                sum_test_preds += np.array(test_preds)
+                if args.is_atom_bond_targets:
+                    sum_test_preds += np.array(test_preds, dtype=object)
+                else:
+                    sum_test_preds += np.array(test_preds)
 
             # Average test score
             for metric, scores in test_scores.items():

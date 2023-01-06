@@ -724,7 +724,7 @@ class MoleculeDataset(Dataset):
             scaled_targets[i] = np.split(np.array(scaled_targets[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
         for i in range(n_bond_targets):
             scaled_targets[i+n_atom_targets] = np.split(np.array(scaled_targets[i+n_atom_targets]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
-        scaled_targets = np.array(scaled_targets).T
+        scaled_targets = np.array(scaled_targets, dtype=object).T
         self.set_targets(scaled_targets)
 
         return scaler
