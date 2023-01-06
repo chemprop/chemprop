@@ -169,11 +169,11 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -373,11 +373,11 @@ class MVEPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -519,11 +519,11 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -665,11 +665,11 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -811,11 +811,11 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -956,11 +956,11 @@ class EnsemblePredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
@@ -1195,11 +1195,11 @@ class ClassPredictor(UncertaintyPredictor):
                         individual_preds = []
                         for _ in model.atom_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_atoms), 1, self.num_models))
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
                             )
                         for _ in model.bond_targets:
                             individual_preds.append(
-                                np.zeros((sum(n_bonds), 1, self.num_models))
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
                             )
                         for j, pred in enumerate(preds):
                             individual_preds[j][:, :, i] = pred
