@@ -139,7 +139,6 @@ def get_mixed_task_names(path: str,
         target_names = [column for column in columns if column not in ignore_columns]
 
     with open(path) as f:
-        f = open(path)
         reader = csv.DictReader(f)
         for row in reader:
             atom_target_names, bond_target_names, molecule_target_names = [], [], []
