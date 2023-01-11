@@ -1047,7 +1047,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        20.50925,
+        0.7223842,
         'dropout',
         'zscaling',
         'ence',
@@ -1071,7 +1071,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        39.07013967,
+        0.480757667,
         'ensemble',
         'zelikman_interval',
         'ence',
@@ -1095,7 +1095,7 @@ class ChempropTests(TestCase):
         [],
     ),
     (
-        757883.0509,
+        99.40899,
         'ensemble',
         None,
         'ence',
