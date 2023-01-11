@@ -324,8 +324,8 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                 self.calibrator.regression_calibrator_metric = original_metric
                 self.calibrator.scaling = original_scaling
 
-        mean_vars = np.zeros([preds.shape[1], 100])  # shape(tasks, 100)
-        rmses = np.zeros_like(mean_vars)
+        root_mean_vars = np.zeros([preds.shape[1], 100])  # shape(tasks, 100)
+        rmses = np.zeros_like(root_mean_vars)
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]  # shape(data)
@@ -342,21 +342,21 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
             for j in range(100):
                 if self.calibrator is None:  # starts as a variance
-                    mean_vars[i, j] = np.mean(split_unc[j])
+                    root_mean_vars[i, j] = np.sqrt(np.mean(split_unc[j]))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
                 elif self.calibration_method == "tscaling":  # convert back to sample stdev
                     bin_unc = split_unc[j] / original_scaling[i]
                     bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
-                    mean_vars[i, j] = np.mean(bin_var)
+                    root_mean_vars[i, j] = np.sqrt(np.mean(bin_var))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
                 else:
                     bin_unc = split_unc[j]
                     if self.calibrator.regression_calibrator_metric == "interval":
                         bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
-                    mean_vars[i, j] = np.mean(np.square(bin_unc))
+                    root_mean_vars[i, j] = np.sqrt(np.mean(np.square(bin_unc)))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
 
-        ence = np.mean(np.abs(mean_vars - rmses) / mean_vars, axis=1)
+        ence = np.mean(np.abs(root_mean_vars - rmses) / root_mean_vars, axis=1)
         return ence.tolist()
 
 
