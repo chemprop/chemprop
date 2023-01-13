@@ -467,7 +467,7 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
             targets: shape(data, tasks)
             preds: shape(data, tasks, num_classes)
             uncertainties: shape(data, tasks, num_classes)
-            mask: shape(data, tasks, num_classes)
+            mask: shape(data, tasks)
 
         Returns:
             Conformal coverage for each task
@@ -479,6 +479,8 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
         results = []
 
         for task_id in range(num_tasks):
+            print(uncertainties[mask[:, task_id], task_id])
+            print(targets[mask[:, task_id], task_id])
             task_results = np.take_along_axis(
                 uncertainties[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)

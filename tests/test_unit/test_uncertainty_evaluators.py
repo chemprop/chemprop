@@ -201,7 +201,7 @@ def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spe
             np.array([[0.5, 0.5, 0.5]]),
             np.array([[0.5, 0.5, 0.5]]),
             np.array([[0, 0, 1, 0, 1, 1]]),
-            np.full((3, 1), True, dtype=bool),
+            np.full((1, 3), True, dtype=bool),
             [0, 1, 0],
         ),
     ],
@@ -212,6 +212,7 @@ def test_conformal_regression_coverage(
     """
     Tests the result of the conformal_coverage for regression UncertaintyEvaluator.
     """
+
     coverage = conformal_coverage_regression_evaluator.evaluate(targets, preds, uncs, mask)
 
     np.testing.assert_array_almost_equal(coverage, coverage_exp, decimal=3)
@@ -224,14 +225,14 @@ def test_conformal_regression_coverage(
             np.array([0, 1, 1]).reshape(3, 1),
             np.full((3, 1, 2), 0.5),
             np.array([[1, 0], [0, 1], [1, 0]]).reshape(3, 1, 2),
-            np.full((3, 1, 2), True, dtype=bool),
+            np.full((3, 1), True, dtype=bool),
             [0.6666],
         ),
         (
             np.array([0, 1, 2]).reshape(3, 1),
             np.full((3, 1, 3), 0.5),
             np.array([[1, 0, 0], [1, 0, 0], [1, 0, 0]]).reshape(3, 1, 3),
-            np.full((3, 1, 3), True, dtype=bool),
+            np.full((3, 1), True, dtype=bool),
             [0.3333],
         ),
     ],
