@@ -47,30 +47,12 @@ def train(
     for batch in tqdm(data_loader, total=len(data_loader), leave=False):
         # Prepare batch
         batch: MoleculeDataset
-        (
-            mol_batch,
-            features_batch,
-            target_batch,
-            mask_batch,
-            atom_descriptors_batch,
-            atom_features_batch,
-            bond_features_batch,
-            data_weights_batch,
-        ) = (
-            batch.batch_graph(),
-            batch.features(),
-            batch.targets(),
-            batch.mask(),
-            batch.atom_descriptors(),
-            batch.atom_features(),
-            batch.bond_features(),
-            batch.data_weights(),
-        )
+        mol_batch, features_batch, target_batch, mask_batch, atom_descriptors_batch, atom_features_batch, bond_features_batch, data_weights_batch = \
+            batch.batch_graph(), batch.features(), batch.targets(), batch.mask(), batch.atom_descriptors(), \
+            batch.atom_features(), batch.bond_features(), batch.data_weights()
 
-        mask = torch.tensor(mask_batch, dtype=torch.bool)  # shape(batch, tasks)
-        targets = torch.tensor(
-            [[0 if x is None else x for x in tb] for tb in target_batch]
-        )  # shape(batch, tasks)
+        mask = torch.tensor(mask_batch, dtype=torch.bool) # shape(batch, tasks)
+        targets = torch.tensor([[0 if x is None else x for x in tb] for tb in target_batch])  # shape(batch, tasks)
 
         if args.target_weights is not None:
             target_weights = torch.tensor(args.target_weights).unsqueeze(0)  # shape(1,tasks)
@@ -118,16 +100,11 @@ def train(
                     mask[:, target_index],
                 ).unsqueeze(0)
                 target_losses.append(target_loss)
-            loss = torch.cat(target_losses).to(torch_device) * target_weights.squeeze(0)
+            loss = torch.cat(target_losses) * target_weights.squeeze(0)
         elif args.dataset_type == "multiclass":
             targets = targets.long()
             if args.loss_function == "dirichlet":
-                loss = (
-                    loss_func(preds, targets, args.evidential_regularization)
-                    * target_weights
-                    * data_weights
-                    * mask
-                )
+                loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
             else:
                 target_losses = []
                 for target_index in range(preds.size(1)):
@@ -135,46 +112,25 @@ def train(
                         preds[:, target_index, :], targets[:, target_index]
                     ).unsqueeze(1)
                     target_losses.append(target_loss)
-                loss = (
-                    torch.cat(target_losses, dim=1).to(torch_device)
-                    * target_weights
-                    * data_weights
-                    * mask
-                )
+                loss = torch.cat(target_losses, dim=1).to(torch_device) * target_weights * data_weights * mask
         elif args.dataset_type == "spectra":
             loss = loss_func(preds, targets, mask) * target_weights * data_weights * mask
         elif args.loss_function == "bounded_mse":
-            loss = (
-                loss_func(preds, targets, lt_target_batch, gt_target_batch)
-                * target_weights
-                * data_weights
-                * mask
-            )
+            loss = loss_func(preds, targets, lt_target_batch, gt_target_batch) * target_weights * data_weights * mask
         elif args.loss_function == "evidential":
-            loss = (
-                loss_func(preds, targets, args.evidential_regularization)
-                * target_weights
-                * data_weights
-                * mask
-            )
+            loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         elif args.loss_function == "dirichlet":  # classification
-            loss = (
-                loss_func(preds, targets, args.evidential_regularization)
-                * target_weights
-                * data_weights
-                * mask
-            )
+            loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * mask
         elif args.loss_function == "quantile_interval":
             quantiles_tensor = torch.tensor(args.quantiles, device=torch_device)
-            loss = (
-                loss_func(preds, targets, quantiles_tensor)
-                * target_weights
-                * data_weights
-                * mask
-            )
+            loss = loss_func(preds, targets, quantiles_tensor) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
-        loss = loss.sum() / mask.sum()
+
+        if args.loss_function == "mcc":
+            loss = loss.mean()
+        else:
+            loss = loss.sum() / mask.sum()
 
         loss_sum += loss.item()
         iter_count += 1
