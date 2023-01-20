@@ -26,6 +26,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Docker](#docker)
 - [Web Interface](#web-interface)
 - [Within Python](#within-python)
+- [Reproducibility](#reproducibility)
 - [Data](#data)
 - [Training](#training)
   * [Train/Validation/Test Splits](#trainvalidationtest-splits)
@@ -188,12 +189,13 @@ Our code supports several methods of splitting data into train, validation, and 
 
 * **Random.** By default, the data will be split randomly into train, validation, and test sets.
 * **Scaffold.** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding `--split_type scaffold_balanced`.
+* **k-Fold Cross-Validation.** A split type specified with `--split_type cv` intended for use when training with cross-validation. The data are split randomly into k groups of equal size, where k is the number of cross-validation folds specified with `--num_folds <k>`. Each group is used once as the test set and once as the validation set in training the k folds of the model. Alternatively, the option `--split_type cv-no-test` can be used to train without a test splits.
 * **Random With Repeated SMILES.** Some datasets have multiple entries with the same SMILES. To constrain splitting so the repeated SMILES are in the same split, use the argument `--split_type random_with_repeated_smiles`.
 * **Separate val/test.** If you have separate data files you would like to use as the validation or test set, you can specify them with `--separate_val_path <val_path>` and/or `--separate_test_path <test_path>`. If both are provided, then the data specified by `--data_path` is used entirely as the training data. If only one separate path is provided, the `--data_path` data is split between train data and either val or test data, whichever is not provided separately.
 
 When data contains multiple molecules per datapoint, scaffold and repeated SMILES splitting will only constrain splitting based on one of the molecules. The key molecule can be chosen with the argument `--split_key_molecule <int>`, with the default setting using an index of 0 indicating the first molecule.
 
-By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with `--split_sizes <train_frac> <val_frac> <test_frac>`. The default setting is `--split_sizes 0.8 0.1 0.1`. If a separate validation set or test set is provided, the split defaults to 80%-20%. Splitting involves a random component and can be seeded with `--seed <seed>`. The default setting is `--seed 0`.
+By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with `--split_sizes <train_frac> <val_frac> <test_frac>`. The default setting is `--split_sizes 0.8 0.1 0.1`. If a separate validation set or test set is provided, the split defaults to 80%-20%. Splitting involves a random component and can be seeded with `--seed <seed>`. The default setting is `--seed 0`. The split size argument is not used with split types `cv` or `cv-no-test`.
 
 ### Loss functions
 
@@ -217,7 +219,7 @@ Metrics are used to evaluate the success of the model against the test set as th
 When a multitask model is used, the metric score used for evaluation at each epoch or for choosing the best set of hyperparameters during hyperparameter search is obtained by taking the mean of the metric scores for each task. Some metrics scale with the magnitude of the targets (most regression metrics), so geometric mean instead of arithmetic mean is used in those cases in order to avoid having the mean score dominated by changes in the larger magnitude task.
 ### Cross validation and ensembling
 
-k-fold cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`. Each trained model will have different data splits. The reported test score will be the average of the metrics from each fold.
+Cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`. Each trained model will have different train/val/test splits, determined according to the specified split type argument and split sizes argument but using a different random seed to perform the splitting. The reported test score will be the average of the metrics from each fold. To use a strict k-fold cross-validation where each datapoint will appear in fold test sets exactly once, the argument `--split_type cv` must be used.
 
 To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`. Each trained model within the ensemble will share data splits. The reported test score for one ensemble is the metric applied to the averaged prediction across the models. Ensembling and cros-validation can be used at the same time.
 
@@ -446,7 +448,7 @@ Parallel instances of hyperparameter optimization that share a checkpoint direct
 
 ### Random or Directed Search
 
-As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int>`. By default, the number or random trials will be half the number of total trials. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization.
+As part of the hyperopt search algorithm, the first trial configurations for the model will be randomly spread through the search space. The number of randomized trials can be altered with the argument `--startup_random_iters <int>`. By default, the number or random trials will be half the number of total trials. After this number of trial iterations has been carried out, subsequent trials will use the directed search algorithm to select parameter configurations. This startup count considers the total number of trials in the checkpoint directory rather than the number that has been carried out by an individual instance of hyperparamter optimization instance. Both the random and directed search use a unique trial seed in choosing hyperparameters, this can be specified for the first trial in an optimization instance using `--hyperopt_seed <seed>` and will increment up to the next unused seed for trials afterward.
 
 
 ### Manual Trials
