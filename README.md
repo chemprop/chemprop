@@ -79,9 +79,7 @@ Then proceed to either option below to complete the installation. Note that on m
 
 1. `conda create -n chemprop python=3.8`
 2. `conda activate chemprop`
-3. `conda install -c conda-forge rdkit`
-4. `pip install git+https://github.com/bp-kelley/descriptastorus`
-5. `pip install chemprop`
+3. `pip install chemprop`
 
 ### Option 2: Installing from source
 
