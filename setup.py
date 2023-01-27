@@ -51,7 +51,7 @@ setup(
         'tqdm>=4.45.0',
         'typed-argument-parser>=1.6.1',
         'rdkit>=2020.03.1.0',
-        'descriptastorus @ git+https://github.com/bp-kelley/descriptastorus'
+        'descriptastorus'
     ],
     extras_require={
         'test': [
