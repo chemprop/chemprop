@@ -49,7 +49,9 @@ setup(
         'tensorboardX>=2.0',
         'torch>=1.5.2',
         'tqdm>=4.45.0',
-        'typed-argument-parser>=1.6.1'
+        'typed-argument-parser>=1.6.1',
+        'rdkit>=2020.03.1.0',
+        'descriptastorus'
     ],
     extras_require={
         'test': [

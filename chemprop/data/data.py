@@ -18,6 +18,11 @@ CACHE_GRAPH = True
 SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
 
 
+# Cache of RDKit molecules
+CACHE_MOL = True
+SMILES_TO_MOL: Dict[str, Union[Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]] = {}
+
+
 def cache_graph() -> bool:
     r"""Returns whether :class:`~chemprop.features.MolGraph`\ s will be cached."""
     return CACHE_GRAPH
@@ -33,11 +38,6 @@ def empty_cache():
     r"""Empties the cache of :class:`~chemprop.features.MolGraph` and RDKit molecules."""
     SMILES_TO_GRAPH.clear()
     SMILES_TO_MOL.clear()
-
-
-# Cache of RDKit molecules
-CACHE_MOL = True
-SMILES_TO_MOL: Dict[str, Union[Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]] = {}
 
 
 def cache_mol() -> bool:
