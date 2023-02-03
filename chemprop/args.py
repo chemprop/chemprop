@@ -107,7 +107,7 @@ class CommonArgs(Tap):
     """
     Custom extra bond descriptors.
     :code:`feature`: used as bond features to featurize a given molecule.
-    :code:`descriptor`: used as descriptor and concatenated to the machine learned atomic representation.
+    :code:`descriptor`: used as descriptor and concatenated to the machine learned bond representation.
     """
     bond_descriptors_path: str = None
     """Path to the extra bond descriptors that will be used as bond features to featurize a given molecule."""
@@ -421,14 +421,14 @@ class TrainArgs(CommonArgs):
     Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used
     with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.
     """
+    is_atom_bond_targets: bool = False
+    """
+    whether this is atomic/bond properties prediction.
+    """
     keeping_atom_map: bool = False
     """
     Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with
     the :code:`is_atom_bond_targets`.
-    """
-    is_atom_bond_targets: bool = False
-    """
-    whether this is atomic/bond properties prediction.
     """
     no_shared_atom_bond_ffn: bool = False
     """
