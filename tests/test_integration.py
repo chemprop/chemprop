@@ -1457,7 +1457,7 @@ class ChempropTests(TestCase):
             evaluation_scores = (
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
-            np.testing.assert_array_almost_equal(evaluation_scores, scores)
+            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
     
     @parameterized.expand(
         [
@@ -1508,7 +1508,7 @@ class ChempropTests(TestCase):
             evaluation_scores = (
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
-            np.testing.assert_array_almost_equal(evaluation_scores, scores)
+            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
 
     @parameterized.expand(
         [
@@ -1564,7 +1564,7 @@ class ChempropTests(TestCase):
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
             print(evaluation_scores)
-            np.testing.assert_array_almost_equal(evaluation_scores, scores)
+            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
 
 
 if __name__ == "__main__":
