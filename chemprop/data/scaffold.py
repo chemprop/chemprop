@@ -156,7 +156,7 @@ def log_scaffold_stats(data: MoleculeDataset,
     index_sets = sorted(index_sets, key=lambda idx_set: len(idx_set), reverse=True)
     for scaffold_num, index_set in enumerate(index_sets[:num_scaffolds]):
         data_set = [data[i] for i in index_set]
-        targets = np.array([d.targets for d in data_set], dtype=np.float)
+        targets = np.array([d.targets for d in data_set], dtype=float)
 
         with warnings.catch_warnings():  # Likely warning of empty slice of target has no values besides NaN
             warnings.simplefilter('ignore', category=RuntimeWarning)

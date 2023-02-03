@@ -21,7 +21,7 @@ class Args(Tap):
 
 
 def compute_ratios(data: MoleculeDataset) -> np.ndarray:
-    ratios = np.nanmean(np.array(data.targets(), dtype=np.float), axis=0)
+    ratios = np.nanmean(np.array(data.targets(), dtype=float), axis=0)
     ratios = np.minimum(ratios, 1 - ratios)
 
     return ratios
