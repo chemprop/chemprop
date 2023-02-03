@@ -258,7 +258,7 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'rmse',
                 2.14015989,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits']
         ),
         (
                 'chemprop_features_generator_features_path',
@@ -322,7 +322,7 @@ class ChempropTests(TestCase):
                 'chemprop',
                 'auc',
                 0.466828424,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits']
         ),
         (
                 'chemprop_features_generator_features_path',
@@ -416,7 +416,7 @@ class ChempropTests(TestCase):
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 1.51978455,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         ),
         (
@@ -508,7 +508,7 @@ class ChempropTests(TestCase):
                 'chemprop_rdkit_features_path',
                 'chemprop',
                 0.307159229,
-                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits'],
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
         ),
         (
@@ -681,7 +681,7 @@ class ChempropTests(TestCase):
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type', 'random_with_repeated_smiles'
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
             ]
         ),
         (
@@ -691,7 +691,7 @@ class ChempropTests(TestCase):
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type', 'random_with_repeated_smiles'
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
             ]
         ),
         (
@@ -739,7 +739,7 @@ class ChempropTests(TestCase):
             [
                 '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
-                '--split_type', 'random_with_repeated_smiles'
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
             ],
             [
                 '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
