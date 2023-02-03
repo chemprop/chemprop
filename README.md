@@ -238,7 +238,7 @@ If you install from source, you can modify the code to load custom features as f
 
 #### Molecule-Level RDKit 2D Features
 
-As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling.
+As a starting point, we recommend using pre-normalized RDKit features by using the `--features_generator rdkit_2d_normalized --no_features_scaling` flags. In general, we recommend NOT using the `--no_features_scaling` flag (i.e. allow the code to automatically perform feature scaling), but in the case of `rdkit_2d_normalized`, those features have been pre-normalized and don't require further scaling. The utilization of the `rdkit_2d_normalized` should be avoided in cases where molecule-level custom features have been loaded and necessitate additional scaling.
 
 The full list of available features for `--features_generator` is as follows. 
 
