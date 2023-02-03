@@ -267,7 +267,7 @@ Bond-level features can be provided in the same format as the atom-level feature
 
 Users must select in which way bond descriptors are used. The command line option `--bond_descriptors feature` concatenates the bond-level features with the bond feature vectors before the D-MPNN, such that they are used during message-passing. For atomic/bond properties prediction, the command line option `--bond_descriptors descriptor` concatenates the new features to the embedded bond features after the D-MPNN with an additional linear layer. Alternatively, the user can overwrite the default bond features with the custom features using the option `--overwrite_default_bond_features`.
 
-Similar to molecule-, and atom-level features, the bond-level descriptors and features are scaled by default. This can be disabled with the option `--no_bond_descriptor_scaling`.
+Similar to molecule-level and atom-level features, the bond-level descriptors and features are scaled by default. This can be disabled with the option `--no_bond_descriptor_scaling`.
 
 ### Spectra
 
@@ -324,6 +324,8 @@ Chemprop can perform multitask constrained message passing neural networks for a
 ```
 where atomic properties (e.g. hirshfeld_charges) must be a 1D list with the order same as that of atoms in the SMILES string; and bond properties (e.g. bond_length_matrix) can either be a 2D list of shape (number_of_atoms × number_of_atoms) or a 1D list with the order same as that of bonds in the SMILES string. The `--keeping_atom_map` option can be used if atom-mapped SMILES is provided. The `--adding_h` option can be used if hydrogens are included in the atom targets and bonds to hydrogens are included in the bond targets.
 This model allows multitask constraints applied to different atomic/bond properties by specifying the argument `--constraints_path` with a given `.csv` file. Note that the constraints must be in the same order as the SMILES strings in your data file. Also note that `.csv` file must have a header row and the constraints should be comma-separated with one line per molecule. The optional argument `--no_shared_atom_bond_ffn` will make it so that the ffn weights used by each task are independent, otherwise the default is that atom tasks share ffn weights and bond tasks share ffn weights so that the ffn weights have the benefits of multitask training. The optional argument `--no_adding_bond_types` will let the bond types of each bond determined by RDKit molecules not be added to the output of bond targets. The optional argument `--weights_ffn_num_layers` can change the number of layers in FFN for determining weights used to correct the constrained targets.
+
+Please note that the current framework is only available for models trained on multiple atomic and bond properties simultaneously. Training on both atomic/bond and molecular targets is not supported.
 
 ### Pretraining
 
