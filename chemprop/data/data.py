@@ -70,8 +70,8 @@ class MoleculeDatapoint:
                  atom_descriptors: np.ndarray = None,
                  bond_features: np.ndarray = None,
                  bond_descriptors: np.ndarray = None,
-                 constraints: np.ndarray = None,
                  raw_constraints: np.ndarray = None,
+                 constraints: np.ndarray = None,
                  overwrite_default_atom_features: bool = False,
                  overwrite_default_bond_features: bool = False):
         """
@@ -88,8 +88,8 @@ class MoleculeDatapoint:
         :param phase_features: A one-hot vector indicating the phase of the data, as used in spectra data.
         :param atom_descriptors: A numpy array containing additional atom descriptors to featurize the molecule.
         :param bond_descriptors: A numpy array containing additional bond descriptors to featurize the molecule.
-        :param constraints: A numpy array containing constraints applied to different atomic/bond properties.
-        :param raw_constraints: A numpy array containing constraints in raw data.
+        :param raw_constraints: A numpy array containing all user-provided atom/bond-level constraints in input data.
+        :param constraints: A numpy array containing atom/bond-level constraints that are used in training. Param constraints is a subset of param raw_constraints.
         :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features.
         :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features.
 

@@ -205,8 +205,9 @@ def get_constraints(path: str,
 
     :param path: Path to a CSV file.
     :param target_columns: Name of the columns containing target values.
-    :param save_raw_data: Whether to save the raw data constraints, which will be used to construct
-                          constraints files for each train/val/test split for prediction convenience later.
+    :param save_raw_data: Whether to save all user-provided atom/bond-level constraints in input data,
+                          which will be used to construct constraints files for each train/val/test split
+                          for prediction convenience later.
     :return: Lists of floats containing the data constraints.
     """
     constraints_data = []
