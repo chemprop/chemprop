@@ -5,11 +5,12 @@ from typing import List, Optional, Union, Tuple
 import numpy as np
 
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
+from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
 from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, set_keeping_atom_map, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
+from chemprop.multitask_utils import reshape_values
 
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -107,12 +108,13 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
     if args.atom_descriptors == "feature":
         set_extra_atom_fdim(train_args.atom_features_size)
 
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == "feature":
         set_extra_bond_fdim(train_args.bond_features_size)
 
     # set explicit H option and reaction option
     set_explicit_h(train_args.explicit_h)
     set_adding_hs(args.adding_h)
+    set_keeping_atom_map(args.keeping_atom_map)
     if train_args.reaction:
         set_reaction(train_args.reaction, train_args.reaction_mode)
     elif train_args.reaction_solvent:
@@ -129,7 +131,7 @@ def predict_and_save(
     full_data: MoleculeDataset,
     full_to_valid_indices: dict,
     models: List[MoleculeModel],
-    scalers: List[List[StandardScaler]],
+    scalers: List[Union[StandardScaler, AtomBondScaler]],
     num_models: int,
     calibrator: UncertaintyCalibrator = None,
     return_invalid_smiles: bool = False,
@@ -153,7 +155,7 @@ def predict_and_save(
     :param calibrator: A :class: `~chemprop.uncertainty.UncertaintyCalibrator` object, for use in calibrating uncertainty predictions.
     :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
-    :return:  A list of lists of target predictions.
+    :return: A list of lists of target predictions.
     """
     estimator = UncertaintyEstimator(
         test_data=test_data,
@@ -174,6 +176,9 @@ def predict_and_save(
         calibrator=calibrator
     )  # preds and unc are lists of shape(data,tasks)
 
+    if calibrator is not None and args.is_atom_bond_targets and args.calibration_method == "isotonic":
+        unc = reshape_values(unc, test_data, len(args.atom_targets), len(args.bond_targets), num_tasks)
+
     if args.individual_ensemble_predictions:
         individual_preds = (
             estimator.individual_predictions()
@@ -185,11 +190,12 @@ def predict_and_save(
             path=args.test_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
+            args=args,
             features_path=args.features_path,
             features_generator=args.features_generator,
             phase_features_path=args.phase_features_path,
             atom_descriptors_path=args.atom_descriptors_path,
-            bond_features_path=args.bond_features_path,
+            bond_descriptors_path=args.bond_descriptors_path,
             max_data_size=args.max_data_size,
             loss_function=args.loss_function,
         )
@@ -203,6 +209,7 @@ def predict_and_save(
                 dataset_type=args.dataset_type,
                 loss_function=args.loss_function,
                 calibrator=calibrator,
+                is_atom_bond_targets=args.is_atom_bond_targets,
             )
             evaluators.append(evaluator)
     else:
@@ -293,9 +300,10 @@ def predict_and_save(
                         datapoint.row[pred_name + f"_model_{idx}"] = pred
 
         # Save
-        with open(args.preds_path, "w") as f:
+        with open(args.preds_path, 'w') as f:
             writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
             writer.writeheader()
+
             for datapoint in full_data:
                 writer.writerow(datapoint.row)
 
@@ -335,7 +343,7 @@ def make_predictions(
         PredictArgs,
         TrainArgs,
         List[MoleculeModel],
-        List[StandardScaler],
+        List[Union[StandardScaler, AtomBondScaler]],
         int,
         List[str],
     ] = None,
@@ -405,11 +413,12 @@ def make_predictions(
             path=args.calibration_path,
             smiles_columns=args.smiles_columns,
             target_columns=task_names,
+            args=args,
             features_path=args.calibration_features_path,
             features_generator=args.features_generator,
             phase_features_path=args.calibration_phase_features_path,
             atom_descriptors_path=args.calibration_atom_descriptors_path,
-            bond_features_path=args.calibration_bond_features_path,
+            bond_descriptors_path=args.calibration_bond_descriptors_path,
             max_data_size=args.max_data_size,
             loss_function=args.loss_function,
         )

@@ -19,9 +19,10 @@ from tqdm import tqdm
 from scipy.stats.mstats import gmean
 
 from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
-from chemprop.data import StandardScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
+from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import NoamLR
+from chemprop.models.ffn import MultiReadout
 
 
 def makedirs(path: str, isfile: bool = False) -> None:
@@ -46,7 +47,8 @@ def save_checkpoint(
     scaler: StandardScaler = None,
     features_scaler: StandardScaler = None,
     atom_descriptor_scaler: StandardScaler = None,
-    bond_feature_scaler: StandardScaler = None,
+    bond_descriptor_scaler: StandardScaler = None,
+    atom_bond_scaler: AtomBondScaler = None,
     args: TrainArgs = None,
 ) -> None:
     """
@@ -56,7 +58,8 @@ def save_checkpoint(
     :param scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the data.
     :param features_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the features.
     :param atom_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the atom descriptors.
-    :param bond_feature_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond_fetaures.
+    :param bond_descriptor_scaler: A :class:`~chemprop.data.scaler.StandardScaler` fitted on the bond descriptors.
+    :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param args: The :class:`~chemprop.args.TrainArgs` object containing the arguments the model was trained with.
     :param path: Path where checkpoint will be saved.
     """
@@ -65,6 +68,8 @@ def save_checkpoint(
         args = Namespace(**args.as_dict())
 
     data_scaler = {"means": scaler.means, "stds": scaler.stds} if scaler is not None else None
+    if atom_bond_scaler is not None:
+        atom_bond_scaler = {"means": atom_bond_scaler.means, "stds": atom_bond_scaler.stds}
     if features_scaler is not None:
         features_scaler = {"means": features_scaler.means, "stds": features_scaler.stds}
     if atom_descriptor_scaler is not None:
@@ -72,8 +77,8 @@ def save_checkpoint(
             "means": atom_descriptor_scaler.means,
             "stds": atom_descriptor_scaler.stds,
         }
-    if bond_feature_scaler is not None:
-        bond_feature_scaler = {"means": bond_feature_scaler.means, "stds": bond_feature_scaler.stds}
+    if bond_descriptor_scaler is not None:
+        bond_descriptor_scaler = {"means": bond_descriptor_scaler.means, "stds": bond_descriptor_scaler.stds}
 
     state = {
         "args": args,
@@ -81,7 +86,8 @@ def save_checkpoint(
         "data_scaler": data_scaler,
         "features_scaler": features_scaler,
         "atom_descriptor_scaler": atom_descriptor_scaler,
-        "bond_feature_scaler": bond_feature_scaler,
+        "bond_descriptor_scaler": bond_descriptor_scaler,
+        "atom_bond_scaler": atom_bond_scaler,
     }
     torch.save(state, path)
 
@@ -121,6 +127,8 @@ def load_checkpoint(
         # Backward compatibility for parameter names
         if re.match(r"(encoder\.encoder\.)([Wc])", loaded_param_name) and not args.reaction_solvent:
             param_name = loaded_param_name.replace("encoder.encoder", "encoder.encoder.0")
+        elif re.match(r"(^ffn)", loaded_param_name):
+            param_name = loaded_param_name.replace("ffn", "readout")
         else:
             param_name = loaded_param_name
 
@@ -206,6 +214,13 @@ def load_frzn_model(
     loaded_state_dict = loaded_mpnn_model["state_dict"]
     loaded_args = loaded_mpnn_model["args"]
 
+    # Backward compatibility for parameter names
+    loaded_state_dict_keys = list(loaded_state_dict.keys())
+    for loaded_param_name in loaded_state_dict_keys:
+        if re.match(r"(^ffn)", loaded_param_name):
+            param_name = loaded_param_name.replace("ffn", "readout")
+            loaded_state_dict[param_name] = loaded_state_dict.pop(loaded_param_name)
+
     model_state_dict = model.state_dict()
 
     if loaded_args.number_of_molecules == 1 and current_args.number_of_molecules == 1:
@@ -214,6 +229,8 @@ def load_frzn_model(
             "encoder.encoder.0.W_h.weight",
             "encoder.encoder.0.W_o.weight",
             "encoder.encoder.0.W_o.bias",
+            "encoder.encoder.0.W_o_b.weight",
+            "encoder.encoder.0.W_o_b.bias",
         ]
         if current_args.checkpoint_frzn is not None:
             # Freeze the MPNN
@@ -223,10 +240,33 @@ def load_frzn_model(
                 )
 
         if current_args.frzn_ffn_layers > 0:
-            ffn_param_names = [
-                [f"ffn.{i*3+1}.weight", f"ffn.{i*3+1}.bias"]
-                for i in range(current_args.frzn_ffn_layers)
-            ]
+            if isinstance(model.readout, nn.Sequential):  # Molecule properties
+                ffn_param_names = [
+                    [f"readout.{i*3+1}.weight", f"readout.{i*3+1}.bias"]
+                    for i in range(current_args.frzn_ffn_layers)
+                ]
+            elif isinstance(model.readout, MultiReadout):  # Atomic/bond properties
+                if model.readout.shared_ffn:
+                    ffn_param_names = [
+                        [f"readout.atom_ffn_base.0.{i*3+1}.weight", f"readout.atom_ffn_base.0.{i*3+1}.bias",
+                        f"readout.bond_ffn_base.0.{i*3+1}.weight", f"readout.bond_ffn_base.0.{i*3+1}.bias"]
+                        for i in range(current_args.frzn_ffn_layers)
+                    ]
+                else:
+                    ffn_param_names = []
+                    nmodels = len(model.readout.ffn_list)
+                    for i in range(nmodels):
+                        readout = model.readout.ffn_list[i]
+                        if readout.constraint:
+                            ffn_param_names.extend([
+                                [f"readout.ffn_list.{i}.ffn.0.{j*3+1}.weight", f"readout.ffn_list.{i}.ffn.0.{j*3+1}.bias"]
+                                for j in range(current_args.frzn_ffn_layers)
+                            ])
+                        else:
+                            ffn_param_names.extend([
+                                [f"readout.ffn_list.{i}.ffn_readout.{j*3+1}.weight", f"readout.ffn_list.{i}.ffn_readout.{j*3+1}.bias"]
+                                for j in range(current_args.frzn_ffn_layers)
+                            ])
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
 
             # Freeze MPNN and FFN layers
@@ -343,7 +383,7 @@ def load_frzn_model(
             ]
             encoder_param_names = [item for sublist in encoder_param_names for item in sublist]
             ffn_param_names = [
-                [f"ffn.{i+3+1}.weight", f"ffn.{i+3+1}.bias"]
+                [f"readout.{i*3+1}.weight", f"readout.{i*3+1}.bias"]
                 for i in range(current_args.frzn_ffn_layers)
             ]
             ffn_param_names = [item for sublist in ffn_param_names for item in sublist]
@@ -367,7 +407,7 @@ def load_frzn_model(
 
 def load_scalers(
     path: str,
-) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]:
+) -> Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler, List[StandardScaler]]:
     """
     Loads the scalers a model was trained with.
 
@@ -398,16 +438,27 @@ def load_scalers(
     else:
         atom_descriptor_scaler = None
 
-    if "bond_feature_scaler" in state.keys() and state["bond_feature_scaler"] is not None:
-        bond_feature_scaler = StandardScaler(
-            state["bond_feature_scaler"]["means"],
-            state["bond_feature_scaler"]["stds"],
+    if "bond_descriptor_scaler" in state.keys() and state["bond_descriptor_scaler"] is not None:
+        bond_descriptor_scaler = StandardScaler(
+            state["bond_descriptor_scaler"]["means"],
+            state["bond_descriptor_scaler"]["stds"],
             replace_nan_token=0,
         )
     else:
-        bond_feature_scaler = None
+        bond_descriptor_scaler = None
 
-    return scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler
+    if "atom_bond_scaler" in state.keys() and state["atom_bond_scaler"] is not None:
+        atom_bond_scaler =AtomBondScaler(
+            state["atom_bond_scaler"]["means"],
+            state["atom_bond_scaler"]["stds"],
+            replace_nan_token=0,
+            n_atom_targets=len(state["args"].atom_targets),
+            n_bond_targets=len(state["args"].bond_targets),
+        )
+    else:
+        atom_bond_scaler = None
+
+    return scaler, features_scaler, atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler
 
 
 def load_args(path: str) -> TrainArgs:
@@ -554,6 +605,7 @@ def save_smiles_splits(
     save_dir: str,
     task_names: List[str] = None,
     features_path: List[str] = None,
+    constraints_path: str = None,
     train_data: MoleculeDataset = None,
     val_data: MoleculeDataset = None,
     test_data: MoleculeDataset = None,
@@ -570,6 +622,7 @@ def save_smiles_splits(
     :param task_names: List of target names for the model as from the function get_task_names().
         If not provided, will use datafile header entries.
     :param features_path: List of path(s) to files with additional molecule features.
+    :param constraints_path: Path to constraints applied to atomic/bond properties prediction.
     :param train_data: Train :class:`~chemprop.data.data.MoleculeDataset`.
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
@@ -585,6 +638,7 @@ def save_smiles_splits(
         smiles_columns = preprocess_smiles_columns(path=data_path, smiles_columns=smiles_columns)
 
     with open(data_path) as f:
+        f = open(data_path)
         reader = csv.DictReader(f)
 
         indices_by_smiles = {}
@@ -611,6 +665,11 @@ def save_smiles_splits(
                     feat_header = next(reader)
                     features_header.extend(feat_header)
 
+    if constraints_path is not None:
+        with open(constraints_path, "r") as f:
+            reader = csv.reader(f)
+            constraints_header = next(reader)
+
     all_split_indices = []
     for dataset, name in [(train_data, "train"), (val_data, "val"), (test_data, "test")]:
         if dataset is None:
@@ -630,7 +689,8 @@ def save_smiles_splits(
             writer.writerow(smiles_columns + task_names)
             dataset_targets = dataset.targets()
             for i, smiles in enumerate(dataset.smiles()):
-                writer.writerow(smiles + dataset_targets[i])
+                targets = [x.tolist() if isinstance(x, np.ndarray) else x for x in dataset_targets[i]]
+                writer.writerow(smiles + targets)
 
         if features_path is not None:
             dataset_features = dataset.features()
@@ -641,6 +701,13 @@ def save_smiles_splits(
                     writer.writerows(dataset_features)
             else:
                 np.save(os.path.join(save_dir, f"{name}_features.npy"), dataset_features)
+
+        if constraints_path is not None:
+            dataset_constraints = [d.raw_constraints for d in dataset._data]
+            with open(os.path.join(save_dir, f"{name}_constraints.csv"), "w") as f:
+                writer = csv.writer(f)
+                writer.writerow(constraints_header)
+                writer.writerows(dataset_constraints)
 
         if save_split_indices:
             split_indices = []
@@ -701,8 +768,8 @@ def update_prediction_args(
         # If a default argument would cause different behavior than occurred in legacy checkpoints before the argument existed,
         # then that argument must be included in the `override_defaults` dictionary to force the legacy behavior.
         override_defaults = {
-            "bond_features_scaling": False,
-            "no_bond_features_scaling": True,
+            "bond_descriptors_scaling": False,
+            "no_bond_descriptors_scaling": True,
             "atom_descriptors_scaling": False,
             "no_atom_descriptors_scaling": True,
         }
@@ -726,21 +793,6 @@ def update_prediction_args(
             f"and a fingerprint type of MPN. {train_args.number_of_molecules} smiles fields must be provided."
         )
 
-    # If atom-descriptors were used during training, they must be used when predicting and vice-versa
-    if train_args.atom_descriptors != predict_args.atom_descriptors:
-        raise ValueError(
-            "The use of atom descriptors is inconsistent between training and prediction. If atom descriptors "
-            " were used during training, they must be specified again during prediction using the same type of "
-            " descriptors as before. If they were not used during training, they cannot be specified during prediction."
-        )
-
-    # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (predict_args.bond_features_path is None):
-        raise ValueError(
-            "The use of bond descriptors is different between training and prediction. If you used bond "
-            "descriptors for training, please specify a path to new bond descriptors for prediction."
-        )
-
     # if atom or bond features were scaled, the same must be done during prediction
     if train_args.features_scaling != predict_args.features_scaling:
         raise ValueError(
@@ -758,10 +810,19 @@ def update_prediction_args(
         )
 
     # If bond features were used during training, they must be used when predicting and vice-versa
-    if (train_args.bond_features_path is None) != (predict_args.bond_features_path is None):
+    if train_args.bond_descriptors != predict_args.bond_descriptors:
         raise ValueError(
-            "The use of bond descriptors is different between training and prediction. If you used bond"
-            "descriptors for training, please specify a path to new bond descriptors for prediction."
+            "The use of bond descriptors is inconsistent between training and prediction. "
+            "If bond descriptors were used during training, they must be specified again "
+            "during prediction using the same type of descriptors as before. "
+            "If they were not used during training, they cannot be specified during prediction."
+        )
+
+    # If constraints were used during training, they must be used when predicting and vice-versa
+    if (train_args.constraints_path is None) != (predict_args.constraints_path is None):
+        raise ValueError(
+            "The use of constraints is different between training and prediction. If you applied constraints "
+            "for training, please specify a path to new constraints for prediction."
         )
 
     # If features were used during training, they must be used when predicting
