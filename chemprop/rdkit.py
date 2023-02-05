@@ -1,4 +1,5 @@
 from rdkit import Chem
+import numpy as np
 
 def make_mol(s: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     """
@@ -6,6 +7,8 @@ def make_mol(s: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     
     :param s: SMILES string.
     :param keep_h: Boolean whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified.
+    :param add_h: Boolean whether to add hydrogens to the input smiles.
+    :param keep_atom_map: Boolean whether to keep the original atom mapping.
     :return: RDKit molecule.
     """
     if keep_h:

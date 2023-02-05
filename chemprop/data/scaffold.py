@@ -21,7 +21,7 @@ def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], incl
     :return: The Bemis-Murcko scaffold for the molecule.
     """
     if isinstance(mol, str):
-        mol = make_mol(mol, keep_h = False, add_h = False)
+        mol = make_mol(mol, keep_h = False, add_h = False, keep_atom_map = False)
     if isinstance(mol, tuple):
         mol = mol[0]
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol = mol, includeChirality = include_chirality)
@@ -120,7 +120,7 @@ def scaffold_split(data: MoleculeDataset,
                      f'val scaffolds = {val_scaffold_count:,} | '
                      f'test scaffolds = {test_scaffold_count:,}')
 
-    if logger is not None:
+    if logger is not None and not data.is_atom_bond_targets:
         log_scaffold_stats(data, index_sets, logger=logger)
 
     # Map from indices to data

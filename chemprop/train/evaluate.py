@@ -2,8 +2,10 @@ from collections import defaultdict
 import logging
 from typing import Dict, List
 
+import numpy as np
+
 from .predict import predict
-from chemprop.data import MoleculeDataLoader, StandardScaler
+from chemprop.data import MoleculeDataLoader, StandardScaler, AtomBondScaler
 from chemprop.models import MoleculeModel
 from chemprop.train import get_metric_func
 
@@ -13,6 +15,7 @@ def evaluate_predictions(preds: List[List[float]],
                          num_tasks: int,
                          metrics: List[str],
                          dataset_type: str,
+                         is_atom_bond_targets: bool = False,
                          gt_targets: List[List[bool]] = None,
                          lt_targets: List[List[bool]] = None,
                          logger: logging.Logger = None) -> Dict[str, List[float]]:
@@ -24,6 +27,7 @@ def evaluate_predictions(preds: List[List[float]],
     :param num_tasks: Number of tasks.
     :param metrics: A list of names of metric functions.
     :param dataset_type: Dataset type.
+    :param is_atom_bond_targets: Boolean whether this is atomic/bond properties prediction.
     :param gt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
     :param lt_targets: A list of lists of booleans indicating whether the target is an inequality rather than a single value.
     :param logger: A logger to record output.
@@ -35,6 +39,9 @@ def evaluate_predictions(preds: List[List[float]],
 
     if len(preds) == 0:
         return {metric: [float('nan')] * num_tasks for metric in metrics}
+    
+    if is_atom_bond_targets:
+        targets = [np.concatenate(x).reshape([-1, 1]) for x in zip(*targets)]
 
     # Filter out empty targets for most data types, excluding dataset_type spectra
     # valid_preds and valid_targets have shape (num_tasks, data_size)
@@ -42,16 +49,26 @@ def evaluate_predictions(preds: List[List[float]],
         valid_preds = [[] for _ in range(num_tasks)]
         valid_targets = [[] for _ in range(num_tasks)]
         for i in range(num_tasks):
-            for j in range(len(preds)):
-                if targets[j][i] is not None:  # Skip those without targets
-                    valid_preds[i].append(preds[j][i])
-                    valid_targets[i].append(targets[j][i])
+            if is_atom_bond_targets:
+                for j in range(len(preds[i])):
+                    if targets[i][j][0] is not None:  # Skip those without targets
+                        valid_preds[i].append(list(preds[i][j]))
+                        valid_targets[i].append(list(targets[i][j]))
+            else:
+                for j in range(len(preds)):
+                    if targets[j][i] is not None:  # Skip those without targets
+                        valid_preds[i].append(preds[j][i])
+                        valid_targets[i].append(targets[j][i])
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
     if dataset_type == 'spectra':
         for metric, metric_func in metric_to_func.items():
             results[metric].append(metric_func(preds, targets))
+    elif is_atom_bond_targets:
+        for metric, metric_func in metric_to_func.items():
+            for valid_target, valid_pred in zip(valid_targets, valid_preds):
+                results[metric].append(metric_func(valid_target, valid_pred))
     else:
         for i in range(num_tasks):
             # # Skip if all targets or preds are identical, otherwise we'll crash during classification
@@ -92,6 +109,7 @@ def evaluate(model: MoleculeModel,
              metrics: List[str],
              dataset_type: str,
              scaler: StandardScaler = None,
+             atom_bond_scaler: AtomBondScaler = None,
              logger: logging.Logger = None) -> Dict[str, List[float]]:
     """
     Evaluates an ensemble of models on a dataset by making predictions and then evaluating the predictions.
@@ -102,6 +120,7 @@ def evaluate(model: MoleculeModel,
     :param metrics: A list of names of metric functions.
     :param dataset_type: Dataset type.
     :param scaler: A :class:`~chemprop.features.scaler.StandardScaler` object fit on the training targets.
+    :param atom_bond_scaler: A :class:`~chemprop.data.scaler.AtomBondScaler` fitted on the atomic/bond targets.
     :param logger: A logger to record output.
     :return: A dictionary mapping each metric in :code:`metrics` to a list of values for each task.
 
@@ -117,7 +136,8 @@ def evaluate(model: MoleculeModel,
     preds = predict(
         model=model,
         data_loader=data_loader,
-        scaler=scaler
+        scaler=scaler,
+        atom_bond_scaler=atom_bond_scaler,
     )
 
     results = evaluate_predictions(
@@ -126,6 +146,7 @@ def evaluate(model: MoleculeModel,
         num_tasks=num_tasks,
         metrics=metrics,
         dataset_type=dataset_type,
+        is_atom_bond_targets=model.is_atom_bond_targets,
         logger=logger,
         gt_targets=gt_targets,
         lt_targets=lt_targets,

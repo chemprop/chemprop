@@ -65,6 +65,7 @@ def cross_validate(args: TrainArgs,
     reset_featurization_parameters(logger=logger)
     set_explicit_h(args.explicit_h)
     set_adding_hs(args.adding_h)
+    set_keeping_atom_map(args.keeping_atom_map)
     if args.reaction:
         set_reaction(args.reaction, args.reaction_mode)
     elif args.reaction_solvent:
@@ -84,11 +85,12 @@ def cross_validate(args: TrainArgs,
 
     if args.atom_descriptors == 'descriptor':
         args.atom_descriptors_size = data.atom_descriptors_size()
-        args.ffn_hidden_size += args.atom_descriptors_size
     elif args.atom_descriptors == 'feature':
         args.atom_features_size = data.atom_features_size()
         set_extra_atom_fdim(args.atom_features_size)
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == 'descriptor':
+        args.bond_descriptors_size = data.bond_descriptors_size()
+    elif args.bond_descriptors == 'feature':
         args.bond_features_size = data.bond_features_size()
         set_extra_bond_fdim(args.bond_features_size)
 
@@ -192,7 +194,7 @@ def cross_validate(args: TrainArgs,
     # Optionally merge and save test preds
     if args.save_preds:
         all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
-                               for fold_num in range(args.num_folds)])
+                                  for fold_num in range(args.num_folds)])
         all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
 
     return mean_score, std_score

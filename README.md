@@ -41,6 +41,7 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Spectra](#spectra)
   * [Reaction](#reaction)
   * [Reaction in a solvent / Reaction and a molecule](#reaction-in-a-solvent--reaction-and-a-molecule)
+  * [Atomic and bond properties prediction](#atomic-and-bond-properties-prediction)
   * [Pretraining](#pretraining)
   * [Missing target values](#missing-target-values)
   * [Weighted training by target and data](#weighted-training-by-target-and-data)
@@ -262,11 +263,11 @@ Similar to the molecule-level features, the atom-level descriptors and features 
 
 #### Bond-Level Features
 
-Bond-level features can be provided in the same format as the atom-level features, using the option `--bond_features_path /path/to/features`. The order of the features for each molecule must match the bond ordering in the RDKit molecule object. 
+Bond-level features can be provided in the same format as the atom-level features, using the option `--bond_descriptors_path /path/to/features`. The order of the features for each molecule must match the bond ordering in the RDKit molecule object.
 
-The bond-level features are concatenated with the bond feature vectors before the D-MPNN, such that they are used during message-passing. Alternatively, the user can overwrite the default bond features with the custom features using the option `--overwrite_default_bond_features`. 
+Users must select in which way bond descriptors are used. The command line option `--bond_descriptors feature` concatenates the bond-level features with the bond feature vectors before the D-MPNN, such that they are used during message-passing. For atomic/bond properties prediction, the command line option `--bond_descriptors descriptor` concatenates the new features to the embedded bond features after the D-MPNN with an additional linear layer. Alternatively, the user can overwrite the default bond features with the custom features using the option `--overwrite_default_bond_features`.
 
-Similar to molecule-, and atom-level features, the bond-level features are scaled by default. This can be disabled with the option `--no_bond_features_scaling`.
+Similar to molecule-level and atom-level features, the bond-level descriptors and features are scaled by default. This can be disabled with the option `--no_bond_descriptor_scaling`.
 
 ### Spectra
 
@@ -281,7 +282,7 @@ In absorption spectra, sometimes the phase of collection will create regions in 
 As an alternative to molecule SMILES, Chemprop can also process atom-mapped reaction SMILES (see [Daylight manual](https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html) for details on reaction SMILES), which consist of three parts denoting reactants, agents and products, separated by ">". Use the option `--reaction` to enable the input of reactions, which transforms the reactants and products of each reaction to the corresponding condensed graph of reaction and changes the initial atom and bond features to hold information from both the reactant and product (option `--reaction_mode reac_prod`), or from the reactant and the difference upon reaction (option `--reaction_mode reac_diff`, default) or from the product and the difference upon reaction (option `--reaction_mode prod_diff`). In reaction mode, Chemprop thus concatenates information to each atomic and bond feature vector, for example, with option `--reaction_mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product, so that the size of the D-MPNN increases slightly. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via `--explicit_h`. Example of an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: `[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: `[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary. With reaction modes `reac_prod`, `reac_diff` and `prod_diff`, the atom and bond features of unbalanced aroma are set to zero on the side of the reaction they are not specified. Alternatively, features can be set to the same values on the reactant and product side via the modes `reac_prod_balance`, `reac_diff_balance` and `prod_diff_balance`, which corresponds to a rough balancing of the reaction.
 For further details and benchmarking, as well as a citable reference, please refer to the [article](https://doi.org/10.1021/acs.jcim.1c00975).
 
-### Reaction in a solvent / Reaction and a molecule]
+### Reaction in a solvent / Reaction and a molecule
 
 Chemprop can process a reaction in a solvent or a reaction and a molecule with the `--reaction_solvent` option. While this
 option is originally built to model a reaction in a solvent, this option works for any reaction and a molecule where 
@@ -309,6 +310,22 @@ reaction and solvent/molecule encoding. Below are the input arguments for specif
   * `--hidden_size_solvent` Dimensionality of hidden layers in solvent/molecule MPN.
   * `--depth_solvent` Number of message passing steps for solvent/molecule.
   * `--adding_h` Whether RDKit molecules will be constructed with adding the Hs to them. Applicable to any SMILES that is not reaction.
+
+### Atomic and bond properties prediction
+
+Chemprop can perform multitask constrained message passing neural networks for atomic/bond properties prediction as described in this [paper](https://chemrxiv.org/articles/preprint/Regio-Selectivity_Prediction_with_a_Machine-Learned_Reaction_Representation_and_On-the-Fly_Quantum_Mechanical_Descriptors/12907316). This model can train on any number of atomic/bond properties simultaneously. In the original work, a total loss was calculated as a weighted sum of every single loss, where the weights were required to be specified for the regression task. In this repository, these weights have been automatically taken into account by doing standardization of all the training targets. In order to train a model, training data containing molecules (as SMILES strings) and known atomic/bond target values are required, and the `--is_atom_bond_targets` flag is used. The input is a csv file. For example:
+```
+                              smiles                                  hirshfeld_charges  ...                                 bond_length_matrix                                  bond_index_matrix
+0     CNC(=S)N/N=C/c1c(O)ccc2ccccc12  [-0.026644, -0.075508, 0.096217, -0.287798, -0...  ...  [[0.0, 1.4372890960937539, 2.4525543850909814,...  [[0.0, 0.9595, 0.0158, 0.0162, 0.0103, 0.0008,...
+1      O=C(NCCn1cccc1)c1cccc2ccccc12  [-0.292411, 0.170263, -0.085754, 0.002736, 0.0...  ...  [[0.0, 1.2158509801073485, 2.2520730233154076,...  [[0.0, 1.6334, 0.1799, 0.0086, 0.0068, 0.0002,...
+2  C=C(C)[C@H]1C[C@@H]2OO[C@H]1C=C2C  [-0.101749, 0.012339, -0.07947, -0.020027, -0....  ...  [[0.0, 1.3223632546838255, 2.468055985361353, ...  [[0.0, 1.9083, 0.0179, 0.016, 0.0236, 0.001, 0...
+3                     OCCCc1cc[nH]n1  [-0.268379, 0.027614, -0.050745, -0.045047, 0....  ...  [[0.0, 1.4018301850170725, 2.4667588956616737,...  [[0.0, 0.9446, 0.0311, 0.002, 0.005, 0.0007, 0...
+4      CC(=N)NCc1cccc(CNCc2ccncc2)c1  [-0.083162, 0.114954, -0.274544, -0.100369, 0....  ...  [[0.0, 1.5137126697008916, 2.4882198180715465,...  [[0.0, 1.0036, 0.0437, 0.0108, 0.0134, 0.0004,......
+```
+where atomic properties (e.g. hirshfeld_charges) must be a 1D list with the order same as that of atoms in the SMILES string; and bond properties (e.g. bond_length_matrix) can either be a 2D list of shape (number_of_atoms × number_of_atoms) or a 1D list with the order same as that of bonds in the SMILES string. The `--keeping_atom_map` option can be used if atom-mapped SMILES is provided. The `--adding_h` option can be used if hydrogens are included in the atom targets and bonds to hydrogens are included in the bond targets.
+This model allows multitask constraints applied to different atomic/bond properties by specifying the argument `--constraints_path` with a given `.csv` file. Note that the constraints must be in the same order as the SMILES strings in your data file. Also note that `.csv` file must have a header row and the constraints should be comma-separated with one line per molecule. The optional argument `--no_shared_atom_bond_ffn` will make it so that the ffn weights used by each task are independent, otherwise the default is that atom tasks share ffn weights and bond tasks share ffn weights so that the ffn weights have the benefits of multitask training. The optional argument `--no_adding_bond_types` will let the bond types of each bond determined by RDKit molecules not be added to the output of bond targets. The optional argument `--weights_ffn_num_layers` can change the number of layers in FFN for determining weights used to correct the constrained targets.
+
+Please note that the current framework is only available for models trained on multiple atomic and bond properties simultaneously. Training on both atomic/bond and molecular targets is not supported.
 
 ### Pretraining
 
