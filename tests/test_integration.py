@@ -251,23 +251,40 @@ class ChempropTests(TestCase):
                 "chemprop",
                 "rmse",
                 2.0438637,
-                ["--features_generator", "morgan"],
-            ),
-            (
-                "chemprop_rdkit_features_path",
-                "chemprop",
-                "rmse",
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                'rmse',
+                0.691494,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                'rmse',
+                1.022634,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                'rmse',
                 2.14015989,
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "regression.npz"),
-                    "--no_features_scaling",
-                ],
-            ),
-            (
-                "chemprop_bounded_mse_loss",
-                "chemprop",
-                "bounded_mse",
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                'rmse',
+                1.59283050,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_bounded_mse_loss',
+                'chemprop',
+                'bounded_mse',
                 5.52281852,
                 [
                     "--loss_function",
@@ -333,21 +350,19 @@ class ChempropTests(TestCase):
                 "chemprop",
                 "auc",
                 0.466828424,
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "classification.npz"),
-                    "--no_features_scaling",
-                    "--class_balance",
-                    "--split_sizes",
-                    "0.4",
-                    "0.3",
-                    "0.3",
-                ],
-            ),
-            (
-                "chemprop_mcc_metric",
-                "chemprop",
-                "mcc",
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                'auc',
+                0.499183589,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3']
+        ),
+        (
+                'chemprop_mcc_metric',
+                'chemprop',
+                'mcc',
                 0.014589067,
                 [
                     "--metric",
@@ -418,34 +433,44 @@ class ChempropTests(TestCase):
                 "chemprop_morgan_features_generator",
                 "chemprop",
                 2.4703284,
-                ["--features_generator", "morgan"],
-                ["--features_generator", "morgan"],
-            ),
-            (
-                "chemprop_rdkit_features_path",
-                "chemprop",
+                ['--features_generator', 'morgan'],
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                0.2954347,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                0.4112432,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
                 1.51978455,
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "regression.npz"),
-                    "--no_features_scaling",
-                ],
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "regression_test.npz"),
-                    "--no_features_scaling",
-                ],
-            ),
-        ]
-    )
-    def test_predict_single_task_regression(
-        self,
-        name: str,
-        model_type: str,
-        expected_score: float,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                0.59545263,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        )
+    ])
+    def test_predict_single_task_regression(self,
+                                            name: str,
+                                            model_type: str,
+                                            expected_score: float,
+                                            train_flags: List[str] = None,
+                                            predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = "regression"
@@ -476,7 +501,7 @@ class ChempropTests(TestCase):
             pred, true = pred.drop(columns=["smiles"]), true.drop(columns=["smiles"])
             pred, true = pred.to_numpy(), true.to_numpy()
             mse = float(np.mean((pred - true) ** 2))
-            self.assertAlmostEqual(mse, expected_score, delta=DELTA * expected_score)
+            self.assertAlmostEqual(mse, expected_score, delta=DELTA*expected_score)
 
     def test_predict_individual_ensemble(self):
         with TemporaryDirectory() as save_dir:
@@ -512,47 +537,30 @@ class ChempropTests(TestCase):
                 "chemprop_morgan_features_generator",
                 "chemprop",
                 0.254056869,
-                [
-                    "--features_generator",
-                    "morgan",
-                    "--class_balance",
-                    "--split_sizes",
-                    "0.4",
-                    "0.3",
-                    "0.3",
-                ],
-                ["--features_generator", "morgan"],
-            ),
-            (
-                "chemprop_rdkit_features_path",
-                "chemprop",
-                0.3071592294,
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "classification.npz"),
-                    "--no_features_scaling",
-                    "--class_balance",
-                    "--split_sizes",
-                    "0.4",
-                    "0.3",
-                    "0.3",
-                ],
-                [
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "classification_test.npz"),
-                    "--no_features_scaling",
-                ],
-            ),
-        ]
-    )
-    def test_predict_multi_task_classification(
-        self,
-        name: str,
-        model_type: str,
-        expected_score: float,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
+                ['--features_generator', 'morgan', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
+                ['--features_generator', 'morgan']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                0.307159229,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                0.193924687,
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3'],
+                ['--features_generator', 'morgan', '--features_path', os.path.join(TEST_DATA_DIR, 'classification_test.npz'), '--no_features_scaling']
+        )
+    ])
+    def test_predict_multi_task_classification(self,
+                                               name: str,
+                                               model_type: str,
+                                               expected_score: float,
+                                               train_flags: List[str] = None,
+                                               predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = "classification"
@@ -693,54 +701,44 @@ class ChempropTests(TestCase):
                     )
                     self.assertEqual(response.status_code, 200)
 
-    @parameterized.expand(
-        [
-            (
-                "spectra",
-                "chemprop",
-                0.09920149,
-                [
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "spectra.csv"),
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_features.csv"),
-                    "--split_type",
-                    "random_with_repeated_smiles",
-                ],
-            ),
-            (
-                "spectra_excluded_targets",
-                "chemprop",
-                0.08912992,
-                [
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_exclusions.csv"),
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_features.csv"),
-                    "--split_type",
-                    "random_with_repeated_smiles",
-                ],
-            ),
-            (
-                "spectra_phase_features",
-                "chemprop",
-                0.0747605825,
-                [
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_exclusions.csv"),
-                    "--phase_features_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_features.csv"),
-                    "--spectra_phase_mask_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_mask.csv"),
-                    "--split_type",
-                    "random_with_repeated_smiles",
-                ],
-            ),
-        ]
-    )
-    def test_train_spectra(
-        self, name: str, model_type: str, expected_score: float, train_flags: List[str] = None
-    ):
+    @parameterized.expand([
+        (
+            'spectra',
+            'chemprop',
+            0.09920149,
+            [
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
+            ]
+        ),
+        (
+            'spectra_excluded_targets',
+            'chemprop',
+            0.08912992,
+            [
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
+            ]
+        ),
+        (
+            'spectra_phase_features',
+            'chemprop',
+            0.0747605825,
+            [
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path', os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type', 'random_with_repeated_smiles'
+            ]
+        ),
+    ])
+    def test_train_spectra(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = "sid"
@@ -760,51 +758,44 @@ class ChempropTests(TestCase):
             mean_score = np.mean(test_scores)
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
-    @parameterized.expand(
-        [
-            (
-                "spectra",
-                "chemprop",
-                0.074686983,
-                0,
-                [
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "spectra.csv"),
-                    "--features_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_features.csv"),
-                    "--split_type",
-                    "random_with_repeated_smiles",
-                ],
-                ["--features_path", os.path.join(TEST_DATA_DIR, "spectra_features.csv")],
-            ),
-            (
-                "spectra_phase_features",
-                "chemprop",
-                0.076007918,
-                284,
-                [
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_exclusions.csv"),
-                    "--phase_features_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_features.csv"),
-                    "--spectra_phase_mask_path",
-                    os.path.join(TEST_DATA_DIR, "spectra_mask.csv"),
-                    "--split_type",
-                    "random_with_repeated_smiles",
-                ],
-                ["--phase_features_path", os.path.join(TEST_DATA_DIR, "spectra_features.csv")],
-            ),
-        ]
-    )
-    def test_predict_spectra(
-        self,
-        name: str,
-        model_type: str,
-        expected_score: float,
-        expected_nans: int,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
+    @parameterized.expand([
+        (
+            'spectra',
+            'chemprop',
+            0.074686983,
+            0,
+            [
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra.csv'),
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--split_type', 'random_with_repeated_smiles', '--save_smiles_splits'
+            ],
+            [
+                '--features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+            ]
+        ),
+        (
+            'spectra_phase_features',
+            'chemprop',
+            0.076007918,
+            284,
+            [
+                '--data_path', os.path.join(TEST_DATA_DIR, 'spectra_exclusions.csv'),
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+                '--spectra_phase_mask_path', os.path.join(TEST_DATA_DIR, 'spectra_mask.csv'),
+                '--split_type', 'random_with_repeated_smiles'
+            ],
+            [
+                '--phase_features_path', os.path.join(TEST_DATA_DIR, 'spectra_features.csv'),
+            ]
+        ),
+    ])
+    def test_predict_spectra(self,
+                                            name: str,
+                                            model_type: str,
+                                            expected_score: float,
+                                            expected_nans: int,
+                                            train_flags: List[str] = None,
+                                            predict_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             dataset_type = "spectra"
@@ -1564,7 +1555,78 @@ class ChempropTests(TestCase):
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
             print(evaluation_scores)
-            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=2)
+            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
+
+    @parameterized.expand([
+        (
+                'chemprop_atomic_bond_targets',
+                'chemprop',
+                8.710007,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints',
+                'chemprop',
+                8.435722,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_no_shared_atom_bond_ffn',
+                'chemprop',
+                8.619740,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_shared_atom_bond_ffn']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints_no_adding_bond_types',
+                'chemprop',
+                8.780137,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_adding_bond_types']
+        ),
+        (
+                'chemprop_atomic_bond_targets_weights_ffn_num_layers',
+                'chemprop',
+                8.765641,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--weights_ffn_num_layers', '3']
+        )
+    ])
+    def test_train_multi_task_regression_atomic_bond_targets(self,
+                                                             name: str,
+                                                             model_type: str,
+                                                             expected_score: float,
+                                                             train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'rmse'
+            self.train(
+                dataset_type = 'regression',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 10)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
 
 if __name__ == "__main__":
