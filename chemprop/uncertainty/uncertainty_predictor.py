@@ -8,6 +8,7 @@ from chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
 from chemprop.models import MoleculeModel
 from chemprop.train.predict import predict
 from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
+from chemprop.multitask_utils import reshape_values, reshape_individual_preds
 
 
 class UncertaintyPredictor(ABC):
@@ -122,11 +123,17 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -135,32 +142,85 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if i == 0:
                 sum_preds = np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        self.uncal_preds = (sum_preds / self.num_models).tolist()
-        uncal_vars = np.zeros_like(sum_preds)
-        uncal_vars[:] = np.nan
-        self.uncal_vars = uncal_vars
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds = sum_preds / self.num_models
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            uncal_vars = np.zeros_like(self.uncal_preds)
+            uncal_vars[:] = np.nan
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            self.uncal_preds = (sum_preds / self.num_models).tolist()
+            uncal_vars = np.zeros_like(sum_preds)
+            uncal_vars[:] = np.nan
+            self.uncal_vars = uncal_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -300,11 +360,17 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -313,13 +379,16 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":
@@ -368,11 +437,17 @@ class MVEPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -381,13 +456,16 @@ class MVEPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds, var = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             if i == 0:
@@ -396,25 +474,84 @@ class MVEPredictor(UncertaintyPredictor):
                 sum_vars = np.array(var)
                 individual_vars = [var]
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
-            sum_preds / self.num_models
-        )
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        self.individual_vars = individual_vars
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
+                uncal_pred = pred / self.num_models
+                uncal_var = (var + squared) / self.num_models - np.square(
+                    pred / self.num_models
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+                sum_preds / self.num_models
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -445,11 +582,17 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -458,13 +601,16 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds, lambdas, alphas, betas = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) * (1 + 1 / np.array(lambdas)) / (np.array(alphas) - 1)
@@ -474,25 +620,84 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 sum_vars = np.array(var)
                 individual_vars = [var]
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
-            sum_preds / self.num_models
-        )
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        self.individual_vars = individual_vars
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
+                uncal_pred = pred / self.num_models
+                uncal_var = (var + squared) / self.num_models - np.square(
+                    pred / self.num_models
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+                sum_preds / self.num_models
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -523,11 +728,17 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -536,13 +747,16 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds, lambdas, alphas, betas = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) / (np.array(alphas) - 1)
@@ -552,25 +766,84 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 sum_vars = np.array(var)
                 individual_vars = [var]
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
-            sum_preds / self.num_models
-        )
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        self.individual_vars = individual_vars
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
+                uncal_pred = pred / self.num_models
+                uncal_var = (var + squared) / self.num_models - np.square(
+                    pred / self.num_models
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+                sum_preds / self.num_models
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -601,11 +874,17 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -614,13 +893,16 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds, lambdas, alphas, betas = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=True,
             )
             var = np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))
@@ -630,25 +912,84 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 sum_vars = np.array(var)
                 individual_vars = [var]
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
-            sum_preds / self.num_models
-        )
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        self.individual_vars = individual_vars
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
+                uncal_pred = pred / self.num_models
+                uncal_var = (var + squared) / self.num_models - np.square(
+                    pred / self.num_models
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+                sum_preds / self.num_models
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
+            self.individual_vars = individual_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -675,11 +1016,17 @@ class EnsemblePredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -688,12 +1035,15 @@ class EnsemblePredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if self.dataset_type == "spectra":
@@ -707,24 +1057,87 @@ class EnsemblePredictor(UncertaintyPredictor):
                 sum_preds = np.array(preds)
                 sum_squared = np.square(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
                 if model.train_class_sizes is not None:
                     self.train_class_sizes = [model.train_class_sizes]
             else:
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
                 if model.train_class_sizes is not None:
                     self.train_class_sizes.append(model.train_class_sizes)
 
-        uncal_preds = sum_preds / self.num_models
-        uncal_vars = sum_squared / self.num_models - np.square(sum_preds) / self.num_models**2
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, squared in zip(sum_preds, sum_squared):
+                uncal_pred = pred / self.num_models
+                uncal_var = (
+                    squared / self.num_models - np.square(pred) / self.num_models**2
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            uncal_vars = (
+                sum_squared / self.num_models
+                - np.square(sum_preds) / self.num_models**2
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
+
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -750,11 +1163,17 @@ class DropoutPredictor(UncertaintyPredictor):
 
     def calculate_predictions(self):
         model = next(self.models)
-        (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = next(self.scalers)
+        (
+            scaler,
+            features_scaler,
+            atom_descriptor_scaler,
+            bond_descriptor_scaler,
+            atom_bond_scaler,
+        ) = next(self.scalers)
         if (
             features_scaler is not None
             or atom_descriptor_scaler is not None
-            or bond_feature_scaler is not None
+            or bond_descriptor_scaler is not None
         ):
             self.test_data.reset_features_and_targets()
             if features_scaler is not None:
@@ -763,13 +1182,16 @@ class DropoutPredictor(UncertaintyPredictor):
                 self.test_data.normalize_features(
                     atom_descriptor_scaler, scale_atom_descriptors=True
                 )
-            if bond_feature_scaler is not None:
-                self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+            if bond_descriptor_scaler is not None:
+                self.test_data.normalize_features(
+                    bond_descriptor_scaler, scale_bond_descriptors=True
+                )
         for i in range(self.dropout_sampling_size):
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
                 dropout_prob=self.uncertainty_dropout_p,
             )
@@ -780,12 +1202,41 @@ class DropoutPredictor(UncertaintyPredictor):
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
 
-        uncal_preds = sum_preds / self.dropout_sampling_size
-        uncal_vars = (
-            sum_squared / self.dropout_sampling_size
-            - np.square(sum_preds) / self.dropout_sampling_size**2
-        )
-        self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds, uncal_vars = [], []
+            for pred, square in zip(sum_preds, sum_squared):
+                uncal_pred = pred / self.dropout_sampling_size
+                uncal_var = (
+                    square / self.dropout_sampling_size
+                    - np.square(pred) / self.dropout_sampling_size**2
+                )
+                uncal_preds.append(uncal_pred)
+                uncal_vars.append(uncal_var)
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+        else:
+            uncal_preds = sum_preds / self.dropout_sampling_size
+            uncal_vars = (
+                sum_squared / self.dropout_sampling_size
+                - np.square(sum_preds) / self.dropout_sampling_size**2
+            )
+            self.uncal_preds, self.uncal_vars = (
+                uncal_preds.tolist(),
+                uncal_vars.tolist(),
+            )
 
     def get_uncal_output(self):
         return self.uncal_vars
@@ -812,11 +1263,17 @@ class ClassPredictor(UncertaintyPredictor):
         for i, (model, scaler_list) in enumerate(
             tqdm(zip(self.models, self.scalers), total=self.num_models)
         ):
-            (scaler, features_scaler, atom_descriptor_scaler, bond_feature_scaler) = scaler_list
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
             if (
                 features_scaler is not None
                 or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
+                or bond_descriptor_scaler is not None
             ):
                 self.test_data.reset_features_and_targets()
                 if features_scaler is not None:
@@ -825,8 +1282,10 @@ class ClassPredictor(UncertaintyPredictor):
                     self.test_data.normalize_features(
                         atom_descriptor_scaler, scale_atom_descriptors=True
                     )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
 
             preds = predict(
                 model=model,
@@ -837,22 +1296,64 @@ class ClassPredictor(UncertaintyPredictor):
             if i == 0:
                 sum_preds = np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
                 if model.train_class_sizes is not None:
                     self.train_class_sizes = [model.train_class_sizes]
             else:
                 sum_preds += np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
                 if model.train_class_sizes is not None:
                     self.train_class_sizes.append(model.train_class_sizes)
 
-        self.uncal_preds = (sum_preds / self.num_models).tolist()
-        self.uncal_confidence = self.uncal_preds
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds = sum_preds / self.num_models
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            self.uncal_confidence = self.uncal_preds
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            self.uncal_preds = (sum_preds / self.num_models).tolist()
+            self.uncal_confidence = self.uncal_preds
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_confidence
