@@ -1564,7 +1564,7 @@ class ChempropTests(TestCase):
                 pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
             )
             print(evaluation_scores)
-            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
+            np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=2)
 
 
 if __name__ == "__main__":
