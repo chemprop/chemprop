@@ -4,6 +4,8 @@ import os
 from typing import Dict, List
 
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 import pandas as pd
 from tensorboardX import SummaryWriter
 import torch
@@ -52,8 +54,9 @@ def run_training(args: TrainArgs,
                              args=args,
                              features_path=args.separate_test_features_path,
                              atom_descriptors_path=args.separate_test_atom_descriptors_path,
-                             bond_features_path=args.separate_test_bond_features_path,
+                             bond_descriptors_path=args.separate_test_bond_descriptors_path,
                              phase_features_path=args.separate_test_phase_features_path,
+                             constraints_path=args.separate_test_constraints_path,
                              smiles_columns=args.smiles_columns,
                              loss_function=args.loss_function,
                              logger=logger)
@@ -62,9 +65,10 @@ def run_training(args: TrainArgs,
                             args=args,
                             features_path=args.separate_val_features_path,
                             atom_descriptors_path=args.separate_val_atom_descriptors_path,
-                            bond_features_path=args.separate_val_bond_features_path,
+                            bond_descriptors_path=args.separate_val_bond_descriptors_path,
                             phase_features_path=args.separate_val_phase_features_path,
-                            smiles_columns = args.smiles_columns,
+                            constraints_path=args.separate_val_constraints_path,
+                            smiles_columns=args.smiles_columns,
                             loss_function=args.loss_function,
                             logger=logger)
 
@@ -113,6 +117,7 @@ def run_training(args: TrainArgs,
             save_dir=args.save_dir,
             task_names=args.task_names,
             features_path=args.features_path,
+            constraints_path=args.constraints_path,
             train_data=train_data,
             val_data=val_data,
             test_data=test_data,
@@ -134,12 +139,12 @@ def run_training(args: TrainArgs,
     else:
         atom_descriptor_scaler = None
 
-    if args.bond_feature_scaling and args.bond_features_size > 0:
-        bond_feature_scaler = train_data.normalize_features(replace_nan_token=0, scale_bond_features=True)
-        val_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
-        test_data.normalize_features(bond_feature_scaler, scale_bond_features=True)
+    if args.bond_descriptor_scaling and args.bond_descriptors is not None:
+        bond_descriptor_scaler = train_data.normalize_features(replace_nan_token=0, scale_bond_descriptors=True)
+        val_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
+        test_data.normalize_features(bond_descriptor_scaler, scale_bond_descriptors=True)
     else:
-        bond_feature_scaler = None
+        bond_descriptor_scaler = None
 
     args.train_data_size = len(train_data)
 
@@ -163,7 +168,12 @@ def run_training(args: TrainArgs,
     # Initialize scaler and scale training targets by subtracting mean and dividing standard deviation (regression only)
     if args.dataset_type == 'regression':
         debug('Fitting scaler')
-        scaler = train_data.normalize_targets()
+        if args.is_atom_bond_targets:
+            scaler = None
+            atom_bond_scaler = train_data.normalize_atom_bond_targets()
+        else:
+            scaler = train_data.normalize_targets()
+            atom_bond_scaler = None
         args.spectra_phase_mask = None
     elif args.dataset_type == 'spectra':
         debug('Normalizing spectra and excluding spectra regions based on phase')
@@ -178,9 +188,11 @@ def run_training(args: TrainArgs,
             )
             dataset.set_targets(data_targets)
         scaler = None
+        atom_bond_scaler = None
     else:
         args.spectra_phase_mask = None
         scaler = None
+        atom_bond_scaler = None
 
     # Get loss function
     loss_func = get_loss_func(args)
@@ -189,6 +201,12 @@ def run_training(args: TrainArgs,
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
     if args.dataset_type == 'multiclass':
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks, args.multiclass_num_classes))
+    elif args.is_atom_bond_targets:
+        sum_test_preds = []
+        for tb in zip(*test_data.targets()):
+            tb = np.concatenate(tb)
+            sum_test_preds.append(np.zeros((tb.shape[0], 1)))
+        sum_test_preds = np.array(sum_test_preds, dtype=object)
     else:
         sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
@@ -240,27 +258,28 @@ def run_training(args: TrainArgs,
         else:
             debug(f'Building model {model_idx}')
             model = MoleculeModel(args)
-            
+
         # Optionally, overwrite weights:
         if args.checkpoint_frzn is not None:
             debug(f'Loading and freezing parameters from {args.checkpoint_frzn}.')
-            model = load_frzn_model(model=model,path=args.checkpoint_frzn, current_args=args, logger=logger)     
-        
+            model = load_frzn_model(model=model, path=args.checkpoint_frzn, current_args=args, logger=logger)
+
         debug(model)
-        
+
         if args.checkpoint_frzn is not None:
             debug(f'Number of unfrozen parameters = {param_count(model):,}')
             debug(f'Total number of parameters = {param_count_all(model):,}')
         else:
             debug(f'Number of parameters = {param_count_all(model):,}')
-        
+
         if args.cuda:
             debug('Moving model to cuda')
         model = model.to(args.device)
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
-                        features_scaler, atom_descriptor_scaler, bond_feature_scaler, args)
+                        features_scaler, atom_descriptor_scaler, bond_descriptor_scaler,
+                        atom_bond_scaler, args)
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -281,6 +300,7 @@ def run_training(args: TrainArgs,
                 scheduler=scheduler,
                 args=args,
                 n_iter=n_iter,
+                atom_bond_scaler=atom_bond_scaler,
                 logger=logger,
                 writer=writer
             )
@@ -292,9 +312,10 @@ def run_training(args: TrainArgs,
                 num_tasks=args.num_tasks,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
-                #loss_function=args.loss_function,
+                loss_function=args.loss_function,
                 scaler=scaler,
                 quantiles=args.quantiles,
+                atom_bond_scaler=atom_bond_scaler,
                 logger=logger
             )
 
@@ -316,7 +337,7 @@ def run_training(args: TrainArgs,
                     not args.minimize_score and mean_val_score > best_score:
                 best_score, best_epoch = mean_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
-                                atom_descriptor_scaler, bond_feature_scaler, args)
+                                atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
@@ -328,7 +349,8 @@ def run_training(args: TrainArgs,
             test_preds = predict(
                 model=model,
                 data_loader=test_data_loader,
-                scaler=scaler
+                scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler
             )
             test_scores = evaluate_predictions(
                 preds=test_preds,
@@ -336,6 +358,7 @@ def run_training(args: TrainArgs,
                 num_tasks=args.num_tasks,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
+                is_atom_bond_targets=args.is_atom_bond_targets,
                 gt_targets=test_data.gt_targets(),
                 lt_targets=test_data.lt_targets(),
                 quantiles=args.quantiles,
@@ -343,7 +366,10 @@ def run_training(args: TrainArgs,
             )
 
             if len(test_preds) != 0:
-                sum_test_preds += np.array(test_preds)
+                if args.is_atom_bond_targets:
+                    sum_test_preds += np.array(test_preds, dtype=object)
+                else:
+                    sum_test_preds += np.array(test_preds)
 
             # Average test score
             for metric, scores in test_scores.items():
@@ -372,6 +398,7 @@ def run_training(args: TrainArgs,
             num_tasks=args.num_tasks,
             metrics=args.metrics,
             dataset_type=args.dataset_type,
+            is_atom_bond_targets=args.is_atom_bond_targets,
             gt_targets=test_data.gt_targets(),
             lt_targets=test_data.lt_targets(),
             quantiles=args.quantiles,
@@ -396,8 +423,20 @@ def run_training(args: TrainArgs,
     if args.save_preds and not empty_test_set:
         test_preds_dataframe = pd.DataFrame(data={'smiles': test_data.smiles()})
 
-        for i, task_name in enumerate(args.task_names):
-            test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
+        if args.is_atom_bond_targets:
+            n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
+
+            for i, atom_target in enumerate(args.atom_targets):
+                values = np.split(np.array(avg_test_preds[i]).flatten(), np.cumsum(np.array(n_atoms)))[:-1]
+                values = [list(v) for v in values]
+                test_preds_dataframe[atom_target] = values
+            for i, bond_target in enumerate(args.bond_targets):
+                values = np.split(np.array(avg_test_preds[i+len(args.atom_targets)]).flatten(), np.cumsum(np.array(n_bonds)))[:-1]
+                values = [list(v) for v in values]
+                test_preds_dataframe[bond_target] = values
+        else:
+            for i, task_name in enumerate(args.task_names):
+                test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
 
         test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
