@@ -18,7 +18,7 @@ def make_mol(s: str, keep_h: bool, add_h: bool, keep_atom_map: bool):
     if add_h:
         mol = Chem.AddHs(mol)
 
-    if keep_atom_map:
+    if keep_atom_map and mol is not None:
         atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
         for idx, map_num in enumerate(atom_map_numbers):
             if idx + 1 != map_num:
