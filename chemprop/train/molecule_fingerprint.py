@@ -13,13 +13,16 @@ from chemprop.features import set_reaction, set_explicit_h, set_adding_hs, set_k
 from chemprop.models import MoleculeModel
 
 @timeit()
-def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) -> List[List[Optional[float]]]:
+def molecule_fingerprint(args: FingerprintArgs,
+                         smiles: List[List[str]] = None,
+                         return_invalid_smiles: bool = True) -> List[List[Optional[float]]]:
     """
     Loads data and a trained model and uses the model to encode fingerprint vectors for the data.
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
     :param smiles: List of list of SMILES to make predictions on.
+    :param return_invalid_smiles: Whether to return predictions of "Invalid SMILES" for invalid SMILES, otherwise will skip them in returned predictions.
     :return: A list of fingerprint vectors (list of floats)
     """
 
@@ -173,7 +176,15 @@ def molecule_fingerprint(args: FingerprintArgs, smiles: List[List[str]] = None) 
         for datapoint in full_data:
             writer.writerow(datapoint.row)
 
-    return all_fingerprints
+    if return_invalid_smiles:
+        full_fingerprints = np.zeros((len(full_data), total_fp_size, len(args.checkpoint_paths)), dtype='object')
+        for full_index in range(len(full_data)):
+            valid_index = full_to_valid_indices.get(full_index, None)
+            preds = all_fingerprints[valid_index] if valid_index is not None else np.full((total_fp_size, len(args.checkpoint_paths)), 'Invalid SMILES')
+            full_fingerprints[full_index] = preds
+        return full_fingerprints
+    else:
+        return all_fingerprints
 
 def model_fingerprint(model: MoleculeModel,
             data_loader: MoleculeDataLoader,
