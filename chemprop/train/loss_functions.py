@@ -343,6 +343,7 @@ def evidential_loss(pred_values, targets, lam=0, epsilon=1e-8):
     mu, v, alpha, beta = torch.split(pred_values, pred_values.shape[1] // 4, dim=1)
 
     # Calculate NLL loss
+    v = torch.clamp(v, min=0.00001)
     twoBlambda = 2 * beta * (1 + v)
     nll = (
         0.5 * torch.log(np.pi / v)
