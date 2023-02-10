@@ -901,7 +901,7 @@ class PredictArgs(CommonArgs):
     """Regression calibrators can output either a stdev or an inverval. """
     calibration_path: str = None
     """Path to data file to be used for uncertainty calibration."""
-    calibration_features_path: str = None
+    calibration_features_path: List[str] = None
     """Path to features data to be used with the uncertainty calibration dataset."""
     calibration_phase_features_path: str = None
     """ """
