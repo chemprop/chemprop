@@ -5,6 +5,8 @@ import numpy as np
 
 import numpy as np
 
+import numpy as np
+
 from .predict import predict
 from chemprop.data import MoleculeDataLoader, StandardScaler, AtomBondScaler
 from chemprop.models import MoleculeModel
@@ -62,7 +64,6 @@ def evaluate_predictions(preds: List[List[float]],
                     if targets[j][i] is not None:  # Skip those without targets
                         valid_preds[i].append(preds[j][i])
                         valid_targets[i].append(targets[j][i])
-
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)

@@ -275,6 +275,27 @@ class ChempropTests(TestCase):
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits']
         ),
         (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                'rmse',
+                0.691494,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                'rmse',
+                1.022634,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling']
+        ),
+        (
+                'chemprop_rdkit_features_path',
+                'chemprop',
+                'rmse',
+                2.14015989,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling', '--save_smiles_splits']
+        ),
+        (
                 'chemprop_features_generator_features_path',
                 'chemprop',
                 'rmse',
@@ -349,6 +370,13 @@ class ChempropTests(TestCase):
                 "chemprop_rdkit_features_path",
                 "chemprop",
                 "auc",
+                0.466828424,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits']
+        ),
+        (
+                'chemprop_features_generator_features_path',
+                'chemprop',
+                'auc',
                 0.466828424,
                 ['--features_path', os.path.join(TEST_DATA_DIR, 'classification.npz'), '--no_features_scaling', '--class_balance', '--split_sizes', '0.4', '0.3', '0.3', '--save_smiles_splits']
         ),
@@ -435,6 +463,20 @@ class ChempropTests(TestCase):
                 2.4703284,
                 ['--features_generator', 'morgan'],
                 ['--features_generator', 'morgan']
+        ),
+        (
+                'sklearn_random_forest_rdkit_features_path',
+                'random_forest',
+                0.2954347,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
+        ),
+        (
+                'sklearn_svm_rdkit_features_path',
+                'svm',
+                0.4112432,
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression.npz'), '--no_features_scaling'],
+                ['--features_path', os.path.join(TEST_DATA_DIR, 'regression_test.npz'), '--no_features_scaling']
         ),
         (
                 'sklearn_random_forest_rdkit_features_path',
@@ -1556,6 +1598,77 @@ class ChempropTests(TestCase):
             )
             print(evaluation_scores)
             np.testing.assert_array_almost_equal(evaluation_scores, scores, decimal=3)
+
+    @parameterized.expand([
+        (
+                'chemprop_atomic_bond_targets',
+                'chemprop',
+                8.710007,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints',
+                'chemprop',
+                8.435722,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h']
+        ),
+        (
+                'chemprop_atomic_bond_targets_no_shared_atom_bond_ffn',
+                'chemprop',
+                8.619740,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_shared_atom_bond_ffn']
+        ),
+        (
+                'chemprop_atomic_bond_targets_constraints_no_adding_bond_types',
+                'chemprop',
+                8.780137,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--no_adding_bond_types']
+        ),
+        (
+                'chemprop_atomic_bond_targets_weights_ffn_num_layers',
+                'chemprop',
+                8.765641,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_regression.csv'),
+                 '--constraints_path', os.path.join(TEST_DATA_DIR, 'atomic_bond_constraints.csv'),
+                 '--is_atom_bond_targets',
+                 '--adding_h',
+                 '--weights_ffn_num_layers', '3']
+        )
+    ])
+    def test_train_multi_task_regression_atomic_bond_targets(self,
+                                                             name: str,
+                                                             model_type: str,
+                                                             expected_score: float,
+                                                             train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            # Train
+            metric = 'rmse'
+            self.train(
+                dataset_type = 'regression',
+                metric = metric,
+                save_dir = save_dir,
+                model_type = model_type,
+                flags = train_flags
+            )
+
+            # Check results
+            test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
+            test_scores = test_scores_data[f'Mean {metric}']
+            self.assertEqual(len(test_scores), 10)
+
+            mean_score = test_scores.mean()
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
     @parameterized.expand([
         (

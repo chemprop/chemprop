@@ -1,24 +1,30 @@
 from collections import OrderedDict, defaultdict
+import sys
 import csv
 from logging import Logger
 import pickle
 from random import Random
 from typing import List, Set, Tuple, Union
 import os
+import json
 
 from rdkit import Chem
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
 from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.features import load_features, load_valid_atom_or_bond_features, is_mol
+from chemprop.rdkit import make_mol
+
+# Increase maximum size of field in the csv processing
+csv.field_size_limit(sys.maxsize)
 
 def get_header(path: str) -> List[str]:
     """
     Returns the header of a data CSV file.
-
     :param path: Path to a CSV file.
     :return: A list of strings containing the strings in the comma-separated header.
     """
@@ -34,7 +40,6 @@ def preprocess_smiles_columns(path: str,
     """
     Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
     headings corresponding to the columns in the data file holding SMILES. Assumes file has a header.
-
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
@@ -50,8 +55,8 @@ def preprocess_smiles_columns(path: str,
         else:
             smiles_columns = [None]*number_of_molecules
     else:
-        if not isinstance(smiles_columns,list):
-            smiles_columns=[smiles_columns]
+        if isinstance(smiles_columns, str):
+            smiles_columns = [smiles_columns]
         if os.path.isfile(path):
             columns = get_header(path)
             if len(smiles_columns) != number_of_molecules:
@@ -71,12 +76,10 @@ def get_task_names(
 ) -> List[str]:
     """
     Gets the task names from a data CSV file.
-
     If :code:`target_columns` is provided, returns `target_columns`.
     Otherwise, returns all columns except the :code:`smiles_columns`
     (or the first column, if the :code:`smiles_columns` is None) and
     the :code:`ignore_columns`.
-
     :param path: Path to a CSV file.
     :param smiles_columns: The names of the columns containing SMILES.
                            By default, uses the first :code:`number_of_molecules` columns.
@@ -90,7 +93,7 @@ def get_task_names(
 
     columns = get_header(path)
 
-    if not isinstance(smiles_columns, list):
+    if isinstance(smiles_columns, str) or smiles_columns is None:
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
@@ -103,6 +106,82 @@ def get_task_names(
     return target_names
 
 
+def get_mixed_task_names(path: str,
+                         smiles_columns: Union[str, List[str]] = None,
+                         target_columns: List[str] = None,
+                         ignore_columns: List[str] = None,
+                         keep_h: bool = None,
+                         add_h: bool = None,
+                         keep_atom_map: bool = None) -> Tuple[List[str], List[str], List[str]]:
+    """
+    Gets the task names for atomic, bond, and molecule targets separately from a data CSV file.
+
+    If :code:`target_columns` is provided, returned lists based off `target_columns`.
+    Otherwise, returned lists based off all columns except the :code:`smiles_columns`
+    (or the first column, if the :code:`smiles_columns` is None) and
+    the :code:`ignore_columns`.
+
+    :param path: Path to a CSV file.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param target_columns: Name of the columns containing target values. By default, uses all columns
+                           except the :code:`smiles_columns` and the :code:`ignore_columns`.
+    :param ignore_columns: Name of the columns to ignore when :code:`target_columns` is not provided.
+    :param keep_h: Boolean whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified.
+    :param add_h: Boolean whether to add hydrogens to the input smiles.
+    :param keep_atom_map: Boolean whether to keep the original atom mapping.
+    :return: A tuple containing the task names of atomic, bond, and molecule properties separately.
+    """
+    columns = get_header(path)
+
+    if isinstance(smiles_columns, str) or smiles_columns is None:
+        smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
+
+    ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
+
+    if target_columns is not None:
+        target_names =  target_columns
+    else:
+        target_names = [column for column in columns if column not in ignore_columns]
+
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            atom_target_names, bond_target_names, molecule_target_names = [], [], []
+            smiles = [row[c] for c in smiles_columns]
+            mol = make_mol(smiles[0], keep_h, add_h, keep_atom_map)
+            for column in target_names:
+                value = row[column]
+                value = value.replace('None', 'null')
+                target = np.array(json.loads(value))
+
+                is_atom_target, is_bond_target, is_molecule_target = False, False, False
+                if len(target.shape) == 0:
+                    is_molecule_target = True
+                elif len(target.shape) == 1:
+                    if len(mol.GetAtoms()) == len(mol.GetBonds()):
+                        break
+                    elif len(target) == len(mol.GetAtoms()):  # Atom targets saved as 1D list
+                        is_atom_target = True
+                    elif len(target) == len(mol.GetBonds()):  # Bond targets saved as 1D list
+                        is_bond_target = True
+                elif len(target.shape) == 2:  # Bond targets saved as 2D list
+                    is_bond_target = True
+                else:
+                    raise ValueError('Unrecognized targets of column {column} in {path}.')
+                
+                if is_atom_target:
+                    atom_target_names.append(column)
+                elif is_bond_target:
+                    bond_target_names.append(column)
+                elif is_molecule_target:
+                    molecule_target_names.append(column)
+            if len(atom_target_names) + len(bond_target_names) + len(molecule_target_names) == len(target_names):
+                break
+
+    return atom_target_names, bond_target_names, molecule_target_names
+
+
 def get_data_weights(path: str) -> List[float]:
     """
     Returns the list of data weights for the loss function as stored in a CSV file.
@@ -112,16 +191,52 @@ def get_data_weights(path: str) -> List[float]:
     """
     weights = []
     with open(path) as f:
-        reader=csv.reader(f)
-        next(reader) #skip header row
+        reader = csv.reader(f)
+        next(reader)  # skip header row
         for line in reader:
             weights.append(float(line[0]))
     # normalize the data weights
-    avg_weight=sum(weights)/len(weights)
-    weights = [w/avg_weight for w in weights]
+    avg_weight = sum(weights) / len(weights)
+    weights = [w / avg_weight for w in weights]
     if min(weights) < 0:
         raise ValueError('Data weights must be non-negative for each datapoint.')
     return weights
+
+
+def get_constraints(path: str,
+                    target_columns: List[str],
+                    save_raw_data: bool = False) -> Tuple[List[float], List[float]]:
+    """
+    Returns lists of data constraints for the atomic/bond targets as stored in a CSV file.
+
+    :param path: Path to a CSV file.
+    :param target_columns: Name of the columns containing target values.
+    :param save_raw_data: Whether to save all user-provided atom/bond-level constraints in input data,
+                          which will be used to construct constraints files for each train/val/test split
+                          for prediction convenience later.
+    :return: Lists of floats containing the data constraints.
+    """
+    constraints_data = []
+    reader = pd.read_csv(path)
+    reader_columns = reader.columns.tolist()
+    if len(reader_columns) != len(set(reader_columns)):
+        raise ValueError(f'There are duplicates in {path}.')
+    for target in target_columns:
+        if target in reader_columns:
+            constraints_data.append(reader[target].values)
+        else:
+            constraints_data.append([None] * len(reader))
+    constraints_data = np.transpose(constraints_data)  # each is num_data x num_targets
+
+    if save_raw_data:
+        raw_constraints_data = []
+        for target in reader_columns:
+            raw_constraints_data.append(reader[target].values)
+        raw_constraints_data = np.transpose(raw_constraints_data)  # each is num_data x num_columns
+    else:
+        raw_constraints_data = None
+    
+    return constraints_data, raw_constraints_data
 
 
 def get_smiles(path: str,
@@ -145,7 +260,7 @@ def get_smiles(path: str,
     if smiles_columns is not None and not header:
         raise ValueError('If smiles_column is provided, the CSV file must have a header.')
 
-    if not isinstance(smiles_columns, list) and header:
+    if (isinstance(smiles_columns, str) or smiles_columns is None) and header:
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns, number_of_molecules=number_of_molecules)
 
     with open(path) as f:
@@ -177,10 +292,10 @@ def filter_invalid_smiles(data: MoleculeDataset) -> MoleculeDataset:
 
 
 def get_invalid_smiles_from_file(path: str = None,
-               smiles_columns: Union[str, List[str]] = None,
-               header: bool = True,
-               reaction: bool = False,
-               ) -> Union[List[str], List[List[str]]]:
+                                 smiles_columns: Union[str, List[str]] = None,
+                                 header: bool = True,
+                                 reaction: bool = False,
+                                 ) -> Union[List[str], List[List[str]]]:
     """
     Returns the invalid SMILES from a data CSV file.
 
@@ -215,10 +330,11 @@ def get_invalid_smiles_from_list(smiles: List[List[str]], reaction: bool = False
     is_reaction_list = [True if not x and reaction else False for x in is_mol_list]
     is_explicit_h_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
     is_adding_hs_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
+    keep_atom_map_list = [False for x in is_mol_list]  # set this to False as it is not needed for invalid SMILES check
 
     for mol_smiles in smiles:
         mols = make_mols(smiles=mol_smiles, reaction_list=is_reaction_list, keep_h_list=is_explicit_h_list,
-                         add_h_list=is_adding_hs_list)
+                         add_h_list=is_adding_hs_list, keep_atom_map_list=keep_atom_map_list)
         if any(s == '' for s in mol_smiles) or \
            any(m is None for m in mols) or \
            any(m.GetNumHeavyAtoms() == 0 for m in mols if not isinstance(m, tuple)) or \
@@ -240,7 +356,8 @@ def get_data(path: str,
              features_generator: List[str] = None,
              phase_features_path: str = None,
              atom_descriptors_path: str = None,
-             bond_features_path: str = None,
+             bond_descriptors_path: str = None,
+             constraints_path: str = None,
              max_data_size: int = None,
              store_row: bool = False,
              logger: Logger = None,
@@ -264,7 +381,8 @@ def get_data(path: str,
                                in place of :code:`args.features_generator`.
     :param phase_features_path: A path to a file containing phase features as applicable to spectra.
     :param atom_descriptors_path: The path to the file containing the custom atom descriptors.
-    :param bond_features_path: The path to the file containing the custom bond features.
+    :param bond_descriptors_path: The path to the file containing the custom bond descriptors.
+    :param constraints_path: The path to the file containing constraints applied to different atomic/bond properties.
     :param max_data_size: The maximum number of data points to load.
     :param logger: A logger for recording output.
     :param store_row: Whether to store the raw CSV row in each :class:`~chemprop.data.data.MoleculeDatapoint`.
@@ -286,12 +404,13 @@ def get_data(path: str,
         phase_features_path = phase_features_path if phase_features_path is not None else args.phase_features_path
         atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
             else args.atom_descriptors_path
-        bond_features_path = bond_features_path if bond_features_path is not None \
-            else args.bond_features_path
+        bond_descriptors_path = bond_descriptors_path if bond_descriptors_path is not None \
+            else args.bond_descriptors_path
+        constraints_path = constraints_path if constraints_path is not None else args.constraints_path
         max_data_size = max_data_size if max_data_size is not None else args.max_data_size
         loss_function = loss_function if loss_function is not None else args.loss_function
 
-    if not isinstance(smiles_columns, list):
+    if isinstance(smiles_columns, str) or smiles_columns is None:
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
 
     max_data_size = max_data_size or float('inf')
@@ -304,18 +423,29 @@ def get_data(path: str,
         features_data = np.concatenate(features_data, axis=1)
     else:
         features_data = None
-        
+
     if phase_features_path is not None:
         phase_features = load_features(phase_features_path)
         for d_phase in phase_features:
             if not (d_phase.sum() == 1 and np.count_nonzero(d_phase) == 1):
                 raise ValueError('Phase features must be one-hot encoded.')
         if features_data is not None:
-            features_data = np.concatenate((features_data,phase_features), axis=1)
-        else: # if there are no other molecular features, phase features become the only molecular features
+            features_data = np.concatenate((features_data, phase_features), axis=1)
+        else:  # if there are no other molecular features, phase features become the only molecular features
             features_data = np.array(phase_features)
     else:
         phase_features = None
+
+    # Load constraints
+    if constraints_path is not None:
+        constraints_data, raw_constraints_data = get_constraints(
+            path=constraints_path,
+            target_columns=args.target_columns,
+            save_raw_data=args.save_smiles_splits
+        )
+    else:
+        constraints_data = None
+        raw_constraints_data = None
 
     # Load data weights
     if data_weights_path is not None:
@@ -348,20 +478,38 @@ def get_data(path: str,
         if any([c not in fieldnames for c in target_columns]):
             raise ValueError(f'Data file did not contain all provided target columns: {target_columns}. Data file field names are: {fieldnames}')
 
-        all_smiles, all_targets, all_rows, all_features, all_phase_features, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], []
+        all_smiles, all_targets, all_atom_targets, all_bond_targets, all_rows, all_features, all_phase_features, all_constraints_data, all_raw_constraints_data, all_weights, all_gt, all_lt = [], [], [], [], [], [], [], [], [], [], [], []
         for i, row in enumerate(tqdm(reader)):
             smiles = [row[c] for c in smiles_columns]
 
-            targets = []
+            targets, atom_targets, bond_targets = [], [], []
             for column in target_columns:
                 value = row[column]
-                if value in ['','nan']:
+                if value in ['', 'nan']:
                     targets.append(None)
                 elif '>' in value or '<' in value:
                     if loss_function == 'bounded_mse':
                         targets.append(float(value.strip('<>')))
                     else:
                         raise ValueError('Inequality found in target data. To use inequality targets (> or <), the regression loss function bounded_mse must be used.')
+                elif '[' in value or ']' in value:
+                    value = value.replace('None', 'null')
+                    target = np.array(json.loads(value))
+                    if len(target.shape) == 1 and column in args.atom_targets:  # Atom targets saved as 1D list
+                        atom_targets.append(target)
+                        targets.append(target)
+                    elif len(target.shape) == 1 and column in args.bond_targets:  # Bond targets saved as 1D list
+                        bond_targets.append(target)
+                        targets.append(target)
+                    elif len(target.shape) == 2:  # Bond targets saved as 2D list
+                        bond_target_arranged = []
+                        mol = make_mol(smiles[0], args.explicit_h, args.adding_h, args.keeping_atom_map)
+                        for bond in mol.GetBonds():
+                            bond_target_arranged.append(target[bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()])
+                        bond_targets.append(np.array(bond_target_arranged))
+                        targets.append(np.array(bond_target_arranged))
+                    else:
+                        raise ValueError(f'Unrecognized targets of column {column} in {path}.')
                 else:
                     targets.append(float(value))
 
@@ -371,12 +519,20 @@ def get_data(path: str,
 
             all_smiles.append(smiles)
             all_targets.append(targets)
+            all_atom_targets.append(atom_targets)
+            all_bond_targets.append(bond_targets)
 
             if features_data is not None:
                 all_features.append(features_data[i])
-            
+
             if phase_features is not None:
                 all_phase_features.append(phase_features[i])
+
+            if constraints_data is not None:
+                all_constraints_data.append(constraints_data[i])
+
+            if raw_constraints_data is not None:
+                all_raw_constraints_data.append(raw_constraints_data[i])
 
             if data_weights is not None:
                 all_weights.append(data_weights[i])
@@ -407,16 +563,24 @@ def get_data(path: str,
                 atom_descriptors = descriptors
 
         bond_features = None
-        if args is not None and args.bond_features_path is not None:
+        bond_descriptors = None
+        if args is not None and args.bond_descriptors is not None:
             try:
-                bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
+                descriptors = load_valid_atom_or_bond_features(bond_descriptors_path, [x[0] for x in all_smiles])
             except Exception as e:
-                raise ValueError(f'Failed to load or validate custom bond features: {e}')
+                raise ValueError(f'Failed to load or validate custom bond descriptors or features: {e}')
+
+            if args.bond_descriptors == 'feature':
+                bond_features = descriptors
+            elif args.bond_descriptors == 'descriptor':
+                bond_descriptors = descriptors
 
         data = MoleculeDataset([
             MoleculeDatapoint(
                 smiles=smiles,
                 targets=targets,
+                atom_targets=all_atom_targets[i] if atom_targets else None,
+                bond_targets=all_bond_targets[i] if bond_targets else None,
                 row=all_rows[i] if store_row else None,
                 data_weight=all_weights[i] if data_weights is not None else None,
                 gt_targets=all_gt[i] if gt_targets is not None else None,
@@ -427,10 +591,13 @@ def get_data(path: str,
                 atom_features=atom_features[i] if atom_features is not None else None,
                 atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
                 bond_features=bond_features[i] if bond_features is not None else None,
+                bond_descriptors=bond_descriptors[i] if bond_descriptors is not None else None,
+                constraints=all_constraints_data[i] if constraints_data is not None else None,
+                raw_constraints=all_raw_constraints_data[i] if raw_constraints_data is not None else None,
                 overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
                 overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
-                                               total=len(all_smiles))
+                                            total=len(all_smiles))
         ])
 
     # Filter out invalid SMILES
@@ -533,7 +700,7 @@ def split_data(data: MoleculeDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
-    
+
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -623,14 +790,14 @@ def split_data(data: MoleculeDataset,
     elif split_type == 'scaffold_balanced':
         return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
 
-    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split.
-        smiles_dict=defaultdict(set)
-        for i,smiles in enumerate(data.smiles()):
+    elif split_type == 'random_with_repeated_smiles':  # Use to constrain data with the same smiles go in the same split.
+        smiles_dict = defaultdict(set)
+        for i, smiles in enumerate(data.smiles()):
             smiles_dict[smiles[key_molecule_index]].add(i)
-        index_sets=list(smiles_dict.values())
+        index_sets = list(smiles_dict.values())
         random.seed(seed)
         random.shuffle(index_sets)
-        train,val,test=[],[],[]
+        train, val, test = [], [], []
         train_size = int(sizes[0] * len(data))
         val_size = int(sizes[1] * len(data))
         for index_set in index_sets:
@@ -677,8 +844,13 @@ def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List
     valid_targets = [[] for _ in range(data.num_tasks())]
     for i in range(len(targets)):
         for task_num in range(len(targets[i])):
-            if targets[i][task_num] is not None:
-                valid_targets[task_num].append(targets[i][task_num])
+            if data.is_atom_bond_targets:
+                for target in targets[i][task_num]:
+                    if targets[i][task_num] is not None:
+                        valid_targets[task_num].append(target)
+            else:
+                if targets[i][task_num] is not None:
+                    valid_targets[task_num].append(targets[i][task_num])
 
     class_sizes = []
     for task_targets in valid_targets:
@@ -691,7 +863,7 @@ def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List
                 ones = float('nan')
                 print('Warning: class has no targets')
             class_sizes.append([1 - ones, ones])
-        else: # counts
+        else:  # counts
             ones = np.count_nonzero(task_targets)
             class_sizes.append([len(task_targets) - ones, ones])
 
@@ -706,7 +878,12 @@ def validate_dataset_type(data: MoleculeDataset, dataset_type: str) -> None:
     :param data: A :class:`~chemprop.data.MoleculeDataset`.
     :param dataset_type: The dataset type to check.
     """
-    target_set = {target for targets in data.targets() for target in targets} - {None}
+    target_list = [target for targets in data.targets() for target in targets]
+
+    if data.is_atom_bond_targets:
+        target_set = set(list(np.concatenate(target_list).flat)) - {None}
+    else:
+        target_set = set(target_list) - {None}
     classification_target_set = {0, 1}
 
     if dataset_type == 'classification' and not (target_set <= classification_target_set):

@@ -295,20 +295,70 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
             if i == 0:
                 sum_preds = np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
                 sum_preds += np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
 
-        self.uncal_preds = sum_preds / self.num_models
-        self.uncal_intervals = self.make_intervals(self.uncal_preds)
-        if self.individual_ensemble_predictions:
-            self.individual_preds = individual_preds.tolist()
-
-        self.uncal_preds = self.reformat_preds(self.uncal_preds).tolist()
+        if model.is_atom_bond_targets:
+            num_tasks = len(sum_preds)
+            uncal_preds = sum_preds / self.num_models
+            self.uncal_preds = reshape_values(
+                uncal_preds,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            uncal_vars = np.zeros_like(self.uncal_preds)
+            uncal_vars[:] = np.nan
+            self.uncal_vars = reshape_values(
+                uncal_vars,
+                self.test_data,
+                len(model.atom_targets),
+                len(model.bond_targets),
+                num_tasks,
+            )
+            if self.individual_ensemble_predictions:
+                self.individual_preds = reshape_individual_preds(
+                    individual_preds,
+                    self.test_data,
+                    len(model.atom_targets),
+                    len(model.bond_targets),
+                    num_tasks,
+                    self.num_models,
+                )
+        else:
+            self.uncal_preds = (sum_preds / self.num_models).tolist()
+            uncal_vars = np.zeros_like(sum_preds)
+            uncal_vars[:] = np.nan
+            self.uncal_vars = uncal_vars
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
 
     def get_uncal_output(self):
         return self.uncal_intervals

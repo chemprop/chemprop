@@ -46,6 +46,7 @@ class Featurization_parameters:
         self.EXPLICIT_H = False
         self.REACTION = False
         self.ADDING_H = False
+        self.KEEP_ATOM_MAP = False
 
 # Create a global parameter object for reference throughout this module
 PARAMS = Featurization_parameters()
@@ -68,8 +69,8 @@ def get_atom_fdim(overwrite_default_atom: bool = False, is_reaction: bool = Fals
     """
     Gets the dimensionality of the atom feature vector.
 
-    :param overwrite_default_atom: Whether to overwrite the default atom descriptors
-    :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None
+    :param overwrite_default_atom: Whether to overwrite the default atom descriptors.
+    :param is_reaction: Whether to add :code:`EXTRA_ATOM_FDIM` for reaction input when :code:`REACTION_MODE` is not None.
     :return: The dimensionality of the atom feature vector.
     """
     if PARAMS.REACTION_MODE:
@@ -94,6 +95,13 @@ def set_adding_hs(adding_hs: bool) -> None:
     """
     PARAMS.ADDING_H = adding_hs
 
+def set_keeping_atom_map(keeping_atom_map: bool) -> None:
+    """
+    Sets whether RDKit molecules keep the original atom mapping.
+
+    :param keeping_atom_map: Boolean whether to keep the original atom mapping.
+    """
+    PARAMS.KEEP_ATOM_MAP = keeping_atom_map
 
 def set_reaction(reaction: bool, mode: str) -> None:
     """
@@ -121,7 +129,14 @@ def is_adding_hs(is_mol: bool = True) -> bool:
     if is_mol:
         return PARAMS.ADDING_H
     return False
-    
+
+
+def is_keeping_atom_map(is_mol: bool = True) -> bool:
+    r"""Returns whether to keep the original atom mapping (not for reactions)"""
+    if is_mol:
+        return PARAMS.KEEP_ATOM_MAP
+    return False
+
 
 def is_reaction(is_mol: bool = True) -> bool:
     r"""Returns whether to use reactions as input"""
@@ -152,8 +167,8 @@ def get_bond_fdim(atom_messages: bool = False,
     :param atom_messages: Whether atom messages are being used. If atom messages are used,
                           then the bond feature vector only contains bond features.
                           Otherwise it contains both atom and bond features.
-    :param overwrite_default_bond: Whether to overwrite the default bond descriptors
-    :param overwrite_default_atom: Whether to overwrite the default atom descriptors
+    :param overwrite_default_bond: Whether to overwrite the default bond descriptors.
+    :param overwrite_default_atom: Whether to overwrite the default atom descriptors.
     :param is_reaction: Whether to add :code:`EXTRA_BOND_FDIM` for reaction input when :code:`REACTION_MODE:` is not None
     :return: The dimensionality of the bond feature vector.
     """
@@ -300,9 +315,10 @@ class MolGraph:
     * :code:`overwrite_default_bond_features`: A boolean to overwrite default bond descriptors.
     * :code:`is_mol`: A boolean whether the input is a molecule.
     * :code:`is_reaction`: A boolean whether the molecule is a reaction.
-    * :code:`is_explicit_h`: A boolean whether to retain explicit Hs (for reaction mode)
-    * :code:`is_adding_hs`: A boolean whether to add explicit Hs (not for reaction mode)
-    * :code:`reaction_mode`:  Reaction mode to construct atom and bond feature vectors
+    * :code:`is_explicit_h`: A boolean whether to retain explicit Hs (for reaction mode).
+    * :code:`is_adding_hs`: A boolean whether to add explicit Hs (not for reaction mode).
+    * :code:`reaction_mode`:  Reaction mode to construct atom and bond feature vectors.
+    * :code:`b2br`: A mapping from f_bonds to real bonds in molecule recorded in targets.
     """
 
     def __init__(self, mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]],
@@ -312,10 +328,10 @@ class MolGraph:
                  overwrite_default_bond_features: bool = False):
         """
         :param mol: A SMILES or an RDKit molecule.
-        :param atom_features_extra: A list of 2D numpy array containing additional atom features to featurize the molecule
-        :param bond_features_extra: A list of 2D numpy array containing additional bond features to featurize the molecule
-        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating
-        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating
+        :param atom_features_extra: A list of 2D numpy array containing additional atom features to featurize the molecule.
+        :param bond_features_extra: A list of 2D numpy array containing additional bond features to featurize the molecule.
+        :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features instead of concatenating.
+        :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features instead of concatenating.
         """
         self.is_mol = is_mol(mol)
         self.is_reaction = is_reaction(self.is_mol)
@@ -326,9 +342,9 @@ class MolGraph:
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
             if self.is_reaction:
-                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs)) 
+                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)) 
             else:
-                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs)
+                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)
 
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
@@ -358,6 +374,9 @@ class MolGraph:
             for _ in range(self.n_atoms):
                 self.a2b.append([])
 
+            # Initialize f_bonds to real bonds mapping for each bond
+            self.b2br = np.zeros([len(mol.GetBonds()), 2])
+
             # Get bond features
             for a1 in range(self.n_atoms):
                 for a2 in range(a1 + 1, self.n_atoms):
@@ -386,6 +405,7 @@ class MolGraph:
                     self.b2a.append(a2)
                     self.b2revb.append(b2)
                     self.b2revb.append(b1)
+                    self.b2br[bond.GetIdx(), :] = [self.n_bonds, self.n_bonds + 1]
                     self.n_bonds += 2
 
             if bond_features_extra is not None and len(bond_features_extra) != self.n_bonds / 2:
@@ -503,12 +523,14 @@ class BatchMolGraph:
     * :code:`max_num_bonds`: The maximum number of bonds neighboring an atom in this batch.
     * :code:`b2b`: (Optional) A mapping from a bond index to incoming bond indices.
     * :code:`a2a`: (Optional): A mapping from an atom index to neighboring atom indices.
+    * :code:`b2br`: (Optional): A mapping from f_bonds to real bonds in molecule recorded in targets.
     """
 
     def __init__(self, mol_graphs: List[MolGraph]):
         r"""
         :param mol_graphs: A list of :class:`MolGraph`\ s from which to construct the :class:`BatchMolGraph`.
         """
+        self.mol_graphs = mol_graphs
         self.overwrite_default_atom_features = mol_graphs[0].overwrite_default_atom_features
         self.overwrite_default_bond_features = mol_graphs[0].overwrite_default_bond_features
         self.is_reaction = mol_graphs[0].is_reaction
@@ -549,16 +571,17 @@ class BatchMolGraph:
         self.max_num_bonds = max(1, max(
             len(in_bonds) for in_bonds in a2b))  # max with 1 to fix a crash in rare case of all single-heavy-atom mols
 
-        self.f_atoms = torch.FloatTensor(f_atoms)
-        self.f_bonds = torch.FloatTensor(f_bonds)
-        self.a2b = torch.LongTensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)])
-        self.b2a = torch.LongTensor(b2a)
-        self.b2revb = torch.LongTensor(b2revb)
+        self.f_atoms = torch.tensor(f_atoms, dtype=torch.float)
+        self.f_bonds = torch.tensor(f_bonds, dtype=torch.float)
+        self.a2b = torch.tensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)], dtype=torch.long)
+        self.b2a = torch.tensor(b2a, dtype=torch.long)
+        self.b2revb = torch.tensor(b2revb, dtype=torch.long)
         self.b2b = None  # try to avoid computing b2b b/c O(n_atoms^3)
         self.a2a = None  # only needed if using atom messages
+        self.b2br = None  # only needed in predictions of atomic/bond targets
 
-    def get_components(self, atom_messages: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor,
-                                                                   torch.LongTensor, torch.LongTensor, torch.LongTensor,
+    def get_components(self, atom_messages: bool = False) -> Tuple[torch.Tensor, torch.Tensor,
+                                                                   torch.Tensor, torch.Tensor, torch.Tensor,
                                                                    List[Tuple[int, int]], List[Tuple[int, int]]]:
         """
         Returns the components of the :class:`BatchMolGraph`.
@@ -587,7 +610,7 @@ class BatchMolGraph:
 
         return self.f_atoms, f_bonds, self.a2b, self.b2a, self.b2revb, self.a_scope, self.b_scope
 
-    def get_b2b(self) -> torch.LongTensor:
+    def get_b2b(self) -> torch.Tensor:
         """
         Computes (if necessary) and returns a mapping from each bond index to all the incoming bond indices.
 
@@ -601,7 +624,7 @@ class BatchMolGraph:
 
         return self.b2b
 
-    def get_a2a(self) -> torch.LongTensor:
+    def get_a2a(self) -> torch.Tensor:
         """
         Computes (if necessary) and returns a mapping from each atom index to all neighboring atom indices.
 
@@ -616,6 +639,22 @@ class BatchMolGraph:
 
         return self.a2a
 
+    def get_b2br(self) -> torch.Tensor:
+        """
+        Computes (if necessary) and returns a mapping from f_bonds to real bonds in molecule recorded in targets.
+
+        :return: A PyTorch tensor containing the mapping from f_bonds to real bonds in molecule recorded in targets.
+        """
+        if self.b2br is None:
+            n_bonds = 1 # number of bonds (start at 1 b/c need index 0 as padding)
+            b2br = []
+            for mol_graph in self.mol_graphs:
+                b2br.append(mol_graph.b2br + n_bonds)
+                n_bonds += mol_graph.n_bonds
+            b2br = np.concatenate(b2br, axis=0)
+            self.b2br = torch.tensor(b2br, dtype=torch.long)
+
+        return self.b2br
 
 def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]]],
               atom_features_batch: List[np.array] = (None,),
@@ -627,10 +666,10 @@ def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.M
     Converts a list of SMILES or RDKit molecules to a :class:`BatchMolGraph` containing the batch of molecular graphs.
 
     :param mols: A list of SMILES or a list of RDKit molecules.
-    :param atom_features_batch: A list of 2D numpy array containing additional atom features to featurize the molecule
-    :param bond_features_batch: A list of 2D numpy array containing additional bond features to featurize the molecule
-    :param overwrite_default_atom_features: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating
-    :param overwrite_default_bond_features: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating
+    :param atom_features_batch: A list of 2D numpy array containing additional atom features to featurize the molecule.
+    :param bond_features_batch: A list of 2D numpy array containing additional bond features to featurize the molecule.
+    :param overwrite_default_atom_features: Boolean to overwrite default atom descriptors by atom_descriptors instead of concatenating.
+    :param overwrite_default_bond_features: Boolean to overwrite default bond descriptors by bond_descriptors instead of concatenating.
     :return: A :class:`BatchMolGraph` containing the combined molecular graph for the molecules.
     """
     return BatchMolGraph([MolGraph(mol, af, bf,
@@ -642,8 +681,8 @@ def mol2graph(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.M
 def is_mol(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]) -> bool:
     """Checks whether an input is a molecule or a reaction
 
-    :param mol: str, RDKIT molecule or tuple of molecules
-    :return: Whether the supplied input corresponds to a single molecule
+    :param mol: str, RDKIT molecule or tuple of molecules.
+    :return: Whether the supplied input corresponds to a single molecule.
     """
 
     if isinstance(mol, str) and ">" not in mol:

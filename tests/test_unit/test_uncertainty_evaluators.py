@@ -51,7 +51,6 @@ def miscal_regression_evaluator():
 def spearman_evaluator():
     return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None, False)
 
-
 @pytest.fixture
 def conformal_coverage_regression_evaluator():
     return build_uncertainty_evaluator("conformal_coverage", None, None, "regression", "mse", None)

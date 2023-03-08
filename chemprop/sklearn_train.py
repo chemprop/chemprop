@@ -266,8 +266,10 @@ def run_sklearn(args: SklearnTrainArgs,
 
     debug('Loading data')
     data = get_data(path=args.data_path,
+                    features_path=args.features_path,
                     smiles_columns=args.smiles_columns,
-                    target_columns=args.target_columns)
+                    target_columns=args.target_columns,
+                    logger=logger)
     args.task_names = get_task_names(path=args.data_path,
                                      smiles_columns=args.smiles_columns,
                                      target_columns=args.target_columns,
@@ -284,7 +286,8 @@ def run_sklearn(args: SklearnTrainArgs,
         seed=args.seed,
         sizes=args.split_sizes,
         num_folds=args.num_folds,
-        args=args
+        args=args,
+        logger=logger
     )
 
     if args.save_smiles_splits:
@@ -296,6 +299,7 @@ def run_sklearn(args: SklearnTrainArgs,
             train_data=train_data,
             test_data=test_data,
             smiles_columns=args.smiles_columns,
+            logger=logger
         )
 
     debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')

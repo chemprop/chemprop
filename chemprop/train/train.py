@@ -155,7 +155,6 @@ def train(
                 gt_target_batch = gt_target_batch.to(torch_device)
 
         # Calculate losses
-
         if model.is_atom_bond_targets:
             loss_multi_task = []
             for target, pred, target_weight, data_weight, mask in zip(targets, preds, target_weights, data_weights, masks):
@@ -211,6 +210,7 @@ def train(
             loss = loss_func(preds, targets, quantiles_tensor) * target_weights * data_weights * mask
         else:
             loss = loss_func(preds, targets) * target_weights * data_weights * mask
+
 
             if args.loss_function == "mcc":
                 loss = loss.mean()
