@@ -1,6 +1,7 @@
 from collections import OrderedDict, defaultdict
 import sys
 import csv
+import ctypes
 from logging import Logger
 import pickle
 from random import Random
@@ -18,8 +19,8 @@ from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.featurizers import load_features, load_valid_atom_or_bond_features, is_mol
 
-# Increase maximum size of field in the csv processing
-csv.field_size_limit(sys.maxsize)
+# Increase maximum size of field in the csv processing for the current architecture
+csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
 
 def get_header(path: str) -> List[str]:
     """
