@@ -130,6 +130,8 @@ class CommonArgs(Tap):
         self._bond_features_size = 0
         self._atom_descriptors_size = 0
         self._bond_descriptors_size = 0
+        self._atom_constraints = []
+        self._bond_constraints = []
 
     @property
     def device(self) -> torch.device:
@@ -598,23 +600,25 @@ class TrainArgs(CommonArgs):
         A list of booleans indicating whether constraints applied to output of atomic properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
-            header = chemprop.data.utils.get_header(self.constraints_path)
-            atom_constraints = [target in header for target in self.atom_targets]
+            if not self._atom_constraints:
+                header = chemprop.data.utils.get_header(self.constraints_path)
+                self._atom_constraints = [target in header for target in self.atom_targets]
         else:
-            atom_constraints = [False] * len(self.atom_targets)
-        return atom_constraints
-    
+            self._atom_constraints = [False] * len(self.atom_targets)
+        return self._atom_constraints
+
     @property
     def bond_constraints(self) -> List[bool]:
         """
         A list of booleans indicating whether constraints applied to output of bond properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
-            header = chemprop.data.utils.get_header(self.constraints_path)
-            bond_constraints = [target in header for target in self.bond_targets]
+            if not self._bond_constraints:
+                header = chemprop.data.utils.get_header(self.constraints_path)
+                self._bond_constraints = [target in header for target in self.bond_targets]
         else:
-            bond_constraints = [False] * len(self.bond_targets)
-        return bond_constraints
+            self._bond_constraints = [False] * len(self.bond_targets)
+        return self._bond_constraints
 
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
