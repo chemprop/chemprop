@@ -1,0 +1,114 @@
+<HTML>
+<HEAD>
+<script type="text/javascript" language="javascript"
+	src="../jsme/jsme.nocache.js"></script>
+
+
+
+<TITLE>JME Example 4</TITLE>
+<script>
+
+function saveJMECookie() {
+  var jme = document.JME.jmeFile();
+  document.cookie = "jme="+jme+";expires=Thu, 31 Dec 2020 00:00:00 GMT; path=/";
+}
+
+function readJMECookie() {
+  var editor = document.JME;
+  if (editor.smiles().length > 0) return; // editing already started
+  var ca = document.cookie.split(';');
+  for(var i=0;i < ca.length;i++) {
+    var c = ca[i];
+    while (c.charAt(0)==' ') c = c.substring(1,c.length);
+    if (c.indexOf("jme=") == 0) {
+      var jme = c.substring(4,c.length);
+      editor.readMolecule(jme);
+      return;
+    }
+  }
+}
+
+function substituent(r) {
+  document.JME.setSubstituent(r);
+}
+
+function openJMEHelp() {
+  window.open("http://www.molinspiration.com/jme/help/jme2008hints.html","jmehelp","toolbar=no,menubar=no,scrollbars=yes,resizable=yes,width=510,height=675,left=400,top=20");
+}
+
+
+
+//Replacement for body onLoad - needed for IE678 timing compatibility
+//otherwise onLoad will be called before all JSME applets are ready
+function jsmeOnLoad() {
+	readJMECookie();
+}
+</script>
+
+
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" onLoad=""
+	onUnload="saveJMECookie()">
+	<p>
+	<H2>Adding additional functionality to JME by JavaScript</H2>
+	Capabilities of JME may be enhanced by adding relatively simple
+	JavaScript code to the page containing JME.
+	<br>
+	<h3>Substituent menu</h3>
+	This option allows fast and convenient creation of common organic
+	substituents. Check the JavaScript code in this page to see how the
+	substituent menu should be implemented.
+	<p>
+	<h3>Molecule persistency</h3>
+	Several users asked for a "persistent molecule" in the JME Editor. That
+	means that when they visit another page and then come back, the JME
+	should remember the molecule recently edited. It is relatively easy to
+	implement this feature. It requires just to add two JavaScript
+	functions to the page (saveJMECookie and read JMECookie), as shown in
+	the source of this page. Additionally, respective event handlers must
+	be added into the page BODY tag.
+	<br>Whenever the HTML page with the editor is abandoned, the
+	actual molecule is stored into a so called "cookie" (a small piece of
+	persistent information associated with this particular web page) and
+	when the page is revisited (even after several weeks), the molecule is
+	automatically restored.
+	<p>
+	<center>
+		<table cellpadding=0 cellspacing=0 border=0 width=370>
+			<tr>
+				<td align=left>&nbsp;</td>
+				<td align=right><select
+					onChange="substituent(options[selectedIndex].text)">
+						<option>Select substituent
+						<option>-C(=O)OH
+						<option>-C(=O)OMe
+						<option>-OC(=O)Me
+						<option>-CMe3
+						<option>-CF3
+						<option>-CCl3
+						<option>-NO2
+						<option>-SO2-NH2
+						<option>-NH-SO2-Me
+						<option>-NMe2
+						<option>-C#N
+						<option>-C#C-Me
+						<option>-C#CH</select></td>
+			</tr>
+		</table>
+		<div name='JME' code='JME.class' codebase='.' archive='JME.jar'
+			width=370 height=312> You have to enable Java in your
+			browser.</div>
+		<font face="helvetica,arial,sans-serif"><table width=370
+				cellpadding=0 cellspacing=0 border=0>
+				<tr>
+					<td align="left"><a href="http://www.molinspiration.com/jme/"><small>JME
+								Editor</a> courtesy of Peter Ertl, Novartis</small></td>
+					<td align="right"><small><a
+							href="javascript:openJMEHelp();"
+							onMouseOver="window.status='Show basic JME editor help'; return true;"
+							onMouseOut="window.status=''; return true;">JME help</a></small></td>
+				</tr>
+			</table>
+	</center>
+</BODY>
+</HTML>

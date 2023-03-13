@@ -4,9 +4,9 @@ import torch
 from tqdm import tqdm
 import numpy as np
 
-from chemprop_repo.chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.nn_utils import activate_dropout
+from chemprop.data import MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
+from chemprop.models import MoleculeModel
+from chemprop.nn_utils import activate_dropout
 
 
 def predict(

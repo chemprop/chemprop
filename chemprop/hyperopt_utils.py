@@ -9,8 +9,8 @@ import logging
 from hyperopt import Trials, hp
 import numpy as np
 
-from chemprop_repo.chemprop.constants import HYPEROPT_SEED_FILE_NAME
-from chemprop_repo.chemprop.utils import makedirs
+from chemprop.constants import HYPEROPT_SEED_FILE_NAME
+from chemprop.utils import makedirs
 
 
 def build_search_space(search_parameters: List[str], train_epochs: int = None) -> dict:

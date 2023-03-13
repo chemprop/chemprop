@@ -4,11 +4,11 @@ from typing import Iterator, List
 import numpy as np
 from tqdm import tqdm
 
-from chemprop_repo.chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.train.predict import predict
-from chemprop_repo.chemprop.spectra_utils import normalize_spectra, roundrobin_sid
-from chemprop_repo.chemprop.multitask_utils import reshape_values, reshape_individual_preds
+from chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
+from chemprop.models import MoleculeModel
+from chemprop.train.predict import predict
+from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
+from chemprop.multitask_utils import reshape_values, reshape_individual_preds
 
 
 class UncertaintyPredictor(ABC):

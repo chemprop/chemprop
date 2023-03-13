@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    <h1>Chemprop &mdash; Machine Learning for Molecular Property Prediction</h1>
+
+    <img class="img-responsive" style="width:50%;display:block;margin-left:auto;margin-right:auto;" src="{{ url_for('static', filename='images/message_passing.png') }}" alt="Message passing">
+
+    <h2>Introduction</h2>
+    <p>This website can be used to predict molecular properties using a Message Passing Neural Network (MPNN). In order to make predictions, an MPNN first needs to be trained on a dataset containing molecules along with known property values for each molecule. Once the MPNN is trained, it can be used to predict those same properties on any new molecules.</p>
+
+    {% if not config['DEMO'] %}
+    <h2>Training</h2>
+    <p>To train an MPNN, go to the <a href="{{ url_for('train') }}">Train</a> page, upload a dataset or select a dataset which has already been uploaded, set the desired parameters, name the model, and then click "Train".</p>
+    {% endif %}
+
+    <h2>Predicting</h2>
+    <p>To make property predictions using, go to the <a href="{{ url_for('predict') }}">Predict</a> page, select the trained model checkpoint you want to use, upload or paste the molecules you would like to make predictions on, and then click "Predict".</p>
+
+    {% if not config['DEMO'] %}
+    <h2>Managing Data and Checkpoints</h2>
+    <p>To upload, view, download, or delete datasets and model checkpoints, go to the <a href="{{ url_for('data') }}">Data</a> and <a href="{{ url_for('checkpoints') }}">Checkpoints</a> pages, respectively.</p>
+
+    <h2>Advanced</h2>
+
+    <h4>Using GPUs</h4>
+    <p>If GPUs are available on your machine, you will see a dropdown menu on the <a href="{{ url_for('train') }}">Train</a> and <a href="{{ url_for('predict') }}">Predict</a> pages which will allow you to select a GPU to use. If you select "None" then only CPUs will be used.</p>
+
+    <h4>Working Remotely</h4>
+    <p>If you wish to train or predict on a remote server, you can use SSH port-forwarding to run training/predicting on the remote server while viewing the website it locally. To do so, follow these instructions:</p>
+    <ol>
+        <li>Connect to the remote server: <code>ssh &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
+        <li>On the remote server:</li>
+        <ol>
+            <li>Navigate to the <code>chemprop</code> directory.</li>
+            <li>Activate the conda environment with the <code>chemprop</code> requirements: <code>source activate &lt;environment_name&gt;</code></li>
+            <li>Start the website: <code>python web/run.py</code></li>
+        </ol>
+        <li>On your local machine:</li>
+        <ol>
+            <li>Set up port-forwarding: <code>ssh -N -L 5000:localhost:5000 &lt;remote_user&gt;@&lt;remote_host&gt;</code></li>
+            <li>Open a web browser and go to <a href="localhost:5000">localhost:5000</a></li>
+        </ol>
+    </ol>
+    {% endif %}
+{% endblock %}

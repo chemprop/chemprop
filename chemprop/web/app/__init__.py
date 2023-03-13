@@ -3,7 +3,7 @@ import os
 
 from flask import Flask
 
-from chemprop.web.utils import set_root_folder
+from chemprop_repo.web.utils import set_root_folder
 
 
 app = Flask(__name__)
@@ -14,4 +14,4 @@ set_root_folder(
     create_folders=False
 )
 
-from chemprop.web.app import views
+from chemprop_repo.web.app import views

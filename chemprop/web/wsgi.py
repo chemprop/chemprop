@@ -2,8 +2,8 @@
 Runs the web interface version of Chemprop.
 Designed to be used for production only, along with Gunicorn.
 """
-from chemprop.web.app import app, db
-from chemprop.web.utils import clear_temp_folder, set_root_folder
+from web.app import app, db
+from web.utils import clear_temp_folder, set_root_folder
 
 
 def build_app(*args, **kwargs):

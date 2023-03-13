@@ -8,10 +8,10 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 from rdkit import Chem
 
 from .scaler import StandardScaler, AtomBondScaler
-from chemprop_repo.chemprop.features import get_features_generator
-from chemprop_repo.chemprop.features import BatchMolGraph, MolGraph
-from chemprop_repo.chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol, is_keeping_atom_map
-from chemprop_repo.chemprop.rdkit import make_mol
+from chemprop.features import get_features_generator
+from chemprop.features import BatchMolGraph, MolGraph
+from chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol, is_keeping_atom_map
+from chemprop.rdkit import make_mol
 
 # Cache of graph featurizations
 CACHE_GRAPH = True

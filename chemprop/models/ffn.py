@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 
-from chemprop_repo.chemprop.nn_utils import get_activation_function
+from chemprop.nn_utils import get_activation_function
 
 class MultiReadout(nn.Module):
     """A :class:`MultiReadout` contains a list of FFN for each atom/bond targets prediction."""

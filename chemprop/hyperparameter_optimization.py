@@ -8,13 +8,13 @@ from functools import partial
 from hyperopt import fmin, tpe, Trials
 import numpy as np
 
-from chemprop_repo.chemprop.args import HyperoptArgs
-from chemprop_repo.chemprop.constants import HYPEROPT_LOGGER_NAME
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.nn_utils import param_count
-from chemprop_repo.chemprop.train import cross_validate, run_training
-from chemprop_repo.chemprop.utils import create_logger, makedirs, timeit
-from chemprop_repo.chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, \
+from chemprop.args import HyperoptArgs
+from chemprop.constants import HYPEROPT_LOGGER_NAME
+from chemprop.models import MoleculeModel
+from chemprop.nn_utils import param_count
+from chemprop.train import cross_validate, run_training
+from chemprop.utils import create_logger, makedirs, timeit
+from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, \
     get_hyperopt_seed, load_manual_trials, build_search_space, save_config
 
 

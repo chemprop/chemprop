@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% from 'macros.html' import add_data %}
+
+{% block title %}
+    <h1>Data</h1>
+{% endblock %}
+
+{% block content %}
+    {{ add_data('data', data_upload_warnings, data_upload_errors) }}
+
+    <hr>
+
+    <h3>Datasets</h3>
+    <table class="table table-hover" style="width:auto">
+        {% for dataset in datasets %}
+            <tr>
+                <th style="vertical-align: middle;">{{dataset['dataset_name']}}</th>
+                <th>
+                    <a href="{{ url_for('download_data', dataset=dataset['id']) }}">
+                        <button class="btn btn-default btn-sm">Download</button>
+                    </a>
+                    <a href="{{ url_for('delete_data', dataset=dataset['id']) }}">
+                        <button class="btn btn-danger btn-sm">Delete</button>
+                    </a>
+                </th>
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}

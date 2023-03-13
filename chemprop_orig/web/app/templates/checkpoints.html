@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% from 'macros.html' import add_checkpoint %}
+
+{% block title %}
+    <h1>Checkpoints</h1>
+{% endblock %}
+
+{% block content %}
+    {{ add_checkpoint('checkpoints', checkpoint_upload_warnings, checkpoint_upload_errors) }}
+
+    <hr>
+
+    <h3>Model Checkpoints</h3>
+    <table class="table table-hover" style="width:auto">
+        {% for checkpoint in checkpoints %}
+            <tr>
+                <th style="vertical-align: middle;">{{ checkpoint['ckpt_name'] }}</th>
+                <th style="vertical-align: middle;">Epochs: {{ checkpoint['epochs'] }}</th>
+                <th style="vertical-align: middle;">Ensemble Size: {{ checkpoint['ensemble_size'] }}</th>
+                <th style="vertical-align: middle;">Training Size: {{ checkpoint['training_size'] }} molecules</th>
+                <th>
+                    <a href="{{ url_for('download_checkpoint', checkpoint=checkpoint['id']) }}">
+                        <button class="btn btn-default btn-sm">Download</button>
+                    </a>
+                    <a href="{{ url_for('delete_checkpoint', checkpoint=checkpoint['id']) }}">
+                        <button class="btn btn-danger btn-sm">Delete</button>
+                    </a>
+                </th>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

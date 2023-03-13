@@ -16,13 +16,13 @@ from .evaluate import evaluate, evaluate_predictions
 from .predict import predict
 from .train import train
 from .loss_functions import get_loss_func
-from chemprop_repo.chemprop.spectra_utils import normalize_spectra, load_phase_mask
-from chemprop_repo.chemprop.args import TrainArgs
-from chemprop_repo.chemprop.constants import MODEL_FILE_NAME
-from chemprop_repo.chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.nn_utils import param_count, param_count_all
-from chemprop_repo.chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
+from chemprop.spectra_utils import normalize_spectra, load_phase_mask
+from chemprop.args import TrainArgs
+from chemprop.constants import MODEL_FILE_NAME
+from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
+from chemprop.models import MoleculeModel
+from chemprop.nn_utils import param_count, param_count_all
+from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean
 
 

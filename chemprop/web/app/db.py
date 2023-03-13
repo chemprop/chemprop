@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from flask import current_app, Flask, g
 
-from chemprop.web.app import app
+from chemprop_repo.web.app import app
 
 
 DB_PATH = 'chemprop.sqlite3'

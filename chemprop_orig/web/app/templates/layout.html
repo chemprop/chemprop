@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+            integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+            crossorigin="anonymous"></script>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='stylesheets/style.css') }}">
+    <script>
+        $(function () {
+          $('[data-toggle="tooltip"]').tooltip()
+        });
+    </script>
+    <title>Chemprop</title>
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="{{ url_for('home') }}">Chemprop</a>
+        </div>
+        <ul class="nav navbar-nav">
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            {% if not config['DEMO'] %}
+            <li><a href="{{ url_for('train') }}">Train</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('predict') }}">Predict</a></li>
+            {% if not config['DEMO'] %}
+            <li><a href="{{ url_for('data') }}">Data</a></li>
+            <li><a href="{{ url_for('checkpoints') }}">Checkpoints</a></li>
+            {% endif %}
+        </ul>
+        {% if not config['DEMO'] %}
+        <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+                <a href="#" id="currentUser" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span></a>
+                <ul class="dropdown-menu" id="userSelect">
+                    {% for id, user in users.items() %}
+                        <li id="select{{ id }}"><a value="{{ id }}" href="#" class="userSelect">{{ user.username }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+            <li><a href="{{ url_for('create_user') }}">Create User</a></li>
+        </ul>
+        {% endif %}
+    </div>
+</nav>
+
+<div class="container">
+    {% block title %}{% endblock %}
+</div>
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<div class="navbar navbar-inverse navbar-fixed-bottom">
+    <div class="container">
+      <p class="navbar-text pull-left">Chemprop v0.1 © 2020</p>
+
+      <a href="https://github.com/chemprop/chemprop" class="navbar-btn btn-info btn pull-right">Source code</a>
+    </div>
+</div>
+
+</body>
+{% if not config['DEMO'] %}
+<script>
+    let users = {{ users | tojson }};
+    let currentUser = Cookies.get("currentUser");
+
+    if (currentUser === undefined || !(currentUser in users)) {
+        currentUser = 1;
+        Cookies.set("currentUser", currentUser);
+    }
+
+    $('#currentUser').prepend(users[currentUser].username);
+    $('#select' + currentUser).css('display', 'none');
+
+    $(".userSelect").click(function() {
+        Cookies.set("currentUser", $(this).attr('value'));
+        location.reload();
+    });
+    </script>
+
+</script>
+{% endif %}
+</html>

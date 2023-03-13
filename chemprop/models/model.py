@@ -7,9 +7,9 @@ import torch.nn as nn
 
 from .mpn import MPN
 from .ffn import build_ffn, MultiReadout
-from chemprop_repo.chemprop.args import TrainArgs
-from chemprop_repo.chemprop.features import BatchMolGraph
-from chemprop_repo.chemprop.nn_utils import initialize_weights
+from chemprop.args import TrainArgs
+from chemprop.features import BatchMolGraph
+from chemprop.nn_utils import initialize_weights
 
 
 class MoleculeModel(nn.Module):

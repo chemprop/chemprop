@@ -5,9 +5,9 @@ from typing import Dict, List
 import numpy as np
 
 from .predict import predict
-from chemprop_repo.chemprop.data import MoleculeDataLoader, StandardScaler, AtomBondScaler
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.train import get_metric_func
+from chemprop.data import MoleculeDataLoader, StandardScaler, AtomBondScaler
+from chemprop.models import MoleculeModel
+from chemprop.train import get_metric_func
 from sklearn.metrics import auc,roc_curve
 import sys
 sys.path.insert(0, "dfpl")

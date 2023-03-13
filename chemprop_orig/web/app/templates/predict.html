@@ -1,0 +1,153 @@
+{% extends "layout.html" %}
+{% from 'macros.html' import add_checkpoint, chemdraw, error_message, warning_message %}
+
+{% block title %}
+    <h1>Predict</h1>
+{% endblock %}
+
+{% block content %}
+    {% if not config['DEMO'] %}
+    {{ add_checkpoint('predict', checkpoint_upload_warnings, checkpoint_upload_errors) }}
+    <hr>
+
+    <h3>Predict</h3>
+    {% endif %}
+
+    <form enctype="multipart/form-data" method="POST">
+        <!--Model checkpoint selector-->
+        <h5>Model checkpoint</h5>
+        <select name="checkpointName" required>
+            {% for checkpoint in checkpoints %}
+                <option value="{{ checkpoint[0] }}">{{ checkpoint[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <br>
+        <br>
+
+        <!--SMILES upload type selector-->
+        <div class="btn-group" id="inputSelect" data-toggle="buttons">
+            <label id="textButton" class="btn btn-primary active">
+              <input type="radio" name="inputType" value="text" autocomplete="off"> Text Input
+            </label>
+            <label id="fileButton" class="btn btn-primary">
+              <input type="radio" name="inputType" value="file" autocomplete="off"> Upload File
+            </label>
+            <label id="drawButton" class="btn btn-primary">
+              <input type="radio" name="inputType" value="file" autocomplete="off"> Draw Molecule
+            </label>
+        </div>
+
+        <br>
+
+        <!--SMILES input-->
+        <div id="textInputForm">
+            <h5>SMILES (one per line)</h5>
+            <textarea id="textSmilesInput" name="textSmiles" cols="100" rows="10" placeholder="SMILES" required></textarea>
+        </div>
+        <div id="fileInputForm" style="display:none">
+            <h5>File containing SMILES (one per line)</h5>
+            <input id="fileSmilesInput" type="file" name="data" accept=".csv">
+        </div>
+        <div id="drawInputForm" style="display:none">
+            <h5>Draw a molecule</h5>
+            {{ chemdraw() }}
+            <br>
+            <button type="button" id="convertToSmiles" class="btn btn-primary btn-xs">Convert to SMILES</button>
+            <input id="drawSmilesInput" name="drawSmiles" placeholder="SMILES">
+        </div>
+
+        <br>
+
+        <!--SMILES input functionality-->
+        <script>
+            $(document).ready(function() {
+                $(document).ready(function() {
+                    $("#textButton").click(function() {
+                        $("#textInputForm").show();
+                        $("#textSmilesInput").prop('required', true);
+                        $("#fileInputForm").hide();
+                        $("#fileSmilesInput").prop('required', false);
+                        $("#drawInputForm").hide();
+                        $("#drawSmilesInput").prop('required', false);
+                        $("#drawSmilesInput").val('');
+                    });
+                    $("#fileButton").click(function() {
+                        $("#textInputForm").hide();
+                        $("#textSmilesInput").prop('required', false);
+                        $("#textSmilesInput").val('');
+                        $("#fileInputForm").show();
+                        $("#fileSmilesInput").prop('required', true);
+                        $("#drawInputForm").hide();
+                        $("#drawSmilesInput").prop('required', false);
+                        $("#drawSmilesInput").val('');
+                    });
+                    $("#drawButton").click(function() {
+                        $("#textInputForm").hide();
+                        $("#textSmilesInput").prop('required', false);
+                        $("#textSmilesInput").val('');
+                        $("#fileInputForm").hide();
+                        $("#fileSmilesInput").prop('required', false);
+                        $("#drawInputForm").show();
+                        $("#drawSmilesInput").prop('required', true);
+                    });
+                });
+
+                $("#convertToSmiles").click(function() {
+                    $("#drawSmilesInput").val(jsmeApplet.smiles());
+                });
+            });
+        </script>
+
+        <!--GPU selector-->
+        {% if cuda %}
+            <h5>GPU</h5>
+            <select name="gpu">
+                <option value="None">None</option>
+                {% for gpu in gpus %}
+                    <option value="{{ gpu }}">{{ gpu }}</option>
+                {% endfor %}
+            </select>
+            <br>
+            <br>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-md">Predict</button>
+    </form>
+
+    <br>
+
+    {% if warnings %}
+        {% for warning in warnings %}
+            {{ warning_message(warning) }}
+        {% endfor %}
+    {% endif %}
+
+    {% if errors %}
+        {% for error in errors %}
+            {{ error_message(error) }}
+        {% endfor %}
+    {% endif %}
+
+    {% if predicted %}
+        <hr>
+
+        <a href="{{ url_for('download_predictions') }}"><button class="btn btn-default btn-md">Download Predictions</button></a>
+
+        <br>
+        <br>
+
+        {% for i in range(num_smiles) %}
+            <p>SMILES: {{ smiles[i] }}</p>
+
+            {% for j in range(num_tasks) %}
+                <p>{{ task_names[j] }}: {{ preds[i][j] }}</p>
+            {% endfor %}
+
+            <hr>
+        {% endfor %}
+        {% if show_more > 0 %}
+            <p>... and {{ show_more }} more. Download file for full predictions.</p>
+        {% endif %}
+    {% endif %}
+{% endblock %}

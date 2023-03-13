@@ -5,8 +5,8 @@ import numpy as np
 from scipy.stats import t, spearmanr
 from scipy.special import erfinv
 
-from chemprop_repo.chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
-from chemprop_repo.chemprop.train import evaluate_predictions
+from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
+from chemprop.train import evaluate_predictions
 
 
 class UncertaintyEvaluator(ABC):

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from chemprop_repo.chemprop.args import TrainArgs
+from chemprop.args import TrainArgs
 
 
 def get_loss_func(args: TrainArgs) -> Callable:

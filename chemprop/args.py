@@ -11,9 +11,9 @@ import torch
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 import numpy as np
 
-import chemprop_repo.chemprop.data.utils
-from chemprop_repo.chemprop.data import set_cache_mol, empty_cache
-from chemprop_repo.chemprop.features import get_available_features_generators
+import chemprop.data.utils
+from chemprop.data import set_cache_mol, empty_cache
+from chemprop.features import get_available_features_generators
 
 Metric = Literal[
     'auc', 'prc-auc', 'roc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
@@ -601,7 +601,7 @@ class TrainArgs(CommonArgs):
         A list of booleans indicating whether constraints applied to output of atomic properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
-            header = chemprop_repo.data.utils.get_header(self.constraints_path)
+            header = chemprop.data.utils.get_header(self.constraints_path)
             atom_constraints = [target in header for target in self.atom_targets]
         else:
             atom_constraints = [False] * len(self.atom_targets)
@@ -613,7 +613,7 @@ class TrainArgs(CommonArgs):
         A list of booleans indicating whether constraints applied to output of bond properties.
         """
         if self.is_atom_bond_targets and self.constraints_path:
-            header = chemprop_repo.data.utils.get_header(self.constraints_path)
+            header = chemprop.data.utils.get_header(self.constraints_path)
             bond_constraints = [target in header for target in self.bond_targets]
         else:
             bond_constraints = [False] * len(self.bond_targets)
@@ -629,7 +629,7 @@ class TrainArgs(CommonArgs):
             raise ValueError('In reaction_solvent mode, --number_of_molecules 2 must be specified.')
 
         # Process SMILES columns
-        self.smiles_columns = chemprop_repo.data.utils.preprocess_smiles_columns(
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.data_path,
             smiles_columns=self.smiles_columns,
             number_of_molecules=self.number_of_molecules,
@@ -644,7 +644,7 @@ class TrainArgs(CommonArgs):
 
         # Determine the target_columns when training atomic and bond targets
         if self.is_atom_bond_targets:
-            self.atom_targets, self.bond_targets, self.molecule_targets = chemprop_repo.data.utils.get_mixed_task_names(
+            self.atom_targets, self.bond_targets, self.molecule_targets = chemprop.data.utils.get_mixed_task_names(
                 path=self.data_path,
                 smiles_columns=self.smiles_columns,
                 target_columns=self.target_columns,
@@ -935,7 +935,7 @@ class PredictArgs(CommonArgs):
         if self.uncertainty_method == 'dropout' and version.parse(torch.__version__) < version.parse('1.9.0'):
             raise ValueError('Dropout uncertainty is only supported for pytorch versions >= 1.9.0')
 
-        self.smiles_columns = chemprop_repo.data.utils.preprocess_smiles_columns(
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.test_path,
             smiles_columns=self.smiles_columns,
             number_of_molecules=self.number_of_molecules,
@@ -1004,7 +1004,7 @@ class InterpretArgs(CommonArgs):
     def process_args(self) -> None:
         super(InterpretArgs, self).process_args()
 
-        self.smiles_columns = chemprop_repo.data.utils.preprocess_smiles_columns(
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.data_path,
             smiles_columns=self.smiles_columns,
             number_of_molecules=self.number_of_molecules,
@@ -1159,7 +1159,7 @@ class SklearnPredictArgs(CommonArgs):
 
     def process_args(self) -> None:
 
-        self.smiles_columns = chemprop_repo.data.utils.preprocess_smiles_columns(
+        self.smiles_columns = chemprop.data.utils.preprocess_smiles_columns(
             path=self.test_path,
             smiles_columns=self.smiles_columns,
             number_of_molecules=self.number_of_molecules,

@@ -4,10 +4,10 @@ from typing import Callable, Dict, List, Set, Tuple
 import numpy as np
 from rdkit import Chem
 
-from chemprop_repo.chemprop.args import InterpretArgs
-from chemprop_repo.chemprop.data import get_data_from_smiles, get_header, get_smiles, MoleculeDataLoader, MoleculeDataset
-from chemprop_repo.chemprop.train import predict
-from chemprop_repo.chemprop.utils import load_args, load_checkpoint, load_scalers, timeit
+from chemprop.args import InterpretArgs
+from chemprop.data import get_data_from_smiles, get_header, get_smiles, MoleculeDataLoader, MoleculeDataset
+from chemprop.train import predict
+from chemprop.utils import load_args, load_checkpoint, load_scalers, timeit
 
 
 MIN_ATOMS = 15

@@ -8,10 +8,10 @@ from scipy.optimize import fmin
 from scipy.stats import t
 from sklearn.isotonic import IsotonicRegression
 
-from chemprop_repo.chemprop.data import MoleculeDataset, StandardScaler
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
-from chemprop_repo.chemprop.multitask_utils import reshape_values
+from chemprop.data import MoleculeDataset, StandardScaler
+from chemprop.models import MoleculeModel
+from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
+from chemprop.multitask_utils import reshape_values
 
 
 class UncertaintyCalibrator(ABC):

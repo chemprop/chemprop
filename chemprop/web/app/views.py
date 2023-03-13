@@ -16,15 +16,15 @@ import numpy as np
 from rdkit import Chem
 from werkzeug.utils import secure_filename
 
-from chemprop.web.app import app, db
+from chemprop_repo.web.app import app, db
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-from chemprop.args import PredictArgs, TrainArgs
-from chemprop.constants import MODEL_FILE_NAME, TRAIN_LOGGER_NAME
-from chemprop.data import get_data, get_header, get_smiles, get_task_names, validate_data
-from chemprop.train import make_predictions, run_training
-from chemprop.utils import create_logger, load_task_names, load_args
+from chemprop_repo.args import PredictArgs, TrainArgs
+from chemprop_repo.constants import MODEL_FILE_NAME, TRAIN_LOGGER_NAME
+from chemprop_repo.data import get_data, get_header, get_smiles, get_task_names, validate_data
+from chemprop_repo.train import make_predictions, run_training
+from chemprop_repo.utils import create_logger, load_task_names, load_args
 
 TRAINING = 0
 PROGRESS = mp.Value('d', 0.0)

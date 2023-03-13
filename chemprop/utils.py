@@ -18,11 +18,11 @@ from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
 from scipy.stats.mstats import gmean
 
-from chemprop_repo.chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
-from chemprop_repo.chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
-from chemprop_repo.chemprop.models import MoleculeModel
-from chemprop_repo.chemprop.nn_utils import NoamLR
-from chemprop_repo.chemprop.models.ffn import MultiReadout
+from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
+from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
+from chemprop.models import MoleculeModel
+from chemprop.nn_utils import NoamLR
+from chemprop.models.ffn import MultiReadout
 
 
 def makedirs(path: str, isfile: bool = False) -> None:

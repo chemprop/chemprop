@@ -7,8 +7,8 @@ import os
 
 from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
-from chemprop.web.app import app, db
-from chemprop.web.utils import clear_temp_folder, set_root_folder
+from web.app import app, db
+from web.utils import clear_temp_folder, set_root_folder
 
 
 class WebArgs(Tap):
