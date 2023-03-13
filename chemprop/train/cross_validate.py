@@ -6,16 +6,17 @@ import os
 import sys
 from typing import Callable, Dict, List, Tuple
 import subprocess
+import matplotlib.pyplot as plt
 
 import numpy as np
 import pandas as pd
-
+import wandb
 from .run_training import run_training
-from chemprop.args import TrainArgs
-from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
-from chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
-from chemprop.utils import create_logger, makedirs, timeit, multitask_mean
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_explicit_h, set_adding_hs, set_reaction, reset_featurization_parameters
+from chemprop_repo.chemprop.args import TrainArgs
+from chemprop_repo.chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
+from chemprop_repo.chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
+from chemprop_repo.chemprop.utils import create_logger, makedirs, timeit, multitask_mean
+from chemprop_repo.chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_explicit_h, set_adding_hs, set_keeping_atom_map, set_reaction, reset_featurization_parameters
 
 
 @timeit(logger_name=TRAIN_LOGGER_NAME)
@@ -65,6 +66,7 @@ def cross_validate(args: TrainArgs,
     reset_featurization_parameters(logger=logger)
     set_explicit_h(args.explicit_h)
     set_adding_hs(args.adding_h)
+    set_keeping_atom_map(args.keeping_atom_map)
     if args.reaction:
         set_reaction(args.reaction, args.reaction_mode)
     elif args.reaction_solvent:
@@ -88,7 +90,9 @@ def cross_validate(args: TrainArgs,
     elif args.atom_descriptors == 'feature':
         args.atom_features_size = data.atom_features_size()
         set_extra_atom_fdim(args.atom_features_size)
-    if args.bond_features_path is not None:
+    if args.bond_descriptors == 'descriptor':
+        args.bond_descriptors_size = data.bond_descriptors_size()
+    elif args.bond_descriptors == 'feature':
         args.bond_features_size = data.bond_features_size()
         set_extra_bond_fdim(args.bond_features_size)
 
@@ -99,8 +103,12 @@ def cross_validate(args: TrainArgs,
 
     # Run training on different random seeds for each fold
     all_scores = defaultdict(list)
+    splits = os.path.split(args.save_dir)
     for fold_num in range(args.num_folds):
         info(f'Fold {fold_num}')
+        if args.wabTracking == "True":
+            wandb.init(project=f"{splits[0]}", name=f'fold_{fold_num}', reinit=True)
+
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
@@ -114,10 +122,31 @@ def cross_validate(args: TrainArgs,
                 model_scores = json.load(f)
         # Otherwise, train the models
         else:
-            model_scores = train_func(args, data, logger)
-
+            model_scores, scores_and_metrics = train_func(args, data, logger)
         for metric, scores in model_scores.items():
             all_scores[metric].append(scores)
+        # Save the training and validation scores in the current fold's folder
+        with open(os.path.join(args.save_dir, f'scores-{fold_num}.csv'), 'w') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(["set_", "metric", "score", "epoch"])
+            csv_writer.writerows(scores_and_metrics)
+        scoresdf = pd.read_csv(f"{args.save_dir}/scores-{fold_num}.csv")
+        grouped = scoresdf.groupby(["metric", "set_"])
+        line_styles = {'training': 'dotted', 'validation': 'solid'}
+        colors_list = ['red', 'blue', 'green', 'purple', 'yellow', 'orange', 'black', 'pink']
+        color_dict = {}
+        metrics = set(scoresdf['metric'])
+        plt.clf()
+        for i, metric in enumerate(metrics):
+            color_dict[metric] = colors_list[i % len(colors_list)]
+        for (metric, set_), group in grouped:
+            plt.plot(group["epoch"], group["score"], label=f"{set_} {metric}",
+                     linestyle=line_styles[set_], color=color_dict[metric])
+            plt.xlabel("epoch")
+            plt.ylabel("score")
+            plt.legend()
+            plt.savefig(f"{args.save_dir}/scores_and_metrics_fold_{fold_num}.png")
+
     all_scores = dict(all_scores)
 
     # Convert scores to numpy arrays
@@ -192,7 +221,7 @@ def cross_validate(args: TrainArgs,
     # Optionally merge and save test preds
     if args.save_preds:
         all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
-                               for fold_num in range(args.num_folds)])
+                                  for fold_num in range(args.num_folds)])
         all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
 
     return mean_score, std_score

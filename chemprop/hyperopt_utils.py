@@ -1,4 +1,4 @@
-from chemprop.args import HyperoptArgs
+from chemprop_repo.chemprop.args import HyperoptArgs
 import os
 import pickle
 from typing import List, Dict
@@ -9,8 +9,8 @@ import logging
 from hyperopt import Trials, hp
 import numpy as np
 
-from chemprop.constants import HYPEROPT_SEED_FILE_NAME
-from chemprop.utils import makedirs
+from chemprop_repo.chemprop.constants import HYPEROPT_SEED_FILE_NAME
+from chemprop_repo.chemprop.utils import makedirs
 
 
 def build_search_space(search_parameters: List[str], train_epochs: int = None) -> dict:

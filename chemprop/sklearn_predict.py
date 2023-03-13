@@ -4,11 +4,11 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 
-from chemprop.args import SklearnPredictArgs, SklearnTrainArgs
-from chemprop.data import get_data
-from chemprop.features import get_features_generator
-from chemprop.sklearn_train import predict
-from chemprop.utils import makedirs, timeit
+from chemprop_repo.chemprop.args import SklearnPredictArgs, SklearnTrainArgs
+from chemprop_repo.chemprop.data import get_data
+from chemprop_repo.chemprop.features import get_features_generator
+from chemprop_repo.chemprop.sklearn_train import predict
+from chemprop_repo.chemprop.utils import makedirs, timeit
 
 
 @timeit()

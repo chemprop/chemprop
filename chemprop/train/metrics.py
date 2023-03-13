@@ -36,6 +36,9 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     if metric == 'prc-auc':
         return prc_auc
 
+    if metric == 'roc-auc':
+        return roc_auc
+
     if metric == 'rmse':
         return rmse
 
@@ -91,6 +94,12 @@ def prc_auc(targets: List[int], preds: List[float]) -> float:
     """
     precision, recall, _ = precision_recall_curve(targets, preds)
     return auc(recall, precision)
+
+#write a function to calculate the roc_auc
+def roc_auc(targets: List[int], preds: List[float]) -> float:
+    fpr, tpr, _ = roc_curve(targets, preds)
+    auc_value = auc(fpr, tpr)
+    return auc_value
 
 
 def bce(targets: List[int], preds: List[float]) -> float:
