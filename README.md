@@ -26,7 +26,6 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
   * [Docker](#docker)
 - [Web Interface](#web-interface)
 - [Within Python](#within-python)
-- [Reproducibility](#reproducibility)
 - [Data](#data)
 - [Training](#training)
   * [Train/Validation/Test Splits](#trainvalidationtest-splits)
