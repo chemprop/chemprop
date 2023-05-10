@@ -1,12 +1,16 @@
 from collections import OrderedDict
 import csv
 from typing import List, Optional, Union, Tuple
+import datetime
+from logging import Logger
+import os
 
 import numpy as np
 
+from chemprop.constants import TRAIN_LOGGER_NAME
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler, AtomBondScaler
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
+from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args, create_logger
 from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, set_keeping_atom_map, reset_featurization_parameters
 from chemprop.models import MoleculeModel
 from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
@@ -372,6 +376,15 @@ def make_predictions(
     :param return_uncertainty: Whether to return uncertainty predictions alongside the model value predictions.
     :return: A list of lists of target predictions. If returning uncertainty, a tuple containing first prediction values then uncertainty estimates.
     """
+    save_dir = os.path.dirname(args.preds_path)
+    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=save_dir, quiet=args.quiet)
+    if logger is not None:
+        debug, info = logger.debug, logger.info
+    else:
+        debug = info = print
+    current_time = datetime.datetime.now().timestamp()
+    debug(f'Start time: {current_time}')
+
     if model_objects:
         (
             args,
@@ -474,6 +487,9 @@ def make_predictions(
             calibrator=calibrator,
             return_invalid_smiles=return_invalid_smiles,
         )
+
+    current_time = datetime.datetime.now().timestamp()
+    debug(f'End time: {current_time}')
 
     if return_index_dict:
         preds_dict = {}
