@@ -6,6 +6,7 @@ import os
 import sys
 from typing import Callable, Dict, List, Tuple
 import subprocess
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -39,6 +40,8 @@ def cross_validate(args: TrainArgs,
     else:
         debug = info = print
 
+    current_time = datetime.datetime.now().timestamp()
+    debug(f'Start time: {current_time}')
     # Initialize relevant variables
     init_seed = args.seed
     save_dir = args.save_dir
@@ -196,6 +199,9 @@ def cross_validate(args: TrainArgs,
         all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
                                   for fold_num in range(args.num_folds)])
         all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
+    
+    current_time = datetime.datetime.now().timestamp()
+    debug(f'End time: {current_time}')
 
     return mean_score, std_score
 

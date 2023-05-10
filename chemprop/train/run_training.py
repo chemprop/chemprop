@@ -2,6 +2,7 @@ import json
 from logging import Logger
 import os
 from typing import Dict, List
+import datetime
 
 import numpy as np
 import warnings
@@ -292,6 +293,8 @@ def run_training(args: TrainArgs,
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
             debug(f'Epoch {epoch}')
+            current_time = datetime.datetime.now().timestamp()
+            debug(f'Epoch {epoch} start time: {current_time}')
             n_iter = train(
                 model=model,
                 data_loader=train_data_loader,
@@ -336,6 +339,9 @@ def run_training(args: TrainArgs,
                 best_score, best_epoch = mean_val_score, epoch
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
                                 atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
+                
+            current_time = datetime.datetime.now().timestamp()
+            debug(f'Epoch {epoch} end time: {current_time}')
 
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
@@ -435,5 +441,7 @@ def run_training(args: TrainArgs,
                 test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
 
         test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
+
+    
 
     return ensemble_scores
