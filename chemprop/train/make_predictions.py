@@ -377,7 +377,7 @@ def make_predictions(
     :return: A list of lists of target predictions. If returning uncertainty, a tuple containing first prediction values then uncertainty estimates.
     """
     save_dir = os.path.dirname(args.preds_path)
-    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=save_dir, quiet=args.quiet)
+    logger = create_logger(name=TRAIN_LOGGER_NAME, save_dir=save_dir)
     if logger is not None:
         debug, info = logger.debug, logger.info
     else:
