@@ -42,6 +42,7 @@ def cross_validate(args: TrainArgs,
 
     current_time = datetime.datetime.now().timestamp()
     debug(f'Start time: {current_time}')
+    debug(f'device: {args.device}')
     # Initialize relevant variables
     init_seed = args.seed
     save_dir = args.save_dir
