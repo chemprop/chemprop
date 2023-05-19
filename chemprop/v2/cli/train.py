@@ -1,4 +1,4 @@
-from argparse import ArgumentError, Namespace
+from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
@@ -16,14 +16,28 @@ from chemprop.v2.models import MetricFactory, modules
 from chemprop.v2.featurizers.utils import ReactionMode
 from chemprop.v2.models.loss import LossFunction, build_loss
 
-# from chemprop.v2.cli import common
-from chemprop.v2.cli.utils import (
+from chemprop.v2.cli.utils import Subcommand
+from chemprop.v2.cli.utils_ import (
     build_data_from_files,
     get_mpnn_cls,
     make_dataset,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TrainSubcommand(Subcommand):
+    COMMAND = "train"
+    HELP = "train a chemprop model"
+
+    @classmethod
+    def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
+        return add_args(parser)
+    
+    @classmethod
+    def func(cls, args: Namespace):
+        process_args(args)
+        main(args)
 
 
 def add_args(parser: ArgumentParser) -> ArgumentParser:
@@ -388,6 +402,7 @@ def main(args):
     p_model = args.output / "model.pt"
     torch.save(model.state_dict(), p_model)
     logger.info(f"model state dict saved to '{p_model}'")
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()
