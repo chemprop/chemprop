@@ -168,4 +168,5 @@ cython_debug/
 *.sqlite3
 *.yaml
 *.tfevents.*
+*.ckpt
 chemprop/_version.py
