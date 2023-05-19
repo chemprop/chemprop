@@ -1,4 +1,3 @@
-
 from argparse import ArgumentParser, Namespace
 from enum import auto
 
