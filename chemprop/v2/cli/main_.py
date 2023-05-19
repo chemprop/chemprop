@@ -1,7 +1,7 @@
+from argparse import ArgumentParser
 from datetime import datetime
 import logging
 
-from configargparse import ArgumentParser
 import yaml
 
 from chemprop.v2.cli import train

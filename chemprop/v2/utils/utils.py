@@ -24,8 +24,8 @@ class AutoName(Enum):
             raise ValueError(f"Unsupported alias! got: '{name}'. expected one of: {cls.keys()}")
 
     @classmethod
-    def keys(cls) -> list[str]:
-        return [e.value for e in cls]
+    def keys(cls) -> set[str]:
+        return {e.value for e in cls}
 
 
 def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
