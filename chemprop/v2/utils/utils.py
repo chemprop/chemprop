@@ -8,7 +8,10 @@ from rdkit import Chem
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):
-        return name
+        return name.lower()
+
+    def __str__(self) -> str:
+        return self.value
 
     @classmethod
     def get(cls, name: Union[str, AutoName]) -> AutoName:
@@ -16,15 +19,13 @@ class AutoName(Enum):
             return name
 
         try:
-            return cls[name.upper()]
+            return cls[name.lower()]
         except KeyError:
-            names = [x.value for x in cls]
-            raise ValueError(f"Invalid name! got: '{name}'. expected one of: {tuple(names)}")
+            raise ValueError(f"Unsupported alias! got: '{name}'. expected one of: {cls.keys()}")
 
     @classmethod
-    @property
-    def choices(cls) -> list[str]:
-        return [e.value.lower() for e in cls]
+    def keys(cls) -> list[str]:
+        return [e.value for e in cls]
 
 
 def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:

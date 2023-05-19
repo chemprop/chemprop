@@ -3,7 +3,6 @@ from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.Scaffolds import MurckoScaffold
-from sklearn.model_selection import train_test_split
 
 from chemprop.v2.data.datapoints import DatapointBase
 

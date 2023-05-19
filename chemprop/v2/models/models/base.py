@@ -163,7 +163,8 @@ class MPNN(ABC, pl.LightningModule):
     def encoding(
         self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
     ) -> Tensor:
-        """Calculate the encoding ("hidden representation") for the input molecules/reactions"""
+        """Calculate the encoding (i.e., last hidden representation) for the input molecules
+        reactions"""
         return self.ffn[:-1](self.fingerprint(inputs, X_f=X_f))
 
     def forward(
