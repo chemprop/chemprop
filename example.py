@@ -1,7 +1,7 @@
 import csv
 
+from lightning import pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 
 from chemprop.v2 import data

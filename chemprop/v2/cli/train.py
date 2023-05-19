@@ -4,10 +4,9 @@ from pathlib import Path
 import sys
 import warnings
 
-from configargparse import ArgumentParser
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from lightning import pytorch as pl
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
