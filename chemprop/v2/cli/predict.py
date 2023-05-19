@@ -1,10 +1,9 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from argparse import ArgumentError, Namespace
 import logging
 from pathlib import Path
 import sys
 import warnings
 
-from configargparse import ArgumentParser
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
@@ -26,9 +25,9 @@ from chemprop.v2.cli.utils_ import (
 logger = logging.getLogger(__name__)
 
 
-class TrainSubcommand(Subcommand):
-    COMMAND = "train"
-    HELP = "train a chemprop model"
+class PredictSubcommand(Subcommand):
+    COMMAND = "predict"
+    HELP = "use a pretrained chemprop model for prediction"
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -141,21 +140,11 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         default=list(),
         help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles-columns` specified",
     )
-    data_args.add_argument("--phase-mask-path")
-    data_args.add_argument(
-        "--data-weights-path",
-        help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training.",
-    )
-    data_args.add_argument("--val-path")
-    data_args.add_argument("--val-features-path")
-    data_args.add_argument("--val-atom-features-path")
-    data_args.add_argument("--val-bond-features-path")
-    data_args.add_argument("--val-atom-descriptors-path")
-    data_args.add_argument("--test-path")
-    data_args.add_argument("--test-features-path")
-    data_args.add_argument("--test-atom-features-path")
-    data_args.add_argument("--test-bond-features-path")
-    data_args.add_argument("--test-atom-descriptors-path")
+    data_args.add_argument("--cal-path")
+    data_args.add_argument("--cal-features-path")
+    data_args.add_argument("--cal-atom-features-path")
+    data_args.add_argument("--cal-bond-features-path")
+    data_args.add_argument("--cal-atom-descriptors-path")
 
     featurization_args = parser.add_argument_group("featurization args")
     featurization_args.add_argument("--rxn-mode", choices=ReactionMode.choices, default="reac_diff")
@@ -227,7 +216,11 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_args(args: Namespace):
     args.input = Path(args.input)
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.input.stem)
+    if args.output is None:
+        name = f"{args.input.stem}_preds.csv"
+        args.output = Path(args.input.with_name(name))
+    else:
+        args.output = Path(args.output)
     args.logdir = Path(args.logdir or args.output_dir / "logs")
 
     args.output_dir.mkdir(exist_ok=True, parents=True)
@@ -252,7 +245,6 @@ def main(args):
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_columns=args.smiles_columns,
-        target_columns=args.target_columns,
         bounded=bounded,
     )
     featurization_kwargs = dict(
@@ -262,62 +254,41 @@ def main(args):
         reaction=0 in args.rxn_idxs,
     )
 
-    all_data = build_data_from_files(
+    test_data = build_data_from_files(
         args.input,
         **format_kwargs,
+        target_columns=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
+    logger.info(f"test size: {len(test_data)}")
 
-    if args.val_path is None and args.test_path is None:
-        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
-    elif args.test_path is not None:
-        test_data = build_data_from_files(
-            args.test_path,
-            p_features=args.test_features_path,
-            p_atom_feats=args.test_atom_features_path,
-            p_bond_feats=args.test_bond_features_path,
-            p_atom_descs=args.test_atom_descriptors_path,
+    if args.cal_path is not None:
+        cal_data = build_data_from_files(
+            args.cal_path,
             **format_kwargs,
+            target_columns=args.target_columns,
+            p_features=args.cal_features_path,
+            p_atom_feats=args.cal_atom_features_path,
+            p_bond_feats=args.cal_bond_features_path,
+            p_atom_descs=args.cal_atom_descriptors_path,
             **featurization_kwargs,
         )
-        if args.val_path is not None:
-            val_data = build_data_from_files(
-                args.val_path,
-                p_features=args.val_features_path,
-                p_atom_feats=args.val_atom_features_path,
-                p_bond_feats=args.val_bond_features_path,
-                p_atom_descs=args.val_atom_descriptors_path,
-                **format_kwargs,
-                **featurization_kwargs,
-            )
-            train_data = all_data
-        else:
-            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
+        logger.info(f"calibration size: {len(cal_data)}")
     else:
-        raise ArgumentError("'val_path' must be specified is 'test_path' is provided!")
-    logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
+        cal_data = None
 
-    train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
-    val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
+    test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
 
-    if args.dataset_type == "regression":
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
+    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu)
+    if cal_data is not None:
+        cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
+        cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.n_cpu, shuffle=False)
     else:
-        scaler = None
-
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.n_cpu)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.n_cpu, shuffle=False)
-    if len(test_data) > 0:
-        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
-    else:
-        test_loader = None
+        cal_loader = None
 
     mp_kwargs = dict(
         d_h=args.message_hidden_dim,
@@ -329,21 +300,7 @@ def main(args):
         aggregation=args.aggregation,
         norm=args.norm,
     )
-    mp_block = modules.molecule_block(*train_dset.featurizer.shape, bond_messages, **mp_kwargs)
-
-    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
-
-    if args.loss_function is None:
-        logger.info(f"Using default loss: {mpnn_cls._DEFAULT_CRITERION}")
-        criterion = mpnn_cls._DEFAULT_CRITERION
-    else:
-        criterion = build_loss(
-            args.dataset_type,
-            args.loss_function,
-            v_kl=args.v_kl,
-            threshold=args.threshold,
-            eps=args.eps,
-        )
+    mp_block = modules.molecule_block(*test_dset.featurizer.shape, bond_messages, **mp_kwargs)
 
     extra_mpnn_kwargs = dict()
     if args.dataset_type == "multiclass":
@@ -351,6 +308,7 @@ def main(args):
     elif args.dataset_type == "spectral":
         extra_mpnn_kwargs["spectral_activation"] = args.spectral_activation
 
+    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
     model = mpnn_cls(
         mp_block,
         n_tasks,
@@ -358,50 +316,23 @@ def main(args):
         args.ffn_num_layers,
         args.dropout,
         args.activation,
-        criterion,
-        args.metrics,
-        args.task_weights,
-        args.warmup_epochs,
-        args.num_lrs,
-        args.init_lr,
-        args.max_lr,
-        args.final_lr,
         **extra_mpnn_kwargs,
     )
     logger.info(model)
-
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
-    logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
-
-    tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
-    checkpointing = ModelCheckpoint(
-        args.output_dir / "chkpts",
-        '{epoch}-{val_loss:.2f}',
-        "val_loss",
-        mode=monitor_mode,
-        save_last=True,
-    )
-    early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
     
     trainer = pl.Trainer(
-        logger=tb_logger,
+        logger=None,
         enable_progress_bar=True,
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
         max_epochs=args.epochs,
-        callbacks=[checkpointing, early_stopping]
     )
-    trainer.fit(model, train_loader, val_loader)
     
-    if test_loader is not None:
+    predss = trainer.predict(model, test_loader)
+    if cal_dset is not None:
         if args.dataset_type == "regression":
             model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-        results = trainer.test(model, test_loader)[0]
-        logger.info(f"Test results: {results}")
-
-    p_model = args.output / "model.pt"
-    torch.save(model.state_dict(), p_model)
-    logger.info(f"model state dict saved to '{p_model}'")
+        predss_cal = trainer.predict(model, cal_loader)[0]
 
 
 if __name__ == "__main__":

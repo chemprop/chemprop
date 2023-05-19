@@ -171,3 +171,8 @@ cython_debug/
 *.ckpt
 chemprop/_version.py
 *.ckpt
+*.ipynb
+
+test-mpn-encoder.py
+rxn-mg-test.py
+notes.txt

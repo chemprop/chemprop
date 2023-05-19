@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from itertools import chain
 from typing import Iterable, Optional, Union
 
-import pytorch_lightning as pl
+from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 

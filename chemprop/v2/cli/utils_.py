@@ -17,18 +17,6 @@ def optional_float(x: str) -> float:
     return float(x) if x else float("nan")
 
 
-def bounded_float(x: str) -> tuple[float, bool, bool]:
-    if x == "":
-        return float("nan"), False, False
-
-    if x[0] == ">":
-        return float(x[1]), True, False
-    elif x[0] == "<":
-        return float(x[1]), False, True
-
-    return float(x), False, False,
-
-
 def parse_data_csv(
     path: PathLike,
     no_header_row: bool = False,

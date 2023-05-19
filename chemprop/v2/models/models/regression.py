@@ -12,6 +12,7 @@ class RegressionMPNN(MPNN):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        #NOTE(degraff): these msut be tensors for multitask scaling
         self.scale = 1
         self.loc = 0
 
