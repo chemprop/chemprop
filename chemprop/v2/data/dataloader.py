@@ -15,16 +15,16 @@ TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tens
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, V_d, X_f, Y, weight, gt_mask, lt_mask = zip(*batch)
+    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
-        None if V_d[0] is None else torch.from_numpy(np.array(V_d, "f4")),
-        None if X_f[0] is None else torch.from_numpy(np.array(X_f, "f4")),
-        torch.from_numpy(np.array(Y, "f4")),
-        torch.from_numpy(np.array(weight, "f4")).unsqueeze(1),
-        None if lt_mask[0] is None else torch.from_numpy(np.array(lt_mask, "f4")),
-        None if gt_mask[0] is None else torch.from_numpy(np.array(gt_mask, "f4")),
+        None if V_ds[0] is None else torch.from_numpy(np.array(V_ds)).float(),
+        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
+        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        torch.tensor(weights).unsqueeze(1),
+        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
+        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
 
 
