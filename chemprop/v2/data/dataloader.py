@@ -15,16 +15,16 @@ TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tens
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, atom_descriptors, features, ys, weights, gt_targets, lt_targets = zip(*batch)
+    mgs, V_d, X_f, Y, weight, gt_mask, lt_mask = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
-        None if atom_descriptors[0] is None else torch.from_numpy(np.array(atom_descriptors, "f4")),
-        None if features[0] is None else torch.from_numpy(np.array(features, "f4")),
-        torch.from_numpy(np.array(ys, "f4")),
-        torch.from_numpy(np.array(weights, "f4")).unsqueeze(1),
-        None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets, "f4")),
-        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4")),
+        None if V_d[0] is None else torch.from_numpy(np.array(V_d, "f4")),
+        None if X_f[0] is None else torch.from_numpy(np.array(X_f, "f4")),
+        torch.from_numpy(np.array(Y, "f4")),
+        torch.from_numpy(np.array(weight, "f4")).unsqueeze(1),
+        None if lt_mask[0] is None else torch.from_numpy(np.array(lt_mask, "f4")),
+        None if gt_mask[0] is None else torch.from_numpy(np.array(gt_mask, "f4")),
     )
 
 
@@ -79,17 +79,17 @@ class MolGraphDataLoader(DataLoader):
         )
 
     @property
-    def targets(self) -> np.ndarray:
+    def Y(self) -> np.ndarray:
         """the targets associated with each molecule"""
         if self.class_balance or self.shuffle:
             raise ValueError(
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        return np.array([self.dset.data[i].targets for i in self.sampler])
+        return np.array([self.dset.data[i].y for i in self.sampler])
 
     @property
-    def gt_targets(self) -> np.ndarray | None:
+    def gt_mask(self) -> np.ndarray | None:
         """whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -97,13 +97,13 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if self.dset.data[0].gt_targets is None:
+        if self.dset.data[0].gt_mask is None:
             return None
 
-        return np.array([self.dset.data[i].gt_targets for i in self.sampler])
+        return np.array([self.dset.data[i].gt_mask for i in self.sampler])
 
     @property
-    def lt_targets(self) -> np.ndarray | None:
+    def lt_mask(self) -> np.ndarray | None:
         """for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -111,10 +111,10 @@ class MolGraphDataLoader(DataLoader):
                 "Cannot safely extract targets when class balance or shuffle are enabled."
             )
 
-        if self.dset.data[0].lt_targets is None:
+        if self.dset.data[0].lt_mask is None:
             return None
 
-        return np.array([self.dset.data[i].lt_targets for i in self.sampler])
+        return np.array([self.dset.data[i].lt_mask for i in self.sampler])
 
     @property
     def iter_size(self) -> int:

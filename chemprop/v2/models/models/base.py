@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from itertools import chain
 from typing import Iterable, Optional, Union
 
 from lightning import pytorch as pl
@@ -7,11 +6,11 @@ import torch
 from torch import Tensor, nn, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.models.modules import MessagePassingBlock, MolecularInput
+from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, MolecularInput
 from chemprop.v2.models.loss import LossFunction, build_loss
 from chemprop.v2.models.metrics import Metric, MetricFactory
+from chemprop.v2.models.modules.agg import Aggregation
 from chemprop.v2.models.schedulers import NoamLR
-from chemprop.v2.models.utils import get_activation_function
 
 
 class MPNN(ABC, pl.LightningModule):
@@ -26,21 +25,17 @@ class MPNN(ABC, pl.LightningModule):
     NOTE: the number of targets `s` is *not* related to the number of classes to predict.  It is
     used as a multiplier for the output dimension of the MPNN when the predictions correspond to a
     parameterized distribution, e.g., MVE regression, for which `s` is 2. Typically, this is just 1.
-    
-    
     """
 
     def __init__(
         self,
         mp_block: MessagePassingBlock,
+        agg: Aggregation,
+        ffn: nn.Sequential,
         n_tasks: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-        loss_fn: Optional[Union[str, LossFunction]] = None,
-        metrics: Optional[Iterable[Union[str, Metric]]] = None,
-        task_weights: Optional[Tensor] = None,
+        loss_fn: Union[str, LossFunction] | None = None,
+        metrics: Iterable[Union[str, Metric]] | None = None,
+        task_weights: Tensor | None = None,
         warmup_epochs: int = 2,
         num_lrs: int = 1,
         init_lr: float = 1e-4,
@@ -48,17 +43,10 @@ class MPNN(ABC, pl.LightningModule):
         final_lr: float = 1e-4,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=["mp_block"])
 
         self.mp_block = mp_block
-        self.ffn = self.build_ffn(
-            self.mp_block.output_dim,
-            n_tasks * self.n_targets,
-            ffn_hidden_dim,
-            ffn_num_layers,
-            dropout,
-            activation,
-        )
+        self.agg = agg
+        self.ffn = ffn
 
         self.n_tasks = n_tasks
         self.criterion = loss_fn
@@ -132,26 +120,8 @@ class MPNN(ABC, pl.LightningModule):
     def n_targets(self) -> int:
         return 1
 
-    @staticmethod
-    def build_ffn(
-        input_dim: int,
-        output_dim: int,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-    ) -> nn.Sequential:
-        dropout = nn.Dropout(dropout)
-        act = get_activation_function(activation)
-        sizes = [input_dim, *([hidden_dim] * n_layers), output_dim]
-
-        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(sizes[:-1], sizes[1:]))
-        layers = list(chain(*blocks))
-
-        return nn.Sequential(*layers[:-1])
-
     def fingerprint(
-        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
+        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
     ) -> Tensor:
         """Calculate the learned fingerprint for the input molecules/reactions"""
         H = self.mp_block(*inputs)
@@ -161,14 +131,14 @@ class MPNN(ABC, pl.LightningModule):
         return H
 
     def encoding(
-        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
+        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
     ) -> Tensor:
         """Calculate the encoding (i.e., last hidden representation) for the input molecules
         reactions"""
         return self.ffn[:-1](self.fingerprint(inputs, X_f=X_f))
 
     def forward(
-        self, inputs: Union[MolecularInput, Iterable[MolecularInput]], X_f: Optional[Tensor] = None
+        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions.
 
@@ -185,8 +155,13 @@ class MPNN(ABC, pl.LightningModule):
         preds = self((bmg, X_vd), X_f=features)
 
         l = self.criterion(
-            preds, targets, mask, weights, self.task_weights,
-            lt_targets=lt_targets, gt_targets=gt_targets
+            preds,
+            targets,
+            mask,
+            weights,
+            self.task_weights,
+            lt_targets=lt_targets,
+            gt_targets=gt_targets
         )
 
         self.log("train/loss", l, prog_bar=True)
