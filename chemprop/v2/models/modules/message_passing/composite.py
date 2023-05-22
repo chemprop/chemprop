@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import torch
 from torch import Tensor, nn
@@ -16,14 +16,14 @@ from chemprop.v2.models.modules.message_passing.molecule import (
 ReactionInput = Iterable[MolecularInput]
 
 
-class CompositeMessagePassingBlock(MessagePassingBlock):
+class CompositeMessagePassingBlock(nn.Module):
     """A `CompositeMessagePassingBlock` performs message-passing on each individual input in a
     multicomponent input then concatenates the representation of each input to construct a
     global representation
 
-    Inputs
-    ------
-    blocks : Iterable[MolecularMessagePassingBlock]
+    Parameters
+    ----------
+    blocks : Sequence[MolecularMessagePassingBlock]
         the invidual message-passing blocks for each input
     n_components : int
         the number of components in each input
@@ -34,7 +34,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
 
     def __init__(
         self,
-        blocks: Iterable[MolecularMessagePassingBlock],
+        blocks: Sequence[MolecularMessagePassingBlock],
         n_components: int,
         shared: bool = False,
     ):
@@ -57,7 +57,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
         self.shared = shared
 
         if self.shared:
-            self.blocks = nn.ModuleList([blocks[0]] * self.n_components)
+            self.blocks = nn.ModuleList([blocks[0] for _ in range(self.n_components)])
         else:
             self.blocks = nn.ModuleList(blocks)
 
@@ -65,7 +65,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
     def output_dim(self) -> int:
         return sum(block.output_dim for block in self.blocks)
 
-    def forward(self, inputss: Iterable[MolecularInput]) -> Tensor:
+    def forward(self, inputs: Iterable[MolecularInput]) -> Tensor:
         """Encode the multicomponent inputs
 
         Parameters
@@ -97,7 +97,7 @@ class CompositeMessagePassingBlock(MessagePassingBlock):
             of reactions in the batch, and `d_o` is the `output_dim` of this encoder
             (== `self.n_mols x self.encoders[0].output_dim`)
         """
-        Hs = [block(*inputs) for block, inputs in zip(self.blocks, inputss)]
+        Hs = [block(bmg, X_vd) for block, (bmg, X_vd) in zip(self.blocks, inputs)]
         H = torch.cat(Hs, 1)
 
         return H

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Optional
 
 import torch
 from torch import Tensor, nn
 
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
-from chemprop.v2.models.modules.readout import ReadoutFactory
+from chemprop.v2.models.modules.agg import Aggregation, MeanAggregation
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 from chemprop.v2.models.utils import get_activation_function
+from chemprop.v2.utils.factory import ClassFactory
 
-MolecularInput = tuple[BatchMolGraph, Optional[Tensor]]
+MolecularInput = tuple[BatchMolGraph, Tensor | None]
+MessagePassingBlockFactory = ClassFactory()
 
 
 class MolecularMessagePassingBlock(MessagePassingBlock):
@@ -38,9 +39,9 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         the dropout probability
     activation : str, default="relu"
         the activation function to use
-    aggregation : Union[str, Aggregation], default=Aggregation.MEAN
-        the aggregation function to use during readout
-    d_vd : Optional[int], default=None
+    aggregation : Aggregation | None, default=None
+        the aggregation operation to use during molecule-level readout. If `None`, use `MeanAggregation`
+    d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
 
     See also
@@ -58,12 +59,11 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         bias: bool = False,
         depth: int = 3,
         undirected: bool = False,
-        # layers_per_message: int = 1,
         dropout: float = 0,
         activation: str = "relu",
-        aggregation: str = "mean",
-        norm: float = 100,
-        d_vd: Optional[int] = None,
+        # aggregation: Aggregation | None = None,
+        d_vd: int | None = None,
+        # layers_per_message: int = 1,
     ):
         super().__init__()
 
@@ -72,10 +72,8 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         # self.layers_per_message = 1
 
         self.dropout = nn.Dropout(dropout)
-        self.act = get_activation_function(activation)
-        self.readout = ReadoutFactory.build(aggregation, norm)
-
-        self.cached_zero_vector = nn.Parameter(torch.zeros(d_h), requires_grad=False)
+        self.tau = get_activation_function(activation)
+        # self.agg = aggregation or MeanAggregation()
 
         self.__output_dim = d_h
 
@@ -106,14 +104,14 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
     def output_dim(self) -> int:
         return self.__output_dim
 
-    def cat_descriptors(self, H_v: Tensor, X_vd: Tensor) -> Tensor:
+    def cat_descriptors(self, H_v: Tensor, V_d: Tensor) -> Tensor:
         """Concatenate the atom descriptors `X_vd` onto the hidden representations `H_v`
 
         Parameters
         ----------
         H_v : Tensor
             a tensor of shape `V x d_h` containing the hidden representation of each atom
-        X_vd : Tensor
+        V_d : Tensor
             a tensor of shape `V x d_vd` containing additional descriptors for each atom
 
         Returns
@@ -124,26 +122,31 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         Raises
         ------
         InvalidShapeError
-            if `X_vd` is of incorrect shape
+            if `V_d` is not of shape `V x d_vd`
         """
         try:
-            H_vd = torch.cat((H_v, X_vd), 1)
+            H_vd = torch.cat((H_v, V_d), 1)
             H_v = self.fc_vd(H_vd)
         except RuntimeError:
-            raise InvalidShapeError("X_vd", X_vd.shape, [len(H_v), self.d_vd])
+            raise InvalidShapeError("X_vd", V_d.shape, [len(H_v), self.d_vd])
 
+        return self.dropout(H_v)
+
+    def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
+        H_v = self.W_o(torch.cat((V, M_v), 1))    # V x d_h
+        H_v = self.tau(H_v)
         H_v = self.dropout(H_v)
 
-        return H_v  # V x (d_h + d_vd)
+        return H_v if V_d is None else self.cat_descriptors(H_v, V_d)
 
     @abstractmethod
-    def forward(self, bmg: BatchMolGraph, X_vd: Optional[Tensor] = None) -> Tensor:
+    def forward(self, bmg: BatchMolGraph, X_vd: Tensor | None = None) -> Tensor:
         """Encode a batch of molecular graphs.
 
         Parameters
         ----------
         bmg: BatchMolGraph
-            the batch of `MolGraphs` to encode
+            the batch of `b` `MolGraphs` to encode
         X_vd : Optional[Tensor], default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
@@ -153,78 +156,71 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         Returns
         -------
         Tensor
-            a tensor of shape `B x d_h` or `B x (d_h + d_vd)` containing the encoding of each
+            a tensor of shape `b x d_h` or `b x (d_h + d_vd)` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
 
 
+@MessagePassingBlockFactory.register("bond")
 class BondMessageBlock(MolecularMessagePassingBlock):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         self.W_i = nn.Linear(d_e, d_h, bias)
         self.W_h = nn.Linear(d_h, d_h, bias)
         self.W_o = nn.Linear(d_v + d_h, d_h)
 
-    def forward(self, bmg: BatchMolGraph, X_vd: Optional[Tensor] = None) -> Tensor:
-        H_0 = self.W_i(bmg.X_e)  # E x d_h
+    def forward(self, bmg: BatchMolGraph, X_vd: Tensor | None = None) -> Tensor:
+        H_0 = self.W_i(bmg.E)
+        H_e = self.tau(H_0)
 
-        H_e = self.act(H_0)
         for _ in range(1, self.depth):
             if self.undirected:
                 H_e = (H_e + H_e[bmg.b2revb]) / 2
+            
+            # MESSAGE
+            H_v_k = H_e[bmg.a2b]
+            M_e = H_v_k.sum(1)[bmg.b2a]
+            M_e = M_e - H_e[bmg.b2revb]     # subtract reverse bond message
 
-            M_e = H_e[bmg.a2b].sum(1)[bmg.b2a] - H_e[bmg.b2revb]  # E x d_h
-
-            H_e = H_0 + self.W_h(M_e)  # E x d_h
-            H_e = self.act(H_e)
+            # UPDATE
+            H_e = self.W_h(M_e)  # E x d_h
+            H_e = self.tau(H_0 + H_e)
             H_e = self.dropout(H_e)
 
-        M_v = H_e[bmg.a2b].sum(1)  # V x d_h
-        H_v = self.W_o(torch.cat((bmg.X_v, M_v), 1))  # V x d_h
-        H_v = self.act(H_v)
-        H_v = self.dropout(H_v)
+        M_v_k = H_e[bmg.a2b]
+        M_v = M_v_k.sum(1)  # V x d_h
 
-        if X_vd is not None:
-            H_v = self.cat_descriptors(H_v, X_vd)
-
-        H = self.readout(H_v[1:], [n_a for _, n_a in bmg.a_scope])  # B x d_h + (d_vd)
-
-        return H
+        return self.finalize(M_v, bmg.V, X_vd)
 
 
+@MessagePassingBlockFactory.register("atom")
 class AtomMessageBlock(MolecularMessagePassingBlock):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         self.W_i = nn.Linear(d_v, d_h, bias)
         self.W_h = nn.Linear(d_e + d_h, d_h, bias)
         self.W_o = nn.Linear(d_v + d_h, d_h)
 
-    def forward(self, bmg: BatchMolGraph, X_vd: Optional[Tensor] = None) -> Tensor:
-        H_0 = self.W_i(bmg.X_v)  # V x d_h
-        H_v = self.act(H_0)
-
+    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
+        H_0 = self.W_i(bmg.V)  # V x d_h
+        H_v = self.tau(H_0)
+        
         for _ in range(1, self.depth):
             if self.undirected:
                 H_v = (H_v + H_v[bmg.b2revb]) / 2
 
-            M_v_k = torch.cat((H_v[bmg.a2a], bmg.X_e[bmg.a2b]), 2)  # V x b x (d_h + d_e)
+            # aggregate messages
+            M_v_k = torch.cat((H_v[bmg.a2a], bmg.E[bmg.a2b]), 2)  # V x b x (d_h + d_e)
             M_v = M_v_k.sum(1)  # V x d_h + d_e
 
-            H_v = H_0 + self.W_h(M_v)  # E x d_h
-            H_v = self.act(H_v)
+            # UPDATE
+            H_v = self.W_h(M_v)  # E x d_h
+            H_v = self.tau(H_0 + H_v)
             H_v = self.dropout(H_v)
 
         M_v_k = H_v[bmg.a2a]
         M_v = M_v_k.sum(1)  # V x d_h
 
-        H_v = self.act(self.W_o(torch.cat((bmg.X_v, M_v), 1)))  # V x d_h
-        H_v = self.dropout(H_v)
-
-        if X_vd is not None:
-            H_v = self.cat_descriptors(H_v, X_vd)
-
-        H = self.readout(H_v[1:], [n_a for _, n_a in bmg.a_scope])  # B x d_h (+ d_vd)
-
-        return H
-
+        return self.finalize(M_v, bmg.V, V_d)
+    
 
 def molecule_block(
     d_v: int = _DEFAULT_ATOM_FDIM,
