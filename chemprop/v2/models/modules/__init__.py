@@ -1,7 +1,5 @@
 from chemprop.v2.utils.mixins import FactoryMixin
 
+from .agg import *
 from .message_passing import *
-from .readout import *
-
-class ReadoutFactory(Readout, FactoryMixin):
-    pass
+from .transforms import *
