@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -11,7 +11,7 @@ from chemprop.v2.data.datasets import Datum, MolGraphDatasetBase
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
+TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
@@ -55,7 +55,7 @@ class MolGraphDataLoader(DataLoader):
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         shuffle: bool = True,
     ):
         self.dset = dataset
@@ -63,7 +63,7 @@ class MolGraphDataLoader(DataLoader):
         self.shuffle = shuffle
 
         if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dset.targets, seed, self.shuffle)
+            self.sampler = ClassBalanceSampler(self.dset.Y, seed, self.shuffle)
         elif self.shuffle and seed is not None:
             self.sampler = SeededSampler(len(self.dset), seed)
         else:
@@ -89,7 +89,7 @@ class MolGraphDataLoader(DataLoader):
         return np.array([self.dset.data[i].targets for i in self.sampler])
 
     @property
-    def gt_targets(self) -> Optional[np.ndarray]:
+    def gt_targets(self) -> np.ndarray | None:
         """whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:
@@ -103,7 +103,7 @@ class MolGraphDataLoader(DataLoader):
         return np.array([self.dset.data[i].gt_targets for i in self.sampler])
 
     @property
-    def lt_targets(self) -> Optional[np.ndarray]:
+    def lt_targets(self) -> np.ndarray | None:
         """for whether each target is an inequality rather than a value target associated
         with each molecule"""
         if self.class_balance or self.shuffle:

@@ -16,48 +16,47 @@ from chemprop.featurizers import get_features_generator
 class DatapointBase(ABC):
     """A `DatapointBase` is the base datapoint for both molecule- and reaction-type data"""
 
-    targets: Optional[np.ndarray] = None
+    y: np.ndarray | None = None
     row: OrderedDict = None
-    data_weight: float = 1
-    gt_targets: Optional[np.ndarray] = None
-    lt_targets: Optional[np.ndarray] = None
-    features: Optional[np.ndarray] = None
-    features_generators: InitVar[Optional[List[str]]] = None
-    phase_features: List[float] = None
+    weight: float = 1
+    gt_mask: np.ndarray | None = None
+    lt_mask: np.ndarray | None = None
+    x_v: np.ndarray | None = None
+    features_generators: InitVar[List[str] | None] = None
+    x_phase: List[float] = None
     explicit_h: bool = False
     add_h: bool = False
 
-    def __post_init__(self, features_generators):
-        if self.features is not None and features_generators is not None:
+    def __post_init__(self, fgs: List[str] | None):
+        if self.x_v is not None and fgs is not None:
             raise ValueError("Cannot provide both loaded features and features generators!")
 
-        if features_generators is not None:
-            self.features = self.generate_features(features_generators)
+        if fgs is not None:
+            self.x_v = self.generate_features(fgs)
 
-        replace_token = 0
-        if self.features is not None:
-            self.features[np.isnan(self.features)] = replace_token
+        if self.x_v is not None:
+            NAN_TOKEN = 0
+            self.x_v[np.isnan(self.x_v)] = NAN_TOKEN
 
-        self._features = self.features
-        self._targets = self.targets
+        self._x_v = self.x_v
+        self._y = self.y
 
-    @property
-    def num_tasks(self) -> int:
-        return len(self.targets)
-
-    @property
     @abstractmethod
-    def number_of_molecules(self) -> int:
-        pass
+    def __len__(self) -> int:
+        """the number of molecules in this datapoint"""
+
+    @property
+    def t(self) -> int | None:
+        return len(self.y) if self.y is not None else None
 
     @abstractmethod
     def generate_features(self, features_generators: list[str]) -> np.ndarray:
         pass
 
-    def reset_features_and_targets(self):
+    def reset(self):
         """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        self.features = self._features
-        self.targets = self._targets
+        self.x_v = self._x_v
+        self.y = self._y
 
 
 @dataclass
@@ -74,36 +73,40 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     ----------
     smi : str
         the SMILES string of the molecule
-    atom_features : Optional[np.ndarray], default=None
-        a numpy array containing additional features that are concatenated to atom-level
-        features *before* message passing
-    bond_features : Optional[np.ndarray], default=None
-        A numpy array containing additional features that are concatenated to bond-level
-        features *before* message passing
-    atom_descriptors : Optional[np.ndarray], default=None
-        A numpy array containing additional features that are concatenated to atom-level
-        features *after* message passing
-    targets : Optional[np.ndarray], default=None
+    y : np.ndarray | None, default=None
         the targets for the molecule with unknown targets indicated by `nan`s
-    row : Optional[OrderedDict], default=None
+    row : OrderedDict | None, default=None
         The raw CSV row containing the information for this molecule.
-    data_weight : float, default=1
-        Weighting of the datapoint for the loss function.
-    gt_targets : Optional[np.ndarray], default=None
-        Indicates whether the targets are an inequality regression target of the form `>x`
-    lt_targets : Optional[np.ndarray], default=None
+    weight : float, default=1
+        the weight of this datapoint for the loss calculation.
+    lt_mask : np.ndarray | None, default=None
         Indicates whether the targets are an inequality regression target of the form `<x`
-    features : Optional[np.ndarray], default=None
-        A numpy array containing additional features (e.g., Morgan fingerprint).
-    features_generators : Optional[List[str]], default=None
+    gt_mask : np.ndarray | None, default=None
+        Indicates whether the targets are an inequality regression target of the form `>x`
+    x_v : np.ndarray | None, default=None
+        A vector of length `d_v` containing additional features (e.g., Morgan fingerprint) that will
+        be concatenated to the global representation _after_ aggregation
+    features_generators : List[str | None], default=None
         A list of features generators to use
-    phase_features : Optional[np.ndarray], default=None
+    x_phase : np.ndarray | None, default=None
         A one-hot vector indicating the phase of the data, as used in spectra data.
     keep_h : bool, default=False
         whether to retain the hydrogens present in input molecules or remove them from the prepared
         structure
     add_h : bool, default=False
         whether to add hydrogens to all input molecules when preparing the input structure
+    V_f : np.ndarray | None, default=None
+        a numpy array of shape `V x d_vf`, where `V` is the number of atoms in the molecule, and
+        `d_vf` is the number of additional features that will be concatenated to atom-level features
+        _before_ message passing
+    E_f : np.ndarray | None, default=None
+        A numpy array of shape `E x d_ef`, where `E` is the number of bonds in the molecule, and
+        `d_ef` is the number of additional features  containing additional features that will be
+        concatenated to bond-level features _before_ message passing
+    V_d : np.ndarray | None, default=None
+        A numpy array of shape `V x d_vd`, where `V` is the number of atoms in the molecule, and
+        `d_vd` is the number of additional features that will be concatenated to atom-level features
+        _after_ message passing
 
     Attributes
     ----------
@@ -113,34 +116,33 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
 
     """
 
-    atom_features: Optional[np.ndarray] = None
-    bond_features: Optional[np.ndarray] = None
-    atom_descriptors: Optional[np.ndarray] = None
+    V_f: np.ndarray | None = None
+    E_f: np.ndarray | None = None
+    V_d: np.ndarray | None = None
 
-    def __post_init__(self, features_generators: Optional[List[str]]):
+    def __post_init__(self, features_generators: List[str | None]):
         self.mol = make_mol(self.smi, self.explicit_h, self.add_h)
 
         replace_token = 0
-        if self.atom_features is not None:
-            self.atom_features[np.isnan(self.atom_features)] = replace_token
-        if self.bond_features is not None:
-            self.bond_features[np.isnan(self.bond_features)] = replace_token
-        if self.atom_descriptors is not None:
-            self.atom_descriptors[np.isnan(self.atom_descriptors)] = replace_token
+        if self.V_f is not None:
+            self.V_f[np.isnan(self.V_f)] = replace_token
+        if self.E_f is not None:
+            self.E_f[np.isnan(self.E_f)] = replace_token
+        if self.V_d is not None:
+            self.V_d[np.isnan(self.V_d)] = replace_token
 
-        self._atom_features = self.atom_features
-        self._bond_features = self.bond_features
-        self._atom_descriptors = self.atom_descriptors
+        self._V_f = self.V_f
+        self._E_f = self.E_f
+        self._V_d = self.V_d
 
         super().__post_init__(features_generators)
 
-    @property
-    def number_of_molecules(self) -> int:
+    def __len__(self) -> int:
         return 1
 
-    def generate_features(self, features_generators: list[str]) -> np.ndarray:
+    def generate_features(self, fgs: list[str]) -> np.ndarray:
         features = []
-        for fg in features_generators:
+        for fg in fgs:
             fg = get_features_generator(fg)
             if self.mol is not None:
                 if self.mol.GetNumHeavyAtoms() > 0:
@@ -150,13 +152,13 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
 
         return np.hstack(features)
 
-    def reset_features_and_targets(self) -> None:
+    def reset(self) -> None:
         """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        self.features = self._features
-        self.targets = self._targets
-        self.atom_descriptors = self._atom_descriptors
-        self.atom_features = self._atom_features
-        self.bond_features = self._bond_features
+        self.x_v = self._x_v
+        self.y = self._y
+        self.V_d = self._V_d
+        self.E_f = self._E_f
+        self.V_f = self._V_f
 
 
 @dataclass
@@ -172,24 +174,23 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     ----------
     smis : list[str]
         the SMILES strings of the reactants and products of the reaction
-    targets : np.ndarray
+    y : np.ndarray
         the targets for the molecule with unknown targets indicated by `nan`s
     row : OrderedDict, default=None
         The raw CSV row containing the information for this molecule.
-    data_weight : float, default=1
-        Weighting of the datapoint for the loss function.
-    gt_targets : Optional[np.ndarray], default=None
+    weight : float, default=1
+        the weight of this datapoint for the loss calculation.
+    gt_mask : np.ndarray | None, default=None
         Indicates whether the targets are an inequality regression target of the form `>x`
-    lt_targets : Optional[np.ndarray], default=None
+    lt_mask : np.ndarray | None, default=None
         Indicates whether the targets are an inequality regression target of the form `<x`
-    features : Optional[np.ndarray], default=None
-        A numpy array containing additional features (e.g., Morgan fingerprint).
-    features_generators : Optional[List[str]], default=None
+    x_v : np.ndarray | None, default=None
+        A vector of length `d_v` containing additional features (e.g., Morgan fingerprint) that will
+        be concatenated to the global representation _after_ aggregation
+    features_generators : List[str] | None, default=None
         A list of features generators to use
-    phase_features : Optional[np.ndarray], default=None
+    x_phase : np.ndarray | None, default=None
         A one-hot vector indicating the phase of the data, as used in spectra data.
-    atom_descriptors : Optional[np.ndarray], default=None
-        A numpy array containing additional atom descriptors with which to featurize the molecule
     keep_h : bool, default=False
         whether to retain the hydrogens present in input molecules or remove them from the prepared
         structure
@@ -203,13 +204,12 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
         the RDKit molecules of the reactants and products of the reaction
     """
 
-    def __post_init__(self, features_generators: Optional[List[str]]):
+    def __post_init__(self, features_generators: List[str] | None):
         self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
 
         super().__post_init__(features_generators)
 
-    @property
-    def number_of_molecules(self) -> int:
+    def __len__(self) -> int:
         return len(self.smis)
 
     def generate_features(self, features_generators: list[str]) -> np.ndarray:
