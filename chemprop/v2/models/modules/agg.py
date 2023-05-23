@@ -1,36 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import Collection, Iterable
+from typing import Sequence
 
 import torch
 from torch import Tensor, nn
 
-from chemprop.v2.utils.factory import ClassFactory
+from chemprop.v2.utils import ClassFactory, pretty_shape
 
 AggregationFactory = ClassFactory()
 
 
 class Aggregation(ABC, nn.Module):
-    """An `Aggregation` module aggregates inputs along the given dimension"""
+    """An `Aggregation` module aggregates aggregates the graph-level representation into a global
+    representation"""
 
     def __init__(self, dim: int = 0) -> None:
         super().__init__()
+
         self.dim = dim
 
-    def forward(self, H_v: Tensor, sizes: Iterable[int]) -> Tensor:
-        """Aggregate node-level representations into a graph-level representation
+    def forward(self, H: Tensor, sizes: Sequence[int] | None) -> Tensor:
+        """Aggregate the graph-level representations of a batch of graphs into their respective
+        global representations
 
-        The input `H_v` is a stacked tensor containing the node-level representations for
-        `b` separate graphs. NOTE: it is possible for a graph to have 0 nodes. In this case, the
-        representation will be a zero vector of length `d` in the final output.
+        NOTE: it is possible for a graph to have 0 nodes. In this case, the representation will be
+        a zero vector of length `d` in the final output.
 
-        I.e., if `H_v` is a tensor of shape `10 x 4` and `sizes` is equal to `[3, 4, 3]`, then `
-        [:3]`,` H[3:7]`, and `H[7:]` correspond to the node-level represenataions of the three
-        stacked graphs. The output of this function will then be a tensor of shape `3 x 4`
+        E.g., `H` is a tensor of shape `10 x 4` and `sizes` is equal to `[3, 4, 3]`, then
+        `H[:3]`, `H[3:7]`, and `H[7:]` correspond to the graph-level represenataions of the three
+        individual graphs. The output of a call to `forward()` will be a tensor of shape `3 x 4`
 
         Parameters
         ----------
-        H_v : Tensor
-            A tensor of shape `sum(sizes) x d` containing the stacked node-level representations of
+        H : Tensor
+            A tensor of shape `sum(sizes) x d` containing the stacked graph-level representations of
             `b` graphs
         sizes : Iterable[int]
             an iterable of length `b` containing the number of nodes in each of the `b` graphs,
@@ -43,59 +45,65 @@ class Aggregation(ABC, nn.Module):
 
         Raises
         ------
-        RuntimeError
+        ValueError
             if `sum(sizes)` is not equal to `len(H_v)`
         """
-        H_vs = H_v.split(sizes)
-        hs = self.aggregate(H_vs)
+        try:
+            hs = [
+                self.agg(H_i) if len(H_i) > 0 else torch.zeros(H.shape[1]) for H_i in H.split(sizes)
+            ]
+        except RuntimeError:
+            raise ValueError(
+                f"arg 'sizes' must sum to `len(H)`! "
+                f"got: {sum(sizes)} ({sizes}) but 'H' has shape {pretty_shape(H.shape)}"
+            )
 
         return torch.stack(hs)
 
     @abstractmethod
-    def aggregate(self, Hs: Iterable[Tensor]) -> Collection[Tensor]:
-        """Calculate the aggregated representation of each node-level representation `H`
+    def agg(self, H: Tensor) -> Tensor:
+        """Aggregate the graph-level of a single graph into a vector
         
         Parameters
         ----------
-        Hs : Iterable[Tensor]
-            An iterable containing `b` tensors of shape `... x d` corresponding the node-level
-            representation of a given graph
+        H : Tensor
+            A tensor of shape `V x d` containing the node-level representation of a graph with
+            `V` nodes and node feature dimension `d`
         
         Returns
         -------
-        Collection[Tensor]
-            a collections of `b` tensors of shape `d` containing the global representation of each
-            input graph
+        Tensor
+            a tensor of shape `d` containing the global representation of the input graph
         """
 
 
 @AggregationFactory.register("mean")
 class MeanAggregation(Aggregation):
-    """Take the mean node-level representation as the graph-level representation"""
+    """Average the graph-level representation"""
 
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.mean(self.dim) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
-
-
-@AggregationFactory.register("norm")
-class NormAggregation(Aggregation):
-    """Take the summed node-level representation divided by a normalization constant as the
-    graph-level representation"""
-
-    def __init__(self, *args, norm: float = 100, **kwargs):
-        self.norm = norm
-        super().__init__(*args, **kwargs)
-
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [
-            H.sum(self.dim) / self.norm if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs
-        ]
+    def agg(self, H: Tensor) -> Tensor:
+        return H.mean(self.dim)
 
 
 @AggregationFactory.register("sum")
 class SumAggregation(Aggregation):
-    """Take the summed node-level representation as the graph-level representation"""
+    """Sum the graph-level representation"""
 
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.sum(self.dim) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
+    def agg(self, H: Tensor) -> Tensor:
+        return H.sum(self.dim)
+
+
+@AggregationFactory.register("norm")
+class NormAggregation(Aggregation):
+    """Sum the graph-level representation and divide by a normalization constant"""
+
+    def __init__(self, *args, norm: float = 100, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.norm = norm
+
+    def agg(self, H: Tensor) -> Tensor:
+        return H.sum(self.dim) / self.norm
+
+
 
