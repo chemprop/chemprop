@@ -62,7 +62,7 @@ def compare_datasets_tsne(args: Args):
     # Compute Morgan fingerprints
     print('Computing Morgan fingerprints')
     morgan_generator = get_features_generator('morgan')
-    morgans = [morgan_generator(smile) for smile in tqdm(smiles, total=len(smiles))]
+    morgans = np.array([morgan_generator(smile) for smile in tqdm(smiles, total=len(smiles))])
 
     print('Running t-SNE')
     start = time.time()
