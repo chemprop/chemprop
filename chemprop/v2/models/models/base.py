@@ -247,7 +247,7 @@ class MPNN(ABC, pl.LightningModule):
         """
         bmg, X_vd, features, *_ = batch
 
-        return (self((bmg, X_vd), X_f=features),)
+        return (self((bmg, X_vd), X_f=features), None)  # TODO: make this a tuple with uncertainty
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
