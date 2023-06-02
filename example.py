@@ -14,7 +14,7 @@ molenc = modules.molecule_block()
 mpnn = models.RegressionMPNN(molenc, 1)
 print(mpnn)
 
-with open("./data/pdbbind_full.csv") as fid:
+with open("tests/data/regression.csv") as fid:
     reader = csv.reader(fid)
     next(reader)
     smis, scores = zip(*[(smi, float(score)) for smi, score in reader])
