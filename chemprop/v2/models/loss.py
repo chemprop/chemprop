@@ -17,7 +17,7 @@ class LossFunction(ABC, RegistryMixin):
         pass
 
     def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor, w_t: Tensor, **kwargs
+        self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor | float = 1, w_t: Tensor | float = 1, **kwargs
     ):
         """Calculate the *reduced* loss function value given predicted and target values
 
