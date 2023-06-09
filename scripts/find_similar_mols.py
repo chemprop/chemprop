@@ -197,7 +197,7 @@ def save_similar_mols(test_path: str,
     # Save results
     makedirs(save_path, isfile=True)
 
-    with open(save_path, 'w') as f:
+    with open(save_path, 'w', newline="") as f:
         writer = csv.DictWriter(f, fieldnames=similar_mols[0].keys())
         writer.writeheader()
         for row in similar_mols:

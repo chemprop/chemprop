@@ -300,7 +300,7 @@ def predict_and_save(
                         datapoint.row[pred_name + f"_model_{idx}"] = pred
 
         # Save
-        with open(args.preds_path, 'w') as f:
+        with open(args.preds_path, 'w', newline="") as f:
             writer = csv.DictWriter(f, fieldnames=full_data[0].row.keys())
             writer.writeheader()
 

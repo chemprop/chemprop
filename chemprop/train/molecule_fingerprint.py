@@ -170,7 +170,7 @@ def molecule_fingerprint(args: FingerprintArgs,
             datapoint.row[fingerprint_columns[i]] = preds[i]
 
     # Write predictions
-    with open(args.preds_path, 'w') as f:
+    with open(args.preds_path, 'w', newline="") as f:
         writer = csv.DictWriter(f, fieldnames=args.smiles_columns+fingerprint_columns,extrasaction='ignore')
         writer.writeheader()
         for datapoint in full_data:
