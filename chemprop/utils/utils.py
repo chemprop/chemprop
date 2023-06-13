@@ -677,7 +677,7 @@ def save_smiles_splits(
         if dataset is None:
             continue
 
-        with open(os.path.join(save_dir, f"{name}_smiles.csv"), "w") as f:
+        with open(os.path.join(save_dir, f"{name}_smiles.csv"), "w", newline="") as f:
             writer = csv.writer(f)
             if smiles_columns[0] == "":
                 writer.writerow(["smiles"])
@@ -686,7 +686,7 @@ def save_smiles_splits(
             for smiles in dataset.smiles():
                 writer.writerow(smiles)
 
-        with open(os.path.join(save_dir, f"{name}_full.csv"), "w") as f:
+        with open(os.path.join(save_dir, f"{name}_full.csv"), "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(smiles_columns + task_names)
             dataset_targets = dataset.targets()
@@ -697,7 +697,7 @@ def save_smiles_splits(
         if features_path is not None:
             dataset_features = dataset.features()
             if extension_sets == {'.csv'}:
-                with open(os.path.join(save_dir, f"{name}_features.csv"), "w") as f:
+                with open(os.path.join(save_dir, f"{name}_features.csv"), "w", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow(features_header)
                     writer.writerows(dataset_features)
@@ -706,7 +706,7 @@ def save_smiles_splits(
 
         if constraints_path is not None:
             dataset_constraints = [d.raw_constraints for d in dataset._data]
-            with open(os.path.join(save_dir, f"{name}_constraints.csv"), "w") as f:
+            with open(os.path.join(save_dir, f"{name}_constraints.csv"), "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(constraints_header)
                 writer.writerows(dataset_constraints)
@@ -731,7 +731,7 @@ def save_smiles_splits(
         if name == "train":
             data_weights = dataset.data_weights()
             if any([w != 1 for w in data_weights]):
-                with open(os.path.join(save_dir, f"{name}_weights.csv"), "w") as f:
+                with open(os.path.join(save_dir, f"{name}_weights.csv"), "w", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow(["data weights"])
                     for weight in data_weights:
