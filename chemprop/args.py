@@ -1030,6 +1030,8 @@ class HyperoptArgs(TrainArgs):
     """Number of hyperparameter choices to try."""
     hyperopt_seed: int = 0
     """The initial seed used for choosing parameters in hyperopt trials. In each trial, the seed will be increased by one, skipping seeds previously used."""
+    optimize: Literal['validation', 'test'] = 'test'
+    """Dataset to calculate metric for hyperparameter optimization."""
     config_save_path: str
     """Path to :code:`.json` file where best hyperparameter settings will be written."""
     log_dir: str = None

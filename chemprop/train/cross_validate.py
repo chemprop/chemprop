@@ -100,7 +100,8 @@ def cross_validate(args: TrainArgs,
         raise ValueError('The number of provided target weights must match the number and order of the prediction tasks')
 
     # Run training on different random seeds for each fold
-    all_scores = defaultdict(list)
+    all_valid_scores = defaultdict(list)
+    all_test_scores = defaultdict(list)
     for fold_num in range(args.num_folds):
         info(f'Fold {fold_num}')
         args.seed = init_seed + fold_num
@@ -113,18 +114,26 @@ def cross_validate(args: TrainArgs,
         if args.resume_experiment and os.path.exists(test_scores_path):
             print('Loading scores')
             with open(test_scores_path) as f:
-                model_scores = json.load(f)
+                model_test_scores = json.load(f)
         # Otherwise, train the models
         else:
-            model_scores = train_func(args, data, logger)
+            model_valid_scores, model_test_scores = train_func(args, data, logger)
 
-        for metric, scores in model_scores.items():
-            all_scores[metric].append(scores)
-    all_scores = dict(all_scores)
+        for metric, scores in model_valid_scores.items():
+            all_valid_scores[metric].append(scores)
+
+        for metric, scores in model_test_scores.items():
+            all_test_scores[metric].append(scores)
+    
+    all_valid_scores = dict(all_valid_scores)
+    all_test_scores = dict(all_test_scores)
 
     # Convert scores to numpy arrays
-    for metric, scores in all_scores.items():
-        all_scores[metric] = np.array(scores)
+    for metric, scores in all_valid_scores.items():
+        all_valid_scores[metric] = np.array(scores)
+
+    for metric, scores in all_test_scores.items():
+        all_test_scores[metric] = np.array(scores)
 
     # Report results
     info(f'{args.num_folds}-fold cross validation')
@@ -132,7 +141,7 @@ def cross_validate(args: TrainArgs,
     # Report scores for each fold
     contains_nan_scores = False
     for fold_num in range(args.num_folds):
-        for metric, scores in all_scores.items():
+        for metric, scores in all_test_scores.items():
             info(f'\tSeed {init_seed + fold_num} ==> test {metric} = {multitask_mean(scores[fold_num], metric):.6f}')
 
             if args.show_individual_scores:
@@ -142,7 +151,17 @@ def cross_validate(args: TrainArgs,
                         contains_nan_scores = True
 
     # Report scores across folds
-    for metric, scores in all_scores.items():
+    for metric, scores in all_valid_scores.items():
+        avg_scores = multitask_mean(scores, axis=1, metric=metric)  # average score for each model across tasks
+        mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+        info(f'Overall valid {metric} = {mean_score:.6f} +/- {std_score:.6f}')
+
+        if args.show_individual_scores:
+            for task_num, task_name in enumerate(args.task_names):
+                info(f'\tOverall valid {task_name} {metric} = '
+                     f'{np.mean(scores[:, task_num]):.6f} +/- {np.std(scores[:, task_num]):.6f}')
+
+    for metric, scores in all_test_scores.items():
         avg_scores = multitask_mean(scores, axis=1, metric=metric)  # average score for each model across tasks
         mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
         info(f'Overall test {metric} = {mean_score:.6f} +/- {std_score:.6f}')
@@ -173,7 +192,7 @@ def cross_validate(args: TrainArgs,
 
         if args.dataset_type == 'spectra': # spectra data type has only one score to report
             row = ['spectra']
-            for metric, scores in all_scores.items():
+            for metric, scores in all_test_scores.items():
                 task_scores = scores[:,0]
                 mean, std = np.mean(task_scores), np.std(task_scores)
                 row += [mean, std] + task_scores.tolist()
@@ -181,15 +200,21 @@ def cross_validate(args: TrainArgs,
         else: # all other data types, separate scores by task
             for task_num, task_name in enumerate(args.task_names):
                 row = [task_name]
-                for metric, scores in all_scores.items():
+                for metric, scores in all_test_scores.items():
                     task_scores = scores[:, task_num]
                     mean, std = np.mean(task_scores), np.std(task_scores)
                     row += [mean, std] + task_scores.tolist()
                 writer.writerow(row)
-
+    
     # Determine mean and std score of main metric
-    avg_scores = multitask_mean(all_scores[args.metric], metric=args.metric, axis=1)
-    mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+    if args.optimize == 'validation':
+        avg_scores = multitask_mean(all_valid_scores[args.metric], metric=args.metric, axis=1)
+        mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+    elif args.optimize == 'test':
+        avg_scores = multitask_mean(all_test_scores[args.metric], metric=args.metric, axis=1)
+        mean_score, std_score = np.mean(avg_scores), np.std(avg_scores)
+    else:
+        raise ValueError(f'"{args.optimize}" is not supported for hyperparameter optimization.')
 
     # Optionally merge and save test preds
     if args.save_preds:

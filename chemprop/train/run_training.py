@@ -2,6 +2,7 @@ import json
 from logging import Logger
 import os
 from typing import Dict, List
+from collections import defaultdict
 
 import numpy as np
 import warnings
@@ -24,7 +25,6 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
     save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean
-
 
 def run_training(args: TrainArgs,
                  data: MoleculeDataset,
@@ -241,6 +241,8 @@ def run_training(args: TrainArgs,
     if args.class_balance:
         debug(f'With class_balance, effective train size = {train_data_loader.iter_size:,}')
 
+    best_valid_scores = defaultdict(list)
+
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
         # Tensorboard writer
@@ -337,6 +339,8 @@ def run_training(args: TrainArgs,
                 save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
                                 atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
 
+        best_valid_scores[args.metric].append(best_score)
+
         # Evaluate on test set using model with best validation score
         info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
         model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
@@ -383,13 +387,13 @@ def run_training(args: TrainArgs,
 
     # Evaluate ensemble on test set
     if empty_test_set:
-        ensemble_scores = {
+        ensemble_test_scores = {
             metric: [np.nan for task in args.task_names] for metric in args.metrics
         }
     else:
         avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
 
-        ensemble_scores = evaluate_predictions(
+        ensemble_test_scores = evaluate_predictions(
             preds=avg_test_preds,
             targets=test_targets,
             num_tasks=args.num_tasks,
@@ -401,7 +405,7 @@ def run_training(args: TrainArgs,
             logger=logger
         )
 
-    for metric, scores in ensemble_scores.items():
+    for metric, scores in ensemble_test_scores.items():
         # Average ensemble score
         mean_ensemble_test_score = multitask_mean(scores, metric=metric)
         info(f'Ensemble test {metric} = {mean_ensemble_test_score:.6f}')
@@ -413,7 +417,7 @@ def run_training(args: TrainArgs,
 
     # Save scores
     with open(os.path.join(args.save_dir, 'test_scores.json'), 'w') as f:
-        json.dump(ensemble_scores, f, indent=4, sort_keys=True)
+        json.dump(ensemble_test_scores, f, indent=4, sort_keys=True)
 
     # Optionally save test preds
     if args.save_preds and not empty_test_set:
@@ -436,4 +440,4 @@ def run_training(args: TrainArgs,
 
         test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
-    return ensemble_scores
+    return dict(best_valid_scores), ensemble_test_scores
