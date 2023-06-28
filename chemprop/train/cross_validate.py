@@ -121,7 +121,6 @@ def cross_validate(args: TrainArgs,
 
         for metric, scores in model_valid_scores.items():
             all_valid_scores[metric].append(scores)
-
         for metric, scores in model_test_scores.items():
             all_test_scores[metric].append(scores)
     
@@ -131,7 +130,6 @@ def cross_validate(args: TrainArgs,
     # Convert scores to numpy arrays
     for metric, scores in all_valid_scores.items():
         all_valid_scores[metric] = np.array(scores)
-
     for metric, scores in all_test_scores.items():
         all_test_scores[metric] = np.array(scores)
 
