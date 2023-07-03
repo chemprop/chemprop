@@ -70,16 +70,29 @@ def cross_validate(args: TrainArgs,
         set_reaction(args.reaction, args.reaction_mode)
     elif args.reaction_solvent:
         set_reaction(True, args.reaction_mode)
+
+    features_names = 'MoleculeDataset'
+    if args.features_generator is not None:
+        for name in args.features_generator:
+            features_names += '_' + str(name)
     
-    # Get data
-    debug('Loading data')
-    data = get_data(
-        path=args.data_path,
-        args=args,
-        logger=logger,
-        skip_none_targets=True,
-        data_weights_path=args.data_weights_path
-    )
+    #Get data
+    is_file = os.path.isfile(f'{features_names}.pt')
+    if not is_file:
+        debug('Loading data')
+        data = get_data(
+            path=args.data_path,
+            args=args,
+            logger=logger,
+            skip_none_targets=True,
+            data_weights_path=args.data_weights_path
+        )
+
+        torch.save(data, f'{features_names}.pt')
+    else:
+        debug('Loading previously created data')
+        data = torch.load(f'{features_names}.pt')
+    
     validate_dataset_type(data, dataset_type=args.dataset_type)
     args.features_size = data.features_size()
 
