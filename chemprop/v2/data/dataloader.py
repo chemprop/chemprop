@@ -11,7 +11,9 @@ from chemprop.v2.data.datasets import Datum, MolGraphDatasetBase
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
+TrainingBatch = tuple[
+    BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]
+]
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
@@ -19,7 +21,9 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
     return (
         BatchMolGraph(mgs),
-        None if atom_descriptors[0] is None else torch.from_numpy(np.array(atom_descriptors, "f4")),
+        None
+        if atom_descriptors[0] is None
+        else torch.from_numpy(np.array(atom_descriptors, "f4")),
         None if features[0] is None else torch.from_numpy(np.array(features, "f4")),
         torch.from_numpy(np.array(ys, "f4")),
         torch.from_numpy(np.array(weights, "f4")).unsqueeze(1),
@@ -57,6 +61,10 @@ class MolGraphDataLoader(DataLoader):
         class_balance: bool = False,
         seed: Optional[int] = None,
         shuffle: bool = True,
+        multiprocessing_context=None,
+        batch_sampler=None,
+        drop_last=None,
+        sampler=None
     ):
         self.dset = dataset
         self.class_balance = class_balance
@@ -76,6 +84,10 @@ class MolGraphDataLoader(DataLoader):
             self.sampler,
             num_workers=num_workers,
             collate_fn=collate_batch,
+            multiprocessing_context=multiprocessing_context,
+            batch_sampler=batch_sampler,
+            drop_last=drop_last,
+            sampler=sampler
         )
 
     @property
