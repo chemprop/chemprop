@@ -87,7 +87,6 @@ class MolGraphDataLoader(DataLoader):
             multiprocessing_context=multiprocessing_context,
             batch_sampler=batch_sampler,
             drop_last=drop_last,
-            sampler=sampler
         )
 
     @property
