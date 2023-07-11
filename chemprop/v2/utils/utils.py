@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import csv
 from enum import Enum
-from typing import Union
+import os
+from typing import List, Union
 
 from rdkit import Chem
 
 
 class AutoName(Enum):
+    # todo: figure out where this function is supposed to be used
     def _generate_next_value_(name, start, count, last_values):
         return name
 
@@ -48,3 +51,50 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
         mol = Chem.MolFromSmiles(smi)
 
     return Chem.AddHs(mol) if add_h else mol
+
+
+def get_header(path: str) -> List[str]:
+    """
+    Returns the header of a data CSV file.
+
+    :param path: Path to a CSV file.
+    :return: A list of strings containing the strings in the comma-separated header.
+    """
+    with open(path) as f:
+        header = next(csv.reader(f))
+
+    return header
+
+
+def preprocess_smiles_columns(path: str,
+                              smiles_columns: Union[str, List[str]] = None,
+                              number_of_molecules: int = 1) -> List[str]:
+    """
+    Preprocesses the :code:`smiles_columns` variable to ensure that it is a list of column
+    headings corresponding to the columns in the data file holding SMILES. Assumes file has a header.
+
+    :param path: Path to a CSV file.
+    :param smiles_columns: The names of the columns containing SMILES.
+                           By default, uses the first :code:`number_of_molecules` columns.
+    :param number_of_molecules: The number of molecules with associated SMILES for each
+                           data point.
+    :return: The preprocessed version of :code:`smiles_columns` which is guaranteed to be a list.
+    """
+
+    if smiles_columns is None:
+        if os.path.isfile(path):
+            columns = get_header(path)
+            smiles_columns = columns[:number_of_molecules]
+        else:
+            smiles_columns = [None]*number_of_molecules
+    else:
+        if not isinstance(smiles_columns,list):
+            smiles_columns=[smiles_columns]
+        if os.path.isfile(path):
+            columns = get_header(path)
+            if len(smiles_columns) != number_of_molecules:
+                raise ValueError('Length of smiles_columns must match number_of_molecules.')
+            if any([smiles not in columns for smiles in smiles_columns]):
+                raise ValueError('Provided smiles_columns do not match the header of data file.')
+
+    return smiles_columns
