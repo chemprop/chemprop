@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-__version__ = "1.5.2"
+__version__ = "1.6.0"
 
 # Load README
 with open('README.md', encoding='utf-8') as f:
@@ -44,10 +44,10 @@ setup(
         'pandas>=1.0.3',
         'pandas-flavor>=0.2.0',
         'scikit-learn>=0.22.2.post1',
-        'scipy>=1.5.2',
+        'scipy>=1.6.0',
         'sphinx>=3.1.2',
         'tensorboardX>=2.0',
-        'torch>=1.5.2',
+        'torch>=1.6.0',
         'tqdm>=4.45.0',
         'typed-argument-parser>=1.6.1',
         'rdkit>=2020.03.1.0',
