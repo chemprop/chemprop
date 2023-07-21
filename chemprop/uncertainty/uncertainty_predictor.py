@@ -191,7 +191,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds = sum_preds / self.num_models
             self.uncal_preds = reshape_values(
                 uncal_preds,
@@ -398,7 +398,7 @@ class MVEPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
                 uncal_pred = pred / self.num_models
@@ -544,7 +544,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
                 uncal_pred = pred / self.num_models
@@ -690,7 +690,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
                 uncal_pred = pred / self.num_models
@@ -836,7 +836,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, squared, var in zip(sum_preds, sum_squared, sum_vars):
                 uncal_pred = pred / self.num_models
@@ -1131,7 +1131,7 @@ class EnsemblePredictor(UncertaintyPredictor):
                     self.train_class_sizes.append(model.train_class_sizes)
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, squared in zip(sum_preds, sum_squared):
                 uncal_pred = pred / self.num_models
@@ -1242,7 +1242,7 @@ class DropoutPredictor(UncertaintyPredictor):
                 sum_squared += np.square(preds)
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds, uncal_vars = [], []
             for pred, square in zip(sum_preds, sum_squared):
                 uncal_pred = pred / self.dropout_sampling_size
@@ -1330,6 +1330,7 @@ class ClassPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if i == 0:
@@ -1369,7 +1370,7 @@ class ClassPredictor(UncertaintyPredictor):
                     self.train_class_sizes.append(model.train_class_sizes)
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
+            num_tasks = sum_preds.shape[1]
             uncal_preds = sum_preds / self.num_models
             self.uncal_preds = reshape_values(
                 uncal_preds,
