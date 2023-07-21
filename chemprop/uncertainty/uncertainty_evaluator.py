@@ -51,6 +51,13 @@ class UncertaintyEvaluator(ABC):
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented evaluation methods for classification."
             )
+        if self.uncertainty_method == "dirichlet":
+            raise NotImplementedError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented evaluation methods. \
+                    To evaluate the performance of a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method in a separate job."
+            )
 
     @abstractmethod
     def evaluate(

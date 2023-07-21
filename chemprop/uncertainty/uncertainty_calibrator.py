@@ -86,6 +86,13 @@ class UncertaintyCalibrator(ABC):
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented calibration methods for classification."
             )
+        if self.uncertainty_method == "dirichlet":
+            raise NotImplementedError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented calibration methods. \
+                    To calibrate a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method."
+            )
 
     @abstractmethod
     def calibrate(self):
