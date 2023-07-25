@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Union
+from typing import Iterable
 
 from rdkit import Chem
 
@@ -14,7 +14,7 @@ class AutoName(Enum):
         return self.value
 
     @classmethod
-    def get(cls, name: Union[str, AutoName]) -> AutoName:
+    def get(cls, name: str | AutoName) -> AutoName:
         if isinstance(name, cls):
             return name
 
@@ -55,7 +55,8 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
 
     return Chem.AddHs(mol) if add_h else mol
 
-def pretty_shape(cls, shape: Iterable[int]) -> str:
+
+def pretty_shape(shape: Iterable[int]) -> str:
     """Make a pretty string from an input shape
 
     Example
