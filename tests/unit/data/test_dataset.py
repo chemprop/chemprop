@@ -96,12 +96,12 @@ def test_num_tasks(dataset, targets):
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert dataset.features is None
-    assert dataset.phase_features is None
-    assert dataset.atom_features is None
-    assert dataset.bond_features is None
-    assert dataset.gt_targets is None
-    assert dataset.lt_targets is None
-    assert dataset.features_size is None
-    assert dataset.atom_features_size is None
-    assert dataset.bond_features_size is None
+    assert dataset.X_v is None
+    assert dataset.X_phase is None
+    assert dataset.V_fs is None
+    assert dataset.E_fs is None
+    assert dataset.gt_mask is None
+    assert dataset.lt_mask is None
+    assert dataset.d_v is None
+    assert dataset.d_vf is None
+    assert dataset.d_ef is None

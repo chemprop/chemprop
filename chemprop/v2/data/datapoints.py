@@ -54,7 +54,8 @@ class DatapointBase(ABC):
         pass
 
     def reset(self):
-        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
+        """Reset the molecule features and targets of each datapoint to its 
+        initial, unnormalized values."""
         self.x_v = self._x_v
         self.y = self._y
 
@@ -153,9 +154,9 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         return np.hstack(features)
 
     def reset(self) -> None:
-        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        self.x_v = self._x_v
-        self.y = self._y
+        """Reset the {atom, bond, molecule} features and targets of each datapoint to its 
+        initial, unnormalized values."""
+        super().reset()
         self.V_d = self._V_d
         self.E_f = self._E_f
         self.V_f = self._V_f

@@ -54,3 +54,16 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
         mol = Chem.MolFromSmiles(smi)
 
     return Chem.AddHs(mol) if add_h else mol
+
+def pretty_shape(cls, shape: Iterable[int]) -> str:
+    """Make a pretty string from an input shape
+
+    Example
+    --------
+    >>> X = np.random.rand(10, 4)
+    >>> X.shape
+    (10, 4)
+    >>> pretty_shape(X.shape)
+    '10 x 4'
+    """
+    return " x ".join(map(str, shape))
