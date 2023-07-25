@@ -35,7 +35,7 @@ class MolecularMPNN(ABC, pl.LightningModule):
         message_passing: MolecularMessagePassingBlock,
         agg: Aggregation | None,
         ffn: FFN,
-        transform: OutputTransform,
+        transform: OutputTransform | None,
         loss_fn: LossFunction,
         metrics: Iterable[Metric],
         task_weights: Tensor | None = None,
@@ -53,7 +53,7 @@ class MolecularMPNN(ABC, pl.LightningModule):
         self.message_passing = message_passing
         self.agg = agg or MeanAggregation()
         self.ffn = ffn
-        self.transform = transform
+        self.transform = transform or nn.Identity()
         self.criterion = loss_fn
         self.metrics = metrics
 
