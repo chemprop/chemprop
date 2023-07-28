@@ -3,6 +3,7 @@ import logging
 from random import Random
 from typing import Dict, List, Set, Tuple, Union
 import warnings
+import copy
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
@@ -23,7 +24,9 @@ def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], incl
     if isinstance(mol, str):
         mol = make_mol(mol, keep_h = False, add_h = False, keep_atom_map = False)
     if isinstance(mol, tuple):
-        mol = mol[0]
+        mol = copy.deepcopy(mol[0])
+        for atom in mol.GetAtoms():
+            atom.SetAtomMapNum(0)
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol = mol, includeChirality = include_chirality)
 
     return scaffold
