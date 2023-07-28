@@ -135,7 +135,7 @@ def is_keeping_atom_map(is_mol: bool = True) -> bool:
     r"""Returns whether to keep the original atom mapping (not for reactions)"""
     if is_mol:
         return PARAMS.KEEP_ATOM_MAP
-    return False
+    return True
 
 
 def is_reaction(is_mol: bool = True) -> bool:
@@ -337,14 +337,15 @@ class MolGraph:
         self.is_reaction = is_reaction(self.is_mol)
         self.is_explicit_h = is_explicit_h(self.is_mol)
         self.is_adding_hs = is_adding_hs(self.is_mol)
+        self.is_keeping_atom_map = is_keeping_atom_map(self.is_mol)
         self.reaction_mode = reaction_mode()
         
         # Convert SMILES to RDKit molecule if necessary
         if type(mol) == str:
             if self.is_reaction:
-                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)) 
+                mol = (make_mol(mol.split(">")[0], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map), make_mol(mol.split(">")[-1], self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map)) 
             else:
-                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map_list)
+                mol = make_mol(mol, self.is_explicit_h, self.is_adding_hs, self.is_keeping_atom_map)
 
         self.n_atoms = 0  # number of atoms
         self.n_bonds = 0  # number of bonds
