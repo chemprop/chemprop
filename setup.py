@@ -52,7 +52,7 @@ setup(
         "rdkit>=2020.03.1.0",
         "scipy<1.11 ; python_version='3.7'",
         "descriptastorus<2.6.1 ; python_version='3.7'",
-        "scipy>1.9 ; python_version='3.8'",
+        "scipy>=1.9 ; python_version='3.8'",
         "descriptastorus>=2.6.1 ; python_version='3.8'",
     ],
     extras_require={"test": ["pytest>=6.2.2", "parameterized>=0.8.1"]},
