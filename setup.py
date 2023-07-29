@@ -40,7 +40,7 @@ setup(
         'flask>=1.1.2',
         'hyperopt>=0.2.3',
         'matplotlib>=3.1.3',
-        'numpy>=1.18.1',
+        'numpy>=1.18.5',
         'pandas>=1.0.3',
         'pandas-flavor>=0.2.0',
         'scikit-learn>=0.22.2.post1',
