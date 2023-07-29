@@ -59,10 +59,9 @@ setup(
             'parameterized>=0.8.1'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     classifiers=[
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent'
