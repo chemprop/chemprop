@@ -9,13 +9,15 @@ from typing import List, Set, Tuple, Union
 import os
 import json
 
+from astartes import train_val_test_split, train_test_split
+from astartes.molecules import train_val_test_split_molecules, train_test_split_molecules
 from rdkit import Chem
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
-from .scaffold import log_scaffold_stats, scaffold_split
+from .scaffold import log_scaffold_stats
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.featurizers import load_features, load_valid_atom_or_bond_features, is_mol
 
@@ -693,7 +695,27 @@ def split_data(data: MoleculeDataset,
             args.folds_file, args.val_fold_index, args.test_fold_index
     else:
         folds_file = val_fold_index = test_fold_index = None
+    
+    # typically include a validation set
+    include_val = True
+    split_fun = train_val_test_split
+    mol_split_fun = train_val_test_split_molecules
+    # default sampling arguments for astartes sampler
+    astartes_kwargs = dict(
+        train_size=sizes[0],
+        test_size=sizes[2],
+        return_indices=True,
+        random_state=seed,
+    )
+    # if no validation set, reassign the splitting functions
+    if not sizes[1]:
+        include_val = False
+        split_fun = train_test_split
+        mol_split_fun = train_test_split_molecules
+    else:
+        astartes_kwargs["val_size"] = sizes[1]
 
+    train, val, test = None, None, None
     if split_type == 'crossval':
         index_set = args.crossval_index_sets[args.seed]
         data_split = []
@@ -704,7 +726,6 @@ def split_data(data: MoleculeDataset,
                     split_indices.extend(pickle.load(rf))
             data_split.append([data[i] for i in split_indices])
         train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type in {'cv', 'cv-no-test'}:
         if num_folds <= 1 or num_folds > len(data):
@@ -726,8 +747,6 @@ def split_data(data: MoleculeDataset,
             else:
                 train.append(d)
 
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
     elif split_type == 'index_predetermined':
         split_indices = args.crossval_index_sets[args.seed]
 
@@ -738,7 +757,6 @@ def split_data(data: MoleculeDataset,
         for split in range(3):
             data_split.append([data[i] for i in split_indices[split]])
         train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
     elif split_type == 'predetermined':
         if not val_fold_index and sizes[2] != 0:
@@ -778,10 +796,13 @@ def split_data(data: MoleculeDataset,
             train = train_val[:train_size]
             val = train_val[train_size:]
 
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
     elif split_type == 'scaffold_balanced':
-        return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
+        result = mol_split_fun(
+            np.array([m[key_molecule_index] for m in data.smiles()]),
+            sampler="scaffold",
+            **astartes_kwargs,
+        )
+        train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
 
     elif split_type == 'random_with_repeated_smiles':  # Use to constrain data with the same smiles go in the same split.
         smiles_dict = defaultdict(set)
@@ -804,23 +825,73 @@ def split_data(data: MoleculeDataset,
         val = [data[i] for i in val]
         test = [data[i] for i in test]
 
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
     elif split_type == 'random':
-        indices = list(range(len(data)))
-        random.shuffle(indices)
-
-        train_size = int(sizes[0] * len(data))
-        train_val_size = int((sizes[0] + sizes[1]) * len(data))
-
-        train = [data[i] for i in indices[:train_size]]
-        val = [data[i] for i in indices[train_size:train_val_size]]
-        test = [data[i] for i in indices[train_val_size:]]
-
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+        result = split_fun(
+            np.arange(len(data)),
+            sampler="random",
+            **astartes_kwargs,
+        )
+        train, val, test = _unpack_astartes_result(data, result, include_val)
+        
+    elif split_type == 'kmeans':
+        result = mol_split_fun(
+            np.array([m[key_molecule_index] for m in data.smiles()]),
+            sampler="kmeans",
+            hopts=dict(
+                metric="jaccard",
+            ),
+            fingerprint="morgan_fingerprint",
+            fprints_hopts=dict(
+                n_bits=2048,
+            ),
+            **astartes_kwargs,
+        )
+        train, val, test = _unpack_astartes_result(data, result, include_val)
+        
+    elif split_type == 'kennard_stone':
+        result = mol_split_fun(
+            np.array([m[key_molecule_index] for m in data.smiles()]),
+            sampler="kennard_stone",
+            hopts=dict(
+                metric="jaccard",
+            ),
+            fingerprint="morgan_fingerprint",
+            fprints_hopts=dict(
+                n_bits=2048,
+            ),
+            **astartes_kwargs,
+        )
+        train, val, test = _unpack_astartes_result(data, result, include_val)
 
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')
+    
+    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+
+
+def _unpack_astartes_result(data, result, include_val, log_stats=False):
+    """Helper function to partition input data based on output of astartes sampler
+
+    Args:
+        data (MoleculeDataset): The data being partitioned
+        result (tuple): Output from call to astartes containing the split indices
+        include_val (bool): True if a validation set is included, False otherwise.
+        log_stats (bool, optional): Print stats about scaffolds. Defaults to False.
+
+    Returns:
+        MoleculeDatset: The train, validation (can be empty) and test dataset
+    """
+    train_idxs, val_idxs, test_idxs = [], [], []
+    if include_val:
+        train_idxs, val_idxs, test_idxs = result[3], result[4], result[5]
+    else:
+        train_idxs, test_idxs = result[2], result[3]
+    if log_stats:
+        log_scaffold_stats(data, [set(train_idxs), set(val_idxs), set(test_idxs)])
+    train = [data[i] for i in train_idxs]
+    val = [data[i] for i in val_idxs]
+    test = [data[i] for i in test_idxs]
+    return train, val, test
 
 
 def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List[float]]:
