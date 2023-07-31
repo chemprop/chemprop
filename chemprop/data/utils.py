@@ -1,6 +1,7 @@
 from collections import OrderedDict, defaultdict
 import sys
 import csv
+import copy
 import ctypes
 from logging import Logger
 import pickle
@@ -797,8 +798,14 @@ def split_data(data: MoleculeDataset,
             val = train_val[train_size:]
 
     elif split_type == 'scaffold_balanced':
+        mols_without_atommaps = []
+        for mol in data.mols(flatten=False):
+            copied_mol = copy.deepcopy(mol[key_molecule_index])
+            for atom in copied_mol.GetAtoms():
+                atom.SetAtomMapNum(0)
+            mols_without_atommaps.append([copied_mol])
         result = mol_split_fun(
-            np.array([m[key_molecule_index] for m in data.smiles()]),
+            np.array(mols_without_atommaps),
             sampler="scaffold",
             **astartes_kwargs,
         )
