@@ -18,7 +18,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from .data import MoleculeDatapoint, MoleculeDataset, make_mols
-from .scaffold import log_scaffold_stats
+from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs
 from chemprop.featurizers import load_features, load_valid_atom_or_bond_features, is_mol
 
@@ -798,18 +798,7 @@ def split_data(data: MoleculeDataset,
             val = train_val[train_size:]
 
     elif split_type == 'scaffold_balanced':
-        mols_without_atommaps = []
-        for mol in data.mols(flatten=False):
-            copied_mol = copy.deepcopy(mol[key_molecule_index])
-            for atom in copied_mol.GetAtoms():
-                atom.SetAtomMapNum(0)
-            mols_without_atommaps.append([copied_mol])
-        result = mol_split_fun(
-            np.array(mols_without_atommaps),
-            sampler="scaffold",
-            **astartes_kwargs,
-        )
-        train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
+        return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
 
     elif split_type == 'random_with_repeated_smiles':  # Use to constrain data with the same smiles go in the same split.
         smiles_dict = defaultdict(set)
@@ -833,12 +822,14 @@ def split_data(data: MoleculeDataset,
         test = [data[i] for i in test]
 
     elif split_type == 'random':
-        result = split_fun(
-            np.arange(len(data)),
-            sampler="random",
-            **astartes_kwargs,
-        )
-        train, val, test = _unpack_astartes_result(data, result, include_val)
+        indices = list(range(len(data)))
+        random.shuffle(indices)
+        train_size = int(sizes[0] * len(data))
+        train_val_size = int((sizes[0] + sizes[1]) * len(data))
+
+        train = [data[i] for i in indices[:train_size]]
+        val = [data[i] for i in indices[train_size:train_val_size]]
+        test = [data[i] for i in indices[train_val_size:]]
         
     elif split_type == 'kmeans':
         result = mol_split_fun(
