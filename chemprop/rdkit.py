@@ -12,7 +12,7 @@ def make_mol(s: str, keep_h: bool, add_h: bool, keep_atom_map: bool):
     :return: RDKit molecule.
     """
     params = Chem.SmilesParserParams()
-    params.removeHs = not keep_h if not keep_atom_map else False
+    params.removeHs = not keep_h
     mol = Chem.MolFromSmiles(s, params)
 
     if add_h:
