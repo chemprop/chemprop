@@ -394,7 +394,7 @@ def predict():
 @app.route('/download_predictions')
 def download_predictions():
     """Downloads predictions as a .csv file."""
-    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True, cache_timeout=-1)
+    return send_from_directory(app.config['TEMP_FOLDER'], app.config['PREDICTIONS_FILENAME'], as_attachment=True)
 
 
 @app.route('/data')
@@ -460,7 +460,7 @@ def download_data(dataset: int):
 
     :param dataset: The id of the dataset to download.
     """
-    return send_from_directory(app.config['DATA_FOLDER'], f'{dataset}.csv', as_attachment=True, cache_timeout=-1)
+    return send_from_directory(app.config['DATA_FOLDER'], f'{dataset}.csv', as_attachment=True)
 
 
 @app.route('/data/delete/<int:dataset>')
