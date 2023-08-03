@@ -3,13 +3,16 @@ import csv
 from typing import List, Optional, Union, Tuple
 
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
-from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
-from chemprop.utils.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.featurizers import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
-from chemprop.models import MoleculeModel
-from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
+from chemprop.v2.args import PredictArgs, TrainArgs
+from chemprop.v2.data import get_data, get_data_from_smiles, MolGraphDataLoader, MoleculeDataset
+from chemprop.v2.utils.utils_old import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
+# from chemprop.v2.featurizers import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
+from chemprop.v2.models import MPNN, ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN 
+from chemprop.v2.uncertainty import UncertaintyEstimator#, UncertaintyCalibrator, build_uncertainty_calibrator, build_uncertainty_evaluator
+
+UncertaintyCalibrator = None
 
 
 def load_model(args: PredictArgs, generator: bool = False):
@@ -87,7 +90,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]]):
     print(f"Test size = {len(test_data):,}")
 
     # Create data loader
-    test_data_loader = MoleculeDataLoader(
+    test_data_loader = MolGraphDataLoader(
         dataset=test_data, batch_size=args.batch_size, num_workers=args.num_workers
     )
 
@@ -125,10 +128,10 @@ def predict_and_save(
     test_data: MoleculeDataset,
     task_names: List[str],
     num_tasks: int,
-    test_data_loader: MoleculeDataLoader,
+    test_data_loader: MolGraphDataLoader,
     full_data: MoleculeDataset,
     full_to_valid_indices: dict,
-    models: List[MoleculeModel],
+    models: List[Union[ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN]],
     scalers: List[List[StandardScaler]],
     num_models: int,
     calibrator: UncertaintyCalibrator = None,
@@ -158,14 +161,10 @@ def predict_and_save(
     estimator = UncertaintyEstimator(
         test_data=test_data,
         test_data_loader=test_data_loader,
-        uncertainty_method=args.uncertainty_method,
         models=models,
         scalers=scalers,
         num_models=num_models,
         dataset_type=args.dataset_type,
-        loss_function=args.loss_function,
-        uncertainty_dropout_p=args.uncertainty_dropout_p,
-        dropout_sampling_size=args.dropout_sampling_size,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
     )
@@ -334,7 +333,7 @@ def make_predictions(
     model_objects: Tuple[
         PredictArgs,
         TrainArgs,
-        List[MoleculeModel],
+        List[Union[ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN]],
         List[StandardScaler],
         int,
         List[str],
@@ -385,7 +384,7 @@ def make_predictions(
 
     num_models = len(args.checkpoint_paths)
 
-    set_features(args, train_args)
+    # set_features(args, train_args)
 
     # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
     full_data, test_data, test_data_loader, full_to_valid_indices = load_data(
@@ -414,7 +413,7 @@ def make_predictions(
             loss_function=args.loss_function,
         )
 
-        calibration_data_loader = MoleculeDataLoader(
+        calibration_data_loader = MolGraphDataLoader(
             dataset=calibration_data,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
