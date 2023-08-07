@@ -24,7 +24,7 @@ class DatapointBase(ABC):
     features: Optional[np.ndarray] = None
     features_generators: InitVar[Optional[List[str]]] = None
     phase_features: List[float] = None
-    explicit_h: bool = False
+    keep_h: bool = False
     add_h: bool = False
 
     def __post_init__(self, features_generators):
@@ -118,7 +118,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     atom_descriptors: Optional[np.ndarray] = None
 
     def __post_init__(self, features_generators: Optional[List[str]]):
-        self.mol = make_mol(self.smi, self.explicit_h, self.add_h)
+        self.mol = make_mol(self.smi, self.keep_h, self.add_h)
 
         replace_token = 0
         if self.atom_features is not None:
@@ -199,7 +199,7 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     """
 
     def __post_init__(self, features_generators: Optional[List[str]]):
-        self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
+        self.mols = [make_mol(smi, self.keep_h, self.add_h) for smi in self.smis]
 
         super().__post_init__(features_generators)
 
