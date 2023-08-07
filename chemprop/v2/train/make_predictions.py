@@ -27,10 +27,10 @@ def load_model(args: PredictArgs, generator: bool = False):
                  generator object of scalers, the number of tasks and their respective names.
     """
     print('Loading training args')
-    train_args = load_args(args.checkpoint_paths[0])
-    num_tasks, task_names = train_args.num_tasks, train_args.task_names
+    train_args = {} # load_args(args.checkpoint_paths[0])
+    num_tasks, task_names = 1, ["Predict"] # train_args.num_tasks, train_args.task_names
 
-    update_prediction_args(predict_args=args, train_args=train_args)
+    # update_prediction_args(predict_args=args, train_args=train_args)
     args: Union[PredictArgs, TrainArgs]
 
     # Load model and scalers
@@ -47,7 +47,7 @@ def load_model(args: PredictArgs, generator: bool = False):
     return args, train_args, models, scalers, num_tasks, task_names
 
 
-def load_data(args: PredictArgs, smiles: List[List[str]]):
+def load_data(args: PredictArgs, smiles: List[List[str]], model):
     """
     Function to load data from a list of smiles or a file.
 
@@ -73,6 +73,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]]):
             skip_invalid_smiles=False,
             args=args,
             store_row=not args.drop_extra_columns,
+            loss_function = model._DEFAULT_CRITERION
         )
 
     print("Validating SMILES")
@@ -124,7 +125,7 @@ def set_features(args: PredictArgs, train_args: TrainArgs):
 
 def predict_and_save(
     args: PredictArgs,
-    train_args: TrainArgs,
+    # train_args: TrainArgs,
     test_data: MoleculeDataset,
     task_names: List[str],
     num_tasks: int,
@@ -158,6 +159,7 @@ def predict_and_save(
     :param save_results: Whether to save the predictions in a csv. Function returns the predictions regardless.
     :return:  A list of lists of target predictions.
     """
+    train_args = {} # figuring out how to get rid of train_args 
     estimator = UncertaintyEstimator(
         test_data=test_data,
         test_data_loader=test_data_loader,
@@ -451,7 +453,7 @@ def make_predictions(
     else:
         preds, unc = predict_and_save(
             args=args,
-            train_args=train_args,
+            # train_args=train_args,
             test_data=test_data,
             task_names=task_names,
             num_tasks=num_tasks,
