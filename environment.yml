@@ -1,4 +1,4 @@
-name: chemprop
+name: chemprop-test2
 
 channels:
   - pytorch
@@ -24,3 +24,4 @@ dependencies:
   - pip:
     - typed-argument-parser>=1.6.1
     - git+https://github.com/bp-kelley/descriptastorus
+    - astartes[molecules]
