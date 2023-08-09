@@ -1,7 +1,5 @@
 from collections import OrderedDict, defaultdict
-import sys
 import csv
-import copy
 import ctypes
 from logging import Logger
 import pickle
@@ -699,7 +697,6 @@ def split_data(data: MoleculeDataset,
     
     # typically include a validation set
     include_val = True
-    split_fun = train_val_test_split
     mol_split_fun = train_val_test_split_molecules
     # default sampling arguments for astartes sampler
     astartes_kwargs = dict(
@@ -711,7 +708,6 @@ def split_data(data: MoleculeDataset,
     # if no validation set, reassign the splitting functions
     if not sizes[1]:
         include_val = False
-        split_fun = train_test_split
         mol_split_fun = train_test_split_molecules
     else:
         astartes_kwargs["val_size"] = sizes[1]

@@ -21,7 +21,7 @@ def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], incl
     :return: The Bemis-Murcko scaffold for the molecule.
     """
     if isinstance(mol, str):
-        mol = make_mol(mol, keep_h = False, add_h = False)
+        mol = make_mol(mol, keep_h = False, add_h = False, keep_atom_map = False)
     if isinstance(mol, tuple):
         mol = mol[0]
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol = mol, includeChirality = include_chirality)
