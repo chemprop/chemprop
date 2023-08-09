@@ -8,7 +8,6 @@ from typing import List, Set, Tuple, Union
 import os
 import json
 
-from astartes import train_val_test_split, train_test_split
 from astartes.molecules import train_val_test_split_molecules, train_test_split_molecules
 from rdkit import Chem
 import numpy as np
