@@ -1,5 +1,5 @@
 from .modules import (
-    MessagePassingProto,
+    MessagePassingBlock,
     MessagePassingBlockBase,
     MolecularInput,
     MulticomponentMessagePassing,

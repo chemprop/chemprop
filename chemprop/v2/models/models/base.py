@@ -6,10 +6,12 @@ import torch
 from torch import Tensor, nn, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.models.modules import MessagePassingProto, Aggregation, MolecularInput
+from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric, MetricFactory
+from chemprop.v2.models.modules.message_passing import MessagePassingBlock, MolecularInput
 from chemprop.v2.models.modules.agg import Aggregation
+from chemprop.v2.models.modules.readout import ReadoutFFN
 from chemprop.v2.models.schedulers import NoamLR
 
 
@@ -29,12 +31,12 @@ class MPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        mp_block: MessagePassingProto,
+        mp_block: MessagePassingBlock,
         agg: Aggregation,
-        ffn: nn.Sequential,
+        ffn: ReadoutFFN,
         n_tasks: int,
-        loss_fn: Union[str, LossFunction] | None = None,
-        metrics: Iterable[Union[str, Metric]] | None = None,
+        loss_fn: str | LossFunction | None = None,
+        metrics: Iterable[str | Metric] | None = None,
         task_weights: Tensor | None = None,
         warmup_epochs: int = 2,
         num_lrs: int = 1,
@@ -44,6 +46,13 @@ class MPNN(ABC, pl.LightningModule):
     ):
         super().__init__()
 
+        if mp_block.output_dim != ffn.input_dim:
+            raise ValueError(
+                "args 'mp_block' and 'ffn' are must have compatible dimensions!"
+                f"'mp_block' output dimension: ({mp_block.output_dim}), "
+                f"'ffn' input dimension: {ffn.input_dim}"
+            )
+        
         self.mp_block = mp_block
         self.agg = agg
         self.ffn = ffn
@@ -51,10 +60,7 @@ class MPNN(ABC, pl.LightningModule):
         self.n_tasks = n_tasks
         self.criterion = loss_fn
         self.metrics = metrics
-
-        if task_weights is None:
-            task_weights = torch.ones(self.n_tasks)
-        self.task_weights = nn.Parameter(task_weights.unsqueeze(0), requires_grad=False)
+        self.task_weights = (task_weights or torch.ones(self.n_tasks)).unsqueeze(0)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -116,43 +122,27 @@ class MPNN(ABC, pl.LightningModule):
 
         self.__metrics = metrics_
 
-    @property
-    def n_targets(self) -> int:
-        return 1
+    def fingerprint(self, bmg: BatchMolGraph, X_vd: Tensor, X_f: Tensor | None = None) -> Tensor:
+        """Calculate the learned fingerprint for the input molecules"""
+        H = self.mp_block(bmg, X_vd)
 
-    def fingerprint(
-        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
-    ) -> Tensor:
-        """Calculate the learned fingerprint for the input molecules/reactions"""
-        H = self.mp_block(*inputs)
-        if X_f is not None:
-            H = torch.cat((H, X_f), 1)
+        return H if X_f is None else torch.cat((H, X_f), 1)
 
-        return H
+    def encoding(self, bmg: BatchMolGraph, X_vd: Tensor, X_f: Tensor | None = None) -> Tensor:
+        """Calculate the final hidden representation) of the input molecules"""
+        return self.ffn[:-1](self.fingerprint(bmg, X_vd, X_f))
 
-    def encoding(
-        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
-    ) -> Tensor:
-        """Calculate the encoding (i.e., last hidden representation) for the input molecules
-        reactions"""
-        return self.ffn[:-1](self.fingerprint(inputs, X_f=X_f))
-
-    def forward(
-        self, inputs: MolecularInput | Iterable[MolecularInput], X_f: Tensor | None = None
-    ) -> Tensor:
-        """Generate predictions for the input molecules/reactions.
-
-        NOTE: the type signature of `input` matches the underlying `encoder.forward()`
-        """
-        return self.ffn(self.fingerprint(inputs, X_f=X_f))
+    def forward(self, bmg: BatchMolGraph, X_vd: Tensor, X_f: Tensor | None = None) -> Tensor:
+        return self.ffn(self.fingerprint(bmg, X_vd, X_f))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
-        bmg, X_vd, features, targets, weights, lt_targets, gt_targets = batch
+        bmg, X_vd, X_f, targets, weights, lt_targets, gt_targets = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        preds = self((bmg, X_vd), X_f=features)
+        H = self.fingerprint(bmg, X_vd, X_f)
+        preds = self.ffn(H)
 
         l = self.criterion(
             preds,

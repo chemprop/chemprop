@@ -8,7 +8,7 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import DatapointBase, MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.data.datapoints import DatapointBase, MoleculeDatapoint, MulticomponentDatapoint
 from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer, ReactionFeaturizer, ReactionFeaturizerBase
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
@@ -288,7 +288,7 @@ class MoleculeDataset(MolGraphDatasetBase):
         return scaler
 
 
-class ReactionDataset(MolGraphDatasetBase):
+class MulticomponentDataset(MolGraphDatasetBase):
     """A `MolgraphDataset` composed of `ReactionDatapoint`s
 
     Parameters
@@ -300,7 +300,7 @@ class ReactionDataset(MolGraphDatasetBase):
     """
 
     def __init__(
-        self, data: Iterable[ReactionDatapoint], featurizer: ReactionFeaturizerBase | None
+        self, data: Iterable[MulticomponentDatapoint], featurizer: ReactionFeaturizerBase | None
     ):
         super().__init__(data)
         self.featurizer = featurizer or ReactionFeaturizer()

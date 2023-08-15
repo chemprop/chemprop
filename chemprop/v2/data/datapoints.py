@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import InitVar, dataclass, field
-from typing import List, Optional
 
 import numpy as np
 from rdkit import Chem
@@ -22,12 +21,12 @@ class DatapointBase(ABC):
     gt_mask: np.ndarray | None = None
     lt_mask: np.ndarray | None = None
     x_v: np.ndarray | None = None
-    features_generators: InitVar[List[str] | None] = None
-    x_phase: List[float] = None
+    features_generators: InitVar[list[str] | None] = None
+    x_phase: list[float] = None
     explicit_h: bool = False
     add_h: bool = False
 
-    def __post_init__(self, fgs: List[str] | None):
+    def __post_init__(self, fgs: list[str] | None):
         if self.x_v is not None and fgs is not None:
             raise ValueError("Cannot provide both loaded features and features generators!")
 
@@ -87,7 +86,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     x_v : np.ndarray | None, default=None
         A vector of length `d_v` containing additional features (e.g., Morgan fingerprint) that will
         be concatenated to the global representation _after_ aggregation
-    features_generators : List[str | None], default=None
+    features_generators : list[str | None], default=None
         A list of features generators to use
     x_phase : np.ndarray | None, default=None
         A one-hot vector indicating the phase of the data, as used in spectra data.
@@ -121,7 +120,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
     E_f: np.ndarray | None = None
     V_d: np.ndarray | None = None
 
-    def __post_init__(self, features_generators: List[str | None]):
+    def __post_init__(self, features_generators: list[str | None]):
         self.mol = make_mol(self.smi, self.explicit_h, self.add_h)
 
         replace_token = 0
@@ -163,13 +162,13 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
 
 
 @dataclass
-class ReactionDatapointMixin:
+class MulticomponentDatapointMixin:
     smis: list[str]
     mols: list[Chem.Mol] = field(init=False)
 
 
 @dataclass
-class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
+class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
     """
     Parameters
     ----------
@@ -188,7 +187,7 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     x_v : np.ndarray | None, default=None
         A vector of length `d_v` containing additional features (e.g., Morgan fingerprint) that will
         be concatenated to the global representation _after_ aggregation
-    features_generators : List[str] | None, default=None
+    features_generators : list[str] | None, default=None
         A list of features generators to use
     x_phase : np.ndarray | None, default=None
         A one-hot vector indicating the phase of the data, as used in spectra data.
@@ -205,7 +204,7 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
         the RDKit molecules of the reactants and products of the reaction
     """
 
-    def __post_init__(self, features_generators: List[str] | None):
+    def __post_init__(self, features_generators: list[str] | None):
         self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
 
         super().__post_init__(features_generators)

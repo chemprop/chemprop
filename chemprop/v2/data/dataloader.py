@@ -15,11 +15,11 @@ TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tens
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
+    mgs, X_vds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
-        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
+        None if X_vds[0] is None else torch.from_numpy(np.concatenate(X_vds, axis=0)).float(),
         None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
         None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
         torch.tensor(weights).unsqueeze(1),
@@ -29,7 +29,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
 
 class MolGraphDataLoader(DataLoader):
-    """A `MolGraphDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
+    """A `MolGraphDataLoader` is a DataLoader for `MolGraphDataset`s
 
     Parameters
     ----------

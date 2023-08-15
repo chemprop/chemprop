@@ -1,4 +1,7 @@
+from enum import auto
 from torch import nn
+
+from chemprop.v2.utils.utils import AutoName
 
 
 def get_activation_function(activation: str) -> nn.Module:
@@ -42,3 +45,13 @@ def get_activation_function(activation: str) -> nn.Module:
         f'Invalid activation! got: "{activation}". '
         f'expected one of: ("relu", "leakyrelu", "prelu", "tanh", "selu", "elu")'
     )
+
+
+class DatasetType(AutoName):
+    """
+    An enum-like class of dataset types.
+    """
+    classification = auto()
+    regression = auto()
+    multiclass = auto()
+    spectral = auto()

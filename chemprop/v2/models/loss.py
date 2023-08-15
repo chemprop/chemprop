@@ -7,9 +7,10 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.utils import ReprMixin, ClassFactory
+from chemprop.v2.utils import ReprMixin
+from chemprop.v2.utils.registry import ClassRegistry
 
-LossFunctionFactory = ClassFactory()
+LossFunctionRegistry = ClassRegistry()
 
 
 class LossFunction(ABC, ReprMixin):
@@ -52,13 +53,13 @@ class LossFunction(ABC, ReprMixin):
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
 
 
-@LossFunctionFactory.register("mse")
+@LossFunctionRegistry.register("mse")
 class MSELoss(LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
         return F.mse_loss(preds, targets, reduction="none")
 
 
-@LossFunctionFactory.register("bounded-mse")
+@LossFunctionRegistry.register("bounded-mse")
 class BoundedMSELoss(MSELoss):
     def forward(
         self, preds: Tensor, targets: Tensor, lt_mask: Tensor, gt_mask: Tensor, **kwargs
@@ -69,7 +70,7 @@ class BoundedMSELoss(MSELoss):
         return super().forward(preds, targets)
 
 
-@LossFunctionFactory.register("mve")
+@LossFunctionRegistry.register("mve")
 class MVELoss(LossFunction):
     """Calculate the loss using Eq. 9 from [1]_
 
@@ -89,7 +90,7 @@ class MVELoss(LossFunction):
         return L_sos + L_kl
 
 
-@LossFunctionFactory.register("evidential")
+@LossFunctionRegistry.register("evidential")
 class EvidentialLoss(LossFunction):
     """
     References
@@ -125,13 +126,13 @@ class EvidentialLoss(LossFunction):
         return [("v_kl", self.v_kl), ("eps", self.eps)]
 
 
-@LossFunctionFactory.register("binary-xent")
+@LossFunctionRegistry.register("bce")
 class BCELoss(LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
-@LossFunctionFactory.register("multiclass-xent")
+@LossFunctionRegistry.register("ce")
 class CrossEntropyLoss(LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
         preds = preds.transpose(1, 2)
@@ -153,7 +154,7 @@ class MCCLossBase(LossFunction):
         return L.mean()
 
 
-@LossFunctionFactory.register("binary-mcc")
+@LossFunctionRegistry.register("binary-mcc")
 class BinaryMCCLoss(MCCLossBase):
     """Calculate a soft Matthews correlation coefficient loss for binary classification
 
@@ -174,7 +175,7 @@ class BinaryMCCLoss(MCCLossBase):
         return 1 - MCC
 
 
-@LossFunctionFactory.register("multiclass-mcc")
+@LossFunctionRegistry.register("multiclass-mcc")
 class MulticlassMCCLoss(MCCLossBase):
     """Calculate a soft Matthews correlation coefficient loss for multiclass classification
 
@@ -229,7 +230,7 @@ class DirichletLossBase(LossFunction):
         S = preds.sum(-1, keepdim=True)
         p = preds / S
 
-        A = ((targets - p) ** 2).sum(-1, keepdim=True)
+        A = (targets - p).square().sum(-1, keepdim=True)
         B = ((p * (1 - p)) / (S + 1)).sum(-1, keepdim=True)
 
         L_mse = A + B
@@ -253,19 +254,18 @@ class DirichletLossBase(LossFunction):
         return [("v_kl", self.v_kl)]
 
 
-@LossFunctionFactory.register("binary-dirichlet")
+@LossFunctionRegistry.register("binary-dirichlet")
 class BinaryDirichletLoss(DirichletLossBase):
     def forward(self, preds: Tensor, targets: Tensor) -> Tensor:
-        num_tasks = targets.shape[1]
-        num_classes = 2
-        preds = preds.reshape(len(preds), num_tasks, num_classes)
-
-        y_one_hot = torch.eye(num_classes, device=preds.device)[targets.long()]
+        N_CLASSES = 2
+        n_tasks = targets.shape[1]
+        preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
+        y_one_hot = torch.eye(N_CLASSES, device=preds.device)[targets.long()]
 
         return super().forward(preds, y_one_hot)
 
 
-@LossFunctionFactory.register("multiclass-dirichlet")
+@LossFunctionRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletLoss(DirichletLossBase):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
@@ -274,17 +274,15 @@ class MulticlassDirichletLoss(DirichletLossBase):
 
 
 class SpectralLoss(LossFunction):
-    def __init__(self, threshold: Optional[float] = None):
+    def __init__(self, threshold: float | None = None):
         self.threshold = threshold
 
     def get_params(self) -> list[tuple[str, float]]:
         return [("threshold", self.threshold)]
 
 
-@LossFunctionFactory.register("sid")
+@LossFunctionRegistry.register("sid")
 class SIDLoss(SpectralLoss):
-    alias = "spectral-sid"
-
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
@@ -297,7 +295,7 @@ class SIDLoss(SpectralLoss):
         return (preds_norm / targets).log() * preds_norm + (targets / preds_norm).log() * targets
 
 
-@LossFunctionFactory.register("earthmovers")
+@LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(SpectralLoss):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
