@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.v2.data.datapoints import DatapointBase, MoleculeDatapoint, MulticomponentDatapoint
-from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer, ReactionFeaturizer, ReactionFeaturizerBase
+from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerProto, MoleculeFeaturizer, ReactionFeaturizer, ReactionFeaturizerBase
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
 
@@ -150,7 +150,7 @@ class MoleculeDataset(MolGraphDatasetBase):
     """
 
     def __init__(
-        self, data: Iterable[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizerBase]
+        self, data: Iterable[MoleculeDatapoint], featurizer: MoleculeFeaturizerProto | None
     ):
         self.data = list(data)
         self.featurizer = featurizer or MoleculeFeaturizer()

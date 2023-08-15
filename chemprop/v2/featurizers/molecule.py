@@ -1,68 +1,61 @@
-from __future__ import annotations
-
-from typing import Optional
+from dataclasses import InitVar, dataclass
 
 import numpy as np
 from rdkit import Chem
 
-from chemprop.v2.featurizers.atom import AtomFeaturizerBase
-from chemprop.v2.featurizers.bond import BondFeaturizerBase
-from chemprop.v2.featurizers.base import MoleculeFeaturizerBase
+from chemprop.v2.featurizers.base import MoleculeFeaturizerProto
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 
 
-class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerBase):
+@dataclass
+class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerProto):
     """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s
 
     Attributes
     ----------
-    atom_featurizer : AtomFeaturizerBase
-    bond_featurizer : BondFeaturizerBase
+    atom_featurizer : AtomFeaturizerProto
+    bond_featurizer : BondFeaturizerProto
+    bond_messages : bool
     atom_fdim : int
         the dimension of atom feature represenatations in this featurizer
     bond_fdim : int
         the dimension of bond feature represenatations in this featurizer
-    bond_messages : bool
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizerBase, default=AtomFeaturizer()
+    atom_featurizer : AtomFeaturizerProto, default=AtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
-    bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
+    bond_featurizer : BondFeaturizerProto, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
+    bond_messages : bool, default=True
+        whether to prepare the `MolGraph`s for use with message passing on bonds
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
-    bond_messages : bool, default=True
-        whether to prepare the `MolGraph`s for use with message passing on bonds
     """
 
-    def __init__(
-        self,
-        atom_featurizer: Optional[AtomFeaturizerBase] = None,
-        bond_featurizer: Optional[BondFeaturizerBase] = None,
-        bond_messages: bool = True,
-        extra_atom_fdim: int = 0,
-        extra_bond_fdim: int = 0,
-    ):
-        super().__init__(atom_featurizer, bond_featurizer, bond_messages)
+    extra_atom_fdim: InitVar[int] = 0
+    extra_bond_fdim: InitVar[int] = 0
+
+    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
+        super().__post_init__()
 
         self.atom_fdim += extra_atom_fdim
         self.bond_fdim += extra_bond_fdim
         if self.bond_messages:
             self.bond_fdim += self.atom_fdim
 
-    def featurize(
+    def __call__(
         self,
         mol: Chem.Mol,
-        atom_features_extra: Optional[np.ndarray] = None,
-        bond_features_extra: Optional[np.ndarray] = None,
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
