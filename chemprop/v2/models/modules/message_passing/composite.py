@@ -6,9 +6,8 @@ from typing import Iterable, Sequence
 import torch
 from torch import Tensor, nn
 
-from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 from chemprop.v2.models.modules.message_passing.molecule import (
-    MolecularMessagePassingBlock,
+    MessagePassingBlockBase,
     MolecularInput,
     molecule_block,
 )
@@ -16,8 +15,8 @@ from chemprop.v2.models.modules.message_passing.molecule import (
 ReactionInput = Iterable[MolecularInput]
 
 
-class CompositeMessagePassingBlock(nn.Module):
-    """A `CompositeMessagePassingBlock` performs message-passing on each individual input in a
+class MulticomponentMessagePassing(nn.Module):
+    """A `MulticomponentMessagePassing` performs message-passing on each individual input in a
     multicomponent input then concatenates the representation of each input to construct a
     global representation
 
@@ -34,7 +33,7 @@ class CompositeMessagePassingBlock(nn.Module):
 
     def __init__(
         self,
-        blocks: Sequence[MolecularMessagePassingBlock],
+        blocks: Sequence[MessagePassingBlockBase],
         n_components: int,
         shared: bool = False,
     ):
@@ -42,7 +41,6 @@ class CompositeMessagePassingBlock(nn.Module):
 
         if len(blocks) == 0:
             raise ValueError("arg 'blocks' was empty!")
-
         if shared and len(blocks) > 1:
             warnings.warn(
                 "More than 1 block was supplied but 'shared' was True! Using only the 0th block..."
@@ -56,10 +54,8 @@ class CompositeMessagePassingBlock(nn.Module):
         self.n_components = n_components
         self.shared = shared
 
-        if self.shared:
-            self.blocks = nn.ModuleList([blocks[0] for _ in range(self.n_components)])
-        else:
-            self.blocks = nn.ModuleList(blocks)
+        blocks = [blocks[0]] * self.n_components if shared else blocks
+        self.blocks = nn.ModuleList([blocks[0]] * self.n_components if shared else blocks)
 
     @property
     def output_dim(self) -> int:
@@ -109,4 +105,4 @@ def composite_block(n_components: int, shared: bool = False, *args, **kwargs):
     else:
         encoders = [molecule_block(*args, **kwargs)]
 
-    return CompositeMessagePassingBlock(encoders, n_components, shared)
+    return MulticomponentMessagePassing(encoders, n_components, shared)

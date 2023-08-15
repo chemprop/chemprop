@@ -6,8 +6,8 @@ import torch
 from torch import Tensor, nn, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, MolecularInput
-from chemprop.v2.models.loss import LossFunction, build_loss
+from chemprop.v2.models.modules import MessagePassingProto, Aggregation, MolecularInput
+from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric, MetricFactory
 from chemprop.v2.models.modules.agg import Aggregation
 from chemprop.v2.models.schedulers import NoamLR
@@ -29,7 +29,7 @@ class MPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        mp_block: MessagePassingBlock,
+        mp_block: MessagePassingProto,
         agg: Aggregation,
         ffn: nn.Sequential,
         n_tasks: int,

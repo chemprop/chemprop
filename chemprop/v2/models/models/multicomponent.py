@@ -9,7 +9,7 @@ from torch import Tensor, nn, optim
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.models.molecular import MolecularMPNN
-from chemprop.v2.models.modules import MolecularMessagePassingBlock, Aggregation, OutputTransform
+from chemprop.v2.models.modules import MessagePassingBlockBase, Aggregation, OutputTransform
 from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric
 from chemprop.v2.models.modules.agg import Aggregation
@@ -20,7 +20,7 @@ from chemprop.v2.models.schedulers import NoamLR
 class MulticomponentMPNN(MolecularMPNN):
     def __init__(
         self,
-        blocks: Sequence[MolecularMessagePassingBlock],
+        blocks: Sequence[MessagePassingBlockBase],
         n_components: int,
         agg: Aggregation,
         ffn: nn.Sequential,

@@ -1,8 +1,8 @@
 from .modules import (
-    MessagePassingBlock,
-    MolecularMessagePassingBlock,
+    MessagePassingProto,
+    MessagePassingBlockBase,
     MolecularInput,
-    CompositeMessagePassingBlock,
+    MulticomponentMessagePassing,
     AtomMessageBlock,
     BondMessageBlock,
 )
@@ -18,5 +18,5 @@ from .models import (
     EvidentialMPNN,
     SpectralMPNN,
 )
-from .loss import LossFunction, build_loss
+from .loss import LossFunction
 from .metrics import Metric, MetricFactory

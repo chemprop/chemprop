@@ -1,9 +1,9 @@
-from .base import MessagePassingBlock
+from .base import MessagePassingProto
 from .molecule import (
-    MolecularMessagePassingBlock,
+    MessagePassingBlockBase,
     MolecularInput,
     AtomMessageBlock,
     BondMessageBlock,
     molecule_block,
 )
-from .composite import CompositeMessagePassingBlock, composite_block
+from .composite import MulticomponentMessagePassing, composite_block

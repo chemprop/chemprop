@@ -1,15 +1,19 @@
-from abc import ABC, abstractmethod
+from typing import Protocol
 
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-class OutputTransform(nn.Module, ABC):
+
+class TransformProto(Protocol):
     n_targets: int
 
-    @abstractmethod
     def forward(self, Y: Tensor) -> Tensor:
         pass
+
+
+class OutputTransform(nn.Module, TransformProto):
+    pass
 
 
 class RegressionTransform(OutputTransform):

@@ -13,7 +13,7 @@ class Aggregation(ABC, nn.Module):
     """An `Aggregation` module aggregates aggregates the graph-level representation into a global
     representation"""
 
-    def __init__(self, dim: int = 0) -> None:
+    def __init__(self, dim: int = 0):
         super().__init__()
 
         self.dim = dim

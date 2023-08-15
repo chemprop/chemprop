@@ -7,7 +7,7 @@ from torch import Tensor, nn, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
-from chemprop.v2.models.modules import MolecularMessagePassingBlock, Aggregation, OutputTransform
+from chemprop.v2.models.modules import MessagePassingBlockBase, Aggregation, OutputTransform
 from chemprop.v2.models.loss import LossFunction, build_loss
 from chemprop.v2.models.metrics import Metric, MetricFactory
 from chemprop.v2.models.modules.agg import Aggregation, MeanAggregation
@@ -32,7 +32,7 @@ class MolecularMPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        message_passing: MolecularMessagePassingBlock,
+        message_passing: MessagePassingBlockBase,
         agg: Aggregation | None,
         ffn: FFN,
         transform: OutputTransform | None,

@@ -7,17 +7,17 @@ from torch import Tensor, nn
 
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
-from chemprop.v2.models.modules.agg import Aggregation, MeanAggregation
-from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 from chemprop.v2.models.utils import get_activation_function
+from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 from chemprop.v2.utils.factory import ClassFactory
 
 MolecularInput = tuple[BatchMolGraph, Tensor | None]
+
 MessagePassingBlockFactory = ClassFactory()
 
 
-class MolecularMessagePassingBlock(MessagePassingBlock):
-    """The message-passing block in an MPNN operating on molecules
+class MessagePassingBlockBase(MessagePassingBlock):
+    """The base message-passing block for atom- and bond-based MPNNs
 
     NOTE: this class is an abstract base class and cannot be instantiated
 
@@ -61,7 +61,6 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         undirected: bool = False,
         dropout: float = 0,
         activation: str = "relu",
-        # aggregation: Aggregation | None = None,
         d_vd: int | None = None,
         # layers_per_message: int = 1,
     ):
@@ -73,7 +72,6 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
 
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
-        # self.agg = aggregation or MeanAggregation()
 
         self.__output_dim = d_h
 
@@ -82,10 +80,12 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
             self.__output_dim += d_vd
             self.fc_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
 
-        self.setup_weight_matrices(d_v, d_e, d_h, bias)
+        self.W_i, self.W_h, self.W_o = self.setup_weight_matrices(d_v, d_e, d_h, bias)
 
     @abstractmethod
-    def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
+    def setup_weight_matrices(
+        self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False
+    ) -> tuple[nn.Module, nn.Module, nn.Module]:
         """set up the weight matrices used in the message passing udpate functions
 
         Parameters
@@ -98,11 +98,17 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
             the hidden dimension during message passing
         bias: bool, deafault=False
             whether to add a learned bias to the matrices
+        
+        Returns
+        -------
+        tuple[nn.Module, nn.Module, nn.Module]
+            the input, hidden, and output weight matrices, respectively, used in the message
+            passing update functions
         """
 
     @property
     def output_dim(self) -> int:
-        return self.__output_dim
+        return self.W_o.out_features
 
     def cat_descriptors(self, H_v: Tensor, V_d: Tensor) -> Tensor:
         """Concatenate the atom descriptors `X_vd` onto the hidden representations `H_v`
@@ -147,10 +153,10 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
         ----------
         bmg: BatchMolGraph
             the batch of `b` `MolGraphs` to encode
-        X_vd : Optional[Tensor], default=None
+        X_vd : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms` + 1,
+            transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms + 1`,
             so if provided, this tensor must be 0-padded in the 0th row.
 
         Returns
@@ -162,11 +168,13 @@ class MolecularMessagePassingBlock(MessagePassingBlock):
 
 
 @MessagePassingBlockFactory.register("bond")
-class BondMessageBlock(MolecularMessagePassingBlock):
+class BondMessageBlock(MessagePassingBlockBase):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
-        self.W_i = nn.Linear(d_e, d_h, bias)
-        self.W_h = nn.Linear(d_h, d_h, bias)
-        self.W_o = nn.Linear(d_v + d_h, d_h)
+        W_i = nn.Linear(d_e, d_h, bias)
+        W_h = nn.Linear(d_h, d_h, bias)
+        W_o = nn.Linear(d_v + d_h, d_h)
+
+        return W_i, W_h, W_o
 
     def forward(self, bmg: BatchMolGraph, X_vd: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.E)
@@ -193,12 +201,14 @@ class BondMessageBlock(MolecularMessagePassingBlock):
 
 
 @MessagePassingBlockFactory.register("atom")
-class AtomMessageBlock(MolecularMessagePassingBlock):
+class AtomMessageBlock(MessagePassingBlockBase):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
-        self.W_i = nn.Linear(d_v, d_h, bias)
-        self.W_h = nn.Linear(d_e + d_h, d_h, bias)
-        self.W_o = nn.Linear(d_v + d_h, d_h)
+        W_i = nn.Linear(d_v, d_h, bias)
+        W_h = nn.Linear(d_e + d_h, d_h, bias)
+        W_o = nn.Linear(d_v + d_h, d_h)
 
+        return W_i, W_h, W_o
+    
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.V)  # V x d_h
         H_v = self.tau(H_0)
@@ -228,7 +238,7 @@ def molecule_block(
     bond_messages: bool = True,
     *args,
     **kwargs,
-) -> MolecularMessagePassingBlock:
+) -> MessagePassingBlockBase:
     """Build a `MolecularMessagePassingBlock`
 
     NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the

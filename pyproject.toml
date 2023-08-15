@@ -15,7 +15,6 @@ authors = [
     {name = "Wengong Jin"},
     {name = "Lior Hirschfeld"},
     {name = "Allison Tam"}
-    
 ]
 readme = "README.md"
 license = {text = "MIT"}
