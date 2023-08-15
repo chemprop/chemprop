@@ -5,9 +5,9 @@ from torch import Tensor
 from torch.nn.functional import cross_entropy, binary_cross_entropy_with_logits
 from torchmetrics import functional as F
 
-from chemprop.v2.utils import ClassFactory
+from chemprop.v2.utils.registry import ClassRegistry
 
-MetricFactory = ClassFactory()
+MetricRegistry = ClassRegistry()
 
 
 class Metric(ABC):
@@ -40,19 +40,19 @@ class ThresholdedMixin:
         self.threshold = threshold
 
 
-@MetricFactory.register("mae")
+@MetricRegistry.register("mae")
 class MAEMetric(MinimizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return (preds - targets)[mask].abs().mean()
 
 
-@MetricFactory.register("mse")
+@MetricRegistry.register("mse")
 class MSEMetric(MinimizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return (preds - targets)[mask].square().mean()
 
 
-@MetricFactory.register("rmse")
+@MetricRegistry.register("rmse")
 class RMSEMetric(MSEMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return super().forward(preds, targets, mask).sqrt()
@@ -79,34 +79,34 @@ class BoundedMixin:
         return preds
 
 
-@MetricFactory.register("bounded-mae")
+@MetricRegistry.register("bounded-mae")
 class BoundedMAEMetric(BoundedMixin, MAEMetric):
     pass
 
 
-@MetricFactory.register("bounded-mse")
+@MetricRegistry.register("bounded-mse")
 class BoundedMSEMetric(BoundedMixin, MSEMetric):
     pass
 
 
-@MetricFactory.register("bounded-rmse")
+@MetricRegistry.register("bounded-rmse")
 class BoundedRMSEMetric(BoundedMixin, RMSEMetric):
     pass
 
 
-@MetricFactory.register("r2")
+@MetricRegistry.register("r2")
 class R2Metric(MaximizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.r2_score(preds[mask], targets[mask])
 
 
-@MetricFactory.register("roc")
+@MetricRegistry.register("roc")
 class AUROCMetric(MaximizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long())
 
 
-@MetricFactory.register("prc")
+@MetricRegistry.register("prc")
 class AUPRCMetric(MaximizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         p, r, _ = F.precision_recall(preds, targets.long())
@@ -114,25 +114,25 @@ class AUPRCMetric(MaximizedMetric):
         return F.auc(r, p)
 
 
-@MetricFactory.register("accuracy")
+@MetricRegistry.register("accuracy")
 class AccuracyMetric(MaximizedMetric, ThresholdedMixin):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
-@MetricFactory.register("f1")
+@MetricRegistry.register("f1")
 class F1Metric(MaximizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
-@MetricFactory.register("bce")
+@MetricRegistry.register("bce")
 class BCEMetric(MaximizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return binary_cross_entropy_with_logits(preds[mask], targets[mask].long())
 
 
-@MetricFactory.register("mcc")
+@MetricRegistry.register("mcc")
 class MCCMetric(MaximizedMetric):
     """NOTE(degraff): don't think this works rn"""
     def __init__(self, n_classes: int, threshold: float = 0.5, **kwargs) -> Tensor:
@@ -145,13 +145,13 @@ class MCCMetric(MaximizedMetric):
         )
 
 
-@MetricFactory.register("xent")
+@MetricRegistry.register("xent")
 class CrossEntropyMetric(MinimizedMetric):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         return cross_entropy(preds[mask], targets[mask].long())
 
 
-@MetricFactory.register("spectral-sid")
+@MetricRegistry.register("spectral-sid")
 class SIDMetric(MinimizedMetric, ThresholdedMixin):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:
@@ -167,7 +167,7 @@ class SIDMetric(MinimizedMetric, ThresholdedMixin):
         )[mask].mean()
 
 
-@MetricFactory.register("wasserstein-sid")
+@MetricRegistry.register("wasserstein-sid")
 class WassersteinMetric(MinimizedMetric, ThresholdedMixin):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
         if self.threshold is not None:

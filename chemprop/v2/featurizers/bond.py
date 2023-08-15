@@ -34,9 +34,9 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
 
     Parameters
     ----------
-    bond_types : Optional[Sequence[BondType]], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
+    bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
+    stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
         the known bond stereochemistries. See [1]_ for more details
 
     References
@@ -50,10 +50,7 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
         stereos: Sequence[int] | None = None,
     ):
         self.bond_types = bond_types or [
-            BondType.SINGLE,
-            BondType.DOUBLE,
-            BondType.TRIPLE,
-            BondType.AROMATIC,
+            BondType.SINGLE, BondType.DOUBLE, BondType.TRIPLE, BondType.AROMATIC,
         ]
         self.stereo = stereos or range(6)
 

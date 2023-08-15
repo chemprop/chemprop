@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
@@ -7,15 +6,16 @@ from torch import Tensor, nn, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
-from chemprop.v2.models.modules import MessagePassingBlockBase, Aggregation, OutputTransform
-from chemprop.v2.models.loss import LossFunction, build_loss
-from chemprop.v2.models.metrics import Metric, MetricFactory
+from chemprop.v2.models.loss import LossFunction
+from chemprop.v2.models.metrics import Metric
+from chemprop.v2.models.modules.message_passing import MessagePassingBlock, OutputTransform
 from chemprop.v2.models.modules.agg import Aggregation, MeanAggregation
 from chemprop.v2.models.modules.ffn import FFN
+from chemprop.v2.models.modules.readout import ReadoutFFN
 from chemprop.v2.models.schedulers import NoamLR
 
 
-class MolecularMPNN(ABC, pl.LightningModule):
+class MolecularMPNN(pl.LightningModule):
     """An `MPNN` is comprised of message passing layer, an aggregation routine, and an FFN
     top-model. The first two calculate learned encodings from an input molecule/reaction graph, and
     the latter takes these encodings as input to calculate a final prediction. The full model is
@@ -32,11 +32,9 @@ class MolecularMPNN(ABC, pl.LightningModule):
 
     def __init__(
         self,
-        message_passing: MessagePassingBlockBase,
-        agg: Aggregation | None,
-        ffn: FFN,
-        transform: OutputTransform | None,
-        loss_fn: LossFunction,
+        message_passing: MessagePassingBlock,
+        agg: Aggregation,
+        ffn: ReadoutFFN,
         metrics: Iterable[Metric],
         task_weights: Tensor | None = None,
         warmup_epochs: int = 2,
@@ -51,15 +49,16 @@ class MolecularMPNN(ABC, pl.LightningModule):
             raise ValueError
         
         self.message_passing = message_passing
-        self.agg = agg or MeanAggregation()
+        self.agg = agg
         self.ffn = ffn
-        self.transform = transform or nn.Identity()
-        self.criterion = loss_fn
+
         self.metrics = metrics
 
         if task_weights is None:
             task_weights = torch.ones(self.n_tasks)
-        self.task_weights = nn.Parameter(task_weights.unsqueeze(0), requires_grad=False)
+        else:
+            task_weights = torch.tensor(task_weights)
+        self.w_t = task_weights.unsqueeze(0)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -69,15 +68,12 @@ class MolecularMPNN(ABC, pl.LightningModule):
 
     @property
     def n_tasks(self) -> int:
-        return self.ffn.output_dim // self.transform.n_targets
+        return self.ffn.n_tasks
     
     @property
-    def metrics(self) -> list[Metric]:
-        """The metrics this model will use to evaluate predictions during valiation and testing. By
-        convention, the 0th metric will _also_ be logged as 'val_loss' in addition to its true
-        alias"""
-        return self.__metrics
-
+    def criterion(self) -> LossFunction:
+        return self.ffn.criterion
+    
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
@@ -97,31 +93,25 @@ class MolecularMPNN(ABC, pl.LightningModule):
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
-        return self.transform(self.ffn(self.fingerprint(bmg, V_d, X_f)))
+        return self.ffn(self.fingerprint(bmg, V_d, X_f))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
-        bmg, V_d, X_f, targets, weights, lt_mask, gt_mask = batch
+        bmg, V_d, X_f, targets, w_s, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        preds = self(bmg, V_d, X_f)
-
-        l = self.criterion(
-            preds,
-            targets,
-            mask,
-            weights,
-            self.task_weights,
-            lt_mask=lt_mask,
-            gt_mask=gt_mask
-        )
+        Z = self.fingerprint(bmg, V_d, X_f)
+        Y_hat = self.ffn.train_step(Z)
+        l = self.criterion(Y_hat, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
         self.log("train/loss", l, prog_bar=True)
 
         return l
 
-    def evaluate_preds(self, preds, targets, lt_targets, gt_targets) -> list[Tensor]:
+    def evaluate_preds(
+        self, preds: Tensor, targets: Tensor, lt_targets, gt_targets
+    ) -> list[Tensor]:
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 

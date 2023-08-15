@@ -120,7 +120,7 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
 
         return dict(zip(names, slices))
 
-    def featurize(self, a: Atom) -> np.ndarray:
+    def __call__(self, a: Atom) -> np.ndarray:
         x = np.zeros(len(self))
 
         if a is None:

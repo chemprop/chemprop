@@ -11,7 +11,7 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MetricFactory, modules
+from chemprop.v2.models import MetricRegistry, modules
 from chemprop.v2.featurizers.utils import ReactionMode
 from chemprop.v2.models.loss import LossFunction, build_loss
 
@@ -189,7 +189,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument("-T", "--threshold", type=float, help="spectral threshold limit")
     train_args.add_argument(
-        "--metrics", nargs="+", choices=MetricFactory.choices, help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing"
+        "--metrics", nargs="+", choices=MetricRegistry.choices, help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing"
     )
     train_args.add_argument("-tw", "--task-weights", nargs="+", type=float, help="the weight to apply to an individual task in the overall loss")
     train_args.add_argument("--warmup-epochs", type=int, default=2)

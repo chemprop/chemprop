@@ -19,4 +19,4 @@ from .models import (
     SpectralMPNN,
 )
 from .loss import LossFunction
-from .metrics import Metric, MetricFactory
+from .metrics import Metric, MetricRegistry

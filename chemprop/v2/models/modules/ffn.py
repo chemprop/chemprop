@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import Protocol
 
-from torch import nn
+from torch import nn, Tensor
 
 from chemprop.v2.models.utils import get_activation_function
 
@@ -10,6 +10,8 @@ class FFNProto(Protocol):
     input_dim: int
     output_dim: int
 
+    def forward(self, X: Tensor) -> Tensor:
+        pass
 
 class FFN(nn.Module, FFNProto):
     pass
@@ -19,8 +21,7 @@ class SimpleFFN(FFN):
     def __init__(
         self,
         input_dim: int,
-        n_tasks: int,
-        n_targets: int,
+        output_dim: int,
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
@@ -28,8 +29,6 @@ class SimpleFFN(FFN):
     ):
         super().__init__()
 
-        input_dim = input_dim
-        output_dim = n_tasks * n_targets
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
 

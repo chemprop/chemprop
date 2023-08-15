@@ -8,7 +8,7 @@ from torch import Tensor, nn, optim
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.loss import LossFunction
-from chemprop.v2.models.metrics import Metric, MetricFactory
+from chemprop.v2.models.metrics import Metric, MetricRegistry
 from chemprop.v2.models.modules.message_passing import MessagePassingBlock, MolecularInput
 from chemprop.v2.models.modules.agg import Aggregation
 from chemprop.v2.models.modules.readout import ReadoutFFN
@@ -60,7 +60,7 @@ class MPNN(ABC, pl.LightningModule):
         self.n_tasks = n_tasks
         self.criterion = loss_fn
         self.metrics = metrics
-        self.task_weights = (task_weights or torch.ones(self.n_tasks)).unsqueeze(0)
+        self.task_weights = (torch.tensor(task_weights) or torch.ones(self.n_tasks)).unsqueeze(0)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -118,7 +118,7 @@ class MPNN(ABC, pl.LightningModule):
 
         metrics_ = []
         for m in metrics:
-            metrics_.append(MetricFactory.build(m) if isinstance(m, str) else m)
+            metrics_.append(MetricRegistry.build(m) if isinstance(m, str) else m)
 
         self.__metrics = metrics_
 

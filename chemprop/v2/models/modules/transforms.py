@@ -37,14 +37,13 @@ class MVETransform(RegressionTransform):
 
     def forward(self, Y: Tensor) -> Tensor:
         mean, var = torch.chunk(Y, self.n_targets, 1)
-
-        if self.training:
-            var = F.softplus(var)
-        else:
-            mean = self.scale * mean + self.loc
-            var = var * self.scale**2
+        mean = self.scale * mean + self.loc
+        var = var * self.scale**2
 
         return torch.cat((mean, var), 1)
+
+    def train_step(self, Y: Tensor) -> Tensor:
+        var = F.softplus(var)
 
 
 class EvidentialTransform(RegressionTransform):

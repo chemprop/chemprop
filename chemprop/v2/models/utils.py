@@ -48,10 +48,7 @@ def get_activation_function(activation: str) -> nn.Module:
 
 
 class DatasetType(AutoName):
-    """
-    An enum-like class of dataset types.
-    """
-    classification = auto()
-    regression = auto()
-    multiclass = auto()
-    spectral = auto()
+    CLASSIFICATION = auto()
+    REGRESSION = auto()
+    MULTICLASS = auto()
+    SPECTRAL = auto()

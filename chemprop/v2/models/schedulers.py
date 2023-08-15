@@ -22,7 +22,7 @@ class NoamLR(_LRScheduler):
     -----------
     optimizer : Optimizer
         A PyTorch optimizer.
-    warmup_epochs : list[Union[float, int]]
+    warmup_epochs : list[float | int]
         The number of epochs during which to linearly increase the learning rate.
     total_epochs : list[int]
         The total number of epochs.

@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import torch
 from torch import Tensor
@@ -15,17 +12,24 @@ LossFunctionRegistry = ClassRegistry()
 
 class LossFunction(ABC, ReprMixin):
     def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, w_s: Tensor, w_t: Tensor, **kwargs
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor,
+        w_s: Tensor,
+        w_t: Tensor,
+        lt_mask: Tensor,
+        gt_mask: Tensor,
     ):
         """Calculate the mean loss function value given predicted and target values
 
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x (t * u)` (regression), `b x t` (binary classification), or
+            a tensor of shape `b x (t * s)` (regression), `b x t` (binary classification), or
             `b x t x c` (multiclass classification) containing the predictions, where `b` is the
-            batch size, `t` is the number of tasks to predict, `u` is the number of
-            targets to predict for each task, and `c` is the number of classes. 
+            batch size, `t` is the number of tasks to predict, `s` is the number of
+            targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
             a float tensor of shape `b x t` containing the target values
         mask : Tensor
@@ -35,34 +39,34 @@ class LossFunction(ABC, ReprMixin):
             a tensor of shape `b` or `b x 1` containing the per-sample weight
         w_t : Tensor
             a tensor of shape `t` or `1 x t` containing the per-task weight
-        **kwargs
-            keyword arguments specific to the given loss function
+        lt_mask: Tensor
+        gt_mask: Tensor
 
         Returns
         -------
         Tensor
             a scalar containing the fully reduced loss
         """
-        L = self.forward(preds, targets, mask=mask, **kwargs)
+        L = self.forward(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
         L = L * w_s.view(-1, 1) * w_t.view(1, -1) * mask
 
         return L.sum() / mask.sum()
 
     @abstractmethod
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
 
 
 @LossFunctionRegistry.register("mse")
 class MSELoss(LossFunction):
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         return F.mse_loss(preds, targets, reduction="none")
 
 
 @LossFunctionRegistry.register("bounded-mse")
 class BoundedMSELoss(MSELoss):
     def forward(
-        self, preds: Tensor, targets: Tensor, lt_mask: Tensor, gt_mask: Tensor, **kwargs
+        self, preds: Tensor, targets: Tensor, *args, lt_mask: Tensor, gt_mask: Tensor
     ) -> Tensor:
         preds[preds < targets & lt_mask] = targets
         preds[preds > targets & gt_mask] = targets
@@ -81,7 +85,7 @@ class MVELoss(LossFunction):
     https://doi.org/10.1109/icnn.1994.374138
     """
 
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         mean, var = torch.chunk(preds, 2, 1)
 
         L_sos = (mean - targets) ** 2 / (2 * var)
@@ -104,7 +108,7 @@ class EvidentialLoss(LossFunction):
         self.v_kl = v_kl
         self.eps = eps
 
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         mean, v, alpha, beta = torch.chunk(preds, 4, 1)
 
         residuals = targets - mean
@@ -128,34 +132,34 @@ class EvidentialLoss(LossFunction):
 
 @LossFunctionRegistry.register("bce")
 class BCELoss(LossFunction):
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 @LossFunctionRegistry.register("ce")
 class CrossEntropyLoss(LossFunction):
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         preds = preds.transpose(1, 2)
         targets = targets.long()
 
         return F.cross_entropy(preds, targets, reduction="none")
 
 
-class MCCLossBase(LossFunction):
+class MccMixin:
     def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor, w_t: Tensor, **kwargs
+        self, preds: Tensor, targets: Tensor, mask: Tensor, w_s: Tensor, w_t: Tensor, *args
     ):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
-        L = self.forward(preds, targets.long(), mask=mask, w_d=w_d, **kwargs)
+        L = self.forward(preds, targets.long(), mask, w_s, *args)
         L = L * w_t
 
         return L.mean()
 
 
 @LossFunctionRegistry.register("binary-mcc")
-class BinaryMCCLoss(MCCLossBase):
+class BinaryMCCLoss(LossFunction, MccMixin):
     """Calculate a soft Matthews correlation coefficient loss for binary classification
 
     References
@@ -164,11 +168,11 @@ class BinaryMCCLoss(MCCLossBase):
     .. [2] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor) -> Tensor:
-        TP = (targets * preds * w_d * mask).sum(0, keepdim=True)
-        FP = ((1 - targets) * preds * w_d * mask).sum(0, keepdim=True)
-        TN = ((1 - targets) * (1 - preds) * w_d * mask).sum(0, keepdim=True)
-        FN = (targets * (1 - preds) * w_d * mask).sum(0, keepdim=True)
+    def forward(self, preds, targets, mask, w_s, *args) -> Tensor:
+        TP = (targets * preds * w_s * mask).sum(0, keepdim=True)
+        FP = ((1 - targets) * preds * w_s * mask).sum(0, keepdim=True)
+        TN = ((1 - targets) * (1 - preds) * w_s * mask).sum(0, keepdim=True)
+        FN = (targets * (1 - preds) * w_s * mask).sum(0, keepdim=True)
 
         MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)).sqrt()
 
@@ -176,7 +180,7 @@ class BinaryMCCLoss(MCCLossBase):
 
 
 @LossFunctionRegistry.register("multiclass-mcc")
-class MulticlassMCCLoss(MCCLossBase):
+class MulticlassMCCLoss(LossFunction, MccMixin):
     """Calculate a soft Matthews correlation coefficient loss for multiclass classification
 
     References
@@ -185,13 +189,13 @@ class MulticlassMCCLoss(MCCLossBase):
     .. [2] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, w_d: Tensor) -> Tensor:
+    def forward(self, preds, targets, mask, w_s, *args) -> Tensor:
         device = preds.device
 
         C = preds.shape[2]
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
-        masked_data_weights = w_d.unsqueeze(2) * mask.unsqueeze(2)
+        masked_data_weights = w_s.unsqueeze(2) * mask.unsqueeze(2)
 
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)
@@ -205,15 +209,12 @@ class MulticlassMCCLoss(MCCLossBase):
         cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t)
 
         x = cov_ypyp * cov_ytyt
-        if x == 0:
-            MCC = torch.tensor(0.0, device=device)
-        else:
-            MCC = cov_ytyp / x.sqrt()
+        MCC = torch.tensor(0.0, device=device) if x == 0 else cov_ytyp / x.sqrt()
 
         return 1 - MCC
 
 
-class DirichletLossBase(LossFunction):
+class DirichletMixin:
     """Uses the loss function from [1]_ based on the implementation at [2]_
 
     References
@@ -226,7 +227,7 @@ class DirichletLossBase(LossFunction):
     def __init__(self, v_kl: float = 0.2):
         self.v_kl = v_kl
 
-    def forward(self, preds: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def forward(self, preds, targets, *args) -> Tensor:
         S = preds.sum(-1, keepdim=True)
         p = preds / S
 
@@ -255,8 +256,8 @@ class DirichletLossBase(LossFunction):
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
-class BinaryDirichletLoss(DirichletLossBase):
-    def forward(self, preds: Tensor, targets: Tensor) -> Tensor:
+class BinaryDirichletLoss(LossFunction, DirichletMixin):
+    def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         N_CLASSES = 2
         n_tasks = targets.shape[1]
         preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
@@ -266,14 +267,14 @@ class BinaryDirichletLoss(DirichletLossBase):
 
 
 @LossFunctionRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletLoss(DirichletLossBase):
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+class MulticlassDirichletLoss(LossFunction, DirichletMixin):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
 
         return super().forward(preds, y_one_hot, mask)
 
 
-class SpectralLoss(LossFunction):
+class SpectralMixin:
     def __init__(self, threshold: float | None = None):
         self.threshold = threshold
 
@@ -282,8 +283,8 @@ class SpectralLoss(LossFunction):
 
 
 @LossFunctionRegistry.register("sid")
-class SIDLoss(SpectralLoss):
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+class SIDLoss(LossFunction, SpectralMixin):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
 
@@ -296,8 +297,8 @@ class SIDLoss(SpectralLoss):
 
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
-class WassersteinLoss(SpectralLoss):
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, **kwargs) -> Tensor:
+class WassersteinLoss(LossFunction, SpectralMixin):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
 

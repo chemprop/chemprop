@@ -7,8 +7,6 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 from chemprop.v2.featurizers.utils import ReactionMode
 
-from chemprop.v2.featurizers.atom import AtomFeaturizer
-from chemprop.v2.featurizers.bond import BondFeaturizerProto
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.base import ReactionFeaturizerProto

@@ -1,7 +1,7 @@
 from torch import Tensor, nn
 
 from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.models.modules import MessagePassingProto
+from chemprop.v2.models.modules import MessagePassingBlock
 from chemprop.v2.models.models.base import MPNN
 
 
@@ -11,7 +11,7 @@ class MulticlassMPNN(MPNN):
     _DEFAULT_METRIC = "ce"
 
     def __init__(
-        self, mp_block: MessagePassingProto, n_tasks: int, n_classes: int, *args, **kwargs,
+        self, mp_block: MessagePassingBlock, n_tasks: int, n_classes: int, *args, **kwargs,
     ):
         super().__init__(mp_block, n_tasks * n_classes, *args, **kwargs)
         self.n_tasks = n_tasks
