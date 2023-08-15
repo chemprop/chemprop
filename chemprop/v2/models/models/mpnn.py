@@ -2,7 +2,7 @@ from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import Tensor, optim
+from torch import nn, Tensor, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
@@ -34,7 +34,7 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassingBlock,
         agg: Aggregation,
         readout: ReadoutFFN,
-        metrics: Iterable[Metric] | None,
+        metrics: Iterable[Metric],
         task_weights: Tensor | None = None,
         warmup_epochs: int = 2,
         num_lrs: int = 1,
@@ -51,12 +51,12 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.readout = readout
 
-        self.metrics = metrics or self.readout.criterion
+        self.metrics = metrics
         if task_weights is None:
             task_weights = torch.ones(self.n_tasks)
         else:
             task_weights = torch.tensor(task_weights)
-        self.w_t = task_weights.unsqueeze(0)
+        self.w_t = nn.Parameter(task_weights.unsqueeze(0), False)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -114,7 +114,7 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         return [
-            metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
+            metric(preds, targets, mask, lt_targets, gt_targets)
             for metric in self.metrics
         ]
         

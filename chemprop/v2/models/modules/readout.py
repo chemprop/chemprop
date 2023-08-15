@@ -70,8 +70,8 @@ class RegressionFFN(ReadoutFFNBase):
     ):
         super().__init__(input_dim, n_tasks, hidden_dim, n_layers, dropout, activation)
 
-        self.loc = torch.tensor(loc).view(-1, 1)
-        self.scale = torch.tensor(scale).view(-1, 1)
+        self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
+        self.scale = nn.Parameter(torch.tensor(scale).view(-1, 1), False)
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
