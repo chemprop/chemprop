@@ -40,10 +40,6 @@ class DatapointBase(ABC):
         self._x_v = self.x_v
         self._y = self.y
 
-    @abstractmethod
-    def __len__(self) -> int:
-        """the number of molecules in this datapoint"""
-
     @property
     def t(self) -> int | None:
         return len(self.y) if self.y is not None else None
@@ -162,17 +158,19 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
 
 
 @dataclass
-class MulticomponentDatapointMixin:
-    smis: list[str]
-    mols: list[Chem.Mol] = field(init=False)
+class ReactionDatapointMixin:
+    rct_smi: str
+    pdt_smi: str
+    rct_mol: Chem.Mol = field(init=False)
+    pdt_mol: Chem.Mol = field(init=False)
 
 
 @dataclass
-class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
+class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     """
     Parameters
     ----------
-    smis : list[str]
+    smis : tuple[str, str]
         the SMILES strings of the reactants and products of the reaction
     y : np.ndarray
         the targets for the molecule with unknown targets indicated by `nan`s
@@ -205,18 +203,19 @@ class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
     """
 
     def __post_init__(self, features_generators: list[str] | None):
-        self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
+        self.rct_mol = make_mol(self.rct_smi, self.explicit_h, self.add_h) 
+        self.pdt_mol = make_mol(self.pdt_smi, self.explicit_h, self.add_h)
 
         super().__post_init__(features_generators)
 
     def __len__(self) -> int:
-        return len(self.smis)
+        return 2
 
     def generate_features(self, features_generators: list[str]) -> np.ndarray:
         features = []
         for fg in features_generators:
             fg = get_features_generator(fg)
-            for mol in self.mols:
+            for mol in [self.rct_mol, self.pdt_mol]:
                 if mol is not None:
                     if mol.GetNumHeavyAtoms() > 0:
                         features.append(fg(mol))
@@ -224,3 +223,32 @@ class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
                         features.append(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
 
         return np.hstack(features)
+
+
+@dataclass
+class MulticomponentDatapointMixin:
+    smis: list[str]
+    mols: list[Chem.Mol] = field(init=False)
+
+
+@dataclass
+class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
+    def __post_init__(self, fgs: list[str] | None):
+        self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
+        super().__post_init__(fgs)
+
+    def __len__(self) -> int:
+        return len(self.mols)
+
+    def generate_features(self, features_generators: list[str]) -> np.ndarray:
+        Xs = []
+        for fg in features_generators:
+            fg = get_features_generator(fg)
+            for mol in self.mols:
+                if mol is not None:
+                    if mol.GetNumHeavyAtoms() > 0:
+                        Xs.append(fg(mol))
+                    else:
+                        Xs.append(np.zeros(len(fg(Chem.MolFromSmiles("C")))))
+
+        return np.hstack(Xs)

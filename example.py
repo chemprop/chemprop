@@ -10,8 +10,10 @@ from chemprop.v2.models import modules, models
 
 
 featurizer = featurizers.MoleculeFeaturizer()
-molenc = modules.molecule_block()
-mpnn = models.RegressionMPNN(molenc, 1)
+mp = modules.BondMessageBlock()
+agg = modules.MeanAggregation()
+ffn = modules.RegressionFFN(mp.output_dim, 1)
+mpnn = models.MPNN(mp, agg, ffn, None)
 print(mpnn)
 
 with open("./data/pdbbind_full.csv") as fid:

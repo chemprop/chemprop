@@ -2,20 +2,19 @@ from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import Tensor, nn, optim
+from torch import Tensor, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric
-from chemprop.v2.models.modules.message_passing import MessagePassingBlock, OutputTransform
-from chemprop.v2.models.modules.agg import Aggregation, MeanAggregation
-from chemprop.v2.models.modules.ffn import FFN
+from chemprop.v2.models.modules.message_passing import MessagePassingBlock
+from chemprop.v2.models.modules.agg import Aggregation
 from chemprop.v2.models.modules.readout import ReadoutFFN
 from chemprop.v2.models.schedulers import NoamLR
 
 
-class MolecularMPNN(pl.LightningModule):
+class MPNN(pl.LightningModule):
     """An `MPNN` is comprised of message passing layer, an aggregation routine, and an FFN
     top-model. The first two calculate learned encodings from an input molecule/reaction graph, and
     the latter takes these encodings as input to calculate a final prediction. The full model is
@@ -34,8 +33,8 @@ class MolecularMPNN(pl.LightningModule):
         self,
         message_passing: MessagePassingBlock,
         agg: Aggregation,
-        ffn: ReadoutFFN,
-        metrics: Iterable[Metric],
+        readout: ReadoutFFN,
+        metrics: Iterable[Metric] | None,
         task_weights: Tensor | None = None,
         warmup_epochs: int = 2,
         num_lrs: int = 1,
@@ -45,15 +44,14 @@ class MolecularMPNN(pl.LightningModule):
     ):
         super().__init__()
 
-        if message_passing.output_dim != ffn.input_dim:
+        if message_passing.output_dim != readout.input_dim:
             raise ValueError
         
         self.message_passing = message_passing
         self.agg = agg
-        self.ffn = ffn
+        self.readout = readout
 
-        self.metrics = metrics
-
+        self.metrics = metrics or self.readout.criterion
         if task_weights is None:
             task_weights = torch.ones(self.n_tasks)
         else:
@@ -68,11 +66,11 @@ class MolecularMPNN(pl.LightningModule):
 
     @property
     def n_tasks(self) -> int:
-        return self.ffn.n_tasks
+        return self.readout.n_tasks
     
     @property
     def criterion(self) -> LossFunction:
-        return self.ffn.criterion
+        return self.readout.criterion
     
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
@@ -87,13 +85,13 @@ class MolecularMPNN(pl.LightningModule):
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """Calculate the encoding (i.e., final hidden representation) for the input molecules"""
-        return self.ffn[:-1](self.fingerprint(bmg, V_d, X_f))
+        return self.readout[:-1](self.fingerprint(bmg, V_d, X_f))
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
-        return self.ffn(self.fingerprint(bmg, V_d, X_f))
+        return self.readout(self.fingerprint(bmg, V_d, X_f))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
         bmg, V_d, X_f, targets, w_s, lt_mask, gt_mask = batch
@@ -102,7 +100,7 @@ class MolecularMPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         Z = self.fingerprint(bmg, V_d, X_f)
-        Y_hat = self.ffn.train_step(Z)
+        Y_hat = self.readout.train_step(Z)
         l = self.criterion(Y_hat, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
         self.log("train/loss", l, prog_bar=True)

@@ -6,8 +6,8 @@ from typing import Mapping, Optional, Sequence, Type
 import numpy as np
 
 from chemprop.v2 import models
-from chemprop.v2.data.datapoints import MoleculeDatapoint, DatapointBase, MulticomponentDatapoint
-from chemprop.v2.data.datasets import MolGraphDatasetBase, MoleculeDataset, MulticomponentDataset
+from chemprop.v2.data.datapoints import MoleculeDatapoint, DatapointBase, ReactionDatapoint
+from chemprop.v2.data.datasets import MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers import ReactionFeaturizer, MoleculeFeaturizer
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def make_datapoints(
         rxns = [(".".join(r, a), p) if a else (r, p) for r, a, p in rxns]
 
         data = [
-            MulticomponentDatapoint(
+            ReactionDatapoint(
                 rxns[i],
                 targetss[i],
                 None,
@@ -206,7 +206,7 @@ def build_data_from_files(
 
 def make_dataset(
     data: Sequence[DatapointBase], bond_messages: bool, reaction_mode: str
-) -> MolGraphDatasetBase:
+) -> MolGraphDatasetMixin:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
@@ -219,7 +219,7 @@ def make_dataset(
 
     featurizer = ReactionFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
 
-    return MulticomponentDataset(data, featurizer)
+    return ReactionDataset(data, featurizer)
 
 
 def get_mpnn_cls(dataset_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:

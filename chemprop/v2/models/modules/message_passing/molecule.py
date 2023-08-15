@@ -5,15 +5,13 @@ from abc import abstractmethod
 import torch
 from torch import Tensor, nn
 
+from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM
 from chemprop.v2.exceptions import InvalidShapeError
-from chemprop.v2.featurizers import BatchMolGraph, _DEFAULT_ATOM_FDIM, _DEFAULT_BOND_FDIM
+from chemprop.v2.featurizers import BatchMolGraph
 from chemprop.v2.models.utils import get_activation_function
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
-from chemprop.v2.utils.factory import ClassFactory
 
 MolecularInput = tuple[BatchMolGraph, Tensor | None]
-
-MessagePassingBlockFactory = ClassFactory()
 
 
 class MessagePassingBlockBase(MessagePassingBlock):
@@ -53,8 +51,8 @@ class MessagePassingBlockBase(MessagePassingBlock):
 
     def __init__(
         self,
-        d_v: int,
-        d_e: int,
+        d_v: int = DEFAULT_ATOM_FDIM,
+        d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = 300,
         bias: bool = False,
         depth: int = 3,
@@ -167,7 +165,6 @@ class MessagePassingBlockBase(MessagePassingBlock):
         """
 
 
-@MessagePassingBlockFactory.register("bond")
 class BondMessageBlock(MessagePassingBlockBase):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         W_i = nn.Linear(d_e, d_h, bias)
@@ -200,7 +197,6 @@ class BondMessageBlock(MessagePassingBlockBase):
         return self.finalize(M_v, bmg.V, X_vd)
 
 
-@MessagePassingBlockFactory.register("atom")
 class AtomMessageBlock(MessagePassingBlockBase):
     def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         W_i = nn.Linear(d_v, d_h, bias)
@@ -233,8 +229,8 @@ class AtomMessageBlock(MessagePassingBlockBase):
     
 
 def molecule_block(
-    d_v: int = _DEFAULT_ATOM_FDIM,
-    d_e: int = _DEFAULT_BOND_FDIM,
+    d_v: int = DEFAULT_ATOM_FDIM,
+    d_e: int = DEFAULT_BOND_FDIM,
     bond_messages: bool = True,
     *args,
     **kwargs,

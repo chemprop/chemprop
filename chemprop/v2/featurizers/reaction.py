@@ -9,7 +9,38 @@ from chemprop.v2.featurizers.utils import ReactionMode
 
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.base import ReactionFeaturizerProto
+from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
+
+
+class ReactionFeaturizerProto(MolGraphFeaturizerProto):
+    """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
+    molecules) into `MolGraph`s"""
+
+    def __call__(
+        self,
+        reaction: tuple[Chem.Mol, Chem.Mol],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        reaction : tuple[Chem.Mol, Chem.Mol]
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
 
 
 @dataclass

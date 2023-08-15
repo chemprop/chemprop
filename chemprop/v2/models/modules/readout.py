@@ -55,7 +55,7 @@ class ReadoutFFNBase(SimpleFFN, ReadoutFFN):
 
 class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
-    dataset_type = DatasetType.REGRESSION
+    _default_criterion = loss.MSELoss()
 
     def __init__(
         self,

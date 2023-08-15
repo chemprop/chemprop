@@ -1,29 +1,24 @@
-from __future__ import annotations
-
 from abc import abstractmethod
-from typing import Iterable, Optional
+from typing import Iterable
 
 import numpy as np
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import DatapointBase, MoleculeDatapoint, MulticomponentDatapoint
-from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerProto, MoleculeFeaturizer, ReactionFeaturizer, ReactionFeaturizerBase
+from chemprop.v2.data.datapoints import DatapointBase, MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.featurizers import (
+    MolGraph,
+    MoleculeFeaturizerProto,
+    MoleculeFeaturizer,
+    ReactionFeaturizerProto,
+    ReactionFeaturizer
+)
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
 
 
-class MolGraphDatasetBase(Dataset):
-    def __init__(self, data: Iterable[DatapointBase]):
-        super().__init__()
-
-        self.data = list(data)
-
-    @abstractmethod
-    def __getitem__(self, idx: int) -> Datum:
-        pass
-
+class MolGraphDatasetMixin:
     def __len__(self) -> int:
         return len(self.data)
 
@@ -64,37 +59,30 @@ class MolGraphDatasetBase(Dataset):
         for d, x in zip(self.data, X):
             d.x_v = x
 
-    # @property
-    # def X_phase(self) -> Optional[np.ndarray]:
-    #     if len(self.data) > 0 and self.data[0].x_phase is None:
-    #         return None
-
-    #     return np.ndarray([d.x_phase for d in self.data])
-
     @property
     def weights(self) -> np.ndarray:
         return np.array([d.weight for d in self.data])
 
     @property
-    def gt_mask(self) -> Optional[np.ndarray]:
+    def gt_mask(self) -> np.ndarray | None:
         if len(self.data) > 0 and self.data[0].gt_mask is None:
             return None
 
         return np.array([d.gt_mask for d in self.data])
 
     @property
-    def lt_mask(self) -> Optional[np.ndarray]:
+    def lt_mask(self) -> np.ndarray | None:
         if len(self.data) > 0 and self.data[0].lt_mask is None:
             return None
 
         return np.array([d.lt_mask for d in self.data])
 
     @property
-    def t(self) -> Optional[int]:
+    def t(self) -> int | None:
         return self.data[0].t if len(self.data) > 0 else None
 
     @property
-    def d_v(self) -> Optional[int]:
+    def d_v(self) -> int | None:
         if len(self.data) > 0 and self.data[0].x_v is None:
             return None
 
@@ -112,12 +100,12 @@ class MolGraphDatasetBase(Dataset):
             a scaler fit to the targets.
         """
         Y = np.array([d._y for d in self.data])
-        
+
         scaler = (scaler or StandardScaler()).fit(Y)
         self.Y = scaler.transform(Y)
 
         return scaler
-    
+
     def normalize_inputs(
         self, key: str | None = "X_v", scaler: StandardScaler | None = None
     ) -> StandardScaler:
@@ -133,12 +121,12 @@ class MolGraphDatasetBase(Dataset):
         return scaler
 
     def reset(self) -> None:
-        """Reset the {atom, bond, molecule} features and targets of each datapoint to its 
+        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
         initial, unnormalized values."""
         [d.reset() for d in self.data]
 
 
-class MoleculeDataset(MolGraphDatasetBase):
+class MoleculeDataset(MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
     Parameters
@@ -288,7 +276,7 @@ class MoleculeDataset(MolGraphDatasetBase):
         return scaler
 
 
-class MulticomponentDataset(MolGraphDatasetBase):
+class ReactionDataset(MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `ReactionDatapoint`s
 
     Parameters
@@ -300,16 +288,16 @@ class MulticomponentDataset(MolGraphDatasetBase):
     """
 
     def __init__(
-        self, data: Iterable[MulticomponentDatapoint], featurizer: ReactionFeaturizerBase | None
+        self, data: Iterable[ReactionDatapoint], featurizer: ReactionFeaturizerProto | None
     ):
-        super().__init__(data)
+        self.data = list(data)
         self.featurizer = featurizer or ReactionFeaturizer()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
 
         return (
-            self.featurizer(d.mols, d.V_f, d.E_f),
+            self.featurizer(((d.rct_mol, d.pdt_mol)), None, None),
             None,
             d.x_v,
             d.y,
@@ -320,12 +308,12 @@ class MulticomponentDataset(MolGraphDatasetBase):
 
     @property
     def smiles(self) -> list[str]:
-        return [d.smis for d in self.data]
+        return [(d.rct_smi, d.pdt_smi) for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
-        return [d.mols for d in self.data]
+        return [(d.rct_mol, d.pdt_mol) for d in self.data]
 
     @property
-    def n_mol(self) -> int:
+    def n_mols(self) -> int:
         return len(self.data[0])

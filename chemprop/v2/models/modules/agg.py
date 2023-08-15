@@ -4,9 +4,9 @@ from typing import Sequence
 import torch
 from torch import Tensor, nn
 
-from chemprop.v2.utils import ClassFactory, pretty_shape
+from chemprop.v2.utils import ClassRegistry, pretty_shape
 
-AggregationFactory = ClassFactory()
+AggregationRegistry = ClassRegistry()
 
 
 class Aggregation(ABC, nn.Module):
@@ -77,7 +77,7 @@ class Aggregation(ABC, nn.Module):
         """
 
 
-@AggregationFactory.register("mean")
+@AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
     """Average the graph-level representation"""
 
@@ -85,7 +85,7 @@ class MeanAggregation(Aggregation):
         return H.mean(self.dim)
 
 
-@AggregationFactory.register("sum")
+@AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
     """Sum the graph-level representation"""
 
@@ -93,7 +93,7 @@ class SumAggregation(Aggregation):
         return H.sum(self.dim)
 
 
-@AggregationFactory.register("norm")
+@AggregationRegistry.register("norm")
 class NormAggregation(Aggregation):
     """Sum the graph-level representation and divide by a normalization constant"""
 
