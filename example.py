@@ -1,4 +1,5 @@
 import csv
+import sys
 
 from lightning import pytorch as pl
 import numpy as np
@@ -13,10 +14,10 @@ featurizer = featurizers.MoleculeFeaturizer()
 mp = modules.BondMessageBlock(*featurizer.shape)
 agg = modules.MeanAggregation()
 ffn = modules.RegressionFFN(mp.output_dim, 1)
-mpnn = models.MPNN(mp, agg, ffn, [metrics.MSEMetric()])
+mpnn = models.MPNN(mp, agg, ffn, [metrics.RMSEMetric()])
 print(mpnn)
 
-with open("./data/freesolv.csv") as fid:
+with open(sys.argv[1]) as fid:
     reader = csv.reader(fid)
     next(reader)
     smis, scores = zip(*[(smi, float(score)) for smi, score in reader])
@@ -28,8 +29,6 @@ val_data, test_data = train_test_split(val_test_data, test_size=0.5)
 
 train_dset = data.MoleculeDataset(train_data, featurizer)
 scaler = train_dset.normalize_targets()
-
-import pdb; pdb.set_trace()
 
 val_dset = data.MoleculeDataset(val_data, featurizer)
 val_dset.normalize_targets(scaler)
@@ -46,7 +45,7 @@ trainer = pl.Trainer(
     enable_progress_bar=True,
     accelerator="gpu",
     devices=1,
-    max_epochs=10,
+    max_epochs=20,
 )
 trainer.fit(mpnn, train_loader, val_loader)
 results = trainer.test(mpnn, test_loader)

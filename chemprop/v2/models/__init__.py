@@ -8,15 +8,6 @@ from .modules import (
 )
 from .models import (
     MPNN,
-    ClassificationMPNN,
-    BinaryClassificationMPNN,
-    DirichletClassificationMPNN,
-    MulticlassMPNN,
-    DirichletMulticlassMPNN,
-    RegressionMPNN,
-    MveRegressionMPNN,
-    EvidentialMPNN,
-    SpectralMPNN,
 )
 from .loss import LossFunction
 from .metrics import Metric, MetricRegistry

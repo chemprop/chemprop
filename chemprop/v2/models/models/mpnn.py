@@ -46,7 +46,7 @@ class MPNN(pl.LightningModule):
 
         if message_passing.output_dim != readout.input_dim:
             raise ValueError
-        
+
         self.message_passing = message_passing
         self.agg = agg
         self.readout = readout
@@ -67,11 +67,11 @@ class MPNN(pl.LightningModule):
     @property
     def n_tasks(self) -> int:
         return self.readout.n_tasks
-    
+
     @property
     def criterion(self) -> LossFunction:
         return self.readout.criterion
-    
+
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
@@ -107,38 +107,31 @@ class MPNN(pl.LightningModule):
 
         return l
 
-    def evaluate_preds(
-        self, preds: Tensor, targets: Tensor, lt_targets, gt_targets
-    ) -> list[Tensor]:
-        mask = targets.isfinite()
-        targets = targets.nan_to_num(nan=0.0)
-
-        return [
-            metric(preds, targets, mask, lt_targets, gt_targets)
-            for metric in self.metrics
-        ]
-        
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
-        *_, targets, _, lt_targets, gt_targets = batch
-        preds, *_ = self.predict_step(batch, batch_idx)
-
-        losses = self.evaluate_preds(preds, targets, lt_targets, gt_targets)
+        losses = self.evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
-        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets))
-        self.log("val_loss", losses[0], on_epoch=True, batch_size=len(targets), prog_bar=True)
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        *_, targets, _, lt_targets, gt_targets = batch
-        preds, *_ = self.predict_step(batch, batch_idx)
-
-        losses = self.evaluate_preds(preds, targets, lt_targets, gt_targets)
+        losses = self.evaluate_batch(batch)
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
-        self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
-    def predict_step(
-        self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0
-    ) -> tuple[Tensor, ...]:
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+
+    def evaluate_batch(self, batch) -> list[Tensor]:
+        bmg, V_d, X_f, targets, _, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+        preds = self(bmg, V_d, X_f)
+
+        losses = [metric(preds, targets, mask, lt_mask, gt_mask) for metric in self.metrics]
+
+        return losses
+
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
 
         Parameters
@@ -148,9 +141,15 @@ class MPNN(pl.LightningModule):
 
         Returns
         -------
-        tuple[Tensor, ...]
-            an n-tuple containing the predictions in the 0th index and uncertainty parameters for
-            all remaining indices
+        Tensor
+            a tensor of varying shape depending on the task type:
+
+            * regression/binary classification: `n x (t * s)`, where `n` is the number of input
+            molecules/reactions, `t` is the number of tasks, and `s` is the number of targets per
+            task. The final dimension is flattened, so that the targets for each task are grouped.
+            I.e., the first `t` elements are the first target for each task, the second `t` elements
+            the second target, etc.
+            * multiclass classification: `n x t x c`, where "..." and `c` is the number of classes
         """
         bmg, X_vd, X_f, *_ = batch
 
