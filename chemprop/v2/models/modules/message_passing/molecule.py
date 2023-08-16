@@ -109,7 +109,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
         return self.W_o.out_features
 
     def cat_descriptors(self, H_v: Tensor, V_d: Tensor) -> Tensor:
-        """Concatenate the atom descriptors `X_vd` onto the hidden representations `H_v`
+        """Concatenate the atom descriptors `V_d` onto the hidden representations `H_v`
 
         Parameters
         ----------
@@ -132,7 +132,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
             H_vd = torch.cat((H_v, V_d), 1)
             H_v = self.fc_vd(H_vd)
         except RuntimeError:
-            raise InvalidShapeError("X_vd", V_d.shape, [len(H_v), self.d_vd])
+            raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.d_vd])
 
         return self.dropout(H_v)
 
@@ -144,14 +144,14 @@ class MessagePassingBlockBase(MessagePassingBlock):
         return H_v if V_d is None else self.cat_descriptors(H_v, V_d)
 
     @abstractmethod
-    def forward(self, bmg: BatchMolGraph, X_vd: Tensor | None = None) -> Tensor:
+    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         """Encode a batch of molecular graphs.
 
         Parameters
         ----------
         bmg: BatchMolGraph
             the batch of `b` `MolGraphs` to encode
-        X_vd : Tensor | None, default=None
+        V_d : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
             transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms + 1`,
@@ -173,7 +173,7 @@ class BondMessageBlock(MessagePassingBlockBase):
 
         return W_i, W_h, W_o
 
-    def forward(self, bmg: BatchMolGraph, X_vd: Tensor | None = None) -> Tensor:
+    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.E)
         H_e = self.tau(H_0)
 
@@ -194,7 +194,7 @@ class BondMessageBlock(MessagePassingBlockBase):
         M_v_k = H_e[bmg.a2b]
         M_v = M_v_k.sum(1)  # V x d_h
 
-        return self.finalize(M_v, bmg.V, X_vd)
+        return self.finalize(M_v, bmg.V, V_d)
 
 
 class AtomMessageBlock(MessagePassingBlockBase):
@@ -226,36 +226,3 @@ class AtomMessageBlock(MessagePassingBlockBase):
         M_v = M_v_k.sum(1)  # V x d_h
 
         return self.finalize(M_v, bmg.V, V_d)
-
-
-def molecule_block(
-    d_v: int = DEFAULT_ATOM_FDIM,
-    d_e: int = DEFAULT_BOND_FDIM,
-    bond_messages: bool = True,
-    *args,
-    **kwargs,
-) -> MessagePassingBlockBase:
-    """Build a `MolecularMessagePassingBlock`
-
-    NOTE: `d_v` and `d_e` should correspond to the `atom_fdim` and `bond_fdim` attributes of the
-    `MoleculeFeaturizer` object that you will be using to prepare data. The default values should
-    only be used if you are using a *default* `MoleculeFeaturizer` (i.e., `MoleculeFeaturizer()`)
-
-    Parameters
-    ----------
-    d_v : int, default=_DEFAULT_ATOM_FDIM
-        the dimension of the atom features
-    d_e : int, default=_DEFAULT_BOND_FDIM
-        the dimension of the bond features
-    bond_messages : bool, optional
-        whether to pass messages on bonds, default=True
-    *args, **kwargs
-        positional- and keyword-arguments to pass to the `MolecularMessagePassingBlock.__init__()`
-
-    Returns
-    -------
-    MoleculeEncoder
-    """
-    encoder_cls = BondMessageBlock if bond_messages else AtomMessageBlock
-
-    return encoder_cls(d_v, d_e, *args, **kwargs)

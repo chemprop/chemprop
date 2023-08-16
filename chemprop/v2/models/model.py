@@ -108,14 +108,14 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         Z = self.fingerprint(bmg, V_d, X_f)
-        Y_hat = self.readout.train_step(Z)
-        l = self.criterion(Y_hat, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
+        preds = self.readout.train_step(Z)
+        l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
         self.log("train/loss", l, prog_bar=True)
 
         return l
 
-    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
+    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self.evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 

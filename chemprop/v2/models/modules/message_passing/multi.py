@@ -1,15 +1,12 @@
-from __future__ import annotations
-
 import warnings
 from typing import Iterable, Sequence
 
-import torch
 from torch import Tensor, nn
+from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
 from chemprop.v2.models.modules.message_passing.molecule import (
     MessagePassingBlockBase,
     MolecularInput,
-    molecule_block,
 )
 
 ReactionInput = Iterable[MolecularInput]
@@ -50,56 +47,28 @@ class MulticomponentMessagePassing(nn.Module):
 
         self.n_components = n_components
         self.shared = shared
-
-        blocks = [blocks[0]] * self.n_components if shared else blocks
         self.blocks = nn.ModuleList([blocks[0]] * self.n_components if shared else blocks)
 
+    def __len__(self) -> int:
+        return len(self.blocks)
+    
     @property
-    def output_dim(self) -> int:
-        return sum(block.output_dim for block in self.blocks)
+    def output_dim(self) -> int:        
+        d_o = sum(block.output_dim for block in self.blocks)
 
-    def forward(self, inputs: Iterable[MolecularInput]) -> Tensor:
+        return d_o if not self.shared else self.blocks[0].output_dim
+
+    def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> Tensor:
         """Encode the multicomponent inputs
 
         Parameters
         ----------
-        inputss : Iterable[MolecularInput]
-            an Iterable of length `n` containing inputs to a `MolecularMessagePassingBlock`, where
-            `n` is the number of components in each reaction (== `self.n_components`). I.e., to
-            encode a batch of 3-component inputs, the 0th entry of `inputss` will be the batched
-            inputs of the 0th component of each input, the 1st entry will be the 1st component,
-            etc. Each component would itself be a batch of length `b`. In other words, if you were
-            to (hypothetically) encode a batch of single component inputs (i.e., a batch of
-            molecules), the only difference between a `CompositeMessagePassingBlock` and a
-            `MolecularMessagePassingBlock` would be the call signature
-
-        Example
-        -------
-        >>> inputs: tuple[BatchMolGraph, Optional[Tensor]]
-        >>> block = MolecularMessagePassingBlock()
-        >>> multi_block = CompositeMessagePassingBlock([block], n_mols=1)
-        >>> H_single = block(*inputs)
-        >>> H_multi = multi_block([inputs])
-        >>> H_single.shape == H_multi.shape
-        True
+        bmgs : Iterable[BatchMolGraph]
+        V_ds : Iterable[Tensor | None]
 
         Returns
         -------
-        Tensor
-            a Tensor of shape `b x d_o` containing the reaction encodings, where `b` is the number
-            of reactions in the batch, and `d_o` is the `output_dim` of this encoder
-            (== `self.n_mols x self.encoders[0].output_dim`)
+        list[Tensor]
+            a list of tensors of shape `b x d_i` containing the respective encodings of the `i`th component, where `b` is the number of components in the batch, and `d_i` is the output dimension of the `i`th encoder
         """
-        Hs = [block(bmg, X_vd) for block, (bmg, X_vd) in zip(self.blocks, inputs)]
-        H = torch.cat(Hs, 1)
-
-        return H
-
-
-def composite_block(n_components: int, shared: bool = False, *args, **kwargs):
-    if not shared:
-        encoders = [molecule_block(*args, **kwargs) for _ in range(n_components)]
-    else:
-        encoders = [molecule_block(*args, **kwargs)]
-
-    return MulticomponentMessagePassing(encoders, n_components, shared)
+        return [block(bmg, V_d) for block, bmg, V_d in zip(self.blocks, bmgs, V_ds)]

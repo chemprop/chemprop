@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Iterable
 
 import numpy as np
@@ -12,7 +10,9 @@ from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
 TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
-
+MulticomponentTrainingBatch = tuple[
+    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
+]
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, X_vds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
