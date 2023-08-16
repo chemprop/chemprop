@@ -6,8 +6,6 @@ from .modules import (
     AtomMessageBlock,
     BondMessageBlock,
 )
-from .models import (
-    MPNN,
-)
+from .model import MPNN
 from .loss import LossFunction
 from .metrics import Metric, MetricRegistry

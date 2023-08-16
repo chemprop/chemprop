@@ -20,7 +20,7 @@ class MPNN(pl.LightningModule):
     the latter takes these encodings as input to calculate a final prediction. The full model is
     trained end-to-end.
 
-    An `MPNN` takes a input a molecular graph and outputs a tensor of shape `b x t * s`, where `b`
+    An `MPNN` takes a input a molecular graph and outputs a tensor of shape `b x (t * s)`, where `b`
     the size of the batch (i.e., number of molecules in the graph,) `t` is the number of tasks to
     predict, and `s` is the number of targets to predict per task.
 
@@ -65,9 +65,17 @@ class MPNN(pl.LightningModule):
         self.final_lr = final_lr
 
     @property
+    def output_dim(self) -> int:
+        return self.readout.output_dim
+    
+    @property
     def n_tasks(self) -> int:
         return self.readout.n_tasks
 
+    @property
+    def n_targets(self) -> int:
+        return self.readout.n_targets
+    
     @property
     def criterion(self) -> LossFunction:
         return self.readout.criterion
@@ -193,4 +201,5 @@ class MPNN(pl.LightningModule):
             num_devices = max(num_devices, self.trainer.tpu_cores)
 
         effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        
         return (batches // effective_accum) * self.trainer.max_epochs

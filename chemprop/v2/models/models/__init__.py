@@ -5,4 +5,4 @@
 # from .multiclass import MulticlassMPNN, DirichletMulticlassMPNN
 # from .regression import EvidentialMPNN, RegressionMPNN, MveRegressionMPNN
 # from .spectral import SpectralMPNN
-from .mpnn import MPNN
+from ..model import MPNN

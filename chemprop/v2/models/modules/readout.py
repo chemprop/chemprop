@@ -6,7 +6,6 @@ from torch.nn import functional as F
 
 from chemprop.v2.models import loss
 from chemprop.v2.models.modules.ffn import FFN, SimpleFFN
-from chemprop.v2.models.utils import DatasetType
 
 
 class ReadoutProto(Protocol):
