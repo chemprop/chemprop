@@ -2,6 +2,7 @@ import functools
 
 __all__ = ["bouned"]
 
+
 def bounded(lo=None, hi=None):
     def decorator(f):
         if lo is None and hi is None:

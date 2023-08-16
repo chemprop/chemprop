@@ -85,7 +85,7 @@ def parse_data_csv(
             )
 
         targetss = np.array(targetss, float)
-        
+
     logger.debug(f"{targetss.shape[0]} molecules | {targetss.shape[1]} tasks")
     logger.debug(f"{np.isfinite(targetss).sum()}/{targetss.size} valid targets")
 

@@ -12,7 +12,7 @@ from chemprop.v2.featurizers import (
     MoleculeFeaturizerProto,
     MoleculeFeaturizer,
     ReactionFeaturizerProto,
-    ReactionFeaturizer
+    ReactionFeaturizer,
 )
 
 Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]

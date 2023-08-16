@@ -45,12 +45,13 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
     """
 
     def __init__(
-        self,
-        bond_types: Sequence[BondType] | None = None,
-        stereos: Sequence[int] | None = None,
+        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
     ):
         self.bond_types = bond_types or [
-            BondType.SINGLE, BondType.DOUBLE, BondType.TRIPLE, BondType.AROMATIC,
+            BondType.SINGLE,
+            BondType.DOUBLE,
+            BondType.TRIPLE,
+            BondType.AROMATIC,
         ]
         self.stereo = stereos or range(6)
 

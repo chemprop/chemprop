@@ -24,14 +24,14 @@ def split_data(
         np.random.shuffle(idxs)
 
         train = [data[i] for i in idxs[:n_train]]
-        val = [data[i] for i in idxs[n_train:n_train + n_val]]
-        test = [data[i] for i in idxs[n_train + n_val:]]
+        val = [data[i] for i in idxs[n_train : n_train + n_val]]
+        test = [data[i] for i in idxs[n_train + n_val :]]
     elif split == "scaffold":
         scaffold2idxs = defaultdict(set)
         for i, d in enumerate(data):
             scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=d.mol)
             scaffold2idxs[scaffold].add(i)
-            
+
         big_index_sets = []
         small_index_sets = []
         for idxs in scaffold2idxs.values():
@@ -55,12 +55,11 @@ def split_data(
             else:
                 test_idxs.extend(idxs)
                 test_scaffold_count += 1
-        
+
         train = [data[i] for i in train_idxs]
         val = [data[i] for i in val_idxs]
         test = [data[i] for i in test_idxs]
     else:
         raise ValueError(f"Uknown split type! got: {split}")
-    
-    return train, val, test
 
+    return train, val, test

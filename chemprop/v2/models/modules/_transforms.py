@@ -24,11 +24,11 @@ class RegressionTransform(OutputTransform):
 
         self.loc: Tensor = torch.atleast_2d(torch.tensor(loc))
         self.scale: Tensor = torch.atleast_2d(torch.tensor(scale))
-    
+
     def forward(self, Y: Tensor) -> Tensor:
         if self.training:
             return Y
-        
+
         return self.scale * Y + self.loc
 
 
@@ -69,7 +69,7 @@ class BinaryTransform(OutputTransform):
     def forward(self, Y: Tensor) -> Tensor:
         if self.training:
             return Y
-        
+
         return Y.sigmoid()
 
 
@@ -79,11 +79,11 @@ class DirichletBinaryTransform(BinaryTransform):
     def forward(self, Y: Tensor) -> Tensor:
         if self.training:
             return F.softplus(Y) + 1
-        
+
         alpha, beta = torch.chunk(Y, 2, 1)
-        
+
         return beta / (alpha + beta)
-        
+
 
 class MulticlassTransform(OutputTransform):
     n_targets = 1
@@ -105,10 +105,10 @@ class DirichletMulticlassTransform(MulticlassTransform):
 
         if self.training:
             return F.softplus(Y) + 1
-        
+
         Y = Y.softmax(-1)
         Y = F.softplus(Y) + 1
-        
+
         alpha = Y
         Y = Y / Y.sum(-1, keepdim=True)
 

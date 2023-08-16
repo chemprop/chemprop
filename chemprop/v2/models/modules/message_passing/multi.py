@@ -32,10 +32,7 @@ class MulticomponentMessagePassing(nn.Module):
     """
 
     def __init__(
-        self,
-        blocks: Sequence[MessagePassingBlockBase],
-        n_components: int,
-        shared: bool = False,
+        self, blocks: Sequence[MessagePassingBlockBase], n_components: int, shared: bool = False
     ):
         super().__init__()
 

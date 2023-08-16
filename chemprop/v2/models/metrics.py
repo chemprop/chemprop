@@ -21,7 +21,7 @@ class Metric(ABC):
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         return self.forward(preds, targets, mask, *args)
-    
+
     @abstractmethod
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         pass
@@ -60,13 +60,7 @@ class RMSEMetric(MSEMetric):
 
 class BoundedMixin:
     def __call__(
-        self,
-        preds: Tensor,
-        targets: Tensor,
-        mask: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
-        *args,
+        self, preds: Tensor, targets: Tensor, mask: Tensor, lt_mask: Tensor, gt_mask: Tensor, *args
     ) -> Tensor:
         preds = self.bound(preds, targets, lt_mask, gt_mask)
 
@@ -135,6 +129,7 @@ class BCEMetric(MaximizedMetric):
 @MetricRegistry.register("mcc")
 class MCCMetric(MaximizedMetric):
     """NOTE(degraff): don't think this works rn"""
+
     def __init__(self, n_classes: int, threshold: float = 0.5, *args) -> Tensor:
         self.n_classes = n_classes
         self.threshold = threshold

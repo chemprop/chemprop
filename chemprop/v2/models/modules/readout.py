@@ -226,7 +226,7 @@ class SpectralFFN(ReadoutFFNBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: loss.LossFunction | None = None,
-        spectral_activation: str | None = "softplus"
+        spectral_activation: str | None = "softplus",
     ):
         super().__init__(input_dim, n_tasks, hidden_dim, n_layers, dropout, activation, criterion)
 

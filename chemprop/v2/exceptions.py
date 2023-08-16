@@ -2,6 +2,7 @@ from typing import Iterable
 
 from chemprop.v2.utils import pretty_shape
 
+
 class InvalidShapeError(ValueError):
     def __init__(self, var_name: str, received: Iterable[int], expected: Iterable[int]):
         message = (
@@ -9,4 +10,3 @@ class InvalidShapeError(ValueError):
             f"got: `{pretty_shape(received)}`. expected: `{pretty_shape(expected)}`"
         )
         super().__init__(message)
-    

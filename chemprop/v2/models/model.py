@@ -67,7 +67,7 @@ class MPNN(pl.LightningModule):
     @property
     def output_dim(self) -> int:
         return self.readout.output_dim
-    
+
     @property
     def n_tasks(self) -> int:
         return self.readout.n_tasks
@@ -75,7 +75,7 @@ class MPNN(pl.LightningModule):
     @property
     def n_targets(self) -> int:
         return self.readout.n_targets
-    
+
     @property
     def criterion(self) -> LossFunction:
         return self.readout.criterion
@@ -201,5 +201,5 @@ class MPNN(pl.LightningModule):
             num_devices = max(num_devices, self.trainer.tpu_cores)
 
         effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        
+
         return (batches // effective_accum) * self.trainer.max_epochs

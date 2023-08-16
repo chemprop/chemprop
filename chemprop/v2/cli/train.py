@@ -16,11 +16,7 @@ from chemprop.v2.featurizers.utils import ReactionMode
 from chemprop.v2.models.loss import LossFunction, build_loss
 
 from chemprop.v2.cli.utils import Subcommand
-from chemprop.v2.cli.utils_ import (
-    build_data_from_files,
-    get_mpnn_cls,
-    make_dataset,
-)
+from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +28,7 @@ class TrainSubcommand(Subcommand):
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         return add_args(parser)
-    
+
     @classmethod
     def func(cls, args: Namespace):
         process_args(args)
@@ -51,7 +47,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         "--logdir",
         nargs="?",
         const="chemprop_logs",
-        help="runs will be logged to {logdir}/chemprop_{time}.log. If unspecified, will use 'output_dir'. If only the flag is given (i.e., '--logdir'), then will write to 'chemprop_logs'"
+        help="runs will be logged to {logdir}/chemprop_{time}.log. If unspecified, will use 'output_dir'. If only the flag is given (i.e., '--logdir'), then will write to 'chemprop_logs'",
     )
 
     mp_args = parser.add_argument_group("message passing")
@@ -111,7 +107,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         "-d",
         "--dataset-type",
         default="regression",
-        choices={l.split("-")[0] for l in LossFunction.registry.keys()}
+        choices={l.split("-")[0] for l in LossFunction.registry.keys()},
     )
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
@@ -189,9 +185,18 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument("-T", "--threshold", type=float, help="spectral threshold limit")
     train_args.add_argument(
-        "--metrics", nargs="+", choices=MetricRegistry.choices, help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing"
+        "--metrics",
+        nargs="+",
+        choices=MetricRegistry.choices,
+        help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
-    train_args.add_argument("-tw", "--task-weights", nargs="+", type=float, help="the weight to apply to an individual task in the overall loss")
+    train_args.add_argument(
+        "-tw",
+        "--task-weights",
+        nargs="+",
+        type=float,
+        help="the weight to apply to an individual task in the overall loss",
+    )
     train_args.add_argument("--warmup-epochs", type=int, default=2)
     train_args.add_argument("--num-lrs", type=int, default=1)
     train_args.add_argument("--init-lr", type=float, default=1e-4)
@@ -205,13 +210,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument("-k", "--num-folds", type=int, default=1)
     parser.add_argument("--save-splits", action="store_true")
 
-    parser.add_argument(
-        "-g",
-        "--n-gpu",
-        type=int,
-        default=1,
-        help="the number of GPU(s) to use",
-    )
+    parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
     parser.add_argument(
         "-c",
         "--n-cpu",
@@ -375,23 +374,23 @@ def main(args):
     tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
     checkpointing = ModelCheckpoint(
         args.output_dir / "chkpts",
-        '{epoch}-{val_loss:.2f}',
+        "{epoch}-{val_loss:.2f}",
         "val_loss",
         mode=monitor_mode,
         save_last=True,
     )
     early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
-    
+
     trainer = pl.Trainer(
         logger=tb_logger,
         enable_progress_bar=True,
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
         max_epochs=args.epochs,
-        callbacks=[checkpointing, early_stopping]
+        callbacks=[checkpointing, early_stopping],
     )
     trainer.fit(model, train_loader, val_loader)
-    
+
     if test_loader is not None:
         if args.dataset_type == "regression":
             model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)

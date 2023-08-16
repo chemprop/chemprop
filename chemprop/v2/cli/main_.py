@@ -27,14 +27,14 @@ def main():
     params = parser_train.get_items_for_config_file_output(parser_train._source_to_settings, args)
 
     args.fix(args)
-    
+
     start = datetime.now()
     s_now = start.strftime("%Y-%m-%dT%H:%M:%S.log")
     logging.basicConfig(
         filename=args.logdir / s_now,
         format="%(asctime)s - %(levelname)s - %(name)s : %(message)s",
         level=logging.DEBUG,
-        force=True
+        force=True,
     )
 
     logger.info(f"Starting at {start.ctime()}")

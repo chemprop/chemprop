@@ -49,7 +49,7 @@ class DatapointBase(ABC):
         pass
 
     def reset(self):
-        """Reset the molecule features and targets of each datapoint to its 
+        """Reset the molecule features and targets of each datapoint to its
         initial, unnormalized values."""
         self.x_v = self._x_v
         self.y = self._y
@@ -149,7 +149,7 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
         return np.hstack(features)
 
     def reset(self) -> None:
-        """Reset the {atom, bond, molecule} features and targets of each datapoint to its 
+        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
         initial, unnormalized values."""
         super().reset()
         self.V_d = self._V_d
@@ -203,7 +203,7 @@ class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
     """
 
     def __post_init__(self, features_generators: list[str] | None):
-        self.rct_mol = make_mol(self.rct_smi, self.explicit_h, self.add_h) 
+        self.rct_mol = make_mol(self.rct_smi, self.explicit_h, self.add_h)
         self.pdt_mol = make_mol(self.pdt_smi, self.explicit_h, self.add_h)
 
         super().__post_init__(features_generators)

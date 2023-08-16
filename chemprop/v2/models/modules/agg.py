@@ -63,13 +63,13 @@ class Aggregation(ABC, nn.Module):
     @abstractmethod
     def agg(self, H: Tensor) -> Tensor:
         """Aggregate the graph-level of a single graph into a vector
-        
+
         Parameters
         ----------
         H : Tensor
             A tensor of shape `V x d` containing the node-level representation of a graph with
             `V` nodes and node feature dimension `d`
-        
+
         Returns
         -------
         Tensor
@@ -104,6 +104,3 @@ class NormAggregation(Aggregation):
 
     def agg(self, H: Tensor) -> Tensor:
         return H.sum(self.dim) / self.norm
-
-
-

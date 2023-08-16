@@ -13,6 +13,7 @@ class FFNProto(Protocol):
     def forward(self, X: Tensor) -> Tensor:
         pass
 
+
 class FFN(nn.Module, FFNProto):
     pass
 

@@ -19,7 +19,7 @@ class FingerprintSubcommand(Subcommand):
         parser.add_argument(
             "--repr-type", type=RepresentationType.get, choices=RepresentationType.keys()
         )
-    
+
     @classmethod
     def func(cls, args: Namespace):
         pass

@@ -80,7 +80,8 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerProto):
     Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62, 2101-2110.
     https://doi.org/10.1021/acs.jcim.1c00975
     """
-    mode_: InitVar[str | ReactionMode] = ReactionMode.REAC_DIFF,
+
+    mode_: InitVar[str | ReactionMode] = ReactionMode.REAC_DIFF
 
     def __post_init__(self, mode_: str | ReactionMode):
         super().__post_init__()

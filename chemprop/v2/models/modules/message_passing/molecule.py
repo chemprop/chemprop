@@ -96,7 +96,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
             the hidden dimension during message passing
         bias: bool, deafault=False
             whether to add a learned bias to the matrices
-        
+
         Returns
         -------
         tuple[nn.Module, nn.Module, nn.Module]
@@ -137,7 +137,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
         return self.dropout(H_v)
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
-        H_v = self.W_o(torch.cat((V, M_v), 1))    # V x d_h
+        H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_h
         H_v = self.tau(H_v)
         H_v = self.dropout(H_v)
 
@@ -180,11 +180,11 @@ class BondMessageBlock(MessagePassingBlockBase):
         for _ in range(1, self.depth):
             if self.undirected:
                 H_e = (H_e + H_e[bmg.b2revb]) / 2
-            
+
             # MESSAGE
             H_v_k = H_e[bmg.a2b]
             M_e = H_v_k.sum(1)[bmg.b2a]
-            M_e = M_e - H_e[bmg.b2revb]     # subtract reverse bond message
+            M_e = M_e - H_e[bmg.b2revb]  # subtract reverse bond message
 
             # UPDATE
             H_e = self.W_h(M_e)  # E x d_h
@@ -204,11 +204,11 @@ class AtomMessageBlock(MessagePassingBlockBase):
         W_o = nn.Linear(d_v + d_h, d_h)
 
         return W_i, W_h, W_o
-    
+
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.V)  # V x d_h
         H_v = self.tau(H_0)
-        
+
         for _ in range(1, self.depth):
             if self.undirected:
                 H_v = (H_v + H_v[bmg.b2revb]) / 2
@@ -226,7 +226,7 @@ class AtomMessageBlock(MessagePassingBlockBase):
         M_v = M_v_k.sum(1)  # V x d_h
 
         return self.finalize(M_v, bmg.V, V_d)
-    
+
 
 def molecule_block(
     d_v: int = DEFAULT_ATOM_FDIM,

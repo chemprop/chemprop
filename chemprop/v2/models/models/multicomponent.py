@@ -49,7 +49,7 @@ class MulticomponentMPNN(MPNN):
                 "arg 'n_components' must be equal to `len(blocks)` if 'shared' is False! "
                 f"got: {n_components} and {len(blocks)}, respectively."
             )
-        
+
         self.n_components = n_components
         self.shared = shared
 
@@ -77,7 +77,6 @@ class MulticomponentMPNN(MPNN):
     @property
     def n_tasks(self) -> int:
         return self.ffn[-1].out_features // self.transform.n_targets
-    
 
     def fingerprint(
         self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], V_f: Tensor | None = None
@@ -119,7 +118,7 @@ class MulticomponentMPNN(MPNN):
             weights,
             self.task_weights,
             lt_targets=lt_targets,
-            gt_targets=gt_targets
+            gt_targets=gt_targets,
         )
 
         self.log("train/loss", l, prog_bar=True)
@@ -134,7 +133,7 @@ class MulticomponentMPNN(MPNN):
             metric(preds, targets, mask, lt_targets=lt_targets, gt_targets=gt_targets)
             for metric in self.metrics
         ]
-        
+
     def validation_step(self, batch, batch_idx: int = 0) -> tuple[list[Tensor], int]:
         preds, *_ = self.predict_step(batch, batch_idx)
         *_, targets, _, lt_targets, gt_targets = batch
@@ -153,9 +152,7 @@ class MulticomponentMPNN(MPNN):
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
         self.log_dict(metric2loss, on_epoch=True, batch_size=len(targets), prog_bar=True)
 
-    def predict_step(
-        self, batch, batch_idx: int, dataloader_idx: int = 0
-    ) -> tuple[Tensor, ...]:
+    def predict_step(self, batch, batch_idx: int, dataloader_idx: int = 0) -> tuple[Tensor, ...]:
         """Return the predictions of the input batch
 
         Parameters

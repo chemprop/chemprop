@@ -5,7 +5,7 @@ from typing import Any, Collection, Iterable
 class ReprMixin:
     def __repr__(self) -> str:
         items = self.get_params()
-        
+
         if len(items) > 0:
             keys, values = zip(*items)
             sig = inspect.signature(self.__class__)

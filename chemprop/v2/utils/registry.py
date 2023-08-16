@@ -19,7 +19,7 @@ class ClassRegistry(dict[Any, Type[T]]):
                 self[k] = cls
 
             return cls
-        
+
         return decorator
 
     __call__ = register
@@ -39,7 +39,7 @@ class Factory:
     def build(cls, clz_T: Type[T], *args, **kwargs) -> T:
         if not inspect.isclass(clz_T):
             raise TypeError(f"Expected a class type! got: {type(clz_T)}")
-        
+
         sig = inspect.signature(clz_T)
         kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters.keys()}
 

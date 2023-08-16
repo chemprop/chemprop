@@ -50,7 +50,7 @@ class BatchMolGraph:
     E : Tensor
         the bond feature matrix
     a2b : Tensor
-        a mapping from atom index to indices of incoming bonds 
+        a mapping from atom index to indices of incoming bonds
     b2a : Tensor
         a mapping from bond index to index of the originating atom
     b2revb : Tensor
