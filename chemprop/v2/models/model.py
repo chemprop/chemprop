@@ -6,11 +6,9 @@ from torch import nn, Tensor, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
+from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, ReadoutFFN
 from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric
-from chemprop.v2.models.modules.message_passing import MessagePassingBlock
-from chemprop.v2.models.modules.agg import Aggregation
-from chemprop.v2.models.modules.readout import ReadoutFFN
 from chemprop.v2.models.schedulers import NoamLR
 
 
@@ -34,8 +32,8 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassingBlock,
         agg: Aggregation,
         readout: ReadoutFFN,
-        metrics: Iterable[Metric],
-        task_weights: Tensor | None = None,
+        metrics: Iterable[Metric] | None = None,
+        w_t: Tensor | None = None,
         warmup_epochs: int = 2,
         num_lrs: int = 1,
         init_lr: float = 1e-4,
@@ -51,12 +49,9 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.readout = readout
 
-        self.metrics = metrics
-        if task_weights is None:
-            task_weights = torch.ones(self.n_tasks)
-        else:
-            task_weights = torch.tensor(task_weights)
-        self.w_t = nn.Parameter(task_weights.unsqueeze(0), False)
+        self.metrics = [*metrics, self.criterion] if metrics else [self.criterion]
+        w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
+        self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 
         self.warmup_epochs = warmup_epochs
         self.num_lrs = num_lrs
@@ -116,19 +111,19 @@ class MPNN(pl.LightningModule):
         return l
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self.evaluate_batch(batch)
+        losses = self._evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
         self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self.evaluate_batch(batch)
+        losses = self._evaluate_batch(batch)
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
-    def evaluate_batch(self, batch) -> list[Tensor]:
+    def _evaluate_batch(self, batch) -> list[Tensor]:
         bmg, V_d, X_f, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()

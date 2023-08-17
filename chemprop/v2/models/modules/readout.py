@@ -13,9 +13,12 @@ ReadoutRegistry = ClassRegistry()
 
 class ReadoutProto(Protocol):
     n_tasks: int
+    """the number of tasks `t` to predict for each input"""
     n_targets: int
+    """the number of targets `s` to predict for each task `t`"""
     criterion: loss.LossFunction
-
+    """the loss function to use for training"""
+    
     def forward(self, Z: Tensor) -> Tensor:
         pass
 

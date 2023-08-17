@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -274,16 +275,16 @@ class MulticlassDirichletLoss(LossFunction, DirichletMixin):
         return super().forward(preds, y_one_hot, mask)
 
 
-class SpectralMixin:
-    def __init__(self, threshold: float | None = None):
-        self.threshold = threshold
+@dataclass
+class ThresholdMixin:
+    threshold: float | None = None
 
     def get_params(self) -> list[tuple[str, float]]:
         return [("threshold", self.threshold)]
 
 
 @LossFunctionRegistry.register("sid")
-class SIDLoss(LossFunction, SpectralMixin):
+class SIDLoss(LossFunction, ThresholdMixin):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
@@ -297,7 +298,7 @@ class SIDLoss(LossFunction, SpectralMixin):
 
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
-class WassersteinLoss(LossFunction, SpectralMixin):
+class WassersteinLoss(LossFunction, ThresholdMixin):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
