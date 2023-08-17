@@ -43,7 +43,10 @@ class MPNN(pl.LightningModule):
         super().__init__()
 
         if message_passing.output_dim != readout.input_dim:
-            raise ValueError
+            raise ValueError(
+                f"Message passing output dimension ({message_passing.output_dim}) "
+                f"does not match readout input dimension ({readout.input_dim})!"
+            )
 
         self.message_passing = message_passing
         self.agg = agg
@@ -130,9 +133,9 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_f)
 
-        losses = [metric(preds, targets, mask, lt_mask, gt_mask) for metric in self.metrics]
-
-        return losses
+        return [
+            metric(preds, targets, mask, None, None, lt_mask, gt_mask) for metric in self.metrics
+        ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
@@ -147,12 +150,10 @@ class MPNN(pl.LightningModule):
         Tensor
             a tensor of varying shape depending on the task type:
 
-            * regression/binary classification: `n x (t * s)`, where `n` is the number of input
-            molecules/reactions, `t` is the number of tasks, and `s` is the number of targets per
-            task. The final dimension is flattened, so that the targets for each task are grouped.
-            I.e., the first `t` elements are the first target for each task, the second `t` elements
+            * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets per task. The final dimension is flattened, so that the targets for each task are grouped. I.e., the first ``t`` elements are the first target for each task, the second ``t`` elements
             the second target, etc.
-            * multiclass classification: `n x t x c`, where "..." and `c` is the number of classes
+            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
         bmg, X_vd, X_f, *_ = batch
 
