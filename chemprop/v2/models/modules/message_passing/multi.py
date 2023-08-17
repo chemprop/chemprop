@@ -51,9 +51,9 @@ class MulticomponentMessagePassing(nn.Module):
 
     def __len__(self) -> int:
         return len(self.blocks)
-    
+
     @property
-    def output_dim(self) -> int:        
+    def output_dim(self) -> int:
         d_o = sum(block.output_dim for block in self.blocks)
 
         return d_o if not self.shared else self.blocks[0].output_dim

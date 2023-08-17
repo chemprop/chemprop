@@ -3,6 +3,7 @@ from typing import Any, Sequence
 
 from chemprop.v2.utils import ClassRegistry
 
+
 def RegistryAction(cls: ClassRegistry):
     class RegistryAction_(Action):
         def __init__(self, option_strings, dest, default=None, choices=None, **kwargs):

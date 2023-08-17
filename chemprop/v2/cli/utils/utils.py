@@ -40,19 +40,13 @@ def validate_loss_function(
     match readout_ffn:
         case readout.RegressionFFN:
             if criterion not in (loss.MSELoss, loss.BoundedMSELoss):
-                raise ValueError(
-                    f"Expected a regression loss function! got: {criterion.__name__}"
-                )
+                raise ValueError(f"Expected a regression loss function! got: {criterion.__name__}")
         case readout.MveFFN:
             if criterion is not loss.MVELoss:
-                raise ValueError(
-                    f"Expected a MVE loss function! got: {criterion.__name__}"
-                )
+                raise ValueError(f"Expected a MVE loss function! got: {criterion.__name__}")
         case readout.EvidentialFFN:
             if criterion is not loss.EvidentialLoss:
-                raise ValueError(
-                    f"Expected an evidential loss function! got: {criterion.__name__}"
-                )
+                raise ValueError(f"Expected an evidential loss function! got: {criterion.__name__}")
         case readout.BinaryClassificationFFN:
             if criterion not in (loss.BCELoss, loss.BinaryMCCLoss):
                 raise ValueError(
@@ -75,9 +69,7 @@ def validate_loss_function(
                 )
         case readout.SpectralFFN:
             if loss not in (loss.SIDLoss, loss.WassersteinLoss):
-                raise ValueError(
-                    f"Expected a spectral loss function! got: {criterion.__name__}"
-                )
+                raise ValueError(f"Expected a spectral loss function! got: {criterion.__name__}")
         case _:
             raise ValueError(
                 f"Unknown readout function! got: {readout_ffn}. "

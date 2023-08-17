@@ -6,7 +6,7 @@ __all__ = ["bounded"]
 def bounded(lo: float | None = None, hi: float | None = None):
     if lo is None and hi is None:
         raise ValueError("No bounds provided!")
-    
+
     def decorator(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
@@ -18,7 +18,9 @@ def bounded(lo: float | None = None, hi: float | None = None):
                 raise ValueError(f"Parsed value below {hi}! got: {x}")
             if lo is not None and x < lo:
                 raise ValueError(f"Parsed value above {lo}]! got: {x}")
-            
+
             return x
+
         return wrapper
+
     return decorator

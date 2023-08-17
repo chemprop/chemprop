@@ -18,7 +18,7 @@ class ReadoutProto(Protocol):
     """the number of targets `s` to predict for each task `t`"""
     criterion: loss.LossFunction
     """the loss function to use for training"""
-    
+
     def forward(self, Z: Tensor) -> Tensor:
         pass
 
@@ -205,7 +205,7 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _default_criterion = loss.MulticlassDirichletLoss()
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(Y.shape[0], -1, self.n_classes)
+        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
 
         Y = Y.softmax(-1)
         Y = F.softplus(Y) + 1
@@ -216,7 +216,7 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
         return torch.cat((Y, alpha), 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(Y.shape[0], -1, self.n_classes)
+        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
 
         return F.softplus(Y) + 1
 
