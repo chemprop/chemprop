@@ -13,10 +13,15 @@ from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry, modules
 from chemprop.v2.featurizers.utils import ReactionMode
-from chemprop.v2.models.loss import LossFunction, build_loss
+from chemprop.v2.models.loss import LossFunction, LossFunctionRegistry
+from chemprop.v2.models.model import MPNN
+from chemprop.v2.models.modules.agg import AggregationRegistry
 
-from chemprop.v2.cli.utils import Subcommand
+from chemprop.v2.cli.utils import Subcommand, RegistryAction
 from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
+from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +81,8 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         "--aggregation",
         "--agg",
         default="mean",
-        choices=modules.ReadoutFactory.choices,
-        help="aggregation mode to use during graph readout",
+        choices=RegistryAction(AggregationRegistry),
+        help="the aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
         "--norm", type=float, default=100, help="normalization factor to use for 'norm' aggregation"
@@ -96,18 +101,13 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
 
     exta_mpnn_args = parser.add_argument_group("extra MPNN args")
     exta_mpnn_args.add_argument(
-        "--multiclass-num-classes",
-        type=int,
-        help="the number of classes to predict in multiclass settings",
+        "--num-classes", type=int, help="the number of classes to predict in multiclass settings"
     )
     exta_mpnn_args.add_argument("--spectral-activation", default="exp", choices=["softplus", "exp"])
 
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
-        "-d",
-        "--dataset-type",
-        default="regression",
-        choices={l.split("-")[0] for l in LossFunction.registry.keys()},
+        "-t", "--task", default="regression", action=RegistryAction(ReadoutRegistry)
     )
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
@@ -172,11 +172,9 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument("--add-h", action="store_true")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument("-b", "--batch-size", type=int, default=50)
+    train_args.add_argument("-b", "--batch-size", type=int, default=64)
     train_args.add_argument("--target-weights", type=float, nargs="+")
-    train_args.add_argument(
-        "-l", "--loss-function", choices={l.split("-")[1] for l in LossFunction.registry.keys()}
-    )
+    train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
     train_args.add_argument(
         "--v-kl", type=float, default=0.2, help="evidential/dirichlet regularization term weight"
     )
@@ -187,7 +185,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--metrics",
         nargs="+",
-        choices=MetricRegistry.choices,
+        choices=RegistryAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
     train_args.add_argument(
@@ -302,7 +300,47 @@ def main(args):
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
     val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
 
-    if args.dataset_type == "regression":
+    mp_cls = BondMessageBlock if bond_messages else AtomMessageBlock
+    mp_block = mp_cls(
+        train_dset.featurizer.atom_fdim,
+        train_dset.featurizer.bond_fdim,
+        args.message_hidden_dim,
+        args.message_bias,
+        args.depth,
+        args.undirected,
+        args.dropout,
+        args.activation,
+    )
+    agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.norm)
+    readout_cls = ReadoutRegistry[args.readout]
+
+    if args.loss_function is not None:
+        criterion = Factory.build(
+            LossFunctionRegistry[args.loss_function],
+            v_kl=args.v_kl,
+            threshold=args.threshold,
+            eps=args.eps,
+        )
+    else:
+        logger.info(
+            f"No loss function specified, will use class default: {readout_cls._default_criterion}"
+        )
+        criterion = readout_cls._default_criterion
+
+    readout_ffn = Factory.build(
+        readout_cls,
+        input_dim=mp_block.output_dim,
+        n_tasks=args.n_tasks,
+        hidden_dim=args.ffn_hidden_dim,
+        n_layers=args.ffn_num_layers,
+        dropout=args.dropout,
+        activation=args.activation,
+        criterion=criterion,
+        num_classes=args.num_classes,
+        spectral_activation=args.spectral_activation,
+    )
+
+    if isinstance(readout_ffn, RegressionFFN):
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
         logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
@@ -317,54 +355,17 @@ def main(args):
     else:
         test_loader = None
 
-    mp_kwargs = dict(
-        d_h=args.message_hidden_dim,
-        bias=args.message_bias,
-        depth=args.depth,
-        undirected=args.undirected,
-        dropout=args.dropout,
-        activation=args.activation,
-        aggregation=args.aggregation,
-        norm=args.norm,
-    )
-    mp_block = modules.molecule_block(*train_dset.featurizer.shape, bond_messages, **mp_kwargs)
-
-    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
-
-    if args.loss_function is None:
-        logger.info(f"Using default loss: {mpnn_cls._DEFAULT_CRITERION}")
-        criterion = mpnn_cls._DEFAULT_CRITERION
-    else:
-        criterion = build_loss(
-            args.dataset_type,
-            args.loss_function,
-            v_kl=args.v_kl,
-            threshold=args.threshold,
-            eps=args.eps,
-        )
-
-    extra_mpnn_kwargs = dict()
-    if args.dataset_type == "multiclass":
-        extra_mpnn_kwargs["n_classes"] = args.multiclass_num_classes
-    elif args.dataset_type == "spectral":
-        extra_mpnn_kwargs["spectral_activation"] = args.spectral_activation
-
-    model = mpnn_cls(
+    model = MPNN(
         mp_block,
-        n_tasks,
-        args.ffn_hidden_dim,
-        args.ffn_num_layers,
-        args.dropout,
-        args.activation,
-        criterion,
-        args.metrics,
+        agg,
+        readout_ffn,
+        None,
         args.task_weights,
         args.warmup_epochs,
         args.num_lrs,
         args.init_lr,
         args.max_lr,
         args.final_lr,
-        **extra_mpnn_kwargs,
     )
     logger.info(model)
 

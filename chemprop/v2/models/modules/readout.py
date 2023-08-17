@@ -6,6 +6,9 @@ from torch.nn import functional as F
 
 from chemprop.v2.models import loss
 from chemprop.v2.models.modules.ffn import FFN, SimpleFFN
+from chemprop.v2.utils import ClassRegistry
+
+ReadoutRegistry = ClassRegistry()
 
 
 class ReadoutProto(Protocol):
@@ -52,6 +55,7 @@ class ReadoutFFNBase(SimpleFFN, ReadoutFFN):
         self.__criterion = criterion or self._default_criterion
 
 
+@ReadoutRegistry.register("regression")
 class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.MSELoss()
@@ -81,6 +85,7 @@ class RegressionFFN(ReadoutFFNBase):
         return super().forward(Z)
 
 
+@ReadoutRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
     _default_criterion = loss.MVELoss()
@@ -102,6 +107,7 @@ class MveFFN(RegressionFFN):
         return torch.cat((mean, var), 1)
 
 
+@ReadoutRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _default_criterion = loss.EvidentialLoss()
@@ -130,6 +136,7 @@ class BinaryClassificationFFNBase(ReadoutFFNBase):
     pass
 
 
+@ReadoutRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = loss.BCELoss()
@@ -143,6 +150,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
         return super().forward(Z)
 
 
+@ReadoutRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = loss.BinaryDirichletLoss()
@@ -159,6 +167,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
         F.softplus(Y) + 1
 
 
+@ReadoutRegistry.register("multiclass")
 class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.CrossEntropyLoss()
@@ -188,6 +197,7 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
 
 
+@ReadoutRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _default_criterion = loss.MulticlassDirichletLoss()
 
@@ -213,6 +223,7 @@ class Exp(nn.Module):
         return X.exp()
 
 
+@ReadoutRegistry.register("spectral")
 class SpectralFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.SIDLoss()

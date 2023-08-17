@@ -4,6 +4,5 @@ from .molecule import (
     MolecularInput,
     AtomMessageBlock,
     BondMessageBlock,
-    molecule_block,
 )
-from .multi import MulticomponentMessagePassing, composite_block
+from .multi import MulticomponentMessagePassing
