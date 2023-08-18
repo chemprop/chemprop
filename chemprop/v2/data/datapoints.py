@@ -19,24 +19,24 @@ class DatapointMixin:
     weight: float = 1
     gt_mask: np.ndarray | None = None
     lt_mask: np.ndarray | None = None
-    x_v: np.ndarray | None = None
+    x_f: np.ndarray | None = None
     features_generators: InitVar[list[str] | None] = None
     x_phase: list[float] = None
     explicit_h: bool = False
     add_h: bool = False
 
     def __post_init__(self, fgs: list[str] | None):
-        if self.x_v is not None and fgs is not None:
+        if self.x_f is not None and fgs is not None:
             raise ValueError("Cannot provide both loaded features and features generators!")
 
         if fgs is not None:
-            self.x_v = self.generate_features(fgs)
+            self.x_f = self.generate_features(fgs)
 
-        if self.x_v is not None:
+        if self.x_f is not None:
             NAN_TOKEN = 0
-            self.x_v[np.isnan(self.x_v)] = NAN_TOKEN
+            self.x_f[np.isnan(self.x_f)] = NAN_TOKEN
 
-        self._x_v = self.x_v
+        self._x_v = self.x_f
         self._y = self.y
 
     @property

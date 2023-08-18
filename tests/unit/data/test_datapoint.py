@@ -82,4 +82,4 @@ def test_replace_token(smi, targets, features_with_nans):
 
     d = MoleculeDatapoint(smi, targets, features=features_with_nans)
 
-    assert not np.isnan(d.x_v).any()
+    assert not np.isnan(d.x_f).any()

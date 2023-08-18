@@ -96,7 +96,7 @@ def test_num_tasks(dataset, targets):
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert dataset.X_v is None
+    assert dataset.X_f is None
     assert dataset.X_phase is None
     assert dataset.V_fs is None
     assert dataset.E_fs is None

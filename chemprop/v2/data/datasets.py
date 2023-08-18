@@ -20,7 +20,7 @@ from chemprop.v2.featurizers import (
 class Datum(NamedTuple):
     mg: MolGraph
     V_d: np.ndarray | None
-    x_v: np.ndarray | None
+    x_f: np.ndarray | None
     y: np.ndarray | None
     weight: float
     lt_mask: np.ndarray | None
@@ -33,8 +33,8 @@ class MolGraphDatasetMixin:
 
     @cached_property
     def _Y(self) -> np.ndarray:
+        """the raw targets of the dataset"""
         return np.array([d.y for d in self.data])
-        return Y
 
     @property
     def Y(self) -> np.ndarray:
@@ -47,19 +47,19 @@ class MolGraphDatasetMixin:
         self.__Y = Y
 
     @cached_property
-    def _X_v(self) -> np.ndarray:
-        return np.array([d.x_v for d in self.data])
-        # return None if (X_v == None).all() and len(self) > 0 else X_v
+    def _X_f(self) -> np.ndarray:
+        """the raw molecule features of the dataset"""
+        return np.array([d.x_f for d in self.data])
 
     @property
-    def X_v(self) -> np.ndarray:
-        return self.__X_v
+    def X_f(self) -> np.ndarray:
+        return self.__X_f
 
-    @X_v.setter
-    def X_v(self, X_v: np.ndarray):
-        self._validate_attribute(X_v, "molecule features")
+    @X_f.setter
+    def X_f(self, X_f: np.ndarray):
+        self._validate_attribute(X_f, "molecule features")
 
-        self.__X_v = X_v
+        self.__X_f = X_f
 
     @property
     def weights(self) -> np.ndarray:
@@ -68,12 +68,10 @@ class MolGraphDatasetMixin:
     @property
     def gt_mask(self) -> np.ndarray:
         return np.array([d.gt_mask for d in self.data])
-        # return None if (gt_mask == None).all() and len(self) > 0 else gt_mask
 
     @property
     def lt_mask(self) -> np.ndarray:
         return np.array([d.lt_mask for d in self.data])
-        # return None if (lt_mask == None).all() and len(self) > 0 else lt_mask
 
     @property
     def t(self) -> int | None:
@@ -82,8 +80,8 @@ class MolGraphDatasetMixin:
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         """Normalizes the targets of the dataset using a :obj:`StandardScaler`
 
-        The StandardScaler subtracts the mean and divides by the standard deviation for each task
-        independently. NOTE: This should only be used for regression datasets.
+        The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
+        each task independently. NOTE: This should only be used for regression datasets.
 
         Returns
         -------
@@ -96,13 +94,13 @@ class MolGraphDatasetMixin:
         return scaler
 
     def normalize_inputs(
-        self, key: str | None = "X_v", scaler: StandardScaler | None = None
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_v", None}
+        VALID_KEYS = {"X_f", None}
         if key not in VALID_KEYS:
             raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
-        X = self.X_v
+        X = self.X_f
 
         if scaler is None:
             scaler = StandardScaler().fit(X)
@@ -113,7 +111,7 @@ class MolGraphDatasetMixin:
         """Reset the {atom, bond, molecule} features and targets of each datapoint to its
         initial, unnormalized values."""
         self.__Y = self._Y
-        self.__X_v = self._X_v
+        self.__X_f = self._X_f
 
     def _validate_attribute(self, X: np.ndarray, label: str):
         if not len(self.data) == len(X):
@@ -144,7 +142,7 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
         d = self.data[idx]
         mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
 
-        return Datum(mg, self.V_ds[idx], self.X_v[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, self.V_ds[idx], self.X_f[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:
@@ -157,7 +155,6 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     @property
     def _V_fs(self) -> list[np.ndarray]:
         return np.array([d.V_f for d in self.data])
-        # return None if (V_fs == None).all() and len(self) > 0 else V_fs
 
     @property
     def V_fs(self) -> list[np.ndarray]:
@@ -172,7 +169,6 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     @property
     def _E_fs(self) -> list[np.ndarray]:
         return np.array([d.E_f for d in self.data])
-        # return None if (E_fs == None).all() and len(self) > 0 else E_fs
 
     @property
     def E_fs(self) -> list[np.ndarray]:
@@ -187,7 +183,6 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     @property
     def _V_ds(self) -> list[np.ndarray]:
         return np.array([d.V_d for d in self.data])
-        # return None if (V_ds == None).all() and len(self) > 0 else V_ds
 
     @property
     def V_ds(self) -> list[np.ndarray]:
@@ -212,15 +207,13 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
         return None if self.V_ds is None else self.V_ds[0].shape[1]
 
     def normalize_inputs(
-        self, key: str | None = "X_v", scaler: StandardScaler | None = None
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_v", "V_f", "E_f", "V_d", None}
-        if key not in VALID_KEYS:
-            raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+        VALID_KEYS = {"X_f", "V_f", "E_f", "V_d", None}
 
         match key:
-            case "X_v":
-                X = self.X_v
+            case "X_f":
+                X = self.X_f
             case "V_f":
                 X = None if self.V_fs is None else np.concatenate(self.V_fs, axis=0)
             case "E_f":
@@ -230,7 +223,7 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
             case None:
                 return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
             case _:
-                raise RuntimeError("unreachable code reached!")
+                ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
         if X is None:
             return scaler
@@ -239,8 +232,8 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
             scaler = StandardScaler().fit(X)
 
         match key:
-            case "X_v":
-                self.X_v = scaler.transform(X)
+            case "X_f":
+                self.X_f = scaler.transform(X)
             case "V_f":
                 self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs]
             case "E_f":
@@ -272,7 +265,7 @@ class ReactionDataset(Dataset, MolGraphDatasetMixin):
         d = self.data[idx]
         mg = self.featurizer(((d.rct_mol, d.pdt_mol)), None, None)
 
-        return Datum(mg, None, d.x_v, d.y, d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:

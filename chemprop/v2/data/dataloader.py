@@ -16,11 +16,11 @@ MulticomponentTrainingBatch = tuple[
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, X_vds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
+    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
-        None if X_vds[0] is None else torch.from_numpy(np.concatenate(X_vds, axis=0)).float(),
+        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
         None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
         None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
         torch.tensor(weights).unsqueeze(1),
@@ -79,45 +79,45 @@ class MolGraphDataLoader(DataLoader):
             collate_fn=collate_batch,
         )
 
-    @property
-    def Y(self) -> np.ndarray:
-        """the targets associated with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def Y(self) -> np.ndarray:
+    #     """the targets associated with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        return np.array([self.dset.data[i].y for i in self.sampler])
+    #     return np.array([self.dset.data[i].y for i in self.sampler])
 
-    @property
-    def gt_mask(self) -> np.ndarray | None:
-        """whether each target is an inequality rather than a value target associated
-        with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def gt_mask(self) -> np.ndarray | None:
+    #     """whether each target is an inequality rather than a value target associated
+    #     with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        if self.dset.data[0].gt_mask is None:
-            return None
+    #     if self.dset.data[0].gt_mask is None:
+    #         return None
 
-        return np.array([self.dset.data[i].gt_mask for i in self.sampler])
+    #     return np.array([self.dset.data[i].gt_mask for i in self.sampler])
 
-    @property
-    def lt_mask(self) -> np.ndarray | None:
-        """for whether each target is an inequality rather than a value target associated
-        with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def lt_mask(self) -> np.ndarray | None:
+    #     """for whether each target is an inequality rather than a value target associated
+    #     with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        if self.dset.data[0].lt_mask is None:
-            return None
+    #     if self.dset.data[0].lt_mask is None:
+    #         return None
 
-        return np.array([self.dset.data[i].lt_mask for i in self.sampler])
+    #     return np.array([self.dset.data[i].lt_mask for i in self.sampler])
 
-    @property
-    def iter_size(self) -> int:
-        """the number of data points included in each full iteration of this dataloader."""
-        return len(self.sampler)
+    # @property
+    # def iter_size(self) -> int:
+    #     """the number of data points included in each full iteration of this dataloader."""
+    #     return len(self.sampler)
