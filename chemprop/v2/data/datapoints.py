@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import InitVar, dataclass, field
 
@@ -12,8 +11,8 @@ from chemprop.featurizers import get_features_generator
 
 
 @dataclass
-class DatapointBase(ABC):
-    """A `DatapointBase` is the base datapoint for both molecule- and reaction-type data"""
+class DatapointMixin:
+    """A :class:`DatapointMixin` is the base datapoint for both molecule- and reaction-type data"""
 
     y: np.ndarray | None = None
     row: OrderedDict = None
@@ -44,16 +43,6 @@ class DatapointBase(ABC):
     def t(self) -> int | None:
         return len(self.y) if self.y is not None else None
 
-    @abstractmethod
-    def generate_features(self, features_generators: list[str]) -> np.ndarray:
-        pass
-
-    def reset(self):
-        """Reset the molecule features and targets of each datapoint to its
-        initial, unnormalized values."""
-        self.x_v = self._x_v
-        self.y = self._y
-
 
 @dataclass
 class MoleculeDatapointMixin:
@@ -62,7 +51,7 @@ class MoleculeDatapointMixin:
 
 
 @dataclass
-class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
+class MoleculeDatapoint(DatapointMixin, MoleculeDatapointMixin):
     """A `MoleculeDatapoint` contains a single molecule and its associated features and targets.
 
     Parameters
@@ -148,14 +137,6 @@ class MoleculeDatapoint(DatapointBase, MoleculeDatapointMixin):
 
         return np.hstack(features)
 
-    def reset(self) -> None:
-        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
-        initial, unnormalized values."""
-        super().reset()
-        self.V_d = self._V_d
-        self.E_f = self._E_f
-        self.V_f = self._V_f
-
 
 @dataclass
 class ReactionDatapointMixin:
@@ -166,7 +147,7 @@ class ReactionDatapointMixin:
 
 
 @dataclass
-class ReactionDatapoint(DatapointBase, ReactionDatapointMixin):
+class ReactionDatapoint(DatapointMixin, ReactionDatapointMixin):
     """
     Parameters
     ----------
@@ -232,7 +213,7 @@ class MulticomponentDatapointMixin:
 
 
 @dataclass
-class MulticomponentDatapoint(DatapointBase, MulticomponentDatapointMixin):
+class MulticomponentDatapoint(DatapointMixin, MulticomponentDatapointMixin):
     def __post_init__(self, fgs: list[str] | None):
         self.mols = [make_mol(smi, self.explicit_h, self.add_h) for smi in self.smis]
         super().__post_init__(fgs)

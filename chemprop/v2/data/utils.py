@@ -4,11 +4,11 @@ from typing import Sequence
 import numpy as np
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
-from chemprop.v2.data.datapoints import DatapointBase
+from chemprop.v2.data.datapoints import DatapointMixin
 
 
 def split_data(
-    data: Sequence[DatapointBase],
+    data: Sequence[DatapointMixin],
     split: str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     k: int = 5,
