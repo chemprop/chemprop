@@ -4,12 +4,7 @@ from typing import Iterable, Sequence
 from torch import Tensor, nn
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
-from chemprop.v2.models.modules.message_passing.molecule import (
-    MessagePassingBlockBase,
-    MolecularInput,
-)
-
-ReactionInput = Iterable[MolecularInput]
+from chemprop.v2.models.modules.message_passing.molecule import MessagePassingBlockBase
 
 
 class MulticomponentMessagePassing(nn.Module):

@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from dataclasses import InitVar, dataclass, field
 from typing import NamedTuple, Sequence
 
 import numpy as np
@@ -25,45 +24,50 @@ class MolGraph(NamedTuple):
     b2revb: np.ndarray
     """A list of length `E` that maps from a bond index to the index of the reverse bond."""
     a2a: list[int] | None
+    """a mapping from atom index to the indices of connected atoms"""
     b2b: np.ndarray | None
+    """a mapping from bond index to the indices of connected bonds"""
 
 
+@dataclass
 class BatchMolGraph:
-    """A `BatchMolGraph` represents a batch of individual `MolGraph`s.
+    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
 
     It has all the attributes of a `MolGraph` with the addition of `a_scope` and `b_scope`. These
     define the respective atom- and bond-scope of each individual `MolGraph` within the
-    `BatchMolGraph`. This class is intended for use with data loading, so it uses `Tensors`s to
-    store data
+    `BatchMolGraph`. This class is intended for use with data loading, so it uses
+    :obj:`~torch.Tensor`s to store data
 
     NOTE: the `BatchMolGraph` does not currently possess a `b2b` attribute, so it is not a strict
     subclass of a `MolGraph`
-
-    Attributes
-    ----------
-    n_atoms : int
-        the number of atoms in the batched graph
-    n_bonds : int
-        the number of bonds in the batched graph
-    V : Tensor
-        the atom feature matrix
-    E : Tensor
-        the bond feature matrix
-    a2b : Tensor
-        a mapping from atom index to indices of incoming bonds
-    b2a : Tensor
-        a mapping from bond index to index of the originating atom
-    b2revb : Tensor
-        A mapping from bond index to the index of the reverse bond.
-    a2a : Tensor
-        a mapping from atom index to the indices of connected atoms
-    a_scope : list[int]
-        the number of atoms for each molecule in the batch
-    b_scope : list[int]
-        the number of bonds for each molecule in the batch
     """
 
-    def __init__(self, mgs: Sequence[MolGraph]):
+    mgs: InitVar[Sequence[MolGraph]]
+    """A list of individual :class:`MolGraph`s to be batched together"""
+    n_atoms: int = field(init=False)
+    """the number of atoms in the batched graph"""
+    n_bonds: int = field(init=False)
+    """the number of bonds in the batched graph"""
+    V: torch.Tensor = field(init=False)
+    """the atom feature matrix"""
+    E: torch.Tensor = field(init=False)
+    """the bond feature matrix"""
+    a2b: torch.Tensor = field(init=False)
+    """a mapping from atom index to indices of incoming bonds"""
+    b2a: torch.Tensor = field(init=False)
+    """a mapping from bond index to index of the originating atom"""
+    b2revb: torch.Tensor = field(init=False)
+    """A mapping from bond index to the index of the reverse bond."""
+    a2a: torch.Tensor | None = field(init=False)
+    """a mapping from atom index to the indices of connected atoms"""
+    b2b: torch.Tensor | None = field(init=False)
+    """a mapping from bond index to the indices of connected bonds"""
+    a_scope: list[int] = field(init=False)
+    """the number of atoms for each molecule in the batch"""
+    b_scope: list[int] = field(init=False)
+    """the number of bonds for each molecule in the batch"""
+
+    def __post_init__(self, mgs: Sequence[MolGraph]):
         self.n_atoms = 1
         self.n_bonds = 1
         self.a_scope = []

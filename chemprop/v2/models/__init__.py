@@ -1,7 +1,6 @@
 from .modules import (
     MessagePassingBlock,
     MessagePassingBlockBase,
-    MolecularInput,
     MulticomponentMessagePassing,
     AtomMessageBlock,
     BondMessageBlock,

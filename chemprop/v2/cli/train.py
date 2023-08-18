@@ -11,14 +11,14 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MetricRegistry, modules
+from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.utils import ReactionMode
-from chemprop.v2.models.loss import LossFunction, LossFunctionRegistry
+from chemprop.v2.models.loss import LossFunctionRegistry
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
-from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
+from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory

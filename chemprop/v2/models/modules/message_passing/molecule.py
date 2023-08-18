@@ -5,13 +5,11 @@ from abc import abstractmethod
 import torch
 from torch import Tensor, nn
 
-from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM
+from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
 from chemprop.v2.models.utils import get_activation_function
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
-
-MolecularInput = tuple[BatchMolGraph, Tensor | None]
 
 
 class MessagePassingBlockBase(MessagePassingBlock):
@@ -53,7 +51,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
         d_e: int = DEFAULT_BOND_FDIM,
-        d_h: int = 300,
+        d_h: int = DEFAULT_HIDDEN_DIM,
         bias: bool = False,
         depth: int = 3,
         undirected: bool = False,
@@ -182,8 +180,8 @@ class BondMessageBlock(MessagePassingBlockBase):
                 H_e = (H_e + H_e[bmg.b2revb]) / 2
 
             # MESSAGE
-            H_v_k = H_e[bmg.a2b]
-            M_e = H_v_k.sum(1)[bmg.b2a]
+            M_e_k = H_e[bmg.a2b]    # E x n_bonds x d_h
+            M_e = M_e_k.sum(1)[bmg.b2a] # E x d_h
             M_e = M_e - H_e[bmg.b2revb]  # subtract reverse bond message
 
             # UPDATE
