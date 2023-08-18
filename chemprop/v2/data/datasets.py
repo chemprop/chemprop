@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import NamedTuple
 
 import numpy as np
@@ -30,34 +31,32 @@ class MolGraphDatasetMixin:
     def __len__(self) -> int:
         return len(self.data)
 
-    @property
-    def _Y(self) -> np.ndarray | None:
-        Y = np.array([d.y for d in self.data])
-
-        return None if (Y == None).all() and len(self) > 0 else Y
+    @cached_property
+    def _Y(self) -> np.ndarray:
+        return np.array([d.y for d in self.data])
+        return Y
 
     @property
     def Y(self) -> np.ndarray:
         return self.__Y
 
     @Y.setter
-    def Y(self, Y: np.ndarray | None) -> None:
+    def Y(self, Y: np.ndarray):
         self._validate_attribute(Y, "targets")
 
         self.__Y = Y
 
-    @property
-    def _X_v(self) -> np.ndarray | None:
-        X_v = np.array([d.x_v for d in self.data])
+    @cached_property
+    def _X_v(self) -> np.ndarray:
+        return np.array([d.x_v for d in self.data])
+        # return None if (X_v == None).all() and len(self) > 0 else X_v
 
-        return None if (X_v == None).all() and len(self) > 0 else X_v
-
     @property
-    def X_v(self) -> np.ndarray | None:
+    def X_v(self) -> np.ndarray:
         return self.__X_v
 
     @X_v.setter
-    def X_v(self, X_v: np.ndarray | None):
+    def X_v(self, X_v: np.ndarray):
         self._validate_attribute(X_v, "molecule features")
 
         self.__X_v = X_v
@@ -67,16 +66,14 @@ class MolGraphDatasetMixin:
         return np.array([d.weight for d in self.data])
 
     @property
-    def gt_mask(self) -> np.ndarray | None:
-        gt_mask = np.array([d.gt_mask for d in self.data])
-
-        return None if (gt_mask == None).all() and len(self) > 0 else gt_mask
+    def gt_mask(self) -> np.ndarray:
+        return np.array([d.gt_mask for d in self.data])
+        # return None if (gt_mask == None).all() and len(self) > 0 else gt_mask
 
     @property
-    def lt_mask(self) -> np.ndarray | None:
-        lt_mask = np.array([d.lt_mask for d in self.data])
-
-        return None if (lt_mask == None).all() and len(self) > 0 else lt_mask
+    def lt_mask(self) -> np.ndarray:
+        return np.array([d.lt_mask for d in self.data])
+        # return None if (lt_mask == None).all() and len(self) > 0 else lt_mask
 
     @property
     def t(self) -> int | None:
@@ -118,8 +115,8 @@ class MolGraphDatasetMixin:
         self.__Y = self._Y
         self.__X_v = self._X_v
 
-    def _validate_attribute(self, X: np.ndarray | None, label: str):
-        if not len(self.data) == len(X) and X is not None:
+    def _validate_attribute(self, X: np.ndarray, label: str):
+        if not len(self.data) == len(X):
             raise ValueError(
                 f"number of molecules ({len(self.data)}) and {label} ({len(X)}) "
                 "must have same length!"
@@ -145,9 +142,9 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(d.mol, d.V_f, d.E_f)
+        mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
 
-        return Datum(mg, d.V_d, d.x_v, d.y, d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, self.V_ds[idx], self.X_v[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:
@@ -158,49 +155,42 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
         return [d.mol for d in self.data]
 
     @property
-    def number_of_molecules(self) -> int:
-        return 1
+    def _V_fs(self) -> list[np.ndarray]:
+        return np.array([d.V_f for d in self.data])
+        # return None if (V_fs == None).all() and len(self) > 0 else V_fs
 
     @property
-    def _V_fs(self) -> list[np.ndarray] | None:
-        V_fs = np.array([d.V_f for d in self.data])
-
-        return None if (V_fs == None).all() and len(self) > 0 else V_fs
-
-    @property
-    def V_fs(self) -> list[np.ndarray] | None:
+    def V_fs(self) -> list[np.ndarray]:
         return self.__V_fs
 
     @V_fs.setter
-    def V_fs(self, V_fs: list[np.ndarray] | None):
+    def V_fs(self, V_fs: list[np.ndarray]):
         self._validate_attribute(V_fs, "atom features")
 
         self.__V_fs = V_fs
 
     @property
-    def _E_fs(self) -> list[np.ndarray] | None:
-        E_fs = np.array([d.E_f for d in self.data])
-
-        return None if (E_fs == None).all() and len(self) > 0 else E_fs
+    def _E_fs(self) -> list[np.ndarray]:
+        return np.array([d.E_f for d in self.data])
+        # return None if (E_fs == None).all() and len(self) > 0 else E_fs
 
     @property
-    def E_fs(self) -> list[np.ndarray] | None:
+    def E_fs(self) -> list[np.ndarray]:
         return self.__E_fs
 
     @E_fs.setter
-    def E_fs(self, E_fs: list[np.ndarray] | None):
+    def E_fs(self, E_fs: list[np.ndarray]):
         self._validate_attribute(E_fs, "bond features")
 
         self.__E_fs = E_fs
 
     @property
-    def _V_ds(self) -> list[np.ndarray] | None:
-        V_ds = np.array([d.V_d for d in self.data])
-
-        return None if (V_ds == None).all() and len(self) > 0 else V_ds
+    def _V_ds(self) -> list[np.ndarray]:
+        return np.array([d.V_d for d in self.data])
+        # return None if (V_ds == None).all() and len(self) > 0 else V_ds
 
     @property
-    def V_ds(self) -> list[np.ndarray] | None:
+    def V_ds(self) -> list[np.ndarray]:
         return self.__V_ds
 
     @V_ds.setter
@@ -211,7 +201,7 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def d_vf(self) -> int | None:
-        return None if self.V_fs is None else self.V_fs[0].shape[1]
+        return None if self.V_fs[0] is None else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int | None:
@@ -291,7 +281,3 @@ class ReactionDataset(Dataset, MolGraphDatasetMixin):
     @property
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct_mol, d.pdt_mol) for d in self.data]
-
-    @property
-    def n_mols(self) -> int:
-        return len(self.data[0])

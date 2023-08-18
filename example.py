@@ -36,15 +36,15 @@ val_dset.normalize_targets(scaler)
 test_dset = data.MoleculeDataset(test_data, featurizer)
 test_dset.normalize_targets(scaler)
 
-train_loader = data.MolGraphDataLoader(train_dset, num_workers=4)
-val_loader = data.MolGraphDataLoader(val_dset, num_workers=4, shuffle=False)
-test_loader = data.MolGraphDataLoader(test_dset, num_workers=4, shuffle=False)
+train_loader = data.MolGraphDataLoader(train_dset, num_workers=0)
+val_loader = data.MolGraphDataLoader(val_dset, num_workers=0, shuffle=False)
+test_loader = data.MolGraphDataLoader(test_dset, num_workers=0, shuffle=False)
 
 trainer = pl.Trainer(
     logger=False,
     enable_checkpointing=False,
     enable_progress_bar=True,
-    accelerator="gpu",
+    accelerator="auto",
     devices=1,
     max_epochs=20,
 )
