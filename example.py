@@ -7,14 +7,15 @@ from sklearn.model_selection import train_test_split
 
 from chemprop.v2 import data
 from chemprop.v2 import featurizers
-from chemprop.v2.models import modules, models, metrics
+from chemprop.v2.models import loss, modules, models, metrics
 
 
 featurizer = featurizers.MoleculeFeaturizer()
-mp = modules.BondMessageBlock(*featurizer.shape)
+mp = modules.BondMessageBlock()
 agg = modules.MeanAggregation()
-ffn = modules.RegressionFFN(mp.output_dim, 1)
+ffn = modules.RegressionFFN()
 mpnn = models.MPNN(mp, agg, ffn, [metrics.RMSEMetric()])
+
 print(mpnn)
 
 with open(sys.argv[1]) as fid:

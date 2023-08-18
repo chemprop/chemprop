@@ -3,6 +3,7 @@ from typing import Protocol
 import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 
 from chemprop.v2.models import loss
 from chemprop.v2.models.modules.ffn import FFN, SimpleFFN
@@ -12,6 +13,10 @@ ReadoutRegistry = ClassRegistry()
 
 
 class ReadoutProto(Protocol):
+    input_dim: int
+    """the input dimension"""
+    output_dim: int
+    """the output dimension"""
     n_tasks: int
     """the number of tasks `t` to predict for each input"""
     n_targets: int
@@ -26,36 +31,47 @@ class ReadoutProto(Protocol):
         pass
 
 
-class ReadoutFFN(FFN, ReadoutProto):
+class Readout(nn.Module, ReadoutProto):
     pass
 
 
-class ReadoutFFNBase(SimpleFFN, ReadoutFFN):
+class ReadoutFFNBase(Readout):
     _default_criterion: loss.LossFunction
 
     def __init__(
         self,
-        input_dim: int,
-        n_tasks: int,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0,
         activation: str = "relu",
         criterion: loss.LossFunction | None = None,
     ):
-        super().__init__(
+        super().__init__()
+
+        self.ffn = SimpleFFN(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
-        self.n_tasks = n_tasks
-        self.criterion = criterion
+        self.criterion = criterion or self._default_criterion
 
     @property
-    def criterion(self) -> loss.LossFunction:
-        return self.__criterion
+    def input_dim(self) -> int:
+        return self.ffn.input_dim
 
-    @criterion.setter
-    def criterion(self, criterion: loss.LossFunction | None):
-        self.__criterion = criterion or self._default_criterion
+    @property
+    def output_dim(self) -> int:
+        return self.ffn.output_dim
+
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // self.n_targets
+
+    def forward(self, Z: Tensor) -> Tensor:
+        return self.ffn(Z)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        return self.ffn(Z)
 
 
 @ReadoutRegistry.register("regression")
@@ -63,18 +79,8 @@ class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.MSELoss()
 
-    def __init__(
-        self,
-        input_dim: int,
-        n_tasks: int,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0,
-        activation: str = "relu",
-        loc: float | Tensor = 0,
-        scale: float | Tensor = 1,
-    ):
-        super().__init__(input_dim, n_tasks, hidden_dim, n_layers, dropout, activation)
+    def __init__(self, *args, loc: float | Tensor = 0, scale: float | Tensor = 1, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
         self.scale = nn.Parameter(torch.tensor(scale).view(-1, 1), False)
@@ -175,18 +181,8 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.CrossEntropyLoss()
 
-    def __init__(
-        self,
-        input_dim: int,
-        n_tasks: int,
-        n_classes: int,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0,
-        activation: str = "relu",
-        criterion: loss.LossFunction | None = None,
-    ):
-        super().__init__(input_dim, n_tasks, hidden_dim, n_layers, dropout, activation, criterion)
+    def __init__(self, n_classes: int, n_tasks: int = 1, *args, **kwargs):
+        super().__init__(n_tasks * n_classes, *args, **kwargs)
 
         self.n_classes = n_classes
 
@@ -231,18 +227,8 @@ class SpectralFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.SIDLoss()
 
-    def __init__(
-        self,
-        input_dim: int,
-        n_tasks: int,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0,
-        activation: str = "relu",
-        criterion: loss.LossFunction | None = None,
-        spectral_activation: str | None = "softplus",
-    ):
-        super().__init__(input_dim, n_tasks, hidden_dim, n_layers, dropout, activation, criterion)
+    def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
+        super().__init__(*args, **kwargs)
 
         match spectral_activation:
             case "exp":
@@ -255,4 +241,4 @@ class SpectralFFN(ReadoutFFNBase):
                     "Expected one of 'exp', 'softplus' or None."
                 )
 
-        self.ffn.add_module("spectral_activation", spectral_activation)
+        self.ffn.ffn.add_module("spectral_activation", spectral_activation)

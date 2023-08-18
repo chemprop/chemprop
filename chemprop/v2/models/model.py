@@ -6,7 +6,7 @@ from torch import nn, Tensor, optim
 
 from chemprop.v2.data.dataloader import TrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
-from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, ReadoutFFN
+from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, Readout
 from chemprop.v2.models.loss import LossFunction
 from chemprop.v2.models.metrics import Metric
 from chemprop.v2.models.schedulers import NoamLR
@@ -31,7 +31,7 @@ class MPNN(pl.LightningModule):
         self,
         message_passing: MessagePassingBlock,
         agg: Aggregation,
-        readout: ReadoutFFN,
+        readout: Readout,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
         warmup_epochs: int = 2,
@@ -134,7 +134,7 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_f)
 
         return [
-            metric(preds, targets, mask, None, None, lt_mask, gt_mask) for metric in self.metrics
+            metric(preds, targets, mask, None, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
