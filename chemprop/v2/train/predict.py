@@ -34,7 +34,11 @@ def predict(
         it is a tuple of lists of lists, of a length depending on how many uncertainty parameters are appropriate for the loss function.
     """
     predictor = pl.Trainer(devices="auto", accelerator="auto")
-    preds, uncertainty_discard = predictor.predict(model, dataloaders=data_loader)
+    zipped_output = predictor.predict(model, dataloaders=data_loader)
+    preds = [zipped_output[i][0] for i in range(len(zipped_output))]
+    #preds = torch.hstack(preds)
+
+    unc = None
 
     # model.eval()
     
@@ -90,8 +94,8 @@ def predict(
     #         )
 
     # Inverse scale if regression
-    if scaler is not None:
-        batch_preds = scaler.inverse_transform(batch_preds)
+    # if scaler is not None:
+    #     batch_preds = scaler.inverse_transform(batch_preds)
     #         if model.loss_function == "regression-mve":
     #             batch_var = batch_var * scaler.stds ** 2
     #         elif model.loss_function == "regression-evidential":
@@ -118,4 +122,4 @@ def predict(
     #     elif model.loss_function == "regression-evidential":
     #         return preds, lambdas, alphas, betas
 
-    return preds
+    return preds, unc

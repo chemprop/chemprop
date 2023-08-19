@@ -230,7 +230,6 @@ def get_data(path: str,
              target_columns: List[str] = None,
              ignore_columns: List[str] = None,
              skip_invalid_smiles: bool = True,
-             args: Union[TrainArgs, PredictArgs] = None,
              data_weights_path: str = None,
              features_path: List[str] = None,
              features_generator: List[str] = None,
@@ -241,7 +240,9 @@ def get_data(path: str,
              store_row: bool = False,
              logger: Logger = None,
              loss_function: str = None,
-             skip_none_targets: bool = False) -> MoleculeDataset:
+             skip_none_targets: bool = False,
+             atom_descriptors_type: str = None,
+             ) -> MoleculeDataset:
     """
     Gets SMILES and target values from a CSV file.
 
@@ -267,25 +268,11 @@ def get_data(path: str,
     :param skip_none_targets: Whether to skip targets that are all 'None'. This is mostly relevant when --target_columns
                               are passed in, so only a subset of tasks are examined.
     :param loss_function: The loss function to be used in training.
+    :param atom_descriptors:
     :return: A :class:`~chemprop.data.MoleculeDataset` containing SMILES and target values along
              with other info such as additional features when desired.
     """
     debug = logger.debug if logger is not None else print
-
-    if args is not None:
-        # Prefer explicit function arguments but default to args if not provided
-        smiles_columns = smiles_columns if smiles_columns is not None else args.smiles_columns
-        target_columns = target_columns if target_columns is not None else args.target_columns
-        ignore_columns = ignore_columns if ignore_columns is not None else args.ignore_columns
-        features_path = features_path if features_path is not None else args.features_path
-        features_generator = features_generator if features_generator is not None else args.features_generator
-        phase_features_path = phase_features_path if phase_features_path is not None else args.phase_features_path
-        atom_descriptors_path = atom_descriptors_path if atom_descriptors_path is not None \
-            else args.atom_descriptors_path
-        bond_features_path = bond_features_path if bond_features_path is not None \
-            else args.bond_features_path
-        max_data_size = max_data_size if max_data_size is not None else args.max_data_size
-        loss_function = loss_function if loss_function is not None else args.loss_function
 
     if not isinstance(smiles_columns, list):
         smiles_columns = preprocess_smiles_columns(path=path, smiles_columns=smiles_columns)
@@ -390,43 +377,65 @@ def get_data(path: str,
 
         atom_features = None
         atom_descriptors = None
-        if args is not None and args.atom_descriptors is not None:
+        if atom_descriptors_type is not None:
             try:
                 descriptors = load_valid_atom_or_bond_features(atom_descriptors_path, [x[0] for x in all_smiles])
             except Exception as e:
                 raise ValueError(f'Failed to load or validate custom atomic descriptors or features: {e}')
 
-            if args.atom_descriptors == 'feature':
+            if atom_descriptors_type == 'feature':
                 atom_features = descriptors
-            elif args.atom_descriptors == 'descriptor':
+            elif atom_descriptors_type == 'descriptor':
                 atom_descriptors = descriptors
 
         bond_features = None
-        if args is not None and args.bond_features_path is not None:
+        if bond_features_path is not None:
             try:
                 bond_features = load_valid_atom_or_bond_features(bond_features_path, [x[0] for x in all_smiles])
             except Exception as e:
                 raise ValueError(f'Failed to load or validate custom bond features: {e}')
-
-        data = MoleculeDataset([
-            MoleculeDatapoint(
-                smiles=smiles,
-                targets=targets,
-                row=all_rows[i] if store_row else None,
-                data_weight=all_weights[i] if data_weights is not None else None,
-                gt_targets=all_gt[i] if gt_targets is not None else None,
-                lt_targets=all_lt[i] if lt_targets is not None else None,
-                features_generator=features_generator,
-                features=all_features[i] if features_data is not None else None,
-                phase_features=all_phase_features[i] if phase_features is not None else None,
-                atom_features=atom_features[i] if atom_features is not None else None,
-                atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
-                bond_features=bond_features[i] if bond_features is not None else None,
-                overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
-                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
-            ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
-                                               total=len(all_smiles))
-        ])
+        
+        # Check if this data is for a reaction (multiple SMILES)
+        if len(smiles_columns) > 1:
+            data = ReactionDataset([
+                ReactionDatapoint(
+                    smis=smiles,
+                    targets=targets,
+                    row=all_rows[i] if store_row else None,
+                    data_weight=all_weights[i] if data_weights is not None else None,
+                    gt_targets=all_gt[i] if gt_targets is not None else None,
+                    lt_targets=all_lt[i] if lt_targets is not None else None,
+                    features_generators=features_generator,
+                    features=all_features[i] if features_data is not None else None,
+                    phase_features=all_phase_features[i] if phase_features is not None else None,
+                    atom_features=atom_features[i] if atom_features is not None else None,
+                    atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
+                    bond_features=bond_features[i] if bond_features is not None else None,
+                    keep_h = False,
+                    add_h = False
+                ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
+                                                total=len(all_smiles))
+            ])
+        elif len(smiles_columns) == 1:
+            data = MoleculeDataset([
+                MoleculeDatapoint(
+                    smi=smiles[0],
+                    targets=targets,
+                    row=all_rows[i] if store_row else None,
+                    data_weight=all_weights[i] if data_weights is not None else None,
+                    gt_targets=all_gt[i] if gt_targets is not None else None,
+                    lt_targets=all_lt[i] if lt_targets is not None else None,
+                    features_generators=features_generator,
+                    features=all_features[i] if features_data is not None else None,
+                    phase_features=all_phase_features[i] if phase_features is not None else None,
+                    atom_features=atom_features[i] if atom_features is not None else None,
+                    atom_descriptors=atom_descriptors[i] if atom_descriptors is not None else None,
+                    bond_features=bond_features[i] if bond_features is not None else None,
+                    keep_h = False,
+                    add_h = False
+                ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
+                                                total=len(all_smiles))
+            ], None)
 
     # Filter out invalid SMILES
     if skip_invalid_smiles:
