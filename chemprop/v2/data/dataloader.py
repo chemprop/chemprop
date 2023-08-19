@@ -57,6 +57,7 @@ class MolGraphDataLoader(DataLoader):
         class_balance: bool = False,
         seed: Optional[int] = None,
         shuffle: bool = True,
+        **kwargs
     ):
         self.dset = dataset
         self.class_balance = class_balance
