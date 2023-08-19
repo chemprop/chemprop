@@ -310,3 +310,7 @@ class MPNN(ABC, pl.LightningModule):
 
         effective_accum = self.trainer.accumulate_grad_batches * num_devices
         return (batches // effective_accum) * self.trainer.max_epochs
+
+    def on_save_checkpoint(self, checkpoint) -> None:
+        "Objects to include in checkpoint file"
+        checkpoint["model_type"] = type(self).__name__
