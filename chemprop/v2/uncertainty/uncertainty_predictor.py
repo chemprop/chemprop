@@ -30,7 +30,6 @@ class UncertaintyPredictor(ABC):
         self.dataset_type = dataset_type
         self.uncal_preds = None
         self.uncal_vars = None
-        self.num_models = num_models
         self.individual_ensemble_predictions = individual_ensemble_predictions
         self.spectra_phase_mask = spectra_phase_mask
 
@@ -131,7 +130,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 if self.individual_ensemble_predictions:
                     individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
 
-        self.uncal_preds = (sum_preds / self.num_models).tolist()
+        self.uncal_preds = (sum_preds / len(self.models)).tolist()
         uncal_vars = np.zeros_like(sum_preds)
         uncal_vars[:] = np.nan
         self.uncal_vars = uncal_vars
