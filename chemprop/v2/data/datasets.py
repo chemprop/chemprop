@@ -106,7 +106,9 @@ class MolGraphDatasetBase(Dataset):
             a scaler fit to the targets.
         """
         targets = np.array([d._targets for d in self.data])
-        scaler = (scaler or StandardScaler()).fit(targets)
+        if scaler is None:
+            scaler = StandardScaler().fit(targets)
+        self.scaler = scaler
         scaled_targets = scaler.transform(targets)
         self.targets = scaled_targets
 

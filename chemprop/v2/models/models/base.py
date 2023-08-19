@@ -13,6 +13,7 @@ from chemprop.v2.models.metrics import Metric
 from chemprop.v2.models.schedulers import NoamLR
 from chemprop.v2.models.utils import get_activation_function
 
+from sklearn.preprocessing import StandardScaler
 
 class MPNN(ABC, pl.LightningModule):
     """An `MPNN` is comprised of a `MessagePassingBlock` and an FFN top-model. The former
@@ -44,6 +45,7 @@ class MPNN(ABC, pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        scaler: StandardScaler = None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["mpn_block"])
@@ -71,6 +73,8 @@ class MPNN(ABC, pl.LightningModule):
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
+
+        self.scaler = scaler
 
     @classmethod
     @property
@@ -185,6 +189,10 @@ class MPNN(ABC, pl.LightningModule):
     def training_step(self, batch: TrainingBatch, batch_idx):
         bmg, X_vd, features, targets, weights, lt_targets, gt_targets = batch
 
+        if targets.get_device() == 0:
+            targets = torch.Tensor(self.scaler.transform(targets.cpu().numpy())).to(torch.device('cuda:0')) if self.scaler is not None else targets
+        if targets.get_device() == -1:
+             targets = torch.Tensor(self.scaler.transform(targets)) if self.scaler is not None else targets
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
@@ -203,6 +211,10 @@ class MPNN(ABC, pl.LightningModule):
 
         preds, _ = self.predict_step(batch, batch_idx)
 
+        if targets.get_device() == 0:
+            targets = torch.Tensor(self.scaler.transform(targets.cpu().numpy())).to(torch.device('cuda:0')) if self.scaler is not None else targets
+        if targets.get_device() == -1:
+             targets = torch.Tensor(self.scaler.transform(targets)) if self.scaler is not None else targets
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
@@ -218,6 +230,10 @@ class MPNN(ABC, pl.LightningModule):
 
         preds, _ = self.predict_step(batch, batch_idx)
 
+        if targets.get_device() == 0:
+            targets = torch.Tensor(self.scaler.transform(targets.cpu().numpy())).to(torch.device('cuda:0')) if self.scaler is not None else targets
+        if targets.get_device() == -1:
+             targets = torch.Tensor(self.scaler.transform(targets)) if self.scaler is not None else targets
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
@@ -246,8 +262,14 @@ class MPNN(ABC, pl.LightningModule):
             all remaining indices
         """
         bmg, X_vd, features, *_ = batch
+        output = self((bmg, X_vd), X_f=features)
 
-        return (self((bmg, X_vd), X_f=features), None)  # TODO: include uncertainty in this
+        if output.get_device() == 0:
+            output = torch.Tensor(self.scaler.inverse_transform(output.cpu().numpy())).to(torch.device('cuda:0')) if self.scaler is not None else output
+        if output.get_device() == -1:
+             output = torch.Tensor(self.scaler.inverse_transform(output)) if self.scaler is not None else output
+
+        return (output, None)  # TODO: include uncertainty in this
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)

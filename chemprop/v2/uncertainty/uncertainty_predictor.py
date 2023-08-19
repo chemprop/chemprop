@@ -18,17 +18,14 @@ class UncertaintyPredictor(ABC):
     def __init__(
         self,
         test_data: MoleculeDataset,
-        test_data_loader: MoleculeDataLoader,
-        models: Iterator[MoleculeModel],
-        scalers: Iterator[StandardScaler],
-        num_models: int,
+        test_data_loader: MolGraphDataLoader,
+        models: Iterator[Union[ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN]],
         dataset_type: str,
         individual_ensemble_predictions: bool = False,
         spectra_phase_mask: List[List[bool]] = None,
     ):
         self.test_data = test_data
         self.models = models
-        self.scalers = scalers
         self.dataset_type = dataset_type
         self.uncal_preds = None
         self.uncal_vars = None
@@ -116,7 +113,6 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             preds = predict(
                 model=model,
                 data_loader=self.test_data_loader,
-                scaler=scaler,
             )
             if self.dataset_type == "spectra":
                 preds = normalize_spectra(
@@ -146,10 +142,8 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 def build_uncertainty_predictor(
     test_data: MoleculeDataset,
-    test_data_loader: MoleculeDataLoader,
-    models: Iterator[MoleculeModel],
-    scalers: Iterator[StandardScaler],
-    num_models: int,
+    test_data_loader: MolGraphDataLoader,
+    models: Iterator[Union[ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN]],
     dataset_type: str,
     individual_ensemble_predictions: bool,
     spectra_phase_mask: List[List[bool]],
@@ -159,8 +153,6 @@ def build_uncertainty_predictor(
         test_data=test_data,
         test_data_loader=test_data_loader,
         models=models,
-        scalers=scalers,
-        num_models=num_models,
         dataset_type=dataset_type,
         individual_ensemble_predictions=individual_ensemble_predictions,
         spectra_phase_mask=spectra_phase_mask,
