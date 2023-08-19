@@ -4,9 +4,10 @@ from typing import Iterator, List
 import numpy as np
 from tqdm import tqdm
 
-from chemprop.data import MoleculeDataset, StandardScaler, MoleculeDataLoader
-from chemprop.models import MoleculeModel
-from chemprop.train.predict import predict
+from chemprop.v2.data import MoleculeDataset, MolGraphDataLoader
+from sklearn.preprocessing import StandardScaler
+from chemprop.v2.models import MPNN, ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN 
+from chemprop.v2.train.predict import predict
 from chemprop.spectra_utils import normalize_spectra, roundrobin_sid
 
 
@@ -84,33 +85,33 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         return "no_uncertainty_method"
 
     def calculate_predictions(self):
-        for i, (model, scaler_list) in enumerate(
-            tqdm(zip(self.models, self.scalers), total=self.num_models)
-        ):
-            (
-                scaler,
-                features_scaler,
-                atom_descriptor_scaler,
-                bond_feature_scaler,
-            ) = scaler_list
-            if (
-                features_scaler is not None
-                or atom_descriptor_scaler is not None
-                or bond_feature_scaler is not None
-            ):
-                self.test_data.reset_features_and_targets()
-                if features_scaler is not None:
-                    self.test_data.normalize_features(features_scaler)
-                if atom_descriptor_scaler is not None:
-                    self.test_data.normalize_features(
-                        atom_descriptor_scaler, scale_atom_descriptors=True
-                    )
-                if bond_feature_scaler is not None:
-                    self.test_data.normalize_features(
-                        bond_feature_scaler, scale_bond_features=True
-                    )
-
-            preds = predict(
+        # for i, (model, scaler_list) in enumerate(
+        #     tqdm(zip(self.models, self.scalers), total=self.num_models)
+        # ):
+        #     (
+        #         scaler,
+        #         features_scaler,
+        #         atom_descriptor_scaler,
+        #         bond_feature_scaler,
+        #     ) = scaler_list
+        #     if (
+        #         features_scaler is not None
+        #         or atom_descriptor_scaler is not None
+        #         or bond_feature_scaler is not None
+        #     ):
+        #         self.test_data.reset_features_and_targets()
+        #         if features_scaler is not None:
+        #             self.test_data.normalize_features(features_scaler)
+        #         if atom_descriptor_scaler is not None:
+        #             self.test_data.normalize_features(
+        #                 atom_descriptor_scaler, scale_atom_descriptors=True
+        #             )
+        #         if bond_feature_scaler is not None:
+        #             self.test_data.normalize_features(
+        #                 bond_feature_scaler, scale_bond_features=True
+        #             )
+        for i, model in enumerate(tqdm(self.models)):
+            preds, _ = predict(
                 model=model,
                 data_loader=self.test_data_loader,
             )
