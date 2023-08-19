@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator, List
+from typing import Iterator, List, Union
 
 import numpy as np
 from tqdm import tqdm

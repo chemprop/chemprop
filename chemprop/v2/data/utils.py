@@ -10,8 +10,8 @@ from rdkit import Chem
 import numpy as np
 from tqdm import tqdm
 
-from .datasets import MoleculeDataset
-from .datapoints import MoleculeDatapoint
+from .datasets import MoleculeDataset, ReactionDataset
+from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .data import make_mols
 # from .scaffold import log_scaffold_stats, scaffold_split
 from chemprop.args import PredictArgs, TrainArgs

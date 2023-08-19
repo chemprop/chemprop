@@ -1,1 +1,1 @@
-from .make_predictions import chemprop_predict, make_predictions, load_model, set_features, load_data, predict_and_save
+from .make_predictions_v2 import chemprop_predict, make_predictions, load_model, set_features, load_data, predict_and_save

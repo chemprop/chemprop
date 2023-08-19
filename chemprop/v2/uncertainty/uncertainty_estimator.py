@@ -1,10 +1,10 @@
-from typing import Iterator, List
+from typing import Iterator, List, Union
 
-from chemprop.data import MoleculeDataset, StandardScaler
-from chemprop.data.data import MoleculeDataLoader
-from chemprop.models import MoleculeModel
+from chemprop.v2.data import MoleculeDataset
+from chemprop.v2.data import MolGraphDataLoader
+from chemprop.v2.models import MPNN, ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN 
 from chemprop.uncertainty.uncertainty_calibrator import UncertaintyCalibrator
-from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor
+from chemprop.v2.uncertainty.uncertainty_predictor import build_uncertainty_predictor
 
 
 class UncertaintyEstimator:
