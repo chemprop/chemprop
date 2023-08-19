@@ -3,10 +3,44 @@ from __future__ import annotations
 import csv
 from enum import Enum
 import os
-from typing import List, Union
+from typing import List, Union, Callable, Any
 
 from rdkit import Chem
+from functools import wraps
+from time import time
+from datetime import timedelta
+import logging 
 
+# copied over from v1
+def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
+    """
+    Creates a decorator which wraps a function with a timer that prints the elapsed time.
+
+    :param logger_name: The name of the logger used to record output. If None, uses :code:`print` instead.
+    :return: A decorator which wraps a function with a timer that prints the elapsed time.
+    """
+
+    def timeit_decorator(func: Callable) -> Callable:
+        """
+        A decorator which wraps a function with a timer that prints the elapsed time.
+
+        :param func: The function to wrap with the timer.
+        :return: The function wrapped with the timer.
+        """
+
+        @wraps(func)
+        def wrap(*args, **kwargs) -> Any:
+            start_time = time()
+            result = func(*args, **kwargs)
+            delta = timedelta(seconds=round(time() - start_time))
+            info = logging.getLogger(logger_name).info if logger_name is not None else print
+            info(f"Elapsed time = {delta}")
+
+            return result
+
+        return wrap
+
+    return timeit_decorator
 
 class AutoName(Enum):
     # todo: figure out where this function is supposed to be used
