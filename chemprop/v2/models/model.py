@@ -13,18 +13,39 @@ from chemprop.v2.models.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
-    """An `MPNN` is comprised of message passing layer, an aggregation routine, and an FFN
-    top-model. The first two calculate learned encodings from an input molecule/reaction graph, and
-    the latter takes these encodings as input to calculate a final prediction. The full model is
-    trained end-to-end.
+    """An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
+    readout routine. The first two modules calculate learned fingerprints from an input molecule
+    reaction graph, and the final module takes these leared fingerprints as input to calculate a
+    final prediction. The full model is trained end-to-end.
 
-    An `MPNN` takes a input a molecular graph and outputs a tensor of shape `b x (t * s)`, where `b`
-    the size of the batch (i.e., number of molecules in the graph,) `t` is the number of tasks to
-    predict, and `s` is the number of targets to predict per task.
+    Parameters
+    ----------
+    message_passing : MessagePassingBlock
+        the message passing block to use to calculate learned fingerprints
+    agg : Aggregation
+        the aggregation operation to use during molecule-level readout
+    readout : Readout
+        the readout operation to use to calculate the final prediction
+    metrics : Iterable[Metric] | None, default=None
+        the metrics to use to evaluate the model during training and evaluation
+    w_t : Tensor | None, default=None
+        the weights to use for each task during training. If `None`, use uniform weights
+    warmup_epochs : int, default=2
+        the number of epochs to use for the learning rate warmup
+    num_lrs : int, default=1
+        the number of learning rates to use during training
+    init_lr : int, default=1e-4
+        the initial learning rate
+    max_lr : float, default=1e-3
+        the maximum learning rate
+    final_lr : float, default=1e-4
+        the final learning rate
 
-    NOTE: the number of targets `s` is *not* related to the number of classes to predict.  It is
-    used as a multiplier for the output dimension of the MPNN when the predictions correspond to a
-    parameterized distribution, e.g., MVE regression, for which `s` is 2. Typically, this is just 1.
+    Raises
+    ------
+    ValueError
+        if the output dimension of the message passing block does not match the input dimension of
+        the readout block
     """
 
     def __init__(
@@ -81,7 +102,7 @@ class MPNN(pl.LightningModule):
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
-        """Calculate the learned fingerprint for the input molecules"""
+        """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
         H = self.agg(H_v[1:], bmg.a_scope)
 
@@ -90,7 +111,7 @@ class MPNN(pl.LightningModule):
     def encoding(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
-        """Calculate the encoding (i.e., final hidden representation) for the input molecules"""
+        """the final hidden representations for the input molecules"""
         return self.readout[:-1](self.fingerprint(bmg, V_d, X_f))
 
     def forward(
@@ -151,8 +172,10 @@ class MPNN(pl.LightningModule):
             a tensor of varying shape depending on the task type:
 
             * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets per task. The final dimension is flattened, so that the targets for each task are grouped. I.e., the first ``t`` elements are the first target for each task, the second ``t`` elements
-            the second target, etc.
+            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
+            per task. The final dimension is flattened, so that the targets for each task are
+            grouped. I.e., the first ``t`` elements are the first target for each task, the second
+            ``t`` elements the second target, etc.
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
         bmg, X_vd, X_f, *_ = batch
@@ -180,7 +203,7 @@ class MPNN(pl.LightningModule):
 
     @property
     def num_training_steps(self) -> int:
-        """Total training steps inferred from datamodule and devices."""
+        """the number of training steps inferred from datamodule and devices."""
         if self.trainer.max_steps:
             return self.trainer.max_steps
 
