@@ -19,9 +19,11 @@ class AutoName(Enum):
             return name
 
         try:
-            return cls[name.lower()]
+            return cls[name.upper()]
         except KeyError:
-            raise ValueError(f"Unsupported alias! got: '{name}'. expected one of: {cls.keys()}")
+            raise ValueError(
+                f"Unsupported {cls.__name__} alias! got: '{name}'. expected one of: {cls.keys()}"
+            )
 
     @classmethod
     def keys(cls) -> set[str]:

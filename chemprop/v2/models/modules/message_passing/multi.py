@@ -1,9 +1,9 @@
-import warnings
 from typing import Iterable, Sequence
+import warnings
 
 from torch import Tensor, nn
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
+from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.modules.message_passing.molecule import MessagePassingBlockBase
 
 

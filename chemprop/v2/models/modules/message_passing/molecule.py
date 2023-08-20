@@ -19,18 +19,18 @@ class MessagePassingBlockBase(MessagePassingBlock):
 
     Parameters
     ----------
-    d_v : int
+    d_v : int, default=DEFAULT_ATOM_FDIM
         the feature dimension of the vertices
-    d_e : int
+    d_e : int, default=DEFAULT_BOND_FDIM
         the feature dimension of the edges
-    d_h : int, default=30
+    d_h : int, default=DEFAULT_HIDDEN_DIM
         the hidden dimension during message passing
-    bias : bool, optional
-        whether to add a learned bias term to the weight matrices, by default False
+    bias : bool, defuault=False
+        if `True`, add a bias term to the learned weight matrices
     depth : int, default=3
         the number of message passing iterations
     undirected : bool, default=False
-        whether messages should be bassed on undirected edges
+        if `True`, pass messages on undirected edges
     dropout : float, default=0
         the dropout probability
     activation : str, default="relu"
@@ -74,7 +74,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
         if d_vd is not None:
             self.d_vd = d_vd
             self.__output_dim += d_vd
-            self.fc_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
+            self.W_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
 
         self.W_i, self.W_h, self.W_o = self.setup_weight_matrices(d_v, d_e, d_h, bias)
 
@@ -106,40 +106,52 @@ class MessagePassingBlockBase(MessagePassingBlock):
     def output_dim(self) -> int:
         return self.W_o.out_features
 
-    def cat_descriptors(self, H_v: Tensor, V_d: Tensor) -> Tensor:
-        """Concatenate the atom descriptors `V_d` onto the hidden representations `H_v`
+    def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
+        r"""Finalize message passing by (1) concatenating the final hidden representations `H_v` and the original vertex `V` and (2) further concatenating additional vertex descriptors `V_d`, if provided.
+        
+        This function implements the following operation:
+
+        .. math::
+            H_v &= \mathtt{dropout} \left( \tau(W_o([V, M_v])) \right) \\
+            H_v &= \mathtt{dropout} \left( \tau(W_vd([H_v, V_d])) \right),
+
+        where :math:`\tau` is the activation function, :math:`W_o` and :math:`W_vd` are learned
+        weight matrices, :math:`M_v` is the learned message matrix, :math:`V` is the original
+        vertex feature matrix, and :math:`V_d` is an optional vertex descriptor matrix.
 
         Parameters
         ----------
-        H_v : Tensor
-            a tensor of shape `V x d_h` containing the hidden representation of each atom
-        V_d : Tensor
-            a tensor of shape `V x d_vd` containing additional descriptors for each atom
+        M_v : Tensor
+            a tensor of shape `V x d_h` containing the messages sent from each atom
+        V : Tensor
+            a tensor of shape `V x d_v` containing the original vertex features
+        V_d : Tensor | None
+            an optional tensor of shape `V x d_vd` containing additional vertex descriptors
 
         Returns
         -------
         Tensor
-            a tensor of shape `V x (d_h + d_vd)` containing the transformed hidden representations
+            a tensor of shape `V x (d_h + d_v [+ d_vd])` containing the final hidden representations
 
         Raises
         ------
         InvalidShapeError
-            if `V_d` is not of shape `V x d_vd`
+            if `V_d` is not of shape `b x d_vd`, where `b` is the batch size and `d_vd` is the
+            vertex descriptor dimension
         """
-        try:
-            H_vd = torch.cat((H_v, V_d), 1)
-            H_v = self.fc_vd(H_vd)
-        except RuntimeError:
-            raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.d_vd])
-
-        return self.dropout(H_v)
-
-    def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
         H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_h
         H_v = self.tau(H_v)
         H_v = self.dropout(H_v)
 
-        return H_v if V_d is None else self.cat_descriptors(H_v, V_d)
+        if V_d is not None:
+            try:
+                H_vd = torch.cat((H_v, V_d), 1)
+                H_v = self.W_vd(H_vd)
+                H_v = self.dropout(H_v)
+            except RuntimeError:
+                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.d_vd])
+
+        return H_v
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
@@ -148,7 +160,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
         Parameters
         ----------
         bmg: BatchMolGraph
-            the batch of `b` `MolGraphs` to encode
+            a batch of `b` :obj:`~chemprop.v2.featurizers.MolGraph`s to encode
         V_d : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
