@@ -9,6 +9,7 @@ from chemprop.v2 import data
 from chemprop.v2 import featurizers
 from chemprop.v2.models import loss, modules, models, metrics
 
+pl.seed_everything(42)
 
 featurizer = featurizers.MoleculeFeaturizer()
 mp = modules.BondMessageBlock()

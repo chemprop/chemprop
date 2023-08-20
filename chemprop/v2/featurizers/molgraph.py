@@ -6,7 +6,7 @@ import torch
 
 
 class MolGraph(NamedTuple):
-    """A `MolGraph` represents the graph featurization of a molecule."""
+    """A :class:`MolGraph` represents the graph featurization of a molecule."""
 
     n_atoms: int
     """the number of atoms in the molecule"""
@@ -29,7 +29,7 @@ class MolGraph(NamedTuple):
     """a mapping from bond index to the indices of connected bonds"""
 
 
-@dataclass
+@dataclass(repr=False, eq=False, slots=True)
 class BatchMolGraph:
     """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
 
@@ -37,9 +37,6 @@ class BatchMolGraph:
     define the respective atom- and bond-scope of each individual `MolGraph` within the
     `BatchMolGraph`. This class is intended for use with data loading, so it uses
     :obj:`~torch.Tensor`s to store data
-
-    NOTE: the `BatchMolGraph` does not currently possess a `b2b` attribute, so it is not a strict
-    subclass of a `MolGraph`
     """
 
     mgs: InitVar[Sequence[MolGraph]]
@@ -60,7 +57,7 @@ class BatchMolGraph:
     """A mapping from bond index to the index of the reverse bond."""
     a2a: torch.Tensor | None = field(init=False)
     """a mapping from atom index to the indices of connected atoms"""
-    b2b: torch.Tensor | None = field(init=False)
+    b2b: torch.Tensor | None = field(init=False, default=None)
     """a mapping from bond index to the indices of connected bonds"""
     a_scope: list[int] = field(init=False)
     """the number of atoms for each molecule in the batch"""
@@ -84,9 +81,10 @@ class BatchMolGraph:
             Vs.append(mg.V)
             Es.append(mg.E)
 
-            a2b.extend([b + self.n_bonds for b in mg.a2b[a]] for a in range(mg.n_atoms))
-            b2a.extend(self.n_atoms + mg.b2a[b] for b in range(mg.n_bonds))
-            b2revb.extend(self.n_bonds + mg.b2revb[b] for b in range(mg.n_bonds))
+            a2b.extend([self.n_bonds + b for b in mg.a2b[a]] for a in range(mg.n_atoms))
+            for b in range(mg.n_bonds):
+                b2a.append(self.n_atoms + mg.b2a[b])
+                b2revb.append(self.n_bonds + mg.b2revb[b])
 
             self.a_scope.append(mg.n_atoms)
             self.b_scope.append(mg.n_bonds)
@@ -98,9 +96,9 @@ class BatchMolGraph:
         self.E = torch.from_numpy(np.concatenate(Es)).float()
 
         # max with 1 to fix a crash in rare case of all single-heavy-atom mols
-        max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
+        pad_width = max(1, max(len(in_bonds) for in_bonds in a2b))
         self.a2b = torch.tensor(
-            [a2b[a] + [0] * (max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)],
+            [a2b[a] + [0] * (pad_width - len(a2b[a])) for a in range(self.n_atoms)],
             dtype=torch.long,
         )
         self.b2a = torch.tensor(b2a, dtype=torch.long)
@@ -108,7 +106,7 @@ class BatchMolGraph:
         self.a2a = self.b2a[self.a2b]
 
     def __len__(self) -> int:
-        """the number of individual `MolGraph`s in this batch"""
+        """the number of individual :class:`MolGraph`s in this batch"""
         return len(self.a_scope)
 
     def to(self, device: str | torch.device):
