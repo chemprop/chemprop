@@ -13,10 +13,18 @@ from chemprop.v2.models.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
-    """An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
-    readout routine. The first two modules calculate learned fingerprints from an input molecule
+    r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
+    readout routine.
+    
+    The first two modules calculate learned fingerprints from an input molecule
     reaction graph, and the final module takes these leared fingerprints as input to calculate a
-    final prediction. The full model is trained end-to-end.
+    final prediction. I.e., the following operation:
+    
+    .. math::
+        \mathtt{MPNN}(\mathcal{G}) =
+            \mathtt{readout}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
+
+    The full model is trained end-to-end.
 
     Parameters
     ----------
@@ -26,6 +34,8 @@ class MPNN(pl.LightningModule):
         the aggregation operation to use during molecule-level readout
     readout : Readout
         the readout operation to use to calculate the final prediction
+    batch_norm : bool, default=True
+        if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
         the metrics to use to evaluate the model during training and evaluation
     w_t : Tensor | None, default=None
@@ -53,6 +63,7 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassingBlock,
         agg: Aggregation,
         readout: Readout,
+        batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
         warmup_epochs: int = 2,
@@ -71,6 +82,7 @@ class MPNN(pl.LightningModule):
 
         self.message_passing = message_passing
         self.agg = agg
+        self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.readout = readout
 
         self.metrics = [*metrics, self.criterion] if metrics else [self.criterion]
@@ -105,6 +117,7 @@ class MPNN(pl.LightningModule):
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
         H = self.agg(H_v[1:], bmg.a_scope)
+        H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)
 
