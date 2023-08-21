@@ -1,35 +1,36 @@
-from __future__ import annotations
-
-from typing import Iterable, Optional
+from typing import Iterable
 
 import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.v2.data.datasets import Datum, MolGraphDatasetBase
+from chemprop.v2.data.datasets import Datum, MolGraphDatasetMixin
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]
+TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
+MulticomponentTrainingBatch = tuple[
+    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
+]
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, atom_descriptors, features, ys, weights, gt_targets, lt_targets = zip(*batch)
+    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
-        None if atom_descriptors[0] is None else torch.from_numpy(np.array(atom_descriptors, "f4")),
-        None if features[0] is None else torch.from_numpy(np.array(features, "f4")),
-        torch.from_numpy(np.array(ys, "f4")),
-        torch.from_numpy(np.array(weights, "f4")).unsqueeze(1),
-        None if lt_targets[0] is None else torch.from_numpy(np.array(lt_targets, "f4")),
-        None if gt_targets[0] is None else torch.from_numpy(np.array(gt_targets, "f4")),
+        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
+        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
+        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        torch.tensor(weights).unsqueeze(1),
+        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
+        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
 
 
 class MolGraphDataLoader(DataLoader):
-    """A `MolGraphDataLoader` is a PyTorch `DataLoader` for loading a `MolGraphDataset`
+    """A `MolGraphDataLoader` is a DataLoader for `MolGraphDataset`s
 
     Parameters
     ----------
@@ -51,11 +52,11 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: MolGraphDatasetBase,
+        dataset: MolGraphDatasetMixin,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         shuffle: bool = True,
     ):
         self.dset = dataset
@@ -63,7 +64,7 @@ class MolGraphDataLoader(DataLoader):
         self.shuffle = shuffle
 
         if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dset.targets, seed, self.shuffle)
+            self.sampler = ClassBalanceSampler(self.dset.Y, seed, self.shuffle)
         elif self.shuffle and seed is not None:
             self.sampler = SeededSampler(len(self.dset), seed)
         else:
@@ -78,45 +79,45 @@ class MolGraphDataLoader(DataLoader):
             collate_fn=collate_batch,
         )
 
-    @property
-    def targets(self) -> np.ndarray:
-        """the targets associated with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def Y(self) -> np.ndarray:
+    #     """the targets associated with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        return np.array([self.dset.data[i].targets for i in self.sampler])
+    #     return np.array([self.dset.data[i].y for i in self.sampler])
 
-    @property
-    def gt_targets(self) -> Optional[np.ndarray]:
-        """whether each target is an inequality rather than a value target associated
-        with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def gt_mask(self) -> np.ndarray | None:
+    #     """whether each target is an inequality rather than a value target associated
+    #     with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        if self.dset.data[0].gt_targets is None:
-            return None
+    #     if self.dset.data[0].gt_mask is None:
+    #         return None
 
-        return np.array([self.dset.data[i].gt_targets for i in self.sampler])
+    #     return np.array([self.dset.data[i].gt_mask for i in self.sampler])
 
-    @property
-    def lt_targets(self) -> Optional[np.ndarray]:
-        """for whether each target is an inequality rather than a value target associated
-        with each molecule"""
-        if self.class_balance or self.shuffle:
-            raise ValueError(
-                "Cannot safely extract targets when class balance or shuffle are enabled."
-            )
+    # @property
+    # def lt_mask(self) -> np.ndarray | None:
+    #     """for whether each target is an inequality rather than a value target associated
+    #     with each molecule"""
+    #     if self.class_balance or self.shuffle:
+    #         raise ValueError(
+    #             "Cannot safely extract targets when class balance or shuffle are enabled."
+    #         )
 
-        if self.dset.data[0].lt_targets is None:
-            return None
+    #     if self.dset.data[0].lt_mask is None:
+    #         return None
 
-        return np.array([self.dset.data[i].lt_targets for i in self.sampler])
+    #     return np.array([self.dset.data[i].lt_mask for i in self.sampler])
 
-    @property
-    def iter_size(self) -> int:
-        """the number of data points included in each full iteration of this dataloader."""
-        return len(self.sampler)
+    # @property
+    # def iter_size(self) -> int:
+    #     """the number of data points included in each full iteration of this dataloader."""
+    #     return len(self.sampler)

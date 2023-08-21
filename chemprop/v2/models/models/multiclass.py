@@ -11,18 +11,9 @@ class MulticlassMPNN(MPNN):
     _DEFAULT_METRIC = "ce"
 
     def __init__(
-        self,
-        encoder: MessagePassingBlock,
-        n_tasks: int,
-        n_classes: int,
-        ffn_hidden_dim: int = 300,
-        ffn_num_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
+        self, mp_block: MessagePassingBlock, n_tasks: int, n_classes: int, *args, **kwargs
     ):
-        super().__init__(
-            encoder, n_tasks * n_classes, ffn_hidden_dim, ffn_num_layers, dropout, activation
-        )
+        super().__init__(mp_block, n_tasks * n_classes, *args, **kwargs)
         self.n_tasks = n_tasks
         self.n_classes = n_classes
 

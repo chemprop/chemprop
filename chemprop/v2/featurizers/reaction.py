@@ -1,6 +1,5 @@
-from __future__ import annotations
-
-from typing import Iterable, Optional, Sequence, Union
+from dataclasses import InitVar, dataclass
+from typing import Iterable, Sequence
 import warnings
 
 import numpy as np
@@ -8,18 +7,48 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 from chemprop.v2.featurizers.utils import ReactionMode
 
-from chemprop.v2.featurizers.atom import AtomFeaturizer
-from chemprop.v2.featurizers.bond import BondFeaturizerBase
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.base import ReactionFeaturizerBase
+from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
 
 
-class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
+class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
+    """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
+    molecules) into `MolGraph`s"""
+
+    def __call__(
+        self,
+        reaction: tuple[Chem.Mol, Chem.Mol],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        reaction : tuple[Chem.Mol, Chem.Mol]
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
+
+
+@dataclass
+class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeaturizerProto):
     """Featurize reactions using the condensed reaction graph method utilized in [1]_
 
-    NOTE: This class *does not* accept a `BaseAtomFeaturizer` instance. This is because it requries
-    the `featurize_num_only` method, which is only implemented in the concrete `AtomFeaturizer`
+    NOTE: This class *does not* accept a `AtomFeaturizerBase` instance. This is because it requries
+    the `num_only()` method, which is only implemented in the concrete `AtomFeaturizer`
     class
 
     Attributes
@@ -52,16 +81,12 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
     https://doi.org/10.1021/acs.jcim.1c00975
     """
 
-    def __init__(
-        self,
-        atom_featurizer: Optional[AtomFeaturizer] = None,
-        bond_featurizer: Optional[BondFeaturizerBase] = None,
-        bond_messages: bool = True,
-        mode: Union[str, ReactionMode] = ReactionMode.REAC_DIFF,
-    ):
-        super().__init__(atom_featurizer, bond_featurizer, bond_messages)
+    mode_: InitVar[str | ReactionMode] = ReactionMode.REAC_DIFF
 
-        self.mode = mode
+    def __post_init__(self, mode_: str | ReactionMode):
+        super().__post_init__()
+
+        self.mode = mode_
         self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
         self.bond_fdim *= 2
         if self.bond_messages:
@@ -72,14 +97,14 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
         return self.__mode
 
     @mode.setter
-    def mode(self, m: Union[str, ReactionMode]):
+    def mode(self, m: str | ReactionMode):
         self.__mode = ReactionMode.get(m)
 
     def featurize(
         self,
         reaction: tuple[Chem.Mol, Chem.Mol],
-        atom_features_extra: Optional[np.ndarray] = None,
-        bond_features_extra: Optional[np.ndarray] = None,
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
@@ -138,7 +163,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
             # Reactant:
             # (1) regular features for each atom in the reactants
             # (2) zero features for each atom that only in the products
-            X_v_r2 = [self.atom_featurizer.featurize_num_only(pdt.GetAtomWithIdx(i)) for i in pids]
+            X_v_r2 = [self.atom_featurizer.num_only(pdt.GetAtomWithIdx(i)) for i in pids]
             X_v_r2 = np.array(X_v_r2).reshape(-1, X_v_r1.shape[1])
 
             # Product:
@@ -149,7 +174,7 @@ class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerBase):
                 [
                     self.atom_featurizer(pdt.GetAtomWithIdx(ri2pj[a.GetIdx()]))
                     if a.GetIdx() not in rids
-                    else self.atom_featurizer.featurize_num_only(a)
+                    else self.atom_featurizer.num_only(a)
                     for a in rct.GetAtoms()
                 ]
             )

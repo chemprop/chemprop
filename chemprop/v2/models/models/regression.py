@@ -10,6 +10,18 @@ class RegressionMPNN(MPNN):
     _DEFAULT_CRITERION = "mse"
     _DEFAULT_METRIC = "rmse"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # NOTE(degraff): these must be tensors for multitask scaling
+        self.scale = 1
+        self.loc = 0
+
+    def predict_step(self, *args, **kwargs) -> tuple[Tensor, ...]:
+        Y = super().predict_step(*args, **kwargs)[0]
+        Y = Y * self.scale + self.loc
+
+        return (Y,)
+
 
 class MveRegressionMPNN(RegressionMPNN):
     _DEFAULT_CRITERION = "mve"
@@ -27,8 +39,10 @@ class MveRegressionMPNN(RegressionMPNN):
         return torch.cat((Y_mean, Y_var), 1)
 
     def predict_step(self, *args, **kwargs) -> tuple[Tensor, ...]:
-        Y = super().predict_step(*args, **kwargs)[0]
+        Y = MPNN.predict_step(self, *args, **kwargs)[0]
         Y_mean, Y_var = Y.split(Y.shape[1] // 2, dim=1)
+        Y_mean = Y_mean * self.scale + self.loc
+        Y_var = Y_var * self.scale**2
 
         return Y_mean, Y_var
 
@@ -51,7 +65,9 @@ class EvidentialMPNN(RegressionMPNN):
         return torch.cat((means, lambdas, alphas, betas), 1)
 
     def predict_step(self, *args, **kwargs) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-        Y = super().predict_step(*args, **kwargs)[0]
+        Y = MPNN.predict_step(self, *args, **kwargs)[0]
         means, lambdas, alphas, betas = Y.split(Y.shape[1] // 4, 1)
+        means = means * self.scale + self.loc
+        lambdas = lambdas * self.scale**2
 
         return means, lambdas, alphas, betas

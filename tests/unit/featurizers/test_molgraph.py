@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.v2.featurizers import MolGraphFeaturizerBase, MoleculeFeaturizer, MolGraph, AtomFeaturizer
+from chemprop.v2.featurizers import MolGraphFeaturizerProto, MoleculeMolGraphFeaturizer, MolGraph, AtomFeaturizer
 
 
 @pytest.fixture(params=[
@@ -47,12 +47,12 @@ def bond_features_extra(mol, extra):
 
 @pytest.fixture
 def mol_featurizer(atom_messages):
-    return MoleculeFeaturizer(bond_messages=not atom_messages)
+    return MoleculeMolGraphFeaturizer(bond_messages=not atom_messages)
 
 
 @pytest.fixture
 def mol_featurizer_extra(extra):
-    return MoleculeFeaturizer(None, None, extra, extra, False)
+    return MoleculeMolGraphFeaturizer(None, None, extra, extra, False)
 
 
 @pytest.fixture
@@ -62,17 +62,17 @@ def mg(mol, mol_featurizer):
 
 def test_abc():
     with pytest.raises(TypeError):
-        MolGraphFeaturizerBase()
+        MolGraphFeaturizerProto()
     
 
 def test_atom_fdim(extra):
-    mf = MoleculeFeaturizer(extra_atom_fdim=extra)
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra)
 
     assert mf.atom_fdim == len(mf.atom_featurizer) + extra
 
 
 def test_bond_fdim(atom_messages, extra):
-    mf = MoleculeFeaturizer(extra_bond_fdim=extra, bond_messages=atom_messages)
+    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages=atom_messages)
 
     if atom_messages:
         assert mf.bond_fdim == len(mf.bond_featurizer) + extra
@@ -85,18 +85,18 @@ def test_n_atoms_bonds(mol: Chem.Mol, mg: MolGraph):
     assert 2 * mol.GetNumBonds() == mg.n_bonds
 
 
-def test_X_v_shape(mol, mol_featurizer: MoleculeFeaturizer, mg: MolGraph):
+def test_X_v_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
     n_a = mol.GetNumAtoms()
     d_a = mol_featurizer.atom_fdim
 
-    assert mg.X_v.shape == (n_a, d_a)
+    assert mg.V.shape == (n_a, d_a)
 
 
-def test_X_e_shape(mol, mol_featurizer: MoleculeFeaturizer, mg: MolGraph):
+def test_X_e_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
     n_b = mol.GetNumBonds()
     d_b = mol_featurizer.bond_fdim
 
-    assert mg.X_e.shape == (2 * n_b, d_b)
+    assert mg.E.shape == (2 * n_b, d_b)
 
 
 def test_x2y_len(mol: Chem.Mol, mg: MolGraph):
@@ -117,10 +117,10 @@ def test_b2b_none(mg):
 
 
 def test_composability(mol):
-    mf1 = MoleculeFeaturizer(AtomFeaturizer(50))
-    mf2 = MoleculeFeaturizer(AtomFeaturizer(100))
+    mf1 = MoleculeMolGraphFeaturizer(AtomFeaturizer(50))
+    mf2 = MoleculeMolGraphFeaturizer(AtomFeaturizer(100))
 
-    assert mf1(mol).X_v.shape != mf2(mol).X_v.shape
+    assert mf1(mol).V.shape != mf2(mol).V.shape
 
 
 def test_invalid_atom_extra_shape(mol_featurizer, mol):
@@ -136,30 +136,30 @@ def test_invalid_bond_extra_shape(mol_featurizer, mol):
 
 
 def test_atom_extra_shape(mol, extra, atom_features_extra):
-    mf = MoleculeFeaturizer(None, None, extra)
+    mf = MoleculeMolGraphFeaturizer(None, None, extra)
     mg = mf(mol, atom_features_extra=atom_features_extra)
 
-    assert mg.X_v.shape == (mol.GetNumAtoms(), mf.atom_fdim)
+    assert mg.V.shape == (mol.GetNumAtoms(), mf.atom_fdim)
 
 
 def test_atom_extra_values(mol, extra, atom_features_extra):
-    mf = MoleculeFeaturizer(None, None, extra)
+    mf = MoleculeMolGraphFeaturizer(None, None, extra)
     mg = mf(mol, atom_features_extra=atom_features_extra)
 
-    np.testing.assert_array_equal(mg.X_v[:, len(mf.atom_featurizer):], atom_features_extra)
+    np.testing.assert_array_equal(mg.V[:, len(mf.atom_featurizer):], atom_features_extra)
 
 
 def test_bond_extra(mol, extra, bond_features_extra):
-    mf = MoleculeFeaturizer(None, None, 0, extra)
+    mf = MoleculeMolGraphFeaturizer(None, None, 0, extra)
     mg = mf(mol, bond_features_extra=bond_features_extra)
 
-    assert mg.X_e.shape == (2 * mol.GetNumBonds(), mf.bond_fdim)
+    assert mg.E.shape == (2 * mol.GetNumBonds(), mf.bond_fdim)
 
 
 def test_atom_bond_extra(mol, extra, atom_features_extra, bond_features_extra):
-    mf = MoleculeFeaturizer(None, None, extra, extra, False)
+    mf = MoleculeMolGraphFeaturizer(None, None, extra, extra, False)
     mg = mf(mol, atom_features_extra, bond_features_extra)
 
-    assert mg.X_e.shape == (
+    assert mg.E.shape == (
         2 * mol.GetNumBonds(), len(mf.atom_featurizer) + len(mf.bond_featurizer) + 2 * extra
     )

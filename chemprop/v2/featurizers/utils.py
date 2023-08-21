@@ -19,38 +19,29 @@ class MultiHotFeaturizerMixin:
 
     @staticmethod
     def one_hot_index(x, xs: Sequence) -> tuple[int, int]:
-        """return the index of a one hot encoding of `x` given choices `xs` and the length of the
-        uncompressed encoding"""
+        """the index of `x` in `xs`, if it exists. Otherwise, return `len(xs) + 1`."""
         n = len(xs)
 
         return xs.index(x) if x in xs else n, n + 1
 
 
 class ReactionMode(AutoName):
-    """The manner in which a reaction should be featurized into a `MolGraph`
-
-    REAC_PROD
-        concatenate the reactant features with the product features.
-    REAC_PROD_BALANCE
-        concatenate the reactant features with the products feature and balances imbalanced
-        reactions.
-    REAC_DIFF
-        concatenates the reactant features with the difference in features between reactants and
-        products
-    REAC_DIFF_BALANCE
-        concatenates the reactant features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    PROD_DIFF
-        concatenates the product features with the difference in features between reactants and
-        products
-    PROD_DIFF_BALANCE
-        concatenates the product features with the difference in features between reactants and
-        products and balances imbalanced reactions
-    """
+    """The manner in which a reaction should be featurized into a `MolGraph`"""
 
     REAC_PROD = auto()
+    """concatenate the reactant features with the product features."""
     REAC_PROD_BALANCE = auto()
+    """concatenate the reactant features with the products feature and balances imbalanced
+    reactions"""
     REAC_DIFF = auto()
+    """concatenates the reactant features with the difference in features between reactants and
+    products"""
     REAC_DIFF_BALANCE = auto()
+    """concatenates the reactant features with the difference in features between reactants and
+    product and balances imbalanced reactions"""
     PROD_DIFF = auto()
+    """concatenates the product features with the difference in features between reactants and
+    products"""
     PROD_DIFF_BALANCE = auto()
+    """concatenates the product features with the difference in features between reactants and
+    products and balances imbalanced reactions"""

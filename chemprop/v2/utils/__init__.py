@@ -1,2 +1,3 @@
-from .mixins import RegistryMixin
-from .utils import AutoName, make_mol
+from .mixins import ReprMixin
+from .registry import ClassRegistry
+from .utils import *

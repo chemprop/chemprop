@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Sequence
+from typing import Protocol, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
@@ -7,19 +6,17 @@ from rdkit.Chem.rdchem import Bond, BondType
 from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
-class BondFeaturizerBase(ABC):
-    """A `BondFeaturizerBase` calculates feature vectors of RDKit bonds"""
+class BondFeaturizerProto(Protocol):
+    """A `BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
 
-    @abstractmethod
     def __len__(self) -> int:
         """the length of a bond feature vector"""
 
-    @abstractmethod
     def __call__(self, b: Bond) -> np.ndarray:
-        """featurize the atom `b`"""
+        """featurize the bond `b`"""
 
 
-class BondFeaturizer(MultiHotFeaturizerMixin):
+class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
     """A `BondFeaturizer` generates multihot featurizations of RDKit bonds
 
     The featurizations produced by this featurizer have the following (general) signature:
@@ -37,9 +34,9 @@ class BondFeaturizer(MultiHotFeaturizerMixin):
 
     Parameters
     ----------
-    bond_types : Optional[Sequence[BondType]], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
+    bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
+    stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
         the known bond stereochemistries. See [1]_ for more details
 
     References
@@ -48,9 +45,7 @@ class BondFeaturizer(MultiHotFeaturizerMixin):
     """
 
     def __init__(
-        self,
-        bond_types: Optional[Sequence[BondType]] = None,
-        stereos: Optional[Sequence[int]] = None,
+        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -72,7 +67,7 @@ class BondFeaturizer(MultiHotFeaturizerMixin):
 
         return list(zip(names, slices))
 
-    def featurize(self, b: Bond) -> np.ndarray:
+    def __call__(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self), int)
 
         if b is None:

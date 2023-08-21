@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Sequence
+from typing import Protocol, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
@@ -7,19 +6,17 @@ from rdkit.Chem.rdchem import Atom, HybridizationType
 from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
-class AtomFeaturizerBase(ABC):
+class AtomFeaturizerProto(Protocol):
     """An `AtomFeaturizerBase` calculates feature vectors of RDKit atoms."""
 
-    @abstractmethod
     def __len__(self) -> int:
         """the length of an atomic feature vector"""
 
-    @abstractmethod
     def __call__(self, a: Atom) -> np.ndarray:
         """featurize the atom `a`"""
 
 
-class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
+class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
     """An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
 
     The featurizations produced by this featurizer have the following (general) signature:
@@ -42,26 +39,26 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
     ----------
     max_atomic_num : int, default=100
         the maximum atomic number categorized, by
-    degrees : Optional[Sequence[int]], default=[0, 1, 2, 3, 4, 5]
+    degrees : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
         the categories for the atomic degree
-    formal_charges : Optional[Sequence[int]], default=[-1, -2, 1, 2, 0]
+    formal_charges : Sequence[int] | None, default=[-1, -2, 1, 2, 0]
         the categories for formal charge of an atom
-    chiral_tags : Optional[Sequence[int]], default=[0, 1, 2, 3]
+    chiral_tags : Sequence[int] | None, default=[0, 1, 2, 3]
         the categories for the chirality of an atom
-    num_Hs : Optional[Sequence[int]], default=[0, 1, 2, 3, 4]
+    num_Hs : Sequence[int] | None, default=[0, 1, 2, 3, 4]
         the categories for the number of hydrogens attached to an atom
-    hybridizations : Optional[Sequence[HybridizationType]], default=[SP, SP2, SP3, SP3D, SP3D2]
+    hybridizations : Sequence[HybridizationType] | None, default=[SP, SP2, SP3, SP3D, SP3D2]
         the categories for the hybridization of an atom
     """
 
     def __init__(
         self,
         max_atomic_num: int = 100,
-        degrees: Optional[Sequence[int]] = None,
-        formal_charges: Optional[Sequence[int]] = None,
-        chiral_tags: Optional[Sequence[int]] = None,
-        num_Hs: Optional[Sequence[int]] = None,
-        hybridizations: Optional[Sequence[HybridizationType]] = None,
+        degrees: Sequence[int] | None = None,
+        formal_charges: Sequence[int] | None = None,
+        chiral_tags: Sequence[int] | None = None,
+        num_Hs: Sequence[int] | None = None,
+        hybridizations: Sequence[HybridizationType] | None = None,
     ):
         self.max_atomic_num = max_atomic_num
         self.atomic_nums = range(max_atomic_num)
@@ -123,7 +120,7 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
 
         return dict(zip(names, slices))
 
-    def featurize(self, a: Atom) -> np.ndarray:
+    def __call__(self, a: Atom) -> np.ndarray:
         x = np.zeros(len(self))
 
         if a is None:
@@ -147,8 +144,8 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerBase):
 
         return x
 
-    def featurize_num_only(self, a: Atom) -> np.ndarray:
-        """featurize the atom and only set the atomic number bit"""
+    def num_only(self, a: Atom) -> np.ndarray:
+        """featurize the atom setting the atomic number bit"""
         x = np.zeros(len(self))
 
         if a is None:

@@ -1,124 +1,128 @@
-from __future__ import annotations
-
-from typing import Iterable, Optional
+from dataclasses import dataclass, field
+from functools import cached_property
+from typing import NamedTuple
 
 import numpy as np
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.featurizers import MolGraph, MoleculeFeaturizerBase, MoleculeFeaturizer
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.v2.featurizers.reaction import ReactionFeaturizer, ReactionFeaturizerBase
+from chemprop.v2.featurizers import (
+    MolGraph,
+    MoleculeMolGraphFeaturizerProto,
+    MoleculeMolGraphFeaturizer,
+    ReactionMolGraphFeaturizerProto,
+    ReactionMolGraphFeaturizer,
+)
 
-Datum = tuple[MolGraph, np.ndarray, np.ndarray, np.ndarray, float, np.ndarray, np.ndarray]
+
+class Datum(NamedTuple):
+    mg: MolGraph
+    V_d: np.ndarray | None
+    x_f: np.ndarray | None
+    y: np.ndarray | None
+    weight: float
+    lt_mask: np.ndarray | None
+    gt_mask: np.ndarray | None
 
 
-class MolGraphDatasetBase(Dataset):
-    def __getitem__(self, idx: int) -> Datum:
-        pass
-
+class MolGraphDatasetMixin:
     def __len__(self) -> int:
         return len(self.data)
 
-    @property
-    def _targets(self) -> np.ndarray:
-        return np.array([d._targets for d in self.data])
+    @cached_property
+    def _Y(self) -> np.ndarray:
+        """the raw targets of the dataset"""
+        return np.array([d.y for d in self.data])
 
     @property
-    def targets(self) -> np.ndarray:
-        return np.array([d.targets for d in self.data])
+    def Y(self) -> np.ndarray:
+        return self.__Y
 
-    @targets.setter
-    def targets(self, Y: np.ndarray) -> None:
-        if not len(self.data) == len(Y):
-            raise ValueError(
-                "number of molecules and targets must be of same length! "
-                f"num molecules: {len(self.data)}, num targets: {len(Y)}"
-            )
+    @Y.setter
+    def Y(self, Y: np.ndarray):
+        self._validate_attribute(Y, "targets")
 
-        for d, y in zip(self.data, Y):
-            d.targets = y
+        self.__Y = Y
 
-    @property
-    def features(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].features is None:
-            return None
-
-        return np.array([d.features for d in self.data])
-
-    @features.setter
-    def features(self, X: np.ndarray):
-        if not len(self.data) == len(X):
-            raise ValueError(
-                "number of molecules and features must be of same length! "
-                f"num molecules: {len(self.data)}, num features: {len(X)}"
-            )
-
-        for d, x in zip(self.data, X):
-            d.features = x
+    @cached_property
+    def _X_f(self) -> np.ndarray:
+        """the raw molecule features of the dataset"""
+        return np.array([d.x_f for d in self.data])
 
     @property
-    def phase_features(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].phase_features is None:
-            return None
+    def X_f(self) -> np.ndarray:
+        return self.__X_f
 
-        return np.ndarray([d.phase_features for d in self.data])
+    @X_f.setter
+    def X_f(self, X_f: np.ndarray):
+        self._validate_attribute(X_f, "molecule features")
 
-    @property
-    def data_weights(self) -> np.ndarray:
-        return np.array([d.data_weight for d in self.data])
-
-    @property
-    def gt_targets(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].gt_targets is None:
-            return None
-
-        return np.array([d.gt_targets for d in self.data])
+        self.__X_f = X_f
 
     @property
-    def lt_targets(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].lt_targets is None:
-            return None
-
-        return np.array([d.lt_targets for d in self.data])
+    def weights(self) -> np.ndarray:
+        return np.array([d.weight for d in self.data])
 
     @property
-    def num_tasks(self) -> Optional[int]:
-        return self.data[0].num_tasks if len(self.data) > 0 else None
+    def gt_mask(self) -> np.ndarray:
+        return np.array([d.gt_mask for d in self.data])
 
     @property
-    def features_size(self) -> Optional[int]:
-        if len(self.data) > 0 and self.data[0].features is None:
-            return None
+    def lt_mask(self) -> np.ndarray:
+        return np.array([d.lt_mask for d in self.data])
 
-        return len(self.data[0].features)
+    @property
+    def t(self) -> int | None:
+        return self.data[0].t if len(self.data) > 0 else None
 
-    def normalize_targets(self, scaler: Optional[StandardScaler] = None) -> StandardScaler:
-        """Normalizes the targets of the dataset using a `StandardScaler`
+    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
+        """Normalizes the targets of the dataset using a :obj:`StandardScaler`
 
-        The StandardScaler subtracts the mean and divides by the standard deviation for each task
-        independently. NOTE: This should only be used for regression datasets.
+        The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
+        each task independently. NOTE: This should only be used for regression datasets.
 
         Returns
         -------
         StandardScaler
             a scaler fit to the targets.
         """
-        targets = np.array([d._targets for d in self.data])
-        scaler = (scaler or StandardScaler()).fit(targets)
-        scaled_targets = scaler.transform(targets)
-        self.targets = scaled_targets
+        scaler = scaler or StandardScaler()
+        self.Y = scaler.fit_transform(self._Y)
 
         return scaler
 
-    def reset_features_and_targets(self) -> None:
-        """Resets the features (atom, bond, and molecule) and targets to their raw values."""
-        for d in self.data:
-            d.reset_features_and_targets()
+    def normalize_inputs(
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"X_f", None}
+        if key not in VALID_KEYS:
+            raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        X = self.X_f
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        return scaler
+
+    def reset(self):
+        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
+        initial, unnormalized values."""
+        self.__Y = self._Y
+        self.__X_f = self._X_f
+
+    def _validate_attribute(self, X: np.ndarray, label: str):
+        if not len(self.data) == len(X):
+            raise ValueError(
+                f"number of molecules ({len(self.data)}) and {label} ({len(X)}) "
+                "must have same length!"
+            )
 
 
-class MoleculeDataset(MolGraphDatasetBase):
+@dataclass
+class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
     Parameters
@@ -129,24 +133,17 @@ class MoleculeDataset(MolGraphDatasetBase):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
-    def __init__(
-        self, data: Iterable[MoleculeDatapoint], featurizer: Optional[MoleculeFeaturizerBase]
-    ):
-        self.data = list(data)
-        self.featurizer = featurizer or MoleculeFeaturizer()
+    data: list[MoleculeDatapoint]
+    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
+
+    def __post_init__(self):
+        self.reset()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
+        mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
 
-        return (
-            self.featurizer(d.mol, d.atom_features, d.bond_features),
-            d.atom_descriptors,
-            d.features,
-            d.targets,
-            d.data_weight,
-            d.lt_targets,
-            d.gt_targets,
-        )
+        return Datum(mg, self.V_ds[idx], self.X_f[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:
@@ -157,156 +154,124 @@ class MoleculeDataset(MolGraphDatasetBase):
         return [d.mol for d in self.data]
 
     @property
-    def number_of_molecules(self) -> int:
-        return 1
+    def _V_fs(self) -> list[np.ndarray]:
+        return np.array([d.V_f for d in self.data])
 
     @property
-    def atom_features(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].atom_features is None:
-            return None
+    def V_fs(self) -> list[np.ndarray]:
+        return self.__V_fs
 
-        return np.array([d.atom_features for d in self.data])
+    @V_fs.setter
+    def V_fs(self, V_fs: list[np.ndarray]):
+        self._validate_attribute(V_fs, "atom features")
 
-    @atom_features.setter
-    def atom_features(self, X: np.ndarray):
-        if not len(self.data) == len(X):
-            raise ValueError(
-                "number of molecules and features must be of same length! "
-                f"num molecules: {len(self.data)}, num features: {len(X)}"
-            )
-        for d, x in zip(self.data, X):
-            d.atom_features = x
+        self.__V_fs = V_fs
 
     @property
-    def bond_features(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].bond_features is None:
-            return None
-
-        return np.array([d.bond_features for d in self.data])
-
-    @atom_features.setter
-    def atom_features(self, X: np.ndarray):
-        if not len(self.data) == len(X):
-            raise ValueError(
-                "number of molecules and features must be of same length! "
-                f"num molecules: {len(self.data)}, num features: {len(X)}"
-            )
-        for d, x in zip(self.data, X):
-            d.atom_features = x
+    def _E_fs(self) -> list[np.ndarray]:
+        return np.array([d.E_f for d in self.data])
 
     @property
-    def atom_descriptors(self) -> Optional[np.ndarray]:
-        if len(self.data) > 0 and self.data[0].atom_descriptors is None:
-            return None
+    def E_fs(self) -> list[np.ndarray]:
+        return self.__E_fs
 
-        return np.array([d.atom_descriptors for d in self.data])
+    @E_fs.setter
+    def E_fs(self, E_fs: list[np.ndarray]):
+        self._validate_attribute(E_fs, "bond features")
 
-    @atom_features.setter
-    def atom_features(self, X: np.ndarray):
-        if not len(self.data) == len(X):
-            raise ValueError(
-                "number of molecules and descriptors must be of same length! "
-                f"num molecules: {len(self.data)}, num descriptors: {len(X)}"
-            )
-        for d, x in zip(self.data, X):
-            d.atom_features = x
+        self.__E_fs = E_fs
 
     @property
-    def atom_features_size(self) -> Optional[int]:
-        if len(self.data) > 0 and self.data[0].atom_features is None:
-            return None
-
-        return len(self.data[0].atom_features[0])
+    def _V_ds(self) -> list[np.ndarray]:
+        return np.array([d.V_d for d in self.data])
 
     @property
-    def bond_features_size(self) -> Optional[int]:
-        if len(self.data) > 0 and self.data[0].bond_features is None:
-            return None
+    def V_ds(self) -> list[np.ndarray]:
+        return self.__V_ds
 
-        return len(self.data[0].bond_features[0])
+    @V_ds.setter
+    def V_ds(self, V_ds: list[np.ndarray] | None):
+        self._validate_attribute(V_ds, "atom descriptors")
+
+        self.__V_ds = V_ds
 
     @property
-    def atom_descriptors_size(self) -> Optional[int]:
-        if len(self.data) > 0 and self.data[0].atom_descriptors is None:
-            return None
+    def d_vf(self) -> int | None:
+        return None if self.V_fs[0] is None else self.V_fs[0].shape[1]
 
-        return len(self.data[0].atom_descriptors[0])
+    @property
+    def d_ef(self) -> int | None:
+        return None if self.E_fs is None else self.E_fs[0].shape[1]
 
-    def normalize(
-        self, key: str = "features", scaler: Optional[StandardScaler] = None
+    @property
+    def d_vd(self) -> int | None:
+        return None if self.V_ds is None else self.V_ds[0].shape[1]
+
+    def normalize_inputs(
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        valid_keys = ("features", "atom_features", "bond_features", "atom_descriptors", "all")
-        if key.lower() not in valid_keys:
-            raise ValueError(f"Invalid feature key! got: {key}. expected one of: {valid_keys}")
+        VALID_KEYS = {"X_f", "V_f", "E_f", "V_d", None}
 
-        if key == "features":
-            X = self.features
-        elif key == "atom_features":
-            X = self.atom_features
-        elif key == "bond_features":
-            X = self.bond_features
-        elif key == "atom_descriptors":
-            X = self.atom_descriptors
-        else:
-            return [self.normalize(k, scaler) for k in valid_keys if k != "all"]
+        match key:
+            case "X_f":
+                X = self.X_f
+            case "V_f":
+                X = None if self.V_fs is None else np.concatenate(self.V_fs, axis=0)
+            case "E_f":
+                X = None if self.E_fs is None else np.concatenate(self.E_fs, axis=0)
+            case "V_d":
+                X = None if self.V_ds is None else np.concatenate(self.V_ds, axis=0)
+            case None:
+                return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
+            case _:
+                ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
         if X is None:
             return scaler
 
         if scaler is None:
             scaler = StandardScaler().fit(X)
-        X_normalized = scaler.transform(X)
 
-        if key == "features":
-            self.features = X_normalized
-        elif key == "atom_features":
-            self.atom_features = X_normalized
-        elif key == "bond_features":
-            self.bond_features = X_normalized
-        elif key == "atom_descriptors":
-            self.atom_descriptors = X_normalized
+        match key:
+            case "X_f":
+                self.X_f = scaler.transform(X)
+            case "V_f":
+                self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs]
+            case "E_f":
+                self.E_fs = [scaler.transform(E_f) for E_f in self.E_fs]
+            case "V_d":
+                self.V_ds = [scaler.transform(V_d) for V_d in self.V_ds]
+            case _:
+                raise RuntimeError("unreachable code reached!")
 
         return scaler
 
+    def reset(self):
+        super().reset()
+        self.__V_fs = self._V_fs
+        self.__E_fs = self._E_fs
+        self.__V_ds = self._V_ds
 
-class ReactionDataset(MolGraphDatasetBase):
-    """A `MolgraphDataset` composed of `ReactionDatapoint`s
 
-    Parameters
-    ----------
-    data : Iterable[ReactionDatapoint]
-        the dataset from which to load
-    featurizer : ReactionFeaturizer
-        the featurizer with which to generate MolGraphs of the input
-    """
+@dataclass
+class ReactionDataset(Dataset, MolGraphDatasetMixin):
+    """A :class:`MolgraphDataset` composed of :class:`ReactionDatapoint`s"""
 
-    def __init__(
-        self, data: Iterable[ReactionDatapoint], featurizer: Optional[ReactionFeaturizerBase]
-    ):
-        self.data = list(data)
-        self.featurizer = featurizer or ReactionFeaturizer()
+    data: list[ReactionDatapoint]
+    """the dataset from which to load"""
+    featurizer: ReactionMolGraphFeaturizerProto = field(default_factory=ReactionMolGraphFeaturizer)
+    """the featurizer with which to generate MolGraphs of the input"""
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
+        mg = self.featurizer(((d.rct, d.pdt)), None, None)
 
-        return (
-            self.featurizer(d.mols, d.atom_features, d.bond_features),
-            None,
-            d.features,
-            d.targets,
-            d.data_weight,
-            d.lt_targets,
-            d.gt_targets,
-        )
+        return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:
-        return [d.smis for d in self.data]
+        return [(d.rct_smi, d.pdt_smi) for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
-        return [d.mols for d in self.data]
-
-    @property
-    def number_of_molecules(self) -> int:
-        return self.data[0].number_of_molecules
+        return [(d.rct, d.pdt) for d in self.data]

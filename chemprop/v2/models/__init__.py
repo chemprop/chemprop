@@ -1,18 +1,10 @@
 from .modules import (
     MessagePassingBlock,
-    MolecularMessagePassingBlock,
-    MolecularInput,
-    CompositeMessagePassingBlock,
+    MessagePassingBlockBase,
+    MulticomponentMessagePassing,
     AtomMessageBlock,
     BondMessageBlock,
 )
-from .models import (
-    MPNN,
-    ClassificationMPNN,
-    DirichletClassificationMPNN,
-    MulticlassMPNN,
-    DirichletMulticlassMPNN,
-    RegressionMPNN,
-    MveRegressionMPNN,
-    SpectralMPNN,
-)
+from .model import MPNN
+from .loss import LossFunction
+from .metrics import Metric, MetricRegistry

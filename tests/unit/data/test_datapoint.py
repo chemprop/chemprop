@@ -60,13 +60,13 @@ def test_features_and_fg(features_generators):
     targets = np.random.rand(1, 1)
     features = np.random.rand(1024)
     with pytest.raises(ValueError):
-        MoleculeDatapoint(smi, targets, features=features, features_generators=features_generators)
+        MoleculeDatapoint(smi, targets, features=features, molecule_featurizers=features_generators)
 
 
 def test_num_tasks(targets):
     d = MoleculeDatapoint("c1ccccc1", targets)
 
-    assert d.num_tasks == targets.shape[0]
+    assert d.t == targets.shape[0]
 
 
 def test_addh(smi, targets):
@@ -82,4 +82,4 @@ def test_replace_token(smi, targets, features_with_nans):
 
     d = MoleculeDatapoint(smi, targets, features=features_with_nans)
 
-    assert not np.isnan(d.features).any()
+    assert not np.isnan(d.x_f).any()

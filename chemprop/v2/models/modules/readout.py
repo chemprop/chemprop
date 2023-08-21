@@ -1,101 +1,244 @@
-from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Protocol
 
 import torch
-from torch import Tensor, nn
+from torch import nn, Tensor
+from torch.nn import functional as F
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 
-from chemprop.v2.utils import RegistryMixin
+from chemprop.v2.models import loss
+from chemprop.v2.models.modules.ffn import SimpleFFN
+from chemprop.v2.utils import ClassRegistry
+
+ReadoutRegistry = ClassRegistry()
 
 
-class Readout(ABC, nn.Module, RegistryMixin):
-    """An `Readout` module aggregates the node-level representations of graph into a single
-    graph-level representation"""
+class ReadoutProto(Protocol):
+    input_dim: int
+    """the input dimension"""
+    output_dim: int
+    """the output dimension"""
+    n_tasks: int
+    """the number of tasks `t` to predict for each input"""
+    n_targets: int
+    """the number of targets `s` to predict for each task `t`"""
+    criterion: loss.LossFunction
+    """the loss function to use for training"""
 
-    registry = {}
+    def forward(self, Z: Tensor) -> Tensor:
+        pass
 
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-
-    def forward(self, H_v: Tensor, sizes: Iterable[int]) -> Tensor:
-        """Aggregate node-level representations into a graph-level representation
-
-        The input `H_v` is a stacked tensor containing the node-level representations for
-        `b` separate graphs. I.e., if `H_v` is a tensor of shape `10 x 4` and `sizes` is equal to
-        `[3, 4, 3]`, then `H[:3]`,` H[3:7]`, and `H[7:]` correspond to the node-level
-        represenataions of the three stacked graphs. The output of this function will then be a
-        tensor of shape `3 x 4`
-
-        NOTE: it is possible for a graph to have 0 nodes. In this case, the representation will be
-        a zero vector of length `d` in the final output.
-
-        Parameters
-        ----------
-        H_v : Tensor
-            A tensor of shape `sum(sizes) x d` containing the stacked node-level representations of
-            `b` graphs
-        sizes : Iterable[int]
-            an iterable of length `b` containing the number of nodes in each of the `b` graphs,
-            respectively. NOTE: `sum(sizes)` must be equal to `len(H_v)`
-
-        Returns
-        -------
-        Tensor
-            a tensor of shape `b x d` containing the graph-level representations of each graph
-
-        Raises
-        ------
-        RuntimeError
-            if `sum(sizes)` is not equal to `len(H_v)`
-        """
-        H_vs = H_v.split(sizes)
-        hs = self.aggregate(H_vs)
-
-        return torch.stack(hs)
-
-    @abstractmethod
-    def aggregate(self, Hs: Iterable[Tensor]):
+    def train_step(self, Z: Tensor) -> Tensor:
         pass
 
 
-class MeanReadout(Readout):
-    """Take the mean node-level representation as the graph-level representation"""
-
-    alias = "mean"
-
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.mean(0) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
+class Readout(nn.Module, ReadoutProto):
+    pass
 
 
-class NormReadout(Readout):
-    """Take the summed node-level representation divided by a normalization constant as the
-    graph-level representation"""
+class ReadoutFFNBase(Readout):
+    _default_criterion: loss.LossFunction
 
-    alias = "norm"
+    def __init__(
+        self,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
+        hidden_dim: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0,
+        activation: str = "relu",
+        criterion: loss.LossFunction | None = None,
+    ):
+        super().__init__()
 
-    def __init__(self, *args, norm: float = 100, **kwargs):
-        self.norm = norm
+        self.ffn = SimpleFFN(
+            input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
+        )
+        self.criterion = criterion or self._default_criterion
+
+    @property
+    def input_dim(self) -> int:
+        return self.ffn.input_dim
+
+    @property
+    def output_dim(self) -> int:
+        return self.ffn.output_dim
+
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // self.n_targets
+
+    def forward(self, Z: Tensor) -> Tensor:
+        return self.ffn(Z)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        return self.ffn(Z)
+
+
+@ReadoutRegistry.register("regression")
+class RegressionFFN(ReadoutFFNBase):
+    n_targets = 1
+    _default_criterion = loss.MSELoss()
+
+    def __init__(self, *args, loc: float | Tensor = 0, scale: float | Tensor = 1, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.sum(0) / self.norm if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
+        self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
+        self.scale = nn.Parameter(torch.tensor(scale).view(-1, 1), False)
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+
+        return self.scale * Y + self.loc
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        return super().forward(Z)
 
 
-class SumReadout(Readout):
-    """Take the summed node-level representation as the graph-level representation"""
+@ReadoutRegistry.register("regression-mve")
+class MveFFN(RegressionFFN):
+    n_targets = 2
+    _default_criterion = loss.MVELoss()
 
-    alias = "sum"
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        mean, var = torch.chunk(Y, self.n_targets, 1)
 
-    def aggregate(self, Hs: Iterable[Tensor]):
-        return [H.sum(0) if H.shape[0] > 0 else torch.zeros(H.shape[1]) for H in Hs]
+        mean = self.scale * mean + self.loc
+        var = var * self.scale**2
+
+        return torch.cat((mean, var), 1)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        mean, var = torch.chunk(Y, self.n_targets, 1)
+        var = F.softplus(var)
+
+        return torch.cat((mean, var), 1)
 
 
-def build_readout(aggregation: str = "mean", norm: float = 100) -> Readout:
-    try:
-        aggr_cls = Readout.registry[aggregation.lower()]
-    except KeyError:
-        raise ValueError(
-            f"Invalid aggregation! got: '{aggregation}'. "
-            f"expected one of {set(Readout.registry.keys())}"
-        )
+@ReadoutRegistry.register("regression-evidential")
+class EvidentialFFN(RegressionFFN):
+    n_targets = 4
+    _default_criterion = loss.EvidentialLoss()
 
-    return aggr_cls(norm)
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        mean, v, alpha, beta = torch.chunk(Y, self.n_targets, 1)
+
+        mean = self.scale * mean + self.loc
+        v = v * self.scale**2
+
+        return torch.cat((mean, v, alpha, beta), 1)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        mean, v, alpha, beta = torch.chunk(Y, self.n_targets, 1)
+
+        v = F.softplus(v)
+        alpha = F.softplus(alpha) + 1
+        beta = F.softplus(beta)
+
+        return torch.cat((mean, v, alpha, beta), 1)
+
+
+class BinaryClassificationFFNBase(ReadoutFFNBase):
+    pass
+
+
+@ReadoutRegistry.register("classification")
+class BinaryClassificationFFN(BinaryClassificationFFNBase):
+    n_targets = 1
+    _default_criterion = loss.BCELoss()
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+
+        return Y.sigmoid()
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        return super().forward(Z)
+
+
+@ReadoutRegistry.register("classification-dirichlet")
+class BinaryDirichletFFN(BinaryClassificationFFNBase):
+    n_targets = 2
+    _default_criterion = loss.BinaryDirichletLoss()
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        alpha, beta = torch.chunk(Y, 2, 1)
+
+        return beta / (alpha + beta)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+
+        F.softplus(Y) + 1
+
+
+@ReadoutRegistry.register("multiclass")
+class MulticlassClassificationFFN(ReadoutFFNBase):
+    n_targets = 1
+    _default_criterion = loss.CrossEntropyLoss()
+
+    def __init__(self, n_classes: int, n_tasks: int = 1, *args, **kwargs):
+        super().__init__(n_tasks * n_classes, *args, **kwargs)
+
+        self.n_classes = n_classes
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        Y = Y.reshape(Y.shape[0], -1, self.n_classes)
+
+        return Y.softmax(-1)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
+
+
+@ReadoutRegistry.register("multiclass-dirichlet")
+class MulticlassDirichletFFN(MulticlassClassificationFFN):
+    _default_criterion = loss.MulticlassDirichletLoss()
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+
+        Y = Y.softmax(-1)
+        Y = F.softplus(Y) + 1
+
+        alpha = Y
+        Y = Y / Y.sum(-1, keepdim=True)
+
+        return torch.cat((Y, alpha), 1)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+
+        return F.softplus(Y) + 1
+
+
+class Exp(nn.Module):
+    def forward(self, X: Tensor):
+        return X.exp()
+
+
+@ReadoutRegistry.register("spectral")
+class SpectralFFN(ReadoutFFNBase):
+    n_targets = 1
+    _default_criterion = loss.SIDLoss()
+
+    def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
+        super().__init__(*args, **kwargs)
+
+        match spectral_activation:
+            case "exp":
+                spectral_activation = Exp()
+            case "softplus" | None:
+                spectral_activation = nn.Softplus()
+            case _:
+                raise ValueError(
+                    f"Unknown spectral activation: {spectral_activation}. "
+                    "Expected one of 'exp', 'softplus' or None."
+                )
+
+        self.ffn.ffn.add_module("spectral_activation", spectral_activation)

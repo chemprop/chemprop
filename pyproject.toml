@@ -15,7 +15,6 @@ authors = [
     {name = "Wengong Jin"},
     {name = "Lior Hirschfeld"},
     {name = "Allison Tam"}
-    
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -55,12 +54,15 @@ source = "https://github.com/chemprop/chemprop"
 PyPi = "https://pypi.org/project/chemprop/"
 demo = "http://chemprop.csail.mit.edu/"
 
+[project.scripts]
+chemprop = "chemprop.v2.cli.main:main"
+
 [tool.setuptools_scm]
 write_to = "chemprop/_version.py"
 
 [tool.black]
 line-length = 100
-target-version = ["py38"]
+target-version = ["py311"]
 skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
