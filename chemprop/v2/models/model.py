@@ -15,11 +15,11 @@ from chemprop.v2.models.schedulers import NoamLR
 class MPNN(pl.LightningModule):
     r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
     readout routine.
-    
+
     The first two modules calculate learned fingerprints from an input molecule
     reaction graph, and the final module takes these leared fingerprints as input to calculate a
     final prediction. I.e., the following operation:
-    
+
     .. math::
         \mathtt{MPNN}(\mathcal{G}) =
             \mathtt{readout}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
@@ -168,7 +168,8 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_f)
 
         return [
-            metric(preds, targets, mask, None, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
+            metric(preds, targets, mask, None, None, lt_mask, gt_mask)
+            for metric in self.metrics[:-1]
         ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:

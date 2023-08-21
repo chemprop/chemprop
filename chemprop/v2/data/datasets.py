@@ -120,6 +120,7 @@ class MolGraphDatasetMixin:
                 "must have same length!"
             )
 
+
 @dataclass
 class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `MoleculeDatapoint`s

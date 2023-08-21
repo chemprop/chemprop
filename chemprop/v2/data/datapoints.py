@@ -79,7 +79,7 @@ class MoleculeDatapoint(DatapointMixin, MoleculeDatapointMixin):
     def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
         if self.mol is None:
             raise ValueError("Input molecule was `None`!")
-        
+
         NAN_TOKEN = 0
 
         if self.V_f is not None:
@@ -143,16 +143,17 @@ class ReactionDatapoint(DatapointMixin, ReactionDatapointMixin):
             raise ValueError("Reactant cannot be `None`!")
         if self.pdt is None:
             raise ValueError("Product cannot be `None`!")
-        
+
         return super().__post_init__(mfs)
-    
+
     def __len__(self) -> int:
         return 2
 
     def calc_features(self, mfs: list[MoleculeFeaturizerProto]) -> np.ndarray:
         x_fs = [
             mf(mol) if mol.GetNumHeavyAtoms() > 0 else np.zeros(len(mf))
-            for mf in mfs for mol in [self.rct, self.pdt]
+            for mf in mfs
+            for mol in [self.rct, self.pdt]
         ]
 
         return np.hstack(x_fs)
@@ -165,12 +166,7 @@ class MulticomponentDatapointMixin:
 
     @classmethod
     def from_smis(
-        cls,
-        smis: list[str],
-        keep_h: bool = False,
-        add_h: bool = False,
-        *args,
-        **kwargs,
+        cls, smis: list[str], keep_h: bool = False, add_h: bool = False, *args, **kwargs
     ) -> MulticomponentDatapointMixin:
         mols = [make_mol(smi, keep_h, add_h) for smi in smis]
 
@@ -184,7 +180,7 @@ class MulticomponentDatapoint(DatapointMixin, MulticomponentDatapointMixin):
     def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
         if any(mol is None for mol in self.mols):
             raise ValueError(f"An input molecule was `None`! Index: {self.mols.index(None)}")
-        
+
         return super().__post_init__(mfs)
 
     def __len__(self) -> int:
@@ -193,7 +189,8 @@ class MulticomponentDatapoint(DatapointMixin, MulticomponentDatapointMixin):
     def calc_features(self, mfs: list[MoleculeFeaturizerProto]) -> np.ndarray:
         x_fs = [
             mf(mol) if mol.GetNumHeavyAtoms() > 0 else np.zeros(len(mf))
-            for mf in mfs for mol in self.mols
+            for mf in mfs
+            for mol in self.mols
         ]
 
         return np.hstack(x_fs)

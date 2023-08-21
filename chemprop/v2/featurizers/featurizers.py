@@ -32,7 +32,8 @@ class MorganFeaturizerMixin:
     def __len__(self) -> int:
         return self.length
 
-class BinaryFeaturizerMixin:    
+
+class BinaryFeaturizerMixin:
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
         return self.F.GetFingerprintAsNumPy(mol)
 
@@ -42,15 +43,14 @@ class CountFeaturizerMixin:
         return self.F.GetCountFingerprintAsNumPy(mol)
 
 
-
-@MoleculeFeaturizerRegistry('morgan_binary')
+@MoleculeFeaturizerRegistry("morgan_binary")
 class MorganBinaryFeaturzer(MorganFeaturizerMixin, BinaryFeaturizerMixin, MoleculeFeaturizerProto):
     pass
 
 
-@MoleculeFeaturizerRegistry('morgan_count')
+@MoleculeFeaturizerRegistry("morgan_count")
 class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, MoleculeFeaturizerProto):
-    pass    
+    pass
 
 
 # try:

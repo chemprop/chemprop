@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 
 from chemprop.v2.models import loss
-from chemprop.v2.models.modules.ffn import FFN, SimpleFFN
+from chemprop.v2.models.modules.ffn import SimpleFFN
 from chemprop.v2.utils import ClassRegistry
 
 ReadoutRegistry = ClassRegistry()

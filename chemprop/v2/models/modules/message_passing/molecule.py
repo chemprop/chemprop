@@ -108,7 +108,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
         r"""Finalize message passing by (1) concatenating the final hidden representations `H_v` and the original vertex `V` and (2) further concatenating additional vertex descriptors `V_d`, if provided.
-        
+
         This function implements the following operation:
 
         .. math::
@@ -192,8 +192,8 @@ class BondMessageBlock(MessagePassingBlockBase):
                 H_e = (H_e + H_e[bmg.b2revb]) / 2
 
             # MESSAGE
-            M_e_k = H_e[bmg.a2b]    # E x n_bonds x d_h
-            M_e = M_e_k.sum(1)[bmg.b2a] # E x d_h
+            M_e_k = H_e[bmg.a2b]  # E x n_bonds x d_h
+            M_e = M_e_k.sum(1)[bmg.b2a]  # E x d_h
             M_e = M_e - H_e[bmg.b2revb]  # subtract reverse bond message
 
             # UPDATE
