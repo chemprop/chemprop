@@ -141,7 +141,8 @@ def predict_and_save(
     atom_targets = None, 
     bond_targets = None,
     evaluation_methods = None,
-    path: str = None,
+    test_path: str = None,
+    preds_path: str = None,
     smiles_columns: Union[str, list[str]] = None,
     target_columns: list[str] = None,
     ignore_columns: list[str] = None,
@@ -206,7 +207,7 @@ def predict_and_save(
     if evaluation_methods is not None:
 
         evaluation_data = get_data(
-            path = path,
+            path = test_path,
             smiles_columns = smiles_columns,
             target_columns = target_columns,
             ignore_columns = ignore_columns,
@@ -256,11 +257,11 @@ def predict_and_save(
 
     # Save results
     if save_results:
-        print(f"Saving predictions to {path}")
+        print(f"Saving predictions to {preds_path}")
         assert len(test_data) == len(preds)
         assert len(test_data) == len(unc)
 
-        makedirs(path, isfile=True)
+        makedirs(preds_path, isfile=True)
 
         # Set multiclass column names, update num_tasks definitions
         if dataset_type == "multiclass":
@@ -318,8 +319,8 @@ def predict_and_save(
                         row[pred_name + f"_model_{idx}"] = pred
             datapointrow[full_index] = row
         # Save
-        save_path = path.split(".csv")[0] + "_withResults.csv"
-        with open(path, 'w', newline="") as f:
+        
+        with open(preds_path, 'w', newline="") as f:
             writer = csv.DictWriter(f, fieldnames=row.keys())
             writer.writeheader()
 
@@ -413,7 +414,8 @@ def make_predictions(
             # (Not yet implemented) calibrator=calibrator,
             # (Not yet implemented) return_invalid_smiles = False,
             individual_ensemble_predictions = args.individual_ensemble_predictions,
-            path = args.test_path,
+            test_path = args.test_path,
+            preds_path = args.preds_path,
             smiles_columns = args.smiles_columns,
             target_columns = [],
             ignore_columns = [],
