@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import InitVar, dataclass
 
 import numpy as np
-from rdkit.Chem import AllChema as Chem
+from rdkit.Chem import AllChem as Chem
 
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerProto
 from chemprop.v2.utils import make_mol
