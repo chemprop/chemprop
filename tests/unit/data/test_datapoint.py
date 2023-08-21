@@ -60,7 +60,7 @@ def test_features_and_fg(features_generators):
     targets = np.random.rand(1, 1)
     features = np.random.rand(1024)
     with pytest.raises(ValueError):
-        MoleculeDatapoint(smi, targets, features=features, features_generators=features_generators)
+        MoleculeDatapoint(smi, targets, features=features, molecule_featurizers=features_generators)
 
 
 def test_num_tasks(targets):
