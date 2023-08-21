@@ -9,13 +9,14 @@ from chemprop.v2 import data
 from chemprop.v2 import featurizers
 from chemprop.v2.models import loss, modules, models, metrics
 
-pl.seed_everything(42)
+# pl.seed_everything(42)
+NUM_WORKERS = 2
 
-featurizer = featurizers.MoleculeFeaturizer()
+featurizer = featurizers.MoleculeMolGraphFeaturizer()
 mp = modules.BondMessageBlock()
 agg = modules.MeanAggregation()
 ffn = modules.RegressionFFN()
-mpnn = models.MPNN(mp, agg, ffn, [metrics.RMSEMetric()])
+mpnn = models.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
 
 print(mpnn)
 
@@ -37,9 +38,9 @@ val_dset.normalize_targets(scaler)
 test_dset = data.MoleculeDataset(test_data, featurizer)
 test_dset.normalize_targets(scaler)
 
-train_loader = data.MolGraphDataLoader(train_dset, num_workers=0)
-val_loader = data.MolGraphDataLoader(val_dset, num_workers=0, shuffle=False)
-test_loader = data.MolGraphDataLoader(test_dset, num_workers=0, shuffle=False)
+train_loader = data.MolGraphDataLoader(train_dset, num_workers=NUM_WORKERS)
+val_loader = data.MolGraphDataLoader(val_dset, num_workers=NUM_WORKERS, shuffle=False)
+test_loader = data.MolGraphDataLoader(test_dset, num_workers=NUM_WORKERS, shuffle=False)
 
 trainer = pl.Trainer(
     logger=False,

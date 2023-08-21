@@ -12,7 +12,7 @@ from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
 
 
-class ReactionFeaturizerProto(MolGraphFeaturizerProto):
+class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
     """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
     molecules) into `MolGraph`s"""
 
@@ -44,7 +44,7 @@ class ReactionFeaturizerProto(MolGraphFeaturizerProto):
 
 
 @dataclass
-class ReactionFeaturizer(MolGraphFeaturizerMixin, ReactionFeaturizerProto):
+class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeaturizerProto):
     """Featurize reactions using the condensed reaction graph method utilized in [1]_
 
     NOTE: This class *does not* accept a `AtomFeaturizerBase` instance. This is because it requries

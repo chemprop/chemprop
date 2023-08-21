@@ -8,7 +8,7 @@ from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 
 
-class MoleculeFeaturizerProto(MolGraphFeaturizerProto):
+class MoleculeMolGraphFeaturizerProto(MolGraphFeaturizerProto):
     """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s"""
 
     def __call__(
@@ -36,7 +36,7 @@ class MoleculeFeaturizerProto(MolGraphFeaturizerProto):
 
 
 @dataclass
-class MoleculeFeaturizer(MolGraphFeaturizerMixin, MoleculeFeaturizerProto):
+class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProto):
     """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s
 
     Attributes

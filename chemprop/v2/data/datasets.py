@@ -10,10 +10,10 @@ from torch.utils.data import Dataset
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.featurizers import (
     MolGraph,
-    MoleculeFeaturizerProto,
-    MoleculeFeaturizer,
-    ReactionFeaturizerProto,
-    ReactionFeaturizer,
+    MoleculeMolGraphFeaturizerProto,
+    MoleculeMolGraphFeaturizer,
+    ReactionMolGraphFeaturizerProto,
+    ReactionMolGraphFeaturizer,
 )
 
 
@@ -133,7 +133,7 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeFeaturizerProto = field(default_factory=MoleculeFeaturizer)
+    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
         self.reset()
@@ -258,12 +258,12 @@ class ReactionDataset(Dataset, MolGraphDatasetMixin):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: ReactionFeaturizerProto = field(default_factory=ReactionFeaturizer)
+    featurizer: ReactionMolGraphFeaturizerProto = field(default_factory=ReactionMolGraphFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(((d.rct_mol, d.pdt_mol)), None, None)
+        mg = self.featurizer(((d.rct, d.pdt)), None, None)
 
         return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
@@ -273,4 +273,4 @@ class ReactionDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def mols(self) -> list[Chem.Mol]:
-        return [(d.rct_mol, d.pdt_mol) for d in self.data]
+        return [(d.rct, d.pdt) for d in self.data]

@@ -33,8 +33,8 @@ class SimpleFFN(FFN):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
 
-        sizes = [input_dim, *([hidden_dim] * n_layers), output_dim]
-        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(sizes[:-1], sizes[1:]))
+        dims = [input_dim, *([hidden_dim] * n_layers), output_dim]
+        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(dims[:-1], dims[1:]))
         layers = list(chain(*blocks))
 
         self.ffn = nn.Sequential(*layers[1:-1])
