@@ -85,6 +85,7 @@ class MPNN(pl.LightningModule):
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.readout = readout
 
+        # NOTE(degraff): should think about how to handle no supplied metric
         self.metrics = [*metrics, self.criterion] if metrics else [self.criterion]
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
         self.w_t = nn.Parameter(w_t.unsqueeze(0), False)

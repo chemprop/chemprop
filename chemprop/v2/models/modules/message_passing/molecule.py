@@ -35,16 +35,14 @@ class MessagePassingBlockBase(MessagePassingBlock):
         the dropout probability
     activation : str, default="relu"
         the activation function to use
-    aggregation : Aggregation | None, default=None
-        the aggregation operation to use during molecule-level readout. If `None`, use `MeanAggregation`
     d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
 
     See also
     --------
-    `AtomMessageBlock`
+    * :class:`AtomMessageBlock`
 
-    `BondMessageBlock`
+    * :class:`BondMessageBlock`
     """
 
     def __init__(
@@ -62,49 +60,20 @@ class MessagePassingBlockBase(MessagePassingBlock):
     ):
         super().__init__()
 
+        self.W_i, self.W_h, self.W_o = self.build_weight_matrices(d_v, d_e, d_h, bias)
         self.depth = depth
         self.undirected = undirected
-        # self.layers_per_message = 1
-
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
+        self.W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
-        self.__output_dim = d_h
-
-        if d_vd is not None:
-            self.d_vd = d_vd
-            self.__output_dim += d_vd
-            self.W_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
-
-        self.W_i, self.W_h, self.W_o = self.setup_weight_matrices(d_v, d_e, d_h, bias)
-
-    @abstractmethod
-    def setup_weight_matrices(
-        self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False
-    ) -> tuple[nn.Module, nn.Module, nn.Module]:
-        """set up the weight matrices used in the message passing udpate functions
-
-        Parameters
-        ----------
-        d_v : int
-            the vertex feature dimension
-        d_e : int
-            the edge feature dimension
-        d_h : int, default=300
-            the hidden dimension during message passing
-        bias: bool, deafault=False
-            whether to add a learned bias to the matrices
-
-        Returns
-        -------
-        tuple[nn.Module, nn.Module, nn.Module]
-            the input, hidden, and output weight matrices, respectively, used in the message
-            passing update functions
-        """
+        # self.__output_dim = d_h
+        # if d_vd is not None:
+        #     # self.__output_dim += d_vd
 
     @property
     def output_dim(self) -> int:
-        return self.W_o.out_features
+        return self.W_d.out_features if self.W_d is not None else self.W_o.out_features
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
         r"""Finalize message passing by (1) concatenating the final hidden representations `H_v` and the original vertex `V` and (2) further concatenating additional vertex descriptors `V_d`, if provided.
@@ -112,12 +81,13 @@ class MessagePassingBlockBase(MessagePassingBlock):
         This function implements the following operation:
 
         .. math::
-            H_v &= \mathtt{dropout} \left( \tau(W_o([V, M_v])) \right) \\
-            H_v &= \mathtt{dropout} \left( \tau(W_vd([H_v, V_d])) \right),
+            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M_v)) \right) \\
+            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H_v \mathbin\Vert V_d)) \right),
 
-        where :math:`\tau` is the activation function, :math:`W_o` and :math:`W_vd` are learned
-        weight matrices, :math:`M_v` is the learned message matrix, :math:`V` is the original
-        vertex feature matrix, and :math:`V_d` is an optional vertex descriptor matrix.
+        where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
+        :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M_v` is
+        the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
+        optional vertex descriptor matrix.
 
         Parameters
         ----------
@@ -146,12 +116,36 @@ class MessagePassingBlockBase(MessagePassingBlock):
         if V_d is not None:
             try:
                 H_vd = torch.cat((H_v, V_d), 1)
-                H_v = self.W_vd(H_vd)
+                H_v = self.W_d(H_vd)
                 H_v = self.dropout(H_v)
             except RuntimeError:
-                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.d_vd])
+                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.W_d.in_features])
 
         return H_v
+
+    @abstractmethod
+    def build_weight_matrices(
+        self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False
+    ) -> tuple[nn.Module, nn.Module, nn.Module]:
+        """construct the weight matrices used in the message passing update functions
+
+        Parameters
+        ----------
+        d_v : int
+            the vertex feature dimension
+        d_e : int
+            the edge feature dimension
+        d_h : int, default=300
+            the hidden dimension during message passing
+        bias: bool, deafault=False
+            whether to add a learned bias to the matrices
+
+        Returns
+        -------
+        W_i, W_h, W_o : tuple[nn.Module, nn.Module, nn.Module]
+            the input, hidden, and output weight matrices, respectively, used in the message
+            passing update functions
+        """
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
@@ -176,7 +170,7 @@ class MessagePassingBlockBase(MessagePassingBlock):
 
 
 class BondMessageBlock(MessagePassingBlockBase):
-    def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
+    def build_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         W_i = nn.Linear(d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
@@ -208,7 +202,7 @@ class BondMessageBlock(MessagePassingBlockBase):
 
 
 class AtomMessageBlock(MessagePassingBlockBase):
-    def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
+    def build_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
         W_i = nn.Linear(d_v, d_h, bias)
         W_h = nn.Linear(d_e + d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
