@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
 from numpy.typing import ArrayLike
 from torch.optim import Optimizer
@@ -9,15 +7,27 @@ from torch.optim.lr_scheduler import LRScheduler
 
 
 class NoamLR(LRScheduler):
-    """A Noam learning rate scheduler schedules the learning rate with a piecewise linear followed
+    r"""A Noam learning rate scheduler schedules the learning rate with a piecewise linear followed
     by an exponential decay.
 
-    The learning rate increases linearly from `init_lr` to `max_lr` over the course of
-    the first warmup_steps (where :code:`warmup_steps = warmup_epochs * steps_per_epoch`).
-    Then the learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr` over the
-    course of the remaining :code:`total_steps - warmup_steps` (where :code:`total_steps =
-    total_epochs * steps_per_epoch`). This is roughly based on the learning rate
-    schedule from [1]_, section 5.3.
+    The learning rate increases linearly from ``init_lr`` to ``max_lr`` over the course of
+    the first warmup_steps then decreases exponentially to ``final_lr`` over the course of the
+    remaining ``total_steps - warmup_steps`` (where ``total_steps = total_epochs * steps_per_epoch``). This is roughly based on the learning rate schedule from [1]_, section 5.3.
+
+    Formally, the learning rate schedule is defined as:
+
+    .. math::
+        \mathtt{lr}(i) &=
+            \begin{cases}
+                \mathtt{init\_lr} + \delta \cdot i &\text{if } i < \mathtt{warmup\_steps} \\
+                \mathtt{max\_lr} \cdot \left( \frac{\mathtt{final\_lr}}{\mathtt{max\_lr}} \right)^{\gamma(i)} &\text{otherwise} \\
+            \end{cases}
+        \\
+        \delta &\defeq
+            \frac{\mathtt{max\_lr} - \mathtt{init\_lr}}{\mathtt{warmup\_steps}} \\
+        \gamma(i) &\defeq
+            \frac{i - \mathtt{warmup\_steps}}{\mathtt{total\_steps} - \mathtt{warmup\_steps}}
+
 
     Parameters
     -----------
@@ -25,16 +35,16 @@ class NoamLR(LRScheduler):
         A PyTorch optimizer.
     warmup_epochs : ArrayLike
         The number of epochs during which to linearly increase the learning rate.
-    total_epochs : ArrayLike
+    total_epochs : int
         The total number of epochs.
     steps_per_epoch : int
         The number of steps (batches) per epoch.
     init_lr : ArrayLike
         The initial learning rate.
     max_lr : ArrayLike
-        The maximum learning rate (achieved after :code:`warmup_epochs`).
+        The maximum learning rate (achieved after ``warmup_epochs``).
     final_lr : ArrayLike
-        The final learning rate (achieved after :code:`total_epochs`).
+        The final learning rate (achieved after ``total_epochs``).
 
     References
     ----------
@@ -45,7 +55,7 @@ class NoamLR(LRScheduler):
         self,
         optimizer: Optimizer,
         warmup_epochs: ArrayLike,
-        total_epochs: ArrayLike,
+        total_epochs: int,
         steps_per_epoch: int,
         init_lrs: ArrayLike,
         max_lrs: ArrayLike,
@@ -91,11 +101,11 @@ class NoamLR(LRScheduler):
         self.scheds = np.array(self.scheds)
 
         super(NoamLR, self).__init__(optimizer)
-    
+
     def __len__(self) -> int:
         """the number of steps in the learning rate schedule"""
         return self.scheds.shape[1]
-    
+
     def get_lr(self) -> np.ndarray:
         """Get a list of the current learning rates"""
         return self.lrs

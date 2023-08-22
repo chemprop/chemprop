@@ -204,7 +204,7 @@ class MPNN(pl.LightningModule):
         lr_sched = NoamLR(
             opt,
             self.warmup_epochs,
-            self.trainer.max_epochs,# * self.num_lrs,
+            self.trainer.max_epochs,  # * self.num_lrs,
             self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
             self.init_lr,
             self.max_lr,
