@@ -21,11 +21,11 @@ mpnn = models.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
 print(mpnn)
 
 with open(sys.argv[1]) as fid:
-    reader = csv.reader(fid)
+    reader = csv.reader(fid, delimiter=',')
     next(reader)
     smis, scores = zip(*[(smi, float(score)) for smi, score in reader])
 scores = np.array(scores).reshape(-1, 1)
-all_data = [data.MoleculeDatapoint(smi, target) for smi, target in zip(smis, scores)]
+all_data = [data.MoleculeDatapoint.from_smi(smi=smi, y=target) for smi, target in zip(smis, scores)]
 
 train_data, val_test_data = train_test_split(all_data, test_size=0.1)
 val_data, test_data = train_test_split(val_test_data, test_size=0.5)
