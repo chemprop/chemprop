@@ -5,18 +5,20 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.v2.utils import ClassRegistry, pretty_shape
+from chemprop.v2.models.hparams import HasHParams
 
 AggregationRegistry = ClassRegistry()
 
 
-class Aggregation(ABC, nn.Module):
-    """An `Aggregation` module aggregates aggregates the graph-level representation into a global
+class Aggregation(ABC, nn.Module, HasHParams):
+    """An :class:`Aggregation` aggregates the node-level representation into a graph-level
     representation"""
 
     def __init__(self, dim: int = 0):
         super().__init__()
 
         self.dim = dim
+        self.hparams = {"dim": dim, "cls": self.__class__}
 
     def forward(self, H: Tensor, sizes: Sequence[int] | None) -> Tensor:
         """Aggregate the graph-level representations of a batch of graphs into their respective
@@ -101,6 +103,7 @@ class NormAggregation(Aggregation):
         super().__init__(*args, **kwargs)
 
         self.norm = norm
+        self.hparams["norm"] = norm
 
     def agg(self, H: Tensor) -> Tensor:
         return H.sum(self.dim) / self.norm

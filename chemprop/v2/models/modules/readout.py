@@ -1,12 +1,14 @@
 from typing import Protocol
 
+from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
-from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.models import loss
 from chemprop.v2.models.modules.ffn import SimpleFFN
+from chemprop.v2.models.hparams import HasHParams
 from chemprop.v2.utils import ClassRegistry
 
 ReadoutRegistry = ClassRegistry()
@@ -31,11 +33,11 @@ class ReadoutProto(Protocol):
         pass
 
 
-class Readout(nn.Module, ReadoutProto):
+class Readout(nn.Module, ReadoutProto, HasHParams):
     pass
 
 
-class ReadoutFFNBase(Readout):
+class ReadoutFFNBase(Readout, HyperparametersMixin):
     _default_criterion: loss.LossFunction
 
     def __init__(
@@ -49,7 +51,9 @@ class ReadoutFFNBase(Readout):
         criterion: loss.LossFunction | None = None,
     ):
         super().__init__()
-
+        self.save_hyperparameters()
+        self.hparams['cls'] = self.__class__
+        
         self.ffn = SimpleFFN(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )

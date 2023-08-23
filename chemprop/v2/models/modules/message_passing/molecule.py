@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 from abc import abstractmethod
 
+from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
 from torch import Tensor, nn
 
@@ -12,7 +11,7 @@ from chemprop.v2.models.utils import get_activation_function
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 
 
-class MessagePassingBlockBase(MessagePassingBlock):
+class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
     """The base message-passing block for atom- and bond-based MPNNs
 
     NOTE: this class is an abstract base class and cannot be instantiated
@@ -59,16 +58,14 @@ class MessagePassingBlockBase(MessagePassingBlock):
         # layers_per_message: int = 1,
     ):
         super().__init__()
-
+        self.save_hyperparameters()
+        self.hparams['cls'] = self.__class__
+        
         self.W_i, self.W_h, self.W_o, self.W_d = self.build(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
-
-        # self.__output_dim = d_h
-        # if d_vd is not None:
-        #     # self.__output_dim += d_vd
 
     @property
     def output_dim(self) -> int:
