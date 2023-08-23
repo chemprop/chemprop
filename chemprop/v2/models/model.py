@@ -82,11 +82,11 @@ class MPNN(pl.LightningModule):
 
         super().__init__()
         self.save_hyperparameters(ignore=["message_passing", "agg", "readout"])
-        self.hparams |= {
+        self.hparams.update({
             "message_passing": message_passing.hparams,
             "agg": agg.hparams,
             "readout": readout.hparams,
-        }
+        })
 
         self.message_passing = message_passing
         self.agg = agg
