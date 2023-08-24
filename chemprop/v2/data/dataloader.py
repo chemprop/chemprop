@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.v2.data.datasets import Datum, MolGraphDatasetMixin
+from chemprop.v2.data.datasets import Datum, _MolGraphDatasetMixin
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
@@ -30,7 +30,8 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
 
 class MolGraphDataLoader(DataLoader):
-    """A `MolGraphDataLoader` is a DataLoader for `MolGraphDataset`s
+    """A :class:`MolGraphDataLoader` is a :obj:`~torch.utils.data.DataLoader` for
+    :class:`MolGraphDataset`s
 
     Parameters
     ----------
@@ -52,7 +53,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: MolGraphDatasetMixin,
+        dataset: _MolGraphDatasetMixin,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,

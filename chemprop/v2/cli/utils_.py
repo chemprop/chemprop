@@ -6,8 +6,8 @@ from typing import Mapping, Optional, Sequence, Type
 import numpy as np
 
 from chemprop.v2 import models
-from chemprop.v2.data.datapoints import MoleculeDatapoint, DatapointMixin, ReactionDatapoint
-from chemprop.v2.data.datasets import MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
+from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
+from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers import RxnMolGraphFeaturizer, MoleculeMolGraphFeaturizer
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def make_datapoints(
     explicit_h: bool,
     add_h: bool,
     reaction: bool,
-) -> list[DatapointMixin]:
+) -> list[_DatapointMixin]:
     weights = np.ones(len(smis)) if weights is None else weights
     gt_targetss = [None] * len(smis) if gt_targetss is None else gt_targetss
     lt_targetss = [None] * len(smis) if lt_targetss is None else lt_targetss
@@ -178,7 +178,7 @@ def build_data_from_files(
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
     **featurization_kwargs: Mapping,
-) -> list[DatapointMixin]:
+) -> list[_DatapointMixin]:
     smiss, targetss, gt_targetss, lt_targetss = parse_data_csv(
         p_data, no_header_row, smiles_columns, target_columns, bounded
     )
@@ -205,7 +205,7 @@ def build_data_from_files(
 
 
 def make_dataset(
-    data: Sequence[DatapointMixin], bond_messages: bool, reaction_mode: str
+    data: Sequence[_DatapointMixin], bond_messages: bool, reaction_mode: str
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
