@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 from abc import abstractmethod
 
+from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
 from torch import Tensor, nn
 
@@ -12,7 +11,7 @@ from chemprop.v2.models.utils import get_activation_function
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 
 
-class MessagePassingBlockBase(MessagePassingBlock):
+class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
     """The base message-passing block for atom- and bond-based MPNNs
 
     NOTE: this class is an abstract base class and cannot be instantiated
@@ -35,16 +34,14 @@ class MessagePassingBlockBase(MessagePassingBlock):
         the dropout probability
     activation : str, default="relu"
         the activation function to use
-    aggregation : Aggregation | None, default=None
-        the aggregation operation to use during molecule-level readout. If `None`, use `MeanAggregation`
     d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
 
     See also
     --------
-    `AtomMessageBlock`
+    * :class:`AtomMessageBlock`
 
-    `BondMessageBlock`
+    * :class:`BondMessageBlock`
     """
 
     def __init__(
@@ -54,70 +51,41 @@ class MessagePassingBlockBase(MessagePassingBlock):
         d_h: int = DEFAULT_HIDDEN_DIM,
         bias: bool = False,
         depth: int = 3,
-        undirected: bool = False,
         dropout: float = 0,
         activation: str = "relu",
+        undirected: bool = False,
         d_vd: int | None = None,
         # layers_per_message: int = 1,
     ):
         super().__init__()
-
+        self.save_hyperparameters()
+        self.hparams['cls'] = self.__class__
+        
+        self.W_i, self.W_h, self.W_o, self.W_d = self.build(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
-        # self.layers_per_message = 1
-
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
 
-        self.__output_dim = d_h
-
-        if d_vd is not None:
-            self.d_vd = d_vd
-            self.__output_dim += d_vd
-            self.W_vd = nn.Linear(d_h + d_vd, d_h + d_vd)
-
-        self.W_i, self.W_h, self.W_o = self.setup_weight_matrices(d_v, d_e, d_h, bias)
-
-    @abstractmethod
-    def setup_weight_matrices(
-        self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False
-    ) -> tuple[nn.Module, nn.Module, nn.Module]:
-        """set up the weight matrices used in the message passing udpate functions
-
-        Parameters
-        ----------
-        d_v : int
-            the vertex feature dimension
-        d_e : int
-            the edge feature dimension
-        d_h : int, default=300
-            the hidden dimension during message passing
-        bias: bool, deafault=False
-            whether to add a learned bias to the matrices
-
-        Returns
-        -------
-        tuple[nn.Module, nn.Module, nn.Module]
-            the input, hidden, and output weight matrices, respectively, used in the message
-            passing update functions
-        """
-
     @property
     def output_dim(self) -> int:
-        return self.W_o.out_features
+        return self.W_d.out_features if self.W_d is not None else self.W_o.out_features
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
-        r"""Finalize message passing by (1) concatenating the final hidden representations `H_v` and the original vertex `V` and (2) further concatenating additional vertex descriptors `V_d`, if provided.
+        r"""Finalize message passing by (1) concatenating the final hidden representations `H_v`
+        and the original vertex `V` and (2) further concatenating additional vertex descriptors
+        `V_d`, if provided.
 
         This function implements the following operation:
 
         .. math::
-            H_v &= \mathtt{dropout} \left( \tau(W_o([V, M_v])) \right) \\
-            H_v &= \mathtt{dropout} \left( \tau(W_vd([H_v, V_d])) \right),
+            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M_v)) \right) \\
+            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H_v \mathbin\Vert V_d)) \right),
 
-        where :math:`\tau` is the activation function, :math:`W_o` and :math:`W_vd` are learned
-        weight matrices, :math:`M_v` is the learned message matrix, :math:`V` is the original
-        vertex feature matrix, and :math:`V_d` is an optional vertex descriptor matrix.
+        where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
+        :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M_v` is
+        the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
+        optional vertex descriptor matrix.
 
         Parameters
         ----------
@@ -139,19 +107,52 @@ class MessagePassingBlockBase(MessagePassingBlock):
             if `V_d` is not of shape `b x d_vd`, where `b` is the batch size and `d_vd` is the
             vertex descriptor dimension
         """
-        H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_h
+        H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_o
         H_v = self.tau(H_v)
         H_v = self.dropout(H_v)
 
         if V_d is not None:
             try:
-                H_vd = torch.cat((H_v, V_d), 1)
-                H_v = self.W_vd(H_vd)
+                H_vd = torch.cat((H_v, V_d), 1)  # V x (d_o + d_vd)
+                H_v = self.W_d(H_vd)  # V x (d_o + d_vd)
                 H_v = self.dropout(H_v)
             except RuntimeError:
-                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.d_vd])
+                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.W_d.in_features])
 
         return H_v
+
+    @abstractmethod
+    def build(
+        self,
+        d_v: int = DEFAULT_ATOM_FDIM,
+        d_e: int = DEFAULT_BOND_FDIM,
+        d_h: int = DEFAULT_HIDDEN_DIM,
+        d_vd: int | None = None,
+        bias: bool = False,
+    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
+        """construct the weight matrices used in the message passing update functions
+
+        Parameters
+        ----------
+        d_v : int
+            the vertex feature dimension
+        d_e : int
+            the edge feature dimension
+        d_h : int, default=300
+            the hidden dimension during message passing
+        d_vd : int | None, default=None
+            the dimension of additional vertex descriptors that will be concatenated to the hidden
+            features before readout, if any
+        bias: bool, deafault=False
+            whether to add a learned bias to the matrices
+
+        Returns
+        -------
+        W_i, W_h, W_o, W_d : tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
+            the input, hidden, output, and descriptor weight matrices, respectively, used in the
+            message passing update functions. The descriptor weight matrix is `None` if no vertex
+            dimension is supplied
+        """
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
@@ -176,12 +177,20 @@ class MessagePassingBlockBase(MessagePassingBlock):
 
 
 class BondMessageBlock(MessagePassingBlockBase):
-    def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
+    def build(
+        self,
+        d_v: int = DEFAULT_ATOM_FDIM,
+        d_e: int = DEFAULT_BOND_FDIM,
+        d_h: int = DEFAULT_HIDDEN_DIM,
+        d_vd: int | None = None,
+        bias: bool = False,
+    ):
         W_i = nn.Linear(d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
+        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
-        return W_i, W_h, W_o
+        return W_i, W_h, W_o, W_d
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.E)
@@ -208,12 +217,20 @@ class BondMessageBlock(MessagePassingBlockBase):
 
 
 class AtomMessageBlock(MessagePassingBlockBase):
-    def setup_weight_matrices(self, d_v: int, d_e: int, d_h: int = 300, bias: bool = False):
+    def build(
+        self,
+        d_v: int = DEFAULT_ATOM_FDIM,
+        d_e: int = DEFAULT_BOND_FDIM,
+        d_h: int = DEFAULT_HIDDEN_DIM,
+        d_vd: int | None = None,
+        bias: bool = False,
+    ):
         W_i = nn.Linear(d_v, d_h, bias)
         W_h = nn.Linear(d_e + d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
+        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
-        return W_i, W_h, W_o
+        return W_i, W_h, W_o, W_d
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         H_0 = self.W_i(bmg.V)  # V x d_h

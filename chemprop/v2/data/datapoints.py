@@ -52,7 +52,7 @@ class MoleculeDatapointMixin:
 
     @classmethod
     def from_smi(
-        cls, smi: str, keep_h: bool = False, add_h: bool = False, *args, **kwargs
+        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
     ) -> MoleculeDatapointMixin:
         mol = make_mol(smi, keep_h, add_h)
 

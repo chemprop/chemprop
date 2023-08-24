@@ -3,6 +3,7 @@ from typing import Protocol
 from torch import nn, Tensor
 
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
+from chemprop.v2.models.hparams import HasHParams
 
 
 class MessagePassingProto(Protocol):
@@ -30,5 +31,5 @@ class MessagePassingProto(Protocol):
         """
 
 
-class MessagePassingBlock(nn.Module, MessagePassingProto):
+class MessagePassingBlock(nn.Module, MessagePassingProto, HasHParams):
     pass

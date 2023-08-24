@@ -23,15 +23,17 @@ print(mpnn)
 with open(sys.argv[1]) as fid:
     reader = csv.reader(fid)
     next(reader)
-    smis, scores = zip(*[(smi, float(score)) for smi, score in reader])
-scores = np.array(scores).reshape(-1, 1)
-all_data = [data.MoleculeDatapoint(smi, target) for smi, target in zip(smis, scores)]
+    smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
+ys = np.array(ys).reshape(-1, 1)
+all_data = [data.MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, ys)]
 
 train_data, val_test_data = train_test_split(all_data, test_size=0.1)
 val_data, test_data = train_test_split(val_test_data, test_size=0.5)
 
 train_dset = data.MoleculeDataset(train_data, featurizer)
 scaler = train_dset.normalize_targets()
+
+pdb.set_trace()
 
 val_dset = data.MoleculeDataset(val_data, featurizer)
 val_dset.normalize_targets(scaler)
