@@ -4,11 +4,9 @@ from typing import Protocol, Type, TypedDict, TypeVar
 class HParamsDict(TypedDict):
     """A dictionary containing a module's class and it's hyperparameters
     
-    Using this type should essentially allow for initializing a module via:
+    Using this type should essentially allow for initializing a module via::
     
-    .. :code-block:: python
         module = hparams.pop('cls')(**hparams)
-
     """
     cls: Type
 
@@ -16,9 +14,7 @@ class HParamsDict(TypedDict):
 class HasHParams(Protocol):
     """:class:`HasHParams` is a protocol for clases which possess an :attr:`hparams` attribute which is a dictionary containing the object's class and arguments required to initialize it.
     
-    That is, any object which implements :class:`HasHParams` should be able to be initialized via:
-    
-    .. :code-block:: python
+    That is, any object which implements :class:`HasHParams` should be able to be initialized via::
 
         class Foo(HasHParams):
             def __init__(self, *args, **kwargs):

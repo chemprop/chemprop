@@ -73,8 +73,8 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
         r"""Finalize message passing by (1) concatenating the final hidden representations `H_v`
-        and the original vertex `V` and (2) further concatenating additional vertex descriptors
-        `V_d`, if provided.
+        and the original vertex ``V`` and (2) further concatenating additional vertex descriptors
+        ``V_d``, if provided.
 
         This function implements the following operation:
 
@@ -90,22 +90,23 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         Parameters
         ----------
         M_v : Tensor
-            a tensor of shape `V x d_h` containing the messages sent from each atom
+            a tensor of shape ``V x d_h`` containing the messages sent from each atom
         V : Tensor
-            a tensor of shape `V x d_v` containing the original vertex features
+            a tensor of shape ``V x d_v`` containing the original vertex features
         V_d : Tensor | None
-            an optional tensor of shape `V x d_vd` containing additional vertex descriptors
+            an optional tensor of shape ``V x d_vd`` containing additional vertex descriptors
 
         Returns
         -------
         Tensor
-            a tensor of shape `V x (d_h + d_v [+ d_vd])` containing the final hidden representations
+            a tensor of shape ``V x (d_h + d_v [+ d_vd])`` containing the final hidden
+            representations
 
         Raises
         ------
         InvalidShapeError
-            if `V_d` is not of shape `b x d_vd`, where `b` is the batch size and `d_vd` is the
-            vertex descriptor dimension
+            if ``V_d`` is not of shape ``b x d_vd``, where ``b`` is the batch size and ``d_vd`` is
+            the vertex descriptor dimension
         """
         H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_o
         H_v = self.tau(H_v)
@@ -143,7 +144,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         d_vd : int | None, default=None
             the dimension of additional vertex descriptors that will be concatenated to the hidden
             features before readout, if any
-        bias: bool, deafault=False
+        bias: bool, default=False
             whether to add a learned bias to the matrices
 
         Returns
@@ -161,17 +162,18 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         Parameters
         ----------
         bmg: BatchMolGraph
-            a batch of `b` :obj:`~chemprop.v2.featurizers.MolGraph`s to encode
+            a batch of :class:`BatchMolGraph`s to encode
         V_d : Tensor | None, default=None
-            an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
+            an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms + 1`,
-            so if provided, this tensor must be 0-padded in the 0th row.
+            transformed before the readout phase.
+            **NOTE**: recall that ``V`` is equal to ``num_atoms + 1``, so ``V_d`` must be 0-padded
+            in the 0th row.
 
         Returns
         -------
         Tensor
-            a tensor of shape `b x d_h` or `b x (d_h + d_vd)` containing the encoding of each
+            a tensor of shape ``b x d_h`` or ``b x (d_h + d_vd)`` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
 

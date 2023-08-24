@@ -221,7 +221,7 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
         return F.softplus(Y) + 1
 
 
-class Exp(nn.Module):
+class _Exp(nn.Module):
     def forward(self, X: Tensor):
         return X.exp()
 
@@ -236,7 +236,7 @@ class SpectralFFN(ReadoutFFNBase):
 
         match spectral_activation:
             case "exp":
-                spectral_activation = Exp()
+                spectral_activation = _Exp()
             case "softplus" | None:
                 spectral_activation = nn.Softplus()
             case _:

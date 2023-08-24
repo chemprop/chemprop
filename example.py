@@ -33,8 +33,6 @@ val_data, test_data = train_test_split(val_test_data, test_size=0.5)
 train_dset = data.MoleculeDataset(train_data, featurizer)
 scaler = train_dset.normalize_targets()
 
-pdb.set_trace()
-
 val_dset = data.MoleculeDataset(val_data, featurizer)
 val_dset.normalize_targets(scaler)
 test_dset = data.MoleculeDataset(test_data, featurizer)

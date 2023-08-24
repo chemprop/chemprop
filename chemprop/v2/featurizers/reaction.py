@@ -13,8 +13,8 @@ from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
 
 
 class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
-    """A `ReactionFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant and product
-    molecules) into `MolGraph`s"""
+    """A :class:`ReactionMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
+    and product molecules) into :class:`MolGraph`s"""
 
     def __call__(
         self,
@@ -47,19 +47,9 @@ class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
 class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeaturizerProto):
     """Featurize reactions using the condensed reaction graph method utilized in [1]_
 
-    NOTE: This class *does not* accept a `AtomFeaturizerBase` instance. This is because it requries
-    the `num_only()` method, which is only implemented in the concrete `AtomFeaturizer`
-    class
-
-    Attributes
-    ----------
-    atom_featurizer : AtomFeaturizer
-    bond_featurizer : BondFeaturizerBase
-    atom_fdim : int
-        the dimension of atom feature represenatations in this featurizer
-    bond_fdim : int
-        the dimension of bond feature represenatations in this featurizer
-    atom_messages : bool
+    **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
+    it requries the :meth:`num_only()` method, which is only implemented in the concrete
+    :class:`AtomFeaturizer` class
 
     Parameters
     ----------
@@ -77,8 +67,8 @@ class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeatur
     References
     ----------
     .. [1] Heid, E.; Green, W.H. "Machine Learning of Reaction Properties via Learned
-    Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62, 2101-2110.
-    https://doi.org/10.1021/acs.jcim.1c00975
+        Representations of the Condensed Graph of Reaction." J. Chem. Inf. Model. 2022, 62,
+        2101-2110. https://doi.org/10.1021/acs.jcim.1c00975
     """
 
     mode_: InitVar[str | ReactionMode] = ReactionMode.REAC_DIFF

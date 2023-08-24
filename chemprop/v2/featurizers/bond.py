@@ -13,7 +13,7 @@ class BondFeaturizerProto(Protocol):
         """the length of a bond feature vector"""
 
     def __call__(self, b: Bond) -> np.ndarray:
-        """featurize the bond `b`"""
+        """featurize the bond ``b``"""
 
 
 class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
@@ -21,15 +21,21 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
 
     The featurizations produced by this featurizer have the following (general) signature:
 
-    | slice | subfeature      | unknown pad? |
-    | ----- | --------------- | ------------ |
-    | 0-1   | null?           | N            |
-    | 1-5   | bond type       | N            |
-    | 5-6   | conjugated?     | N            |
-    | 6-8   | in ring?        | N            |
-    | 7-14  | stereochemistry | Y            |
+    +---------------------+-----------------+--------------+
+    | slice [start, stop) | subfeature      | unknown pad? |
+    +=====================+=================+==============+
+    | 0-1                 | null?           | N            |
+    +---------------------+-----------------+--------------+
+    | 1-5                 | bond type       | N            |
+    +---------------------+-----------------+--------------+
+    | 5-6                 | conjugated?     | N            |
+    +---------------------+-----------------+--------------+
+    | 6-8                 | in ring?        | N            |
+    +---------------------+-----------------+--------------+
+    | 7-14                | stereochemistry | Y            |
+    +---------------------+-----------------+--------------+
 
-    NOTE: the above signature only applies for the default arguments, as the bond type and
+    **NOTE**: the above signature only applies for the default arguments, as the bond type and
     sterochemistry slices can increase in size depending on the input arguments.
 
     Parameters

@@ -9,7 +9,8 @@ from chemprop.v2.featurizers.molgraph import MolGraph
 
 
 class MoleculeMolGraphFeaturizerProto(MolGraphFeaturizerProto):
-    """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s"""
+    """A :class:`MoleculeMolGraphFeaturizerProto` featurizes RDKit molecules into
+    :class:`MolGraph`s"""
 
     def __call__(
         self,
@@ -37,17 +38,8 @@ class MoleculeMolGraphFeaturizerProto(MolGraphFeaturizerProto):
 
 @dataclass
 class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProto):
-    """A `MoleculeFeaturizer` featurizes RDKit molecules into `MolGraph`s
-
-    Attributes
-    ----------
-    atom_featurizer : AtomFeaturizerProto
-    bond_featurizer : BondFeaturizerProto
-    bond_messages : bool
-    atom_fdim : int
-        the dimension of atom feature represenatations in this featurizer
-    bond_fdim : int
-        the dimension of bond feature represenatations in this featurizer
+    """A :class:`MoleculeMolGraphFeaturizer` is the default implementation of a
+    :class:`MoleculeMolGraphFeaturizerProto`
 
     Parameters
     ----------

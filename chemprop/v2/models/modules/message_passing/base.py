@@ -16,7 +16,7 @@ class MessagePassingProto(Protocol):
         Parameters
         ----------
         bmg: BatchMolGraph
-            the batch of `b` `MolGraphs` to encode
+            the batch of `MolGraphs` to encode
         V_d : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
