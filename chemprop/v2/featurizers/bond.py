@@ -4,10 +4,9 @@ import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
 from chemprop.v2.featurizers.protos import BondFeaturizerProto
-from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
-class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
+class BondFeaturizer(BondFeaturizerProto):
     """A :class:`BondFeaturizer` is the default implmentation of a :class:`BondFeaturizerProto`.
 
     The featurizations produced by this featurizer have the following (general) signature:
@@ -77,3 +76,10 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
         x[i + stereo_bit] = 1
 
         return x
+
+    @classmethod
+    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
+        """the index of ``x`` in ``xs``, if it exists. Otherwise, return ``len(xs) + 1``."""
+        n = len(xs)
+
+        return xs.index(x) if x in xs else n, n + 1
