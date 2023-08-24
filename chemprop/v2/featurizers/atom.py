@@ -35,18 +35,21 @@ class AtomFeaturizer(AtomFeaturizerProto):
     NOTE: the above signature only applies for the default arguments, as the each slice (save for
     the final two) can increase in size depending on the input arguments.
     """
+
     max_atomic_num: InitVar[int] = 100
     degrees: Sequence[int] = field(default_factory=lambda: range(6))
     formal_charges: Sequence[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
     chiral_tags: Sequence[int] = field(default_factory=lambda: range(4))
     num_Hs: Sequence[int] = field(default_factory=lambda: range(5))
-    hybridizations: Sequence[HybridizationType] = field(default_factory=lambda: [
-        HybridizationType.SP,
-        HybridizationType.SP2,
-        HybridizationType.SP3,
-        HybridizationType.SP3D,
-        HybridizationType.SP3D2,
-    ])
+    hybridizations: Sequence[HybridizationType] = field(
+        default_factory=lambda: [
+            HybridizationType.SP,
+            HybridizationType.SP2,
+            HybridizationType.SP3,
+            HybridizationType.SP3D,
+            HybridizationType.SP3D2,
+        ]
+    )
 
     def __post_init__(self, max_atomic_num: int = 100):
         self.atomic_nums = {i: i for i in range(max_atomic_num)}
@@ -71,7 +74,7 @@ class AtomFeaturizer(AtomFeaturizerProto):
             1 + len(self.num_Hs),
             1 + len(self.hybridizations),
             1,
-            1
+            1,
         ]
         self.__size = sum(subfeat_sizes)
 
