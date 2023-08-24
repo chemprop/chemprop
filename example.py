@@ -1,11 +1,9 @@
 import csv
 import sys
-import pdb
 
 from lightning import pytorch as pl
 import numpy as np
 from sklearn.model_selection import train_test_split
-import torch.jit
 
 from chemprop.v2 import data
 from chemprop.v2 import featurizers
