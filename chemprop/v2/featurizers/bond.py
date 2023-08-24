@@ -58,15 +58,6 @@ class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
     def __len__(self):
         return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
 
-    @property
-    def subfeatures(self) -> list[tuple[str, slice]]:
-        names = ("null", "bond_type", "conjugated", "ring", "stereo")
-        subfeature_sizes = [1, len(self.bond_types), 1, 1, (len(self.stereo) + 1)]
-        offsets = np.cumsum([0] + subfeature_sizes[:-1])
-        slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
-
-        return list(zip(names, slices))
-
     def __call__(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self), int)
 

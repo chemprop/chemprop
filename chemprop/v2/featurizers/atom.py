@@ -1,9 +1,8 @@
+from dataclasses import InitVar, dataclass, field
 from typing import Protocol, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
-
-from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
 class AtomFeaturizerProto(Protocol):
@@ -12,11 +11,12 @@ class AtomFeaturizerProto(Protocol):
     def __len__(self) -> int:
         """the length of an atomic feature vector"""
 
-    def __call__(self, a: Atom) -> np.ndarray:
+    def __call__(self, a: Atom | None) -> np.ndarray:
         """featurize the atom `a`"""
 
 
-class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
+@dataclass(repr=False, eq=False, slots=True)
+class AtomFeaturizer(AtomFeaturizerProto):
     """An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
 
     The featurizations produced by this featurizer have the following (general) signature:
@@ -34,66 +34,31 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
 
     NOTE: the above signature only applies for the default arguments, as the each slice (save for
     the final two) can increase in size depending on the input arguments.
-
-    Parameters
-    ----------
-    max_atomic_num : int, default=100
-        the maximum atomic number categorized, by
-    degrees : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
-        the categories for the atomic degree
-    formal_charges : Sequence[int] | None, default=[-1, -2, 1, 2, 0]
-        the categories for formal charge of an atom
-    chiral_tags : Sequence[int] | None, default=[0, 1, 2, 3]
-        the categories for the chirality of an atom
-    num_Hs : Sequence[int] | None, default=[0, 1, 2, 3, 4]
-        the categories for the number of hydrogens attached to an atom
-    hybridizations : Sequence[HybridizationType] | None, default=[SP, SP2, SP3, SP3D, SP3D2]
-        the categories for the hybridization of an atom
     """
 
-    def __init__(
-        self,
-        max_atomic_num: int = 100,
-        degrees: Sequence[int] | None = None,
-        formal_charges: Sequence[int] | None = None,
-        chiral_tags: Sequence[int] | None = None,
-        num_Hs: Sequence[int] | None = None,
-        hybridizations: Sequence[HybridizationType] | None = None,
-    ):
-        self.max_atomic_num = max_atomic_num
-        self.atomic_nums = range(max_atomic_num)
-        self.degrees = degrees or range(6)
-        self.formal_charges = formal_charges or [-1, -2, 1, 2, 0]
-        self.chiral_tags = chiral_tags or range(4)
-        self.num_Hs = num_Hs or range(5)
-        self.hybridizations = hybridizations or [
+    max_atomic_num: InitVar[int] = 100
+    degrees: Sequence[int] = field(default_factory=lambda: range(6))
+    formal_charges: Sequence[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
+    chiral_tags: Sequence[int] = field(default_factory=lambda: range(4))
+    num_Hs: Sequence[int] = field(default_factory=lambda: range(5))
+    hybridizations: Sequence[HybridizationType] = field(
+        default_factory=lambda: [
             HybridizationType.SP,
             HybridizationType.SP2,
             HybridizationType.SP3,
             HybridizationType.SP3D,
             HybridizationType.SP3D2,
         ]
+    )
 
-    def __len__(self) -> int:
-        return (
-            len(self.atomic_nums)
-            + 1
-            + len(self.degrees)
-            + 1
-            + len(self.formal_charges)
-            + 1
-            + len(self.chiral_tags)
-            + 1
-            + len(self.num_Hs)
-            + 1
-            + len(self.hybridizations)
-            + 1
-            + 2
-        )
-
-    @property
-    def choicess(self) -> list[Sequence]:
-        return [
+    def __post_init__(self, max_atomic_num: int = 100):
+        self.atomic_nums = {i: i for i in range(max_atomic_num)}
+        self.degrees = {i: i for i in self.degrees}
+        self.formal_charges = {j: i for i, j in enumerate(self.formal_charges)}
+        self.chiral_tags = {i: i for i in self.chiral_tags}
+        self.num_Hs = {i: i for i in self.num_Hs}
+        self.hybridizations = {ht: i for i, ht in enumerate(self.hybridizations)}
+        self._subfeats: list[dict] = [
             self.atomic_nums,
             self.degrees,
             self.formal_charges,
@@ -101,44 +66,40 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
             self.num_Hs,
             self.hybridizations,
         ]
+        subfeat_sizes = [
+            1 + len(self.atomic_nums),
+            1 + len(self.degrees),
+            1 + len(self.formal_charges),
+            1 + len(self.chiral_tags),
+            1 + len(self.num_Hs),
+            1 + len(self.hybridizations),
+            1,
+            1,
+        ]
+        self.__size = sum(subfeat_sizes)
 
-    @property
-    def subfeatures(self) -> list[str, slice]:
-        names = (
-            "atomic_num",
-            "degree",
-            "formal_charge",
-            "chiral_tag",
-            "num_Hs",
-            "hybridization",
-            "aromatic",
-            "mass",
-        )
-        sizes = [len(choices) + 1 for choices in self.choicess] + [1, 1]
-        offsets = np.cumsum([0] + sizes)
-        slices = [slice(i, j) for i, j in zip(offsets, offsets[1:])]
+    def __len__(self) -> int:
+        return self.__size
 
-        return dict(zip(names, slices))
-
-    def __call__(self, a: Atom) -> np.ndarray:
-        x = np.zeros(len(self))
+    def __call__(self, a: Atom | None) -> np.ndarray:
+        x = np.zeros(self.__size)
 
         if a is None:
             return x
 
-        bits_sizes = [
-            self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_nums),
-            self.one_hot_index(a.GetTotalDegree(), self.degrees),
-            self.one_hot_index(a.GetFormalCharge(), self.formal_charges),
-            self.one_hot_index(int(a.GetChiralTag()), self.chiral_tags),
-            self.one_hot_index(int(a.GetTotalNumHs()), self.num_Hs),
-            self.one_hot_index(int(a.GetHybridization()), self.hybridizations),
+        feats = [
+            a.GetAtomicNum() - 1,
+            a.GetTotalDegree(),
+            a.GetFormalCharge(),
+            int(a.GetChiralTag()),
+            int(a.GetTotalNumHs()),
+            a.GetHybridization(),
         ]
-
         i = 0
-        for j, size in bits_sizes:
+        for feat, choices in zip(feats, self._subfeats):
+            j = choices.get(feat, len(choices))
             x[i + j] = 1
-            i += size
+            i += len(choices) + 1
         x[i] = int(a.GetIsAromatic())
         x[i + 1] = 0.01 * a.GetMass()
 
@@ -151,7 +112,7 @@ class AtomFeaturizer(MultiHotFeaturizerMixin, AtomFeaturizerProto):
         if a is None:
             return x
 
-        bit, _ = self.one_hot_index((a.GetAtomicNum() - 1), self.atomic_nums)
-        x[bit] = 1
+        i = self.atomic_nums.get(a.GetAtomicNum() - 1, len(self.atomic_nums))
+        x[i] = 1
 
         return x

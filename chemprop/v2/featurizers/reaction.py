@@ -1,15 +1,38 @@
 from dataclasses import InitVar, dataclass
+from enum import auto
 from typing import Iterable, Sequence
 import warnings
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
-from chemprop.v2.featurizers.utils import ReactionMode
 
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
+from chemprop.v2.utils.utils import AutoName
+
+
+class ReactionMode(AutoName):
+    """The mode which a reaction should be featurized into a `MolGraph`"""
+
+    REAC_PROD = auto()
+    """concatenate the reactant features with the product features."""
+    REAC_PROD_BALANCE = auto()
+    """concatenate the reactant features with the products feature and balances imbalanced
+    reactions"""
+    REAC_DIFF = auto()
+    """concatenates the reactant features with the difference in features between reactants and
+    products"""
+    REAC_DIFF_BALANCE = auto()
+    """concatenates the reactant features with the difference in features between reactants and
+    product and balances imbalanced reactions"""
+    PROD_DIFF = auto()
+    """concatenates the product features with the difference in features between reactants and
+    products"""
+    PROD_DIFF_BALANCE = auto()
+    """concatenates the product features with the difference in features between reactants and
+    products and balances imbalanced reactions"""
 
 
 class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
@@ -18,7 +41,7 @@ class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
 
     def __call__(
         self,
-        reaction: tuple[Chem.Mol, Chem.Mol],
+        rxn: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
@@ -26,7 +49,7 @@ class ReactionMolGraphFeaturizerProto(MolGraphFeaturizerProto):
 
         Parameters
         ----------
-        reaction : tuple[Chem.Mol, Chem.Mol]
+        rxn : tuple[Chem.Mol, Chem.Mol]
             a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
             1st element is the product
         atom_features_extra : np.ndarray | None, default=None
@@ -102,7 +125,7 @@ class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeatur
 
     def featurize(
         self,
-        reaction: tuple[Chem.Mol, Chem.Mol],
+        rxn: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
@@ -111,7 +134,7 @@ class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeatur
         if bond_features_extra is not None:
             warnings.warn("'bond_features_extra' is currently unsupported for reactions")
 
-        rct, pdt = reaction
+        rct, pdt = rxn
         ri2pj, pids, rids = self.map_reac_to_prod(rct, pdt)
 
         X_v = self._calc_node_feature_matrix(rct, pdt, ri2pj, pids, rids)
@@ -279,9 +302,9 @@ class ReactionMolGraphFeaturizer(MolGraphFeaturizerMixin, ReactionMolGraphFeatur
 
         return x_e
 
-    @staticmethod
+    @classmethod
     def map_reac_to_prod(
-        reactants: Chem.Mol, products: Chem.Mol
+        cls, reactants: Chem.Mol, products: Chem.Mol
     ) -> tuple[dict[int, int], list[int], list[int]]:
         """Map atom indices between corresponding atoms in the reactant and product molecules
 
