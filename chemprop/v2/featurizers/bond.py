@@ -1,23 +1,14 @@
-from typing import Protocol, Sequence
+from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
+from chemprop.v2.featurizers.protos import BondFeaturizerProto
 from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
-class BondFeaturizerProto(Protocol):
-    """A `BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
-
-    def __len__(self) -> int:
-        """the length of a bond feature vector"""
-
-    def __call__(self, b: Bond) -> np.ndarray:
-        """featurize the bond ``b``"""
-
-
 class BondFeaturizer(BondFeaturizerProto, MultiHotFeaturizerMixin):
-    """A `BondFeaturizer` generates multihot featurizations of RDKit bonds
+    """A :class:`BondFeaturizer` is the default implmentation of a :class:`BondFeaturizerProto`.
 
     The featurizations produced by this featurizer have the following (general) signature:
 

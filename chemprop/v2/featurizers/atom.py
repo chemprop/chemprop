@@ -4,21 +4,12 @@ from typing import Protocol, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-
-class AtomFeaturizerProto(Protocol):
-    """An :class:`AtomFeaturizerProto` is a protocol for classes that calculate feature vectors of
-    RDKit atoms."""
-
-    def __len__(self) -> int:
-        """the length of an atomic feature vector"""
-
-    def __call__(self, a: Atom) -> np.ndarray:
-        """featurize the atom ``a``"""
+from chemprop.v2.featurizers.protos import AtomFeaturizerProto
 
 
 @dataclass(repr=False, eq=False, slots=True)
 class AtomFeaturizer(AtomFeaturizerProto):
-    """An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
+    """An :class`AtomFeaturizer` is the default implmentation of an :class:`AtomFeaturizerProto`.
 
     The featurizations produced by this featurizer have the following (general) signature:
 

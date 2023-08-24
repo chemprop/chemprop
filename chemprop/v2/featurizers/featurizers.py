@@ -1,22 +1,11 @@
-from typing import Protocol
-
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.v2.utils import ClassRegistry
+from chemprop.v2.featurizers.protos import MoleculeFeaturizerProto
 
 MoleculeFeaturizerRegistry = ClassRegistry()
-
-
-class MoleculeFeaturizerProto(Protocol):
-    """A :class:`MoleculeFeaturizerProto` defines the protocol for molecule-level featurization"""
-
-    def __len__(self) -> int:
-        """the length of the feature vector"""
-
-    def __call__(self, mol: Chem.Mol) -> np.ndarray:
-        """Featurize the molecule into a vector"""
 
 
 class MorganFeaturizerMixin:

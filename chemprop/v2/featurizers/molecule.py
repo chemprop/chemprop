@@ -3,37 +3,9 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit import Chem
 
-from chemprop.v2.featurizers.proto import MolGraphFeaturizerProto
+from chemprop.v2.featurizers.protos import MoleculeMolGraphFeaturizerProto
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-
-
-class MoleculeMolGraphFeaturizerProto(MolGraphFeaturizerProto):
-    """A :class:`MoleculeMolGraphFeaturizerProto` featurizes RDKit molecules into
-    :class:`MolGraph`s"""
-
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        """Featurize the input molecule into a molecular graph
-
-        Parameters
-        ----------
-        mol : Chem.Mol
-            the input molecule
-        atom_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated atom features
-        bond_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated bond features
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the molecule
-        """
 
 
 @dataclass

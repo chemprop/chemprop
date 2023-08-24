@@ -8,7 +8,7 @@ import numpy as np
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, DatapointMixin, ReactionDatapoint
 from chemprop.v2.data.datasets import MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers import ReactionMolGraphFeaturizer, MoleculeMolGraphFeaturizer
+from chemprop.v2.featurizers import RxnMolGraphFeaturizer, MoleculeMolGraphFeaturizer
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +217,7 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = ReactionMolGraphFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
+    featurizer = RxnMolGraphFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
 
     return ReactionDataset(data, featurizer)
 
