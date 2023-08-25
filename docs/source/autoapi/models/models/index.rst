@@ -29,7 +29,7 @@ Classes
 
 
 
-.. py:class:: MPNN(message_passing: chemprop.v2.models.modules.MessagePassingBlock, agg: chemprop.v2.models.modules.Aggregation, readout: chemprop.v2.models.modules.Readout, batch_norm: bool = True, metrics: Iterable[chemprop.v2.models.metrics.Metric] | None = None, w_t: torch.Tensor | None = None, warmup_epochs: int = 2, init_lr: float = 0.0001, max_lr: float = 0.001, final_lr: float = 0.0001)
+.. py:class:: MPNN(message_passing, agg, readout, batch_norm = True, metrics = None, w_t = None, warmup_epochs = 2, init_lr = 0.0001, max_lr = 0.001, final_lr = 0.0001)
 
 
    Bases: :py:obj:`lightning.pytorch.LightningModule`
@@ -90,25 +90,25 @@ Classes
       :type: chemprop.v2.models.loss.LossFunction
 
 
-   .. py:method:: fingerprint(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: fingerprint(bmg, V_d = None, X_f = None)
 
       the learned fingerprints for the input molecules
 
 
-   .. py:method:: encoding(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: encoding(bmg, V_d = None, X_f = None)
 
       the final hidden representations for the input molecules
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None, X_f = None)
 
       Generate predictions for the input molecules/reactions
 
 
-   .. py:method:: training_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx)
+   .. py:method:: training_step(batch, batch_idx)
 
-      Here you compute and return the training loss and some additional metrics for e.g. the progress bar or
-      logger.
+      Here you compute and return the training loss and some additional metrics for e.g.
+      the progress bar or logger.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`. A tensor, tuple or list.
       :type batch: :class:`~torch.Tensor` | (:class:`~torch.Tensor`, ...) | [:class:`~torch.Tensor`, ...]
@@ -159,10 +159,10 @@ Classes
          normalized by ``accumulate_grad_batches`` internally.
 
 
-   .. py:method:: validation_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int = 0)
+   .. py:method:: validation_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the validation set. In this step you'd might generate examples or
-      calculate anything of interest like accuracy.
+      Operates on a single batch of data from the validation set.
+      In this step you'd might generate examples or calculate anything of interest like accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -227,10 +227,11 @@ Classes
          the model goes back to training mode and gradients are enabled.
 
 
-   .. py:method:: test_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int = 0)
+   .. py:method:: test_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the test set. In this step you'd normally generate examples or
-      calculate anything of interest such as accuracy.
+      Operates on a single batch of data from the test set.
+      In this step you'd normally generate examples or calculate anything of interest
+      such as accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -297,7 +298,7 @@ Classes
          to training mode and gradients are enabled.
 
 
-   .. py:method:: predict_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> torch.Tensor
+   .. py:method:: predict_step(batch, batch_idx, dataloader_idx = 0)
 
       Return the predictions of the input batch
 
@@ -317,9 +318,9 @@ Classes
 
    .. py:method:: configure_optimizers()
 
-      Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one.
-      But in the case of GANs or similar you might have multiple. Optimization with multiple optimizers only works in
-      the manual optimization mode.
+      Choose what optimizers and learning-rate schedulers to use in your optimization.
+      Normally you'd need one. But in the case of GANs or similar you might have multiple.
+      Optimization with multiple optimizers only works in the manual optimization mode.
 
       :returns: Any of these 6 options.
 
@@ -416,7 +417,7 @@ Classes
          - If you need to control how often the optimizer steps, override the :meth:`optimizer_step` hook.
 
 
-   .. py:method:: load_from_checkpoint(checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs) -> MPNN
+   .. py:method:: load_from_checkpoint(checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs)
       :classmethod:
 
       Primary way of loading a model from a checkpoint. When Lightning saves a checkpoint

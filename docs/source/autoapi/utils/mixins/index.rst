@@ -20,12 +20,12 @@ Classes
 .. py:class:: ReprMixin
 
 
-   .. py:method:: __repr__() -> str
+   .. py:method:: __repr__()
 
       Return repr(self).
 
 
-   .. py:method:: get_params() -> Collection[tuple[str, Any]]
+   .. py:method:: get_params()
 
 
 

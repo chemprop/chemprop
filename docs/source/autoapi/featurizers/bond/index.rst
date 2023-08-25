@@ -12,38 +12,25 @@ Classes
 
 .. autoapisummary::
 
-   featurizers.bond.BondFeaturizerProto
    featurizers.bond.BondFeaturizer
 
 
 
 
-.. py:class:: BondFeaturizerProto
+.. py:class:: BondFeaturizer(bond_types = None, stereos = None)
 
 
-   Bases: :py:obj:`Protocol`
+   Bases: :py:obj:`chemprop.v2.featurizers.protos.BondFeaturizerProto`
 
-   A `BondFeaturizerProto` calculates feature vectors of RDKit bonds
+   A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
 
-   .. py:method:: __len__() -> int
+   * ``null``-ity (i.e., is the bond ``None``?)
+   * bond type
+   * conjugated?
+   * in ring?
+   * stereochemistry
 
-      the length of a bond feature vector
-
-
-   .. py:method:: __call__(b: rdkit.Chem.rdchem.Bond) -> numpy.ndarray
-
-      featurize the bond ``b``
-
-
-
-.. py:class:: BondFeaturizer(bond_types: Sequence[rdkit.Chem.rdchem.BondType] | None = None, stereos: Sequence[int] | None = None)
-
-
-   Bases: :py:obj:`BondFeaturizerProto`, :py:obj:`chemprop.v2.featurizers.utils.MultiHotFeaturizerMixin`
-
-   A `BondFeaturizer` generates multihot featurizations of RDKit bonds
-
-   The featurizations produced by this featurizer have the following (general) signature:
+   The feature vectors produced by this featurizer have the following (general) signature:
 
    +---------------------+-----------------+--------------+
    | slice [start, stop) | subfeature      | unknown pad? |
@@ -71,18 +58,20 @@ Classes
 
    .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
 
-   .. py:property:: subfeatures
-      :type: list[tuple[str, slice]]
-
-
    .. py:method:: __len__()
 
       the length of a bond feature vector
 
 
-   .. py:method:: __call__(b: rdkit.Chem.rdchem.Bond) -> numpy.ndarray
+   .. py:method:: __call__(b)
 
       featurize the bond ``b``
+
+
+   .. py:method:: one_hot_index(x, xs)
+      :classmethod:
+
+      the index of ``x`` in ``xs``, if it exists. Otherwise, return ``len(xs) + 1``.
 
 
 

@@ -14,7 +14,7 @@ from chemprop.v2.utils import ClassRegistry
 ReadoutRegistry = ClassRegistry()
 
 
-class ReadoutProto(Protocol):
+class _ReadoutProto(Protocol):
     input_dim: int
     """the input dimension"""
     output_dim: int
@@ -33,11 +33,13 @@ class ReadoutProto(Protocol):
         pass
 
 
-class Readout(nn.Module, ReadoutProto, HasHParams):
-    pass
+class Readout(nn.Module, _ReadoutProto, HasHParams):
+    """A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`"""
 
 
 class ReadoutFFNBase(Readout, HyperparametersMixin):
+    """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+    :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
     _default_criterion: loss.LossFunction
 
     def __init__(

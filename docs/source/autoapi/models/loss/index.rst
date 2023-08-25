@@ -51,7 +51,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w_s: torch.Tensor, w_t: torch.Tensor, lt_mask: torch.Tensor, gt_mask: torch.Tensor)
+   .. py:method:: __call__(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -78,7 +78,7 @@ Attributes
       :rtype: Tensor
 
 
-   .. py:method:: forward(preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
       :abstractmethod:
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
@@ -93,7 +93,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -107,7 +107,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args, lt_mask: torch.Tensor, gt_mask: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args, lt_mask, gt_mask)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -126,13 +126,13 @@ Attributes
        probability distribution." Proceedings of 1994 IEEE International Conference on Neural
        Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
 
 
-.. py:class:: EvidentialLoss(v_kl: float = 0.2, eps: float = 1e-08)
+.. py:class:: EvidentialLoss(v_kl = 0.2, eps = 1e-08)
 
 
    Bases: :py:obj:`LossFunction`
@@ -145,12 +145,12 @@ Attributes
        "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
        Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
 
-   .. py:method:: get_params() -> list[tuple[str, float]]
+   .. py:method:: get_params()
 
 
 
@@ -162,7 +162,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -176,7 +176,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -193,7 +193,7 @@ Attributes
    .. [mccWiki] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
    .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w_s: torch.Tensor, w_t: torch.Tensor, *args)
+   .. py:method:: __call__(preds, targets, mask, w_s, w_t, *args)
 
 
 
@@ -205,7 +205,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds, targets, mask, w_s, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, w_s, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -219,13 +219,13 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds, targets, mask, w_s, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, w_s, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
 
 
-.. py:class:: DirichletMixin(v_kl: float = 0.2)
+.. py:class:: DirichletMixin(v_kl = 0.2)
 
 
    Uses the loss function from [sensoy2018]_ based on the implementation at [sensoyGithub]_
@@ -236,14 +236,14 @@ Attributes
        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
    .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
 
-   .. py:method:: forward(preds, targets, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
 
-   .. py:method:: get_params() -> list[tuple[str, float]]
+   .. py:method:: get_params()
 
 
 
-.. py:class:: BinaryDirichletLoss(v_kl: float = 0.2)
+.. py:class:: BinaryDirichletLoss(v_kl = 0.2)
 
 
    Bases: :py:obj:`LossFunction`, :py:obj:`DirichletMixin`
@@ -251,13 +251,13 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
 
 
-.. py:class:: MulticlassDirichletLoss(v_kl: float = 0.2)
+.. py:class:: MulticlassDirichletLoss(v_kl = 0.2)
 
 
    Bases: :py:obj:`LossFunction`, :py:obj:`DirichletMixin`
@@ -265,7 +265,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -279,7 +279,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -293,7 +293,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 

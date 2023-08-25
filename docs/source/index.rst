@@ -6,10 +6,22 @@
 Welcome to Chemprop's documentation!
 ====================================
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+This website contains documentation for Chemprop, a PyTorch-based framework for training and evaluating message-passing neural networks (MPNNs) for molecular property prediction. The pacakge was originally developed for :footcite:t:`yang_analyzing_2019` and further described in :footcite:t:`heid_chemprop_2023`.
 
+To get started with Chemprop, check out the :ref:`quickstart` page, and for more detailed information, see the :ref:`installation` and :ref:`tutorial` pages.
+
+If you use Chemprop to train or develop a model in your own work, we would appreciate if you cite the following papers:
+
+.. footbibliography::
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Contents:
+
+    quickstart
+    installation
+    tutorial/cli/index
+    tutorial/python/index
 
 Indices and tables
 ==================

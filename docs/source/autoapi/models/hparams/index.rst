@@ -68,6 +68,6 @@ Functions
       
 
 
-.. py:function:: from_hparams(hparams: HParamsDict)
+.. py:function:: from_hparams(hparams)
 
 

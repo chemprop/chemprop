@@ -17,7 +17,7 @@ Classes
 
 
 
-.. py:class:: MulticomponentMessagePassing(blocks: Sequence[chemprop.v2.models.modules.message_passing.molecule.MessagePassingBlockBase], n_components: int, shared: bool = False)
+.. py:class:: MulticomponentMessagePassing(blocks, n_components, shared = False)
 
 
    Bases: :py:obj:`torch.nn.Module`
@@ -38,10 +38,10 @@ Classes
       :type: int
 
 
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
 
-   .. py:method:: forward(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor | None]) -> torch.Tensor
+   .. py:method:: forward(bmgs, V_ds)
 
       Encode the multicomponent inputs
 

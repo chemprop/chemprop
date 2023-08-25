@@ -32,7 +32,7 @@ Attributes
 
    
 
-.. py:class:: Aggregation(dim: int = 0)
+.. py:class:: Aggregation(dim = 0)
 
 
    Bases: :py:obj:`abc.ABC`, :py:obj:`torch.nn.Module`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
@@ -40,18 +40,18 @@ Attributes
    An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
    a batch of graph-level representations
 
-   .. py:method:: forward(H: torch.Tensor, sizes: Sequence[int] | None) -> torch.Tensor
+   **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
+   concrete subclasses.
+
+   .. seealso:: :class:`chemprop.v2.models.modules.agg.MeanAggregation`, :class:`chemprop.v2.models.modules.agg.SumAggregation`, :class:`chemprop.v2.models.modules.agg.NormAggregation`
+
+   .. py:method:: forward(H, sizes)
 
       Aggregate the graph-level representations of a batch of graphs into their respective
       global representations
 
       NOTE: it is possible for a graph to have 0 nodes. In this case, the representation will be
       a zero vector of length `d` in the final output.
-
-      E.g., `H` is a tensor of shape ``10 x 4`` and ``sizes`` is equal to ``[3, 4, 3]``, then
-      ``H[:3]``, ``H[3:7]``, and ``H[7:]`` correspond to the graph-level represenataions of the
-      three individual graphs. The output of a call to ``forward()`` will be a tensor of shape
-      ``3 x 4``
 
       :param H: A tensor of shape ``sum(sizes) x d`` containing the stacked node-level representations
                 of ``len(sizes)`` graphs
@@ -65,8 +65,29 @@ Attributes
 
       :raises ValueError: if ``sum(sizes)`` is not equal to ``len(H_v)``
 
+      .. rubric:: Examples
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+      **NOTE**: the following examples are for illustrative purposes only. In practice, you must
+      use one of the concrete subclasses.
+
+      1. A typical use-case:
+
+      >>> H = torch.rand(10, 4)
+      >>> sizes = [3, 4, 3]
+      >>> agg = Aggregation()
+      >>> agg(H, sizes).shape
+      torch.Size([3, 4])
+
+      2. A batch containing a graph with 0 nodes:
+
+      >>> H = torch.rand(10, 4)
+      >>> sizes = [3, 4, 0, 3]
+      >>> agg = Aggregation()
+      >>> agg(H, sizes).shape
+      torch.Size([4, 4])
+
+
+   .. py:method:: agg(H)
       :abstractmethod:
 
       Aggregate the graph-level of a single graph into a vector
@@ -80,14 +101,17 @@ Attributes
 
 
 
-.. py:class:: MeanAggregation(dim: int = 0)
+.. py:class:: MeanAggregation(dim = 0)
 
 
    Bases: :py:obj:`Aggregation`
 
    Average the graph-level representation
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 
@@ -100,14 +124,18 @@ Attributes
 
 
 
-.. py:class:: SumAggregation(dim: int = 0)
+.. py:class:: SumAggregation(dim = 0)
 
 
    Bases: :py:obj:`Aggregation`
 
    Sum the graph-level representation
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \sum_{v \in V} \mathbf h_v
+
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 
@@ -120,14 +148,17 @@ Attributes
 
 
 
-.. py:class:: NormAggregation(*args, norm: float = 100, **kwargs)
+.. py:class:: NormAggregation(*args, norm = 100, **kwargs)
 
 
    Bases: :py:obj:`Aggregation`
 
    Sum the graph-level representation and divide by a normalization constant
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 

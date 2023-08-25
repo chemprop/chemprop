@@ -61,7 +61,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w_s: torch.Tensor, w_t: torch.Tensor, lt_mask: torch.Tensor, gt_mask: torch.Tensor)
+   .. py:method:: __call__(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -88,7 +88,7 @@ Attributes
       :rtype: Tensor
 
 
-   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask)
       :abstractmethod:
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
@@ -113,7 +113,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds, targets, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -136,7 +136,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(*args, **kwargs) -> torch.Tensor
+   .. py:method:: forward(*args, **kwargs)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -145,7 +145,7 @@ Attributes
 .. py:class:: BoundedMixin
 
 
-   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask)
 
 
 
@@ -189,7 +189,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, mask, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -230,7 +230,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, mask, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -271,7 +271,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -312,7 +312,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, mask, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -353,7 +353,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, mask, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -399,7 +399,7 @@ Attributes
    inheritance.
 
 
-.. py:class:: MCCMetric(n_classes: int, threshold: float = 0.5, *args)
+.. py:class:: MCCMetric(n_classes, threshold = 0.5, *args)
 
 
    Bases: :py:obj:`Metric`
@@ -414,7 +414,7 @@ Attributes
 
       :type: NOTE(degraff)
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, *args, **kwargs)
+   .. py:method:: __call__(preds, targets, mask, *args, **kwargs)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -450,7 +450,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds, targets, mask, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 
@@ -464,7 +464,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: forward(preds: torch.Tensor, targets, mask, *args) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, *args)
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
 

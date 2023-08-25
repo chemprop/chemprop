@@ -17,6 +17,6 @@ Functions
 
 
 
-.. py:function:: split_data(data: Sequence[chemprop.v2.data.datapoints.MoleculeDatapoint], split: str = 'random', sizes: tuple[float, float, float] = (0.8, 0.1, 0.1), k: int = 5, fold: int = 0)
+.. py:function:: split_data(data, split = 'random', sizes = (0.8, 0.1, 0.1), k = 5, fold = 0)
 
 

@@ -7,7 +7,7 @@
 Module Contents
 ---------------
 
-.. py:exception:: InvalidShapeError(var_name: str, received: Iterable[int], expected: Iterable[int])
+.. py:exception:: InvalidShapeError(var_name, received, expected)
 
 
    Bases: :py:obj:`ValueError`

@@ -13,7 +13,6 @@ Classes
 .. autoapisummary::
 
    data.datasets.Datum
-   data.datasets.MolGraphDatasetMixin
    data.datasets.MoleculeDataset
    data.datasets.ReactionDataset
 
@@ -24,6 +23,8 @@ Classes
 
 
    Bases: :py:obj:`NamedTuple`
+
+   a singular training data point
 
    .. py:attribute:: mg
       :type: chemprop.v2.featurizers.MolGraph
@@ -61,61 +62,10 @@ Classes
       
 
 
-.. py:class:: MolGraphDatasetMixin
-
-
-   .. py:property:: Y
-      :type: numpy.ndarray
-
-
-   .. py:property:: X_f
-      :type: numpy.ndarray
-
-
-   .. py:property:: weights
-      :type: numpy.ndarray
-
-
-   .. py:property:: gt_mask
-      :type: numpy.ndarray
-
-
-   .. py:property:: lt_mask
-      :type: numpy.ndarray
-
-
-   .. py:property:: t
-      :type: int | None
-
-
-   .. py:method:: __len__() -> int
-
-
-   .. py:method:: normalize_targets(scaler: sklearn.preprocessing.StandardScaler | None = None) -> sklearn.preprocessing.StandardScaler
-
-      Normalizes the targets of the dataset using a :obj:`StandardScaler`
-
-      The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
-      each task independently. NOTE: This should only be used for regression datasets.
-
-      :returns: a scaler fit to the targets.
-      :rtype: StandardScaler
-
-
-   .. py:method:: normalize_inputs(key: str | None = 'X_f', scaler: sklearn.preprocessing.StandardScaler | None = None) -> sklearn.preprocessing.StandardScaler
-
-
-   .. py:method:: reset()
-
-      Reset the {atom, bond, molecule} features and targets of each datapoint to its
-      initial, unnormalized values.
-
-
-
 .. py:class:: MoleculeDataset
 
 
-   Bases: :py:obj:`torch.utils.data.Dataset`, :py:obj:`MolGraphDatasetMixin`
+   Bases: :py:obj:`torch.utils.data.Dataset`, :py:obj:`_MolGraphDatasetMixin`
 
    A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
@@ -127,34 +77,42 @@ Classes
    .. py:property:: smiles
       :type: list[str]
 
+      the SMILES strings associated with the dataset
 
    .. py:property:: mols
       :type: list[rdkit.Chem.Mol]
 
+      the molecules associated with the dataset
 
    .. py:property:: V_fs
       :type: list[numpy.ndarray]
 
+      the (scaled) atom descriptors of the dataset
 
    .. py:property:: E_fs
       :type: list[numpy.ndarray]
 
+      the (scaled) bond features of the dataset
 
    .. py:property:: V_ds
       :type: list[numpy.ndarray]
 
+      the (scaled) atom descriptors of the dataset
 
    .. py:property:: d_vf
       :type: int | None
 
+      the extra atom feature dimension, if any
 
    .. py:property:: d_ef
       :type: int | None
 
+      the extra bond feature dimension, if any
 
    .. py:property:: d_vd
       :type: int | None
 
+      the extra atom descriptor dimension, if any
 
    .. py:attribute:: data
       :type: list[chemprop.v2.data.datapoints.MoleculeDatapoint]
@@ -169,25 +127,25 @@ Classes
    .. py:method:: __post_init__()
 
 
-   .. py:method:: __getitem__(idx: int) -> Datum
+   .. py:method:: __getitem__(idx)
 
 
-   .. py:method:: normalize_inputs(key: str | None = 'X_f', scaler: sklearn.preprocessing.StandardScaler | None = None) -> sklearn.preprocessing.StandardScaler
+   .. py:method:: normalize_inputs(key = 'X_f', scaler = None)
 
 
    .. py:method:: reset()
 
-      Reset the {atom, bond, molecule} features and targets of each datapoint to its
-      initial, unnormalized values.
+      reset the {atom, bond, molecule} features and targets of each datapoint to its raw
+      value
 
 
 
 .. py:class:: ReactionDataset
 
 
-   Bases: :py:obj:`torch.utils.data.Dataset`, :py:obj:`MolGraphDatasetMixin`
+   Bases: :py:obj:`torch.utils.data.Dataset`, :py:obj:`_MolGraphDatasetMixin`
 
-   A :class:`MolgraphDataset` composed of :class:`ReactionDatapoint`s
+   A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s
 
    .. py:property:: smiles
       :type: list[str]
@@ -203,11 +161,11 @@ Classes
       the dataset from which to load
 
    .. py:attribute:: featurizer
-      :type: chemprop.v2.featurizers.ReactionMolGraphFeaturizerProto
+      :type: chemprop.v2.featurizers.RxnMolGraphFeaturizerProto
 
       the featurizer with which to generate MolGraphs of the input
 
-   .. py:method:: __getitem__(idx: int) -> Datum
+   .. py:method:: __getitem__(idx)
 
 
 

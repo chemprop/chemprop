@@ -3,6 +3,11 @@
 
 .. py:module:: conf
 
+.. autoapi-nested-parse::
+
+   Global configuration variables for chemprop
+
+
 
 Module Contents
 ---------------

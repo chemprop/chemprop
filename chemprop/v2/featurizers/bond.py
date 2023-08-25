@@ -7,9 +7,15 @@ from chemprop.v2.featurizers.protos import BondFeaturizerProto
 
 
 class BondFeaturizer(BondFeaturizerProto):
-    """A :class:`BondFeaturizer` is the default implmentation of a :class:`BondFeaturizerProto`.
+    """A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
 
-    The featurizations produced by this featurizer have the following (general) signature:
+    * ``null``-ity (i.e., is the bond ``None``?)
+    * bond type
+    * conjugated?
+    * in ring?
+    * stereochemistry
+
+    The feature vectors produced by this featurizer have the following (general) signature:
 
     +---------------------+-----------------+--------------+
     | slice [start, stop) | subfeature      | unknown pad? |

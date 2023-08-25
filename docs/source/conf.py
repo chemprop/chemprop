@@ -20,23 +20,17 @@ extensions = [
     "autoapi.extension",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.bibtex"
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = []
+autodoc_typehints = 'description'
 
 # -- AutoAPI configuration ---------------------------------------------------
 
 autoapi_dirs = ["../../chemprop/v2"]
-# autoapi_file_patterns = ["v2", "*.py"]
 autoapi_ignore = ["*test*", "*cli*"]
-# autoapi_options = [
-#     "members",
-#     "show-inheritance",
-#     "show-module-summary",
-#     "special-members",
-#     "undoc_members",
-# ]
 autoapi_options = [
     "members",
     "undoc-members",
@@ -45,7 +39,11 @@ autoapi_options = [
     "special-members",
     "imported-members",
 ]
-# autoapi_keep_files = True
+autoapi_keep_files = True
+
+# -- bibtex configuration ---------------------------------------------------
+
+bibtex_bibfiles = ['refs.bib']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

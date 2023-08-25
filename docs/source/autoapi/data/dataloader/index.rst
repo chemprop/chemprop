@@ -42,15 +42,16 @@ Attributes
 
    
 
-.. py:function:: collate_batch(batch: Iterable[chemprop.v2.data.datasets.Datum]) -> TrainingBatch
+.. py:function:: collate_batch(batch)
 
 
-.. py:class:: MolGraphDataLoader(dataset: chemprop.v2.data.datasets.MolGraphDatasetMixin, batch_size: int = 50, num_workers: int = 0, class_balance: bool = False, seed: int | None = None, shuffle: bool = True)
+.. py:class:: MolGraphDataLoader(dataset, batch_size = 50, num_workers = 0, class_balance = False, seed = None, shuffle = True)
 
 
    Bases: :py:obj:`torch.utils.data.DataLoader`
 
-   A `MolGraphDataLoader` is a DataLoader for `MolGraphDataset`s
+   A :class:`MolGraphDataLoader` is a :obj:`~torch.utils.data.DataLoader` for
+   :class:`MolGraphDataset`s
 
    :param dataset: The dataset containing the molecules to load.
    :type dataset: MoleculeDataset

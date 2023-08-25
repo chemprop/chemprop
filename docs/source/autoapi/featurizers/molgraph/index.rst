@@ -142,15 +142,15 @@ Classes
 
       the number of bonds for each molecule in the batch
 
-   .. py:method:: __post_init__(mgs: Sequence[MolGraph])
+   .. py:method:: __post_init__(mgs)
 
 
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
       the number of individual :class:`MolGraph`s in this batch
 
 
-   .. py:method:: to(device: str | torch.device)
+   .. py:method:: to(device)
 
 
 

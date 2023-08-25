@@ -12,7 +12,17 @@ AggregationRegistry = ClassRegistry()
 
 class Aggregation(ABC, nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
-    a batch of graph-level representations"""
+    a batch of graph-level representations
+
+    **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
+    concrete subclasses.
+    
+    See also
+    --------
+    :class:`chemprop.v2.models.modules.agg.MeanAggregation`
+    :class:`chemprop.v2.models.modules.agg.SumAggregation`
+    :class:`chemprop.v2.models.modules.agg.NormAggregation`
+    """
 
     def __init__(self, dim: int = 0):
         super().__init__()
@@ -26,11 +36,6 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
         NOTE: it is possible for a graph to have 0 nodes. In this case, the representation will be
         a zero vector of length `d` in the final output.
-
-        E.g., `H` is a tensor of shape ``10 x 4`` and ``sizes`` is equal to ``[3, 4, 3]``, then
-        ``H[:3]``, ``H[3:7]``, and ``H[7:]`` correspond to the graph-level represenataions of the
-        three individual graphs. The output of a call to ``forward()`` will be a tensor of shape
-        ``3 x 4``
 
         Parameters
         ----------
@@ -50,6 +55,27 @@ class Aggregation(ABC, nn.Module, HasHParams):
         ------
         ValueError
             if ``sum(sizes)`` is not equal to ``len(H_v)``
+
+        Examples
+        --------
+        **NOTE**: the following examples are for illustrative purposes only. In practice, you must
+        use one of the concrete subclasses.
+
+        1. A typical use-case:
+
+        >>> H = torch.rand(10, 4)
+        >>> sizes = [3, 4, 3]
+        >>> agg = Aggregation()
+        >>> agg(H, sizes).shape
+        torch.Size([3, 4])
+
+        2. A batch containing a graph with 0 nodes:
+
+        >>> H = torch.rand(10, 4)
+        >>> sizes = [3, 4, 0, 3]
+        >>> agg = Aggregation()
+        >>> agg(H, sizes).shape
+        torch.Size([4, 4])
         """
         try:
             hs = [
@@ -62,7 +88,7 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
     @abstractmethod
     def agg(self, H: Tensor) -> Tensor:
-        """Aggregate the graph-level of a single graph into a vector
+        r"""Aggregate the graph-level of a single graph into a vector
 
         Parameters
         ----------
@@ -79,7 +105,10 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
-    """Average the graph-level representation"""
+    r"""Average the graph-level representation
+    
+    .. math::
+        \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v"""
 
     def agg(self, H: Tensor) -> Tensor:
         return H.mean(self.dim)
@@ -87,7 +116,12 @@ class MeanAggregation(Aggregation):
 
 @AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
-    """Sum the graph-level representation"""
+    r"""Sum the graph-level representation
+    
+    .. math::
+        \mathbf h = \sum_{v \in V} \mathbf h_v
+    
+    """
 
     def agg(self, H: Tensor) -> Tensor:
         return H.sum(self.dim)
@@ -95,7 +129,11 @@ class SumAggregation(Aggregation):
 
 @AggregationRegistry.register("norm")
 class NormAggregation(Aggregation):
-    """Sum the graph-level representation and divide by a normalization constant"""
+    r"""Sum the graph-level representation and divide by a normalization constant
+    
+    .. math::
+        \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
+    """
 
     def __init__(self, *args, norm: float = 100, **kwargs):
         super().__init__(*args, **kwargs)

@@ -9,9 +9,18 @@ from chemprop.v2.featurizers.protos import AtomFeaturizerProto
 
 @dataclass(repr=False, eq=False, slots=True)
 class AtomFeaturizer(AtomFeaturizerProto):
-    """An :class`AtomFeaturizer` is the default implmentation of an :class:`AtomFeaturizerProto`.
+    """An :class:`AtomFeaturizer` featurizes atoms based on the following attributes:
 
-    The featurizations produced by this featurizer have the following (general) signature:
+    * atomic number
+    * degree
+    * formal charge
+    * chiral tag
+    * number of hydrogens
+    * hybridization
+    * aromaticity
+    * mass
+
+    The feature vectors produced by this featurizer have the following (general) signature:
 
     +---------------------+-----------------+--------------+
     | slice [start, stop) | subfeature      | unknown pad? |

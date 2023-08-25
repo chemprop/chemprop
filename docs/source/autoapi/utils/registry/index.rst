@@ -49,15 +49,15 @@ Attributes
 
       
 
-   .. py:method:: register(alias: Any | Iterable[Any] | None = None)
+   .. py:method:: register(alias = None)
 
 
-   .. py:method:: __repr__() -> str
+   .. py:method:: __repr__()
 
       Return repr(self).
 
 
-   .. py:method:: __str__() -> str
+   .. py:method:: __str__()
 
       Return str(self).
 
@@ -66,7 +66,7 @@ Attributes
 .. py:class:: Factory
 
 
-   .. py:method:: build(clz_T: Type[T], *args, **kwargs) -> T
+   .. py:method:: build(clz_T, *args, **kwargs)
       :classmethod:
 
 

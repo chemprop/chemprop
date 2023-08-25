@@ -62,44 +62,16 @@ Attributes
 
    Bases: :py:obj:`torch.nn.Module`, :py:obj:`MessagePassingProto`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`MessagePassingBlock` is encodes a batch of molecular graphs using message passing
+   to learn vertex-level hidden representations.
 
 
-.. py:class:: MessagePassingBlockBase(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: MessagePassingBlockBase(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`chemprop.v2.models.modules.message_passing.base.MessagePassingBlock`, :py:obj:`lightning.pytorch.core.mixins.HyperparametersMixin`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   The base message-passing block for atom- and bond-based message-passing schemes
 
    NOTE: this class is an abstract base class and cannot be instantiated
 
@@ -132,7 +104,7 @@ Attributes
       :type: int
 
 
-   .. py:method:: finalize(M_v: torch.Tensor, V: torch.Tensor, V_d: torch.Tensor | None) -> torch.Tensor
+   .. py:method:: finalize(M_v, V, V_d)
 
       Finalize message passing by (1) concatenating the final hidden representations `H_v`
       and the original vertex ``V`` and (2) further concatenating additional vertex descriptors
@@ -164,7 +136,7 @@ Attributes
           the vertex descriptor dimension
 
 
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False) -> tuple[torch.nn.Module, torch.nn.Module, torch.nn.Module, torch.nn.Module | None]
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
       :abstractmethod:
 
       construct the weight matrices used in the message passing update functions
@@ -187,7 +159,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
       :abstractmethod:
 
       Encode a batch of molecular graphs.
@@ -207,7 +179,7 @@ Attributes
 
 
 
-.. py:class:: MulticomponentMessagePassing(blocks: Sequence[chemprop.v2.models.modules.message_passing.molecule.MessagePassingBlockBase], n_components: int, shared: bool = False)
+.. py:class:: MulticomponentMessagePassing(blocks, n_components, shared = False)
 
 
    Bases: :py:obj:`torch.nn.Module`
@@ -228,10 +200,10 @@ Attributes
       :type: int
 
 
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
 
-   .. py:method:: forward(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor | None]) -> torch.Tensor
+   .. py:method:: forward(bmgs, V_ds)
 
       Encode the multicomponent inputs
 
@@ -245,41 +217,32 @@ Attributes
 
 
 
-.. py:class:: AtomMessageBlock(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: AtomMessageBlock(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`MessagePassingBlockBase`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   A :class:`AtomMessageBlock` encodes a batch of molecular graphs by passing messages along
+   atoms.
 
-   NOTE: this class is an abstract base class and cannot be instantiated
+   It implements the following operation:
 
-   :param d_v: the feature dimension of the vertices
-   :type d_v: int, default=DEFAULT_ATOM_FDIM
-   :param d_e: the feature dimension of the edges
-   :type d_e: int, default=DEFAULT_BOND_FDIM
-   :param d_h: the hidden dimension during message passing
-   :type d_h: int, default=DEFAULT_HIDDEN_DIM
-   :param bias: if `True`, add a bias term to the learned weight matrices
-   :type bias: bool, defuault=False
-   :param depth: the number of message passing iterations
-   :type depth: int, default=3
-   :param undirected: if `True`, pass messages on undirected edges
-   :type undirected: bool, default=False
-   :param dropout: the dropout probability
-   :type dropout: float, default=0
-   :param activation: the activation function to use
-   :type activation: str, default="relu"
-   :param d_vd: the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
-   :type d_vd: int | None, default=None
+   .. math::
 
-   .. seealso::
+       h_v^{(0)} &= \tau \left( \mathbf{W}_i(x_v) \right) \\
+       m_v^{(t)} &= \sum_{u \in \mathcal{N}(v)} h_u^{(t-1)} \mathbin\Vert e_{uv} \\
+       h_v^{(t)} &= \tau\left(h_v^{(0)} + \mathbf{W}_h m_v^{(t-1)}\right) \\
+       m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+       h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right)  \right),
 
-      * :class:`AtomMessageBlock`
+   where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+   :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+   bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+   :math:`h_v^{(t)}` is the hidden representation of atom :math:`v` at iteration :math:`t`;
+   :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
+   :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
 
-      * :class:`BondMessageBlock`
-
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False)
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
 
       construct the weight matrices used in the message passing update functions
 
@@ -301,7 +264,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
 
       Encode a batch of molecular graphs.
 
@@ -320,41 +283,33 @@ Attributes
 
 
 
-.. py:class:: BondMessageBlock(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: BondMessageBlock(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`MessagePassingBlockBase`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   A :class:`BondMessageBlock` encodes a batch of molecular graphs by passing messages along
+   directed bonds.
 
-   NOTE: this class is an abstract base class and cannot be instantiated
+   It implements the following operation:
 
-   :param d_v: the feature dimension of the vertices
-   :type d_v: int, default=DEFAULT_ATOM_FDIM
-   :param d_e: the feature dimension of the edges
-   :type d_e: int, default=DEFAULT_BOND_FDIM
-   :param d_h: the hidden dimension during message passing
-   :type d_h: int, default=DEFAULT_HIDDEN_DIM
-   :param bias: if `True`, add a bias term to the learned weight matrices
-   :type bias: bool, defuault=False
-   :param depth: the number of message passing iterations
-   :type depth: int, default=3
-   :param undirected: if `True`, pass messages on undirected edges
-   :type undirected: bool, default=False
-   :param dropout: the dropout probability
-   :type dropout: float, default=0
-   :param activation: the activation function to use
-   :type activation: str, default="relu"
-   :param d_vd: the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
-   :type d_vd: int | None, default=None
+   .. math::
 
-   .. seealso::
+       h_{vw}^{(0)} &= \tau \left( \mathbf{W}_i(e_{vw}) \right) \\
+       m_{vw}^{(t)} &= \sum_{u \in \mathcal{N}(v)\setminus w} h_{uv}^{(t-1)} \\
+       h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
+       m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+       h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
 
-      * :class:`AtomMessageBlock`
+   where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+   :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+   bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+   :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at
+   iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v
+   \rightarrow w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
+   message passing iterations.
 
-      * :class:`BondMessageBlock`
-
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False)
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
 
       construct the weight matrices used in the message passing update functions
 
@@ -376,7 +331,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
 
       Encode a batch of molecular graphs.
 
@@ -395,7 +350,7 @@ Attributes
 
 
 
-.. py:class:: MPNN(message_passing: chemprop.v2.models.modules.MessagePassingBlock, agg: chemprop.v2.models.modules.Aggregation, readout: chemprop.v2.models.modules.Readout, batch_norm: bool = True, metrics: Iterable[chemprop.v2.models.metrics.Metric] | None = None, w_t: torch.Tensor | None = None, warmup_epochs: int = 2, init_lr: float = 0.0001, max_lr: float = 0.001, final_lr: float = 0.0001)
+.. py:class:: MPNN(message_passing, agg, readout, batch_norm = True, metrics = None, w_t = None, warmup_epochs = 2, init_lr = 0.0001, max_lr = 0.001, final_lr = 0.0001)
 
 
    Bases: :py:obj:`lightning.pytorch.LightningModule`
@@ -456,25 +411,25 @@ Attributes
       :type: chemprop.v2.models.loss.LossFunction
 
 
-   .. py:method:: fingerprint(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: fingerprint(bmg, V_d = None, X_f = None)
 
       the learned fingerprints for the input molecules
 
 
-   .. py:method:: encoding(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: encoding(bmg, V_d = None, X_f = None)
 
       the final hidden representations for the input molecules
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None, X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None, X_f = None)
 
       Generate predictions for the input molecules/reactions
 
 
-   .. py:method:: training_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx)
+   .. py:method:: training_step(batch, batch_idx)
 
-      Here you compute and return the training loss and some additional metrics for e.g. the progress bar or
-      logger.
+      Here you compute and return the training loss and some additional metrics for e.g.
+      the progress bar or logger.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`. A tensor, tuple or list.
       :type batch: :class:`~torch.Tensor` | (:class:`~torch.Tensor`, ...) | [:class:`~torch.Tensor`, ...]
@@ -525,10 +480,10 @@ Attributes
          normalized by ``accumulate_grad_batches`` internally.
 
 
-   .. py:method:: validation_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int = 0)
+   .. py:method:: validation_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the validation set. In this step you'd might generate examples or
-      calculate anything of interest like accuracy.
+      Operates on a single batch of data from the validation set.
+      In this step you'd might generate examples or calculate anything of interest like accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -593,10 +548,11 @@ Attributes
          the model goes back to training mode and gradients are enabled.
 
 
-   .. py:method:: test_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int = 0)
+   .. py:method:: test_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the test set. In this step you'd normally generate examples or
-      calculate anything of interest such as accuracy.
+      Operates on a single batch of data from the test set.
+      In this step you'd normally generate examples or calculate anything of interest
+      such as accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -663,7 +619,7 @@ Attributes
          to training mode and gradients are enabled.
 
 
-   .. py:method:: predict_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> torch.Tensor
+   .. py:method:: predict_step(batch, batch_idx, dataloader_idx = 0)
 
       Return the predictions of the input batch
 
@@ -683,9 +639,9 @@ Attributes
 
    .. py:method:: configure_optimizers()
 
-      Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one.
-      But in the case of GANs or similar you might have multiple. Optimization with multiple optimizers only works in
-      the manual optimization mode.
+      Choose what optimizers and learning-rate schedulers to use in your optimization.
+      Normally you'd need one. But in the case of GANs or similar you might have multiple.
+      Optimization with multiple optimizers only works in the manual optimization mode.
 
       :returns: Any of these 6 options.
 
@@ -782,7 +738,7 @@ Attributes
          - If you need to control how often the optimizer steps, override the :meth:`optimizer_step` hook.
 
 
-   .. py:method:: load_from_checkpoint(checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs) -> MPNN
+   .. py:method:: load_from_checkpoint(checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs)
       :classmethod:
 
       Primary way of loading a model from a checkpoint. When Lightning saves a checkpoint
@@ -863,7 +819,7 @@ Attributes
    Helper class that provides a standard way to create an ABC using
    inheritance.
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w_s: torch.Tensor, w_t: torch.Tensor, lt_mask: torch.Tensor, gt_mask: torch.Tensor)
+   .. py:method:: __call__(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -890,7 +846,7 @@ Attributes
       :rtype: Tensor
 
 
-   .. py:method:: forward(preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
       :abstractmethod:
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.
@@ -911,7 +867,7 @@ Attributes
 
       
 
-   .. py:method:: __call__(preds: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor, w_s: torch.Tensor, w_t: torch.Tensor, lt_mask: torch.Tensor, gt_mask: torch.Tensor)
+   .. py:method:: __call__(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
       Calculate the mean loss function value given predicted and target values
 
@@ -938,7 +894,7 @@ Attributes
       :rtype: Tensor
 
 
-   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask) -> torch.Tensor
+   .. py:method:: forward(preds, targets, mask, lt_mask, gt_mask)
       :abstractmethod:
 
       Calculate a tensor of shape `b x t` containing the unreduced loss values.

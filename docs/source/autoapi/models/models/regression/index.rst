@@ -24,7 +24,7 @@ Classes
 
    Bases: :py:obj:`chemprop.v2.models.models.base.MPNN`
 
-   .. py:method:: predict_step(*args, **kwargs) -> tuple[torch.Tensor, Ellipsis]
+   .. py:method:: predict_step(*args, **kwargs)
 
 
 
@@ -37,10 +37,10 @@ Classes
       :type: int
 
 
-   .. py:method:: forward(inputs, X_f) -> torch.Tensor
+   .. py:method:: forward(inputs, X_f)
 
 
-   .. py:method:: predict_step(*args, **kwargs) -> tuple[torch.Tensor, Ellipsis]
+   .. py:method:: predict_step(*args, **kwargs)
 
 
 
@@ -53,10 +53,10 @@ Classes
       :type: int
 
 
-   .. py:method:: forward(inputs, X_f) -> torch.Tensor
+   .. py:method:: forward(inputs, X_f)
 
 
-   .. py:method:: predict_step(*args, **kwargs) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+   .. py:method:: predict_step(*args, **kwargs)
 
 
 

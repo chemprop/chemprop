@@ -18,15 +18,15 @@ Classes
 
 
 
-.. py:class:: MulticlassMPNN(mp_block: chemprop.v2.models.modules.MessagePassingBlock, n_tasks: int, n_classes: int, *args, **kwargs)
+.. py:class:: MulticlassMPNN(mp_block, n_tasks, n_classes, *args, **kwargs)
 
 
    Bases: :py:obj:`chemprop.v2.models.models.base.MPNN`
 
-   .. py:method:: forward(*args, **kwargs) -> torch.Tensor
+   .. py:method:: forward(*args, **kwargs)
 
 
-   .. py:method:: predict_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> tuple[torch.Tensor, Ellipsis]
+   .. py:method:: predict_step(batch, batch_idx, dataloader_idx = 0)
 
 
 
@@ -35,10 +35,10 @@ Classes
 
    Bases: :py:obj:`MulticlassMPNN`
 
-   .. py:method:: forward(*args, **kwargs) -> torch.Tensor
+   .. py:method:: forward(*args, **kwargs)
 
 
-   .. py:method:: predict_step(batch: chemprop.v2.data.dataloader.TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> tuple[torch.Tensor, Ellipsis]
+   .. py:method:: predict_step(batch, batch_idx, dataloader_idx = 0)
 
 
 

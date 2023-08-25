@@ -62,11 +62,11 @@ Classes
 
       
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.molgraph.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
 
       Encode a batch of molecular graphs.
 
-      :param bmg: the batch of `MolGraphs` to encode
+      :param bmg: the batch of :class:`~chemprop.v2.featurizers.molgraph.MolGraph`s to encode
       :type bmg: BatchMolGraph
       :param V_d: an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
                   in the batch. These will be concatenated to the learned atomic descriptors and
@@ -74,8 +74,9 @@ Classes
                   so if provided, this tensor must be 0-padded in the 0th row.
       :type V_d: Tensor | None, default=None
 
-      :returns: a tensor of shape `b x d_h` or `b x (d_h + d_vd)` containing the encoding of each
-                molecule in the batch, depending on whether additional atom descriptors were provided
+      :returns: a tensor of shape `V x d_h` or `V x (d_h + d_vd)` containing the hidden representation
+                of each vertex in the batch of graphs. The feature dimension depends on whether
+                additional atom descriptors were provided
       :rtype: Tensor
 
 
@@ -85,35 +86,7 @@ Classes
 
    Bases: :py:obj:`torch.nn.Module`, :py:obj:`MessagePassingProto`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`MessagePassingBlock` is encodes a batch of molecular graphs using message passing
+   to learn vertex-level hidden representations.
 
 

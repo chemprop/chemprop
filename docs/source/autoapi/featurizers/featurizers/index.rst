@@ -12,7 +12,6 @@ Classes
 
 .. autoapisummary::
 
-   featurizers.featurizers.MoleculeFeaturizerProto
    featurizers.featurizers.MorganFeaturizerMixin
    featurizers.featurizers.BinaryFeaturizerMixin
    featurizers.featurizers.CountFeaturizerMixin
@@ -34,58 +33,40 @@ Attributes
 
    
 
-.. py:class:: MoleculeFeaturizerProto
+.. py:class:: MorganFeaturizerMixin(radius = 2, length = 2048, include_chirality = True)
 
 
-   Bases: :py:obj:`Protocol`
-
-   A :class:`MoleculeFeaturizerProto` defines the protocol for molecule-level featurization
-
-   .. py:method:: __len__() -> int
-
-      the length of the feature vector
-
-
-   .. py:method:: __call__(mol: rdkit.Chem.Mol) -> numpy.ndarray
-
-      Featurize the molecule into a vector
-
-
-
-.. py:class:: MorganFeaturizerMixin(radius: int = 2, length: int = 2048, include_chirality: bool = True)
-
-
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
 
 
 .. py:class:: BinaryFeaturizerMixin
 
 
-   .. py:method:: __call__(mol: rdkit.Chem.Mol) -> numpy.ndarray
+   .. py:method:: __call__(mol)
 
 
 
 .. py:class:: CountFeaturizerMixin
 
 
-   .. py:method:: __call__(mol: rdkit.Chem.Mol) -> numpy.ndarray
+   .. py:method:: __call__(mol)
 
 
 
-.. py:class:: MorganBinaryFeaturzer(radius: int = 2, length: int = 2048, include_chirality: bool = True)
+.. py:class:: MorganBinaryFeaturzer(radius = 2, length = 2048, include_chirality = True)
 
 
-   Bases: :py:obj:`MorganFeaturizerMixin`, :py:obj:`BinaryFeaturizerMixin`, :py:obj:`MoleculeFeaturizerProto`
+   Bases: :py:obj:`MorganFeaturizerMixin`, :py:obj:`BinaryFeaturizerMixin`, :py:obj:`chemprop.v2.featurizers.protos.MoleculeFeaturizerProto`
 
-   A :class:`MoleculeFeaturizerProto` defines the protocol for molecule-level featurization
-
-
-.. py:class:: MorganCountFeaturizer(radius: int = 2, length: int = 2048, include_chirality: bool = True)
+   A :class:`MoleculeFeaturizerProto` calculates feature vectors of RDKit molecules.
 
 
-   Bases: :py:obj:`MorganFeaturizerMixin`, :py:obj:`CountFeaturizerMixin`, :py:obj:`MoleculeFeaturizerProto`
+.. py:class:: MorganCountFeaturizer(radius = 2, length = 2048, include_chirality = True)
 
-   A :class:`MoleculeFeaturizerProto` defines the protocol for molecule-level featurization
+
+   Bases: :py:obj:`MorganFeaturizerMixin`, :py:obj:`CountFeaturizerMixin`, :py:obj:`chemprop.v2.featurizers.protos.MoleculeFeaturizerProto`
+
+   A :class:`MoleculeFeaturizerProto` calculates feature vectors of RDKit molecules.
 
 

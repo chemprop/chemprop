@@ -30,7 +30,7 @@ Classes
 
    Bases: :py:obj:`ClassificationMPNN`
 
-   .. py:method:: predict_step(*args, **kwargs) -> tuple[torch.Tensor]
+   .. py:method:: predict_step(*args, **kwargs)
 
 
 
@@ -43,10 +43,10 @@ Classes
       :type: int
 
 
-   .. py:method:: forward(*args, **kwargs) -> torch.Tensor
+   .. py:method:: forward(*args, **kwargs)
 
 
-   .. py:method:: predict_step(*args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]
+   .. py:method:: predict_step(*args, **kwargs)
 
 
 

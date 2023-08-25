@@ -42,12 +42,12 @@ Functions
 .. py:class:: ReprMixin
 
 
-   .. py:method:: __repr__() -> str
+   .. py:method:: __repr__()
 
       Return repr(self).
 
 
-   .. py:method:: get_params() -> Collection[tuple[str, Any]]
+   .. py:method:: get_params()
 
 
 
@@ -70,15 +70,15 @@ Functions
 
       
 
-   .. py:method:: register(alias: Any | Iterable[Any] | None = None)
+   .. py:method:: register(alias = None)
 
 
-   .. py:method:: __repr__() -> str
+   .. py:method:: __repr__()
 
       Return repr(self).
 
 
-   .. py:method:: __str__() -> str
+   .. py:method:: __str__()
 
       Return str(self).
 
@@ -126,21 +126,21 @@ Functions
    Methods can be added to enumerations, and members can have their own
    attributes -- see the documentation for details.
 
-   .. py:method:: __str__() -> str
+   .. py:method:: __str__()
 
       Return str(self).
 
 
-   .. py:method:: get(name: str | AutoName) -> AutoName
+   .. py:method:: get(name)
       :classmethod:
 
 
-   .. py:method:: keys() -> set[str]
+   .. py:method:: keys()
       :classmethod:
 
 
 
-.. py:function:: make_mol(smi: str, keep_h: bool, add_h: bool) -> rdkit.Chem.Mol
+.. py:function:: make_mol(smi, keep_h, add_h)
 
    build an RDKit molecule from a SMILES string.
 
@@ -155,7 +155,7 @@ Functions
    :rtype: Chem.Mol
 
 
-.. py:function:: pretty_shape(shape: Iterable[int]) -> str
+.. py:function:: pretty_shape(shape)
 
    Make a pretty string from an input shape
 

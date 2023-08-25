@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import csv
 import sys
 
@@ -9,8 +10,10 @@ from chemprop.v2 import data
 from chemprop.v2 import featurizers
 from chemprop.v2.models import loss, modules, models, metrics
 
-# pl.seed_everything(42)
-NUM_WORKERS = 2
+parser = ArgumentParser()
+parser.add_argument('input', default='./data/lipo.csv')
+parser.add_argument('-c', '--num-workers', type=int, default=4)
+args = parser.parse_args()
 
 featurizer = featurizers.MoleculeMolGraphFeaturizer()
 mp = modules.BondMessageBlock()
@@ -20,7 +23,7 @@ mpnn = models.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
 
 print(mpnn)
 
-with open(sys.argv[1]) as fid:
+with open(args.input) as fid:
     reader = csv.reader(fid)
     next(reader)
     smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
@@ -38,9 +41,9 @@ val_dset.normalize_targets(scaler)
 test_dset = data.MoleculeDataset(test_data, featurizer)
 test_dset.normalize_targets(scaler)
 
-train_loader = data.MolGraphDataLoader(train_dset, num_workers=NUM_WORKERS)
-val_loader = data.MolGraphDataLoader(val_dset, num_workers=NUM_WORKERS, shuffle=False)
-test_loader = data.MolGraphDataLoader(test_dset, num_workers=NUM_WORKERS, shuffle=False)
+train_loader = data.MolGraphDataLoader(train_dset, num_workers=args.num_workers)
+val_loader = data.MolGraphDataLoader(val_dset, num_workers=args.num_workers, shuffle=False)
+test_loader = data.MolGraphDataLoader(test_dset, num_workers=args.num_workers, shuffle=False)
 
 trainer = pl.Trainer(
     logger=False,

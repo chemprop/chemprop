@@ -92,7 +92,7 @@ Functions
       
 
 
-.. py:function:: get_activation_function(activation: str | Activation) -> torch.nn.Module
+.. py:function:: get_activation_function(activation)
 
    Gets an activation function module given the name of the activation.
 

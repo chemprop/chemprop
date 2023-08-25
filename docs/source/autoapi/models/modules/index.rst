@@ -41,7 +41,6 @@ Classes
    models.modules.AtomMessageBlock
    models.modules.BondMessageBlock
    models.modules.MulticomponentMessagePassing
-   models.modules.ReadoutProto
    models.modules.Readout
    models.modules.ReadoutFFNBase
    models.modules.RegressionFFN
@@ -70,7 +69,7 @@ Attributes
 
    
 
-.. py:class:: Aggregation(dim: int = 0)
+.. py:class:: Aggregation(dim = 0)
 
 
    Bases: :py:obj:`abc.ABC`, :py:obj:`torch.nn.Module`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
@@ -78,18 +77,18 @@ Attributes
    An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
    a batch of graph-level representations
 
-   .. py:method:: forward(H: torch.Tensor, sizes: Sequence[int] | None) -> torch.Tensor
+   **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
+   concrete subclasses.
+
+   .. seealso:: :class:`chemprop.v2.models.modules.agg.MeanAggregation`, :class:`chemprop.v2.models.modules.agg.SumAggregation`, :class:`chemprop.v2.models.modules.agg.NormAggregation`
+
+   .. py:method:: forward(H, sizes)
 
       Aggregate the graph-level representations of a batch of graphs into their respective
       global representations
 
       NOTE: it is possible for a graph to have 0 nodes. In this case, the representation will be
       a zero vector of length `d` in the final output.
-
-      E.g., `H` is a tensor of shape ``10 x 4`` and ``sizes`` is equal to ``[3, 4, 3]``, then
-      ``H[:3]``, ``H[3:7]``, and ``H[7:]`` correspond to the graph-level represenataions of the
-      three individual graphs. The output of a call to ``forward()`` will be a tensor of shape
-      ``3 x 4``
 
       :param H: A tensor of shape ``sum(sizes) x d`` containing the stacked node-level representations
                 of ``len(sizes)`` graphs
@@ -103,8 +102,29 @@ Attributes
 
       :raises ValueError: if ``sum(sizes)`` is not equal to ``len(H_v)``
 
+      .. rubric:: Examples
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+      **NOTE**: the following examples are for illustrative purposes only. In practice, you must
+      use one of the concrete subclasses.
+
+      1. A typical use-case:
+
+      >>> H = torch.rand(10, 4)
+      >>> sizes = [3, 4, 3]
+      >>> agg = Aggregation()
+      >>> agg(H, sizes).shape
+      torch.Size([3, 4])
+
+      2. A batch containing a graph with 0 nodes:
+
+      >>> H = torch.rand(10, 4)
+      >>> sizes = [3, 4, 0, 3]
+      >>> agg = Aggregation()
+      >>> agg(H, sizes).shape
+      torch.Size([4, 4])
+
+
+   .. py:method:: agg(H)
       :abstractmethod:
 
       Aggregate the graph-level of a single graph into a vector
@@ -118,14 +138,17 @@ Attributes
 
 
 
-.. py:class:: MeanAggregation(dim: int = 0)
+.. py:class:: MeanAggregation(dim = 0)
 
 
    Bases: :py:obj:`Aggregation`
 
    Average the graph-level representation
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 
@@ -138,14 +161,18 @@ Attributes
 
 
 
-.. py:class:: SumAggregation(dim: int = 0)
+.. py:class:: SumAggregation(dim = 0)
 
 
    Bases: :py:obj:`Aggregation`
 
    Sum the graph-level representation
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \sum_{v \in V} \mathbf h_v
+
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 
@@ -158,14 +185,17 @@ Attributes
 
 
 
-.. py:class:: NormAggregation(*args, norm: float = 100, **kwargs)
+.. py:class:: NormAggregation(*args, norm = 100, **kwargs)
 
 
    Bases: :py:obj:`Aggregation`
 
    Sum the graph-level representation and divide by a normalization constant
 
-   .. py:method:: agg(H: torch.Tensor) -> torch.Tensor
+   .. math::
+       \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
+
+   .. py:method:: agg(H)
 
       Aggregate the graph-level of a single graph into a vector
 
@@ -183,44 +213,16 @@ Attributes
 
    Bases: :py:obj:`torch.nn.Module`, :py:obj:`MessagePassingProto`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`MessagePassingBlock` is encodes a batch of molecular graphs using message passing
+   to learn vertex-level hidden representations.
 
 
-.. py:class:: MessagePassingBlockBase(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: MessagePassingBlockBase(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`chemprop.v2.models.modules.message_passing.base.MessagePassingBlock`, :py:obj:`lightning.pytorch.core.mixins.HyperparametersMixin`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   The base message-passing block for atom- and bond-based message-passing schemes
 
    NOTE: this class is an abstract base class and cannot be instantiated
 
@@ -253,7 +255,7 @@ Attributes
       :type: int
 
 
-   .. py:method:: finalize(M_v: torch.Tensor, V: torch.Tensor, V_d: torch.Tensor | None) -> torch.Tensor
+   .. py:method:: finalize(M_v, V, V_d)
 
       Finalize message passing by (1) concatenating the final hidden representations `H_v`
       and the original vertex ``V`` and (2) further concatenating additional vertex descriptors
@@ -285,7 +287,7 @@ Attributes
           the vertex descriptor dimension
 
 
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False) -> tuple[torch.nn.Module, torch.nn.Module, torch.nn.Module, torch.nn.Module | None]
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
       :abstractmethod:
 
       construct the weight matrices used in the message passing update functions
@@ -308,7 +310,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
       :abstractmethod:
 
       Encode a batch of molecular graphs.
@@ -328,41 +330,32 @@ Attributes
 
 
 
-.. py:class:: AtomMessageBlock(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: AtomMessageBlock(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`MessagePassingBlockBase`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   A :class:`AtomMessageBlock` encodes a batch of molecular graphs by passing messages along
+   atoms.
 
-   NOTE: this class is an abstract base class and cannot be instantiated
+   It implements the following operation:
 
-   :param d_v: the feature dimension of the vertices
-   :type d_v: int, default=DEFAULT_ATOM_FDIM
-   :param d_e: the feature dimension of the edges
-   :type d_e: int, default=DEFAULT_BOND_FDIM
-   :param d_h: the hidden dimension during message passing
-   :type d_h: int, default=DEFAULT_HIDDEN_DIM
-   :param bias: if `True`, add a bias term to the learned weight matrices
-   :type bias: bool, defuault=False
-   :param depth: the number of message passing iterations
-   :type depth: int, default=3
-   :param undirected: if `True`, pass messages on undirected edges
-   :type undirected: bool, default=False
-   :param dropout: the dropout probability
-   :type dropout: float, default=0
-   :param activation: the activation function to use
-   :type activation: str, default="relu"
-   :param d_vd: the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
-   :type d_vd: int | None, default=None
+   .. math::
 
-   .. seealso::
+       h_v^{(0)} &= \tau \left( \mathbf{W}_i(x_v) \right) \\
+       m_v^{(t)} &= \sum_{u \in \mathcal{N}(v)} h_u^{(t-1)} \mathbin\Vert e_{uv} \\
+       h_v^{(t)} &= \tau\left(h_v^{(0)} + \mathbf{W}_h m_v^{(t-1)}\right) \\
+       m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+       h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right)  \right),
 
-      * :class:`AtomMessageBlock`
+   where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+   :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+   bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+   :math:`h_v^{(t)}` is the hidden representation of atom :math:`v` at iteration :math:`t`;
+   :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
+   :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
 
-      * :class:`BondMessageBlock`
-
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False)
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
 
       construct the weight matrices used in the message passing update functions
 
@@ -384,7 +377,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
 
       Encode a batch of molecular graphs.
 
@@ -403,41 +396,33 @@ Attributes
 
 
 
-.. py:class:: BondMessageBlock(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, bias: bool = False, depth: int = 3, dropout: float = 0, activation: str = 'relu', undirected: bool = False, d_vd: int | None = None)
+.. py:class:: BondMessageBlock(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, bias = False, depth = 3, dropout = 0, activation = Activation.RELU, undirected = False, d_vd = None)
 
 
    Bases: :py:obj:`MessagePassingBlockBase`
 
-   The base message-passing block for atom- and bond-based MPNNs
+   A :class:`BondMessageBlock` encodes a batch of molecular graphs by passing messages along
+   directed bonds.
 
-   NOTE: this class is an abstract base class and cannot be instantiated
+   It implements the following operation:
 
-   :param d_v: the feature dimension of the vertices
-   :type d_v: int, default=DEFAULT_ATOM_FDIM
-   :param d_e: the feature dimension of the edges
-   :type d_e: int, default=DEFAULT_BOND_FDIM
-   :param d_h: the hidden dimension during message passing
-   :type d_h: int, default=DEFAULT_HIDDEN_DIM
-   :param bias: if `True`, add a bias term to the learned weight matrices
-   :type bias: bool, defuault=False
-   :param depth: the number of message passing iterations
-   :type depth: int, default=3
-   :param undirected: if `True`, pass messages on undirected edges
-   :type undirected: bool, default=False
-   :param dropout: the dropout probability
-   :type dropout: float, default=0
-   :param activation: the activation function to use
-   :type activation: str, default="relu"
-   :param d_vd: the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
-   :type d_vd: int | None, default=None
+   .. math::
 
-   .. seealso::
+       h_{vw}^{(0)} &= \tau \left( \mathbf{W}_i(e_{vw}) \right) \\
+       m_{vw}^{(t)} &= \sum_{u \in \mathcal{N}(v)\setminus w} h_{uv}^{(t-1)} \\
+       h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
+       m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+       h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
 
-      * :class:`AtomMessageBlock`
+   where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+   :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+   bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+   :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at
+   iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v
+   \rightarrow w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
+   message passing iterations.
 
-      * :class:`BondMessageBlock`
-
-   .. py:method:: build(d_v: int = DEFAULT_ATOM_FDIM, d_e: int = DEFAULT_BOND_FDIM, d_h: int = DEFAULT_HIDDEN_DIM, d_vd: int | None = None, bias: bool = False)
+   .. py:method:: build(d_v = DEFAULT_ATOM_FDIM, d_e = DEFAULT_BOND_FDIM, d_h = DEFAULT_HIDDEN_DIM, d_vd = None, bias = False)
 
       construct the weight matrices used in the message passing update functions
 
@@ -459,7 +444,7 @@ Attributes
       :rtype: tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
 
 
-   .. py:method:: forward(bmg: chemprop.v2.featurizers.BatchMolGraph, V_d: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmg, V_d = None)
 
       Encode a batch of molecular graphs.
 
@@ -478,7 +463,7 @@ Attributes
 
 
 
-.. py:class:: MulticomponentMessagePassing(blocks: Sequence[chemprop.v2.models.modules.message_passing.molecule.MessagePassingBlockBase], n_components: int, shared: bool = False)
+.. py:class:: MulticomponentMessagePassing(blocks, n_components, shared = False)
 
 
    Bases: :py:obj:`torch.nn.Module`
@@ -499,10 +484,10 @@ Attributes
       :type: int
 
 
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
 
-   .. py:method:: forward(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor | None]) -> torch.Tensor
+   .. py:method:: forward(bmgs, V_ds)
 
       Encode the multicomponent inputs
 
@@ -520,144 +505,21 @@ Attributes
 
    
 
-.. py:class:: ReadoutProto
-
-
-   Bases: :py:obj:`Protocol`
-
-   Base class for protocol classes.
-
-   Protocol classes are defined as::
-
-       class Proto(Protocol):
-           def meth(self) -> int:
-               ...
-
-   Such classes are primarily used with static type checkers that recognize
-   structural subtyping (static duck-typing), for example::
-
-       class C:
-           def meth(self) -> int:
-               return 0
-
-       def func(x: Proto) -> int:
-           return x.meth()
-
-       func(C())  # Passes static type check
-
-   See PEP 544 for details. Protocol classes decorated with
-   @typing.runtime_checkable act as simple-minded runtime protocols that check
-   only the presence of given attributes, ignoring their type signatures.
-   Protocol classes can be generic, they are defined as::
-
-       class GenProto(Protocol[T]):
-           def meth(self) -> T:
-               ...
-
-   .. py:attribute:: input_dim
-      :type: int
-
-      the input dimension
-
-   .. py:attribute:: output_dim
-      :type: int
-
-      the output dimension
-
-   .. py:attribute:: n_tasks
-      :type: int
-
-      the number of tasks `t` to predict for each input
-
-   .. py:attribute:: n_targets
-      :type: int
-
-      the number of targets `s` to predict for each task `t`
-
-   .. py:attribute:: criterion
-      :type: chemprop.v2.models.loss.LossFunction
-
-      the loss function to use for training
-
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
-
-
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
-
-
-
 .. py:class:: Readout(*args, **kwargs)
 
 
-   Bases: :py:obj:`torch.nn.Module`, :py:obj:`ReadoutProto`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
+   Bases: :py:obj:`torch.nn.Module`, :py:obj:`_ReadoutProto`, :py:obj:`chemprop.v2.models.hparams.HasHParams`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`
 
 
-.. py:class:: ReadoutFFNBase(n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = 'relu', criterion: chemprop.v2.models.loss.LossFunction | None = None)
+.. py:class:: ReadoutFFNBase(n_tasks = 1, input_dim = DEFAULT_HIDDEN_DIM, hidden_dim = 300, n_layers = 1, dropout = 0, activation = 'relu', criterion = None)
 
 
    Bases: :py:obj:`Readout`, :py:obj:`lightning.pytorch.core.mixins.HyperparametersMixin`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:property:: input_dim
       :type: int
@@ -671,416 +533,164 @@ Attributes
       :type: int
 
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: RegressionFFN(*args, loc: float | torch.Tensor = 0, scale: float | torch.Tensor = 1, **kwargs)
+.. py:class:: RegressionFFN(*args, loc = 0, scale = 1, **kwargs)
 
 
    Bases: :py:obj:`ReadoutFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 1
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: MveFFN(*args, loc: float | torch.Tensor = 0, scale: float | torch.Tensor = 1, **kwargs)
+.. py:class:: MveFFN(*args, loc = 0, scale = 1, **kwargs)
 
 
    Bases: :py:obj:`RegressionFFN`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 2
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: EvidentialFFN(*args, loc: float | torch.Tensor = 0, scale: float | torch.Tensor = 1, **kwargs)
+.. py:class:: EvidentialFFN(*args, loc = 0, scale = 1, **kwargs)
 
 
    Bases: :py:obj:`RegressionFFN`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 4
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: BinaryClassificationFFNBase(n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = 'relu', criterion: chemprop.v2.models.loss.LossFunction | None = None)
+.. py:class:: BinaryClassificationFFNBase(n_tasks = 1, input_dim = DEFAULT_HIDDEN_DIM, hidden_dim = 300, n_layers = 1, dropout = 0, activation = 'relu', criterion = None)
 
 
    Bases: :py:obj:`ReadoutFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
 
-.. py:class:: BinaryClassificationFFN(n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = 'relu', criterion: chemprop.v2.models.loss.LossFunction | None = None)
+.. py:class:: BinaryClassificationFFN(n_tasks = 1, input_dim = DEFAULT_HIDDEN_DIM, hidden_dim = 300, n_layers = 1, dropout = 0, activation = 'relu', criterion = None)
 
 
    Bases: :py:obj:`BinaryClassificationFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 1
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: BinaryDirichletFFN(n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = 'relu', criterion: chemprop.v2.models.loss.LossFunction | None = None)
+.. py:class:: BinaryDirichletFFN(n_tasks = 1, input_dim = DEFAULT_HIDDEN_DIM, hidden_dim = 300, n_layers = 1, dropout = 0, activation = 'relu', criterion = None)
 
 
    Bases: :py:obj:`BinaryClassificationFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 2
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: MulticlassClassificationFFN(n_classes: int, n_tasks: int = 1, *args, **kwargs)
+.. py:class:: MulticlassClassificationFFN(n_classes, n_tasks = 1, *args, **kwargs)
 
 
    Bases: :py:obj:`ReadoutFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 1
 
       
 
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: MulticlassDirichletFFN(n_classes: int, n_tasks: int = 1, *args, **kwargs)
+.. py:class:: MulticlassDirichletFFN(n_classes, n_tasks = 1, *args, **kwargs)
 
 
    Bases: :py:obj:`MulticlassClassificationFFN`
 
-   Base class for all neural network modules.
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
-
-   .. py:method:: forward(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: forward(Z)
 
 
-   .. py:method:: train_step(Z: torch.Tensor) -> torch.Tensor
+   .. py:method:: train_step(Z)
 
 
 
-.. py:class:: SpectralFFN(*args, spectral_activation: str | None = 'softplus', **kwargs)
+.. py:class:: SpectralFFN(*args, spectral_activation = 'softplus', **kwargs)
 
 
    Bases: :py:obj:`ReadoutFFNBase`
 
-   Base class for all neural network modules.
-
-   Your models should also subclass this class.
-
-   Modules can also contain other Modules, allowing to nest them in
-   a tree structure. You can assign the submodules as regular attributes::
-
-       import torch.nn as nn
-       import torch.nn.functional as F
-
-       class Model(nn.Module):
-           def __init__(self):
-               super().__init__()
-               self.conv1 = nn.Conv2d(1, 20, 5)
-               self.conv2 = nn.Conv2d(20, 20, 5)
-
-           def forward(self, x):
-               x = F.relu(self.conv1(x))
-               return F.relu(self.conv2(x))
-
-   Submodules assigned in this way will be registered, and will have their
-   parameters converted too when you call :meth:`to`, etc.
-
-   .. note::
-       As per the example above, an ``__init__()`` call to the parent class
-       must be made before assignment on the child.
-
-   :ivar training: Boolean represents whether this module is in training or
-                   evaluation mode.
-   :vartype training: bool
+   A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+   :class:`SimpleFFN` to map the learned fingerprint to the desired output.
 
    .. py:attribute:: n_targets
       :value: 1

@@ -12,45 +12,55 @@ Classes
 
 .. autoapisummary::
 
-   featurizers.reaction.ReactionMolGraphFeaturizerProto
-   featurizers.reaction.ReactionMolGraphFeaturizer
+   featurizers.reaction.RxnMode
+   featurizers.reaction.RxnMolGraphFeaturizer
 
 
 
 
-.. py:class:: ReactionMolGraphFeaturizerProto
+.. py:class:: RxnMode(*args, **kwds)
 
 
-   Bases: :py:obj:`chemprop.v2.featurizers.proto.MolGraphFeaturizerProto`
+   Bases: :py:obj:`chemprop.v2.utils.utils.AutoName`
 
-   A :class:`ReactionMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
-   and product molecules) into :class:`MolGraph`s
+   The mode by which a reaction should be featurized into a `MolGraph`
 
-   .. py:method:: __call__(reaction: tuple[rdkit.Chem.Mol, rdkit.Chem.Mol], atom_features_extra: numpy.ndarray | None = None, bond_features_extra: numpy.ndarray | None = None) -> chemprop.v2.featurizers.molgraph.MolGraph
+   .. py:attribute:: REAC_PROD
 
-      Featurize the input reaction into a molecular graph
+      concatenate the reactant features with the product features.
 
-      :param reaction: a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-                       1st element is the product
-      :type reaction: tuple[Chem.Mol, Chem.Mol]
-      :param atom_features_extra: *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-                                  `MoleculeFeaturizer`
-      :type atom_features_extra: np.ndarray | None, default=None
-      :param bond_features_extra: *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-                                  `MoleculeFeaturizer`
-      :type bond_features_extra: np.ndarray | None, default=None
+   .. py:attribute:: REAC_PROD_BALANCE
 
-      :returns: the molecular graph of the reaction
-      :rtype: MolGraph
+      concatenate the reactant features with the products feature and balances imbalanced
+      reactions
+
+   .. py:attribute:: REAC_DIFF
+
+      concatenates the reactant features with the difference in features between reactants and
+      products
+
+   .. py:attribute:: REAC_DIFF_BALANCE
+
+      concatenates the reactant features with the difference in features between reactants and
+      product and balances imbalanced reactions
+
+   .. py:attribute:: PROD_DIFF
+
+      concatenates the product features with the difference in features between reactants and
+      products
+
+   .. py:attribute:: PROD_DIFF_BALANCE
+
+      concatenates the product features with the difference in features between reactants and
+      products and balances imbalanced reactions
 
 
+.. py:class:: RxnMolGraphFeaturizer
 
-.. py:class:: ReactionMolGraphFeaturizer
 
+   Bases: :py:obj:`chemprop.v2.featurizers.mixins.MolGraphFeaturizerMixin`, :py:obj:`chemprop.v2.featurizers.protos.RxnMolGraphFeaturizerProto`
 
-   Bases: :py:obj:`chemprop.v2.featurizers.mixins.MolGraphFeaturizerMixin`, :py:obj:`ReactionMolGraphFeaturizerProto`
-
-   Featurize reactions using the condensed reaction graph method utilized in [1]_
+   A :class:`ReactionMolGraphFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
    **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
    it requries the :meth:`num_only()` method, which is only implemented in the concrete
@@ -74,22 +84,22 @@ Classes
        2101-2110. https://doi.org/10.1021/acs.jcim.1c00975
 
    .. py:property:: mode
-      :type: chemprop.v2.featurizers.utils.ReactionMode
+      :type: RxnMode
 
 
    .. py:attribute:: mode_
-      :type: dataclasses.InitVar[str | chemprop.v2.featurizers.utils.ReactionMode]
+      :type: dataclasses.InitVar[str | RxnMode]
 
       
 
-   .. py:method:: __post_init__(mode_: str | chemprop.v2.featurizers.utils.ReactionMode)
+   .. py:method:: __post_init__(mode_)
 
 
-   .. py:method:: featurize(reaction: tuple[rdkit.Chem.Mol, rdkit.Chem.Mol], atom_features_extra: numpy.ndarray | None = None, bond_features_extra: numpy.ndarray | None = None) -> chemprop.v2.featurizers.molgraph.MolGraph
+   .. py:method:: featurize(rxn, atom_features_extra = None, bond_features_extra = None)
 
 
-   .. py:method:: map_reac_to_prod(reactants: rdkit.Chem.Mol, products: rdkit.Chem.Mol) -> tuple[dict[int, int], list[int], list[int]]
-      :staticmethod:
+   .. py:method:: map_reac_to_prod(reactants, products)
+      :classmethod:
 
       Map atom indices between corresponding atoms in the reactant and product molecules
 

@@ -17,7 +17,7 @@ Classes
 
 
 
-.. py:class:: MulticomponentMPNN(message_passing: chemprop.v2.models.modules.MulticomponentMessagePassing, agg: chemprop.v2.models.modules.Aggregation, ffn: torch.nn.Sequential, transform: chemprop.v2.models.modules.OutputTransform, loss_fn: chemprop.v2.models.loss.LossFunction, metrics: Iterable[chemprop.v2.models.metrics.Metric], task_weights: torch.Tensor | None = None, warmup_epochs: int = 2, num_lrs: int = 1, init_lr: float = 0.0001, max_lr: float = 0.001, final_lr: float = 0.0001)
+.. py:class:: MulticomponentMPNN(message_passing, agg, ffn, transform, loss_fn, metrics, task_weights = None, warmup_epochs = 2, num_lrs = 1, init_lr = 0.0001, max_lr = 0.001, final_lr = 0.0001)
 
 
    Bases: :py:obj:`chemprop.v2.models.model.MPNN`
@@ -62,25 +62,25 @@ Classes
    :raises ValueError: if the output dimension of the message passing block does not match the input dimension of
        the readout block
 
-   .. py:method:: fingerprint(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor], X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: fingerprint(bmgs, V_ds, X_f = None)
 
       the learned fingerprints for the input molecules
 
 
-   .. py:method:: encoding(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor], X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: encoding(bmgs, V_ds, X_f = None)
 
       Calculate the encoding (i.e., final hidden representation) for the input molecules
 
 
-   .. py:method:: forward(bmgs: Iterable[chemprop.v2.featurizers.molgraph.BatchMolGraph], V_ds: Iterable[torch.Tensor], X_f: torch.Tensor | None = None) -> torch.Tensor
+   .. py:method:: forward(bmgs, V_ds, X_f = None)
 
       Generate predictions for the input molecules/reactions
 
 
-   .. py:method:: training_step(batch: chemprop.v2.data.dataloader.MulticomponentTrainingBatch, batch_idx)
+   .. py:method:: training_step(batch, batch_idx)
 
-      Here you compute and return the training loss and some additional metrics for e.g. the progress bar or
-      logger.
+      Here you compute and return the training loss and some additional metrics for e.g.
+      the progress bar or logger.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`. A tensor, tuple or list.
       :type batch: :class:`~torch.Tensor` | (:class:`~torch.Tensor`, ...) | [:class:`~torch.Tensor`, ...]
@@ -131,10 +131,10 @@ Classes
          normalized by ``accumulate_grad_batches`` internally.
 
 
-   .. py:method:: validation_step(batch: chemprop.v2.data.dataloader.MulticomponentTrainingBatch, batch_idx: int = 0)
+   .. py:method:: validation_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the validation set. In this step you'd might generate examples or
-      calculate anything of interest like accuracy.
+      Operates on a single batch of data from the validation set.
+      In this step you'd might generate examples or calculate anything of interest like accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -199,10 +199,11 @@ Classes
          the model goes back to training mode and gradients are enabled.
 
 
-   .. py:method:: test_step(batch: chemprop.v2.data.dataloader.MulticomponentTrainingBatch, batch_idx: int = 0)
+   .. py:method:: test_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the test set. In this step you'd normally generate examples or
-      calculate anything of interest such as accuracy.
+      Operates on a single batch of data from the test set.
+      In this step you'd normally generate examples or calculate anything of interest
+      such as accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.

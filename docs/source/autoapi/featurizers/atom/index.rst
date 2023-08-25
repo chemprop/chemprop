@@ -12,39 +12,28 @@ Classes
 
 .. autoapisummary::
 
-   featurizers.atom.AtomFeaturizerProto
    featurizers.atom.AtomFeaturizer
 
 
 
 
-.. py:class:: AtomFeaturizerProto
+.. py:class:: AtomFeaturizer
 
 
-   Bases: :py:obj:`Protocol`
+   Bases: :py:obj:`chemprop.v2.featurizers.protos.AtomFeaturizerProto`
 
-   An :class:`AtomFeaturizerProto` is a protocol for classes that calculate feature vectors of
-   RDKit atoms.
+   An :class:`AtomFeaturizer` featurizes atoms based on the following attributes:
 
-   .. py:method:: __len__() -> int
+   * atomic number
+   * degree
+   * formal charge
+   * chiral tag
+   * number of hydrogens
+   * hybridization
+   * aromaticity
+   * mass
 
-      the length of an atomic feature vector
-
-
-   .. py:method:: __call__(a: rdkit.Chem.rdchem.Atom) -> numpy.ndarray
-
-      featurize the atom ``a``
-
-
-
-.. py:class:: AtomFeaturizer(max_atomic_num: int = 100, degrees: Sequence[int] | None = None, formal_charges: Sequence[int] | None = None, chiral_tags: Sequence[int] | None = None, num_Hs: Sequence[int] | None = None, hybridizations: Sequence[rdkit.Chem.rdchem.HybridizationType] | None = None)
-
-
-   Bases: :py:obj:`chemprop.v2.featurizers.utils.MultiHotFeaturizerMixin`, :py:obj:`AtomFeaturizerProto`
-
-   An `AtomFeaturizer` calculates feature vectors of RDKit atoms.
-
-   The featurizations produced by this featurizer have the following (general) signature:
+   The feature vectors produced by this featurizer have the following (general) signature:
 
    +---------------------+-----------------+--------------+
    | slice [start, stop) | subfeature      | unknown pad? |
@@ -66,42 +55,54 @@ Classes
    | 132-133             | mass            | N            |
    +---------------------+-----------------+--------------+
 
+   NOTE: the above signature only applies for the default arguments, as the each slice (save for
+   the final two) can increase in size depending on the input arguments.
 
-   **NOTE**: the above signature only applies for the default arguments, as the each slice (save
-   for the final two) can increase in size depending on the input arguments.
+   .. py:attribute:: max_atomic_num
+      :type: dataclasses.InitVar[int]
+      :value: 100
 
-   :param max_atomic_num: the maximum atomic number categorized, by
-   :type max_atomic_num: int, default=100
-   :param degrees: the categories for the atomic degree
-   :type degrees: Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
-   :param formal_charges: the categories for formal charge of an atom
-   :type formal_charges: Sequence[int] | None, default=[-1, -2, 1, 2, 0]
-   :param chiral_tags: the categories for the chirality of an atom
-   :type chiral_tags: Sequence[int] | None, default=[0, 1, 2, 3]
-   :param num_Hs: the categories for the number of hydrogens attached to an atom
-   :type num_Hs: Sequence[int] | None, default=[0, 1, 2, 3, 4]
-   :param hybridizations: the categories for the hybridization of an atom
-   :type hybridizations: Sequence[HybridizationType] | None, default=[SP, SP2, SP3, SP3D, SP3D2]
+      
 
-   .. py:property:: choicess
-      :type: list[Sequence]
+   .. py:attribute:: degrees
+      :type: Sequence[int]
+
+      
+
+   .. py:attribute:: formal_charges
+      :type: Sequence[int]
+
+      
+
+   .. py:attribute:: chiral_tags
+      :type: Sequence[int]
+
+      
+
+   .. py:attribute:: num_Hs
+      :type: Sequence[int]
+
+      
+
+   .. py:attribute:: hybridizations
+      :type: Sequence[rdkit.Chem.rdchem.HybridizationType]
+
+      
+
+   .. py:method:: __post_init__(max_atomic_num = 100)
 
 
-   .. py:property:: subfeatures
-      :type: list[str, slice]
-
-
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
       the length of an atomic feature vector
 
 
-   .. py:method:: __call__(a: rdkit.Chem.rdchem.Atom) -> numpy.ndarray
+   .. py:method:: __call__(a)
 
       featurize the atom ``a``
 
 
-   .. py:method:: num_only(a: rdkit.Chem.rdchem.Atom) -> numpy.ndarray
+   .. py:method:: num_only(a)
 
       featurize the atom by setting only the atomic number bit
 

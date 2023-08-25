@@ -17,7 +17,7 @@ Classes
 
 
 
-.. py:class:: NoamLR(optimizer: torch.optim.Optimizer, warmup_epochs: numpy.typing.ArrayLike, total_epochs: int, steps_per_epoch: int, init_lrs: numpy.typing.ArrayLike, max_lrs: numpy.typing.ArrayLike, final_lrs: numpy.typing.ArrayLike)
+.. py:class:: NoamLR(optimizer, warmup_epochs, total_epochs, steps_per_epoch, init_lrs, max_lrs, final_lrs)
 
 
    Bases: :py:obj:`torch.optim.lr_scheduler.LRScheduler`
@@ -63,17 +63,17 @@ Classes
 
    .. [1] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, Ł. and Polosukhin, I. "Attention is all you need." Advances in neural information processing systems, 2017, 30. https://arxiv.org/abs/1706.03762
 
-   .. py:method:: __len__() -> int
+   .. py:method:: __len__()
 
       the number of steps in the learning rate schedule
 
 
-   .. py:method:: get_lr() -> numpy.ndarray
+   .. py:method:: get_lr()
 
       Get a list of the current learning rates
 
 
-   .. py:method:: step(step: int | None = None)
+   .. py:method:: step(step = None)
 
       Step the learning rate
 

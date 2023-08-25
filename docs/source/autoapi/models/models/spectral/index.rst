@@ -54,11 +54,11 @@ Classes
                    evaluation mode.
    :vartype training: bool
 
-   .. py:method:: forward(x: torch.Tensor)
+   .. py:method:: forward(x)
 
 
 
-.. py:class:: SpectralMPNN(*args, spectral_activation: Optional[str] = 'softplus', **kwargs)
+.. py:class:: SpectralMPNN(*args, spectral_activation = 'softplus', **kwargs)
 
 
    Bases: :py:obj:`chemprop.v2.models.models.base.MPNN`
