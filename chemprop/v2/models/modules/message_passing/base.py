@@ -16,7 +16,7 @@ class MessagePassingProto(Protocol):
         Parameters
         ----------
         bmg: BatchMolGraph
-            the batch of `b` `MolGraphs` to encode
+            the batch of :class:`~chemprop.v2.featurizers.molgraph.MolGraph`s to encode
         V_d : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
@@ -26,10 +26,12 @@ class MessagePassingProto(Protocol):
         Returns
         -------
         Tensor
-            a tensor of shape `b x d_h` or `b x (d_h + d_vd)` containing the encoding of each
-            molecule in the batch, depending on whether additional atom descriptors were provided
+            a tensor of shape `V x d_h` or `V x (d_h + d_vd)` containing the hidden representation
+            of each vertex in the batch of graphs. The feature dimension depends on whether
+            additional atom descriptors were provided
         """
 
 
 class MessagePassingBlock(nn.Module, MessagePassingProto, HasHParams):
-    pass
+    """A :class:`MessagePassingBlock` is encodes a batch of molecular graphs using message passing
+    to learn vertex-level hidden representations."""

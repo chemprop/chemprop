@@ -7,12 +7,12 @@ from torch import Tensor, nn
 from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
-from chemprop.v2.models.utils import get_activation_function
+from chemprop.v2.models.utils import Activation, get_activation_function
 from chemprop.v2.models.modules.message_passing.base import MessagePassingBlock
 
 
 class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
-    """The base message-passing block for atom- and bond-based MPNNs
+    """The base message-passing block for atom- and bond-based message-passing schemes
 
     NOTE: this class is an abstract base class and cannot be instantiated
 
@@ -52,7 +52,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         bias: bool = False,
         depth: int = 3,
         dropout: float = 0,
-        activation: str = "relu",
+        activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
         # layers_per_message: int = 1,
@@ -73,8 +73,8 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
 
     def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
         r"""Finalize message passing by (1) concatenating the final hidden representations `H_v`
-        and the original vertex `V` and (2) further concatenating additional vertex descriptors
-        `V_d`, if provided.
+        and the original vertex ``V`` and (2) further concatenating additional vertex descriptors
+        ``V_d``, if provided.
 
         This function implements the following operation:
 
@@ -90,22 +90,23 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         Parameters
         ----------
         M_v : Tensor
-            a tensor of shape `V x d_h` containing the messages sent from each atom
+            a tensor of shape ``V x d_h`` containing the messages sent from each atom
         V : Tensor
-            a tensor of shape `V x d_v` containing the original vertex features
+            a tensor of shape ``V x d_v`` containing the original vertex features
         V_d : Tensor | None
-            an optional tensor of shape `V x d_vd` containing additional vertex descriptors
+            an optional tensor of shape ``V x d_vd`` containing additional vertex descriptors
 
         Returns
         -------
         Tensor
-            a tensor of shape `V x (d_h + d_v [+ d_vd])` containing the final hidden representations
+            a tensor of shape ``V x (d_h + d_v [+ d_vd])`` containing the final hidden
+            representations
 
         Raises
         ------
         InvalidShapeError
-            if `V_d` is not of shape `b x d_vd`, where `b` is the batch size and `d_vd` is the
-            vertex descriptor dimension
+            if ``V_d`` is not of shape ``b x d_vd``, where ``b`` is the batch size and ``d_vd`` is
+            the vertex descriptor dimension
         """
         H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_o
         H_v = self.tau(H_v)
@@ -143,7 +144,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         d_vd : int | None, default=None
             the dimension of additional vertex descriptors that will be concatenated to the hidden
             features before readout, if any
-        bias: bool, deafault=False
+        bias: bool, default=False
             whether to add a learned bias to the matrices
 
         Returns
@@ -161,22 +162,45 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         Parameters
         ----------
         bmg: BatchMolGraph
-            a batch of `b` :obj:`~chemprop.v2.featurizers.MolGraph`s to encode
+            a batch of :class:`BatchMolGraph`s to encode
         V_d : Tensor | None, default=None
-            an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
+            an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms + 1`,
-            so if provided, this tensor must be 0-padded in the 0th row.
+            transformed before the readout phase.
+            **NOTE**: recall that ``V`` is equal to ``num_atoms + 1``, so ``V_d`` must be 0-padded
+            in the 0th row.
 
         Returns
         -------
         Tensor
-            a tensor of shape `b x d_h` or `b x (d_h + d_vd)` containing the encoding of each
+            a tensor of shape ``b x d_h`` or ``b x (d_h + d_vd)`` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
 
 
 class BondMessageBlock(MessagePassingBlockBase):
+    r"""A :class:`BondMessageBlock` encodes a batch of molecular graphs by passing messages along
+    directed bonds.
+    
+    It implements the following operation:
+    
+    .. math::
+    
+        h_{vw}^{(0)} &= \tau \left( \mathbf{W}_i(e_{vw}) \right) \\
+        m_{vw}^{(t)} &= \sum_{u \in \mathcal{N}(v)\setminus w} h_{uv}^{(t-1)} \\
+        h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
+        m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+        h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
+    
+    where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+    :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+    bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+    :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at
+    iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v
+    \rightarrow w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
+    message passing iterations.
+    """
+
     def build(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
@@ -217,6 +241,26 @@ class BondMessageBlock(MessagePassingBlockBase):
 
 
 class AtomMessageBlock(MessagePassingBlockBase):
+    r"""A :class:`AtomMessageBlock` encodes a batch of molecular graphs by passing messages along
+    atoms.
+    
+    It implements the following operation:
+    
+    .. math::
+    
+        h_v^{(0)} &= \tau \left( \mathbf{W}_i(x_v) \right) \\
+        m_v^{(t)} &= \sum_{u \in \mathcal{N}(v)} h_u^{(t-1)} \mathbin\Vert e_{uv} \\
+        h_v^{(t)} &= \tau\left(h_v^{(0)} + \mathbf{W}_h m_v^{(t-1)}\right) \\
+        m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
+        h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right)  \right),
+    
+    where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
+    :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+    bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+    :math:`h_v^{(t)}` is the hidden representation of atom :math:`v` at iteration :math:`t`;
+    :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
+    :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
+    """
     def build(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
@@ -240,7 +284,7 @@ class AtomMessageBlock(MessagePassingBlockBase):
             if self.undirected:
                 H_v = (H_v + H_v[bmg.b2revb]) / 2
 
-            # aggregate messages
+            # MESSAGE
             M_v_k = torch.cat((H_v[bmg.a2a], bmg.E[bmg.a2b]), 2)  # V x b x (d_h + d_e)
             M_v = M_v_k.sum(1)  # V x d_h + d_e
 

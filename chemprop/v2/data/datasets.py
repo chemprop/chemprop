@@ -12,12 +12,13 @@ from chemprop.v2.featurizers import (
     MolGraph,
     MoleculeMolGraphFeaturizerProto,
     MoleculeMolGraphFeaturizer,
-    ReactionMolGraphFeaturizerProto,
-    ReactionMolGraphFeaturizer,
+    RxnMolGraphFeaturizerProto,
+    RxnMolGraphFeaturizer,
 )
 
 
 class Datum(NamedTuple):
+    """a singular training data point"""
     mg: MolGraph
     V_d: np.ndarray | None
     x_f: np.ndarray | None
@@ -27,7 +28,7 @@ class Datum(NamedTuple):
     gt_mask: np.ndarray | None
 
 
-class MolGraphDatasetMixin:
+class _MolGraphDatasetMixin:
     def __len__(self) -> int:
         return len(self.data)
 
@@ -38,6 +39,7 @@ class MolGraphDatasetMixin:
 
     @property
     def Y(self) -> np.ndarray:
+        """the (scaled) targets of the dataset"""
         return self.__Y
 
     @Y.setter
@@ -53,6 +55,7 @@ class MolGraphDatasetMixin:
 
     @property
     def X_f(self) -> np.ndarray:
+        """the (scaled) molecule features of the dataset"""
         return self.__X_f
 
     @X_f.setter
@@ -122,7 +125,7 @@ class MolGraphDatasetMixin:
 
 
 @dataclass
-class MoleculeDataset(Dataset, MolGraphDatasetMixin):
+class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
     Parameters
@@ -147,32 +150,39 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def smiles(self) -> list[str]:
-        return [d.smi for d in self.data]
+        """the SMILES strings associated with the dataset"""
+        return [Chem.MolToSmiles(d.mol) for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
+        """the molecules associated with the dataset"""
         return [d.mol for d in self.data]
 
     @property
     def _V_fs(self) -> list[np.ndarray]:
+        """the raw atom features of the dataset"""
         return np.array([d.V_f for d in self.data])
 
     @property
     def V_fs(self) -> list[np.ndarray]:
+        """the (scaled) atom descriptors of the dataset"""
         return self.__V_fs
 
     @V_fs.setter
     def V_fs(self, V_fs: list[np.ndarray]):
+        """the (scaled) atom features of the dataset"""
         self._validate_attribute(V_fs, "atom features")
 
         self.__V_fs = V_fs
 
     @property
     def _E_fs(self) -> list[np.ndarray]:
+        """the raw bond features of the dataset"""
         return np.array([d.E_f for d in self.data])
 
     @property
     def E_fs(self) -> list[np.ndarray]:
+        """the (scaled) bond features of the dataset"""
         return self.__E_fs
 
     @E_fs.setter
@@ -183,10 +193,12 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def _V_ds(self) -> list[np.ndarray]:
+        """the raw atom descriptors of the dataset"""
         return np.array([d.V_d for d in self.data])
 
     @property
     def V_ds(self) -> list[np.ndarray]:
+        """the (scaled) atom descriptors of the dataset"""
         return self.__V_ds
 
     @V_ds.setter
@@ -197,14 +209,17 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def d_vf(self) -> int | None:
+        """the extra atom feature dimension, if any"""
         return None if self.V_fs[0] is None else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int | None:
+        """the extra bond feature dimension, if any"""
         return None if self.E_fs is None else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int | None:
+        """the extra atom descriptor dimension, if any"""
         return None if self.V_ds is None else self.V_ds[0].shape[1]
 
     def normalize_inputs(
@@ -247,6 +262,8 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
         return scaler
 
     def reset(self):
+        """reset the {atom, bond, molecule} features and targets of each datapoint to its raw
+        value"""
         super().reset()
         self.__V_fs = self._V_fs
         self.__E_fs = self._E_fs
@@ -254,12 +271,12 @@ class MoleculeDataset(Dataset, MolGraphDatasetMixin):
 
 
 @dataclass
-class ReactionDataset(Dataset, MolGraphDatasetMixin):
-    """A :class:`MolgraphDataset` composed of :class:`ReactionDatapoint`s"""
+class ReactionDataset(Dataset, _MolGraphDatasetMixin):
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: ReactionMolGraphFeaturizerProto = field(default_factory=ReactionMolGraphFeaturizer)
+    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=RxnMolGraphFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __getitem__(self, idx: int) -> Datum:
@@ -270,7 +287,7 @@ class ReactionDataset(Dataset, MolGraphDatasetMixin):
 
     @property
     def smiles(self) -> list[str]:
-        return [(d.rct_smi, d.pdt_smi) for d in self.data]
+        return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:

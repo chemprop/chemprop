@@ -44,7 +44,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["black", "bumpversion", "flake8", "pytest", "pytest-cov"]
-docs = ["sphinx >= 1.5"]
+docs = ["sphinx", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme"]
 test = ["parameterized > 0.8", "pytest >= 6.2", "pytest-cov"]
 web = ["flask >= 1.1"]
 

@@ -10,7 +10,7 @@ from chemprop.v2.utils import make_mol
 
 
 @dataclass(slots=True)
-class DatapointMixin:
+class _DatapointMixin:
     """A mixin class for both molecule- and reaction- and multicomponent-type data"""
 
     y: np.ndarray | None = None
@@ -46,35 +46,35 @@ class DatapointMixin:
 
 
 @dataclass
-class MoleculeDatapointMixin:
+class _MoleculeDatapointMixin:
     mol: Chem.Mol
     """the molecule associated with this datapoint"""
 
     @classmethod
     def from_smi(
         cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
-    ) -> MoleculeDatapointMixin:
+    ) -> _MoleculeDatapointMixin:
         mol = make_mol(smi, keep_h, add_h)
 
         return cls(mol, *args, **kwargs)
 
 
 @dataclass
-class MoleculeDatapoint(DatapointMixin, MoleculeDatapointMixin):
+class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
 
     V_f: np.ndarray | None = None
-    """a numpy array of shape `V x d_vf`, where `V` is the number of atoms in the molecule, and
-    `d_vf` is the number of additional features that will be concatenated to atom-level features
-    _before_ message passing"""
+    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
+    *before* message passing"""
     E_f: np.ndarray | None = None
-    """A numpy array of shape `E x d_ef`, where `E` is the number of bonds in the molecule, and
-    `d_ef` is the number of additional features  containing additional features that will be
-    concatenated to bond-level features _before_ message passing"""
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ef`` is the number of additional features  containing additional features that will be
+    concatenated to bond-level features *before* message passing"""
     V_d: np.ndarray | None = None
-    """A numpy array of shape `V x d_vd`, where `V` is the number of atoms in the molecule, and
-    `d_vd` is the number of additional features that will be concatenated to atom-level features
-    _after_ message passing"""
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vd`` is the number of additional features that will be concatenated to atom-level features
+    *after* message passing"""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
         if self.mol is None:
@@ -102,7 +102,7 @@ class MoleculeDatapoint(DatapointMixin, MoleculeDatapointMixin):
 
 
 @dataclass
-class ReactionDatapointMixin:
+class _ReactionDatapointMixin:
     rct: Chem.Mol
     """the reactant associated with this datapoint"""
     pdt: Chem.Mol
@@ -116,10 +116,9 @@ class ReactionDatapointMixin:
         add_h: bool = False,
         *args,
         **kwargs,
-    ) -> ReactionDatapointMixin:
+    ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
             case str():
-                # rxn = Chem.ReactionFromSmarts(rxn_or_smis)
                 rct_smi, pdt_smi = rxn_or_smis.split(">>")
             case tuple():
                 rct_smi, pdt_smi = rxn_or_smis
@@ -135,7 +134,7 @@ class ReactionDatapointMixin:
 
 
 @dataclass
-class ReactionDatapoint(DatapointMixin, ReactionDatapointMixin):
+class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
     """A :class:`ReactionDatapoint` contains a single reaction and its associated features and targets."""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
@@ -160,21 +159,21 @@ class ReactionDatapoint(DatapointMixin, ReactionDatapointMixin):
 
 
 @dataclass
-class MulticomponentDatapointMixin:
+class _MulticomponentDatapointMixin:
     mols: list[Chem.Mol]
     """the molecules associated with this datapoint"""
 
     @classmethod
     def from_smis(
         cls, smis: list[str], keep_h: bool = False, add_h: bool = False, *args, **kwargs
-    ) -> MulticomponentDatapointMixin:
+    ) -> _MulticomponentDatapointMixin:
         mols = [make_mol(smi, keep_h, add_h) for smi in smis]
 
         return cls(mols, *args, **kwargs)
 
 
 @dataclass
-class MulticomponentDatapoint(DatapointMixin, MulticomponentDatapointMixin):
+class MulticomponentDatapoint(_DatapointMixin, _MulticomponentDatapointMixin):
     """A :class:`MulticomponentDatapoint` contains a list of molecules and their associated features and targets."""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
