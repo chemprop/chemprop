@@ -865,7 +865,7 @@ def multitask_mean(
     if metric in scale_dependent_metrics:
         return gmean(scores, axis=axis)
     elif metric in nonscale_dependent_metrics:
-        return np.mean(scores, axis=axis)
+        return np.nanmean(scores, axis=axis)
     else:
         raise NotImplementedError(
             f"The metric used, {metric}, has not been added to the list of\
