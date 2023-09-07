@@ -11,6 +11,9 @@ from chemprop.v2.utils.utils_old import load_args, load_checkpoint, load_scalers
 # from chemprop.v2.featurizers import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
 from chemprop.v2.models import MPNN, ClassificationMPNN, DirichletClassificationMPNN, MulticlassMPNN, DirichletMulticlassMPNN, RegressionMPNN, MveRegressionMPNN, SpectralMPNN 
 from chemprop.v2.uncertainty import UncertaintyEstimator#, UncertaintyCalibrator, build_uncertainty_calibrator, build_uncertainty_evaluator
+from chemprop.v2.models import modules
+
+import torch
 
 UncertaintyCalibrator = None
 
@@ -34,9 +37,13 @@ def load_model(args: PredictArgs, generator: bool = False):
     args: Union[PredictArgs, TrainArgs]
 
     # Load model and scalers
-    models = (
-        load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths
-    )
+    # models = [RegressionMPNN(modules.molecule_block(), 1).load_from_checkpoint(path) for path in args.checkpoint_paths]
+    models = RegressionMPNN(modules.molecule_block(), 1)
+    lightning_checkpoint = torch.load(args.checkpoint_paths[0])
+    models.load_state_dict(lightning_checkpoint["state_dict"])
+    # (
+    #     load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths
+    # )
     scalers = (
         load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths
     )
@@ -44,7 +51,7 @@ def load_model(args: PredictArgs, generator: bool = False):
         models = list(models)
         scalers = list(scalers)
 
-    return args, train_args, models, scalers, num_tasks, task_names
+    return args, train_args, [models], scalers, num_tasks, task_names
 
 
 def load_data(args: PredictArgs, smiles: List[List[str]], model):
@@ -76,16 +83,18 @@ def load_data(args: PredictArgs, smiles: List[List[str]], model):
             loss_function = model._DEFAULT_CRITERION
         )
 
-    print("Validating SMILES")
-    full_to_valid_indices = {}
-    valid_index = 0
-    for full_index in range(len(full_data)):
-        if all(mol is not None for mol in full_data[full_index].mol):
-            full_to_valid_indices[full_index] = valid_index
-            valid_index += 1
+    # print("Validating SMILES")
+    # print(full_data)
+    # full_to_valid_indices = {}
+    # valid_index = 0
+    # for full_index in range(len(full_data)):
+    #     if all(mol is not None for mol in full_data[full_index].mol):
+    #         full_to_valid_indices[full_index] = valid_index
+    #         valid_index += 1
 
     test_data = MoleculeDataset(
-        [full_data[i] for i in sorted(full_to_valid_indices.keys())]
+        [full_data[i] for i in range(len(full_data))], # sorted(full_to_valid_indices.keys())]
+        None
     )
 
     print(f"Test size = {len(test_data):,}")
@@ -95,7 +104,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]], model):
         dataset=test_data, batch_size=args.batch_size, num_workers=args.num_workers
     )
 
-    return full_data, test_data, test_data_loader, full_to_valid_indices
+    return full_data, test_data, test_data_loader, range(len(full_data))#full_to_valid_indices
 
 
 def set_features(args: PredictArgs, train_args: TrainArgs):
@@ -166,7 +175,7 @@ def predict_and_save(
         models=models,
         scalers=scalers,
         num_models=num_models,
-        dataset_type=args.dataset_type,
+        dataset_type="None",#args.dataset_type,
         individual_ensemble_predictions=args.individual_ensemble_predictions,
         spectra_phase_mask=getattr(train_args, "spectra_phase_mask", None),
     )
@@ -390,7 +399,7 @@ def make_predictions(
 
     # Note: to get the invalid SMILES for your data, use the get_invalid_smiles_from_file or get_invalid_smiles_from_list functions from data/utils.py
     full_data, test_data, test_data_loader, full_to_valid_indices = load_data(
-        args, smiles
+        args, smiles, models[0]
     )
 
     if args.uncertainty_method is None and (args.calibration_method is not None or args.evaluation_methods is not None):
