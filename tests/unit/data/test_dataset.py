@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.v2.featurizers import MoleculeFeaturizer
+from chemprop.v2.featurizers import MoleculeMolGraphFeaturizer
 
 
 @pytest.fixture(
@@ -61,12 +61,12 @@ def data(smis, targets):
 
 @pytest.fixture
 def dataset(data):
-    return MoleculeDataset(data, MoleculeFeaturizer())
+    return MoleculeDataset(data, MoleculeMolGraphFeaturizer())
 
 
 def test_none():
     with pytest.raises(ValueError):
-        MoleculeDataset(None, MoleculeFeaturizer())
+        MoleculeDataset(None, MoleculeMolGraphFeaturizer())
 
 
 def test_empty():
@@ -96,12 +96,12 @@ def test_num_tasks(dataset, targets):
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert dataset.features is None
-    assert dataset.phase_features is None
-    assert dataset.atom_features is None
-    assert dataset.bond_features is None
-    assert dataset.gt_targets is None
-    assert dataset.lt_targets is None
-    assert dataset.features_size is None
-    assert dataset.atom_features_size is None
-    assert dataset.bond_features_size is None
+    assert dataset.X_f is None
+    assert dataset.X_phase is None
+    assert dataset.V_fs is None
+    assert dataset.E_fs is None
+    assert dataset.gt_mask is None
+    assert dataset.lt_mask is None
+    assert dataset.d_v is None
+    assert dataset.d_vf is None
+    assert dataset.d_ef is None

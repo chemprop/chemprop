@@ -5,7 +5,7 @@ from chemprop.v2.models.models.base import MPNN
 
 class ClassificationMPNN(MPNN):
     _DATASET_TYPE = "classification"
-    _DEFAULT_METRIC = "auroc"
+    _DEFAULT_METRIC = "roc"
 
 
 class BinaryClassificationMPNN(ClassificationMPNN):

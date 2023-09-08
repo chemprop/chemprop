@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from enum import Enum
 import os
-from typing import List, Union, Callable, Any
+from typing import List, Union, Callable, Any, Iterable
 
 from rdkit import Chem
 from functools import wraps
@@ -45,18 +45,26 @@ def timeit(logger_name: str = None) -> Callable[[Callable], Callable]:
 class AutoName(Enum):
     # todo: figure out where this function is supposed to be used
     def _generate_next_value_(name, start, count, last_values):
-        return name
+        return name.lower()
+
+    def __str__(self) -> str:
+        return self.value
 
     @classmethod
-    def get(cls, name: Union[str, AutoName]) -> AutoName:
+    def get(cls, name: str | AutoName) -> AutoName:
         if isinstance(name, cls):
             return name
 
         try:
             return cls[name.upper()]
         except KeyError:
-            names = [x.value for x in cls]
-            raise ValueError(f"Invalid name! got: '{name}'. expected one of: {tuple(names)}")
+            raise ValueError(
+                f"Unsupported {cls.__name__} alias! got: '{name}'. expected one of: {cls.keys()}"
+            )
+
+    @classmethod
+    def keys(cls) -> set[str]:
+        return {e.value for e in cls}
 
 
 def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
@@ -132,3 +140,16 @@ def preprocess_smiles_columns(path: str,
                 raise ValueError('Provided smiles_columns do not match the header of data file.')
 
     return smiles_columns
+
+def pretty_shape(shape: Iterable[int]) -> str:
+    """Make a pretty string from an input shape
+
+    Example
+    --------
+    >>> X = np.random.rand(10, 4)
+    >>> X.shape
+    (10, 4)
+    >>> pretty_shape(X.shape)
+    '10 x 4'
+    """
+    return " x ".join(map(str, shape))

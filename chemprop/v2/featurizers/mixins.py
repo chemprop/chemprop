@@ -1,25 +1,18 @@
-from typing import Optional
+from dataclasses import dataclass, field
 
-from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.atom import AtomFeaturizer, AtomFeaturizerBase
-from chemprop.v2.featurizers.bond import BondFeaturizer, BondFeaturizerBase
+from chemprop.v2.featurizers.atom import AtomFeaturizer, AtomFeaturizerProto
+from chemprop.v2.featurizers.bond import BondFeaturizer, BondFeaturizerProto
 
 
+@dataclass
 class MolGraphFeaturizerMixin:
-    def __init__(
-        self,
-        atom_featurizer: Optional[AtomFeaturizerBase] = None,
-        bond_featurizer: Optional[BondFeaturizerBase] = None,
-        bond_messages: bool = True,
-    ):
-        self.atom_featurizer = atom_featurizer or AtomFeaturizer()
-        self.bond_featurizer = bond_featurizer or BondFeaturizer()
+    atom_featurizer: AtomFeaturizerProto = field(default_factory=AtomFeaturizer)
+    bond_featurizer: BondFeaturizerProto = field(default_factory=BondFeaturizer)
+    bond_messages: bool = True
+
+    def __post_init__(self):
         self.atom_fdim = len(self.atom_featurizer)
         self.bond_fdim = len(self.bond_featurizer)
-        self.bond_messages = bond_messages
-
-    def __call__(self, *args, **kwargs) -> MolGraph:
-        return self.featurize(*args, **kwargs)
 
     @property
     def shape(self) -> tuple[int, int]:

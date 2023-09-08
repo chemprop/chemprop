@@ -24,7 +24,11 @@ def predict(
     """
     Makes predictions on a dataset using an ensemble of models.
 
+<<<<<<< HEAD
     :param model: A :class:`` # todo: fill in
+=======
+    :param model: A :class:`~chemprop.models.model.MPNN`.
+>>>>>>> v2/dev
     :param data_loader: A :class:`~chemprop.data.data.MoleculeDataLoader`.
     :param disable_progress_bar: Whether to disable the progress bar.
     :param scaler: A :class:`sklearn.preprocessing.StandardScaler` object fit to the targets from the training set.

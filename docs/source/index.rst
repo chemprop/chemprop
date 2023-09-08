@@ -1,32 +1,27 @@
-Chemprop
-========
+.. Chemprop documentation master file, created by
+   sphinx-quickstart on Wed Aug 23 22:52:52 2023.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-`Chemprop <https://github.com/chemprop/chemprop>`_ is a message passing neural network for molecular property prediction.
+Welcome to Chemprop's documentation!
+====================================
 
-At its core, Chemprop contains a directed message passing neural network (D-MPNN), which was first presented in `Analyzing Learned Molecular Representations for Property Prediction <https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237>`_. The Chemprop D-MPNN shows strong molecular property prediction capabilities across a range of properties, from quantum mechanical energy to human toxicity.
+This website contains documentation for Chemprop, a PyTorch-based framework for training and evaluating message-passing neural networks (MPNNs) for molecular property prediction. The pacakge was originally developed for :footcite:t:`yang_analyzing_2019` and further described in :footcite:t:`heid_chemprop_2023`.
 
-Chemprop was later used in the paper `A Deep Learning Approach to Antibiotic Discovery <https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1>`_ to discover promising new antibiotics by predicting the likelihood that a molecule would inhibit the growth of *E. coli*.
+To get started with Chemprop, check out the :ref:`quickstart` page, and for more detailed information, see the :ref:`installation` and :ref:`tutorial` pages.
+
+If you use Chemprop to train or develop a model in your own work, we would appreciate if you cite the following papers:
+
+.. footbibliography::
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :maxdepth: 1
+    :caption: Contents:
 
-   requirements
-   installation
-   tutorial
-   web
-   data
-   features
-   models
-   train
-   hyperopt
-   interpret
-   args
-   nn_utils
-   utils
-   sklearn
-   scripts
-
+    quickstart
+    installation
+    tutorial/cli/index
+    tutorial/python/index
 
 Indices and tables
 ==================

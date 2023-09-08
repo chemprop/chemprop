@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from collections import OrderedDict, defaultdict
 import csv
 from logging import Logger
@@ -500,171 +501,6 @@ def get_inequality_targets(path: str, target_columns: List[str] = None) -> List[
 
     return gt_targets, lt_targets
 
-
-def split_data(data: MoleculeDataset,
-               split_type: str = 'random',
-               sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-               key_molecule_index: int = 0,
-               seed: int = 0,
-               num_folds: int = 1,
-               args: TrainArgs = None,
-               logger: Logger = None) -> Tuple[MoleculeDataset,
-                                               MoleculeDataset,
-                                               MoleculeDataset]:
-    r"""
-    Splits data into training, validation, and test splits.
-
-    :param data: A :class:`~chemprop.data.MoleculeDataset`.
-    :param split_type: Split type.
-    :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
-    :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
-    :param seed: The random seed to use before shuffling data.
-    :param num_folds: Number of folds to create (only needed for "cv" split type).
-    :param args: A :class:`~chemprop.args.TrainArgs` object.
-    :param logger: A logger for recording output.
-    :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
-             validation, and test splits of the data.
-    """
-    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
-
-    random = Random(seed)
-
-    if args is not None:
-        folds_file, val_fold_index, test_fold_index = \
-            args.folds_file, args.val_fold_index, args.test_fold_index
-    else:
-        folds_file = val_fold_index = test_fold_index = None
-    
-    if split_type == 'crossval':
-        index_set = args.crossval_index_sets[args.seed]
-        data_split = []
-        for split in range(3):
-            split_indices = []
-            for index in index_set[split]:
-                with open(os.path.join(args.crossval_index_dir, f'{index}.pkl'), 'rb') as rf:
-                    split_indices.extend(pickle.load(rf))
-            data_split.append([data[i] for i in split_indices])
-        train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type in {'cv', 'cv-no-test'}:
-        if num_folds <= 1 or num_folds > len(data):
-            raise ValueError('Number of folds for cross-validation must be between 2 and len(data), inclusive.')
-
-        random = Random(0)
-
-        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[:len(data)]
-        random.shuffle(indices)
-        test_index = seed % num_folds
-        val_index = (seed + 1) % num_folds
-
-        train, val, test = [], [], []
-        for d, index in zip(data, indices):
-            if index == test_index and split_type != 'cv-no-test':
-                test.append(d)
-            elif index == val_index:
-                val.append(d)
-            else:
-                train.append(d)
-
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type == 'index_predetermined':
-        split_indices = args.crossval_index_sets[args.seed]
-
-        if len(split_indices) != 3:
-            raise ValueError('Split indices must have three splits: train, validation, and test')
-
-        data_split = []
-        for split in range(3):
-            data_split.append([data[i] for i in split_indices[split]])
-        train, val, test = tuple(data_split)
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type == 'predetermined':
-        if not val_fold_index and sizes[2] != 0:
-            raise ValueError('Test size must be zero since test set is created separately '
-                             'and we want to put all other data in train and validation')
-
-        if folds_file is None:
-            raise ValueError('arg "folds_file" can not be None!')
-        if test_fold_index is None:
-            raise ValueError('arg "test_fold_index" can not be None!')
-
-        try:
-            with open(folds_file, 'rb') as f:
-                all_fold_indices = pickle.load(f)
-        except UnicodeDecodeError:
-            with open(folds_file, 'rb') as f:
-                all_fold_indices = pickle.load(f, encoding='latin1')  # in case we're loading indices from python2
-
-        log_scaffold_stats(data, all_fold_indices, logger=logger)
-
-        folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
-
-        test = folds[test_fold_index]
-        if val_fold_index is not None:
-            val = folds[val_fold_index]
-
-        train_val = []
-        for i in range(len(folds)):
-            if i != test_fold_index and (val_fold_index is None or i != val_fold_index):
-                train_val.extend(folds[i])
-
-        if val_fold_index is not None:
-            train = train_val
-        else:
-            random.shuffle(train_val)
-            train_size = int(sizes[0] * len(train_val))
-            train = train_val[:train_size]
-            val = train_val[train_size:]
-
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type == 'scaffold_balanced':
-        return scaffold_split(data, sizes=sizes, balanced=True, key_molecule_index=key_molecule_index, seed=seed, logger=logger)
-
-    elif split_type == 'random_with_repeated_smiles': # Use to constrain data with the same smiles go in the same split.
-        smiles_dict=defaultdict(set)
-        for i,smiles in enumerate(data.smiles()):
-            smiles_dict[smiles[key_molecule_index]].add(i)
-        index_sets=list(smiles_dict.values())
-        random.seed(seed)
-        random.shuffle(index_sets)
-        train,val,test=[],[],[]
-        train_size = int(sizes[0] * len(data))
-        val_size = int(sizes[1] * len(data))
-        for index_set in index_sets:
-            if len(train)+len(index_set) <= train_size:
-                train += index_set
-            elif len(val) + len(index_set) <= val_size:
-                val += index_set
-            else:
-                test += index_set
-        train = [data[i] for i in train]
-        val = [data[i] for i in val]
-        test = [data[i] for i in test]
-
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    elif split_type == 'random':
-        indices = list(range(len(data)))
-        random.shuffle(indices)
-
-        train_size = int(sizes[0] * len(data))
-        train_val_size = int((sizes[0] + sizes[1]) * len(data))
-
-        train = [data[i] for i in indices[:train_size]]
-        val = [data[i] for i in indices[train_size:train_val_size]]
-        test = [data[i] for i in indices[train_val_size:]]
-
-        return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
-    else:
-        raise ValueError(f'split_type "{split_type}" not supported.')
-
-
 def get_class_sizes(data: MoleculeDataset, proportion: bool = True) -> List[List[float]]:
     """
     Determines the proportions of the different classes in a classification dataset.
@@ -777,3 +613,70 @@ def validate_data(data_path: str) -> Set[str]:
             errors.add('Found a target which is not a number.')
 
     return errors
+
+from collections import defaultdict
+from typing import Sequence
+
+import numpy as np
+from rdkit.Chem.Scaffolds import MurckoScaffold
+
+
+from chemprop.v2.data.datapoints import MoleculeDatapoint
+
+
+def split_data(
+    data: Sequence[MoleculeDatapoint],
+    split: str = "random",
+    sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
+    k: int = 5,
+    fold: int = 0,
+):
+    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+
+    n_train, n_val, n_test = [int(size * len(data)) for size in sizes]
+
+    if split == "random":
+        idxs = np.arange(len(data))
+        np.random.shuffle(idxs)
+
+        train = [data[i] for i in idxs[:n_train]]
+        val = [data[i] for i in idxs[n_train : n_train + n_val]]
+        test = [data[i] for i in idxs[n_train + n_val :]]
+    elif split == "scaffold":
+        scaffold2idxs = defaultdict(set)
+        for i, d in enumerate(data):
+            scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=d.mol)
+            scaffold2idxs[scaffold].add(i)
+
+        big_index_sets = []
+        small_index_sets = []
+        for idxs in scaffold2idxs.values():
+            if len(idxs) > n_val / 2 or len(idxs) > n_test / 2:
+                big_index_sets.append(idxs)
+            else:
+                small_index_sets.append(idxs)
+
+        np.random.shuffle(big_index_sets)
+        np.random.shuffle(small_index_sets)
+        idx_sets = [*big_index_sets, *small_index_sets]
+
+        train_idxs, val_idxs, test_idxs = [], [], []
+        for idxs in idx_sets:
+            if len(train) + len(idxs) <= n_train:
+                train_idxs.extend(idxs)
+                train_scaffold_count += 1
+            elif len(val) + len(idxs) <= n_val:
+                val_idxs.extend(idxs)
+                val_scaffold_count += 1
+            else:
+                test_idxs.extend(idxs)
+                test_scaffold_count += 1
+
+        train = [data[i] for i in train_idxs]
+        val = [data[i] for i in val_idxs]
+        test = [data[i] for i in test_idxs]
+    else:
+        raise ValueError(f"Uknown split type! got: {split}")
+
+    return train, val, test

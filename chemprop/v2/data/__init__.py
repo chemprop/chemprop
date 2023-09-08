@@ -1,6 +1,6 @@
 from .dataloader import MolGraphDataLoader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
-from .datasets import MolGraphDatasetBase, MoleculeDataset, ReactionDataset
+from .datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
 from .samplers import ClassBalanceSampler, SeededSampler
 from .data import make_mols
 from .utils import filter_invalid_smiles, get_class_sizes, get_data, get_data_from_smiles, \

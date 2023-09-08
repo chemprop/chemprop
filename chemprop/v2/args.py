@@ -873,7 +873,7 @@ class PredictArgs(CommonArgs):
     test_path: str
     """Path to CSV file containing testing data for which predictions will be made."""
     preds_path: str
-    """Path to CSV or PICKLE file where predictions will be saved."""
+    """Path to CSV file where predictions will be saved."""
     drop_extra_columns: bool = False
     """Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns."""
     ensemble_variance: bool = False
@@ -882,6 +882,7 @@ class PredictArgs(CommonArgs):
     """Whether to return the predictions made by each of the individual models rather than the average of the ensemble"""
     # Uncertainty arguments
     uncertainty_method: Literal[
+        # todo: might need to rename to regression-mve
         'mve',
         'ensemble',
         'evidential_epistemic',
@@ -909,7 +910,7 @@ class PredictArgs(CommonArgs):
     """Regression calibrators can output either a stdev or an inverval. """
     calibration_path: str = None
     """Path to data file to be used for uncertainty calibration."""
-    calibration_features_path: List[str] = None
+    calibration_features_path: str = None
     """Path to features data to be used with the uncertainty calibration dataset."""
     calibration_phase_features_path: str = None
     """ """
@@ -1172,3 +1173,4 @@ class SklearnPredictArgs(CommonArgs):
             checkpoint_dir=self.checkpoint_dir,
             ext='.pkl'
         )
+

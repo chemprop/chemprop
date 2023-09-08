@@ -6,7 +6,8 @@ from torch.utils.data import Sampler
 
 
 class SeededSampler(Sampler):
-    """A SeededSampler is a class for iterating through a dataset in a randomly seeded fashion"""
+    """A :class`SeededSampler` is a class for iterating through a dataset in a randomly seeded
+    fashion"""
 
     def __init__(self, N: int, seed: int):
         if seed is None:
@@ -27,8 +28,8 @@ class SeededSampler(Sampler):
 
 
 class ClassBalanceSampler(Sampler):
-    """A `ClassBalanceSampler` samples data from a `MolGraphDataset` such that positive and
-    negative classes are equally sampled
+    """A :class:`ClassBalanceSampler` samples data from a :class:`MolGraphDataset` such that
+    positive and negative classes are equally sampled
 
     Parameters
     ----------
