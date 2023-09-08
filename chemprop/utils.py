@@ -842,6 +842,7 @@ def multitask_mean(
     scores: np.ndarray,
     metric: str,
     axis: int = None,
+    ignore_nan_metrics: bool = False,
 ) -> float:
     """
     A function for combining the metric scores across different
@@ -853,7 +854,8 @@ def multitask_mean(
 
     :param scores: The scores from different tasks for a single metric.
     :param metric: The metric used to generate the scores.
-    :axis: The axis along which to take the mean.
+    :param axis: The axis along which to take the mean.
+    :param ignore_nan_metrics: Ignore invalid task metrics (NaNs) when computing average metrics across tasks.
     :return: The combined score across the tasks.
     """
     scale_dependent_metrics = ["rmse", "mae", "mse", "bounded_rmse", "bounded_mae", "bounded_mse"]
@@ -865,7 +867,8 @@ def multitask_mean(
     if metric in scale_dependent_metrics:
         return gmean(scores, axis=axis)
     elif metric in nonscale_dependent_metrics:
-        return np.nanmean(scores, axis=axis)
+        mean_fn = np.nanmean if ignore_nan_metrics else np.mean
+        return mean_fn(scores, axis=axis)
     else:
         raise NotImplementedError(
             f"The metric used, {metric}, has not been added to the list of\

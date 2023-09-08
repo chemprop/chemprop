@@ -305,6 +305,8 @@ class TrainArgs(CommonArgs):
     """
     extra_metrics: List[Metric] = []
     """Additional metrics to use to evaluate the model. Not used for early stopping."""
+    ignore_nan_metrics: bool = False
+    """Ignore invalid task metrics (NaNs) when computing average metrics across tasks."""
     save_dir: str = None
     """Directory where model checkpoints will be saved."""
     checkpoint_frzn: str = None
