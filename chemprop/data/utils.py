@@ -656,7 +656,46 @@ def get_inequality_targets(path: str, target_columns: List[str] = None) -> List[
                 raise ValueError(f'A target value in csv file {path} contains both ">" and "<" symbols. Inequality targets must be on one edge and not express a range.')
 
     return gt_targets, lt_targets
+def weight_split(data: MoleculeDataset,
+                 bias: str,
+                 sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> Tuple[MoleculeDataset, MoleculeDataset,
+                                                                             MoleculeDataset]:
+    """
+    Splits a MoleculeDataset by molecular weight so that the largest or smallest molecules are in the train set.
 
+    :param data: A MoleculeDataset.
+    :param bias: A string indicating whether to bias the split towards the "big" or "small" molecules.
+    :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
+    :param seed: Random seed for shuffling.
+    :return: A tuple of MoleculeDataset objects containing the train, validation, and test splits of the data.
+    """
+    if not (len(sizes) == 3 and sum(sizes) == 1):
+        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+
+    train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
+
+    # Sort by molecular weight
+    if bias == 'big':
+        sorted_data = sorted(data._data, key=lambda x: x.molecular_weight, reverse=True)
+    elif bias == 'small':
+        sorted_data = sorted(data._data, key=lambda x: x.molecular_weight, reverse=False)
+    else:
+        raise ValueError("Wrong bias, choose small or big")
+
+    indices = list(range(len(sorted_data)))
+
+    train_end_idx = int(train_size)
+    val_end_idx = int(train_size + val_size)
+    train_indices = indices[:train_end_idx]
+    val_indices = indices[train_end_idx:val_end_idx]
+    test_indices = indices[val_end_idx:]
+
+    # Create MoleculeDataset for each split
+    train = MoleculeDataset([sorted_data[i] for i in train_indices])
+    val = MoleculeDataset([sorted_data[i] for i in val_indices])
+    test = MoleculeDataset([sorted_data[i] for i in test_indices])
+
+    return train, val, test
 
 def split_data(data: MoleculeDataset,
                split_type: str = 'random',
@@ -819,7 +858,9 @@ def split_data(data: MoleculeDataset,
         test = [data[i] for i in indices[train_val_size:]]
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
-
+    elif split_type == 'molecular_weight':
+        train, val, test = weight_split(data, bias='small', sizes=sizes)
+        return train, val, test
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')
 

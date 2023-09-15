@@ -139,7 +139,7 @@ class MoleculeDatapoint:
                         # for H2
                         elif m is not None and m.GetNumHeavyAtoms() == 0:
                             # not all features are equally long, so use methane as dummy molecule to determine length
-                            self.features.extend(np.zeros(len(features_generator(Chem.MolFromSmiles('C')))))                           
+                            self.features.extend(np.zeros(len(features_generator(Chem.MolFromSmiles('C')))))
                     else:
                         if m[0] is not None and m[1] is not None and m[0].GetNumHeavyAtoms() > 0:
                             self.features.extend(features_generator(m[0]))
@@ -221,6 +221,19 @@ class MoleculeDatapoint:
         :return: A list of bond types for each molecule.
         """
         return [[b.GetBondTypeAsDouble() for b in self.mol[i].GetBonds()] for i in range(self.number_of_molecules)]
+    @property
+    def molecular_weight(self) -> float:
+        """
+        Gets the maximum molecular weight among all the molecules in the :class:`MoleculeDatapoint`.
+
+        :return: The maximum molecular weight.
+        """
+        max_molecular_weight = 0.0  # Initialize to 0 or any suitable starting value
+        for mol in self.mol:
+            molecular_weight = Chem.rdMolDescriptors.CalcExactMolWt(mol)
+            if molecular_weight > max_molecular_weight:
+                max_molecular_weight = molecular_weight
+        return max_molecular_weight
 
     def set_features(self, features: np.ndarray) -> None:
         """
