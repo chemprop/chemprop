@@ -222,18 +222,13 @@ class MoleculeDatapoint:
         """
         return [[b.GetBondTypeAsDouble() for b in self.mol[i].GetBonds()] for i in range(self.number_of_molecules)]
     @property
-    def molecular_weight(self) -> float:
+    def max_molwt(self) -> float:
         """
         Gets the maximum molecular weight among all the molecules in the :class:`MoleculeDatapoint`.
 
         :return: The maximum molecular weight.
         """
-        max_molecular_weight = 0.0  # Initialize to 0 or any suitable starting value
-        for mol in self.mol:
-            molecular_weight = Chem.rdMolDescriptors.CalcExactMolWt(mol)
-            if molecular_weight > max_molecular_weight:
-                max_molecular_weight = molecular_weight
-        return max_molecular_weight
+        return max(Chem.rdMolDescriptors.CalcExactMolWt(mol) for mol in self.mol)
 
     def set_features(self, features: np.ndarray) -> None:
         """
