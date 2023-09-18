@@ -16,7 +16,6 @@ import numpy as np
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
-from scipy.stats.mstats import gmean
 
 from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
@@ -838,6 +837,11 @@ def update_prediction_args(
             )
 
 
+def gmean(array, axis=None):
+    """Geometric mean ignoring nans"""
+    return np.exp(np.nanmean(np.log(array), axis=axis))
+
+
 def multitask_mean(
     scores: np.ndarray,
     metric: str,
@@ -865,7 +869,7 @@ def multitask_mean(
     if metric in scale_dependent_metrics:
         return gmean(scores, axis=axis)
     elif metric in nonscale_dependent_metrics:
-        return np.mean(scores, axis=axis)
+        return np.nanmean(scores, axis=axis)
     else:
         raise NotImplementedError(
             f"The metric used, {metric}, has not been added to the list of\
