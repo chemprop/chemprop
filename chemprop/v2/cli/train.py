@@ -16,6 +16,7 @@ from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunctionRegistry
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
+from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
@@ -53,7 +54,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "-s",
         "--smiles_columns",
-        type=list[str],
+        type=list,
         # to do: make sure default is coded correctly
         help="List of names of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
     )
@@ -63,6 +64,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of molecules in each input to the model. This must equal the length of :code:`smiles_columns` (if not :code:`None`).",
     )
+    # to do: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
+    #        similar to how --features-path is/will be implemented
     data_args.add_argument(
         "--checkpoint_dir",
         type=str,
@@ -138,7 +141,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
              """,
     )
     featurization_args.add_argument(
-        "--explicit_h", 
+        "--keep-h", 
         action="store_true",
         help="Whether H are explicitly specified in input (and should be kept this way). This option is intended to be used with the :code:`reaction` or :code:`reaction_solvent` options, and applies only to the reaction part.",
     )
@@ -149,12 +152,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features_generators",
-        type=list[str],
+        action=RegistryAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(
         "--features_path",
-        type=list[str],
+        type=list[str] | str,
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     featurization_args.add_argument(
@@ -207,7 +210,23 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
-    
+    # to do: remove these caching arguments after checking that the v2 code doesn't try to cache.
+    # parser.add_argument(
+    #     "--no_cache_mol",
+    #     action="store_true",
+    #     help="Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).",
+    # )
+    # parser.add_argument(
+    #     "--empty_cache",
+    #     action="store_true",
+    #     help="Whether to empty all caches before training or predicting. This is necessary if multiple jobs are run within a single script and the atom or bond features change.",
+    # )
+    # parser.add_argument(
+    #     "--cache_cutoff",
+    #     type=float,
+    #     default=10000,
+    #     help="Maximum number of molecules in dataset to allow caching. Below this number, caching is used and data loading is sequential. Above this number, caching is not used and data loading is parallel. Use 'inf' to always cache.",
+    # )
     parser.add_argument(
         "--no_cache_mol",
         action="store_true",
@@ -269,11 +288,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
     )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Whether to skip training and only test the model.",
-    )
+    # to do: see if it is practical to have a quiet option. Also see if there are even non-essential print statements to quiet.
     parser.add_argument(
         "-q",
         "--quiet",
