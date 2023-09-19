@@ -5,8 +5,9 @@ import torch
 import numpy as np
 import torch.nn as nn
 
-from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score,\
-    roc_auc_score, accuracy_score, log_loss, f1_score, matthews_corrcoef
+from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, \
+    roc_auc_score, accuracy_score, log_loss, f1_score, matthews_corrcoef, recall_score, precision_score, \
+    balanced_accuracy_score, confusion_matrix, multilabel_confusion_matrix
 
 
 def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], List[float]], float]:
@@ -26,6 +27,10 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     * :code:`binary_cross_entropy`: Binary cross entropy
     * :code:`sid`: Spectral information divergence
     * :code:`wasserstein`: Wasserstein loss for spectra
+    * :code:`balanced_accuracy`: Balanced accuracy
+    * :code:`recall`: Recall
+    * :code:`precision`: Precision
+    * :code:`confusion_matrix`: Confusion matrix
 
     :param metric: Metric name.
     :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
@@ -62,7 +67,7 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'cross_entropy':
         return log_loss
-    
+
     if metric == 'f1':
         return f1_metric
 
@@ -71,12 +76,24 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'binary_cross_entropy':
         return bce
-    
+
     if metric == 'sid':
         return sid_metric
-    
+
     if metric == 'wasserstein':
         return wasserstein_metric
+
+    if metric == 'balanced_accuracy':
+        return balanced_accuracy_metric
+
+    if metric == 'recall':
+        return recall_metric
+
+    if metric == 'precision':
+        return precision_metric
+
+    if metric == 'confusion_matrix':
+        return confusion_matrix_metric
 
     raise ValueError(f'Metric "{metric}" not supported.')
 
@@ -119,7 +136,8 @@ def rmse(targets: List[float], preds: List[float]) -> float:
     return mean_squared_error(targets, preds, squared=False)
 
 
-def bounded_rmse(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+def bounded_rmse(targets: List[float], preds: List[float], gt_targets: List[bool] = None,
+                 lt_targets: List[bool] = None) -> float:
     """
     Computes the root mean squared error, considering targets with inequalities.
 
@@ -132,19 +150,20 @@ def bounded_rmse(targets: List[float], preds: List[float], gt_targets: List[bool
     # When the target is a greater-than-inequality and the prediction is greater than the target,
     # replace the prediction with the target. Analogous for less-than-inequalities.
     preds = np.where(
-        np.logical_and(np.greater(preds, targets),gt_targets),
+        np.logical_and(np.greater(preds, targets), gt_targets),
         targets,
         preds,
     )
     preds = np.where(
-        np.logical_and(np.less(preds, targets),lt_targets),
+        np.logical_and(np.less(preds, targets), lt_targets),
         targets,
         preds,
     )
     return mean_squared_error(targets, preds, squared=False)
 
 
-def bounded_mse(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+def bounded_mse(targets: List[float], preds: List[float], gt_targets: List[bool] = None,
+                lt_targets: List[bool] = None) -> float:
     """
     Computes the mean squared error, considering targets with inequalities.
 
@@ -157,19 +176,20 @@ def bounded_mse(targets: List[float], preds: List[float], gt_targets: List[bool]
     # When the target is a greater-than-inequality and the prediction is greater than the target,
     # replace the prediction with the target. Analogous for less-than-inequalities.
     preds = np.where(
-        np.logical_and(np.greater(preds, targets),gt_targets),
+        np.logical_and(np.greater(preds, targets), gt_targets),
         targets,
         preds,
     )
     preds = np.where(
-        np.logical_and(np.less(preds, targets),lt_targets),
+        np.logical_and(np.less(preds, targets), lt_targets),
         targets,
         preds,
     )
     return mean_squared_error(targets, preds, squared=True)
 
 
-def bounded_mae(targets: List[float], preds: List[float], gt_targets: List[bool] = None, lt_targets: List[bool] = None) -> float:
+def bounded_mae(targets: List[float], preds: List[float], gt_targets: List[bool] = None,
+                lt_targets: List[bool] = None) -> float:
     """
     Computes the mean absolute error, considering targets with inequalities.
 
@@ -182,12 +202,12 @@ def bounded_mae(targets: List[float], preds: List[float], gt_targets: List[bool]
     # When the target is a greater-than-inequality and the prediction is greater than the target,
     # replace the prediction with the target. Analogous for less-than-inequalities.
     preds = np.where(
-        np.logical_and(np.greater(preds, targets),gt_targets),
+        np.logical_and(np.greater(preds, targets), gt_targets),
         targets,
         preds,
     )
     preds = np.where(
-        np.logical_and(np.less(preds, targets),lt_targets),
+        np.logical_and(np.less(preds, targets), lt_targets),
         targets,
         preds,
     )
@@ -213,6 +233,80 @@ def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], t
     return accuracy_score(targets, hard_preds)
 
 
+def recall_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+    """
+    Computes the recall of a binary prediction task using a given threshold for generating hard predictions.
+
+    Alternatively, computes recall for a multiclass prediction task by picking the largest probability.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is considered positive.
+    :return: The computed recall.
+    """
+    if type(preds[0]) == list:  # multiclass
+        hard_preds = [p.index(max(p)) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
+    return recall_score(targets, hard_preds)
+
+
+def precision_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
+    """
+    Computes the precision of a binary prediction task using a given threshold for generating hard predictions.
+
+    Alternatively, computes precision for a multiclass prediction task by picking the largest probability.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is considered positive.
+    :return: The computed precision.
+    """
+    if type(preds[0]) == list:  # multiclass
+        hard_preds = [p.index(max(p)) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
+    return precision_score(targets, hard_preds)
+
+
+def balanced_accuracy_metric(targets: List[int], preds: Union[List[float], List[List[float]]],
+                             threshold: float = 0.5) -> float:
+    """
+    Computes the balanced accuracy of a binary prediction task using a given threshold for generating hard predictions.
+
+    Alternatively, computes balanced accuracy for a multiclass prediction task by picking the largest probability.
+
+    :param targets: A list of binary targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is considered positive.
+    :return: The computed balanced accuracy.
+    """
+    if type(preds[0]) == list:  # multiclass
+        hard_preds = [p.index(max(p)) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+
+    return balanced_accuracy_score(targets, hard_preds)
+
+
+def confusion_matrix_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5):
+    """
+    Computes the confusion matrix for a binary or multiclass prediction task using a given threshold for generating hard predictions.
+
+    :param targets: A list of binary or multiclass targets.
+    :param preds: A list of prediction probabilities.
+    :param threshold: The threshold above which a prediction is considered positive (only for binary).
+    :return: The computed confusion matrix.
+    """
+    if type(preds[0]) == list:  # multiclass
+        return multilabel_confusion_matrix(targets, preds)
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+        return confusion_matrix(targets, hard_preds).tolist()
+
+
 def f1_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
     """
     Computes the f1 score of a binary prediction task using a given threshold for generating hard predictions.
@@ -227,8 +321,8 @@ def f1_metric(targets: List[int], preds: Union[List[float], List[List[float]]], 
     if type(preds[0]) == list:  # multiclass
         hard_preds = [p.index(max(p)) for p in preds]
         score = f1_score(targets, hard_preds, average='micro')
-    else: # binary prediction
-        hard_preds = [1 if p > threshold else 0 for p in preds]  
+    else:  # binary prediction
+        hard_preds = [1 if p > threshold else 0 for p in preds]
         score = f1_score(targets, hard_preds)
 
     return score
@@ -253,7 +347,8 @@ def mcc_metric(targets: List[int], preds: Union[List[float], List[List[float]]],
     return matthews_corrcoef(targets, hard_preds)
 
 
-def sid_metric(model_spectra: List[List[float]], target_spectra: List[List[float]], threshold: float = None, batch_size: int = 50) -> float:
+def sid_metric(model_spectra: List[List[float]], target_spectra: List[List[float]], threshold: float = None,
+               batch_size: int = 50) -> float:
     """
     Metric function for use with spectra data type.
 
@@ -284,7 +379,7 @@ def sid_metric(model_spectra: List[List[float]], target_spectra: List[List[float
         batch_preds = batch_preds / sum_preds
 
         # Calculate loss value
-        batch_preds[~batch_mask] = 1 # losses in excluded regions will be zero because log(1/1) = 0.
+        batch_preds[~batch_mask] = 1  # losses in excluded regions will be zero because log(1/1) = 0.
         loss = batch_preds * np.log(batch_preds / batch_targets) + batch_targets * np.log(batch_targets / batch_preds)
         loss = np.sum(loss, axis=1)
 
@@ -297,7 +392,8 @@ def sid_metric(model_spectra: List[List[float]], target_spectra: List[List[float
     return loss
 
 
-def wasserstein_metric(model_spectra: List[List[float]], target_spectra: List[List[float]], threshold: float = None, batch_size: int = 50) -> float:
+def wasserstein_metric(model_spectra: List[List[float]], target_spectra: List[List[float]], threshold: float = None,
+                       batch_size: int = 50) -> float:
     """
     Metric function for use with spectra data type. This metric assumes that values are evenly spaced.
 
@@ -328,8 +424,8 @@ def wasserstein_metric(model_spectra: List[List[float]], target_spectra: List[Li
         batch_preds = batch_preds / sum_preds
 
         # Calculate loss value
-        target_cum = np.cumsum(batch_targets,axis=1)
-        preds_cum = np.cumsum(batch_preds,axis=1)
+        target_cum = np.cumsum(batch_targets, axis=1)
+        preds_cum = np.cumsum(batch_preds, axis=1)
         loss = np.abs(target_cum - preds_cum)
         loss = np.sum(loss, axis=1)
 
