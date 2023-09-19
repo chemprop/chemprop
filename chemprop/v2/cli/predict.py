@@ -47,19 +47,21 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-i",
         "--input",
-        "--test_path",
+        "--test-path",
+        dest="test_path",
         type=str,
         help="Path to CSV file containing SMILES for which predictions will be made.",
     )
     parser.add_argument(
         "-o", 
         "--output-dir",
-        "--preds_path",
+        "--preds-path",
+        dest="preds_path",
         type=str,
         help="Path to CSV or PICKLE file where predictions will be saved.",
     )
     parser.add_argument(
-        "--drop_extra_columns",
+        "--drop-extra-columns",
         type=bool,
         action="store_true",
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
@@ -68,82 +70,82 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     if False: # to do: add uncertainty and calibration and delete this line
         unc_args = parser.add_argument_group("uncertainty and calibration args")
         unc_args.add_argument(
-            "--ensemble_variance",
+            "--ensemble-variance",
             type=None,
             help="Deprecated. Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path.",
         )
         unc_args.add_argument(
-            "--individual_ensemble_predictions",
+            "--individual-ensemble-predictions",
             type=bool,
             action="store_true",
             help="Whether to return the predictions made by each of the individual models rather than the average of the ensemble.",
         )
         unc_args.add_argument(
-            "--uncertainty_method",
+            "--uncertainty-method",
             #action=RegistryAction(to do: make register for uncertainty methods)
             help="The method of calculating uncertainty.",
         )
         unc_args.add_argument(
-            "--calibration_method",
+            "--calibration-method",
             #action=RegistryAction(to do: make register for calibration methods)
             help="Methods used for calibrating the uncertainty calculated with uncertainty method.",
         )
         unc_args.add_argument(
-            "--evaluation_method",
+            "--evaluation-method",
             #action=RegistryAction(to do: make register for evaluation methods)
             type=list[str],
             help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
         )
         unc_args.add_argument(
-            "--evaluation_scores_path",
+            "--evaluation-scores-path",
             type=str,
             help="Location to save the results of uncertainty evaluations.",
         )
         unc_args.add_argument(
-            "--uncertainty_dropout_p",
+            "--uncertainty-dropout-p",
             type=float,
             default=0.1,
             help="The probability to use for Monte Carlo dropout uncertainty estimation.",
         )
         unc_args.add_argument(
-            "--dropout_sampling_size",
+            "--dropout-sampling-size",
             type=int,
             default=10,
             help="The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training.",
         )
         unc_args.add_argument(
-            "--calibration_interval_percentile",
+            "--calibration-interval-percentile",
             type=float,
             default=95,
             help="Sets the percentile used in the calibration methods. Must be in the range (1,100).",
         )
         unc_args.add_argument(
-            "--regression_calibrator_metric",
+            "--regression-calibrator-metric",
             choices=['stdev', 'interval'],
             help="Regression calibrators can output either a stdev or an inverval.",
         )
         unc_args.add_argument(
-            "--calibration_path",
+            "--calibrationipath",
             type=str,
             help="Path to data file to be used for uncertainty calibration.",
         )
         unc_args.add_argument(
-            "--calibration_features_path",
+            "--calibration-features-path",
             type=list[str],
             help="Path to features data to be used with the uncertainty calibration dataset.",
         )
         unc_args.add_argument(
-            "--calibration_phase_features_path",
+            "--calibration-phase-features-path",
             type=str,
             help=" ",
         )
         unc_args.add_argument(
-            "--calibration_atom_descriptors_path",
+            "--calibration-atom-descriptors-path",
             type=str,
             help="Path to the extra atom descriptors.",
         )
         unc_args.add_argument(
-            "--calibration_bond_descriptors_path",
+            "--calibration-bond-descriptors-path",
             type=str,
             help="Path to the extra bond descriptors that will be used as bond features to featurize a given molecule.",
         )

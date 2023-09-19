@@ -53,13 +53,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
         "-s",
-        "--smiles_columns",
+        "--smiles-columns",
         type=list,
         # to do: make sure default is coded correctly
         help="List of names of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
     )
     data_args.add_argument(
-        "--number_of_molecules",
+        "--number-of-molecules",
         type=int,
         default=1,
         help="Number of molecules in each input to the model. This must equal the length of :code:`smiles_columns` (if not :code:`None`).",
@@ -67,22 +67,22 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # to do: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
     data_args.add_argument(
-        "--checkpoint_dir",
+        "--checkpoint-dir",
         type=str,
         help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
     )
     data_args.add_argument(
-        "--checkpoint_path",
+        "--checkpoint-path",
         type=str,
         help="Path to model checkpoint (:code:`.pt` file).",
     )
     data_args.add_argument(
-        "--checkpoint_paths",
+        "--checkpoint-paths",
         type=list[str],
         help="List of paths to model checkpoints (:code:`.pt` files).",
     )
     data_args.add_argument(
-        "--no_cuda",
+        "--no-cuda",
         action="store_true",
         help="Turn off cuda (i.e., use CPU instead of GPU).",
     )
@@ -92,14 +92,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Which GPU to use.",
     )
     data_args.add_argument(
-        "--max_data_size",
+        "--max-data-size",
         type=int,
         help="Maximum number of data points to load.",
     )
     data_args.add_argument(
         "-c",
-        "--n_cpu",
-        "--num_workers",
+        "--n-cpu",
+        "--num-workers",
         type=int,
         default=8,
         help="Number of workers for the parallel data loading (0 means sequential).",
@@ -107,7 +107,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
     data_args.add_argument(
         "-b",
-        "--batch_size",
+        "--batch-size",
         type=int,
         default=50,
         help="Batch size.",
@@ -127,7 +127,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args = parser.add_argument_group("featurization args")
     featurization_args.add_argument(
         "--rxn-mode",
-        "--reaction_mode",
+        "--reaction-mode",
         choices=RxnMode.keys(), 
         default="reac_diff",
         help="""
@@ -146,17 +146,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether H are explicitly specified in input (and should be kept this way). This option is intended to be used with the :code:`reaction` or :code:`reaction_solvent` options, and applies only to the reaction part.",
     )
     featurization_args.add_argument(
-        "--adding_h", 
+        "--adding-h", 
         action="store_true",
         help="Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.",
     )
     featurization_args.add_argument(
-        "--features_generators",
+        "--features-generators",
         action=RegistryAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(
-        "--features_path",
+        "--features-path",
         type=list[str] | str,
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
@@ -228,23 +228,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Maximum number of molecules in dataset to allow caching. Below this number, caching is used and data loading is sequential. Above this number, caching is not used and data loading is parallel. Use 'inf' to always cache.",
     # )
     parser.add_argument(
-        "--no_cache_mol",
-        action="store_true",
-        help="Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).",
-    )
-    parser.add_argument(
-        "--empty_cache",
-        action="store_true",
-        help="Whether to empty all caches before training or predicting. This is necessary if multiple jobs are run within a single script and the atom or bond features change.",
-    )
-    parser.add_argument(
-        "--cache_cutoff",
-        type=float,
-        default=10000,
-        help="Maximum number of molecules in dataset to allow caching. Below this number, caching is used and data loading is sequential. Above this number, caching is not used and data loading is parallel. Use 'inf' to always cache.",
-    )
-    parser.add_argument(
-        "--constraints_path",
+        "--constraints-path",
         type=str,
         help="Path to constraints applied to atomic/bond properties prediction.",
     )
@@ -255,36 +239,39 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-i",
         "--input",
-        "--data_path",
+        "--data-path",
+        dest="data_path",
         type=str,
         help="Path to an input CSV containing SMILES and associated target values.",
     )
     parser.add_argument(
         "-o",
         "--output-dir",
-        "--save_dir",
+        "--save-dir",
+        dest="save_dir",
         type=str,
         help="Directory where model checkpoints will be saved.",
     )
+    # to do: see if we can tell lightning how often to log training loss
     parser.add_argument(
-        "--log_frequency",
+        "--log-frequency",
         type=int,
         default=10,
         help="The number of batches between each logging of the training loss.",
     )
     parser.add_argument(
-        "--checkpoint_frzn",
+        "--checkpoint-frzn",
         type=str,
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights."
     )
     parser.add_argument(
-        "--frzn_ffn_layers",
+        "--frzn-ffn-layers",
         type=int,
         default=0,
         help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input. Automatically also freezes mpnn weights.",
     )
     parser.add_argument(
-        "--freeze_first_only",
+        "--freeze-first-only",
         action="store_true",
         help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
     )
@@ -296,22 +283,22 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Skip non-essential print statements.",
     )
     parser.add_argument(
-        "--save_preds",
+        "--save-preds",
         action="store_true",
         help="Whether to save test split predictions during training.",
     )
     parser.add_argument(
-        "--resume_experiment",
+        "--resume-experiment",
         action="store_true",
         help="Whether to resume the experiment. Loads test results from any folds that have already been completed and skips training those folds.",
     )
     parser.add_argument(
-        "--config_path",
+        "--config-path",
         type=str,
         help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
     )
     parser.add_argument(
-        "--ensemble_size",
+        "--ensemble-size",
         type=int,
         default=1,
         help="Number of models in ensemble.",
@@ -322,24 +309,24 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to adjust MPNN layer to take reactions as input instead of molecules.", 
     )
     parser.add_argument(
-        "--is_atom_bond_targets",
+        "--is-atom-bond-targets",
         action="store_true",
         help="Whether this is atomic/bond properties prediction.",
     )
     parser.add_argument(
-        "--no_adding_bond_types",
+        "--no-adding-bond-types",
         action="store_true",
         help="Whether the bond types determined by RDKit molecules added to the output of bond targets. This option is intended to be used with the :code:`is_atom_bond_targets`.",
     )
     parser.add_argument(
-        "--keeping_atom_map",
+        "--keeping-atom-map",
         action="store_true",
         help="Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with the :code:`is_atom_bond_targets`.",
     )
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
-        "--message_hidden_dim", type=int, default=300, help="hidden dimension of the messages"
+        "--message-hidden-dim", type=int, default=300, help="hidden dimension of the messages"
     )
     mp_args.add_argument(
         "--bias", action="store_true", help="add bias to the message passing layers"
@@ -357,7 +344,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="dropout probability in message passing/FFN layers",
     )
     mp_args.add_argument(
-        "--mpn_shared",
+        "--mpn-shared",
         action="store_true",
         help="Whether to use the same message passing neural network for all input molecules. Only relevant if :code:`number_of_molecules > 1`",
     )
@@ -375,7 +362,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="the aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
-        "--aggregation_norm", type=float, default=100, help="normalization factor by which to divide summed up atomic features for 'norm' aggregation"
+        "--aggregation-norm", type=float, default=100, help="normalization factor by which to divide summed up atomic features for 'norm' aggregation"
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="pass messages on atoms rather than bonds"
@@ -383,23 +370,23 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     mpsolv_args = parser.add_argument_group("message passing with solvent")
     mpsolv_args.add_argument(
-        "--reaction_solvent",
+        "--reaction-solvent",
         action="store_true",
         help="Whether to adjust the MPNN layer to take as input a reaction and a molecule, and to encode them with separate MPNNs.",
     )
     mpsolv_args.add_argument(
-        "--bias_solvent",
+        "--bias-solvent",
         action="store_true",
         help="Whether to add bias to linear layers for solvent MPN if :code:`reaction_solvent` is True.",
     )
     mpsolv_args.add_argument(
-        "--hidden_size_solvent",
+        "--hidden-size-solvent",
         type=int,
         default=300,
         help="Dimensionality of hidden layers in solvent MPN if :code:`reaction_solvent` is True.",
     )
     mpsolv_args.add_argument(
-        "--depth_solvent",
+        "--depth-solvent",
         type=int,
         default=3,
         help="Number of message passing steps for solvent if :code:`reaction_solvent` is True.",
@@ -407,37 +394,37 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     ffn_args = parser.add_argument_group("FFN args")
     ffn_args.add_argument( # to do: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
-        "--ffn_hidden_dim", type=int, default=300, help="hidden dimension in the FFN top model"
+        "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
     )
     ffn_args.add_argument( # to do: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
-        "--ffn_num_layers", type=int, default=1, help="number of layers in FFN top model"
+        "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
     )
     ffn_args.add_argument(
-        "--weights_ffn_num_layers",
+        "--weights-ffn-num-layers",
         type=int,
         default=2,
         help="Number of layers in FFN for determining weights used in constrained targets.",
     )
     ffn_args.add_argument(
-        "--features_only",
+        "--features-only",
         action="store_true",
         help="Use only the additional features in an FFN, no graph network.",
     )
     ffn_args.add_argument(
-        "--no_shared_atom_bond_ffn",
+        "--no-shared-atom-bond-ffn",
         action="store_true",
         help="Whether the FFN weights for atom and bond targets should be independent between tasks.",
     )
 
     exta_mpnn_args = parser.add_argument_group("extra MPNN args")
     exta_mpnn_args.add_argument(
-        "--multiclass_num_classes",
+        "--multiclass-num-classes",
         type=int,
         default=3,
         help="Number of classes when running multiclass classification.",
     )
     exta_mpnn_args.add_argument(
-        "--spectral_activation", 
+        "--spectral-activation", 
         default="exp", 
         choices=["softplus", "exp"], 
         help="Indicates which function to use in dataset_type spectra training to constrain outputs to be positive.",
@@ -446,12 +433,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     # data_args = parser.add_argument_group("input data parsing args")
     # data_args is added in add_common_args()
     data_args.add_argument(
-        "--target_columns",
+        "--target-columns",
         type=list[str],
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     data_args.add_argument(
-        "--ignore_columns",
+        "--ignore-columns",
         type=list[str],
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
@@ -459,48 +446,48 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "-t", 
         "--task", 
-        "--dataset_type",
+        "--dataset-type",
         default="regression", 
         action=RegistryAction(ReadoutRegistry), # to do: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
-        "--spectra_phase_mask_path",
+        "--spectra-phase-mask-path",
         type=str,
         help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions."
     )
     data_args.add_argument(
-        "--data_weights_path",
+        "--data-weights-path",
         type=str,
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate_val_path",
+        "--separate-val-path",
         type=str,
         help="Path to separate val set, optional.",
     )
     data_args.add_argument(
-        "--separate_val_features_path",
+        "--separate-val-features-path",
         type=list[str],
         help="Path to file with features for separate val set.",
     )
     data_args.add_argument(
-        "--separate_val_phase_features_path",
+        "--separate-val-phase-features-path",
         type=str,
         help="Path to file with phase features for separate val set.",
     )
     data_args.add_argument(
-        "--separate_val_atom_descriptors_path",
+        "--separate-val-atom-descriptors-path",
         type=str,
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
-        "--separate_val_bond_descriptors_path",
+        "--separate-val-bond-descriptors-path",
         type=str,
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
-        "--separate_val_constraints_path",
+        "--separate-val-constraints-path",
         type=str,
         help="Path to file with constraints for separate val set.",
     )
@@ -508,32 +495,32 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
-        "--separate_test_path",
+        "--separate-test-path",
         type=str,
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
-        "--separate_test_features_path",
+        "--separate-test-features-path",
         type=list[str],
         help="Path to file with features for separate test set.",
     )
     data_args.add_argument(
-        "--separate_test_phase_features_path",
+        "--separate-test-phase-features-path",
         type=str,
         help="Path to file with phase features for separate test set.",
     )
     data_args.add_argument(
-        "--separate_test_atom_descriptors_path",
+        "--separate-test-atom-descriptors-path",
         type=str,
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
-        "--separate_test_bond_descriptors_path",
+        "--separate-test-bond-descriptors-path",
         type=str,
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
-        "--separate_test_constraints_path",
+        "--separate-test-constraints-path",
         type=str,
         help="Path to file with constraints for separate test set.",
     )
@@ -553,7 +540,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument(
         "--v-kl", 
-        "--evidential_regularization",
+        "--evidential-regularization",
         type=float, 
         default=0.2, # to do: the default in v1 was 0. Do we want it to default to 0.2 in v2?
         help="Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model."
@@ -566,7 +553,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument( # to do: Is threshold the same thing as the spectra target floor? I'm not sure but combined them. 
         "-T", 
         "--threshold", 
-        "--spectra_target_floor",
+        "--spectra-target-floor",
         type=float, 
         default=1e-8,
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.")
@@ -578,7 +565,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
     train_args.add_argument(
-        "--show_individual_scores",
+        "--show-individual-scores",
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
     )
@@ -623,12 +610,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad_clip",
+        "--grad-clip",
         type=float,
         help="Maximum magnitude of gradient during training.",
     )
     train_args.add_argument(
-        "--class_balance",
+        "--class-balance",
         action="store_true",
         help="Trains with an equal number of positives and negatives in each batch.",
     )
@@ -636,52 +623,52 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args = parser.add_argument_group("split args")
     split_args.add_argument(
         "--split",
-        "--split_type",
+        "--split-type",
         default="random",
         choices=['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'],
         help="Method of splitting the data into train/val/test.",
     )
     split_args.add_argument(
-        "--split_sizes",
+        "--split-sizes",
         type=list[float],
         default=[0.8, 0.1, 0.1],
         help="Split proportions for train/validation/test sets.",    
     )
     split_args.add_argument(
-        "--split_key_molecule",
+        "--split-key-molecule",
         type=int,
         default=0,
         help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
     )
     split_args.add_argument(
         "-k", 
-        "--num_folds", 
+        "--num-folds", 
         type=int, 
         default=1,
         help="Number of folds when performing cross validation.",
     )
     split_args.add_argument(
-        "--folds_file",
+        "--folds-file",
         type=str,
         help="Optional file of fold labels.",
     )
     split_args.add_argument(
-        "--val_fold_index",
+        "--val-fold-index",
         type=int,
         help="Which fold to use as val for leave-one-out cross val.",
     )
     split_args.add_argument(
-        "--test_fold_index",
+        "--test-fold-index",
         type=int,
         help="Which fold to use as test for leave-one-out cross val.",
     )
     split_args.add_argument(
-        "--crossval_index_dir",
+        "--crossval-index-dir",
         type=str,
         help="Directory in which to find cross validation index files.",
     )
     split_args.add_argument(
-        "--crossval_index_file",
+        "--crossval-index-file",
         type=str,
         help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     )
@@ -692,13 +679,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
     split_args.add_argument(
-        "--save_smiles_splits",
+        "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
 
     parser.add_argument( # to do: do we need this?
-        "--pytorch_seed",
+        "--pytorch-seed",
         type=int,
         default=0,
         help="Seed for PyTorch randomness (e.g., random initial weights).",
