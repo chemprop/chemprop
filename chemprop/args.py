@@ -272,7 +272,7 @@ class TrainArgs(CommonArgs):
     """Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function"""
     target_weights: List[float] = None
     """Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns."""
-    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'] = 'random'
+    split_type: Literal['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles', 'molecular_weight'] = 'random'
     """Method of splitting the data into train/val/test."""
     split_sizes: List[float] = None
     """Split proportions for train/validation/test sets."""
