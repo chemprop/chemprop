@@ -54,15 +54,13 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "-o", 
-        "--output-dir",
+        "--output",
         "--preds-path",
-        dest="preds_path",
         type=str,
         help="Path to CSV or PICKLE file where predictions will be saved.",
     )
     parser.add_argument(
         "--drop-extra-columns",
-        type=bool,
         action="store_true",
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
