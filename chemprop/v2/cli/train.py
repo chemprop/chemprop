@@ -157,7 +157,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        type=list[str] | str,
+        type=list[str], # maybe should be type=str
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     featurization_args.add_argument(
@@ -234,6 +234,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     # to do: see if we need to add functions from CommonArgs 
+    return parser
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
@@ -248,8 +249,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-o",
         "--output-dir",
         "--save-dir",
-        dest="save_dir",
         type=str,
+        required=True,
         help="Directory where model checkpoints will be saved.",
     )
     # to do: see if we can tell lightning how often to log training loss
