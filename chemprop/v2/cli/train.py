@@ -44,6 +44,15 @@ class TrainSubcommand(Subcommand):
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
+        "-i",
+        "--input",
+        "--test-path", # v1 option for predicting
+        "--data-path", # v1 option for training
+        type=str,
+        required=True,
+        help="Path to and input CSV file containing SMILES, either for training or for making predictions. If training, also contains the associated target values.",
+    )
+    parser.add_argument(
         "--logdir",
         nargs="?",
         const="chemprop_logs",
@@ -237,14 +246,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
-    parser.add_argument(
-        "-i",
-        "--input",
-        "--data-path",
-        dest="data_path",
-        type=str,
-        help="Path to an input CSV containing SMILES and associated target values.",
-    )
     parser.add_argument(
         "-o",
         "--output-dir",

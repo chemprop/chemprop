@@ -45,14 +45,6 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i",
-        "--input",
-        "--test-path",
-        dest="test_path",
-        type=str,
-        help="Path to CSV file containing SMILES for which predictions will be made.",
-    )
-    parser.add_argument(
         "-o", 
         "--output",
         "--preds-path",
@@ -158,9 +150,9 @@ def process_args(args: Namespace):
         args.output = Path(args.input.with_name(name))
     else:
         args.output = Path(args.output)
-    args.logdir = Path(args.logdir or args.output_dir / "logs")
+    args.logdir = Path(args.logdir ) # or args.output_dir / "logs") # I don't think predictions have an output_dir because the output is a file.
 
-    args.output_dir.mkdir(exist_ok=True, parents=True)
+    #args.output_dir.mkdir(exist_ok=True, parents=True) 
     args.logdir.mkdir(exist_ok=True, parents=True)
 
 
