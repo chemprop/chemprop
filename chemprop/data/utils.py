@@ -819,7 +819,7 @@ def split_data(data: MoleculeDataset,
 
         return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
     elif split_type == 'molecular_weight':
-        train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
+        train_size, val_size, test_size = [int(size * len(data)) for size in sizes]
 
         sorted_data = sorted(data._data, key=lambda x: x.max_molwt, reverse=False)
         indices = list(range(len(sorted_data)))
