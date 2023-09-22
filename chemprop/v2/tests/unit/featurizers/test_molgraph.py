@@ -72,10 +72,10 @@ def test_atom_fdim(extra):
 
 
 def test_bond_fdim(atom_messages, extra):
-    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages=atom_messages)
+    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages= not atom_messages)
 
     if atom_messages:
-        assert mf.bond_fdim == len(mf.bond_featurizer) + extra
+        assert mf.bond_fdim == len(mf.bond_featurizer) + extra 
     else:
         assert mf.bond_fdim == len(mf.bond_featurizer) + extra + mf.atom_fdim
 
@@ -136,28 +136,28 @@ def test_invalid_bond_extra_shape(mol_featurizer, mol):
 
 
 def test_atom_extra_shape(mol, extra, atom_features_extra):
-    mf = MoleculeMolGraphFeaturizer(None, None, extra)
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra)
     mg = mf(mol, atom_features_extra=atom_features_extra)
 
     assert mg.V.shape == (mol.GetNumAtoms(), mf.atom_fdim)
 
 
 def test_atom_extra_values(mol, extra, atom_features_extra):
-    mf = MoleculeMolGraphFeaturizer(None, None, extra)
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra)
     mg = mf(mol, atom_features_extra=atom_features_extra)
 
     np.testing.assert_array_equal(mg.V[:, len(mf.atom_featurizer):], atom_features_extra)
 
 
 def test_bond_extra(mol, extra, bond_features_extra):
-    mf = MoleculeMolGraphFeaturizer(None, None, 0, extra)
+    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra)
     mg = mf(mol, bond_features_extra=bond_features_extra)
 
     assert mg.E.shape == (2 * mol.GetNumBonds(), mf.bond_fdim)
 
 
 def test_atom_bond_extra(mol, extra, atom_features_extra, bond_features_extra):
-    mf = MoleculeMolGraphFeaturizer(None, None, extra, extra, False)
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages = True)
     mg = mf(mol, atom_features_extra, bond_features_extra)
 
     assert mg.E.shape == (
