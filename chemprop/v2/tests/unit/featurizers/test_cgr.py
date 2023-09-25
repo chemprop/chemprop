@@ -95,6 +95,18 @@ def cgr_featurizer(request):
     return CondensedGraphOfReactionFeaturizer(mode_=request.param)
 
 
+@pytest.fixture(
+    params=[(False, False),
+            (True, False),
+            (False, True,),
+            (True, True)]
+)
+def bond_reac_prod(request):
+    bond = make_mol('[CH3:1][H:2]', keep_h=True, add_h=False).GetBondBetweenAtoms(0, 1)
+    return (bond if request.param[0] else None,
+            bond if request.param[1] else None)
+
+
 class TestRxnMode:
 
     def test_len(self, available_rxn_mode_names):
@@ -263,3 +275,12 @@ class TestCondensedGraphOfReactionFeaturizer:
             bond_reac, bond_prod = cgr_featurizer._get_bonds(reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_pair)
         assert (bond_reac is None) == expect_to_be_None[0]
         assert (bond_prod is None) == expect_to_be_None[1]
+
+    @pytest.mark.parametrize("cgr_featurizer", AVAILABLE_RXN_MODE_NAMES, indirect=['cgr_featurizer'])
+    def test_calc_edge_feature_shape(self, bond_reac_prod, cgr_featurizer):
+        """
+        Test that the calc_edge_feature method returns the correct edge feature.
+        """
+        assert cgr_featurizer._calc_edge_feature(*bond_reac_prod).shape \
+            == (len(cgr_featurizer.bond_featurizer) * 2,)
+
