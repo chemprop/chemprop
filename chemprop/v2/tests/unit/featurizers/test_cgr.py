@@ -1,6 +1,6 @@
 import pytest
 
-from chemprop.v2.featurizers.reaction import RxnMode
+from chemprop.v2.featurizers.reaction import RxnMode, CondensedGraphOfReactionFeaturizer
 
 
 AVAILABLE_RXN_MODE_NAMES \
@@ -83,7 +83,7 @@ class TestRxnMode:
 
     def test_get_function_enum(self, rxn_mode):
         """
-        Test that the get function returns the correct RxnMode when given an RxnMode.
+        Test that the get function returns the correct RxnMode when given a RxnMode.
         """
         assert RxnMode.get(rxn_mode) == rxn_mode
         assert RxnMode.get(rxn_mode).name == rxn_mode.name
@@ -102,3 +102,33 @@ class TestRxnMode:
         """
         assert RxnMode.keys() == set(available_mode.lower() for available_mode in available_rxn_mode_names)
 
+
+class TestCondensedGraphOfReactionFeaturizer:
+
+    def test_init_without_mode_(self):
+        """
+        Test that the CondensedGraphOfReactionFeaturizer can be initialized without a mode.
+        """
+        cgr_featurizer = CondensedGraphOfReactionFeaturizer()
+        assert cgr_featurizer.mode == RxnMode.REAC_DIFF
+
+    def test_init_with_mode_str(self, mode_name):
+        """
+        Test that the CondensedGraphOfReactionFeaturizer can be initialized with a string of the mode.
+        """
+        cgr_featurizer = CondensedGraphOfReactionFeaturizer(mode_=mode_name)
+        assert cgr_featurizer.mode == RxnMode[mode_name]
+
+    def test_init_with_mode_enum(self, rxn_mode):
+        """
+        Test that the CondensedGraphOfReactionFeaturizer can be initialized with a RxnMode.
+        """
+        cgr_featurizer = CondensedGraphOfReactionFeaturizer(mode_=rxn_mode)
+        assert cgr_featurizer.mode == rxn_mode
+
+    def test_init_with_invalid_mode(self, invalid_mode_name):
+        """
+        Test that the CondensedGraphOfReactionFeaturizer raises a ValueError when initialized with an invalid mode.
+        """
+        with pytest.raises(ValueError):
+            CondensedGraphOfReactionFeaturizer(mode_=invalid_mode_name)
