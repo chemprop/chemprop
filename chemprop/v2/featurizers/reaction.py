@@ -37,7 +37,7 @@ class RxnMode(AutoName):
 
 
 @dataclass
-class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
+class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
     """A :class:`ReactionMolGraphFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
@@ -315,3 +315,5 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
                 rct_idxs.append(ri)
 
         return ri2pj, pdt_idxs, rct_idxs
+
+CGRFeaturizer = CondensedGraphOfReactionFeaturizer
