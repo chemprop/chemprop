@@ -62,6 +62,29 @@ reac_prod_maps = [
 ]
 
 
+# whether elements in the returns for _get_bonds are Nones under imbalanced and balanced modes
+# It follows the order of rxn_smis
+# Note, it also includes all the bonding information in the reaction
+elements_from_get_bond_is_None_imbalanced = [
+    {(0, 1): (False, True),},
+    {(0, 1): (False, True),},
+    {(0, 1): (False, True), (0, 2): (True, True), (1, 2): (True, True)},
+    {(0, 1): (False, True), (0, 2): (True, True), (1, 2): (True, True)},
+    {(0, 1): (True, True), (0, 2): (True, True), (1, 2): (True, False)},
+    {(0, 1): (True, True), (0, 2): (True, True), (1, 2): (False, False)},
+]
+
+
+elements_from_get_bond_is_None_balanced = [
+    {(0, 1): (False, True),},
+    {(0, 1): (False, True),},
+    {(0, 1): (False, True), (0, 2): (True, True), (1, 2): (True, True)},
+    {(0, 1): (False, True), (0, 2): (True, True), (1, 2): (True, True)},
+    {(0, 1): (True, True), (0, 2): (True, True), (1, 2): (False, False)},  # this is different from the imbalanced case
+    {(0, 1): (True, True), (0, 2): (True, True), (1, 2): (False, False)},
+]
+
+
 @pytest.fixture
 def reac_prod_mols(request):
     return tuple(make_mol(smi, keep_h=True, add_h=False) for smi in request.param.split('>>'))
@@ -210,3 +233,33 @@ class TestCondensedGraphOfReactionFeaturizer:
         )[:, :atom_featurizer.max_atomic_num + 1]
         atomic_num_features = cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids)[:, :atom_featurizer.max_atomic_num + 1]
         assert np.all(atomic_num_features == atomic_num_features_expected)
+
+    @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds",
+                             zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES[::2] * 2, elements_from_get_bond_is_None_imbalanced),
+                             indirect=['reac_prod_mols', 'cgr_featurizer'])
+    def test_get_bonds_imbalanced(self, reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds):
+        """
+        Test that the get_bonds method returns the correct bonds when modes are imbalanced.
+        """
+        reac, prod = reac_prod_mols
+        ri2pj, pids, _ = reac_prod_maps
+
+        for bond_pair, expect_to_be_None in expected_bonds.items():
+            bond_reac, bond_prod = cgr_featurizer._get_bonds(reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_pair)
+        assert (bond_reac is None) == expect_to_be_None[0]
+        assert (bond_prod is None) == expect_to_be_None[1]
+
+    @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds",
+                             zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES[1::2] * 2, elements_from_get_bond_is_None_balanced),
+                             indirect=['reac_prod_mols', 'cgr_featurizer'])
+    def test_get_bonds_balanced(self, reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds):
+        """
+        Test that the get_bonds method returns the correct bonds when modes are balanced.
+        """
+        reac, prod = reac_prod_mols
+        ri2pj, pids, _ = reac_prod_maps
+
+        for bond_pair, expect_to_be_None in expected_bonds.items():
+            bond_reac, bond_prod = cgr_featurizer._get_bonds(reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_pair)
+        assert (bond_reac is None) == expect_to_be_None[0]
+        assert (bond_prod is None) == expect_to_be_None[1]
