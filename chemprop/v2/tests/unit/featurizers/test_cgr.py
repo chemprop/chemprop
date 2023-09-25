@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from chemprop.v2.featurizers.reaction import RxnMode, CondensedGraphOfReactionFeaturizer
@@ -64,6 +65,11 @@ reac_prod_maps = [
 @pytest.fixture
 def reac_prod_mols(request):
     return tuple(make_mol(smi, keep_h=True, add_h=False) for smi in request.param.split('>>'))
+
+
+@pytest.fixture
+def cgr_featurizer(request):
+    return CondensedGraphOfReactionFeaturizer(mode_=request.param)
 
 
 class TestRxnMode:
@@ -174,3 +180,33 @@ class TestCondensedGraphOfReactionFeaturizer:
         """
         reac, prod = reac_prod_mols
         assert CondensedGraphOfReactionFeaturizer.map_reac_to_prod(reac, prod) == expected_output
+
+    @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer",
+                             zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES),
+                             indirect=['reac_prod_mols', 'cgr_featurizer'])
+    def test_calc_node_feature_matrix_shape(self, reac_prod_mols, reac_prod_maps, cgr_featurizer):
+        """
+        Test that the calc_node_feature_matrix method returns the correct node feature matrix.
+        """
+        reac, prod = reac_prod_mols
+        ri2pj, pids, rids = reac_prod_maps
+        assert cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids).shape \
+            == (len(ri2pj) + len(pids) + len(rids), cgr_featurizer.atom_fdim)
+
+    @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer",
+                             zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES),
+                             indirect=['reac_prod_mols', 'cgr_featurizer'])
+    def test_calc_node_feature_matrix_atomic_number_features(self, reac_prod_mols, reac_prod_maps, cgr_featurizer):
+        """
+        Test that the calc_node_feature_matrix method returns the correct feature matrix for the atomic number features.
+        """
+        reac, prod = reac_prod_mols
+        ri2pj, pids, rids = reac_prod_maps
+        atom_featurizer = cgr_featurizer.atom_featurizer
+
+        atomic_num_features_expected = np.array(
+            [atom_featurizer.num_only(a) for a in reac.GetAtoms()]  \
+            + [atom_featurizer.num_only(prod.GetAtomWithIdx(pid)) for pid in pids]
+        )[:, :atom_featurizer.max_atomic_num + 1]
+        atomic_num_features = cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids)[:, :atom_featurizer.max_atomic_num + 1]
+        assert np.all(atomic_num_features == atomic_num_features_expected)
