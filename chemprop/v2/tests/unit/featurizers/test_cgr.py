@@ -1,6 +1,7 @@
 import pytest
 
 from chemprop.v2.featurizers.reaction import RxnMode, CondensedGraphOfReactionFeaturizer
+from chemprop.v2.utils import make_mol
 
 
 AVAILABLE_RXN_MODE_NAMES \
@@ -32,6 +33,37 @@ def rxn_mode(mode_name):
 @pytest.fixture
 def invalid_mode_name():
     return 'INVALID_RXN_MODE'
+
+
+rxn_smis = [
+    # reactant and product with the same number of atoms
+    '[CH3:1][H:2]>>[CH3:1].[H:2]',  # reactant and product are balanced and mapped
+    '[CH3:2][H:1]>>[H:1].[CH3:2]',  # reactant and product are balanced, mapped but with different atom index order
+    '[CH3:1][H]>> [CH3:1].[H:2]',  # reactant and product are balanced and but reactant has less atom-mapped atoms
+    '[CH3:1][H:2]>>[H].[CH3:1]',  # reactant and product are balanced and but product has less atom-mapped atoms
+
+    # reactant and product has different numbers of atoms
+    '[CH4:1]>>[CH2:1].[H:2][H:3]',  # product has more atoms and more atom-mapped atoms
+    '[H:1].[CH2:2][H:3]>>[CH3:2][H:3]',  # reactant with more atoms and atom-mapped atoms.
+]
+
+# Expected output for map_reac_to_prod
+# It follows the order of rxn_smis
+# Note, the sum of the lengths of the three elements equal to
+# the number of unique atoms in the reactant and product
+reac_prod_maps = [
+    ({0: 0, 1: 1}, [], []),
+    ({0: 1, 1: 0}, [], []),
+    ({0: 0}, [1], [1]),
+    ({0: 1}, [0], [1]),
+    ({0: 0}, [1, 2], []),
+    ({1: 0, 2: 1}, [], [0]),
+]
+
+
+@pytest.fixture
+def reac_prod_mols(request):
+    return tuple(make_mol(smi, keep_h=True, add_h=False) for smi in request.param.split('>>'))
 
 
 class TestRxnMode:
@@ -132,3 +164,13 @@ class TestCondensedGraphOfReactionFeaturizer:
         """
         with pytest.raises(ValueError):
             CondensedGraphOfReactionFeaturizer(mode_=invalid_mode_name)
+
+    @pytest.mark.parametrize("reac_prod_mols, expected_output",
+                             zip(rxn_smis, reac_prod_maps),
+                             indirect=['reac_prod_mols'])
+    def test_map_reac_to_prod(self, reac_prod_mols, expected_output):
+        """
+        Test that the map_reac_to_prod method returns the correct mapping.
+        """
+        reac, prod = reac_prod_mols
+        assert CondensedGraphOfReactionFeaturizer.map_reac_to_prod(reac, prod) == expected_output
