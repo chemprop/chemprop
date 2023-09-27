@@ -83,11 +83,6 @@ def x(featurizer, atom):
 def test_len(featurizer, expected_len):
     assert len(featurizer) == expected_len
 
-
-def test_num_subfeatures():
-    assert len(AtomFeaturizer()._subfeats) == 6
-
-
 def test_none(featurizer):
     np.testing.assert_array_equal(featurizer(None), np.zeros(len(featurizer)))
 
