@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 
 from chemprop.v2 import data
 from chemprop.v2 import featurizers
-from chemprop.v2.models import loss, modules, models, metrics
+from chemprop.v2.models import loss, nn, models, metrics
 
 parser = ArgumentParser()
 parser.add_argument('input', default='./data/lipo.csv')
@@ -16,9 +16,9 @@ parser.add_argument('-c', '--num-workers', type=int, default=4)
 args = parser.parse_args()
 
 featurizer = featurizers.MoleculeMolGraphFeaturizer()
-mp = modules.BondMessageBlock()
-agg = modules.MeanAggregation()
-ffn = modules.RegressionFFN()
+mp = nn.BondMessageBlock()
+agg = nn.MeanAggregation()
+ffn = nn.RegressionFFN()
 mpnn = models.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
 
 print(mpnn)

@@ -1,7 +1,7 @@
 from typing import Any, Type
 
 from chemprop.v2.models import loss
-from chemprop.v2.models.modules import readout
+from chemprop.v2.models.nn import readout
 
 __all__ = ["pop_attr"]
 

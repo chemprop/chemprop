@@ -1,4 +1,4 @@
-from .modules import (
+from .nn import (
     MessagePassingBlock,
     MessagePassingBlockBase,
     MulticomponentMessagePassing,

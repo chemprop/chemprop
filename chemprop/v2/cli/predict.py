@@ -11,8 +11,8 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MetricRegistry, modules
-from chemprop.v2.featurizers.utils import ReactionMode
+from chemprop.v2.models import MetricRegistry, nn
+from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunction, build_loss
 
 from chemprop.v2.cli.utils import Subcommand
@@ -76,7 +76,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
         "--aggregation",
         "--agg",
         default="mean",
-        choices=modules.ReadoutFactory.choices,
+        choices=nn.ReadoutFactory.choices,
         help="aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
@@ -143,7 +143,7 @@ def add_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--cal-atom-descriptors-path")
 
     featurization_args = parser.add_argument_group("featurization args")
-    featurization_args.add_argument("--rxn-mode", choices=ReactionMode.choices, default="reac_diff")
+    featurization_args.add_argument("--rxn-mode", choices=RxnMode.choices, default="reac_diff")
     featurization_args.add_argument(
         "--atom-features-path",
         help="the path to a .npy file containing a _list_ of `N` 2D arrays, where the `i`th array contains the atom features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom features of the `j`th atom in the molecule.",
@@ -297,7 +297,7 @@ def main(args):
         aggregation=args.aggregation,
         norm=args.norm,
     )
-    mp_block = modules.molecule_block(*test_dset.featurizer.shape, bond_messages, **mp_kwargs)
+    mp_block = nn.molecule_block(*test_dset.featurizer.shape, bond_messages, **mp_kwargs)
 
     extra_mpnn_kwargs = dict()
     if args.dataset_type == "multiclass":

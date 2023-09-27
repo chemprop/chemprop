@@ -1,3 +1,3 @@
 from .agg import *
-from .message_passing import *
+from .conv import *
 from .readout import *
