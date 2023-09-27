@@ -4,7 +4,7 @@ import warnings
 from torch import Tensor, nn
 
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
-from chemprop.v2.models.nn.message_passing.molecule import MessagePassingBlockBase
+from chemprop.v2.models.nn.conv.molecule import MessagePassingBlockBase
 
 
 class MulticomponentMessagePassing(nn.Module):

@@ -8,7 +8,7 @@ from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDE
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
 from chemprop.v2.models.utils import Activation, get_activation_function
-from chemprop.v2.models.nn.message_passing.base import MessagePassingBlock
+from chemprop.v2.models.nn.conv.base import MessagePassingBlock
 
 
 class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
