@@ -31,7 +31,6 @@ For more details on each command, see the corresponding section below:
 * :ref:`train`
 * :ref:`predict`
 * :ref:`interpret`
-* :ref:`web`
 
 .. toctree::
     :maxdepth: 1
@@ -40,4 +39,3 @@ For more details on each command, see the corresponding section below:
     train
     predict
     interpret
-    web
