@@ -63,7 +63,7 @@ def mg(mol, mol_featurizer):
 def test_abc():
     with pytest.raises(TypeError):
         MolGraphFeaturizerProto()
-    
+
 
 def test_atom_fdim(extra):
     mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra)
@@ -72,10 +72,10 @@ def test_atom_fdim(extra):
 
 
 def test_bond_fdim(atom_messages, extra):
-    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages= not atom_messages)
+    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages=not atom_messages)
 
     if atom_messages:
-        assert mf.bond_fdim == len(mf.bond_featurizer) + extra 
+        assert mf.bond_fdim == len(mf.bond_featurizer) + extra
     else:
         assert mf.bond_fdim == len(mf.bond_featurizer) + extra + mf.atom_fdim
 
@@ -102,7 +102,7 @@ def test_X_e_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph
 def test_x2y_len(mol: Chem.Mol, mg: MolGraph):
     n_a = mol.GetNumAtoms()
     n_b = mol.GetNumBonds()
-    
+
     assert len(mg.a2b) == n_a
     assert len(mg.b2a) == 2 * n_b
     assert len(mg.b2revb) == 2 * n_b
@@ -157,7 +157,7 @@ def test_bond_extra(mol, extra, bond_features_extra):
 
 
 def test_atom_bond_extra(mol, extra, atom_features_extra, bond_features_extra):
-    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages = True)
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages=True)
     mg = mf(mol, atom_features_extra, bond_features_extra)
 
     assert mg.E.shape == (
