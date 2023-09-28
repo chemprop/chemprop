@@ -428,8 +428,8 @@ Attributes
 
    .. py:method:: training_step(batch, batch_idx)
 
-      Here you compute and return the training loss and some additional metrics for e.g.
-      the progress bar or logger.
+      Here you compute and return the training loss and some additional metrics for e.g. the progress bar or
+      logger.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`. A tensor, tuple or list.
       :type batch: :class:`~torch.Tensor` | (:class:`~torch.Tensor`, ...) | [:class:`~torch.Tensor`, ...]
@@ -482,8 +482,8 @@ Attributes
 
    .. py:method:: validation_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the validation set.
-      In this step you'd might generate examples or calculate anything of interest like accuracy.
+      Operates on a single batch of data from the validation set. In this step you'd might generate examples or
+      calculate anything of interest like accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -550,9 +550,8 @@ Attributes
 
    .. py:method:: test_step(batch, batch_idx = 0)
 
-      Operates on a single batch of data from the test set.
-      In this step you'd normally generate examples or calculate anything of interest
-      such as accuracy.
+      Operates on a single batch of data from the test set. In this step you'd normally generate examples or
+      calculate anything of interest such as accuracy.
 
       :param batch: The output of your :class:`~torch.utils.data.DataLoader`.
       :param batch_idx: The index of this batch.
@@ -639,9 +638,9 @@ Attributes
 
    .. py:method:: configure_optimizers()
 
-      Choose what optimizers and learning-rate schedulers to use in your optimization.
-      Normally you'd need one. But in the case of GANs or similar you might have multiple.
-      Optimization with multiple optimizers only works in the manual optimization mode.
+      Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one.
+      But in the case of GANs or similar you might have multiple. Optimization with multiple optimizers only works in
+      the manual optimization mode.
 
       :returns: Any of these 6 options.
 
