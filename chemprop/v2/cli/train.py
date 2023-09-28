@@ -566,7 +566,7 @@ def main(args):
         else:
             train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
     else:
-        raise ArgumentError("'val_path' must be specified is 'test_path' is provided!")
+        raise ArgumentError("'val_path' must be specified if 'test_path' is provided!") # In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
