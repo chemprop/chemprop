@@ -223,16 +223,16 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Indicates which function to use in dataset_type spectra training to constrain outputs to be positive.",
     )
 
-    # data_args = parser.add_argument_group("input data parsing args")
+    data_args = parser.add_argument_group("input data parsing args")
     # data_args is added in add_common_args()
     data_args.add_argument(
         "--target-columns",
-        type=list[str],
+        type=list,
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     data_args.add_argument(
         "--ignore-columns",
-        type=list[str],
+        type=list,
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
    
@@ -317,7 +317,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument("--test-atom-features-path") # to do: find what these were in v1 or if they were new in v2
+    data_args.add_argument("--test-atom-features-path") # to do: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
@@ -418,7 +418,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--split",
         "--split-type",
         default="random",
-        choices=['random', 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'],
+        choices=['random', 'scaffold'],#'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'],
         help="Method of splitting the data into train/val/test.",
     )
     split_args.add_argument(
@@ -518,7 +518,7 @@ def main(args):
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
-        explicit_h=args.explicit_h,
+        keep_h=args.keep_h,
         add_h=args.add_h,
         reaction=0 in args.rxn_idxs, # to do: check if this is correct
     )

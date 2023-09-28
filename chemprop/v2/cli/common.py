@@ -42,14 +42,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-s",
         "--smiles-columns",
         type=list,
-        # to do: make sure default is coded correctly
-        help="List of names of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
+        help="List of names or numbers (0-indexed) of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
     )
     data_args.add_argument(
         "--number-of-molecules",
         type=int,
         default=1,
-        help="Number of molecules in each input to the model. This must equal the length of :code:`smiles_columns` (if not :code:`None`).",
+        help="Number of molecules in each input to the model. This is overwritten by the length of :code:`smiles_columns` (if not :code:`None`).",
     )
     # to do: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -224,6 +223,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 def process_common_args(args: Namespace) -> Namespace:
+    args.input = Path(args.input)
     args.smiles_columns = (args.smiles_columns or list(range(args.number_of_molecules)))
     return args
 
