@@ -36,7 +36,7 @@ jobs:
     - name: Test with pytest
       shell: bash -l {0}
       run: |
-        pytest -v chemprop\v2\test
+        pytest -v chemprop/v2/test
     - name: Lint with flake8  #move this back before the tests after v2 development is done
       shell: bash -l {0}
       run: |
