@@ -1,11 +1,11 @@
 import pytest
 
-from chemprop.v2.featurizers.multihot import MultiHotFeaturizer
+from chemprop.v2.featurizers.utils import MultiHotFeaturizerMixin
 
 
 def test_abc():
     with pytest.raises(TypeError):
-        MultiHotFeaturizer()
+        MultiHotFeaturizerMixin()
 
 
 @pytest.mark.parametrize(
@@ -19,4 +19,4 @@ def test_abc():
     ],
 )
 def test_one_hot_index(x, xs, i_expected):
-    assert MultiHotFeaturizer.one_hot_index(x, xs)[0] == i_expected
+    assert MultiHotFeaturizerMixin.one_hot_index(x, xs)[0] == i_expected

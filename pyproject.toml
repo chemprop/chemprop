@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chemprop"
 description = "Molecular Property Prediction with Message Passing Neural Networks"
-version = "1.5.1"
+version = "2.0.0a0"
 authors = [
     {name = "David Graff"},
     {name = "Kevin Greenman"},
@@ -29,7 +29,7 @@ keywords = [
     "machine learning",
     "property prediction",
     "message passing neural network",
-    "graph neural networtk"
+    "graph neural network"
 ]
 requires-python = ">=3.11"
 dependencies = [
@@ -40,6 +40,7 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "torch >= 2.0",
+    "astartes[molecules]",
 ]
 
 [project.optional-dependencies]
@@ -55,9 +56,6 @@ demo = "http://chemprop.csail.mit.edu/"
 
 [project.scripts]
 chemprop = "chemprop.v2.cli.main:main"
-
-[tool.setuptools_scm]
-write_to = "chemprop/_version.py"
 
 [tool.black]
 line-length = 100
