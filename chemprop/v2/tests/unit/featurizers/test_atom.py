@@ -83,11 +83,6 @@ def x(featurizer, atom):
 def test_len(featurizer, expected_len):
     assert len(featurizer) == expected_len
 
-
-def test_num_subfeatures():
-    assert AtomFeaturizer().num_subfeatures == 8
-
-
 def test_none(featurizer):
     np.testing.assert_array_equal(featurizer(None), np.zeros(len(featurizer)))
 
@@ -101,16 +96,16 @@ def test_atomic_num_bit(atom, x, max_atomic_num):
         assert x[n - 1] == 1
 
 
-def test_aromatic_bit(featurizer, x, aromatic):
-    i = featurizer.subfeatures["aromatic"].start
+def test_aromatic_bit(x, aromatic):
+    i = -2
     if aromatic:
         assert x[i] == 1
     else:
         assert x[i] == 0
 
 
-def test_mass_bit(featurizer, x, mass_bit):
-    assert x[featurizer.subfeatures["mass"].start] == pytest.approx(mass_bit)
+def test_mass_bit(x, mass_bit):
+    assert x[-1] == pytest.approx(mass_bit)
 
 
 @pytest.mark.parametrize(

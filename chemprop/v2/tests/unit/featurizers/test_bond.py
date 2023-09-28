@@ -42,7 +42,7 @@ def bt_bit(bond, bond_types, featurizer):
     if i == -1:
         return i
 
-    return range(len(featurizer))[featurizer.subfeatures["bond_type"].start + i]
+    return featurizer.one_hot_index(bt, featurizer.bond_types)[0] + 1
 
 
 @pytest.fixture
@@ -65,9 +65,8 @@ def test_bt_bit(x, bt_bit):
     assert x[bt_bit] == 1
 
 
-def test_conj_bit(featurizer, x, bond):
-    conj_bit = featurizer.subfeatures["conjugated"].start
-
+def test_conj_bit(featurizer, bond, x):
+    conj_bit = 1 + len(featurizer.bond_types)
     assert x[conj_bit] == int(bond.GetIsConjugated())
 
 
