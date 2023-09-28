@@ -1,18 +1,15 @@
 """Chemprop unit tests for chemprop/data/utils.py"""
-from unittest import TestCase
-
 from chemprop.v2.data.datasets import MoleculeDataset
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.data.utils import split_data
 
 
-class TestSplitData(TestCase):
+class TestSplitData:
     """
     Testing of the split_data function.
     """
 
-    # Testing currently covers random and random_with_repeated_smiles
-    def setUp(self):
+    def setup_class(self):
         smiles_list = [
             ["C", "CC"],
             ["CC", "CCC"],
