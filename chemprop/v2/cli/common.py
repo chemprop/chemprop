@@ -2,6 +2,7 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+import csv
 import warnings
 
 from lightning import pytorch as pl
@@ -18,7 +19,7 @@ from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
-from chemprop.v2.cli.utils import Subcommand, RegistryAction
+from chemprop.v2.cli.utils import RegistryAction, column_str_to_int
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
@@ -66,6 +67,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint-paths",
         type=list[str],
         help="List of paths to model checkpoints (:code:`.pt` files).",
+    )
+    # to do: Is this a prediction only argument?
+    parser.add_argument(
+        "--checkpoint",
+        help="""Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found.
+        If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded."""
     )
     data_args.add_argument(
         "--no-cuda",
@@ -224,7 +231,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_common_args(args: Namespace) -> Namespace:
     args.input = Path(args.input)
+    with open(args.input) as f:
+            args.header = next(csv.reader(f))
+    # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
     args.smiles_columns = (args.smiles_columns or list(range(args.number_of_molecules)))
+    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
+    args.number_of_molecules = len(args.smiles_columns) # Does nothing if smiles_columns was not specified
+    
     return args
 
 def validate_common_args(args):

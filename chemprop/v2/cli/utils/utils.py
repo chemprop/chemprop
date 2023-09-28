@@ -75,3 +75,14 @@ def validate_loss_function(
                 f"Unknown readout function! got: {readout_ffn}. "
                 f"Expected one of: {tuple(readout.ReadoutRegistry.values())}"
             )
+
+def column_str_to_int(
+    columns: list,
+    header: list,
+    ) -> list:
+    if columns is None:
+        return None
+    if type(columns[0]) == str:
+        columns = [i for i,e in enumerate(header) if e in columns]
+    assert type(columns[0]) == int
+    return columns

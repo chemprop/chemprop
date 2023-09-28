@@ -105,7 +105,7 @@ def make_datapoints(
     bond_features: Optional[np.ndarray],
     atom_descriptors: Optional[np.ndarray],
     features_generators: Optional[str],
-    explicit_h: bool,
+    keep_h: bool,
     add_h: bool,
     reaction: bool,
 ) -> list[_DatapointMixin]:
@@ -129,7 +129,7 @@ def make_datapoints(
                 next(featuress),
                 features_generators,
                 None,
-                explicit_h,
+                keep_h,
                 add_h,
             )
             for i in range(len(rxns))

@@ -24,7 +24,9 @@ from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
-from chemprop.v2.cli.common import add_common_args
+from chemprop.v2.cli.utils import CHK_DIR, column_str_to_int
+
+from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,10 @@ class TrainSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
-        process_args(args)
-        validate_args(args)
+        args = process_common_args(args)
+        validate_common_args(args)
+        args = process_train_args(args)
+        validate_train_args(args)
         main(args)
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
@@ -486,26 +490,29 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     return parser
 
-def process_args(args: Namespace):
-    args.input = Path(args.input)
+def process_train_args(args: Namespace) -> Namespace:
     args.output_dir = Path(args.output_dir or Path.cwd() / args.input.stem)
-    args.logdir = Path(args.logdir or args.output_dir / "logs")
-
     args.output_dir.mkdir(exist_ok=True, parents=True)
-    args.logdir.mkdir(exist_ok=True, parents=True)
+    
+    args.ignore_columns = column_str_to_int(args.ignore_columns, args.header)
+    args.target_columns = column_str_to_int(args.target_columns, args.header)
 
+    if args.target_columns is None:
+        ignore_columns = set(args.smiles_columns + ([] if args.ignore_columns is None else args.ignore_columns))
+        args.target_columns = [i for i in range(len(args.header)) if i not in ignore_columns]
 
-def validate_args(args):
+    return args
+
+def validate_train_args(args):
     pass
 
 
 def main(args):
     bond_messages = not args.atom_messages
-    n_components = len(args.smiles_columns)
     n_tasks = len(args.target_columns)
     bounded = args.loss_function is not None and "bounded" in args.loss_function
 
-    if n_components > 1:
+    if args.number_of_molecules > 1:
         warnings.warn(
             "Multicomponent input is not supported at this time! Using only the 1st input..."
         )
