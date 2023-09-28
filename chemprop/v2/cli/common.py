@@ -36,12 +36,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         required=True,
         help="Path to and input CSV file containing SMILES, either for training or for making predictions. If training, also contains the associated target values.",
     )
-    parser.add_argument(
-        "--logdir",
-        nargs="?",
-        const="chemprop_logs",
-        help="runs will be logged to {logdir}/chemprop_{time}.log. If unspecified, will use 'save_dir'. If only the flag is given (i.e., '--logdir'), then will write to 'chemprop_logs'",
-    )
 
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
@@ -139,7 +133,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether H are explicitly specified in input (and should be kept this way). This option is intended to be used with the :code:`reaction` or :code:`reaction_solvent` options, and applies only to the reaction part.",
     )
     featurization_args.add_argument(
-        "--adding-h", 
+        "--add-h", 
         action="store_true",
         help="Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.",
     )

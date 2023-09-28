@@ -150,7 +150,6 @@ def process_args(args: Namespace):
         args.output = Path(args.input.with_name(name))
     else:
         args.output = Path(args.output)
-    args.logdir = Path(args.logdir ) # or args.output_dir / "logs") # I don't think predictions have an output_dir because the output is a file.
 
     #args.output_dir.mkdir(exist_ok=True, parents=True) 
     args.logdir.mkdir(exist_ok=True, parents=True)
@@ -176,7 +175,7 @@ def main(args):
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
-        explicit_h=args.explicit_h,
+        keep_h=args.keep_h,
         add_h=args.add_h,
         reaction=0 in args.rxn_idxs,
     )

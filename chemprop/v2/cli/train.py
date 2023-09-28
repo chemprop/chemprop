@@ -50,8 +50,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         type=str,
-        required=True,
-        help="Directory where model checkpoints will be saved.",
+        help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
     )
     # to do: see if we can tell lightning how often to log training loss
     parser.add_argument(
@@ -75,13 +74,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--freeze-first-only",
         action="store_true",
         help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
-    )
-    # to do: see if it is practical to have a quiet option. Also see if there are even non-essential print statements to quiet.
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        action="store_true",
-        help="Skip non-essential print statements.",
     )
     parser.add_argument(
         "--save-preds",
@@ -159,7 +151,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--aggregation",
         "--agg",
         default="mean",
-        choices=RegistryAction(AggregationRegistry),
+        action=RegistryAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
@@ -362,7 +354,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric"
         "--metrics",
         nargs="+",
-        choices=RegistryAction(MetricRegistry),
+        action=RegistryAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
     train_args.add_argument(
@@ -435,12 +427,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=[0.8, 0.1, 0.1],
         help="Split proportions for train/validation/test sets.",    
     )
-    split_args.add_argument(
-        "--split-key-molecule",
-        type=int,
-        default=0,
-        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
-    )
+    # split_args.add_argument(
+    #     "--split-key-molecule",
+    #     type=int,
+    #     default=0,
+    #     help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
+    # )
     split_args.add_argument(
         "-k", 
         "--num-folds", 
