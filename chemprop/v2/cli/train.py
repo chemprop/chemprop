@@ -691,7 +691,7 @@ def main(args):
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
-    p_model = args.output / "model.pt"
+    p_model = args.output_dir / "model.pt"
     torch.save(model.state_dict(), p_model)
     logger.info(f"model state dict saved to '{p_model}'")
 
