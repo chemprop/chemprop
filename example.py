@@ -8,18 +8,18 @@ from sklearn.model_selection import train_test_split
 
 from chemprop.v2 import data
 from chemprop.v2 import featurizers
-from chemprop.v2.models import loss, nn, models, metrics
+from chemprop.v2.models import nn, model, metrics
 
 parser = ArgumentParser()
-parser.add_argument('input', default='./data/lipo.csv')
+parser.add_argument('-i', '--input', default='./data/lipo.csv')
 parser.add_argument('-c', '--num-workers', type=int, default=4)
 args = parser.parse_args()
 
 featurizer = featurizers.MoleculeMolGraphFeaturizer()
-mp = nn.BondMessageBlock()
+mp = nn.BondMessagePassing()
 agg = nn.MeanAggregation()
 ffn = nn.RegressionFFN()
-mpnn = models.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
+mpnn = model.MPNN(mp, agg, ffn, True, [metrics.RMSEMetric()])
 
 print(mpnn)
 
@@ -41,7 +41,7 @@ val_dset.normalize_targets(scaler)
 test_dset = data.MoleculeDataset(test_data, featurizer)
 test_dset.normalize_targets(scaler)
 
-train_loader = data.MolGraphDataLoader(train_dset, num_workers=args.num_workers)
+train_loader = data.MolGraphDataLoader(train_dset, num_workers=args.num_workers, shuffle=True)
 val_loader = data.MolGraphDataLoader(val_dset, num_workers=args.num_workers, shuffle=False)
 test_loader = data.MolGraphDataLoader(test_dset, num_workers=args.num_workers, shuffle=False)
 
@@ -49,7 +49,7 @@ trainer = pl.Trainer(
     logger=False,
     enable_checkpointing=False,
     enable_progress_bar=True,
-    accelerator="auto",
+    accelerator="cpu",
     devices=1,
     max_epochs=20,
 )
