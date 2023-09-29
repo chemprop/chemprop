@@ -42,18 +42,8 @@ class MulticomponentMPNN(MPNN):
         self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
     ) -> Tensor:
         H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
-        H = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]
+        Hs = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]
+        H = torch.cat(Hs, 1)
+        H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)
-
-    def encoding(
-        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
-    ) -> Tensor:
-        """Calculate the encoding (i.e., final hidden representation) for the input molecules"""
-        return self.ffn[:-1](self.fingerprint(bmgs, V_ds, X_f))
-
-    def forward(
-        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
-    ) -> Tensor:
-        """Generate predictions for the input molecules/reactions"""
-        return self.transform(self.ffn(self.fingerprint(bmgs, V_ds, X_f)))
