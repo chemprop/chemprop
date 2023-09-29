@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDatapoint
-#from chemprop.featurizers.features_generators import get_available_features_generators
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+from chemprop.v2.utils.registry import Factory
+
 
 @pytest.fixture(
     params=[
@@ -52,7 +53,7 @@ def features_with_nans(features):
 
 @pytest.fixture
 def features_generators():
-    return MoleculeFeaturizerRegistry.keys()
+    return [Factory.build(featurizer) for featurizer in MoleculeFeaturizerRegistry.values()]
 
 
 def test_features_and_fg(features_generators):
