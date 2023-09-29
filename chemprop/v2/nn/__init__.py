@@ -1,4 +1,4 @@
 from .agg import *
-from .conv import *
+from .message_passing import *
 from .readout import *
 from .loss import *
