@@ -3,7 +3,7 @@ from typing import Protocol
 
 from torch import nn, Tensor
 
-from chemprop.v2.models.utils import get_activation_function
+from chemprop.v2.nn.utils import get_activation_function
 
 
 class _FFNProto(Protocol):

@@ -1,4 +1,4 @@
-from typing import Protocol, Type, TypedDict, TypeVar
+from typing import Protocol, Type, TypedDict
 
 
 class HParamsDict(TypedDict):
@@ -30,7 +30,7 @@ class HasHParams(Protocol):
 
 
 def from_hparams(hparams: HParamsDict):
-    cls= hparams['cls']
+    cls = hparams['cls']
     kwargs = {k: v for k, v in hparams.items() if k != "cls"}
 
     return cls(**kwargs)
