@@ -96,12 +96,12 @@ def test_num_tasks(dataset, targets):
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert dataset.X_f is None
-    assert dataset.X_phase is None
-    assert dataset.V_fs is None
-    assert dataset.E_fs is None
-    assert dataset.gt_mask is None
-    assert dataset.lt_mask is None
-    assert dataset.d_v is None
+    assert (dataset.X_f == None).all()
+    # assert dataset.X_phase is None # there's no attribute in dataset that is relevant to phase?
+    assert (dataset.V_fs == None).all()
+    assert (dataset.E_fs == None).all()
+    assert (dataset.gt_mask == None).all()
+    assert (dataset.lt_mask == None).all()
+    assert dataset.d_vd is None
     assert dataset.d_vf is None
     assert dataset.d_ef is None
