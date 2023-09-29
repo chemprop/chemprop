@@ -74,7 +74,7 @@ def test_addh(smi, targets):
     d1 = MoleculeDatapoint.from_smi(smi, y=targets)
     d2 = MoleculeDatapoint.from_smi(smi, y=targets, add_h=True)
 
-    assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms
+    assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms()
 
 
 def test_replace_token(smi, targets, features_with_nans):
