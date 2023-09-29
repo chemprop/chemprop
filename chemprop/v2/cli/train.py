@@ -156,7 +156,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--activation",
         default="relu",
-        choices=['relu', 'leakyrelu', 'prelu', 'tanh', 'selu', 'elu'], # TODO: should these be lowercase?
+        choices=['relu', 'leakyrelu', 'prelu', 'tanh', 'selu', 'elu'],  # TODO: should these be lowercase?
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
@@ -597,12 +597,12 @@ def main(args):
     mp_block = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
-        args.message_hidden_dim,
-        args.message_bias,
-        args.depth,
-        args.undirected,
-        args.dropout,
-        args.activation,
+        d_h=args.message_hidden_dim,
+        bias=args.message_bias,
+        depth=args.depth,
+        undirected=args.undirected,
+        dropout=args.dropout,
+        activation=args.activation,
     )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.norm)
     readout_cls = ReadoutRegistry[args.readout]
