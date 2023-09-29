@@ -56,7 +56,7 @@ def targets(smis):
 
 @pytest.fixture
 def data(smis, targets):
-    return [MoleculeDatapoint(smi, t) for smi, t in zip(smis, targets)]
+    return [MoleculeDatapoint.from_smi(smi, t) for smi, t in zip(smis, targets)]
 
 
 @pytest.fixture
