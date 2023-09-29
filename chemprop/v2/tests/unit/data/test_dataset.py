@@ -83,16 +83,16 @@ def test_smis(dataset, smis):
 
 
 def test_targets(dataset, targets):
-    np.testing.assert_array_equal(dataset.targets, targets)
+    np.testing.assert_array_equal(dataset.Y, targets)
 
 
 def test_set_targets_too_short(dataset):
     with pytest.raises(ValueError):
-        dataset.targets = np.random.rand(len(dataset) // 2, 1)
+        dataset.Y = np.random.rand(len(dataset) // 2, 1)
 
 
 def test_num_tasks(dataset, targets):
-    assert dataset.num_tasks == targets.shape[1]
+    assert dataset.t == targets.shape[1]
 
 
 def test_aux_nones(dataset: MoleculeDataset):
