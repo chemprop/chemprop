@@ -59,6 +59,7 @@ class MolGraphDataLoader(DataLoader):
         class_balance: bool = False,
         seed: int | None = None,
         shuffle: bool = True,
+        **kwargs,
     ):
         self.dset = dataset
         self.class_balance = class_balance
@@ -78,6 +79,7 @@ class MolGraphDataLoader(DataLoader):
             self.sampler,
             num_workers=num_workers,
             collate_fn=collate_batch,
+            **kwargs,
         )
 
     # @property

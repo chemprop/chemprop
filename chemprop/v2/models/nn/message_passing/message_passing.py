@@ -107,11 +107,11 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
     @abstractmethod
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        pass
+        """initialize the message passing scheme by calculating initial matrix of hidden features"""
 
     @abstractmethod
-    def message(self, H_t: Tensor, edge_index: Tensor, rev_edge_index: Tensor):
-        pass
+    def message(self, H_t: Tensor, bmg: BatchMolGraph):
+        """Calculate the aggregated message matrix"""
 
     def update(self, M_t, H_0):
         H_t = self.W_h(M_t)
@@ -191,7 +191,6 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
             a tensor of shape ``b x d_h`` or ``b x (d_h + d_vd)`` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
-        # import pdb; pdb.set_trace()
         H_0 = self.initialize(bmg)
 
         H = self.tau(H_0)
@@ -201,12 +200,8 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
             M = self.message(H, bmg)
             H = self.update(M, H_0)
-        try:
-            M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
-        except:
-            import pdb; pdb.set_trace()
-            raise
 
+        M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
         return self.finalize(M, bmg.V, V_d)
 
 

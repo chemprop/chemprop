@@ -96,12 +96,12 @@ class NormAggregation(SumAggregation):
 
 
 class AttentiveAggregation(Aggregation):
-    def __init__(self, dim: int = 0, *args, d_h: int, **kwargs):
+    def __init__(self, dim: int = 0, *args, output_size: int, **kwargs):
         super().__init__(dim, *args, **kwargs)
 
-        self.A = nn.Linear(d_h, 1)
+        self.W = nn.Linear(output_size, 1)
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        alphas = scatter_softmax(self.A(H), batch, self.dim)
+        alphas = scatter_softmax(self.W(H), batch, self.dim)
 
         return scatter(alphas * H, batch, self.dim, reduce="sum")
