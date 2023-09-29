@@ -3,15 +3,16 @@ from abc import abstractmethod
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
 from torch import Tensor, nn
+from torch_scatter import scatter_sum
 
 from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
 from chemprop.v2.models.utils import Activation, get_activation_function
-from chemprop.v2.models.nn.conv.base import MessagePassingBlock
+from chemprop.v2.models.nn.conv.base import MessagePassing
 
 
-class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
+class MessagePassingBase(MessagePassing, HyperparametersMixin):
     """The base message-passing block for atom- and bond-based message-passing schemes
 
     NOTE: this class is an abstract base class and cannot be instantiated
@@ -39,9 +40,9 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
 
     See also
     --------
-    * :class:`AtomMessageBlock`
+    * :class:`AtomMessagePassing`
 
-    * :class:`BondMessageBlock`
+    * :class:`BondMessagePassing`
     """
 
     def __init__(
@@ -61,7 +62,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         self.save_hyperparameters()
         self.hparams['cls'] = self.__class__
         
-        self.W_i, self.W_h, self.W_o, self.W_d = self.build(d_v, d_e, d_h, d_vd, bias)
+        self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
@@ -71,26 +72,41 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
     def output_dim(self) -> int:
         return self.W_d.out_features if self.W_d is not None else self.W_o.out_features
 
-    def finalize(self, M_v: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
-        r"""Finalize message passing by (1) concatenating the final hidden representations `H_v`
-        and the original vertex ``V`` and (2) further concatenating additional vertex descriptors
-        ``V_d``, if provided.
+    @abstractmethod
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        pass
+
+    @abstractmethod
+    def message(self, H_t: Tensor, edge_index: Tensor, rev_edge_index: Tensor):
+        pass
+
+    def update(self, M_t, H_0):
+        H_t = self.W_h(M_t)
+        H_t = self.tau(H_0 + H_t)
+        H_t = self.dropout(H_t)
+        
+        return H_t
+
+    def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
+        r"""Finalize message passing by (1) concatenating the final message ``M`` and the original
+        vertex features ``V`` and (2) if provided, further concatenating additional vertex
+        descriptors ``V_d``.
 
         This function implements the following operation:
 
         .. math::
-            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M_v)) \right) \\
-            H_v &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H_v \mathbin\Vert V_d)) \right),
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M)) \right) \\
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H \mathbin\Vert V_d)) \right),
 
         where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
-        :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M_v` is
+        :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M` is
         the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
         optional vertex descriptor matrix.
 
         Parameters
         ----------
-        M_v : Tensor
-            a tensor of shape ``V x d_h`` containing the messages sent from each atom
+        M : Tensor
+            a tensor of shape ``V x d_h`` containing the message vector of each vertex
         V : Tensor
             a tensor of shape ``V x d_v`` containing the original vertex features
         V_d : Tensor | None
@@ -108,22 +124,22 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
             if ``V_d`` is not of shape ``b x d_vd``, where ``b`` is the batch size and ``d_vd`` is
             the vertex descriptor dimension
         """
-        H_v = self.W_o(torch.cat((V, M_v), 1))  # V x d_o
-        H_v = self.tau(H_v)
-        H_v = self.dropout(H_v)
+        H = self.W_o(torch.cat((V, M), 1))  # V x d_o
+        H = self.tau(H)
+        H = self.dropout(H)
 
         if V_d is not None:
             try:
-                H_vd = torch.cat((H_v, V_d), 1)  # V x (d_o + d_vd)
-                H_v = self.W_d(H_vd)  # V x (d_o + d_vd)
-                H_v = self.dropout(H_v)
+                H_vd = torch.cat((H, V_d), 1)  # V x (d_o + d_vd)
+                H = self.W_d(H_vd)  # V x (d_o + d_vd)
+                H = self.dropout(H)
             except RuntimeError:
-                raise InvalidShapeError("V_d", V_d.shape, [len(H_v), self.W_d.in_features])
+                raise InvalidShapeError("V_d", V_d.shape, [len(H), self.W_d.in_features])
 
-        return H_v
+        return H
 
     @abstractmethod
-    def build(
+    def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
         d_e: int = DEFAULT_BOND_FDIM,
@@ -131,7 +147,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         d_vd: int | None = None,
         bias: bool = False,
     ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
-        """construct the weight matrices used in the message passing update functions
+        """setup the weight matrices used in the message passing update functions
 
         Parameters
         ----------
@@ -155,7 +171,6 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
             dimension is supplied
         """
 
-    @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         """Encode a batch of molecular graphs.
 
@@ -176,10 +191,23 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
             a tensor of shape ``b x d_h`` or ``b x (d_h + d_vd)`` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
+        # import pdb; pdb.set_trace()
+        H_0 = self.initialize(bmg)
+
+        H = self.tau(H_0)
+        for _ in range(1, self.depth):
+            if self.undirected:
+                H = (H + H[bmg.rev_edge_index]) / 2
+
+            M = self.message(H, bmg)
+            H = self.update(M, H_0)
+        M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
+
+        return self.finalize(M, bmg.V, V_d)
 
 
-class BondMessageBlock(MessagePassingBlockBase):
-    r"""A :class:`BondMessageBlock` encodes a batch of molecular graphs by passing messages along
+class BondMessagePassing(MessagePassingBase):
+    r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
     
     It implements the following operation:
@@ -201,7 +229,7 @@ class BondMessageBlock(MessagePassingBlockBase):
     message passing iterations.
     """
 
-    def build(
+    def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
         d_e: int = DEFAULT_BOND_FDIM,
@@ -216,32 +244,21 @@ class BondMessageBlock(MessagePassingBlockBase):
 
         return W_i, W_h, W_o, W_d
 
-    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        H_0 = self.W_i(bmg.E)
-        H_e = self.tau(H_0)
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return self.W_i(bmg.E)
 
-        for _ in range(1, self.depth):
-            if self.undirected:
-                H_e = (H_e + H_e[bmg.b2revb]) / 2
-
-            # MESSAGE
-            M_e_k = H_e[bmg.a2b]  # E x n_bonds x d_h
-            M_e = M_e_k.sum(1)[bmg.b2a]  # E x d_h
-            M_e = M_e - H_e[bmg.b2revb]  # subtract reverse bond message
-
-            # UPDATE
-            H_e = self.W_h(M_e)  # E x d_h
-            H_e = self.tau(H_0 + H_e)
-            H_e = self.dropout(H_e)
-
-        M_v_k = H_e[bmg.a2b]
-        M_v = M_v_k.sum(1)  # V x d_h
-
-        return self.finalize(M_v, bmg.V, V_d)
+    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        try:
+            M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
+            M_rev = H[bmg.rev_edge_index]
+        except:
+            import pdb; pdb.set_trace()
+            raise
+        return M_all - M_rev
 
 
-class AtomMessageBlock(MessagePassingBlockBase):
-    r"""A :class:`AtomMessageBlock` encodes a batch of molecular graphs by passing messages along
+class AtomMessagePassing(MessagePassingBase):
+    r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
     
     It implements the following operation:
@@ -261,7 +278,7 @@ class AtomMessageBlock(MessagePassingBlockBase):
     :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
     :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
     """
-    def build(
+    def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
         d_e: int = DEFAULT_BOND_FDIM,
@@ -275,25 +292,11 @@ class AtomMessageBlock(MessagePassingBlockBase):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
         return W_i, W_h, W_o, W_d
+    
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return self.W_i(bmg.V[bmg.edge_index[0]])
 
-    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        H_0 = self.W_i(bmg.V)  # V x d_h
-        H_v = self.tau(H_0)
-
-        for _ in range(1, self.depth):
-            if self.undirected:
-                H_v = (H_v + H_v[bmg.b2revb]) / 2
-
-            # MESSAGE
-            M_v_k = torch.cat((H_v[bmg.a2a], bmg.E[bmg.a2b]), 2)  # V x b x (d_h + d_e)
-            M_v = M_v_k.sum(1)  # V x d_h + d_e
-
-            # UPDATE
-            H_v = self.W_h(M_v)  # E x d_h
-            H_v = self.tau(H_0 + H_v)
-            H_v = self.dropout(H_v)
-
-        M_v_k = H_v[bmg.a2a]
-        M_v = M_v_k.sum(1)  # V x d_h
-
-        return self.finalize(M_v, bmg.V, V_d)
+    def message(self, H: Tensor, bmg: BatchMolGraph):
+        H = torch.cat((H, bmg.E), 1)
+        
+        return scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]

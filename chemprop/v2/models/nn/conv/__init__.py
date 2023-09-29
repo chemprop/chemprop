@@ -1,3 +1,3 @@
-from .base import MessagePassingBlock
-from .molecule import MessagePassingBlockBase, AtomMessageBlock, BondMessageBlock
+from .base import MessagePassing
+from .message_passing import MessagePassingBase, AtomMessagePassing, BondMessagePassing
 from .multi import MulticomponentMessagePassing

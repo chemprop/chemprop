@@ -32,6 +32,6 @@ class MessagePassingProto(Protocol):
         """
 
 
-class MessagePassingBlock(nn.Module, MessagePassingProto, HasHParams):
-    """A :class:`MessagePassingBlock` is encodes a batch of molecular graphs using message passing
+class MessagePassing(nn.Module, MessagePassingProto, HasHParams):
+    """A :class:`MessagePassing` is encodes a batch of molecular graphs using message passing
     to learn vertex-level hidden representations."""

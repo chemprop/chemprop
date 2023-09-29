@@ -1,9 +1,9 @@
 from .nn import (
-    MessagePassingBlock,
-    MessagePassingBlockBase,
+    MessagePassing,
+    MessagePassingBase,
     MulticomponentMessagePassing,
-    AtomMessageBlock,
-    BondMessageBlock,
+    AtomMessagePassing,
+    BondMessagePassing,
 )
 from .model import MPNN
 from .loss import LossFunction
