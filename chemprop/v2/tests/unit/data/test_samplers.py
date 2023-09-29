@@ -71,18 +71,18 @@ def class_sampler(smis, targets, featurizer):
 
 def test_seeded_no_seed(dataset):
     with pytest.raises(ValueError):
-        SeededSampler(dataset, None)
+        SeededSampler(len(dataset), None)
 
 
 def test_seeded_shuffle(dataset, seed):
-    sampler = SeededSampler(dataset, seed)
+    sampler = SeededSampler(len(dataset), seed)
 
     assert list(sampler) != list(sampler)
 
 
 def test_seeded_fixed_shuffle(dataset, seed):
-    sampler1 = SeededSampler(dataset, seed)
-    sampler2 = SeededSampler(dataset, seed)
+    sampler1 = SeededSampler(len(dataset), seed)
+    sampler2 = SeededSampler(len(dataset), seed)
 
     idxs1 = list(sampler1)
     idxs2 = list(sampler2)
