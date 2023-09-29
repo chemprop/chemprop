@@ -134,7 +134,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--message-hidden-dim", type=int, default=300, help="hidden dimension of the messages"
     )
     mp_args.add_argument(
-        "--bias", action="store_true", help="add bias to the message passing layers"
+        "--message-bias", action="store_true", help="add bias to the message passing layers"
     )
     mp_args.add_argument(
         "--depth", type=int, default=3, help="Number of message passing steps."
@@ -198,10 +198,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     ffn_args = parser.add_argument_group("FFN args")
-    ffn_args.add_argument( # TODO: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
+    ffn_args.add_argument(  # TODO: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
         "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
     )
-    ffn_args.add_argument( # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
+    ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
         "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
     )
     ffn_args.add_argument(
