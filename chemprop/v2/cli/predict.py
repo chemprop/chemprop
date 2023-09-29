@@ -45,7 +45,14 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-o", 
+        "-i",
+        "--test-path",
+        type=str,
+        required=True,
+        help="Path to an input CSV file containing SMILES.",
+    )
+    parser.add_argument(
+        "-o",
         "--output",
         "--preds-path",
         type=str,

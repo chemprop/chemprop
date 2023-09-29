@@ -1,6 +1,7 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
+import csv
 import sys
 import warnings
 
@@ -49,6 +50,13 @@ class TrainSubcommand(Subcommand):
         main(args)
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
+    parser.add_argument(
+        "-i",
+        "--data-path",
+        type=str,
+        required=True,
+        help="Path to an input CSV file containing SMILES and the associated target values.",
+    )
     parser.add_argument(
         "-o",
         "--output-dir",
@@ -100,7 +108,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of models in ensemble.",
     )
-    parser.add_argument( # TODO: It looks like `reaction` is set later in main() based on rxn-idxs. Is that correct and do we need this argument?
+    parser.add_argument(  # TODO: It looks like `reaction` is set later in main() based on rxn-idxs. Is that correct and do we need this argument?
         "--reaction",
         action="store_true",
         help="Whether to adjust MPNN layer to take reactions as input instead of molecules.", 
@@ -259,7 +267,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--val-path",
+        "--separate-val-path",
         type=str,
         default=None,
         dest="val_path",
@@ -294,7 +302,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
-        "--test-path",
+        "--separate-test-path",
         type=str,
         default=None,
         dest="test_path",
@@ -495,9 +503,18 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.input.stem)
+    args.data_path = Path(args.data_path)
+    with open(args.data_path) as f:
+            args.header = next(csv.reader(f))
+
+    # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
+    args.smiles_columns = (args.smiles_columns or list(range(args.number_of_molecules)))
+    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
+    args.number_of_molecules = len(args.smiles_columns) # Does nothing if smiles_columns was not specified
+
+    args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
     args.output_dir.mkdir(exist_ok=True, parents=True)
-    
+
     args.ignore_columns = column_str_to_int(args.ignore_columns, args.header)
     args.target_columns = column_str_to_int(args.target_columns, args.header)
 
@@ -535,7 +552,7 @@ def main(args):
     )
 
     all_data = build_data_from_files(
-        args.input,
+        args.data_path,
         **format_kwargs,
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
@@ -570,7 +587,7 @@ def main(args):
         else:
             train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
     else:
-        raise ArgumentError("'val_path' must be specified if 'test_path' is provided!") # In v1 this wasn't the case?
+        raise ArgumentError("'val_path' must be specified if 'test_path' is provided!")  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)

@@ -2,7 +2,6 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
-import csv
 import warnings
 
 from lightning import pytorch as pl
@@ -28,16 +27,6 @@ from chemprop.v2.utils.registry import Factory
 logger = logging.getLogger(__name__)
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
-    parser.add_argument(
-        "-i",
-        "--input",
-        "--test-path", # v1 option for predicting
-        "--data-path", # v1 option for training
-        type=str,
-        required=True,
-        help="Path to and input CSV file containing SMILES, either for training or for making predictions. If training, also contains the associated target values.",
-    )
-
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
         "-s",
@@ -229,17 +218,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # TODO: see if we need to add functions from CommonArgs 
     return parser
 
-def process_common_args(args: Namespace) -> Namespace:
-    args.input = Path(args.input)
-    with open(args.input) as f:
-            args.header = next(csv.reader(f))
-    # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
-    args.smiles_columns = (args.smiles_columns or list(range(args.number_of_molecules)))
-    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
-    args.number_of_molecules = len(args.smiles_columns) # Does nothing if smiles_columns was not specified
-    
+def process_common_args(args: Namespace) -> Namespace:    
     return args
 
 def validate_common_args(args):
     pass
-
