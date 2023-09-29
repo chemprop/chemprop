@@ -73,6 +73,39 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
         return self.W_d.out_features if self.W_d is not None else self.W_o.out_features
 
     @abstractmethod
+    def setup(
+        self,
+        d_v: int = DEFAULT_ATOM_FDIM,
+        d_e: int = DEFAULT_BOND_FDIM,
+        d_h: int = DEFAULT_HIDDEN_DIM,
+        d_vd: int | None = None,
+        bias: bool = False,
+    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
+        """setup the weight matrices used in the message passing update functions
+
+        Parameters
+        ----------
+        d_v : int
+            the vertex feature dimension
+        d_e : int
+            the edge feature dimension
+        d_h : int, default=300
+            the hidden dimension during message passing
+        d_vd : int | None, default=None
+            the dimension of additional vertex descriptors that will be concatenated to the hidden
+            features before readout, if any
+        bias: bool, default=False
+            whether to add a learned bias to the matrices
+
+        Returns
+        -------
+        W_i, W_h, W_o, W_d : tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
+            the input, hidden, output, and descriptor weight matrices, respectively, used in the
+            message passing update functions. The descriptor weight matrix is `None` if no vertex
+            dimension is supplied
+        """
+
+    @abstractmethod
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
         pass
 
@@ -138,39 +171,6 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         return H
 
-    @abstractmethod
-    def setup(
-        self,
-        d_v: int = DEFAULT_ATOM_FDIM,
-        d_e: int = DEFAULT_BOND_FDIM,
-        d_h: int = DEFAULT_HIDDEN_DIM,
-        d_vd: int | None = None,
-        bias: bool = False,
-    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
-        """setup the weight matrices used in the message passing update functions
-
-        Parameters
-        ----------
-        d_v : int
-            the vertex feature dimension
-        d_e : int
-            the edge feature dimension
-        d_h : int, default=300
-            the hidden dimension during message passing
-        d_vd : int | None, default=None
-            the dimension of additional vertex descriptors that will be concatenated to the hidden
-            features before readout, if any
-        bias: bool, default=False
-            whether to add a learned bias to the matrices
-
-        Returns
-        -------
-        W_i, W_h, W_o, W_d : tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
-            the input, hidden, output, and descriptor weight matrices, respectively, used in the
-            message passing update functions. The descriptor weight matrix is `None` if no vertex
-            dimension is supplied
-        """
-
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         """Encode a batch of molecular graphs.
 
@@ -201,7 +201,11 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
             M = self.message(H, bmg)
             H = self.update(M, H_0)
-        M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
+        try:
+            M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
+        except:
+            import pdb; pdb.set_trace()
+            raise
 
         return self.finalize(M, bmg.V, V_d)
 
