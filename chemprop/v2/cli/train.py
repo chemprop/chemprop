@@ -619,6 +619,7 @@ def main(args):
         )
         criterion = readout_cls._default_criterion
 
+    print(readout_cls)
     readout_ffn = Factory.build(
         readout_cls,
         input_dim=mp_block.output_dim,
@@ -628,7 +629,7 @@ def main(args):
         dropout=args.dropout,
         activation=args.activation,
         criterion=criterion,
-        num_classes=args.num_classes,
+        n_classes=args.multiclass_num_classes,
         spectral_activation=args.spectral_activation,
     )
 
