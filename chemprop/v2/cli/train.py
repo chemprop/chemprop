@@ -622,7 +622,7 @@ def main(args):
     readout_ffn = Factory.build(
         readout_cls,
         input_dim=mp_block.output_dim,
-        n_tasks=args.n_tasks,
+        n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
