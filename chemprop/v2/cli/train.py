@@ -480,8 +480,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )  # to do: find what these were in v1 or if they were new in v2
     data_args.add_argument("--val-bond-features-path")
 
-    data_args.add_argument(
-        "--separate-test-path", type=str, help="Path to separate test set, optional."
+    featurization_args = parser.add_argument_group("featurization args")
+    featurization_args.add_argument("--rxn-mode", choices=RxnMode.choices, default="reac_diff")
+    featurization_args.add_argument(
+        "--atom-features-path",
+        help="the path to a .npy file containing a _list_ of `N` 2D arrays, where the `i`th array contains the atom features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom features of the `j`th atom in the molecule.",
     )
     data_args.add_argument(
         "--separate-test-features-path",
