@@ -146,21 +146,20 @@ def make_datapoints(
             atom_descriptors = [None] * (len(smis))
 
         data = [
-            MoleculeDatapoint(
+            MoleculeDatapoint.from_smi(
                 smis[i],
-                targetss[i],
-                None,
-                weights[i],
-                gt_targetss[i],
-                lt_targetss[i],
-                featuress[i],
-                features_generators,
-                None,
-                explicit_h,
-                add_h,
-                atom_features[i],
-                bond_features[i],
-                atom_descriptors[i],
+                y=targetss[i],
+                weight=weights[i],
+                gt_mask=gt_targetss[i],
+                lt_mask=lt_targetss[i],
+                x_f=featuress[i],
+                mfs=features_generators,
+                x_phase=None,
+                keep_h=keep_h,
+                add_h=add_h,
+                V_f=atom_features[i],
+                E_f=bond_features[i],
+                V_d=atom_descriptors[i],
             )
             for i in range(len(smis))
         ]
