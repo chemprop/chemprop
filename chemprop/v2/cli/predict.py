@@ -13,7 +13,7 @@ from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry, nn
 from chemprop.v2.featurizers.reaction import RxnMode
-from chemprop.v2.models.loss import LossFunction, build_loss
+from chemprop.v2.nn.loss import LossFunction, build_loss
 
 from chemprop.v2.cli.utils import Subcommand
 from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset

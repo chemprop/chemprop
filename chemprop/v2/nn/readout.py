@@ -5,10 +5,10 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
-from chemprop.v2.models import loss
-from chemprop.v2.models.nn.ffn import SimpleFFN
+from chemprop.v2.nn.loss import *
+from chemprop.v2.nn.ffn import SimpleFFN
 from chemprop.v2.nn.hparams import HasHParams
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.utils import ClassRegistry
 
 ReadoutRegistry = ClassRegistry()
@@ -23,7 +23,7 @@ class _ReadoutProto(Protocol):
     """the number of tasks `t` to predict for each input"""
     n_targets: int
     """the number of targets `s` to predict for each task `t`"""
-    criterion: loss.LossFunction
+    criterion: LossFunction
     """the loss function to use for training"""
 
     def forward(self, Z: Tensor) -> Tensor:
@@ -40,7 +40,7 @@ class Readout(nn.Module, _ReadoutProto, HasHParams):
 class ReadoutFFNBase(Readout, HyperparametersMixin):
     """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
     :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
-    _default_criterion: loss.LossFunction
+    _default_criterion: LossFunction
 
     def __init__(
         self,
@@ -50,7 +50,7 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
         n_layers: int = 1,
         dropout: float = 0,
         activation: str = "relu",
-        criterion: loss.LossFunction | None = None,
+        criterion: LossFunction | None = None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -83,7 +83,7 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
 @ReadoutRegistry.register("regression")
 class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
-    _default_criterion = loss.MSELoss()
+    _default_criterion = MSELoss()
 
     def __init__(self, *args, loc: float | Tensor = 0, scale: float | Tensor = 1, **kwargs):
         super().__init__(*args, **kwargs)
@@ -103,7 +103,7 @@ class RegressionFFN(ReadoutFFNBase):
 @ReadoutRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
-    _default_criterion = loss.MVELoss()
+    _default_criterion = MVELoss()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -125,7 +125,7 @@ class MveFFN(RegressionFFN):
 @ReadoutRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
-    _default_criterion = loss.EvidentialLoss()
+    _default_criterion = EvidentialLoss()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -154,7 +154,7 @@ class BinaryClassificationFFNBase(ReadoutFFNBase):
 @ReadoutRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
-    _default_criterion = loss.BCELoss()
+    _default_criterion = BCELoss()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -168,7 +168,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @ReadoutRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _default_criterion = loss.BinaryDirichletLoss()
+    _default_criterion = BinaryDirichletLoss()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -185,7 +185,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 @ReadoutRegistry.register("multiclass")
 class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
-    _default_criterion = loss.CrossEntropyLoss()
+    _default_criterion = CrossEntropyLoss()
 
     def __init__(self, n_classes: int, n_tasks: int = 1, *args, **kwargs):
         super().__init__(n_tasks * n_classes, *args, **kwargs)
@@ -204,7 +204,7 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
 
 @ReadoutRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _default_criterion = loss.MulticlassDirichletLoss()
+    _default_criterion = MulticlassDirichletLoss()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -231,7 +231,7 @@ class _Exp(nn.Module):
 @ReadoutRegistry.register("spectral")
 class SpectralFFN(ReadoutFFNBase):
     n_targets = 1
-    _default_criterion = loss.SIDLoss()
+    _default_criterion = SIDLoss()
 
     def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
         super().__init__(*args, **kwargs)
