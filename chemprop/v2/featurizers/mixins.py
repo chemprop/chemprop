@@ -8,7 +8,6 @@ from chemprop.v2.featurizers.bond import BondFeaturizer, BondFeaturizerProto
 class MolGraphFeaturizerMixin:
     atom_featurizer: AtomFeaturizerProto = field(default_factory=AtomFeaturizer)
     bond_featurizer: BondFeaturizerProto = field(default_factory=BondFeaturizer)
-    bond_messages: bool = True
 
     def __post_init__(self):
         self.atom_fdim = len(self.atom_featurizer)

@@ -8,7 +8,7 @@ from torch_scatter import scatter_sum
 from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
-from chemprop.v2.models.utils import Activation, get_activation_function
+from chemprop.v2.nn.utils import Activation, get_activation_function
 from chemprop.v2.nn.message_passing.proto import MessagePassing
 
 

@@ -39,8 +39,6 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
 
         self.atom_fdim += extra_atom_fdim
         self.bond_fdim += extra_bond_fdim
-        if self.bond_messages:
-            self.bond_fdim += self.atom_fdim
 
     def __call__(
         self,
@@ -70,27 +68,17 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
             X_v = np.hstack((X_v, atom_features_extra.repeat(2, 0)))
 
         i = 0
-        for a1 in range(n_atoms):
-            for a2 in range(a1 + 1, n_atoms):
-                bond = mol.GetBondBetweenAtoms(a1, a2)
+        for u in range(n_atoms):
+            for v in range(u + 1, n_atoms):
+                bond = mol.GetBondBetweenAtoms(u, v)
                 if bond is None:
                     continue
-                u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
 
                 x_e = self.bond_featurizer(bond)
                 if bond_features_extra is not None:
                     x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
 
-                if self.bond_messages:
-                    x_uv = np.concatenate((X_v[u], x_e))
-                    x_vu = np.concatenate((X_v[v], x_e))
-                else:
-                    x_uv = x_e
-                    x_vu = x_e
-                try:
-                    X_e[i : i + 2] = [x_uv, x_vu]
-                except:
-                    import pdb; pdb.set_trace()
+                X_e[i : i + 2] = x_e
 
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
@@ -101,8 +89,6 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
         edge_index = np.array(edge_index, int)
 
         return MolGraph(
-            len(X_v),
-            len(X_e) // 2,
             X_v,
             X_e,
             edge_index,

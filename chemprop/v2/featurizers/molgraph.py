@@ -8,10 +8,6 @@ from torch import Tensor
 class MolGraph(NamedTuple):
     """A :class:`MolGraph` represents the graph featurization of a molecule."""
 
-    n_atoms: int
-    """the number of atoms in the molecule"""
-    n_bonds: int
-    """the number of bonds in the molecule"""
     V: np.ndarray
     """an array of shape ``V x d_v`` containing the atom features of the molecule"""
     E: np.ndarray
@@ -39,12 +35,10 @@ class BatchMolGraph:
     E: Tensor = field(init=False)
     """the bond feature matrix"""
     edge_index: Tensor = field(init=False)
-    """an array of shape ``2 x E`` containing the edges of the graph in COO format"""
+    """an tensor of shape ``2 x E`` containing the edges of the graph in COO format"""
     rev_edge_index: Tensor = field(init=False)
-    """A vector of length ``E`` that maps from an edge index to the index of the source of the
+    """A tensor of shape ``E`` that maps from an edge index to the index of the source of the
     reverse edge in the ``edge_index`` attribute."""
-    atom_edge_index: Tensor | None = field(init=False)
-    """an array of shape ``2 x V`` containing the edges of the atom-based graph in COO format"""
     batch: Tensor = field(init=False)
     """the index of the parent :class:`MolGraph` in the batched graph"""
 
@@ -52,6 +46,7 @@ class BatchMolGraph:
 
     def __post_init__(self, mgs: Sequence[MolGraph]):
         self.__size = len(mgs)
+
         Vs = []
         Es = []
         edge_indexes = []
@@ -66,13 +61,13 @@ class BatchMolGraph:
             rev_edge_indexes.append(mg.rev_edge_index + offset)
             batch_indexes.append([i] * len(mg.V))
 
-            offset += mg.edge_index.max(initial=0) + 1
+            offset += len(mg.V)
 
         self.V = torch.from_numpy(np.concatenate(Vs)).float()
         self.E = torch.from_numpy(np.concatenate(Es)).float()
-        self.edge_index = torch.from_numpy(np.hstack(edge_indexes))
-        self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes))
-        self.batch = torch.from_numpy(np.concatenate(batch_indexes))
+        self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
+        self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
+        self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
     
     def __len__(self) -> int:
         """the number of individual :class:`MolGraph`s in this batch"""
