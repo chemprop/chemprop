@@ -7,15 +7,9 @@ from torch_scatter import scatter_sum
 
 from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.v2.exceptions import InvalidShapeError
-<<<<<<<< HEAD:chemprop/v2/nn/message_passing/message_passing.py
 from chemprop.v2.data import BatchMolGraph
 from chemprop.v2.nn.utils import Activation, get_activation_function
 from chemprop.v2.nn.message_passing.proto import MessagePassing
-========
-from chemprop.v2.featurizers import BatchMolGraph
-from chemprop.v2.models.utils import Activation, get_activation_function
-from chemprop.v2.models.nn.message_passing.proto import MessagePassing
->>>>>>>> 0c9e89f9 (rename modules):chemprop/v2/models/nn/message_passing/message_passing.py
 
 
 class MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -124,7 +118,6 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
         H_t = self.W_h(M_t)
         H_t = self.tau(H_0 + H_t)
         H_t = self.dropout(H_t)
-
         return H_t
 
     def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
@@ -224,7 +217,6 @@ class BondMessagePassing(MessagePassingBase):
         h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
         m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
-
     where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
     :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
@@ -255,7 +247,6 @@ class BondMessagePassing(MessagePassingBase):
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
         M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
         M_rev = H[bmg.rev_edge_index]
-
         return M_all - M_rev
 
 
@@ -272,7 +263,6 @@ class AtomMessagePassing(MessagePassingBase):
         h_v^{(t)} &= \tau\left(h_v^{(0)} + \mathbf{W}_h m_v^{(t-1)}\right) \\
         m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right)  \right),
-
     where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
     :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
