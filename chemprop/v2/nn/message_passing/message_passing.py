@@ -9,7 +9,7 @@ from chemprop.v2.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDE
 from chemprop.v2.exceptions import InvalidShapeError
 from chemprop.v2.featurizers import BatchMolGraph
 from chemprop.v2.models.utils import Activation, get_activation_function
-from chemprop.v2.models.nn.message_passing.proto import MessagePassing
+from chemprop.v2.nn.message_passing.proto import MessagePassing
 
 
 class MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -111,9 +111,10 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
     @abstractmethod
     def message(self, H_t: Tensor, bmg: BatchMolGraph):
-        """Calculate the aggregated message matrix"""
+        """Calculate the message matrix"""
 
     def update(self, M_t, H_0):
+        """Calcualte the updated hidden for each edge"""
         H_t = self.W_h(M_t)
         H_t = self.tau(H_0 + H_t)
         H_t = self.dropout(H_t)
@@ -163,8 +164,7 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         if V_d is not None:
             try:
-                H_vd = torch.cat((H, V_d), 1)  # V x (d_o + d_vd)
-                H = self.W_d(H_vd)  # V x (d_o + d_vd)
+                H = self.W_d(torch.cat((H, V_d), 1))  # V x (d_o + d_vd)
                 H = self.dropout(H)
             except RuntimeError:
                 raise InvalidShapeError("V_d", V_d.shape, [len(H), self.W_d.in_features])
@@ -236,7 +236,7 @@ class BondMessagePassing(MessagePassingBase):
         d_vd: int | None = None,
         bias: bool = False,
     ):
-        W_i = nn.Linear(d_e, d_h, bias)
+        W_i = nn.Linear(d_v + d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
@@ -244,15 +244,12 @@ class BondMessagePassing(MessagePassingBase):
         return W_i, W_h, W_o, W_d
 
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(bmg.E)
+        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], 1))
 
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        try:
-            M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
-            M_rev = H[bmg.rev_edge_index]
-        except:
-            import pdb; pdb.set_trace()
-            raise
+        M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
+        M_rev = H[bmg.rev_edge_index]
+        
         return M_all - M_rev
 
 
