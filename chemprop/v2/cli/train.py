@@ -249,11 +249,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
    
     data_args.add_argument(
-        "-t", 
-        "--task", 
+        "-t",
         "--dataset-type",
         default="regression", 
-        action=RegistryAction(ReadoutRegistry), # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
+        action=RegistryAction(ReadoutRegistry),  # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -605,7 +604,7 @@ def main(args):
         activation=args.activation,
     )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
-    readout_cls = ReadoutRegistry[args.readout]
+    readout_cls = ReadoutRegistry[args.dataset_type]
 
     if args.loss_function is not None:
         criterion = Factory.build(
