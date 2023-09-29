@@ -218,12 +218,12 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     @property
     def d_ef(self) -> int | None:
         """the extra bond feature dimension, if any"""
-        return None if self.E_fs is None else self.E_fs[0].shape[1]
+        return None if self.E_fs[0] is None else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int | None:
         """the extra atom descriptor dimension, if any"""
-        return None if self.V_ds is None else self.V_ds[0].shape[1]
+        return None if self.V_ds[0] is None else self.V_ds[0].shape[1]
 
     def normalize_inputs(
         self, key: str | None = "X_f", scaler: StandardScaler | None = None
