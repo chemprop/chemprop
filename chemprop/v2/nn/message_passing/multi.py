@@ -53,7 +53,7 @@ class MulticomponentMessagePassing(nn.Module):
 
         return d_o if not self.shared else self.blocks[0].output_dim
 
-    def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> Tensor:
+    def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> list[Tensor]:
         """Encode the multicomponent inputs
 
         Parameters
