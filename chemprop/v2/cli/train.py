@@ -297,7 +297,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Path to file with constraints for separate val set.",
     )
-    data_args.add_argument("--val-atom-features-path") # TODO: find what these were in v1 or if they were new in v2
+    data_args.add_argument("--val-atom-features-path")  # TODO: find what these were in v1 or if they were new in v2
     data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
@@ -332,7 +332,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument("--test-atom-features-path") # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
+    data_args.add_argument("--test-atom-features-path")  # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
@@ -350,7 +350,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--v-kl", 
         "--evidential-regularization",
         type=float, 
-        default=0.2, # TODO: the default in v1 was 0. Do we want it to default to 0.2 in v2?
+        default=0.2,  # TODO: the default in v1 was 0. Do we want it to default to 0.2 in v2?
         help="Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model."
     )
 
@@ -358,7 +358,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
     )
 
-    train_args.add_argument( # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them. 
+    train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them. 
         "-T", 
         "--threshold", 
         "--spectra-target-floor",
@@ -377,7 +377,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
     )
-    train_args.add_argument( # TODO: What is this for? I don't see it in v1.
+    train_args.add_argument(  # TODO: What is this for? I don't see it in v1.
         "-tw",
         "--task-weights",
         nargs="+",
@@ -386,7 +386,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument(
         "--warmup-epochs", 
-        type=int, # TODO: This was a float in v1. I'm not sure why so I think int is better.
+        type=int,  # TODO: This was a float in v1. I'm not sure why so I think int is better.
         default=2,
         help="Number of epochs during which learning rate increases linearly from :code:`init_lr` to :code:`max_lr`. Afterwards, learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr`.",
     )
@@ -433,7 +433,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--split",
         "--split-type",
         default="random",
-        choices=['random', 'scaffold'],#'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'],
+        choices=['random', 'scaffold'],  #'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'],
         help="Method of splitting the data into train/val/test.",
     )
     split_args.add_argument(
@@ -492,7 +492,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
 
-    parser.add_argument( # TODO: do we need this?
+    parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
         type=int,
         default=0,
@@ -509,7 +509,7 @@ def process_train_args(args: Namespace) -> Namespace:
     # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
     args.smiles_columns = (args.smiles_columns or list(range(args.number_of_molecules)))
     args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
-    args.number_of_molecules = len(args.smiles_columns) # Does nothing if smiles_columns was not specified
+    args.number_of_molecules = len(args.smiles_columns)  # Does nothing if smiles_columns was not specified
 
     args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
     args.output_dir.mkdir(exist_ok=True, parents=True)
@@ -547,7 +547,7 @@ def main(args):
         features_generators=args.features_generators,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        reaction=0 in args.rxn_idxs, # TODO: check if this is correct
+        reaction=0 in args.rxn_idxs,  # TODO: check if this is correct
     )
 
     all_data = build_data_from_files(
