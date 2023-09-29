@@ -57,7 +57,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
 
-    if False: # to do: add uncertainty and calibration and delete this line
+    if False: # TODO: add uncertainty and calibration and delete this line
         unc_args = parser.add_argument_group("uncertainty and calibration args")
         unc_args.add_argument(
             "--ensemble-variance",
@@ -72,17 +72,17 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         )
         unc_args.add_argument(
             "--uncertainty-method",
-            #action=RegistryAction(to do: make register for uncertainty methods)
+            #action=RegistryAction(TODO: make register for uncertainty methods)
             help="The method of calculating uncertainty.",
         )
         unc_args.add_argument(
             "--calibration-method",
-            #action=RegistryAction(to do: make register for calibration methods)
+            #action=RegistryAction(TODO: make register for calibration methods)
             help="Methods used for calibrating the uncertainty calculated with uncertainty method.",
         )
         unc_args.add_argument(
             "--evaluation-method",
-            #action=RegistryAction(to do: make register for evaluation methods)
+            #action=RegistryAction(TODO: make register for evaluation methods)
             type=list[str],
             help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
         )

@@ -51,7 +51,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of molecules in each input to the model. This is overwritten by the length of :code:`smiles_columns` (if not :code:`None`).",
     )
-    # to do: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
+    # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
     data_args.add_argument(
         "--checkpoint-dir",
@@ -68,7 +68,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=list[str],
         help="List of paths to model checkpoints (:code:`.pt` files).",
     )
-    # to do: Is this a prediction only argument?
+    # TODO: Is this a prediction only argument?
     parser.add_argument(
         "--checkpoint",
         help="""Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found.
@@ -105,7 +105,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default=50,
         help="Batch size.",
     )
-    # to do: The next two arguments aren't in v1. See what they do in v2.
+    # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
     )
@@ -203,7 +203,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
-    # to do: remove these caching arguments after checking that the v2 code doesn't try to cache.
+    # TODO: remove these caching arguments after checking that the v2 code doesn't try to cache.
     # parser.add_argument(
     #     "--no_cache_mol",
     #     action="store_true",
@@ -226,7 +226,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to constraints applied to atomic/bond properties prediction.",
     )
 
-    # to do: see if we need to add functions from CommonArgs 
+    # TODO: see if we need to add functions from CommonArgs 
     return parser
 
 def process_common_args(args: Namespace) -> Namespace:

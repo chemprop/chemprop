@@ -56,7 +56,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
     )
-    # to do: see if we can tell lightning how often to log training loss
+    # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
         "--log-frequency",
         type=int,
@@ -100,7 +100,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of models in ensemble.",
     )
-    parser.add_argument( # to do: It looks like `reaction` is set later in main() based on rxn-idxs. Is that correct and do we need this argument?
+    parser.add_argument( # TODO: It looks like `reaction` is set later in main() based on rxn-idxs. Is that correct and do we need this argument?
         "--reaction",
         action="store_true",
         help="Whether to adjust MPNN layer to take reactions as input instead of molecules.", 
@@ -148,7 +148,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--activation",
         default="relu",
-        choices=['relu', 'leakyrelu', 'prelu', 'tanh', 'selu', 'elu'], # to do: should these be lowercase?
+        choices=['relu', 'leakyrelu', 'prelu', 'tanh', 'selu', 'elu'], # TODO: should these be lowercase?
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
@@ -190,10 +190,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     ffn_args = parser.add_argument_group("FFN args")
-    ffn_args.add_argument( # to do: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
+    ffn_args.add_argument( # TODO: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
         "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
     )
-    ffn_args.add_argument( # to do: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
+    ffn_args.add_argument( # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
         "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
     )
     ffn_args.add_argument(
@@ -245,7 +245,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task", 
         "--dataset-type",
         default="regression", 
-        action=RegistryAction(ReadoutRegistry), # to do: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
+        action=RegistryAction(ReadoutRegistry), # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -290,12 +290,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Path to file with constraints for separate val set.",
     )
-    data_args.add_argument("--val-atom-features-path") # to do: find what these were in v1 or if they were new in v2
+    data_args.add_argument("--val-atom-features-path") # TODO: find what these were in v1 or if they were new in v2
     data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
-        "--separate-test-path",
+        "--test-path",
         type=str,
+        default=None,
+        dest="test_path",
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
@@ -323,7 +325,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument("--test-atom-features-path") # to do: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
+    data_args.add_argument("--test-atom-features-path") # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
@@ -341,7 +343,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--v-kl", 
         "--evidential-regularization",
         type=float, 
-        default=0.2, # to do: the default in v1 was 0. Do we want it to default to 0.2 in v2?
+        default=0.2, # TODO: the default in v1 was 0. Do we want it to default to 0.2 in v2?
         help="Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model."
     )
 
@@ -349,7 +351,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
     )
 
-    train_args.add_argument( # to do: Is threshold the same thing as the spectra target floor? I'm not sure but combined them. 
+    train_args.add_argument( # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them. 
         "-T", 
         "--threshold", 
         "--spectra-target-floor",
@@ -368,7 +370,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
     )
-    train_args.add_argument( # to do: What is this for? I don't see it in v1.
+    train_args.add_argument( # TODO: What is this for? I don't see it in v1.
         "-tw",
         "--task-weights",
         nargs="+",
@@ -377,7 +379,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument(
         "--warmup-epochs", 
-        type=int, # to do: This was a float in v1. I'm not sure why so I think int is better.
+        type=int, # TODO: This was a float in v1. I'm not sure why so I think int is better.
         default=2,
         help="Number of epochs during which learning rate increases linearly from :code:`init_lr` to :code:`max_lr`. Afterwards, learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr`.",
     )
@@ -483,7 +485,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
 
-    parser.add_argument( # to do: do we need this?
+    parser.add_argument( # TODO: do we need this?
         "--pytorch-seed",
         type=int,
         default=0,
@@ -529,7 +531,7 @@ def main(args):
         features_generators=args.features_generators,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        reaction=0 in args.rxn_idxs, # to do: check if this is correct
+        reaction=0 in args.rxn_idxs, # TODO: check if this is correct
     )
 
     all_data = build_data_from_files(
