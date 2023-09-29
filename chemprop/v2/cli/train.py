@@ -604,7 +604,7 @@ def main(args):
         dropout=args.dropout,
         activation=args.activation,
     )
-    agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.norm)
+    agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     readout_cls = ReadoutRegistry[args.readout]
 
     if args.loss_function is not None:
