@@ -4,7 +4,6 @@ from typing import NamedTuple
 import numpy as np
 from rdkit import Chem
 
-from chemprop.v2.featurizers.protos import MoleculeMolGraphFeaturizerProto
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 
 
@@ -19,6 +18,34 @@ class MolGraph(NamedTuple):
     """an array of shape ``2 x E`` containing the edges of the graph in COO format"""
     rev_edge_index: np.ndarray
     """A vector of length ``E`` that maps from an edge index to the index of the source of the reverse edge in the ``edge_index`` attribute."""
+
+
+class MoleculeMolGraphFeaturizerProto:
+    """A :class:`MoleculeMolGraphFeaturizerProto` featurizes RDKit molecules into
+    :class:`MolGraph`s"""
+
+    def __call__(
+        self,
+        mol: Chem.Mol,
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        """Featurize the input molecule into a molecular graph
+
+        Parameters
+        ----------
+        mol : Chem.Mol
+            the input molecule
+        atom_features_extra : np.ndarray | None, default=None
+            Additional features to concatenate to the calculated atom features
+        bond_features_extra : np.ndarray | None, default=None
+            Additional features to concatenate to the calculated bond features
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the molecule
+        """
 
 
 @dataclass

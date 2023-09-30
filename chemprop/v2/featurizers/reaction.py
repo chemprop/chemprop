@@ -9,8 +9,7 @@ from rdkit.Chem.rdchem import Bond, Mol
 
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.protos import RxnMolGraphFeaturizerProto
-from chemprop.v2.utils.utils import AutoName
+from chemprop.v2.utils import AutoName
 
 
 class RxnMode(AutoName):
@@ -34,6 +33,36 @@ class RxnMode(AutoName):
     """concatenates the product features with the difference in features between reactants and
     products and balances imbalanced reactions"""
 
+
+class RxnMolGraphFeaturizerProto:
+    """A :class:`RxnMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
+    and product molecules) into :class:`MolGraph`s"""
+
+    def __call__(
+        self,
+        rxn: tuple[Chem.Mol, Chem.Mol],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        rxn : tuple[Chem.Mol, Chem.Mol]
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
 
 
 @dataclass
