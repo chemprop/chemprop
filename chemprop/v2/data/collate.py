@@ -13,10 +13,8 @@ from chemprop.v2.featurizers import MolGraph
 class BatchMolGraph:
     """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
 
-    It has all the attributes of a ``MolGraph`` with the addition of `a_scope` and `b_scope`. These
-    define the respective atom- and bond-scope of each individual `MolGraph` within the
-    `BatchMolGraph`. This class is intended for use with data loading, so it uses
-    :obj:`~torch.Tensor`s to store data
+    It has all the attributes of a ``MolGraph`` with the addition of the ``batch`` attribute. This
+    class is intended for use with data loading, so it uses :obj:`~torch.Tensor`s to store data
     """
 
     mgs: InitVar[Sequence[MolGraph]]
