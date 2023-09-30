@@ -4,7 +4,6 @@ from typing import Protocol, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-
 class AtomFeaturizerProto(Protocol):
     """An :class:`AtomFeaturizerProto` calculates feature vectors of RDKit atoms."""
 
