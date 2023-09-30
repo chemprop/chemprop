@@ -124,59 +124,52 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
         if bond_features_extra is not None:
             warnings.warn("'bond_features_extra' is currently unsupported for reactions")
 
-        rct, pdt = rxn
-        ri2pj, pids, rids = self.map_reac_to_prod(rct, pdt)
+        reac, pdt = rxn
+        r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
-        X_v = self._calc_node_feature_matrix(rct, pdt, ri2pj, pids, rids)
-
-        n_atoms = len(X_v)
-        n_atoms_r = rct.GetNumAtoms()
-
-        n_bonds = 0
+        X_v = self._calc_node_feature_matrix(
+            reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs
+        )
         X_e = []
-        a2b = [[] for _ in range(n_atoms)]
-        b2a = []
-        b2revb = []
+        edge_index = [[], []]
 
-        for a1 in range(n_atoms):
-            for a2 in range(a1 + 1, n_atoms):
-                b_reac, b_prod = self._get_bonds(rct, pdt, ri2pj, pids, n_atoms_r, a1, a2)
+        n_atoms_tot = len(X_v)
+        n_atoms_reac = reac.GetNumAtoms()
+
+        i = 0
+        for u in range(n_atoms_tot):
+            for v in range(u + 1, n_atoms_tot):
+                b_reac, b_prod = self._get_bonds(reac, pdt, r2p_idx_map, pdt_idxs, n_atoms_reac, u, v)
                 if b_reac is None and b_prod is None:
                     continue
 
                 x_e = self._calc_edge_feature(b_reac, b_prod)
-                if self.bond_messages:
-                    X_e.append(np.hstack((X_v[a1], x_e)))
-                    X_e.append(np.hstack((X_v[a2], x_e)))
-                else:
-                    X_e.append(x_e)
-                    X_e.append(x_e)
+                X_e[i : i + 2] = x_e
+                edge_index[0].extend([u, v])
+                edge_index[1].extend([v, u])
 
-                b12 = n_bonds
-                b21 = b12 + 1
-                a2b[a2].append(b12)
-                a2b[a1].append(b21)
-                b2a.extend([a1, a2])
-                b2revb.extend([b21, b12])
-                n_bonds += 2
+                i += 2
 
         X_e = np.array(X_e)
+        rev_edge_index = np.arange(len(X_e)).reshape(-1, 2)[:, ::-1].ravel()
+        edge_index = np.array(edge_index, int)
 
-        return MolGraph(n_atoms, n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)
+        return MolGraph(X_v, X_e, edge_index, rev_edge_index)
 
     def _calc_node_feature_matrix(
-        self, rct: Mol, pdt: Mol, ri2pj: dict[int, int], pids: Iterable[int], rids: Iterable[int]
+        self, rct: Mol, pdt: Mol,
+        r2p_idx_map: dict[int, int], pdt_idxs: Iterable[int], reac_idxs: Iterable[int]
     ) -> np.ndarray:
-        """Calculate the global node feature matrix for the reaction"""
+        """Calculate the node feature matrix for the reaction"""
         X_v_r1 = np.array([self.atom_featurizer(a) for a in rct.GetAtoms()])
-        X_v_p2 = np.array([self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pids])
+        X_v_p2 = np.array([self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pdt_idxs])
         X_v_p2 = X_v_p2.reshape(-1, X_v_r1.shape[1])
 
         if self.mode in [RxnMode.REAC_DIFF, RxnMode.PROD_DIFF, RxnMode.REAC_PROD]:
             # Reactant:
             # (1) regular features for each atom in the reactants
             # (2) zero features for each atom that only in the products
-            X_v_r2 = [self.atom_featurizer.num_only(pdt.GetAtomWithIdx(i)) for i in pids]
+            X_v_r2 = [self.atom_featurizer.num_only(pdt.GetAtomWithIdx(i)) for i in pdt_idxs]
             X_v_r2 = np.array(X_v_r2).reshape(-1, X_v_r1.shape[1])
 
             # Product:
@@ -185,8 +178,8 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(ri2pj[a.GetIdx()]))
-                    if a.GetIdx() not in rids
+                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                    if a.GetIdx() not in reac_idxs
                     else self.atom_featurizer.num_only(a)
                     for a in rct.GetAtoms()
                 ]
@@ -195,7 +188,7 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
             # Reactant:
             # (1) regular features for each atom in the reactants
             # (2) regular features for each atom only in the products
-            X_v_r2 = [self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pids]
+            X_v_r2 = [self.atom_featurizer(pdt.GetAtomWithIdx(i)) for i in pdt_idxs]
             X_v_r2 = np.array(X_v_r2).reshape(-1, X_v_r1.shape[1])
 
             # Product:
@@ -204,8 +197,8 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(ri2pj[a.GetIdx()]))
-                    if a.GetIdx() not in rids
+                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                    if a.GetIdx() not in reac_idxs
                     else self.atom_featurizer(a)
                     for a in rct.GetAtoms()
                 ]
@@ -234,12 +227,12 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
         ri2pj: dict[int, int],
         pids: Sequence[int],
         n_atoms_r: int,
-        a1: int,
-        a2: int,
+        u: int,
+        v: int,
     ) -> tuple[Bond, Bond]:
         """get the reactant- and product-side bonds, respectively, betweeen atoms `a1` and `a2`"""
-        if a1 >= n_atoms_r and a2 >= n_atoms_r:
-            b_prod = pdt.GetBondBetweenAtoms(pids[a1 - n_atoms_r], pids[a2 - n_atoms_r])
+        if u >= n_atoms_r and v >= n_atoms_r:
+            b_prod = pdt.GetBondBetweenAtoms(pids[u - n_atoms_r], pids[v - n_atoms_r])
 
             if self.mode in [
                 RxnMode.REAC_PROD_BALANCE,
@@ -249,27 +242,26 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
                 b_reac = b_prod
             else:
                 b_reac = None
-        elif a1 < n_atoms_r and a2 >= n_atoms_r:  # One atom only in product
+        elif u < n_atoms_r and v >= n_atoms_r:  # One atom only in product
             b_reac = None
 
-            if a1 in ri2pj:
-                b_prod = pdt.GetBondBetweenAtoms(ri2pj[a1], pids[a2 - n_atoms_r])
+            if u in ri2pj:
+                b_prod = pdt.GetBondBetweenAtoms(ri2pj[u], pids[v - n_atoms_r])
             else:  # Atom atom only in reactant, the other only in product
                 b_prod = None
         else:
-            b_reac = rct.GetBondBetweenAtoms(a1, a2)
+            b_reac = rct.GetBondBetweenAtoms(u, v)
 
-            if a1 in ri2pj and a2 in ri2pj:  # Both atoms in both reactant and product
-                b_prod = pdt.GetBondBetweenAtoms(ri2pj[a1], ri2pj[a2])
+            if u in ri2pj and v in ri2pj:  # Both atoms in both reactant and product
+                b_prod = pdt.GetBondBetweenAtoms(ri2pj[u], ri2pj[v])
+            elif self.mode in [
+                RxnMode.REAC_PROD_BALANCE,
+                RxnMode.REAC_DIFF_BALANCE,
+                RxnMode.PROD_DIFF_BALANCE,
+            ]:
+                b_prod = None if (u in ri2pj or v in ri2pj) else b_reac
             else:  # One or both atoms only in reactant
-                if self.mode in [
-                    RxnMode.REAC_PROD_BALANCE,
-                    RxnMode.REAC_DIFF_BALANCE,
-                    RxnMode.PROD_DIFF_BALANCE,
-                ]:
-                    b_prod = None if (a1 in ri2pj or a2 in ri2pj) else b_reac
-                else:
-                    b_prod = None
+                b_prod = None
 
         return b_reac, b_prod
 
@@ -284,25 +276,23 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
             x_e_d = x_e_p - x_e_r
 
             if self.mode in [RxnMode.REAC_DIFF, RxnMode.REAC_DIFF_BALANCE]:
-                x_e_r = self.bond_featurizer(b_reac)
                 x_e = np.hstack((x_e_r, x_e_d))
             else:
-                x_e_p = self.bond_featurizer(b_prod)
                 x_e = np.hstack((x_e_p, x_e_d))
 
         return x_e
 
     @classmethod
     def map_reac_to_prod(
-        cls, reactants: Chem.Mol, products: Chem.Mol
+        cls, reacs: Chem.Mol, pdts: Chem.Mol
     ) -> tuple[dict[int, int], list[int], list[int]]:
         """Map atom indices between corresponding atoms in the reactant and product molecules
 
         Parameters
         ----------
-        reactants : Chem.Mol
+        reacs : Chem.Mol
             An RDKit molecule of the reactants
-        products : Chem.Mol
+        pdts : Chem.Mol
             An RDKit molecule of the products
 
         Returns
@@ -316,32 +306,32 @@ class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto)
         """
         pdt_idxs = []
         mapno2pj = {}
-        mapnos_reac = {a.GetAtomMapNum() for a in reactants.GetAtoms()}
+        reac_atommap_nums = {a.GetAtomMapNum() for a in reacs.GetAtoms()}
 
-        for a in products.GetAtoms():
-            mapno = a.GetAtomMapNum()
-            pj = a.GetIdx()
+        for a in pdts.GetAtoms():
+            map_num = a.GetAtomMapNum()
+            j = a.GetIdx()
 
-            if mapno > 0:
-                mapno2pj[mapno] = pj
-                if mapno not in mapnos_reac:
-                    pdt_idxs.append(pj)
+            if map_num > 0:
+                mapno2pj[map_num] = j
+                if map_num not in reac_atommap_nums:
+                    pdt_idxs.append(j)
             else:
-                pdt_idxs.append(pj)
+                pdt_idxs.append(j)
 
         rct_idxs = []
-        ri2pj = {}
+        r2p_idx_map = {}
 
-        for a in reactants.GetAtoms():
-            mapno = a.GetAtomMapNum()
-            ri = a.GetIdx()
+        for a in reacs.GetAtoms():
+            map_num = a.GetAtomMapNum()
+            i = a.GetIdx()
 
-            if mapno > 0:
+            if map_num > 0:
                 try:
-                    ri2pj[ri] = mapno2pj[mapno]
+                    r2p_idx_map[i] = mapno2pj[map_num]
                 except KeyError:
-                    rct_idxs.append(ri)
+                    rct_idxs.append(i)
             else:
-                rct_idxs.append(ri)
+                rct_idxs.append(i)
 
-        return ri2pj, pdt_idxs, rct_idxs
+        return r2p_idx_map, pdt_idxs, rct_idxs

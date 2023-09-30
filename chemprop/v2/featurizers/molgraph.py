@@ -105,7 +105,7 @@ class MolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProt
         edge_index = [[], []]
 
         if atom_features_extra is not None:
-            X_v = np.hstack((X_v, atom_features_extra.repeat(2, 0)))
+            X_v = np.hstack((X_v, atom_features_extra))
 
         i = 0
         for u in range(n_atoms):
