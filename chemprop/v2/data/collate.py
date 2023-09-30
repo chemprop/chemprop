@@ -57,7 +57,7 @@ class BatchMolGraph:
         self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
         self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
-
+        
     def __len__(self) -> int:
         """the number of individual :class:`MolGraph`s in this batch"""
         return self.__size
@@ -74,7 +74,6 @@ TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tens
 MulticomponentTrainingBatch = tuple[
     list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
 ]
-
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
