@@ -128,9 +128,4 @@ class MolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProt
         rev_edge_index = np.arange(len(X_e)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
 
-        return MolGraph(
-            X_v,
-            X_e,
-            edge_index,
-            rev_edge_index,
-        )
+        return MolGraph(X_v, X_e, edge_index, rev_edge_index)

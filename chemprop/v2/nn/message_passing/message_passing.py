@@ -60,8 +60,8 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.hparams['cls'] = self.__class__
-        
+        self.hparams["cls"] = self.__class__
+
         self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
@@ -118,7 +118,7 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
         H_t = self.W_h(M_t)
         H_t = self.tau(H_0 + H_t)
         H_t = self.dropout(H_t)
-        
+
         return H_t
 
     def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
@@ -208,11 +208,11 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
 class BondMessagePassing(MessagePassingBase):
     r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
-    
+
     It implements the following operation:
-    
+
     .. math::
-    
+
         h_{vw}^{(0)} &= \tau \left( \mathbf{W}_i(e_{vw}) \right) \\
         m_{vw}^{(t)} &= \sum_{u \in \mathcal{N}(v)\setminus w} h_{uv}^{(t-1)} \\
         h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
@@ -249,7 +249,7 @@ class BondMessagePassing(MessagePassingBase):
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
         M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
         M_rev = H[bmg.rev_edge_index]
-        
+
         return M_all - M_rev
 
 
@@ -274,6 +274,7 @@ class AtomMessagePassing(MessagePassingBase):
     :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
     :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
     """
+
     def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
@@ -288,11 +289,11 @@ class AtomMessagePassing(MessagePassingBase):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
         return W_i, W_h, W_o, W_d
-    
+
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
         return self.W_i(bmg.V[bmg.edge_index[0]])
 
     def message(self, H: Tensor, bmg: BatchMolGraph):
         H = torch.cat((H, bmg.E), 1)
-        
+
         return scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]

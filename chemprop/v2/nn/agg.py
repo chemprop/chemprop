@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Sequence
-
-import torch
 from torch import Tensor, nn
 from torch_scatter import scatter, scatter_softmax
 
@@ -17,7 +14,7 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
     **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
     concrete subclasses.
-    
+
     See also
     --------
     :class:`chemprop.v2.models.modules.agg.MeanAggregation`
@@ -53,10 +50,11 @@ class Aggregation(ABC, nn.Module, HasHParams):
             a tensor of shape ``n x d`` containing the graph-level representations
         """
 
+
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
     r"""Average the graph-level representation
-    
+
     .. math::
         \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
     """
@@ -68,11 +66,12 @@ class MeanAggregation(Aggregation):
 @AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
     r"""Sum the graph-level representation
-    
+
     .. math::
         \mathbf h = \sum_{v \in V} \mathbf h_v
-    
+
     """
+
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
         return scatter(H, batch, self.dim, reduce="sum")
 
@@ -80,7 +79,7 @@ class SumAggregation(Aggregation):
 @AggregationRegistry.register("norm")
 class NormAggregation(SumAggregation):
     r"""Sum the graph-level representation and divide by a normalization constant
-    
+
     .. math::
         \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
     """

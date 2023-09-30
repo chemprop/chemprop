@@ -19,7 +19,10 @@ from chemprop.v2.models.nn.agg import AggregationRegistry
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
-from chemprop.v2.models.nn.message_passing.message_passing import AtomMessageBlock, BondMessagePassing
+from chemprop.v2.models.nn.message_passing.message_passing import (
+    AtomMessageBlock,
+    BondMessagePassing,
+)
 from chemprop.v2.models.nn.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 

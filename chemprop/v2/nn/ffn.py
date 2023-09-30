@@ -16,14 +16,14 @@ class _FFNProto(Protocol):
 
 class FFN(nn.Module, _FFNProto):
     """A :class:`FFN` is a fully differentiable function that maps a tensor of shape ``N x d_i`` to a tensor of shape ``N x d_o``
-    
+
     :inherited-members:
     """
 
 
 class SimpleFFN(FFN):
     r"""A :class:`SimpleFFN` is a simple FFN that implements the following function:
-     
+
     .. math::
         \mathbf H_0 &= \mathbf X\,\mathbf W_0 + \mathbf b_0 \\
         \mathbf H_l &= \mathtt{dropout} \left(
@@ -38,6 +38,7 @@ class SimpleFFN(FFN):
 
     :inherited-members:
     """
+
     def __init__(
         self,
         input_dim: int,
