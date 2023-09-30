@@ -40,6 +40,7 @@ class Readout(nn.Module, _ReadoutProto, HasHParams):
 class ReadoutFFNBase(Readout, HyperparametersMixin):
     """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
     :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
+
     _default_criterion: LossFunction
 
     def __init__(

@@ -118,6 +118,7 @@ class MessagePassingBase(MessagePassing, HyperparametersMixin):
         H_t = self.W_h(M_t)
         H_t = self.tau(H_0 + H_t)
         H_t = self.dropout(H_t)
+        
         return H_t
 
     def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
@@ -247,6 +248,7 @@ class BondMessagePassing(MessagePassingBase):
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
         M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
         M_rev = H[bmg.rev_edge_index]
+        
         return M_all - M_rev
 
 
@@ -270,6 +272,7 @@ class AtomMessagePassing(MessagePassingBase):
     :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
     :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
     """
+
     def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
@@ -284,7 +287,7 @@ class AtomMessagePassing(MessagePassingBase):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
 
         return W_i, W_h, W_o, W_d
-    
+
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
         return self.W_i(bmg.V[bmg.edge_index[0]])
 
