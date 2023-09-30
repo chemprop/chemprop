@@ -1,9 +1,12 @@
-from dataclasses import InitVar, dataclass, field
-from typing import NamedTuple, Sequence
+from dataclasses import InitVar, dataclass
+from typing import NamedTuple
 
 import numpy as np
-import torch
-from torch import Tensor
+from rdkit import Chem
+
+from chemprop.v2.featurizers.protos import MoleculeMolGraphFeaturizerProto
+from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
+
 
 class MolGraph(NamedTuple):
     """A :class:`MolGraph` represents the graph featurization of a molecule."""
@@ -18,64 +21,89 @@ class MolGraph(NamedTuple):
     """A vector of length ``E`` that maps from an edge index to the index of the source of the reverse edge in the ``edge_index`` attribute."""
 
 
-@dataclass(repr=False, eq=False, slots=True)
-class BatchMolGraph:
-    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
+@dataclass
+class MolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProto):
+    """A :class:`MoleculeMolGraphFeaturizer` is the default implementation of a
+    :class:`MoleculeMolGraphFeaturizerProto`
 
-    It has all the attributes of a ``MolGraph`` with the addition of `a_scope` and `b_scope`. These
-    define the respective atom- and bond-scope of each individual `MolGraph` within the
-    `BatchMolGraph`. This class is intended for use with data loading, so it uses
-    :obj:`~torch.Tensor`s to store data
+    Parameters
+    ----------
+    atom_featurizer : AtomFeaturizerProto, default=AtomFeaturizer()
+        the featurizer with which to calculate feature representations of the atoms in a given
+        molecule
+    bond_featurizer : BondFeaturizerProto, default=BondFeaturizer()
+        the featurizer with which to calculate feature representations of the bonds in a given
+        molecule
+    bond_messages : bool, default=True
+        whether to prepare the `MolGraph`s for use with message passing on bonds
+    extra_atom_fdim : int, default=0
+        the dimension of the additional features that will be concatenated onto the calculated
+        features of each atom
+    extra_bond_fdim : int, default=0
+        the dimension of the additional features that will be concatenated onto the calculated
+        features of each bond
     """
 
-    mgs: InitVar[Sequence[MolGraph]]
-    """A list of individual :class:`MolGraph`s to be batched together"""
-    V: Tensor = field(init=False)
-    """the atom feature matrix"""
-    E: Tensor = field(init=False)
-    """the bond feature matrix"""
-    edge_index: Tensor = field(init=False)
-    """an tensor of shape ``2 x E`` containing the edges of the graph in COO format"""
-    rev_edge_index: Tensor = field(init=False)
-    """A tensor of shape ``E`` that maps from an edge index to the index of the source of the
-    reverse edge in the ``edge_index`` attribute."""
-    batch: Tensor = field(init=False)
-    """the index of the parent :class:`MolGraph` in the batched graph"""
+    extra_atom_fdim: InitVar[int] = 0
+    extra_bond_fdim: InitVar[int] = 0
 
-    __size: int = field(init=False)
+    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
+        super().__post_init__()
 
-    def __post_init__(self, mgs: Sequence[MolGraph]):
-        self.__size = len(mgs)
+        self.atom_fdim += extra_atom_fdim
+        self.bond_fdim += extra_bond_fdim
 
-        Vs = []
-        Es = []
-        edge_indexes = []
-        rev_edge_indexes = []
-        batch_indexes = []
+    def __call__(
+        self,
+        mol: Chem.Mol,
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        n_atoms = mol.GetNumAtoms()
+        n_bonds = mol.GetNumBonds()
 
-        offset = 0
-        for i, mg in enumerate(mgs):
-            Vs.append(mg.V)
-            Es.append(mg.E)
-            edge_indexes.append(mg.edge_index + offset)
-            rev_edge_indexes.append(mg.rev_edge_index + offset)
-            batch_indexes.append([i] * len(mg.V))
+        if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
+            raise ValueError(
+                "Input molecule must have same number of atoms as `len(atom_features_extra)`!"
+                f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
+            )
+        if bond_features_extra is not None and len(bond_features_extra) != n_bonds:
+            raise ValueError(
+                "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
+                f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
+            )
 
-            offset += len(mg.V)
+        X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
+        X_e = np.empty((2 * n_bonds, self.bond_fdim))
+        edge_index = [[], []]
 
-        self.V = torch.from_numpy(np.concatenate(Vs)).float()
-        self.E = torch.from_numpy(np.concatenate(Es)).float()
-        self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
-        self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
-        self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
-    
-    def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`s in this batch"""
-        return self.__size
+        if atom_features_extra is not None:
+            X_v = np.hstack((X_v, atom_features_extra.repeat(2, 0)))
 
-    def to(self, device: str | torch.device):
-        self.V = self.V.to(device)
-        self.E = self.E.to(device)
-        self.edge_index = self.edge_index.to(device)
-        self.rev_edge_index = self.rev_edge_index.to(device)
-        self.batch = self.batch.to(device)
+        i = 0
+        for u in range(n_atoms):
+            for v in range(u + 1, n_atoms):
+                bond = mol.GetBondBetweenAtoms(u, v)
+                if bond is None:
+                    continue
+
+                x_e = self.bond_featurizer(bond)
+                if bond_features_extra is not None:
+                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
+
+                X_e[i : i + 2] = x_e
+
+                edge_index[0].extend([u, v])
+                edge_index[1].extend([v, u])
+
+                i += 2
+
+        rev_edge_index = np.arange(len(X_e)).reshape(-1, 2)[:, ::-1].ravel()
+        edge_index = np.array(edge_index, int)
+
+        return MolGraph(
+            X_v,
+            X_e,
+            edge_index,
+            rev_edge_index,
+        )

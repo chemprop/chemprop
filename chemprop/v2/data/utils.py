@@ -4,7 +4,6 @@ from typing import Sequence
 import numpy as np
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
-
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 
 

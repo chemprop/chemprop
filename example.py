@@ -16,7 +16,7 @@ def main():
     parser.add_argument('-c', '--num-workers', type=int, default=4)
     args = parser.parse_args()
 
-    featurizer = featurizers.MoleculeMolGraphFeaturizer()
+    featurizer = featurizers.MolGraphFeaturizer()
     mp = nn.BondMessagePassing()
     agg = nn.AttentiveAggregation(output_size=mp.output_dim)
     ffn = nn.RegressionFFN()

@@ -5,15 +5,13 @@ should generally pass."""
 from pathlib import Path
 import warnings
 
-import lightning
 from lightning import pytorch as pl
 import pandas as pd
 import pytest
 import torch
 
-from chemprop.v2 import featurizers
+from chemprop.v2 import featurizers, models, nn
 from chemprop.v2.data import MoleculeDatapoint, MoleculeDataset, MolGraphDataLoader
-from chemprop.v2.models import nn, model
 
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
@@ -40,9 +38,9 @@ def mp(request):
 def test_regression(mp, data: list[MoleculeDatapoint]):
     agg = nn.MeanAggregation()
     ffn = nn.RegressionFFN()
-    mpnn = model.MPNN(mp, agg, ffn, True)
+    mpnn = models.MPNN(mp, agg, ffn, True)
 
-    featurizer = featurizers.MoleculeMolGraphFeaturizer()
+    featurizer = featurizers.MolGraphFeaturizer()
     dset = MoleculeDataset(data, featurizer)
     dset.normalize_targets()
 

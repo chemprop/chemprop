@@ -1,32 +1,8 @@
-from typing import Iterable
-
-import numpy as np
-import torch
-from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.v2.data.datasets import Datum, _MolGraphDatasetMixin
+from chemprop.v2.data.collate import collate_batch
+from chemprop.v2.data.datasets import MoleculeDataset
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
-
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
-MulticomponentTrainingBatch = tuple[
-    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
-]
-
-
-def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
-
-    return (
-        BatchMolGraph(mgs),
-        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
-        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
-        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
-        torch.tensor(weights).unsqueeze(1),
-        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
-        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
-    )
 
 
 class MolGraphDataLoader(DataLoader):
@@ -53,7 +29,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: _MolGraphDatasetMixin,
+        dataset: MoleculeDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -61,66 +37,19 @@ class MolGraphDataLoader(DataLoader):
         shuffle: bool = True,
         **kwargs,
     ):
-        self.dset = dataset
-        self.class_balance = class_balance
-        self.shuffle = shuffle
-
-        if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dset.Y, seed, self.shuffle)
-        elif self.shuffle and seed is not None:
-            self.sampler = SeededSampler(len(self.dset), seed)
+        if class_balance:
+            sampler = ClassBalanceSampler(dataset.Y, seed, shuffle)
+        elif shuffle and seed is not None:
+            sampler = SeededSampler(len(dataset), seed)
         else:
-            self.sampler = None
+            sampler = None
 
         super().__init__(
-            self.dset,
+            dataset,
             batch_size,
-            self.sampler is None and self.shuffle,
-            self.sampler,
+            sampler is None and shuffle,
+            sampler,
             num_workers=num_workers,
             collate_fn=collate_batch,
             **kwargs,
         )
-
-    # @property
-    # def Y(self) -> np.ndarray:
-    #     """the targets associated with each molecule"""
-    #     if self.class_balance or self.shuffle:
-    #         raise ValueError(
-    #             "Cannot safely extract targets when class balance or shuffle are enabled."
-    #         )
-
-    #     return np.array([self.dset.data[i].y for i in self.sampler])
-
-    # @property
-    # def gt_mask(self) -> np.ndarray | None:
-    #     """whether each target is an inequality rather than a value target associated
-    #     with each molecule"""
-    #     if self.class_balance or self.shuffle:
-    #         raise ValueError(
-    #             "Cannot safely extract targets when class balance or shuffle are enabled."
-    #         )
-
-    #     if self.dset.data[0].gt_mask is None:
-    #         return None
-
-    #     return np.array([self.dset.data[i].gt_mask for i in self.sampler])
-
-    # @property
-    # def lt_mask(self) -> np.ndarray | None:
-    #     """for whether each target is an inequality rather than a value target associated
-    #     with each molecule"""
-    #     if self.class_balance or self.shuffle:
-    #         raise ValueError(
-    #             "Cannot safely extract targets when class balance or shuffle are enabled."
-    #         )
-
-    #     if self.dset.data[0].lt_mask is None:
-    #         return None
-
-    #     return np.array([self.dset.data[i].lt_mask for i in self.sampler])
-
-    # @property
-    # def iter_size(self) -> int:
-    #     """the number of data points included in each full iteration of this dataloader."""
-    #     return len(self.sampler)

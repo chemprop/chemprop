@@ -3,7 +3,7 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
-from chemprop.v2.featurizers import BatchMolGraph
+from chemprop.v2.data import BatchMolGraph
 from chemprop.v2.nn import MulticomponentMessagePassing, Aggregation, Readout
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.metrics import Metric

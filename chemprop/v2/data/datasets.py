@@ -7,14 +7,14 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.featurizers import (
     MolGraph,
     MoleculeMolGraphFeaturizerProto,
-    MoleculeMolGraphFeaturizer,
+    MolGraphFeaturizer,
     RxnMolGraphFeaturizerProto,
     RxnMolGraphFeaturizer,
 )
+from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 
 
 class Datum(NamedTuple):
@@ -81,7 +81,7 @@ class _MolGraphDatasetMixin:
         return self.data[0].t if len(self.data) > 0 else None
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
-        """Normalizes the targets of the dataset using a :obj:`StandardScaler`
+        """Normalizes the targets of this dataset using a :obj:`StandardScaler`
 
         The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
         each task independently. NOTE: This should only be used for regression datasets.
@@ -137,7 +137,7 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
+    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MolGraphFeaturizer)
 
     def __post_init__(self):
         self.reset()

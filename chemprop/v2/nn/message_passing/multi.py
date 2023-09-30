@@ -3,7 +3,7 @@ import warnings
 
 from torch import Tensor, nn
 
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
+from chemprop.v2.data import BatchMolGraph
 from chemprop.v2.nn.message_passing.message_passing import MessagePassingBase
 
 
