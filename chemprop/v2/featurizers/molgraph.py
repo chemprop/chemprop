@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 
 import numpy as np
 from rdkit import Chem
@@ -20,7 +20,7 @@ class MolGraph(NamedTuple):
     """A vector of length ``E`` that maps from an edge index to the index of the source of the reverse edge in the ``edge_index`` attribute."""
 
 
-class MoleculeMolGraphFeaturizerProto:
+class MoleculeMolGraphFeaturizerProto(Protocol):
     """A :class:`MoleculeMolGraphFeaturizerProto` featurizes RDKit molecules into
     :class:`MolGraph`s"""
 

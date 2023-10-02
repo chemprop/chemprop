@@ -1,4 +1,5 @@
 from typing import Protocol
+
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
