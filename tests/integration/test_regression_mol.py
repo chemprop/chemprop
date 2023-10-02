@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
 @pytest.fixture(
     params=[
-        (Path("tests/data/regression.csv"), "smiles", "lipo"),
+        (Path("tests/data/regression_mol.csv"), "smiles", "lipo"),
     ]
 )
 def data(request):
