@@ -1,6 +1,6 @@
 from dataclasses import InitVar, dataclass
 from enum import auto
-from typing import Iterable, Sequence
+from typing import Iterable, Protocol, Sequence
 import warnings
 
 import numpy as np
@@ -34,7 +34,7 @@ class RxnMode(AutoName):
     products and balances imbalanced reactions"""
 
 
-class RxnMolGraphFeaturizerProto:
+class RxnMolGraphFeaturizerProto(Protocol):
     """A :class:`RxnMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
     and product molecules) into :class:`MolGraph`s"""
 
