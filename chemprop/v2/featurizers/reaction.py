@@ -66,7 +66,7 @@ class RxnMolGraphFeaturizerProto:
 
 
 @dataclass
-class RxnMolGraphFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
+class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
     """A :class:`ReactionMolGraphFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because

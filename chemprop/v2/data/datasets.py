@@ -12,7 +12,7 @@ from chemprop.v2.featurizers import (
     MoleculeMolGraphFeaturizerProto,
     MolGraphFeaturizer,
     RxnMolGraphFeaturizerProto,
-    RxnMolGraphFeaturizer,
+    CGRFeaturizer,
 )
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 
@@ -277,7 +277,7 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=RxnMolGraphFeaturizer)
+    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __getitem__(self, idx: int) -> Datum:
