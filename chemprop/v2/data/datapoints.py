@@ -112,9 +112,9 @@ class _ReactionDatapointMixin:
     def from_smi(
         cls,
         rxn_or_smis: str | tuple[str, str],
-        keep_h: bool = False,
-        add_h: bool = False,
         *args,
+        keep_h: bool = True,
+        add_h: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:

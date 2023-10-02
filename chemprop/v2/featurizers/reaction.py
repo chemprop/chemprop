@@ -67,7 +67,7 @@ class RxnMolGraphFeaturizerProto(Protocol):
 
 @dataclass
 class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
-    """A :class:`ReactionMolGraphFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
+    """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
     it requries the :meth:`num_only()` method, which is only implemented in the concrete
@@ -113,7 +113,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
     def mode(self, m: str | RxnMode):
         self.__mode = RxnMode.get(m)
 
-    def featurize(
+    def __call__(
         self,
         rxn: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: np.ndarray | None = None,
@@ -124,6 +124,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         if bond_features_extra is not None:
             warnings.warn("'bond_features_extra' is currently unsupported for reactions")
 
+        # import pdb; pdb.set_trace()
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
@@ -139,12 +140,14 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         i = 0
         for u in range(n_atoms_tot):
             for v in range(u + 1, n_atoms_tot):
-                b_reac, b_prod = self._get_bonds(reac, pdt, r2p_idx_map, pdt_idxs, n_atoms_reac, u, v)
-                if b_reac is None and b_prod is None:
+                b_reac, b_pdt = self._get_corresponding_bond(
+                    reac, pdt, r2p_idx_map, pdt_idxs, n_atoms_reac, u, v
+                )
+                if b_reac is None and b_pdt is None:
                     continue
 
-                x_e = self._calc_edge_feature(b_reac, b_prod)
-                X_e[i : i + 2] = x_e
+                x_e = self._calc_edge_feature(b_reac, b_pdt)
+                X_e.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
 
@@ -168,7 +171,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         if self.mode in [RxnMode.REAC_DIFF, RxnMode.PROD_DIFF, RxnMode.REAC_PROD]:
             # Reactant:
             # (1) regular features for each atom in the reactants
-            # (2) zero features for each atom that only in the products
+            # (2) zero features for each atom that's only in the products
             X_v_r2 = [self.atom_featurizer.num_only(pdt.GetAtomWithIdx(i)) for i in pdt_idxs]
             X_v_r2 = np.array(X_v_r2).reshape(-1, X_v_r1.shape[1])
 
@@ -220,7 +223,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
 
         return X_v
 
-    def _get_bonds(
+    def _get_corresponding_bond(
         self,
         rct: Bond,
         pdt: Bond,
@@ -230,7 +233,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         u: int,
         v: int,
     ) -> tuple[Bond, Bond]:
-        """get the reactant- and product-side bonds, respectively, betweeen atoms `a1` and `a2`"""
+        """get the corresponding reactant- and product-side bond, respectively, betweeen atoms `u` and `v`"""
         if u >= n_atoms_r and v >= n_atoms_r:
             b_prod = pdt.GetBondBetweenAtoms(pids[u - n_atoms_r], pids[v - n_atoms_r])
 
@@ -265,20 +268,18 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
 
         return b_reac, b_prod
 
-    def _calc_edge_feature(self, b_reac: Bond, b_prod: Bond):
+    def _calc_edge_feature(self, b_reac: Bond, b_pdt: Bond):
         """Calculate the global features of the two bonds"""
         x_e_r = self.bond_featurizer(b_reac)
-        x_e_p = self.bond_featurizer(b_prod)
+        x_e_p = self.bond_featurizer(b_pdt)
+        x_e_d = x_e_p - x_e_r
 
         if self.mode in [RxnMode.REAC_PROD, RxnMode.REAC_PROD_BALANCE]:
             x_e = np.hstack((x_e_r, x_e_p))
+        elif self.mode in [RxnMode.REAC_DIFF, RxnMode.REAC_DIFF_BALANCE]:
+            x_e = np.hstack((x_e_r, x_e_d))
         else:
-            x_e_d = x_e_p - x_e_r
-
-            if self.mode in [RxnMode.REAC_DIFF, RxnMode.REAC_DIFF_BALANCE]:
-                x_e = np.hstack((x_e_r, x_e_d))
-            else:
-                x_e = np.hstack((x_e_p, x_e_d))
+            x_e = np.hstack((x_e_p, x_e_d))
 
         return x_e
 
