@@ -93,7 +93,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         2101-2110. https://doi.org/10.1021/acs.jcim.1c00975
     """
 
-    bond_messages: bool = True
+    # bond_messages: bool = True
     mode_: InitVar[str | RxnMode] = RxnMode.REAC_DIFF
 
     def __post_init__(self, mode_: str | RxnMode):
@@ -102,8 +102,8 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         self.mode = mode_
         self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
         self.bond_fdim *= 2
-        if self.bond_messages:
-            self.bond_fdim += self.atom_fdim
+        # if self.bond_messages:
+        #     self.bond_fdim += self.atom_fdim
 
     @property
     def mode(self) -> RxnMode:

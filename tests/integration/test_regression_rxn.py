@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
 @pytest.fixture(
     params=[
-        (Path("tests/data/regression_rxn.csv"), "smiles", "lipo"),
+        (Path("tests/data/regression_rxn.csv"), "smiles", "ea"),
     ]
 )
 def data(request):
@@ -40,7 +40,7 @@ def test_regression(mp, data: list[MoleculeDatapoint]):
     ffn = nn.RegressionFFN()
     mpnn = models.MPNN(mp, agg, ffn, True)
 
-    featurizer = featurizers.RxnMolGraphFeaturizer()
+    featurizer = featurizers.CondensedGraphOfReactionFeaturizer()
     dset = MoleculeDataset(data, featurizer)
     dset.normalize_targets()
 
