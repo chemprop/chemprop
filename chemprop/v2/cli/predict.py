@@ -23,7 +23,7 @@ from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
-from chemprop.v2.cli.train import add_common_args
+from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,11 @@ class PredictSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
-        process_args(args)
-        validate_args(args)
-        main(args) 
+        args = process_common_args(args)
+        validate_common_args(args)
+        args = process_predict_args(args)
+        validate_predict_args(args)
+        main(args)
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
@@ -150,7 +152,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def process_args(args: Namespace):
+def process_predict_args(args: Namespace) -> Namespace:
     args.input = Path(args.input)
     if args.output is None:
         name = f"{args.input.stem}_preds.csv"
@@ -158,27 +160,25 @@ def process_args(args: Namespace):
     else:
         args.output = Path(args.output)
 
-    #args.output_dir.mkdir(exist_ok=True, parents=True) 
-    args.logdir.mkdir(exist_ok=True, parents=True)
+    return args
 
 
-def validate_args(args):
+def validate_predict_args(args):
     pass
 
 
 def main(args):
-    bond_messages = not args.atom_messages
-    n_components = len(args.smiles_columns)
-    n_tasks = len(args.target_columns)
-    bounded = args.loss_function is not None and "bounded" in args.loss_function
+    bond_messages = True#not args.atom_messages
+    # n_tasks = len(args.target_columns)
+    # bounded = args.loss_function is not None and "bounded" in args.loss_function
 
-    if n_components > 1:
+    if args.number_of_molecules > 1:
         warnings.warn(
             "Multicomponent input is not supported at this time! Using only the 1st input..."
         )
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded
+        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns,# bounded=bounded
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
