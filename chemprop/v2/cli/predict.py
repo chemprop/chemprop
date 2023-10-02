@@ -39,7 +39,8 @@ class PredictSubcommand(Subcommand):
     def func(cls, args: Namespace):
         process_args(args)
         validate_args(args)
-        main(args) 
+        main(args)
+
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
@@ -51,7 +52,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to CSV file containing SMILES for which predictions will be made.",
     )
     parser.add_argument(
-        "-o", 
+        "-o",
         "--output-dir",
         "--preds-path",
         dest="preds_path",
@@ -65,7 +66,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
 
-    if False: # to do: add uncertainty and calibration and delete this line
+    if False:  # to do: add uncertainty and calibration and delete this line
         unc_args = parser.add_argument_group("uncertainty and calibration args")
         unc_args.add_argument(
             "--ensemble-variance",
@@ -80,17 +81,17 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         )
         unc_args.add_argument(
             "--uncertainty-method",
-            #action=RegistryAction(to do: make register for uncertainty methods)
+            # action=RegistryAction(to do: make register for uncertainty methods)
             help="The method of calculating uncertainty.",
         )
         unc_args.add_argument(
             "--calibration-method",
-            #action=RegistryAction(to do: make register for calibration methods)
+            # action=RegistryAction(to do: make register for calibration methods)
             help="Methods used for calibrating the uncertainty calculated with uncertainty method.",
         )
         unc_args.add_argument(
             "--evaluation-method",
-            #action=RegistryAction(to do: make register for evaluation methods)
+            # action=RegistryAction(to do: make register for evaluation methods)
             type=list[str],
             help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
         )
@@ -119,7 +120,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         )
         unc_args.add_argument(
             "--regression-calibrator-metric",
-            choices=['stdev', 'interval'],
+            choices=["stdev", "interval"],
             help="Regression calibrators can output either a stdev or an inverval.",
         )
         unc_args.add_argument(
@@ -132,11 +133,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
             type=list[str],
             help="Path to features data to be used with the uncertainty calibration dataset.",
         )
-        unc_args.add_argument(
-            "--calibration-phase-features-path",
-            type=str,
-            help=" ",
-        )
+        unc_args.add_argument("--calibration-phase-features-path", type=str, help=" ")
         unc_args.add_argument(
             "--calibration-atom-descriptors-path",
             type=str,
@@ -147,7 +144,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
             type=str,
             help="Path to the extra bond descriptors that will be used as bond features to featurize a given molecule.",
         )
-    
+
     return parser
 
 

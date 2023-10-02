@@ -128,9 +128,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
-        X_v = self._calc_node_feature_matrix(
-            reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs
-        )
+        X_v = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
         X_e = []
         edge_index = [[], []]
 
@@ -160,8 +158,12 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         return MolGraph(X_v, X_e, edge_index, rev_edge_index)
 
     def _calc_node_feature_matrix(
-        self, rct: Mol, pdt: Mol,
-        r2p_idx_map: dict[int, int], pdt_idxs: Iterable[int], reac_idxs: Iterable[int]
+        self,
+        rct: Mol,
+        pdt: Mol,
+        r2p_idx_map: dict[int, int],
+        pdt_idxs: Iterable[int],
+        reac_idxs: Iterable[int],
     ) -> np.ndarray:
         """Calculate the node feature matrix for the reaction"""
         X_v_r1 = np.array([self.atom_featurizer(a) for a in rct.GetAtoms()])

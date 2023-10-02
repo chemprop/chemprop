@@ -218,7 +218,7 @@ class BondMessagePassing(MessagePassingBase):
         h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
         m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
-    
+
     where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
     :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
@@ -256,17 +256,17 @@ class BondMessagePassing(MessagePassingBase):
 class AtomMessagePassing(MessagePassingBase):
     r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
-    
+
     It implements the following operation:
-    
+
     .. math::
-    
+
         h_v^{(0)} &= \tau \left( \mathbf{W}_i(x_v) \right) \\
         m_v^{(t)} &= \sum_{u \in \mathcal{N}(v)} h_u^{(t-1)} \mathbin\Vert e_{uv} \\
         h_v^{(t)} &= \tau\left(h_v^{(0)} + \mathbf{W}_h m_v^{(t-1)}\right) \\
         m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right)  \right),
-    
+
     where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
     :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
