@@ -9,9 +9,10 @@ from lightning import pytorch as pl
 import pandas as pd
 import pytest
 import torch
+from torch.utils.data import DataLoader
 
 from chemprop.v2 import featurizers, models, nn
-from chemprop.v2.data import MoleculeDatapoint, MoleculeDataset, MolGraphDataLoader
+from chemprop.v2.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
@@ -35,16 +36,19 @@ def mp(request):
     return request.param
 
 
-def test_regression(mp, data: list[MoleculeDatapoint]):
-    agg = nn.MeanAggregation()
-    ffn = nn.RegressionFFN()
-    mpnn = models.MPNN(mp, agg, ffn, True)
-
+@pytest.fixture
+def dataloader(data):
     featurizer = featurizers.MolGraphFeaturizer()
     dset = MoleculeDataset(data, featurizer)
     dset.normalize_targets()
 
-    dataloader = MolGraphDataLoader(dset, 50, shuffle=True)
+    return DataLoader(dset, 20, collate_fn=collate_batch)
+
+
+def test_integration(mp, dataloader):
+    agg = nn.MeanAggregation()
+    ffn = nn.RegressionFFN()
+    mpnn = models.MPNN(mp, agg, ffn, True)
 
     trainer = pl.Trainer(
         logger=False,
@@ -53,16 +57,33 @@ def test_regression(mp, data: list[MoleculeDatapoint]):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
+        fast_dev_run=True,
+    )
+    trainer.fit(mpnn, dataloader, None)
+
+
+def test_overfitting(mp, dataloader):
+    agg = nn.MeanAggregation()
+    ffn = nn.RegressionFFN()
+    mpnn = models.MPNN(mp, agg, ffn, True)
+
+    trainer = pl.Trainer(
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=True,
+        enable_model_summary=False,
+        accelerator="cpu",
+        devices=1,
         max_epochs=100,
+        overfit_batches=1.00
     )
     trainer.fit(mpnn, dataloader)
 
-    with torch.inference_mode():
-        errors = []
-        for batch in dataloader:
-            bmg, _, _, targets, *_ = batch
-            preds = mpnn(bmg)
-            errors.append(preds - targets)
+    errors = []
+    for batch in dataloader:
+        bmg, _, _, targets, *_ = batch
+        preds = mpnn(bmg)
+        errors.append(preds - targets)
 
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
