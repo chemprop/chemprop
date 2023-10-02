@@ -889,27 +889,17 @@ class ChempropTests(TestCase):
                 "chemprop_reaction",
                 "chemprop",
                 2.3338595,
-                [
-                    "--reaction",
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "reaction_regression.csv"),
-                ],
-            ),
-            (
-                "chemprop_scaffold_split",
-                "chemprop",
-                2.18239804,
-                [
-                    "--reaction",
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "reaction_regression.csv"),
-                    "--split_type",
-                    "scaffold_balanced",
-                ],
-            ),
-            (
-                "chemprop_morgan_features_generator",
-                "chemprop",
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv')]
+        ),
+        (
+                'chemprop_scaffold_split',
+                'chemprop',
+                2.095871,
+                ['--reaction', '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_regression.csv'),'--split_type', 'scaffold_balanced']
+        ),
+        (
+                'chemprop_morgan_features_generator',
+                'chemprop',
                 3.122113679,
                 [
                     "--reaction",
@@ -1180,37 +1170,23 @@ class ChempropTests(TestCase):
                 "chemprop_reaction_solvent_explicit_h_adding_h",
                 "chemprop",
                 2.984292677,
-                [
-                    "--reaction_solvent",
-                    "--number_of_molecules",
-                    "2",
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "reaction_solvent_regression.csv"),
-                    "--explicit_h",
-                    "--adding_h",
-                ],
-            ),
-            (
-                "chemprop_reaction_solvent_diff_mpn_size",
-                "chemprop",
-                2.730379557,
-                [
-                    "--reaction_solvent",
-                    "--number_of_molecules",
-                    "2",
-                    "--data_path",
-                    os.path.join(TEST_DATA_DIR, "reaction_solvent_regression.csv"),
-                    "--hidden_size",
-                    "500",
-                    "--hidden_size_solvent",
-                    "250",
-                ],
-            ),
-        ]
-    )
-    def test_train_single_task_regression_reaction_solvent(
-        self, name: str, model_type: str, expected_score: float, train_flags: List[str] = None
-    ):
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--explicit_h', '--adding_h']
+        ),
+        (
+                'chemprop_reaction_solvent_diff_mpn_size',
+                'chemprop',
+                2.734318,
+                ['--reaction_solvent', '--number_of_molecules', '2',
+                 '--data_path', os.path.join(TEST_DATA_DIR, 'reaction_solvent_regression.csv'), '--hidden_size', '500',
+                 '--hidden_size_solvent', '250']
+        )
+    ])
+    def test_train_single_task_regression_reaction_solvent(self,
+                                          name: str,
+                                          model_type: str,
+                                          expected_score: float,
+                                          train_flags: List[str] = None):
         with TemporaryDirectory() as save_dir:
             # Train
             metric = "rmse"

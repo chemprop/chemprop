@@ -16,6 +16,9 @@ Provide some examples of where the current code fails. Feel free to share your a
 **Expected behavior**
 A clear and concise description of what you expected to happen. If there is correct, expected output, include that here as well.
 
+**Error Stack Trace**
+If the bug is resulting in an error message, provide the _full_ stack trace (not just the last line). This is helpful for debugging, especially in cases where you aren't able to provide a minimum/isolated working example with accompanying files.
+
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 

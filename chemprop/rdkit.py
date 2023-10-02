@@ -12,7 +12,7 @@ def make_mol(s: str, keep_h: bool, add_h: bool, keep_atom_map: bool):
     :return: RDKit molecule.
     """
     params = Chem.SmilesParserParams()
-    params.removeHs = not keep_h if not keep_atom_map else False
+    params.removeHs = not keep_h
     mol = Chem.MolFromSmiles(s, params)
 
     if add_h:
@@ -24,5 +24,8 @@ def make_mol(s: str, keep_h: bool, add_h: bool, keep_atom_map: bool):
             if idx + 1 != map_num:
                 new_order = np.argsort(atom_map_numbers).tolist()
                 return Chem.rdmolops.RenumberAtoms(mol, new_order)
+    elif not keep_atom_map and mol is not None:
+        for atom in mol.GetAtoms():
+            atom.SetAtomMapNum(0)
 
     return mol

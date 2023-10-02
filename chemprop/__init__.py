@@ -17,4 +17,4 @@ import chemprop.sklearn_train
 import chemprop.spectra_utils
 import chemprop.hyperopt_utils
 
-__version__ = "1.5.2"
+__version__ = "1.6.1"
