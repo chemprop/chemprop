@@ -13,18 +13,18 @@ from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
-from chemprop.v2.models.loss import LossFunctionRegistry
+from chemprop.v2.nn.loss import LossFunctionRegistry
 from chemprop.v2.models.model import MPNN
-from chemprop.v2.models.modules.agg import AggregationRegistry
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+from chemprop.v2.nn.agg import AggregationRegistry
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
-from chemprop.v2.models.nn.message_passing.message_passing import (
+from chemprop.v2.nn.message_passing.message_passing import (
     AtomMessageBlock,
     BondMessagePassing,
 )
-from chemprop.v2.models.nn.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
