@@ -3,12 +3,13 @@ import logging
 from pathlib import Path
 
 from chemprop.v2.cli.utils import LOG_DIR, NOW, pop_attr
+from chemprop.v2.cli.convert import ConvertSubcommand
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_LOGFILE = f"{LOG_DIR}/{NOW}.log"
 LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
-SUBCOMMANDS = []
+SUBCOMMANDS = [ConvertSubcommand]
 
 
 def main():
