@@ -225,8 +225,9 @@ class TestCondensedGraphOfReactionFeaturizer:
         """
         reac, prod = reac_prod_mols
         ri2pj, pids, rids = reac_prod_maps
-        assert cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids).shape \
-            == (len(ri2pj) + len(pids) + len(rids), cgr_featurizer.atom_fdim)
+        num_nodes, atom_fdim = cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids).shape
+        assert num_nodes == len(ri2pj) + len(pids) + len(rids)
+        assert atom_fdim == cgr_featurizer.atom_fdim
 
     @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer",
                              zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES),
@@ -244,7 +245,7 @@ class TestCondensedGraphOfReactionFeaturizer:
             + [atom_featurizer.num_only(prod.GetAtomWithIdx(pid)) for pid in pids]
         )[:, :atom_featurizer.max_atomic_num + 1]
         atomic_num_features = cgr_featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids)[:, :atom_featurizer.max_atomic_num + 1]
-        assert np.all(atomic_num_features == atomic_num_features_expected)
+        np.testing.assert_equal(atomic_num_features, atomic_num_features_expected)
 
     @pytest.mark.parametrize("reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds",
                              zip(rxn_smis, reac_prod_maps, AVAILABLE_RXN_MODE_NAMES[::2] * 2, elements_from_get_bond_is_None_imbalanced),
