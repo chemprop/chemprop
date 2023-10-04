@@ -2,16 +2,23 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.v2.featurizers import MolGraphFeaturizerProto, MoleculeMolGraphFeaturizer, MolGraph, AtomFeaturizer
+from chemprop.v2.featurizers import (
+    MolGraphFeaturizerProto,
+    MoleculeMolGraphFeaturizer,
+    MolGraph,
+    AtomFeaturizer,
+)
 
 
-@pytest.fixture(params=[
-    'Fc1cccc(C2(c3nnc(Cc4cccc5ccccc45)o3)CCOCC2)c1',
-    'O=C(NCc1ccnc(Oc2ccc(F)cc2)c1)c1[nH]nc2c1CCCC2',
-    'Cc1ccccc1CC(=O)N1CCN(CC(=O)N2Cc3ccccc3C(c3ccccc3)C2)CC1',
-    'O=C(Nc1cc2c(cn1)CCCC2)N1CCCC1c1ccc(O)cc1',
-    'NC(=O)C1CCN(C(=O)CCc2c(-c3ccc(F)cc3)[nH]c3ccccc23)C1',
-])
+@pytest.fixture(
+    params=[
+        "Fc1cccc(C2(c3nnc(Cc4cccc5ccccc45)o3)CCOCC2)c1",
+        "O=C(NCc1ccnc(Oc2ccc(F)cc2)c1)c1[nH]nc2c1CCCC2",
+        "Cc1ccccc1CC(=O)N1CCN(CC(=O)N2Cc3ccccc3C(c3ccccc3)C2)CC1",
+        "O=C(Nc1cc2c(cn1)CCCC2)N1CCCC1c1ccc(O)cc1",
+        "NC(=O)C1CCN(C(=O)CCc2c(-c3ccc(F)cc3)[nH]c3ccccc23)C1",
+    ]
+)
 def smi(request):
     return request.param
 
@@ -146,7 +153,7 @@ def test_atom_extra_values(mol, extra, atom_features_extra):
     mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra)
     mg = mf(mol, atom_features_extra=atom_features_extra)
 
-    np.testing.assert_array_equal(mg.V[:, len(mf.atom_featurizer):], atom_features_extra)
+    np.testing.assert_array_equal(mg.V[:, len(mf.atom_featurizer) :], atom_features_extra)
 
 
 def test_bond_extra(mol, extra, bond_features_extra):
@@ -157,9 +164,12 @@ def test_bond_extra(mol, extra, bond_features_extra):
 
 
 def test_atom_bond_extra(mol, extra, atom_features_extra, bond_features_extra):
-    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages=True)
+    mf = MoleculeMolGraphFeaturizer(
+        extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages=True
+    )
     mg = mf(mol, atom_features_extra, bond_features_extra)
 
     assert mg.E.shape == (
-        2 * mol.GetNumBonds(), len(mf.atom_featurizer) + len(mf.bond_featurizer) + 2 * extra
+        2 * mol.GetNumBonds(),
+        len(mf.atom_featurizer) + len(mf.bond_featurizer) + 2 * extra,
     )

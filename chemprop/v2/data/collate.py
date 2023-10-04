@@ -103,6 +103,7 @@ MulticomponentTrainingBatch = tuple[
     list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
 ]
 
+
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 

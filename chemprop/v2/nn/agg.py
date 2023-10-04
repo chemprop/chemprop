@@ -15,7 +15,7 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
     **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
     concrete subclasses.
-    
+
     See also
     --------
     :class:`chemprop.v2.models.modules.agg.MeanAggregation`
@@ -105,7 +105,7 @@ class Aggregation(ABC, nn.Module, HasHParams):
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
     r"""Average the graph-level representation
-    
+
     .. math::
         \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v"""
 
@@ -116,10 +116,10 @@ class MeanAggregation(Aggregation):
 @AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
     r"""Sum the graph-level representation
-    
+
     .. math::
         \mathbf h = \sum_{v \in V} \mathbf h_v
-    
+
     """
 
     def agg(self, H: Tensor) -> Tensor:
@@ -129,7 +129,7 @@ class SumAggregation(Aggregation):
 @AggregationRegistry.register("norm")
 class NormAggregation(Aggregation):
     r"""Sum the graph-level representation and divide by a normalization constant
-    
+
     .. math::
         \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
     """

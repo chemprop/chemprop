@@ -2,8 +2,10 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDatapoint
-#from chemprop.featurizers.features_generators import get_available_features_generators
+
+# from chemprop.featurizers.features_generators import get_available_features_generators
 from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
+
 
 @pytest.fixture(
     params=[

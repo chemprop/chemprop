@@ -345,4 +345,5 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
 
         return ri2pj, pdt_idxs, rct_idxs
 
+
 CGRFeaturizer = CondensedGraphOfReactionFeaturizer

@@ -59,8 +59,8 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.hparams['cls'] = self.__class__
-        
+        self.hparams["cls"] = self.__class__
+
         self.W_i, self.W_h, self.W_o, self.W_d = self.build(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
@@ -261,6 +261,7 @@ class AtomMessageBlock(MessagePassingBlockBase):
     :math:`m_v^{(t)}` is the message received by atom :math:`v` at iteration :math:`t`; and
     :math:`t \in \{1, \dots, T\}` is the number of message passing iterations.
     """
+
     def build(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,

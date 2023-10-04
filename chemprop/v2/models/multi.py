@@ -6,7 +6,11 @@ from torch import Tensor, nn
 from chemprop.v2.data.dataloader import MulticomponentTrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.nn import (
-    MulticomponentMessagePassing, Aggregation, OutputTransform, LossFunction, Metric
+    MulticomponentMessagePassing,
+    Aggregation,
+    OutputTransform,
+    LossFunction,
+    Metric,
 )
 from chemprop.v2.models.model import MPNN
 

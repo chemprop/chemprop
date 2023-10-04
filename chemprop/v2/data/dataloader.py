@@ -1,4 +1,3 @@
-
 from torch.utils.data import DataLoader
 
 from chemprop.v2.data.collate import collate_batch

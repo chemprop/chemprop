@@ -19,6 +19,7 @@ from chemprop.v2.featurizers import (
 
 class Datum(NamedTuple):
     """a singular training data point"""
+
     mg: MolGraph
     V_d: np.ndarray | None
     x_f: np.ndarray | None

@@ -3,8 +3,6 @@ from typing import Protocol, Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-from chemprop.v2.featurizers.protos import BondFeaturizerProto
-
 
 class BondFeaturizerProto(Protocol):
     """A :class:`BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
