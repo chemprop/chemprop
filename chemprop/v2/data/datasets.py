@@ -150,6 +150,9 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
+        if self.data is None:
+            raise ValueError("Data cannot be None!")
+        
         self.reset()
 
     def __getitem__(self, idx: int) -> Datum:
@@ -169,50 +172,50 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
         return [d.mol for d in self.data]
 
     @property
-    def _V_fs(self) -> list[np.ndarray]:
+    def _V_fs(self) -> np.ndarray:
         """the raw atom features of the dataset"""
         return np.array([d.V_f for d in self.data])
 
     @property
-    def V_fs(self) -> list[np.ndarray]:
+    def V_fs(self) -> np.ndarray:
         """the (scaled) atom descriptors of the dataset"""
         return self.__V_fs
 
     @V_fs.setter
-    def V_fs(self, V_fs: list[np.ndarray]):
+    def V_fs(self, V_fs: np.ndarray):
         """the (scaled) atom features of the dataset"""
         self._validate_attribute(V_fs, "atom features")
 
         self.__V_fs = V_fs
 
     @property
-    def _E_fs(self) -> list[np.ndarray]:
+    def _E_fs(self) -> np.ndarray:
         """the raw bond features of the dataset"""
         return np.array([d.E_f for d in self.data])
 
     @property
-    def E_fs(self) -> list[np.ndarray]:
+    def E_fs(self) -> np.ndarray:
         """the (scaled) bond features of the dataset"""
         return self.__E_fs
 
     @E_fs.setter
-    def E_fs(self, E_fs: list[np.ndarray]):
+    def E_fs(self, E_fs: np.ndarray):
         self._validate_attribute(E_fs, "bond features")
 
         self.__E_fs = E_fs
 
     @property
-    def _V_ds(self) -> list[np.ndarray]:
+    def _V_ds(self) -> np.ndarray:
         """the raw atom descriptors of the dataset"""
         return np.array([d.V_d for d in self.data])
 
     @property
-    def V_ds(self) -> list[np.ndarray]:
+    def V_ds(self) -> np.ndarray:
         """the (scaled) atom descriptors of the dataset"""
         return self.__V_ds
 
     @V_ds.setter
-    def V_ds(self, V_ds: list[np.ndarray] | None):
+    def V_ds(self, V_ds: np.ndarray):
         self._validate_attribute(V_ds, "atom descriptors")
 
         self.__V_ds = V_ds
@@ -225,12 +228,12 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     @property
     def d_ef(self) -> int | None:
         """the extra bond feature dimension, if any"""
-        return None if self.E_fs is None else self.E_fs[0].shape[1]
+        return None if self.E_fs[0] is None else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int | None:
         """the extra atom descriptor dimension, if any"""
-        return None if self.V_ds is None else self.V_ds[0].shape[1]
+        return None if self.V_ds[0] is None else self.V_ds[0].shape[1]
 
     def normalize_inputs(
         self, key: str | None = "X_f", scaler: StandardScaler | None = None

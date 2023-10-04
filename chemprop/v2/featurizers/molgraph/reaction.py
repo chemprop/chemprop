@@ -83,7 +83,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         molecule
     bond_messages : bool, default=True
         whether to prepare the `MolGraph`s for use with bond-based message-passing
-    mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
+    mode_ : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
         the mode by which to featurize the reaction as either the string code or enum value
 
     References
