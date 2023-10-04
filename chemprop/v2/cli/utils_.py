@@ -119,20 +119,19 @@ def make_datapoints(
     if reaction:
 
         data = [
-            ReactionDatapoint(
-                rxns[i],
-                targetss[i],
-                None,
-                weights[i],
-                gt_targetss[i],
-                lt_targetss[i],
-                next(featuress),
-                features_generators,
-                None,
-                keep_h,
-                add_h,
+            ReactionDatapoint.from_smi(
+                rxn_or_smis=smis[i],
+                keep_h=keep_h,
+                add_h=add_h,
+                y=targetss[i],
+                weight=weights[i],
+                gt_mask=gt_targetss[i],
+                lt_mask=lt_targetss[i],
+                x_f=featuress[i],
+                mfs=features_generators,
+                x_phase=None,
             )
-            for i in range(len(rxns))
+            for i in range(len(smis))
         ]
     else:
         if atom_features is None:
