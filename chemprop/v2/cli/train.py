@@ -360,7 +360,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--v-kl",
         "--evidential-regularization",
         type=float,
-        default=0.2,  # TODO: the default in v1 was 0. Do we want it to default to 0.2 in v2?
+        default=0.0,
         help="Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model.",
     )
 
