@@ -88,6 +88,18 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
+        return self.featurize(
+            rxn=rxn,
+            atom_features_extra=atom_features_extra,
+            bond_features_extra=bond_features_extra,
+        )
+
+    def featurize(
+        self,
+        rxn: tuple[Chem.Mol, Chem.Mol],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
