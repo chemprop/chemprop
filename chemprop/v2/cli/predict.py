@@ -216,11 +216,12 @@ def main(args):
     test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
-    if cal_data is not None:
-        cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
-        cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.n_cpu, shuffle=False)
-    else:
-        cal_loader = None
+    # TODO: add uncertainty and calibration
+    # if cal_data is not None:
+    #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
+    #     cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.n_cpu, shuffle=False)
+    # else:
+    #     cal_loader = None
 
     mp_kwargs = dict(
         d_h=args.message_hidden_dim,
@@ -260,10 +261,11 @@ def main(args):
     )
 
     predss = trainer.predict(model, test_loader)
-    if cal_dset is not None:
-        if args.dataset_type == "regression":
-            model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-        predss_cal = trainer.predict(model, cal_loader)[0]
+    # TODO: add uncertainty and calibration
+    # if cal_dset is not None:
+    #     if args.dataset_type == "regression":
+    #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
+    #     predss_cal = trainer.predict(model, cal_loader)[0]
 
 
 if __name__ == "__main__":
