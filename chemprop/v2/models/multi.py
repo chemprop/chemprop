@@ -7,8 +7,8 @@ from chemprop.v2.data.dataloader import MulticomponentTrainingBatch
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules import MulticomponentMessagePassing, Aggregation, OutputTransform
-from chemprop.v2.models.loss import LossFunction
-from chemprop.v2.models.metrics import Metric
+from chemprop.v2.nn.loss import LossFunction
+from chemprop.v2.nn.metrics import Metric
 
 
 class MulticomponentMPNN(MPNN):

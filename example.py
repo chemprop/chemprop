@@ -8,7 +8,8 @@ from sklearn.model_selection import train_test_split
 
 from chemprop.v2 import data
 from chemprop.v2 import featurizers
-from chemprop.v2.models import loss, modules, models, metrics
+from chemprop.v2.models import modules, models
+from chemprop.v2.nn import loss, metrics
 
 parser = ArgumentParser()
 parser.add_argument('input', default='./data/lipo.csv')

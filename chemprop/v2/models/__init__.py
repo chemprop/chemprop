@@ -6,5 +6,5 @@ from .modules import (
     BondMessageBlock,
 )
 from .model import MPNN
-from .loss import LossFunction
-from .metrics import Metric, MetricRegistry
+from ..nn.loss import LossFunction
+from ..nn.metrics import Metric, MetricRegistry
