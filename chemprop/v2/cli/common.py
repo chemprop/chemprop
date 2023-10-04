@@ -26,6 +26,7 @@ from chemprop.v2.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
+
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args = parser.add_argument_group("input data parsing args")
     data_args.add_argument(
@@ -48,9 +49,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
     )
     data_args.add_argument(
-        "--checkpoint-path",
-        type=str,
-        help="Path to model checkpoint (:code:`.pt` file).",
+        "--checkpoint-path", type=str, help="Path to model checkpoint (:code:`.pt` file)."
     )
     data_args.add_argument(
         "--checkpoint-paths",
@@ -61,22 +60,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--checkpoint",
         help="""Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found.
-        If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded."""
+        If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.""",
     )
     data_args.add_argument(
-        "--no-cuda",
-        action="store_true",
-        help="Turn off cuda (i.e., use CPU instead of GPU).",
+        "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
     )
+    data_args.add_argument("--gpu", type=int, help="Which GPU to use.")
     data_args.add_argument(
-        "--gpu",
-        type=int,
-        help="Which GPU to use.",
-    )
-    data_args.add_argument(
-        "--max-data-size",
-        type=int,
-        help="Maximum number of data points to load.",
+        "--max-data-size", type=int, help="Maximum number of data points to load."
     )
     data_args.add_argument(
         "-c",
@@ -87,13 +78,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Number of workers for the parallel data loading (0 means sequential).",
     )
     parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
-    data_args.add_argument(
-        "-b",
-        "--batch-size",
-        type=int,
-        default=50,
-        help="Batch size.",
-    )
+    data_args.add_argument("-b", "--batch-size", type=int, default=50, help="Batch size.")
     # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
@@ -105,12 +90,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default=list(),
         help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles_columns` specified",
     )
-    
+
     featurization_args = parser.add_argument_group("featurization args")
     featurization_args.add_argument(
         "--rxn-mode",
         "--reaction-mode",
-        choices=RxnMode.keys(), 
+        choices=RxnMode.keys(),
         default="reac_diff",
         help="""
              Choices for construction of atom and bond features for reactions
@@ -123,12 +108,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
              """,
     )
     featurization_args.add_argument(
-        "--keep-h", 
+        "--keep-h",
         action="store_true",
         help="Whether H are explicitly specified in input (and should be kept this way). This option is intended to be used with the :code:`reaction` or :code:`reaction_solvent` options, and applies only to the reaction part.",
     )
     featurization_args.add_argument(
-        "--add-h", 
+        "--add-h",
         action="store_true",
         help="Whether RDKit molecules will be constructed with adding the Hs to them. This option is intended to be used with Chemprop's default molecule or multi-molecule encoders, or in :code:`reaction_solvent` mode where it applies to the solvent only.",
     )
@@ -139,7 +124,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        type=list[str], # maybe should be type=str
+        type=list[str],  # maybe should be type=str
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     featurization_args.add_argument(
@@ -148,19 +133,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
-        "--no_features_scaling",
-        action="store_true",
-        help="Turn off scaling of features.",
+        "--no_features_scaling", action="store_true", help="Turn off scaling of features."
     )
     featurization_args.add_argument(
-        "--no_atom_descriptor_scaling",
-        action="store_true",
-        help="Turn off atom feature scaling.",
+        "--no_atom_descriptor_scaling", action="store_true", help="Turn off atom feature scaling."
     )
     featurization_args.add_argument(
-        "--no_bond_descriptor_scaling",
-        action="store_true",
-        help="Turn off bond feature scaling.",
+        "--no_bond_descriptor_scaling", action="store_true", help="Turn off bond feature scaling."
     )
     featurization_args.add_argument(
         "--atom_features_path",
@@ -215,11 +194,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to constraints applied to atomic/bond properties prediction.",
     )
 
-    # TODO: see if we need to add functions from CommonArgs 
+    # TODO: see if we need to add functions from CommonArgs
     return parser
 
-def process_common_args(args: Namespace) -> Namespace:    
+
+def process_common_args(args: Namespace) -> Namespace:
     return args
+
 
 def validate_common_args(args):
     pass
