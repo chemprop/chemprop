@@ -27,7 +27,6 @@ def main():
         "--log",
         nargs="?",
         default=DEFAULT_LOGFILE,
-        const=None, # this is possibly already the default behavior of nargs="?"
         help=f"the path to which the log file should be written. Specifying just the flag (i.e., '--log/--logfile') will automatically log to a file '{LOG_DIR}/MODE/{NOW}.log', where 'MODE' is the CLI mode chosen.",
     )
     parent.add_argument("-v", "--verbose", action="count", default=0, help="the verbosity level")
