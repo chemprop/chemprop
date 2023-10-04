@@ -238,7 +238,7 @@ def main(args):
     predss = trainer.predict(model, test_loader)
     # TODO: add uncertainty and calibration
     # if cal_dset is not None:
-    #     if args.dataset_type == "regression":
+    #     if args.task_type == "regression":
     #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
     #     predss_cal = trainer.predict(model, cal_loader)[0]
 
