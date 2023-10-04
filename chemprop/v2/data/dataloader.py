@@ -18,14 +18,15 @@ MulticomponentTrainingBatch = tuple[
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
 
+    # import pdb; pdb.set_trace()
     return (
         BatchMolGraph(mgs),
-        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
-        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
-        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        None if np.equal(V_ds, None).all() else torch.from_numpy(np.vstack(V_ds)).float(),
+        None if np.equal(x_fs, None).all() else torch.from_numpy(np.array(x_fs)).float(),
+        None if np.isnan(ys).all() else torch.from_numpy(np.array(ys)).float(),
         torch.tensor(weights).unsqueeze(1),
-        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
-        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
+        None if np.equal(lt_masks, None).all() else torch.from_numpy(np.array(lt_masks)),
+        None if np.equal(gt_masks, None).all() else torch.from_numpy(np.array(gt_masks)),
     )
 
 

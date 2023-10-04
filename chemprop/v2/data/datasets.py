@@ -52,7 +52,7 @@ class _MolGraphDatasetMixin:
     @cached_property
     def _X_f(self) -> np.ndarray:
         """the raw molecule features of the dataset"""
-        return np.array([d.x_f for d in self.data], float)
+        return np.array([d.x_f for d in self.data])
 
     @property
     def X_f(self) -> np.ndarray:
@@ -63,19 +63,19 @@ class _MolGraphDatasetMixin:
     def X_f(self, X_f: ArrayLike):
         self._validate_attribute(X_f, "molecule features")
 
-        self.__X_f = np.array(X_f, float)
+        self.__X_f = np.array(X_f)
 
     @property
     def weights(self) -> np.ndarray:
-        return np.array([d.weight for d in self.data], float)
+        return np.array([d.weight for d in self.data])
 
     @property
     def gt_mask(self) -> np.ndarray:
-        return np.array([d.gt_mask for d in self.data], float)
+        return np.array([d.gt_mask for d in self.data])
 
     @property
     def lt_mask(self) -> np.ndarray:
-        return np.array([d.lt_mask for d in self.data], float)
+        return np.array([d.lt_mask for d in self.data])
 
     @property
     def t(self) -> int | None:
@@ -84,7 +84,7 @@ class _MolGraphDatasetMixin:
     @property
     def d_xf(self) -> int:
         """the extra molecule feature dimension, if any"""
-        return None if self.X_f[0] is None else self.V_fs[0].shape[1]
+        return 0 if np.equal(self.X_f, None).all() else self.V_fs[0].shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         """Normalizes the targets of the dataset using a :obj:`StandardScaler`
@@ -170,7 +170,7 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     @property
     def _V_fs(self) -> np.ndarray:
         """the raw atom features of the dataset"""
-        return np.array([d.V_f for d in self.data], float)
+        return np.array([d.V_f for d in self.data])
 
     @property
     def V_fs(self) -> np.ndarray:
@@ -182,12 +182,12 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
         """the (scaled) atom features of the dataset"""
         self._validate_attribute(V_fs, "atom features")
 
-        self.__V_fs = np.array(V_fs, float)
+        self.__V_fs = np.array(V_fs)
 
     @property
     def _E_fs(self) -> np.ndarray:
         """the raw bond features of the dataset"""
-        return np.array([d.E_f for d in self.data], float)
+        return np.array([d.E_f for d in self.data])
 
     @property
     def E_fs(self) -> np.ndarray:
@@ -198,12 +198,12 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     def E_fs(self, E_fs: np.ndarray):
         self._validate_attribute(E_fs, "bond features")
 
-        self.__E_fs = np.array(E_fs, float)
+        self.__E_fs = np.array(E_fs)
 
     @property
     def _V_ds(self) -> np.ndarray:
         """the raw atom descriptors of the dataset"""
-        return np.array([d.V_d for d in self.data], float)
+        return np.array([d.V_d for d in self.data])
 
     @property
     def V_ds(self) -> np.ndarray:
@@ -214,22 +214,22 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     def V_ds(self, V_ds: np.ndarray):
         self._validate_attribute(V_ds, "atom descriptors")
 
-        self.__V_ds = np.array(V_ds, float)
+        self.__V_ds = np.array(V_ds)
 
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if np.isnan(self.V_fs).all() else self.V_fs[0].shape[1]
+        return 0 if np.equal(self.V_fs, None).all() else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
         """the extra bond feature dimension, if any"""
-        return 0 if np.isnan(self.E_fs).all() else self.E_fs[0].shape[1]
+        return 0 if np.equal(self.E_fs, None).all() else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int:
         """the extra atom descriptor dimension, if any"""
-        return 0 if np.isnan(self.V_ds).all() else self.V_ds[0].shape[1]
+        return 0 if np.equal(self.V_ds, None).all() else self.V_ds[0].shape[1]
 
     def normalize_inputs(
         self, key: str | None = "X_f", scaler: StandardScaler | None = None
