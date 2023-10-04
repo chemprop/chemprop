@@ -5,7 +5,7 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerProto
+from chemprop.v2.featurizers import MoleculeFeaturizerProto
 from chemprop.v2.utils import make_mol
 
 

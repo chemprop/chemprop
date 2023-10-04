@@ -7,6 +7,16 @@ from rdkit.Chem.rdchem import Atom, HybridizationType
 from chemprop.v2.featurizers.protos import AtomFeaturizerProto
 
 
+class AtomFeaturizerProto(Protocol):
+    """An :class:`AtomFeaturizerProto` calculates feature vectors of RDKit atoms."""
+
+    def __len__(self) -> int:
+        """the length of an atomic feature vector"""
+
+    def __call__(self, a: Atom) -> np.ndarray:
+        """featurize the atom ``a``"""
+
+
 @dataclass(repr=False, eq=False, slots=True)
 class AtomFeaturizer(AtomFeaturizerProto):
     """An :class:`AtomFeaturizer` featurizes atoms based on the following attributes:
