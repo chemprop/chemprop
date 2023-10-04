@@ -154,10 +154,10 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.input = Path(args.input)
+    args.test_path = Path(args.test_path)
     if args.output is None:
-        name = f"{args.input.stem}_preds.csv"
-        args.output = Path(args.input.with_name(name))
+        name = f"{args.test_path.stem}_preds.csv"
+        args.output = Path(args.test_path.with_name(name))
     else:
         args.output = Path(args.output)
 
@@ -189,7 +189,7 @@ def main(args):
     )
 
     test_data = build_data_from_files(
-        args.input,
+        args.test_path,
         **format_kwargs,
         target_columns=[],
         p_features=args.features_path,
