@@ -76,13 +76,15 @@ def validate_loss_function(
                 f"Expected one of: {tuple(readout.ReadoutRegistry.values())}"
             )
 
+
 def column_str_to_int(
-    columns: list,
-    header: list,
-    ) -> list:
+        columns: list,
+        header: list,
+) -> list:
     if columns is None:
         return None
-    if type(columns[0]) == str:
-        columns = [i for i,e in enumerate(header) if e in columns]
-    assert type(columns[0]) == int
+    if all(isinstance(col, str) for col in columns):
+        columns = [i for i, name in enumerate(header) if name in columns]
+    if not all(isinstance(col, int) for col in columns):
+        raise ValueError("header and columns do not match")
     return columns
