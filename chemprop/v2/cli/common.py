@@ -128,46 +128,46 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     featurization_args.add_argument(
-        "--phase_features_path",
+        "--phase-features-path",
         type=str,
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
-        "--no_features_scaling", action="store_true", help="Turn off scaling of features."
+        "--no-features-scaling", action="store_true", help="Turn off scaling of features."
     )
     featurization_args.add_argument(
-        "--no_atom_descriptor_scaling", action="store_true", help="Turn off atom feature scaling."
+        "--no-atom-descriptor-scaling", action="store_true", help="Turn off atom feature scaling."
     )
     featurization_args.add_argument(
-        "--no_bond_descriptor_scaling", action="store_true", help="Turn off bond feature scaling."
+        "--no-bond-descriptor-scaling", action="store_true", help="Turn off bond feature scaling."
     )
     featurization_args.add_argument(
-        "--atom_features_path",
+        "--atom-features-path",
         type=str,
         help="Path to the extra atom features. Used as atom features to featurize a given molecule.",
     )
     featurization_args.add_argument(
-        "--atom_descriptors_path",
+        "--atom-descriptors-path",
         type=str,
         help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation.",
     )
     featurization_args.add_argument(
-        "--overwrite_default_atom_features",
+        "--overwrite-default-atom-features",
         action="store_true",
         help="Overwrites the default atom descriptors with the new ones instead of concatenating them. Can only be used if atom_descriptors are used as a feature.",
     )
     featurization_args.add_argument(
-        "--bond_features_path",
+        "--bond-features-path",
         type=str,
         help="Path to the extra bond features. Used as bond features to featurize a given molecule.",
     )
     featurization_args.add_argument(
-        "--bond_descriptors_path",
+        "--bond-descriptors-path",
         type=str,
         help="Path to the extra bond descriptors. Used as descriptors and concatenated to the machine learned bond representation.",
     )
     featurization_args.add_argument(
-        "--overwrite_default_bond_features",
+        "--overwrite-default-bond-features",
         action="store_true",
         help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
