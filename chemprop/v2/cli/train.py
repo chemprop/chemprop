@@ -25,7 +25,7 @@ from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
-from chemprop.v2.cli.utils import CHK_DIR, column_str_to_int
+from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
