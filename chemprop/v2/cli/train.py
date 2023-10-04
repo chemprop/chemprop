@@ -7,6 +7,7 @@ import warnings
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+import numpy as np
 import torch
 
 from chemprop.v2 import data
@@ -799,9 +800,10 @@ def main(args):
         )
         criterion = readout_cls._default_criterion
 
+    d_x_f = train_dset.X_f.shape[1] if np.isfinite(train_dset.X_f).all() else 0
     readout_ffn = Factory.build(
         readout_cls,
-        input_dim=mp_block.output_dim,
+        input_dim=mp_block.output_dim + d_x_f,
         n_tasks=args.n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
