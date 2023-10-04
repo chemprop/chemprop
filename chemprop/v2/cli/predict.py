@@ -197,20 +197,21 @@ def main(args):
     )
     logger.info(f"test size: {len(test_data)}")
 
-    if args.cal_path is not None:
-        cal_data = build_data_from_files(
-            args.cal_path,
-            **format_kwargs,
-            target_columns=args.target_columns,
-            p_features=args.cal_features_path,
-            p_atom_feats=args.cal_atom_features_path,
-            p_bond_feats=args.cal_bond_features_path,
-            p_atom_descs=args.cal_atom_descriptors_path,
-            **featurization_kwargs,
-        )
-        logger.info(f"calibration size: {len(cal_data)}")
-    else:
-        cal_data = None
+    # TODO: add uncertainty and calibration
+    # if args.cal_path is not None:
+    #     cal_data = build_data_from_files(
+    #         args.cal_path,
+    #         **format_kwargs,
+    #         target_columns=args.target_columns,
+    #         p_features=args.cal_features_path,
+    #         p_atom_feats=args.cal_atom_features_path,
+    #         p_bond_feats=args.cal_bond_features_path,
+    #         p_atom_descs=args.cal_atom_descriptors_path,
+    #         **featurization_kwargs,
+    #     )
+    #     logger.info(f"calibration size: {len(cal_data)}")
+    # else:
+    #     cal_data = None
 
     test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
 
