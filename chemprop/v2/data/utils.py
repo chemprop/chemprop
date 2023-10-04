@@ -17,7 +17,7 @@ from random import Random
 from typing import Tuple
 import os
 
-from chemprop.data import log_scaffold_stats
+from chemprop.v2.data.utils import log_scaffold_stats
 
 
 def split_data(
