@@ -107,7 +107,6 @@ class RegressionFFN(ReadoutFFNBase):
 class MveFFN(RegressionFFN):
     n_targets = 2
     _default_criterion = loss.MVELoss()
-    _default_metric = metrics.MSEMetric()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -130,7 +129,6 @@ class MveFFN(RegressionFFN):
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _default_criterion = loss.EvidentialLoss()
-    _default_metric = metrics.MSEMetric()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
