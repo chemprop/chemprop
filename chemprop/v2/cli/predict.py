@@ -215,7 +215,7 @@ def main(args):
 
     test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
 
-    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu)
+    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
     if cal_data is not None:
         cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
         cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.n_cpu, shuffle=False)
