@@ -250,10 +250,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    add_args(parser)
+    parser = PredictSubcommand.add_args(parser)
 
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
-    process_args(args)
-
-    main(args)
+    args = PredictSubcommand.func(args)
