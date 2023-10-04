@@ -5,8 +5,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.utils import ReprMixin
-from chemprop.v2.utils.registry import ClassRegistry
+from chemprop.v2.utils import ClassRegistry, ReprMixin
 
 LossFunctionRegistry = ClassRegistry()
 

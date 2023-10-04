@@ -6,10 +6,9 @@ from torch import nn, Tensor
 from torch.nn import functional as F
 
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
+from chemprop.v2.utils import ClassRegistry, HasHParams
 from chemprop.v2.nn import loss
-from chemprop.v2.models.modules.ffn import SimpleFFN
-from chemprop.v2.utils.hparams import HasHParams
-from chemprop.v2.utils import ClassRegistry
+from chemprop.v2.nn.ffn import SimpleFFN
 
 ReadoutRegistry = ClassRegistry()
 
