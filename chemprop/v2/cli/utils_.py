@@ -39,7 +39,7 @@ def parse_data_csv(
             task_names = [header[i] for i in target_cols]
             logger.info(f"Parsed tasks: {task_names}")
         else:
-            target_cols = target_cols or [1]
+            target_cols = [1] if target_cols is None else target_cols
             task_names = [f"task_{i}" for i in target_cols]
             # smiles_names = [f"smiles_{i}" for i in smiles_cols]
 
