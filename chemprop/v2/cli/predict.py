@@ -239,6 +239,14 @@ def main(args):
     #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
     #     predss_cal = trainer.predict(model, cal_loader)[0]
 
+    # TODO: might want to write a shared function for this as train.py might also want to do this.
+    df_test = pd.read_csv(args.test_path)
+    preds = np.vstack(predss)
+    df_test["preds"] = preds
+    if args.output.suffix == ".pkl":
+        df_test.to_pickle(args.output, index=False)
+    else:
+        df_test.to_csv(args.output, index=False)
 
 if __name__ == "__main__":
     parser = ArgumentParser()
