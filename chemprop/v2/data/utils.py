@@ -18,7 +18,6 @@ from typing import Tuple
 import os
 
 from chemprop.data import log_scaffold_stats
-from chemprop.args import TrainArgs
 
 
 def split_data(
@@ -28,7 +27,6 @@ def split_data(
     key_molecule_index: int = 0,
     seed: int = 0,
     num_folds: int = 1,
-    args: TrainArgs = None,
     logger: Logger = None,
 ) -> Tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
     r"""
@@ -40,7 +38,6 @@ def split_data(
     :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
-    :param args: A :class:`~chemprop.args.TrainArgs` object.
     :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
@@ -49,15 +46,6 @@ def split_data(
         raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     random = Random(seed)
-
-    if args is not None:
-        folds_file, val_fold_index, test_fold_index = (
-            args.folds_file,
-            args.val_fold_index,
-            args.test_fold_index,
-        )
-    else:
-        folds_file = val_fold_index = test_fold_index = None
 
     # typically include a validation set
     include_val = True
@@ -76,18 +64,7 @@ def split_data(
         astartes_kwargs["val_size"] = sizes[1]
 
     train, val, test = None, None, None
-    if split == "crossval":
-        index_set = args.crossval_index_sets[args.seed]
-        data_split = []
-        for split in range(3):
-            split_indices = []
-            for index in index_set[split]:
-                with open(os.path.join(args.crossval_index_dir, f"{index}.pkl"), "rb") as rf:
-                    split_indices.extend(pickle.load(rf))
-            data_split.append([data[i] for i in split_indices])
-        train, val, test = tuple(data_split)
-
-    elif split in {"cv", "cv-no-test"}:
+    if split in {"cv", "cv-no-test"}:
         if num_folds <= 1 or num_folds > len(data):
             raise ValueError(
                 "Number of folds for cross-validation must be between 2 and len(data), inclusive."
@@ -102,65 +79,12 @@ def split_data(
 
         train, val, test = [], [], []
         for d, index in zip(data, indices):
-            if index == test_index and split_type != "cv-no-test":
+            if index == test_index and split != "cv-no-test":
                 test.append(d)
             elif index == val_index:
                 val.append(d)
             else:
                 train.append(d)
-
-    elif split == "index_predetermined":
-        split_indices = args.crossval_index_sets[args.seed]
-
-        if len(split_indices) != 3:
-            raise ValueError("Split indices must have three splits: train, validation, and test")
-
-        data_split = []
-        for split in range(3):
-            data_split.append([data[i] for i in split_indices[split]])
-        train, val, test = tuple(data_split)
-
-    elif split == "predetermined":
-        if not val_fold_index and sizes[2] != 0:
-            raise ValueError(
-                "Test size must be zero since test set is created separately "
-                "and we want to put all other data in train and validation"
-            )
-
-        if folds_file is None:
-            raise ValueError('arg "folds_file" can not be None!')
-        if test_fold_index is None:
-            raise ValueError('arg "test_fold_index" can not be None!')
-
-        try:
-            with open(folds_file, "rb") as f:
-                all_fold_indices = pickle.load(f)
-        except UnicodeDecodeError:
-            with open(folds_file, "rb") as f:
-                all_fold_indices = pickle.load(
-                    f, encoding="latin1"
-                )  # in case we're loading indices from python2
-
-        log_scaffold_stats(data, all_fold_indices, logger=logger)
-
-        folds = [[data[i] for i in fold_indices] for fold_indices in all_fold_indices]
-
-        test = folds[test_fold_index]
-        if val_fold_index is not None:
-            val = folds[val_fold_index]
-
-        train_val = []
-        for i in range(len(folds)):
-            if i != test_fold_index and (val_fold_index is None or i != val_fold_index):
-                train_val.extend(folds[i])
-
-        if val_fold_index is not None:
-            train = train_val
-        else:
-            random.shuffle(train_val)
-            train_size = int(sizes[0] * len(train_val))
-            train = train_val[:train_size]
-            val = train_val[train_size:]
 
     elif split == "scaffold_balanced":
         mols_without_atommaps = []
