@@ -119,7 +119,8 @@ class _ReactionDatapointMixin:
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
             case str():
-                rct_smi, pdt_smi = rxn_or_smis.split(">>")
+                rct_smi, agt_smi, pdt_smi = rxn_or_smis.split(">")
+                rct_smi = f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi
             case tuple():
                 rct_smi, pdt_smi = rxn_or_smis
             case _:

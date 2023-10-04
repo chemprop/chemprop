@@ -117,8 +117,6 @@ def make_datapoints(
     featuress = [None] * len(smis) if featuress is None else featuress
 
     if reaction:
-        rxns = [smi.split(">") for smi in smis]
-        rxns = [(".".join(r, a), p) if a else (r, p) for r, a, p in rxns]
 
         data = [
             ReactionDatapoint(
