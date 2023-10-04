@@ -431,7 +431,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     split_args.add_argument(
         "--split-sizes",
-        type=list[float],
+        type=float,
+        nargs=3,
         default=[0.8, 0.1, 0.1],
         help="Split proportions for train/validation/test sets.",
     )
