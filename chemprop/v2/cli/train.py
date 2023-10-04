@@ -240,7 +240,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--spectral-activation",
         default="exp",
         choices=["softplus", "exp"],
-        help="Indicates which function to use in dataset_type spectra training to constrain outputs to be positive.",
+        help="Indicates which function to use in task_type spectra training to constrain outputs to be positive.",
     )
 
     data_args = parser.add_argument_group("input data parsing args")
@@ -258,7 +258,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument(
         "-t",
-        "--dataset-type",
+        "--task-type",
         default="regression",
         action=RegistryAction(
             ReadoutRegistry
@@ -598,7 +598,7 @@ def main(args):
         activation=args.activation,
     )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
-    readout_cls = ReadoutRegistry[args.dataset_type]
+    readout_cls = ReadoutRegistry[args.task_type]
 
     if args.loss_function is not None:
         criterion = Factory.build(
@@ -680,7 +680,7 @@ def main(args):
     trainer.fit(model, train_loader, val_loader)
 
     if test_loader is not None:
-        if args.dataset_type == "regression":
+        if args.task_type == "regression":
             model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")

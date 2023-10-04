@@ -222,28 +222,28 @@ def make_dataset(
     return ReactionDataset(data, featurizer)
 
 
-def get_mpnn_cls(dataset_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
-    if dataset_type == "regression":
+def get_mpnn_cls(task_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
+    if task_type == "regression":
         if loss_function == "mve":
             return models.MveRegressionMPNN
         elif loss_function == "evidential":
             return models.EvidentialMPNN
         elif loss_function in ("bounded", "mse", None):
             return models.RegressionMPNN
-    elif dataset_type == "classification":
+    elif task_type == "classification":
         if loss_function == "dirichlet":
             return models.DirichletClassificationMPNN
         elif loss_function in ("mcc", "bce", None):
             return models.BinaryClassificationMPNN
-    elif dataset_type == "multiclass":
+    elif task_type == "multiclass":
         if loss_function == "dirichlet":
             return models.DirichletMulticlassMPNN
         elif loss_function in ("mcc", "ce", None):
             return models.MulticlassMPNN
-    elif dataset_type == "spectral":
+    elif task_type == "spectral":
         if loss_function in ("sid", "wasserstein", None):
             return models.SpectralMPNN
 
     raise ValueError(
-        f"Incompatible dataset type ('{dataset_type}') and loss function ('{loss_function}')!"
+        f"Incompatible dataset type ('{task_type}') and loss function ('{loss_function}')!"
     )
