@@ -24,34 +24,34 @@ from chemprop.v2.models.loss import (
     "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,mse",
     [
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
             torch.ones([2]),
             torch.zeros([2, 2], dtype=torch.bool),
             torch.zeros([2, 2], dtype=torch.bool),
-            3.75000
+            torch.tensor(3.75000, dtype=torch.float)
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
             torch.ones([2]),
             torch.zeros([2, 2], dtype=torch.bool),
             torch.ones([2, 2], dtype=torch.bool),
-            2.5000
+            torch.tensor(2.5000, dtype=torch.float)
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
             torch.ones([2]),
             torch.ones([2, 2], dtype=torch.bool),
             torch.zeros([2, 2], dtype=torch.bool),
-            1.25000
+            torch.tensor(1.25000, dtype=torch.float)
         ),
     ]
 )
@@ -61,20 +61,20 @@ def test_BoundedMSE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, mse):
     """
     bmse_loss= BoundedMSELoss()
     loss = bmse_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    assert loss == mse
+    torch.testing.assert_close(loss, mse)
 
 
 @pytest.mark.parametrize(
     "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,likelihood",
     [(
-        torch.tensor([[0, 1]], dtype=float),
+        torch.tensor([[0, 1]], dtype=torch.float),
         torch.zeros([1, 1]),
         torch.ones([1, 2], dtype=torch.bool),
         torch.ones([1]),
         torch.ones([2]),
         torch.zeros([2], dtype=torch.bool),
         torch.zeros([2], dtype=torch.bool),
-        [[0.3989]],
+        torch.tensor(0.39894228, dtype=torch.float),
     )]
 )
 def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
@@ -84,7 +84,7 @@ def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
     mve_loss = MVELoss()
     nll_calc = mve_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
     likelihood_calc = np.exp(-1 * nll_calc)
-    np.testing.assert_array_almost_equal(likelihood, likelihood_calc, decimal=4)
+    torch.testing.assert_close(likelihood_calc, likelihood)
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
             torch.zeros([1], dtype=torch.bool),
             torch.zeros([1], dtype=torch.bool),
             0,
-            [[0.6]]
+            torch.tensor(0.6, dtype=torch.float)
         ),
         (
             torch.tensor([[2, 2]]),
@@ -110,7 +110,7 @@ def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
             torch.zeros([1], dtype=torch.bool),
             torch.zeros([1], dtype=torch.bool),
             0.2,
-            [[0.63862943]]
+            torch.tensor(0.63862943, dtype=torch.float)
         )
     ]
 )
@@ -123,7 +123,7 @@ def test_BinaryDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl,
     binary_dirichlet_loss = BinaryDirichletLoss(v_kl = v_kl)
     loss = binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
     print(loss)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -162,7 +162,7 @@ def test_BinaryDirichlet_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mas
             torch.zeros([2], dtype=torch.bool),
             torch.zeros([2], dtype=torch.bool),
             0.2,
-            [[1.868991]]
+            torch.tensor(1.868991, dtype=torch.float)
         ),
         (
             torch.tensor([[[0.2, 0.1, 0.3],[0.1, 0.3, 0.1]],[[1.2, 0.5, 1.7],[1.1, 1.4, 0.8]]]),
@@ -173,7 +173,7 @@ def test_BinaryDirichlet_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mas
             torch.zeros([2], dtype=torch.bool),
             torch.zeros([2], dtype=torch.bool),
             0.0,
-            [[1.102344]]
+            torch.tensor(1.102344, dtype=torch.float)
         )
     ]
 )
@@ -185,7 +185,7 @@ def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v
     """
     multiclass_dirichlet_loss = MulticlassDirichletLoss(v_kl)
     loss = multiclass_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -200,7 +200,7 @@ def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v
             torch.zeros([1], dtype=torch.bool),
             torch.zeros([1], dtype=torch.bool),
             0,
-            [[1.56893861]]
+            torch.tensor(1.56893861, dtype=torch.float)
         ),
         (
             torch.tensor([[2, 2, 2, 2]]),
@@ -211,7 +211,7 @@ def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v
             torch.zeros([1], dtype=torch.bool),
             torch.zeros([1], dtype=torch.bool),
             0.2,
-            [[2.768938541]]
+            torch.tensor(2.768938541, dtype=torch.float)
         )
     ]
 )
@@ -223,7 +223,7 @@ def test_Evidential(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expe
     """
     evidential_loss = EvidentialLoss(v_kl=v_kl)
     loss = evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -254,24 +254,24 @@ def test_Evidential_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt
     "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
     [
         (
-            torch.tensor([2, 2], dtype=float),
-            torch.ones([2], dtype=float),
+            torch.tensor([2, 2], dtype=torch.float),
+            torch.ones([2], dtype=torch.float),
             torch.ones([2], dtype=torch.bool),
             torch.ones([1]),
             torch.ones([2]),
             torch.zeros([2], dtype=torch.bool),
             torch.zeros([2], dtype=torch.bool),
-            [[0.126928]]
+            torch.tensor(0.126928, dtype=torch.float)
         ),
         (
-            torch.tensor([0.5, 0.5], dtype=float),
-            torch.ones([2], dtype=float),
+            torch.tensor([0.5, 0.5], dtype=torch.float),
+            torch.ones([2], dtype=torch.float),
             torch.ones([2], dtype=torch.bool),
             torch.ones([1]),
             torch.ones([2]),
             torch.zeros([2], dtype=torch.bool),
             torch.zeros([2], dtype=torch.bool),
-            [[0.474077]]
+            torch.tensor(0.474077, dtype=torch.float)
         )
     ]
 )
@@ -281,7 +281,7 @@ def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
     """
     bce_loss = BCELoss()
     loss = bce_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -295,7 +295,7 @@ def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
             torch.ones([2]),
             torch.ones([2,2], dtype=torch.bool),
             torch.ones([2,2], dtype=torch.bool),
-            [[1.34214]]
+            torch.tensor(1.34214, dtype=torch.float)
         ),
         (
             torch.tensor([[[1.2, 1.5, 0.7],[-0.1, 2.3, 1.1]],[[1.2, 1.5, 1.7],[2.1, 1.3, 1.1]]]),
@@ -305,7 +305,7 @@ def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
             torch.ones([2]),
             torch.ones([2,2], dtype=torch.bool),
             torch.ones([2,2], dtype=torch.bool),
-            [[0.899472]]
+            torch.tensor(0.899472, dtype=torch.float)
         )
     ]
 )
@@ -317,7 +317,7 @@ def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected
     """
     cross_entropy_loss = CrossEntropyLoss()
     loss = cross_entropy_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -331,7 +331,7 @@ def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected
             torch.ones(4),
             torch.zeros([1,4], dtype=torch.bool),
             torch.zeros([1,4], dtype=torch.bool),
-            [0]
+            torch.tensor(0, dtype=torch.float)
         ),
         (
             torch.tensor([0, 1, 0, 1, 1, 1, 0, 1, 1]),
@@ -341,7 +341,7 @@ def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected
             torch.ones(9),
             torch.zeros([1,9], dtype=torch.bool),
             torch.zeros([1,9], dtype=torch.bool),
-            [0.683772]
+            torch.tensor(0.683772, dtype=torch.float)
         ),
     ]
 )
@@ -351,7 +351,7 @@ def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_lo
     """
     binary_mcc_loss = BinaryMCCLoss()
     loss = binary_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -365,7 +365,7 @@ def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_lo
             torch.ones([2]),
             torch.zeros([2,2], dtype=torch.bool),
             torch.zeros([2,2], dtype=torch.bool),
-            [0.2697033]
+            torch.tensor(0.2697033, dtype=torch.float)
         ),
         (
             torch.tensor([[[0.16, 0.26, 0.58],[0.22, 0.61, 0.17]],[[0.71, 0.09, 0.20],[0.05, 0.82, 0.13]]]),
@@ -375,7 +375,7 @@ def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_lo
             torch.ones([2]),
             torch.zeros([2,2], dtype = bool),
             torch.zeros([2,2], dtype = bool),
-            [0.3876276]
+            torch.tensor(0.3876276, dtype=torch.float)
         ),
     ]
 )
@@ -385,7 +385,7 @@ def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expecte
     """
     multiclass_mcc_loss = MulticlassMCCLoss()
     loss = multiclass_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -400,7 +400,7 @@ def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expecte
             torch.ones([2], dtype=torch.bool),
             torch.ones([2], dtype=torch.bool),
             None,
-            [[0.031319]]
+            torch.tensor(0.031319, dtype=torch.float)
         ),
         (
             torch.tensor([[0.6, 0.4], [0.2, 0.8]]),
@@ -411,7 +411,7 @@ def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expecte
             torch.ones([2], dtype=torch.bool),
             torch.ones([2], dtype=torch.bool),
             None,
-            [[0.295655]]
+            torch.tensor(0.295655, dtype=torch.float)
         ),
         (
             torch.tensor([[0.6, 0.4], [0.2, 0.8]]),
@@ -422,7 +422,7 @@ def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expecte
             torch.ones([2], dtype=torch.bool),
             torch.ones([2], dtype=torch.bool),
             0.5,
-            [[0.033673]]
+            torch.tensor(0.033673, dtype=torch.float)
         ),
     ]
 )
@@ -433,7 +433,7 @@ def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expect
     """
     sid_loss = SIDLoss(threshold)
     loss = sid_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
@@ -448,7 +448,7 @@ def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expect
             torch.zeros([2,4], dtype=torch.bool),
             torch.zeros([2,4], dtype=torch.bool),
             None,
-            [[0.1125]]
+            torch.tensor(0.1125, dtype=torch.float)
         ),
         (
             torch.tensor([[0.1, 0.3, 0.5, 0.7],[0.2, 0.4, 0.6, 0.8]]),
@@ -459,7 +459,7 @@ def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expect
             torch.zeros([2,4], dtype=torch.bool),
             torch.zeros([2,4], dtype=torch.bool),
             None,
-           [[0.515625]]
+           torch.tensor(0.515625, dtype=torch.float)
         ),
         (
             torch.tensor([[0.1, 0.3, 0.5, 0.7],[0.2, 0.4, 0.6, 0.8]]),
@@ -470,7 +470,7 @@ def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expect
             torch.zeros([2,4], dtype=torch.bool),
             torch.zeros([2,4], dtype=torch.bool),
             0.3,
-            [[0.501984]]
+            torch.tensor(0.501984, dtype=torch.float)
         ),
     ]
 )
@@ -481,4 +481,4 @@ def test_Wasserstein(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold
     """
     wasserstein_loss = WassersteinLoss(threshold)
     loss = wasserstein_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    torch.testing.assert_close(loss, expected_loss)
