@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import Sequence
+import itertools
 
 import numpy as np
 
@@ -45,8 +46,6 @@ def split_data(
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
         raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
-    random = Random(seed)
-
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
@@ -64,28 +63,20 @@ def split_data(
         astartes_kwargs["val_size"] = sizes[1]
 
     train, val, test = None, None, None
-    if split in {"cv", "cv-no-test"}:
+    if split in {"cv-no-val", "cv"}:
         if num_folds <= 1 or num_folds > len(data):
             raise ValueError(
                 "Number of folds for cross-validation must be between 2 and len(data), inclusive."
             )
 
-        random = Random(0)
-
-        indices = np.repeat(np.arange(num_folds), 1 + len(data) // num_folds)[: len(data)]
-        random.shuffle(indices)
-        test_index = seed % num_folds
-        val_index = (seed + 1) % num_folds
-
         train, val, test = [], [], []
-        for d, index in zip(data, indices):
-            if index == test_index and split != "cv-no-test":
-                test.append(d)
-            elif index == val_index:
-                val.append(d)
-            else:
-                train.append(d)
-
+        for _ in range(len(num_folds)):
+            result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
+            i_train, i_val, i_test = _unpack_astartes_result(data, result, include_val)
+            train.append(i_train)
+            val.append(i_val)
+            test.append(i_test)
+        
     elif split == "scaffold_balanced":
         mols_without_atommaps = []
         for mol in data.mols(flatten=False):
@@ -98,28 +89,25 @@ def split_data(
         )
         train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
 
-    elif (
-        split == "random_with_repeated_smiles"
-    ):  # Use to constrain data with the same smiles go in the same split.
-        smiles_dict = defaultdict(set)
-        for i, smiles in enumerate(data.smiles()):
-            smiles_dict[smiles[key_molecule_index]].add(i)
-        index_sets = list(smiles_dict.values())
-        random.seed(seed)
-        random.shuffle(index_sets)
-        train, val, test = [], [], []
-        train_size = int(sizes[0] * len(data))
-        val_size = int(sizes[1] * len(data))
-        for index_set in index_sets:
-            if len(train) + len(index_set) <= train_size:
-                train += index_set
-            elif len(val) + len(index_set) <= val_size:
-                val += index_set
-            else:
-                test += index_set
-        train = [data[i] for i in train]
-        val = [data[i] for i in val]
-        test = [data[i] for i in test]
+    # Use to constrain data with the same smiles go in the same split.
+    elif (split == "random_with_repeated_smiles"):
+        # get two arrays: one of all the smiles strings, one of just the unique
+        all_smiles = np.array(data.smiles())
+        unique_smiles = np.unique(all_smiles)
+        
+        # save a mapping of smiles -> all the indices that it appeared at
+        smiles_indices = {}
+        for smiles in unique_smiles:
+            smiles_indices[smiles] = np.where(all_smiles==smiles)[0]
+        
+        # randomly split the unique smiles
+        result = split_fun(np.arange(len(unique_smiles)))
+        train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
+        
+        # convert these to the 'actual' indices from the original list using the dict we made
+        train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
+        val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
+        test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
 
     elif split == "random":
         result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
@@ -157,7 +145,7 @@ def _unpack_astartes_result(data, result, include_val, log_stats=False):
     """Helper function to partition input data based on output of astartes sampler
 
     Args:
-        data (MoleculeDataset): The data being partitioned
+        data (MoleculeDataset): The data being partitioned. If None, returns indices.
         result (tuple): Output from call to astartes containing the split indices
         include_val (bool): True if a validation set is included, False otherwise.
         log_stats (bool, optional): Print stats about scaffolds. Defaults to False.
@@ -172,6 +160,8 @@ def _unpack_astartes_result(data, result, include_val, log_stats=False):
         train_idxs, test_idxs = result[2], result[3]
     if log_stats:
         log_scaffold_stats(data, [set(train_idxs), set(val_idxs), set(test_idxs)])
+    if data is None:
+        return train_idxs, val_idxs, test_idxs
     train = [data[i] for i in train_idxs]
     val = [data[i] for i in val_idxs]
     test = [data[i] for i in test_idxs]
