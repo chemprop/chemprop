@@ -167,8 +167,9 @@ def process_predict_args(args: Namespace) -> Namespace:
 
 
 def validate_predict_args(args):
-    # TODO: onces args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
-    assert args.checkpoint_path is not None, "Must provide a checkpoint path for prediction."
+    # TODO: once args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
+    if args.checkpoint_path is None:
+        raise ValueError("Must provide a checkpoint path for prediction.")
 
 
 def main(args):
