@@ -11,6 +11,8 @@ from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, Reac
 from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
 from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
+from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,7 @@ def make_datapoints(
     gt_targetss = [None] * len(smis) if gt_targetss is None else gt_targetss
     lt_targetss = [None] * len(smis) if lt_targetss is None else lt_targetss
     featuress = [None] * len(smis) if featuress is None else featuress
+    mfs = [MoleculeFeaturizerRegistry.get(features_generators)()] if features_generators else None
 
     if reaction:
 
@@ -128,7 +131,7 @@ def make_datapoints(
                 gt_mask=gt_targetss[i],
                 lt_mask=lt_targetss[i],
                 x_f=featuress[i],
-                mfs=features_generators,
+                mfs=mfs,
                 x_phase=None,
             )
             for i in range(len(smis))
@@ -151,7 +154,7 @@ def make_datapoints(
                 gt_mask=gt_targetss[i],
                 lt_mask=lt_targetss[i],
                 x_f=featuress[i],
-                mfs=features_generators,
+                mfs=mfs,
                 x_phase=None,
                 keep_h=keep_h,
                 add_h=add_h,
