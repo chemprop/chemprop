@@ -146,6 +146,9 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
+        if self.data is None:
+            raise ValueError("Data cannot be None!")
+        
         self.reset()
 
     def __getitem__(self, idx: int) -> Datum:
@@ -192,7 +195,7 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
         return self.__E_fs
 
     @E_fs.setter
-    def E_fs(self, E_fs: ArrayLike):
+    def E_fs(self, E_fs: np.ndarray):
         self._validate_attribute(E_fs, "bond features")
 
         self.__E_fs = np.array(E_fs, float)
@@ -208,7 +211,7 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
         return self.__V_ds
 
     @V_ds.setter
-    def V_ds(self, V_ds: ArrayLike | None):
+    def V_ds(self, V_ds: np.ndarray):
         self._validate_attribute(V_ds, "atom descriptors")
 
         self.__V_ds = np.array(V_ds, float)
