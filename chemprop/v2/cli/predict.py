@@ -170,17 +170,13 @@ def validate_predict_args(args):
 
 
 def main(args):
-    bond_messages = True#not args.atom_messages
-    # n_tasks = len(args.target_columns)
-    # bounded = args.loss_function is not None and "bounded" in args.loss_function
-
-    if args.number_of_molecules > 1:
-        warnings.warn(
-            "Multicomponent input is not supported at this time! Using only the 1st input..."
-        )
+    model = MPNN.load_from_checkpoint(args.checkpoint_path)
+    
+    bond_messages = isinstance(model.message_passing, BondMessageBlock)
+    bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns,# bounded=bounded
+        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded,
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
