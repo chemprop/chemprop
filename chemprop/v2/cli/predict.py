@@ -257,7 +257,6 @@ def main(args):
         enable_progress_bar=True,
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
-        max_epochs=args.epochs,
     )
 
     predss = trainer.predict(model, test_loader)
