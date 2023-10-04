@@ -800,10 +800,9 @@ def main(args):
         )
         criterion = readout_cls._default_criterion
 
-    d_x_f = train_dset.X_f.shape[1] if np.isfinite(train_dset.X_f).all() else 0
     readout_ffn = Factory.build(
         readout_cls,
-        input_dim=mp_block.output_dim + d_x_f,
+        input_dim=mp_block.output_dim + train_dset.d_xf,
         n_tasks=args.n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
