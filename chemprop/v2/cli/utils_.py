@@ -220,7 +220,7 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode_=reaction_mode)
 
     return ReactionDataset(data, featurizer)
 
