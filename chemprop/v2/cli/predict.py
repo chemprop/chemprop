@@ -223,34 +223,6 @@ def main(args):
     # else:
     #     cal_loader = None
 
-    mp_kwargs = dict(
-        d_h=args.message_hidden_dim,
-        bias=args.message_bias,
-        depth=args.depth,
-        undirected=args.undirected,
-        dropout=args.dropout,
-        activation=args.activation,
-        aggregation=args.aggregation,
-        norm=args.norm,
-    )
-    mp_block = modules.molecule_block(*test_dset.featurizer.shape, bond_messages, **mp_kwargs)
-
-    extra_mpnn_kwargs = dict()
-    if args.dataset_type == "multiclass":
-        extra_mpnn_kwargs["n_classes"] = args.multiclass_num_classes
-    elif args.dataset_type == "spectral":
-        extra_mpnn_kwargs["spectral_activation"] = args.spectral_activation
-
-    mpnn_cls = get_mpnn_cls(args.dataset_type, args.loss_function)
-    model = mpnn_cls(
-        mp_block,
-        n_tasks,
-        args.ffn_hidden_dim,
-        args.ffn_num_layers,
-        args.dropout,
-        args.activation,
-        **extra_mpnn_kwargs,
-    )
     logger.info(model)
 
     trainer = pl.Trainer(
