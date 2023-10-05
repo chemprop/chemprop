@@ -64,77 +64,78 @@ def split_data(
         astartes_kwargs["val_size"] = sizes[1]
 
     train, val, test = None, None, None
-    if split in {SplitType.CV_NO_VAL, SplitType.CV}:
-        if (max_folds := len(data)) > num_folds or num_folds <= 1:
-            raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
+    match split:
+        case SplitType.CV_NO_VAL, SplitType.CV:
+            if (max_folds := len(data)) > num_folds or num_folds <= 1:
+                raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
 
-        train, val, test = [], [], []
-        for _ in range(len(num_folds)):
+            train, val, test = [], [], []
+            for _ in range(len(num_folds)):
+                result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
+                i_train, i_val, i_test = _unpack_astartes_result(data, result, include_val)
+                train.append(i_train)
+                val.append(i_val)
+                test.append(i_test)
+
+        case SplitType.SCAFFOLD_BALANCED:
+            mols_without_atommaps = []
+            for mol_datapoint in data:
+                mol = mol_datapoint.mol
+                copied_mol = copy.deepcopy(mol[key_molecule_index])
+                for atom in copied_mol.GetAtoms():
+                    atom.SetAtomMapNum(0)
+                mols_without_atommaps.append([copied_mol])
+            result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
+            train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
+
+        # Use to constrain data with the same smiles go in the same split.
+        case SplitType.RANDOM_WITH_REPEATED_SMILES:
+            # get two arrays: one of all the smiles strings, one of just the unique
+            all_smiles = np.array(data.smiles())
+            unique_smiles = np.unique(all_smiles)
+
+            # save a mapping of smiles -> all the indices that it appeared at
+            smiles_indices = {}
+            for smiles in unique_smiles:
+                smiles_indices[smiles] = np.where(all_smiles == smiles)[0]
+
+            # randomly split the unique smiles
+            result = split_fun(np.arange(len(unique_smiles)))
+            train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
+
+            # convert these to the 'actual' indices from the original list using the dict we made
+            train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
+            val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
+            test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
+
+        case SplitType.RANDOM:
             result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
-            i_train, i_val, i_test = _unpack_astartes_result(data, result, include_val)
-            train.append(i_train)
-            val.append(i_val)
-            test.append(i_test)
+            train, val, test = _unpack_astartes_result(data, result, include_val)
 
-    elif split == SplitType.SCAFFOLD_BALANCED:
-        mols_without_atommaps = []
-        for mol_datapoint in data:
-            mol = mol_datapoint.mol
-            copied_mol = copy.deepcopy(mol[key_molecule_index])
-            for atom in copied_mol.GetAtoms():
-                atom.SetAtomMapNum(0)
-            mols_without_atommaps.append([copied_mol])
-        result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
-        train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
+        case SplitType.KENNARD_STONE:
+            result = mol_split_fun(
+                np.array([m[key_molecule_index] for m in data.smiles()]),
+                sampler="kennard_stone",
+                hopts=dict(metric="jaccard"),
+                fingerprint="morgan_fingerprint",
+                fprints_hopts=dict(n_bits=2048),
+                **astartes_kwargs,
+            )
+            train, val, test = _unpack_astartes_result(data, result, include_val)
 
-    # Use to constrain data with the same smiles go in the same split.
-    elif split == SplitType.RANDOM_WITH_REPEATED_SMILES:
-        # get two arrays: one of all the smiles strings, one of just the unique
-        all_smiles = np.array(data.smiles())
-        unique_smiles = np.unique(all_smiles)
+        case SplitType.KMEANS:
+            result = mol_split_fun(
+                np.array([m[key_molecule_index] for m in data.smiles()]),
+                sampler="kmeans",
+                hopts=dict(metric="jaccard"),
+                fingerprint="morgan_fingerprint",
+                fprints_hopts=dict(n_bits=2048),
+                **astartes_kwargs,
+            )
+            train, val, test = _unpack_astartes_result(data, result, include_val)
 
-        # save a mapping of smiles -> all the indices that it appeared at
-        smiles_indices = {}
-        for smiles in unique_smiles:
-            smiles_indices[smiles] = np.where(all_smiles == smiles)[0]
-
-        # randomly split the unique smiles
-        result = split_fun(np.arange(len(unique_smiles)))
-        train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
-
-        # convert these to the 'actual' indices from the original list using the dict we made
-        train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
-        val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
-        test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
-
-    elif split == SplitType.RANDOM:
-        result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
-        train, val, test = _unpack_astartes_result(data, result, include_val)
-
-    elif split == SplitType.KENNARD_STONE:
-        result = mol_split_fun(
-            np.array([m[key_molecule_index] for m in data.smiles()]),
-            sampler="kennard_stone",
-            hopts=dict(metric="jaccard"),
-            fingerprint="morgan_fingerprint",
-            fprints_hopts=dict(n_bits=2048),
-            **astartes_kwargs,
-        )
-        train, val, test = _unpack_astartes_result(data, result, include_val)
-
-    elif split == SplitType.KMEANS:
-        result = mol_split_fun(
-            np.array([m[key_molecule_index] for m in data.smiles()]),
-            sampler="kmeans",
-            hopts=dict(metric="jaccard"),
-            fingerprint="morgan_fingerprint",
-            fprints_hopts=dict(n_bits=2048),
-            **astartes_kwargs,
-        )
-        train, val, test = _unpack_astartes_result(data, result, include_val)
-
-    else:
-        raise ValueError(f'split type "{split}" not supported.')
+        case _:
+            raise ValueError(f'split type "{split}" not supported.')
 
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
