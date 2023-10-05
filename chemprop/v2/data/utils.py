@@ -26,12 +26,7 @@ class SplitType(AutoName):
 
 
 def split_data(
-    data: Sequence[MoleculeDatapoint],
-    split: str | SplitType,
-    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-    key_molecule_index: int = 0,
-    seed: int = 0,
-    num_folds: int = 1,
+    data: Sequence[MoleculeDatapoint], split: str | SplitType, sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1), seed: int = 0, num_folds: int = 1
 ) -> Tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
     r"""
     Splits data into training, validation, and test splits.
@@ -39,7 +34,6 @@ def split_data(
     :param data: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
-    :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
@@ -80,7 +74,7 @@ def split_data(
             mols_without_atommaps = []
             for mol_datapoint in data:
                 mol = mol_datapoint.mol
-                copied_mol = copy.deepcopy(mol[key_molecule_index])
+                copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append([copied_mol])
@@ -90,7 +84,7 @@ def split_data(
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
             # get two arrays: one of all the smiles strings, one of just the unique
-            all_smiles = np.array(data.smiles())
+            all_smiles = np.array([d.mol for d in data])
             unique_smiles = np.unique(all_smiles)
 
             # save a mapping of smiles -> all the indices that it appeared at
@@ -113,7 +107,7 @@ def split_data(
 
         case SplitType.KENNARD_STONE:
             result = mol_split_fun(
-                np.array([m[key_molecule_index] for m in data.smiles()]),
+                np.array([d.mol for d in data]),
                 sampler="kennard_stone",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
@@ -124,7 +118,7 @@ def split_data(
 
         case SplitType.KMEANS:
             result = mol_split_fun(
-                np.array([m[key_molecule_index] for m in data.smiles()]),
+                np.array([d.mol for d in data]),
                 sampler="kmeans",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
