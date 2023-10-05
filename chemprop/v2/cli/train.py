@@ -274,6 +274,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--separate-val-features-path",
         type=list[str],
+        dest="val_features_path",
         help="Path to file with features for separate val set.",
     )
     data_args.add_argument(
@@ -282,20 +283,23 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-val-atom-descriptors-path",
+        dest="val_atom_descriptors_path",
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
-        "--separate-val-bond-descriptors-path",
+        "--separate-val-atom-features-path",
+        dest="val_atom_features_path",
+        help="Path to file with extra atom features for separate val set.",
+    )
+    data_args.add_argument(
+        "--separate-val-bond-features-path",
+        dest="val_bond_features_path",
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
         help="Path to file with constraints for separate val set.",
     )
-    data_args.add_argument(
-        "--val-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2
-    data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
         "--separate-test-path",
@@ -306,6 +310,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--separate-test-features-path",
         type=list[str],
+        dest="test_features_path",
         help="Path to file with features for separate test set.",
     )
     data_args.add_argument(
@@ -314,20 +319,23 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-test-atom-descriptors-path",
+        dest="test_atom_descriptors_path",
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
-        "--separate-test-bond-descriptors-path",
-        help="Path to file with extra atom descriptors for separate test set.",
+        "--separate-test-atom-features-path",
+        dest="test_atom_features_path",
+        help="Path to file with extra atom features for separate test set.",
+    )
+    data_args.add_argument(
+        "--separate-test-bond-features-path",
+        dest="test_bond_features_path",
+        help="Path to file with extra atom features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-constraints-path",
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument(
-        "--test-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
-    data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
     train_args.add_argument(
