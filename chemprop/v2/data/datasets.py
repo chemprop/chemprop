@@ -98,8 +98,11 @@ class _MolGraphDatasetMixin:
         StandardScaler
             a scaler fit to the targets.
         """
-        scaler = scaler or StandardScaler()
-        self.Y = scaler.fit_transform(self._Y)
+        if scaler is None:
+            scaler = StandardScaler()
+            self.Y = scaler.fit_transform(self._Y)
+        else:
+            self.Y = scaler.transform(self._Y)
 
         return scaler
 
