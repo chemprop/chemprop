@@ -144,7 +144,9 @@ def split_data(
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
 
-def _unpack_astartes_result(data, result, include_val, log_stats=False):
+def _unpack_astartes_result(
+    data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool, log_stats: bool = False
+) -> Tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
     """Helper function to partition input data based on output of astartes sampler
 
     Args:
