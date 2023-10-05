@@ -1,17 +1,24 @@
 import copy
 import itertools
+import logging
 from enum import auto
-from logging import Logger
 from typing import Sequence, Tuple
 
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 
+from chemprop.v2.cli.utils import LOG_DIR, NOW
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.data.datasets import MoleculeDataset
 from chemprop.v2.data.utils import log_scaffold_stats
 from chemprop.v2.utils.utils import AutoName
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_LOGFILE = f"{LOG_DIR}/{NOW}.log"
+LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+SUBCOMMANDS = []
 
 
 class SplitType(AutoName):
