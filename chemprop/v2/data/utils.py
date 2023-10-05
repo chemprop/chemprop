@@ -32,7 +32,7 @@ def split_data(
     Splits data into training, validation, and test splits.
 
     :param data: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
-    :param split_type: Split type.
+    :param split: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
