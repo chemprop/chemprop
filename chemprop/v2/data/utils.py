@@ -10,7 +10,6 @@ from astartes.molecules import train_test_split_molecules, train_val_test_split_
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.data.datasets import MoleculeDataset
-from chemprop.v2.data.utils import log_scaffold_stats
 from chemprop.v2.utils.utils import AutoName
 
 logger = logging.getLogger(__name__)
@@ -86,7 +85,7 @@ def split_data(
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append([copied_mol])
             result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(data, result, include_val, log_stats=True)
+            train, val, test = _unpack_astartes_result(data, result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
@@ -141,7 +140,7 @@ def split_data(
 
 
 def _unpack_astartes_result(
-    data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool, log_stats: bool = False
+    data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool
 ) -> Tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
     """Helper function to partition input data based on output of astartes sampler
 
@@ -149,7 +148,6 @@ def _unpack_astartes_result(
         data (MoleculeDataset): The data being partitioned. If None, returns indices.
         result (tuple): Output from call to astartes containing the split indices
         include_val (bool): True if a validation set is included, False otherwise.
-        log_stats (bool, optional): Print stats about scaffolds. Defaults to False.
 
     Returns:
         MoleculeDatset: The train, validation (can be empty) and test dataset
@@ -159,8 +157,6 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[3], result[4], result[5]
     else:
         train_idxs, test_idxs = result[2], result[3]
-    if log_stats:
-        log_scaffold_stats(data, [set(train_idxs), set(val_idxs), set(test_idxs)])
     if data is None:
         return train_idxs, val_idxs, test_idxs
     train = [data[i] for i in train_idxs]
