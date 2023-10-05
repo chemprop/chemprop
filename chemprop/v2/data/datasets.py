@@ -292,6 +292,12 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
     featurizer: RxnMolGraphFeaturizerProto = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
+    def __post_init__(self):
+        if self.data is None:
+            raise ValueError("Data cannot be None!")
+
+        self.reset()
+
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
         mg = self.featurizer(((d.rct, d.pdt)), None, None)
