@@ -8,7 +8,8 @@ import numpy as np
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
 from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers import RxnMolGraphFeaturizer, MoleculeMolGraphFeaturizer
+from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
+from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ def make_datapoints(
     bond_features: Optional[np.ndarray],
     atom_descriptors: Optional[np.ndarray],
     features_generators: Optional[str],
-    explicit_h: bool,
+    keep_h: bool,
     add_h: bool,
     reaction: bool,
 ) -> list[_DatapointMixin]:
@@ -129,7 +130,7 @@ def make_datapoints(
                 next(featuress),
                 features_generators,
                 None,
-                explicit_h,
+                keep_h,
                 add_h,
             )
             for i in range(len(rxns))
@@ -145,21 +146,20 @@ def make_datapoints(
             atom_descriptors = [None] * (len(smis))
 
         data = [
-            MoleculeDatapoint(
+            MoleculeDatapoint.from_smi(
                 smis[i],
-                targetss[i],
-                None,
-                weights[i],
-                gt_targetss[i],
-                lt_targetss[i],
-                featuress[i],
-                features_generators,
-                None,
-                explicit_h,
-                add_h,
-                atom_features[i],
-                bond_features[i],
-                atom_descriptors[i],
+                y=targetss[i],
+                weight=weights[i],
+                gt_mask=gt_targetss[i],
+                lt_mask=lt_targetss[i],
+                x_f=featuress[i],
+                mfs=features_generators,
+                x_phase=None,
+                keep_h=keep_h,
+                add_h=add_h,
+                V_f=atom_features[i],
+                E_f=bond_features[i],
+                V_d=atom_descriptors[i],
             )
             for i in range(len(smis))
         ]
@@ -217,33 +217,33 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = RxnMolGraphFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
 
     return ReactionDataset(data, featurizer)
 
 
-def get_mpnn_cls(dataset_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
-    if dataset_type == "regression":
+def get_mpnn_cls(task_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
+    if task_type == "regression":
         if loss_function == "mve":
             return models.MveRegressionMPNN
         elif loss_function == "evidential":
             return models.EvidentialMPNN
         elif loss_function in ("bounded", "mse", None):
             return models.RegressionMPNN
-    elif dataset_type == "classification":
+    elif task_type == "classification":
         if loss_function == "dirichlet":
             return models.DirichletClassificationMPNN
         elif loss_function in ("mcc", "bce", None):
             return models.BinaryClassificationMPNN
-    elif dataset_type == "multiclass":
+    elif task_type == "multiclass":
         if loss_function == "dirichlet":
             return models.DirichletMulticlassMPNN
         elif loss_function in ("mcc", "ce", None):
             return models.MulticlassMPNN
-    elif dataset_type == "spectral":
+    elif task_type == "spectral":
         if loss_function in ("sid", "wasserstein", None):
             return models.SpectralMPNN
 
     raise ValueError(
-        f"Incompatible dataset type ('{dataset_type}') and loss function ('{loss_function}')!"
+        f"Incompatible dataset type ('{task_type}') and loss function ('{loss_function}')!"
     )

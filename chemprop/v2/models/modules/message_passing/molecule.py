@@ -24,7 +24,7 @@ class MessagePassingBlockBase(MessagePassingBlock, HyperparametersMixin):
         the feature dimension of the edges
     d_h : int, default=DEFAULT_HIDDEN_DIM
         the hidden dimension during message passing
-    bias : bool, defuault=False
+    bias : bool, default=False
         if `True`, add a bias term to the learned weight matrices
     depth : int, default=3
         the number of message passing iterations
