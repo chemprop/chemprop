@@ -67,7 +67,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
 
-    # TODO: add uncertainty and calibration and delete this line
+    # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
     # unc_args.add_argument(
     #     "--ensemble-variance",
@@ -221,14 +221,16 @@ def main(args):
 
     logger.info(model)
 
-    trainer = pl.Trainer(
-        logger=None,
-        enable_progress_bar=True,
-        accelerator="auto",
-        devices=args.n_gpu if torch.cuda.is_available() else 1,
-    )
+    with torch.inference_mode():
+        trainer = pl.Trainer(
+            logger=None,
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=args.n_gpu if torch.cuda.is_available() else 1,
+        )
 
-    predss = trainer.predict(model, test_loader)
+        predss = trainer.predict(model, test_loader)
+
     # TODO: add uncertainty and calibration
     # if cal_dset is not None:
     #     if args.task_type == "regression":
