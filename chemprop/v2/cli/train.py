@@ -329,11 +329,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument(
-        "--target-weights",
-        type=list[float],
-        help="Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns.",
-    )
     train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
     train_args.add_argument(
         "--v-kl",
