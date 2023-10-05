@@ -1,5 +1,6 @@
 import csv
 import logging
+import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
 
@@ -177,6 +178,7 @@ def build_data_from_files(
     p_atom_feats: PathLike,
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
+    data_weights_path: PathLike,
     **featurization_kwargs: Mapping,
 ) -> list[_DatapointMixin]:
     smiss, targetss, gt_targetss, lt_targetss = parse_data_csv(
@@ -186,12 +188,13 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    weights  = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
         smis,
         targetss,
-        None,
+        weights,
         gt_targetss,
         lt_targetss,
         featuress,

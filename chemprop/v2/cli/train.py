@@ -521,6 +521,7 @@ def main(args):
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
+        data_weights_path=args.data_weights_path,
         **featurization_kwargs,
     )
 
