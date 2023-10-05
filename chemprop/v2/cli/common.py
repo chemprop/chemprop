@@ -45,11 +45,10 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     #        similar to how --features-path is/will be implemented
     data_args.add_argument(
         "--checkpoint-dir",
-        type=str,
         help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
     )
     data_args.add_argument(
-        "--checkpoint-path", type=str, help="Path to model checkpoint (:code:`.pt` file)."
+        "--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file)."
     )
     data_args.add_argument(
         "--checkpoint-paths",
@@ -124,12 +123,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        type=list[str],  # maybe should be type=str
+        type=list[str],  # TODO: why is this a list[str] instead of str?
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     featurization_args.add_argument(
         "--phase-features-path",
-        type=str,
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
@@ -143,12 +141,10 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--atom-features-path",
-        type=str,
         help="Path to the extra atom features. Used as atom features to featurize a given molecule.",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
-        type=str,
         help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation.",
     )
     featurization_args.add_argument(
@@ -158,12 +154,10 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--bond-features-path",
-        type=str,
         help="Path to the extra bond features. Used as bond features to featurize a given molecule.",
     )
     featurization_args.add_argument(
         "--bond-descriptors-path",
-        type=str,
         help="Path to the extra bond descriptors. Used as descriptors and concatenated to the machine learned bond representation.",
     )
     featurization_args.add_argument(
@@ -190,7 +184,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # )
     parser.add_argument(
         "--constraints-path",
-        type=str,
         help="Path to constraints applied to atomic/bond properties prediction.",
     )
 

@@ -55,7 +55,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-i",
         "--data-path",
-        type=str,
         required=True,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
@@ -63,7 +62,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-o",
         "--output-dir",
         "--save-dir",
-        type=str,
         help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
     )
     # TODO: see if we can tell lightning how often to log training loss
@@ -75,7 +73,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--checkpoint-frzn",
-        type=str,
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
     )
     parser.add_argument(
@@ -101,7 +98,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--config-path",
-        type=str,
         help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
     )
     parser.add_argument(
@@ -262,17 +258,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
-        type=str,
         help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions.",
     )
     data_args.add_argument(
         "--data-weights-path",
-        type=str,
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
         "--separate-val-path",
-        type=str,
         default=None,
         dest="val_path",
         help="Path to separate val set, optional.",
@@ -284,22 +277,18 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
-        type=str,
         help="Path to file with phase features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-atom-descriptors-path",
-        type=str,
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-bond-descriptors-path",
-        type=str,
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
-        type=str,
         help="Path to file with constraints for separate val set.",
     )
     data_args.add_argument(
@@ -309,7 +298,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument(
         "--separate-test-path",
-        type=str,
         default=None,
         dest="test_path",
         help="Path to separate test set, optional.",
@@ -321,22 +309,18 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
-        type=str,
         help="Path to file with phase features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-atom-descriptors-path",
-        type=str,
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-bond-descriptors-path",
-        type=str,
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-constraints-path",
-        type=str,
         help="Path to file with constraints for separate test set.",
     )
     data_args.add_argument(
@@ -444,7 +428,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    split_args.add_argument("--folds-file", type=str, help="Optional file of fold labels.")
+    split_args.add_argument("--folds-file", help="Optional file of fold labels.")
     split_args.add_argument(
         "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
     )
@@ -453,12 +437,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     split_args.add_argument(
         "--crossval-index-dir",
-        type=str,
         help="Directory in which to find cross validation index files.",
     )
     split_args.add_argument(
         "--crossval-index-file",
-        type=str,
         help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     )
     split_args.add_argument(

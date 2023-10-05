@@ -51,7 +51,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-i",
         "--test-path",
-        type=str,
         required=True,
         help="Path to an input CSV file containing SMILES.",
     )
@@ -59,7 +58,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "-o",
         "--output",
         "--preds-path",
-        type=str,
         required=True,
         help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test_path is /path/to/test/test.csv, predictions will be saved to /path/to/test/test_preds.csv.",
     )
@@ -100,7 +98,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     # )
     # unc_args.add_argument(
     #     "--evaluation-scores-path",
-    #     type=str,
     #     help="Location to save the results of uncertainty evaluations.",
     # )
     # unc_args.add_argument(
@@ -128,7 +125,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     # )
     # unc_args.add_argument(
     #     "--calibrationipath",
-    #     type=str,
     #     help="Path to data file to be used for uncertainty calibration.",
     # )
     # unc_args.add_argument(
@@ -138,17 +134,14 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     # )
     # unc_args.add_argument(
     #     "--calibration-phase-features-path",
-    #     type=str,
     #     help=" ",
     # )
     # unc_args.add_argument(
     #     "--calibration-atom-descriptors-path",
-    #     type=str,
     #     help="Path to the extra atom descriptors.",
     # )
     # unc_args.add_argument(
     #     "--calibration-bond-descriptors-path",
-    #     type=str,
     #     help="Path to the extra bond descriptors that will be used as bond features to featurize a given molecule.",
     # )
 
