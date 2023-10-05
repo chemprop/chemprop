@@ -37,16 +37,7 @@ class TestSplitData:
         train, val, test = split_data(data=self.dataset)
         self.assertEqual(
             train.smiles(),
-            [
-                ["CO", "CCO"],
-                ["CO", "CCCO"],
-                ["CC", "CCC"],
-                ["CCCN", "CCCCN"],
-                ["CN", "CCN"],
-                ["CCN", "CCCN"],
-                ["CCC", "CN"],
-                ["C", "CC"],
-            ],
+            [["CO", "CCO"], ["CO", "CCCO"], ["CC", "CCC"], ["CCCN", "CCCCN"], ["CN", "CCN"], ["CCN", "CCCN"], ["CCC", "CN"], ["C", "CC"]],
         )
 
     def test_seed1(self):
@@ -54,24 +45,13 @@ class TestSplitData:
         train, val, test = split_data(data=self.dataset, seed=1)
         self.assertEqual(
             train.smiles(),
-            [
-                ["CCCCN", "CO"],
-                ["CO", "CCCO"],
-                ["CN", "CCC"],
-                ["CO", "CCO"],
-                ["CCCN", "CCCCN"],
-                ["CN", "CCN"],
-                ["C", "CC"],
-                ["CCN", "CCCN"],
-            ],
+            [["CCCCN", "CO"], ["CO", "CCCO"], ["CN", "CCC"], ["CO", "CCO"], ["CCCN", "CCCCN"], ["CN", "CCN"], ["C", "CC"], ["CCN", "CCCN"]],
         )
 
     def test_split_4_4_2(self):
         """Testing the random split with changed sizes"""
         train, val, test = split_data(data=self.dataset, sizes=(0.4, 0.4, 0.2))
-        self.assertEqual(
-            train.smiles(), [["CO", "CCO"], ["CO", "CCCO"], ["CC", "CCC"], ["CCCN", "CCCCN"]]
-        )
+        self.assertEqual(train.smiles(), [["CO", "CCO"], ["CO", "CCCO"], ["CC", "CCC"], ["CCCN", "CCCCN"]])
 
     def test_split_4_0_6(self):
         """Testing the random split with an empty set"""
@@ -80,9 +60,7 @@ class TestSplitData:
 
     def test_repeated_smiles(self):
         """Testing the random split with repeated smiles"""
-        train, val, test = split_data(
-            data=self.dataset, sizes=(0.4, 0.4, 0.2), split="random_with_repeated_smiles"
-        )
+        train, val, test = split_data(data=self.dataset, sizes=(0.4, 0.4, 0.2), split="random_with_repeated_smiles")
         self.assertEqual(test.smiles(), [["CO", "CCCO"], ["CO", "CCO"]])
 
     def test_kmeans(self):
@@ -92,7 +70,5 @@ class TestSplitData:
 
     def test_kennard_stone(self):
         """Testing the Kennard-Stone split"""
-        train, val, test = split_data(
-            data=self.dataset, sizes=(0.4, 0.4, 0.2), split="kennard_stone"
-        )
+        train, val, test = split_data(data=self.dataset, sizes=(0.4, 0.4, 0.2), split="kennard_stone")
         self.assertEqual(test.smiles(), [["CO", "CCCO"], ["CN", "CCC"]])
