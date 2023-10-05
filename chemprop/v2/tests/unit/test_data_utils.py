@@ -22,7 +22,7 @@ class TestSplitData:
             ["CO", "CCCO"],
             ["CN", "CCC"],
         ]
-        self.dataset = MoleculeDataset([MoleculeDatapoint(s) for s in smiles_list])
+        self.dataset = MoleculeDataset([MoleculeDatapoint.from_smi(s) for s in smiles_list])
 
     def test_splits_sum1(self):
         with self.assertRaises(ValueError):
