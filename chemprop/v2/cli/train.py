@@ -239,12 +239,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     # data_args is added in add_common_args()
     data_args.add_argument(
         "--target-columns",
-        nargs="*",
+        nargs="+",
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     data_args.add_argument(
         "--ignore-columns",
-        nargs="*",
+        nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
 
