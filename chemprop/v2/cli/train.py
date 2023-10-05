@@ -17,6 +17,7 @@ from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunctionRegistry
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
+from chemprop.v2.models.utils import Activation
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
@@ -154,14 +155,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--activation",
         default="relu",
-        choices=[
-            "relu",
-            "leakyrelu",
-            "prelu",
-            "tanh",
-            "selu",
-            "elu",
-        ],  # TODO: should these be lowercase?
+        choices=Activation.keys(),
+        type=lambda x: x.lower(),
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
