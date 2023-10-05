@@ -84,7 +84,7 @@ class _MolGraphDatasetMixin:
     @property
     def d_xf(self) -> int:
         """the extra molecule feature dimension, if any"""
-        return 0 if np.equal(self.X_f, None).all() else self.V_fs[0].shape[1]
+        return 0 if np.equal(self.X_f, None).all() else self.X_f[0].shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         """Normalizes the targets of the dataset using a :obj:`StandardScaler`
