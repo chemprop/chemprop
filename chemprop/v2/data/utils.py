@@ -1,14 +1,17 @@
-from collections import defaultdict
-from typing import Sequence
+import copy
 import itertools
+from enum import auto
+from logging import Logger
+from typing import Sequence, Tuple
 
 import numpy as np
-
+from astartes import train_test_split, train_val_test_split
+from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.data.datasets import MoleculeDataset
+from chemprop.v2.data.utils import log_scaffold_stats
 from chemprop.v2.utils.utils import AutoName
-from enum import auto
 
 
 class SplitType(AutoName):
@@ -19,19 +22,6 @@ class SplitType(AutoName):
     RANDOM = auto()
     KENNARD_STONE = auto()
     KMEANS = auto()
-
-
-from astartes import train_val_test_split, train_test_split
-from astartes.molecules import train_val_test_split_molecules, train_test_split_molecules
-
-import copy
-from logging import Logger
-import pickle
-from random import Random
-from typing import Tuple
-import os
-
-from chemprop.v2.data.utils import log_scaffold_stats
 
 
 def split_data(
