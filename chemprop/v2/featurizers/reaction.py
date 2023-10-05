@@ -35,7 +35,6 @@ class RxnMode(AutoName):
     products and balances imbalanced reactions"""
 
 
-
 @dataclass
 class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
     """A :class:`ReactionMolGraphFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
@@ -315,5 +314,6 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
                 rct_idxs.append(ri)
 
         return ri2pj, pdt_idxs, rct_idxs
+
 
 CGRFeaturizer = CondensedGraphOfReactionFeaturizer

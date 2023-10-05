@@ -40,6 +40,7 @@ class Readout(nn.Module, _ReadoutProto, HasHParams):
 class ReadoutFFNBase(Readout, HyperparametersMixin):
     """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
     :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
+
     _default_criterion: loss.LossFunction
 
     def __init__(
@@ -54,8 +55,8 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.hparams['cls'] = self.__class__
-        
+        self.hparams["cls"] = self.__class__
+
         self.ffn = SimpleFFN(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
@@ -85,7 +86,18 @@ class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.MSELoss()
 
-    def __init__(self, n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = "relu", criterion: loss.LossFunction | None = None, loc: float | Tensor = 0, scale: float | Tensor = 1):
+    def __init__(
+        self,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
+        hidden_dim: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0,
+        activation: str = "relu",
+        criterion: loss.LossFunction | None = None,
+        loc: float | Tensor = 0,
+        scale: float | Tensor = 1,
+    ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
         self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
@@ -187,12 +199,20 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.CrossEntropyLoss()
 
-    def __init__(self, n_classes: int, n_tasks: int = 1, input_dim: int = DEFAULT_HIDDEN_DIM, hidden_dim: int = 300, n_layers: int = 1, dropout: float = 0, activation: str = "relu", criterion: loss.LossFunction | None = None):
+    def __init__(
+        self,
+        n_classes: int,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
+        hidden_dim: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0,
+        activation: str = "relu",
+        criterion: loss.LossFunction | None = None,
+    ):
         super().__init__(
             n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
         )
-    # def __init__(self, n_classes: int, n_tasks: int = 1, *args, **kwargs):
-    #     super().__init__(n_tasks * n_classes, *args, **kwargs)
 
         self.n_classes = n_classes
 
