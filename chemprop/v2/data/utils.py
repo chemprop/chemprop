@@ -38,18 +38,16 @@ def split_data(
     key_molecule_index: int = 0,
     seed: int = 0,
     num_folds: int = 1,
-    logger: Logger = None,
 ) -> Tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
     r"""
     Splits data into training, validation, and test splits.
 
-    :param data: A :class:`~chemprop.data.MoleculeDataset`.
+    :param data: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
     :param split_type: Split type.
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param key_molecule_index: For data with multiple molecules, this sets which molecule will be considered during splitting.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
-    :param logger: A logger for recording output.
     :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
              validation, and test splits of the data.
     """
@@ -85,7 +83,8 @@ def split_data(
 
     elif split == SplitType.SCAFFOLD_BALANCED:
         mols_without_atommaps = []
-        for mol in data.mols(flatten=False):
+        for mol_datapoint in data:
+            mol = mol_datapoint.mol
             copied_mol = copy.deepcopy(mol[key_molecule_index])
             for atom in copied_mol.GetAtoms():
                 atom.SetAtomMapNum(0)
