@@ -37,7 +37,8 @@ jobs:
       shell: bash -l {0}
       run: |
         pytest -v chemprop/v2/tests
-    - name: Lint with flake8  #move this back before the tests after v2 development is done
+    # TODO: move this back before the tests after v2 development is done
+    - name: Lint with flake8  
       shell: bash -l {0}
       run: |
         # stop the build if there are Python syntax errors or undefined names
