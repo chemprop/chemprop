@@ -590,7 +590,6 @@ def main(args):
         )
         criterion = readout_cls._default_criterion
 
-    print(readout_cls)
     readout_ffn = Factory.build(
         readout_cls,
         input_dim=mp_block.output_dim,
