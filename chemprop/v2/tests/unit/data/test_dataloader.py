@@ -6,6 +6,7 @@ from chemprop.v2.data.dataloader import collate_batch
 from chemprop.v2.data.datasets import Datum
 from chemprop.v2.featurizers.molgraph import MolGraph, BatchMolGraph
 
+
 @pytest.fixture
 def datum_1():
     mol_graph1 = MolGraph(
@@ -17,17 +18,18 @@ def datum_1():
         b2a=[0, 2],
         b2revb=np.array([1, 0]),
         a2a=[0, 1, 2],
-        b2b=np.array([0, 1])
+        b2b=np.array([0, 1]),
     )
     return Datum(
         mol_graph1,
-        V_d = np.array([1.0, 2.0]),
-        x_f = [3, 4],
-        y = [6, 7],
-        weight = [8.0],
-        lt_mask = [True],
-        gt_mask= [False]
+        V_d=np.array([1.0, 2.0]),
+        x_f=[3, 4],
+        y=[6, 7],
+        weight=[8.0],
+        lt_mask=[True],
+        gt_mask=[False],
     )
+
 
 @pytest.fixture
 def datum_2():
@@ -40,24 +42,21 @@ def datum_2():
         b2a=[1],
         b2revb=np.array([0]),
         a2a=None,
-        b2b=None
+        b2b=None,
     )
     return Datum(
         mol_graph2,
-        V_d = np.array([5.0, 7.0]),
-        x_f = [8, 9],
-        y = [6, 4],
-        weight = [1.0],
-        lt_mask = [False],
-        gt_mask= [True]
+        V_d=np.array([5.0, 7.0]),
+        x_f=[8, 9],
+        y=[6, 4],
+        weight=[1.0],
+        lt_mask=[False],
+        gt_mask=[True],
     )
 
 
 def test_collate_batch_single_graph(datum_1):
-
-    batch = [
-        datum_1,
-    ]
+    batch = [datum_1]
 
     result = collate_batch(batch)
     mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = result
@@ -73,7 +72,6 @@ def test_collate_batch_single_graph(datum_1):
 
 
 def test_collate_batch_multiple_graphs(datum_1, datum_2):
-
     batch = [datum_1, datum_2]
 
     result = collate_batch(batch)

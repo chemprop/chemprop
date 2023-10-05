@@ -74,19 +74,16 @@ class MPNN(pl.LightningModule):
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
     ):
-        if message_passing.output_dim != readout.input_dim:
-            raise ValueError(
-                f"Message passing output dimension ({message_passing.output_dim}) "
-                f"does not match readout input dimension ({readout.input_dim})!"
-            )
-
         super().__init__()
+
         self.save_hyperparameters(ignore=["message_passing", "agg", "readout"])
-        self.hparams.update({
-            "message_passing": message_passing.hparams,
-            "agg": agg.hparams,
-            "readout": readout.hparams,
-        })
+        self.hparams.update(
+            {
+                "message_passing": message_passing.hparams,
+                "agg": agg.hparams,
+                "readout": readout.hparams,
+            }
+        )
 
         self.message_passing = message_passing
         self.agg = agg
@@ -226,12 +223,7 @@ class MPNN(pl.LightningModule):
 
     @classmethod
     def load_from_checkpoint(
-        cls,
-        checkpoint_path,
-        map_location=None,
-        hparams_file=None,
-        strict=True,
-        **kwargs,
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 

@@ -101,7 +101,7 @@ class EvidentialLoss(LossFunction):
 
     References
     ----------
-    .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.; 
+    .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
         "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """

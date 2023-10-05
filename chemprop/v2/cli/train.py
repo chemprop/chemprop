@@ -8,6 +8,7 @@ import warnings
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+import numpy as np
 import torch
 
 from chemprop.v2 import data
@@ -266,7 +267,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-val-path",
-        default=None,
         dest="val_path",
         help="Path to separate val set, optional.",
     )
@@ -592,7 +592,7 @@ def main(args):
 
     readout_ffn = Factory.build(
         readout_cls,
-        input_dim=mp_block.output_dim,
+        input_dim=mp_block.output_dim + train_dset.d_xf,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,

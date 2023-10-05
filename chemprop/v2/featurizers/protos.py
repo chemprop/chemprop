@@ -74,7 +74,7 @@ class RxnMolGraphFeaturizerProto(MolGraphFeaturizerProto):
             the molecular graph of the reaction
         """
 
-        
+
 class AtomFeaturizerProto(Protocol):
     """An :class:`AtomFeaturizerProto` calculates feature vectors of RDKit atoms."""
 
