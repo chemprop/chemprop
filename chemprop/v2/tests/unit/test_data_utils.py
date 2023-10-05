@@ -63,12 +63,12 @@ class TestSplitData:
         train, val, test = split_data(data=self.dataset, sizes=(0.4, 0.4, 0.2), split="random_with_repeated_smiles")
         self.assertEqual(test.smiles(), [["CO", "CCCO"], ["CO", "CCO"]])
 
-    def test_kmeans(self):
-        """Testing the KMeans split"""
-        train, val, test = split_data(data=self.dataset, sizes=(0.5, 0.0, 0.5), split="kmeans")
-        self.assertEqual(test.smiles(), [["C", "CC"], ["C", "CC"], ["C", "CC"]])
-
     def test_kennard_stone(self):
         """Testing the Kennard-Stone split"""
         train, val, test = split_data(data=self.dataset, sizes=(0.4, 0.4, 0.2), split="kennard_stone")
         self.assertEqual(test.smiles(), [["CO", "CCCO"], ["CN", "CCC"]])
+
+    def test_kmeans(self):
+        """Testing the KMeans split"""
+        train, val, test = split_data(data=self.dataset, sizes=(0.5, 0.0, 0.5), split="kmeans")
+        self.assertEqual(test.smiles(), [["C", "CC"], ["C", "CC"], ["C", "CC"]])

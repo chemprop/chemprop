@@ -111,10 +111,10 @@ def split_data(
         result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
         train, val, test = _unpack_astartes_result(data, result, include_val)
 
-    elif split == SplitType.KMEANS:
+    elif split == SplitType.KENNARD_STONE:
         result = mol_split_fun(
             np.array([m[key_molecule_index] for m in data.smiles()]),
-            sampler="kmeans",
+            sampler="kennard_stone",
             hopts=dict(metric="jaccard"),
             fingerprint="morgan_fingerprint",
             fprints_hopts=dict(n_bits=2048),
@@ -122,10 +122,10 @@ def split_data(
         )
         train, val, test = _unpack_astartes_result(data, result, include_val)
 
-    elif split == SplitType.KENNARD_STONE:
+    elif split == SplitType.KMEANS:
         result = mol_split_fun(
             np.array([m[key_molecule_index] for m in data.smiles()]),
-            sampler="kennard_stone",
+            sampler="kmeans",
             hopts=dict(metric="jaccard"),
             fingerprint="morgan_fingerprint",
             fprints_hopts=dict(n_bits=2048),
