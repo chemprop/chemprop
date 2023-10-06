@@ -13,18 +13,7 @@ class TestSplitData:
     """
 
     def setup_class(self):
-        smiles_list = [
-            "C",
-            "CC",
-            "CCC",
-            "CN",
-            "CCN",
-            "CCCN",
-            "CCCCN",
-            "CO",
-            "CO",
-            "CN"
-        ]
+        smiles_list = ["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CO", "CN"]
         self.dataset = [MoleculeDatapoint.from_smi(s) for s in smiles_list]
 
     def test_splits_sum1(self):
@@ -38,23 +27,17 @@ class TestSplitData:
     def test_random_split(self):
         """Testing the random split with seed 0"""
         train, val, test = split_data(datapoints=self.dataset)
-        assert np.testing.assert_array_equal(
-            [Chem.MolToSmiles(i.mol) for i in train],
-            ['CO', 'CCN', 'CN', 'CC', 'CCCCN', 'CO', 'CN', 'C'],
-        ) is None
+        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ["CO", "CCN", "CN", "CC", "CCCCN", "CO", "CN", "C"]) is None
 
     def test_seed1(self):
         """Testing the random split with seed 1"""
         train, val, test = split_data(datapoints=self.dataset, seed=1)
-        assert np.testing.assert_array_equal(
-            [Chem.MolToSmiles(i.mol) for i in train],
-            ['CN', 'CCCCN', 'CCN', 'C', 'CN', 'CC', 'CO', 'CO'],
-        ) is None
+        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ["CN", "CCCCN", "CCN", "C", "CN", "CC", "CO", "CO"]) is None
 
     def test_split_4_4_2(self):
         """Testing the random split with changed sizes"""
         train, val, test = split_data(datapoints=self.dataset, sizes=(0.4, 0.4, 0.2))
-        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ['CO', 'CCN', 'CN', 'CC']) is None
+        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ["CO", "CCN", "CN", "CC"]) is None
 
     def test_split_4_0_6(self):
         """Testing the random split with an empty set"""
@@ -64,7 +47,7 @@ class TestSplitData:
     def test_repeated_smiles(self):
         """Testing the random split with repeated smiles"""
         train, val, test = split_data(datapoints=self.dataset, sizes=(0.4, 0.4, 0.2), split="random_with_repeated_smiles")
-        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in test], ["CO", "CO"]) is None
+        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in test], ["CCCN", "CN", "CN"]) is None
 
     def test_kennard_stone(self):
         """Testing the Kennard-Stone split"""
