@@ -606,11 +606,11 @@ def main(args):
     else:
         scaler = None
 
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.n_cpu)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.n_cpu, shuffle=False)
+    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     else:
         test_loader = None
 

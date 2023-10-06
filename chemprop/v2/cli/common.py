@@ -69,8 +69,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--max-data-size", type=int, help="Maximum number of data points to load."
     )
     data_args.add_argument(
-        "-c",
-        "--n-cpu",
+        "-n",
         "--num-workers",
         type=int,
         default=8,
