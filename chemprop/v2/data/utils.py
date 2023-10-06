@@ -26,21 +26,21 @@ class SplitType(AutoName):
 
 
 def split_data(
-    data: Sequence[MoleculeDatapoint],
+    datapoints: Sequence[MoleculeDatapoint],
     split: SplitType = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
-) -> tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
+) -> tuple[Sequence[MoleculeDatapoint], ...]:
     r"""
     Splits data into training, validation, and test splits.
 
-    :param data: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
+    :param datapoints: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
     :param split: Split type, one of ~chemprop.data.utils.SplitType
     :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
     :param seed: The random seed to use before shuffling data.
     :param num_folds: Number of folds to create (only needed for "cv" split type).
-    :return: A tuple of :class:`~chemprop.data.MoleculeDataset`\ s containing the train,
+    :return: A tuple of Sequences of :class:`~chemprop.data.MoleculeDatapoint`\ s containing the train,
              validation, and test splits of the data.
     """
     if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
@@ -61,34 +61,34 @@ def split_data(
         astartes_kwargs["val_size"] = sizes[1]
 
     train, val, test = None, None, None
-    match split:
+    match SplitType(split):
         case SplitType.CV_NO_VAL, SplitType.CV:
-            if (max_folds := len(data)) > num_folds or num_folds <= 1:
+            if (max_folds := len(datapoints)) > num_folds or num_folds <= 1:
                 raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
 
             train, val, test = [], [], []
             for _ in range(len(num_folds)):
-                result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
-                i_train, i_val, i_test = _unpack_astartes_result(data, result, include_val)
+                result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
+                i_train, i_val, i_test = _unpack_astartes_result(datapoints, result, include_val)
                 train.append(i_train)
                 val.append(i_val)
                 test.append(i_test)
 
         case SplitType.SCAFFOLD_BALANCED:
             mols_without_atommaps = []
-            for mol_datapoint in data:
+            for mol_datapoint in datapoints:
                 mol = mol_datapoint.mol
                 copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append([copied_mol])
             result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(data, result, include_val)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
             # get two arrays: one of all the smiles strings, one of just the unique
-            all_smiles = np.array([d.mol for d in data])
+            all_smiles = np.array([d.mol for d in datapoints])
             unique_smiles = np.unique(all_smiles)
 
             # save a mapping of smiles -> all the indices that it appeared at
@@ -106,35 +106,35 @@ def split_data(
             test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
 
         case SplitType.RANDOM:
-            result = split_fun(np.arange(len(data)), sampler="random", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(data, result, include_val)
+            result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         case SplitType.KENNARD_STONE:
             result = mol_split_fun(
-                np.array([d.mol for d in data]),
+                np.array([d.mol for d in datapoints]),
                 sampler="kennard_stone",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(data, result, include_val)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         case SplitType.KMEANS:
             result = mol_split_fun(
-                np.array([d.mol for d in data]),
+                np.array([d.mol for d in datapoints]),
                 sampler="kmeans",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(data, result, include_val)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         case _:
             raise ValueError(f'split type "{split}" not supported.')
 
-    return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
+    return train, val, test
 
 
 def _unpack_astartes_result(
