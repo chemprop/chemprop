@@ -77,7 +77,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Number of workers for the parallel data loading (0 means sequential).",
     )
     parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
-    data_args.add_argument("-b", "--batch-size", type=int, default=50, help="Batch size.")
+    data_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
     # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
