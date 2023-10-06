@@ -53,7 +53,7 @@ def split_data(
     # default sampling arguments for astartes sampler
     astartes_kwargs = dict(train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed)
     # if no validation set, reassign the splitting functions
-    if not sizes[1]:
+    if sizes[1] == 0.0:
         include_val = False
         split_fun = train_test_split
         mol_split_fun = train_test_split_molecules
