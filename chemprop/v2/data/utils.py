@@ -1,66 +1,185 @@
-from collections import defaultdict
-from typing import Sequence
+import copy
+import itertools
+import logging
+from enum import auto
+from typing import Sequence, Tuple
 
 import numpy as np
-from rdkit.Chem.Scaffolds import MurckoScaffold
-
+from astartes import train_test_split, train_val_test_split
+from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
+from rdkit import Chem
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
+from chemprop.v2.utils.utils import AutoName
+
+logger = logging.getLogger(__name__)
+
+
+class SplitType(AutoName):
+    CV_NO_VAL = auto()
+    CV = auto()
+    SCAFFOLD_BALANCED = auto()
+    RANDOM_WITH_REPEATED_SMILES = auto()
+    RANDOM = auto()
+    KENNARD_STONE = auto()
+    KMEANS = auto()
 
 
 def split_data(
-    data: Sequence[MoleculeDatapoint],
-    split: str = "random",
+    datapoints: Sequence[MoleculeDatapoint],
+    split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
-    k: int = 5,
-    fold: int = 0,
-):
-    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
+    seed: int = 0,
+    num_folds: int = 1,
+) -> tuple[Sequence[MoleculeDatapoint], ...]:
+    """Splits data into training, validation, and test splits.
 
-    n_train, n_val, n_test = [int(size * len(data)) for size in sizes]
+    Parameters
+    ----------
+    datapoints : Sequence[MoleculeDatapoint]
+        Sequence of chemprop.data.MoleculeDatapoint.
+    split : SplitType | str, optional
+        Split type, one of ~chemprop.data.utils.SplitType, by default "random"
+    sizes : tuple[float, float, float], optional
+        3-tuple with the proportions of data in the train, validation, and test sets, by default (0.8, 0.1, 0.1)
+    seed : int, optional
+        The random seed passed to astartes, by default 0
+    num_folds : int, optional
+        Number of folds to create (only needed for "cv" and "cv-no-test"), by default 1
 
-    if split == "random":
-        idxs = np.arange(len(data))
-        np.random.shuffle(idxs)
+    Returns
+    -------
+    tuple[Sequence[MoleculeDatapoint], ...]
+        A tuple of Sequences of ~chemprop.data.MoleculeDatapoint containing the train, validation, and test splits of the data.
+            NOTE: validation may or may not be present
 
-        train = [data[i] for i in idxs[:n_train]]
-        val = [data[i] for i in idxs[n_train : n_train + n_val]]
-        test = [data[i] for i in idxs[n_train + n_val :]]
-    elif split == "scaffold":
-        scaffold2idxs = defaultdict(set)
-        for i, d in enumerate(data):
-            scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=d.mol)
-            scaffold2idxs[scaffold].add(i)
-
-        big_index_sets = []
-        small_index_sets = []
-        for idxs in scaffold2idxs.values():
-            if len(idxs) > n_val / 2 or len(idxs) > n_test / 2:
-                big_index_sets.append(idxs)
-            else:
-                small_index_sets.append(idxs)
-
-        np.random.shuffle(big_index_sets)
-        np.random.shuffle(small_index_sets)
-        idx_sets = [*big_index_sets, *small_index_sets]
-
-        train_idxs, val_idxs, test_idxs = [], [], []
-        for idxs in idx_sets:
-            if len(train) + len(idxs) <= n_train:
-                train_idxs.extend(idxs)
-                train_scaffold_count += 1
-            elif len(val) + len(idxs) <= n_val:
-                val_idxs.extend(idxs)
-                val_scaffold_count += 1
-            else:
-                test_idxs.extend(idxs)
-                test_scaffold_count += 1
-
-        train = [data[i] for i in train_idxs]
-        val = [data[i] for i in val_idxs]
-        test = [data[i] for i in test_idxs]
+    Raises
+    ------
+    ValueError
+        Innapropriate number of folds requested
+    ValueError
+        Unsupported split method requested
+    """
+    # typically include a validation set
+    include_val = True
+    split_fun = train_val_test_split
+    mol_split_fun = train_val_test_split_molecules
+    # default sampling arguments for astartes sampler
+    astartes_kwargs = dict(train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed)
+    # if no validation set, reassign the splitting functions
+    if sizes[1] == 0.0:
+        include_val = False
+        split_fun = train_test_split
+        mol_split_fun = train_test_split_molecules
     else:
-        raise ValueError(f"Uknown split type! got: {split}")
+        astartes_kwargs["val_size"] = sizes[1]
 
+    train, val, test = None, None, None
+    match SplitType.get(split):
+        case SplitType.CV_NO_VAL, SplitType.CV:
+            if (max_folds := len(datapoints)) > num_folds or num_folds <= 1:
+                raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
+
+            train, val, test = [], [], []
+            for _ in range(len(num_folds)):
+                result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
+                i_train, i_val, i_test = _unpack_astartes_result(datapoints, result, include_val)
+                train.append(i_train)
+                val.append(i_val)
+                test.append(i_test)
+
+        case SplitType.SCAFFOLD_BALANCED:
+            mols_without_atommaps = []
+            for d in datapoints:
+                mol = d.mol
+                copied_mol = copy.deepcopy(mol)
+                for atom in copied_mol.GetAtoms():
+                    atom.SetAtomMapNum(0)
+                mols_without_atommaps.append([copied_mol])
+            result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+
+        # Use to constrain data with the same smiles go in the same split.
+        case SplitType.RANDOM_WITH_REPEATED_SMILES:
+            # get two arrays: one of all the smiles strings, one of just the unique
+            all_smiles = np.array([Chem.MolToSmiles(d.mol) for d in datapoints])
+            unique_smiles = np.unique(all_smiles)
+
+            # save a mapping of smiles -> all the indices that it appeared at
+            smiles_indices = {}
+            for smiles in unique_smiles:
+                smiles_indices[smiles] = np.where(all_smiles == smiles)[0]
+
+            # randomly split the unique smiles
+            result = split_fun(np.arange(len(unique_smiles)), sampler="random", **astartes_kwargs)
+            train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
+
+            # convert these to the 'actual' indices from the original list using the dict we made
+            train = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)]
+            val = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)]
+            test = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)]
+
+        case SplitType.RANDOM:
+            result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+
+        case SplitType.KENNARD_STONE:
+            result = mol_split_fun(
+                np.array([d.mol for d in datapoints]),
+                sampler="kennard_stone",
+                hopts=dict(metric="jaccard"),
+                fingerprint="morgan_fingerprint",
+                fprints_hopts=dict(n_bits=2048),
+                **astartes_kwargs,
+            )
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+
+        case SplitType.KMEANS:
+            result = mol_split_fun(
+                np.array([d.mol for d in datapoints]),
+                sampler="kmeans",
+                hopts=dict(metric="jaccard"),
+                fingerprint="morgan_fingerprint",
+                fprints_hopts=dict(n_bits=2048),
+                **astartes_kwargs,
+            )
+            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+
+        case _:
+            raise ValueError(f'split type "{split}" not supported.')
+
+    return train, val, test
+
+
+def _unpack_astartes_result(
+    data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool
+) -> tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
+    """Helper function to partition input data based on output of astartes sampler
+
+    Parameters
+    -----------
+    data: MoleculeDataset
+        The data being partitioned. If None, returns indices.
+    result: tuple
+        Output from call to astartes containing the split indices
+    include_val: bool
+        True if a validation set is included, False otherwise.
+
+    Returns
+    ---------
+    train: MoleculeDataset
+    val: MoleculeDataset
+        NOTE: possibly empty
+    test: MoleculeDataset
+    """
+    train_idxs, val_idxs, test_idxs = [], [], []
+    if include_val:
+        train_idxs, val_idxs, test_idxs = result[3], result[4], result[5]
+    else:
+        train_idxs, test_idxs = result[2], result[3]
+    if data is None:
+        return train_idxs, val_idxs, test_idxs
+    train = [data[i] for i in train_idxs]
+    val = [data[i] for i in val_idxs]
+    test = [data[i] for i in test_idxs]
     return train, val, test
