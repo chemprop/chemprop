@@ -54,7 +54,7 @@ class TestSplitData:
     def test_split_4_4_2(self):
         """Testing the random split with changed sizes"""
         train, val, test = split_data(datapoints=self.dataset, sizes=(0.4, 0.4, 0.2))
-        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ['CO', 'CCN', 'CN', 'CC'])
+        assert np.testing.assert_array_equal([Chem.MolToSmiles(i.mol) for i in train], ['CO', 'CCN', 'CN', 'CC']) is None
 
     def test_split_4_0_6(self):
         """Testing the random split with an empty set"""
