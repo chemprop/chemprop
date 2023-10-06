@@ -142,13 +142,21 @@ def _unpack_astartes_result(
 ) -> tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
     """Helper function to partition input data based on output of astartes sampler
 
-    Args:
-        data (MoleculeDataset): The data being partitioned. If None, returns indices.
-        result (tuple): Output from call to astartes containing the split indices
-        include_val (bool): True if a validation set is included, False otherwise.
+    Parameters
+    -----------
+    data: MoleculeDataset
+        The data being partitioned. If None, returns indices.
+    result: tuple
+        Output from call to astartes containing the split indices
+    include_val: bool
+        True if a validation set is included, False otherwise.
 
-    Returns:
-        MoleculeDatset: The train, validation (can be empty) and test dataset
+    Returns
+    ---------
+    train: MoleculeDataset
+    val: MoleculeDataset
+        NOTE: possibly empty
+    test: MoleculeDataset
     """
     train_idxs, val_idxs, test_idxs = [], [], []
     if include_val:
