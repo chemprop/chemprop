@@ -145,9 +145,9 @@ class TestRxnMode:
         """
         Test that the get function returns the correct RxnMode when given a lowercase mode.
         """
-        assert RxnMode.get(mode_name.lower()) == getattr(RxnMode, mode_name)
-        assert RxnMode.get(mode_name.lower()).name == mode_name
-        assert RxnMode.get(mode_name.lower()).value == mode_name.lower()
+        assert RxnMode.get(mode_name) == getattr(RxnMode, mode_name)
+        assert RxnMode.get(mode_name).name == mode_name
+        assert RxnMode.get(mode_name).value == mode_name.lower()
 
     def test_get_function_enum(self, rxn_mode):
         """
@@ -168,8 +168,8 @@ class TestRxnMode:
         """
         Test that the keys function returns the correct set of modes.
         """
-        assert RxnMode.keys() == set(
-            available_mode.lower() for available_mode in available_rxn_mode_names
+        assert set(RxnMode.keys()) == set(
+            available_mode.upper() for available_mode in available_rxn_mode_names
         )
 
 
