@@ -9,7 +9,6 @@ from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.data.datasets import MoleculeDataset
 from chemprop.v2.utils.utils import AutoName
 
 logger = logging.getLogger(__name__)
