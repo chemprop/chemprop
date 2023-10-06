@@ -8,7 +8,7 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.data.datapoints import MoleculeDatapoint, MulticomponentDatapoint, ReactionDatapoint
 from chemprop.v2.featurizers import (
     MolGraph,
     MoleculeMolGraphFeaturizerProto,
@@ -305,3 +305,38 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
     @property
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct, d.pdt) for d in self.data]
+
+
+@dataclass
+class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
+    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual ``{Molecule,Reaction}Datasets``"""
+
+    datasets: list[MoleculeDataset | ReactionDataset]
+    """the parallel datasets"""
+
+    def __post_init__(self):
+        sizes = [len(dset) for dset in self.datasets]
+        if not all(sizes[0] == size for size in sizes[1:]):
+            raise ValueError(f"Datasets must have all same length! got: {sizes}")
+        
+    def __getitem__(self, idx: int) -> list[Datum]:
+        return [dset[idx] for dset in self.datasets]
+
+    @property
+    def smiles(self) -> list[list[str]]:
+        return list(zip(*[dset.smiles for dset in self.datasets]))
+
+    @property
+    def mols(self) -> list[list[Chem.Mol]]:
+        return list(zip(*[dset.mols for dset in self.datasets]))
+
+    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
+        return self.datasets[0].normalize_targets(scaler)
+
+    def normalize_inputs(
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+    ) -> list[StandardScaler]:
+        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+    
+    def reset(self):
+        return [dset.reset() for dset in self.datasets]
