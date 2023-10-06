@@ -18,7 +18,7 @@ from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
-from chemprop.v2.cli.utils import RegistryAction, column_str_to_int
+from chemprop.v2.cli.utils import LookupAction, column_str_to_int
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
@@ -117,7 +117,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-generators",
-        action=RegistryAction(MoleculeFeaturizerRegistry),
+        action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(

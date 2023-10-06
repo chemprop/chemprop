@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from chemprop.v2 import data
+from chemprop.v2.cli.utils.args import lowercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
@@ -21,7 +22,7 @@ from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.models.utils import Activation
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
-from chemprop.v2.cli.utils import Subcommand, RegistryAction
+from chemprop.v2.cli.utils import Subcommand, LookupAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
@@ -153,14 +154,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--activation",
         default="relu",
         choices=Activation.keys(),
-        type=lambda x: x.lower(),
+        type=lowercase,
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="mean",
-        action=RegistryAction(AggregationRegistry),
+        action=LookupAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
@@ -252,7 +253,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=RegistryAction(
+        action=LookupAction(
             ReadoutRegistry
         ),  # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
         help="Type of dataset. This determines the default loss function used during training.",
@@ -329,7 +330,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
+    train_args.add_argument("-l", "--loss-function", action=LookupAction(LossFunctionRegistry))
     train_args.add_argument(
         "--v-kl",
         "--evidential-regularization",
@@ -353,7 +354,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--metric" "--metrics",
         nargs="+",
-        action=RegistryAction(MetricRegistry),
+        action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
     train_args.add_argument(
