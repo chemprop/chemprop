@@ -294,7 +294,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--separate-val-bond-features-path",
         dest="val_bond_features_path",
-        help="Path to file with extra atom descriptors for separate val set.",
+        help="Path to file with extra bond features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
@@ -325,7 +325,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--separate-test-atom-features-path",
         dest="test_atom_features_path",
-        help="Path to file with extra atom features for separate test set.",
+        help="Path to file with extra bond features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-bond-features-path",
