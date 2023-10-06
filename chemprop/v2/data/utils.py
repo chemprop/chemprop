@@ -27,7 +27,7 @@ class SplitType(AutoName):
 
 def split_data(
     datapoints: Sequence[MoleculeDatapoint],
-    split: SplitType = "random",
+    split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
@@ -139,7 +139,7 @@ def split_data(
 
 def _unpack_astartes_result(
     data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool
-) -> Tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
+) -> tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
     """Helper function to partition input data based on output of astartes sampler
 
     Args:
