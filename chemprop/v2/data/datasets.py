@@ -300,7 +300,7 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(((d.rct, d.pdt)), None, None)
+        mg = self.featurizer((d.rct, d.pdt), None, None)
 
         return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
