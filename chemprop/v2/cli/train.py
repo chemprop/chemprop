@@ -159,7 +159,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--aggregation",
         "--agg",
-        default="mean",
+        default="norm",
         action=RegistryAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
