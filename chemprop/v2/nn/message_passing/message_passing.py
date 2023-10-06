@@ -213,18 +213,18 @@ class BondMessagePassing(MessagePassingBase):
 
     .. math::
 
-        h_{vw}^{(0)} &= \tau \left( \mathbf{W}_i(e_{vw}) \right) \\
-        m_{vw}^{(t)} &= \sum_{u \in \mathcal{N}(v)\setminus w} h_{uv}^{(t-1)} \\
-        h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf{W}_h m_{vw}^{(t-1)} \right) \\
-        m_v^{(T)} &= \sum_{w \in \mathcal{N}(v)} h_w^{(T-1)} \\
-        h_v^{(T)} &= \tau \left (\mathbf{W}_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
+        h_{vw}^{(0)} &= \tau \left( \mathbf W_i(e_{vw}) \right) \\
+        m_{vw}^{(t)} &= \sum_{u \in \mathcal N(v)\setminus w} h_{uv}^{(t-1)} \\
+        h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf W_h m_{vw}^{(t-1)} \right) \\
+        m_v^{(T)} &= \sum_{w \in \mathcal N(v)} h_w^{(T-1)} \\
+        h_v^{(T)} &= \tau \left (\mathbf W_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
         
-    where :math:`\tau` is the activation function; :math:`\mathbf{W}_i`, :math:`\mathbf{W}_h`, and
-    :math:`\mathbf{W}_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
+    where :math:`\tau` is the activation function; :math:`\mathbf W_i`, :math:`\mathbf W_h`, and
+    :math:`\mathbf W_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
     :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at
     iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v
-    \rightarrow w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
+    \to w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
     message passing iterations.
     """
 
