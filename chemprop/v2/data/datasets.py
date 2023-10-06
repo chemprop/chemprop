@@ -8,7 +8,7 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint, MulticomponentDatapoint, ReactionDatapoint
+from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.featurizers import (
     MolGraph,
     MoleculeMolGraphFeaturizerProto,
@@ -318,7 +318,7 @@ class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
         sizes = [len(dset) for dset in self.datasets]
         if not all(sizes[0] == size for size in sizes[1:]):
             raise ValueError(f"Datasets must have all same length! got: {sizes}")
-        
+
     def __getitem__(self, idx: int) -> list[Datum]:
         return [dset[idx] for dset in self.datasets]
 
@@ -337,6 +337,6 @@ class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
         self, key: str | None = "X_f", scaler: StandardScaler | None = None
     ) -> list[StandardScaler]:
         return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
-    
+
     def reset(self):
         return [dset.reset() for dset in self.datasets]

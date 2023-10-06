@@ -52,7 +52,7 @@ def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> Multicomponent
         tbs[0].Y,
         tbs[0].w,
         tbs[0].lt_mask,
-        tbs[0].gt_mask
+        tbs[0].gt_mask,
     )
 
 
@@ -103,7 +103,7 @@ class MolGraphDataLoader(DataLoader):
             collate_fn = collate_multicomponent
         else:
             collate_fn = collate_batch
-            
+
         super().__init__(
             self.dset,
             batch_size,
