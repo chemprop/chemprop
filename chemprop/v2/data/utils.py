@@ -32,20 +32,34 @@ def split_data(
     seed: int = 0,
     num_folds: int = 1,
 ) -> tuple[Sequence[MoleculeDatapoint], ...]:
-    r"""
-    Splits data into training, validation, and test splits.
+    """Splits data into training, validation, and test splits.
 
-    :param datapoints: A sequence of :class:`~chemprop.data.MoleculeDatapoint`.
-    :param split: Split type, one of ~chemprop.data.utils.SplitType
-    :param sizes: A length-3 tuple with the proportions of data in the train, validation, and test sets.
-    :param seed: The random seed to use before shuffling data.
-    :param num_folds: Number of folds to create (only needed for "cv" split type).
-    :return: A tuple of Sequences of :class:`~chemprop.data.MoleculeDatapoint`\ s containing the train,
-             validation, and test splits of the data.
+    Parameters
+    ----------
+    datapoints : Sequence[MoleculeDatapoint]
+        Sequence of chemprop.data.MoleculeDatapoint.
+    split : SplitType | str, optional
+        Split type, one of ~chemprop.data.utils.SplitType, by default "random"
+    sizes : tuple[float, float, float], optional
+        3-tuple with the proportions of data in the train, validation, and test sets, by default (0.8, 0.1, 0.1)
+    seed : int, optional
+        The random seed passed to astartes, by default 0
+    num_folds : int, optional
+        Number of folds to create (only needed for "cv" and "cv-no-test"), by default 1
+
+    Returns
+    -------
+    tuple[Sequence[MoleculeDatapoint], ...]
+        A tuple of Sequences of ~chemprop.data.MoleculeDatapoint containing the train, validation, and test splits of the data.
+            NOTE: validation may or may not be present
+
+    Raises
+    ------
+    ValueError
+        Innapropriate number of folds requested
+    ValueError
+        Unsupported split method requested
     """
-    if not (len(sizes) == 3 and np.isclose(sum(sizes), 1)):
-        raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
-
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
