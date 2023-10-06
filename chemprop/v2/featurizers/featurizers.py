@@ -24,12 +24,12 @@ class MorganFeaturizerMixin:
 
 class BinaryFeaturizerMixin:
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
-        return self.F.GetFingerprintAsNumPy(mol).astype(np.int32)
+        return self.F.GetFingerprintAsNumPy(mol).astype(int)
 
 
 class CountFeaturizerMixin:
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
-        return self.F.GetCountFingerprintAsNumPy(mol).astype(np.int32)
+        return self.F.GetCountFingerprintAsNumPy(mol).astype(int)
 
 
 @MoleculeFeaturizerRegistry("morgan_binary")
