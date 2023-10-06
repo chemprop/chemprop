@@ -307,7 +307,7 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
         return [(d.rct, d.pdt) for d in self.data]
 
 
-@dataclass
+@dataclass(repr=False, eq=False)
 class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
     """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual ``{Molecule,Reaction}Datasets``"""
 
@@ -318,6 +318,9 @@ class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
         sizes = [len(dset) for dset in self.datasets]
         if not all(sizes[0] == size for size in sizes[1:]):
             raise ValueError(f"Datasets must have all same length! got: {sizes}")
+
+    def __len__(self) -> int:
+        return len(self.datasets[0])
 
     def __getitem__(self, idx: int) -> list[Datum]:
         return [dset[idx] for dset in self.datasets]
