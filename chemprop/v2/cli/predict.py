@@ -209,6 +209,15 @@ def main(args):
     #     cal_data = None
 
     test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+    if args.no_features_scaling is False:
+        p_features_scaler = args.checkpoint_path.parents[1] / "features_scaler.pkl"
+        features_scaler = torch.load(p_features_scaler)
+        test_dset.normalize_inputs("X_f", features_scaler)
+
+    if args.no_atom_descriptor_scaling is False:
+        p_atom_descs_scaler = args.checkpoint_path.parents[1] / "atom_descs_scaler.pkl"
+        atom_descs_scaler = torch.load(p_atom_descs_scaler)
+        test_dset.normalize_inputs("V_d", atom_descs_scaler)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
     # TODO: add uncertainty and calibration

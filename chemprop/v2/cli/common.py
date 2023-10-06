@@ -123,7 +123,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--features-path",
         type=list[str],  # TODO: why is this a list[str] instead of str?
-        help="Path(s) to features to use in FNN (instead of features_generator).",
+        help="Path(s) to features to use in FFN (instead of features_generator).",
     )
     featurization_args.add_argument(
         "--phase-features-path",

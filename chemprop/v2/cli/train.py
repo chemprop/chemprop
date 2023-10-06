@@ -556,8 +556,21 @@ def main(args):
         )  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
+
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
     val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
+
+    if args.no_features_scaling is False:
+        features_scaler = train_dset.normalize_inputs("X_f")
+        val_dset.normalize_inputs("X_f", features_scaler)
+        p_features_scaler = args.output_dir / "features_scaler.pkl"
+        torch.save(features_scaler, p_features_scaler)
+
+    if args.no_atom_descriptor_scaling is False:
+        atom_descs_scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", atom_descs_scaler)
+        p_atom_descs_scaler = args.output_dir / "atom_descs_scaler.pkl"
+        torch.save(atom_descs_scaler, p_atom_descs_scaler)
 
     mp_cls = BondMessageBlock if bond_messages else AtomMessageBlock
     mp_block = mp_cls(
@@ -610,6 +623,10 @@ def main(args):
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+        if args.no_features_scaling is False:
+            test_dset.normalize_inputs("X_f", features_scaler)
+        if args.no_atom_descriptor_scaling is False:
+            test_dset.normalize_inputs("X_f", atom_descs_scaler)
         test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     else:
         test_loader = None
