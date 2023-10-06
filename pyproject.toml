@@ -39,7 +39,7 @@ dependencies = [
     "rdkit",
     "scikit-learn",
     "scipy",
-    "torch >= 2.0",
+    "torch >= 2.1",
     "astartes[molecules]",
 ]
 

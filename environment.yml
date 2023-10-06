@@ -12,6 +12,6 @@ dependencies:
   - rdkit
   - scikit-learn
   - scipy
-  - pytorch >= 2.0
+  - pytorch >= 2.1
   - astartes
   - aimsim
