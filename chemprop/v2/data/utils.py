@@ -27,7 +27,7 @@ class SplitType(AutoName):
 
 def split_data(
     data: Sequence[MoleculeDatapoint],
-    split: str = "random" | SplitType,
+    split: SplitType = "random",
     sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
