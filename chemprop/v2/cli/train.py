@@ -159,7 +159,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--aggregation",
         "--agg",
-        default="mean",
+        default="norm",
         action=RegistryAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
@@ -392,7 +392,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
     train_args.add_argument(
-        "--epochs", type=int, default=30, help="the number of epochs to train over"
+        "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
         "--grad-clip", type=float, help="Maximum magnitude of gradient during training."

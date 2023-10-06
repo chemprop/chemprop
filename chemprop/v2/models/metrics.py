@@ -6,7 +6,7 @@ from torch import Tensor
 from torchmetrics import functional as F
 
 from chemprop.v2.utils.registry import ClassRegistry
-from chemprop.v2.models.loss import BCELoss, CrossEntropyLoss, LossFunction, MSELoss
+from chemprop.v2.models.loss import LossFunction, MSELoss, BCELoss, CrossEntropyLoss, BinaryMCCLoss, MulticlassMCCLoss, SIDLoss, WassersteinLoss
 
 MetricRegistry = ClassRegistry()
 
@@ -55,8 +55,8 @@ class RMSEMetric(MSEMetric):
 
 class BoundedMixin:
     def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
-        preds[preds < targets & lt_mask] = targets
-        preds[preds > targets & gt_mask] = targets
+        preds = torch.where((preds < targets) & lt_mask, targets, preds)
+        preds = torch.where((preds > targets) & gt_mask, targets, preds)
 
         return super().forward(preds, targets, mask, lt_mask, gt_mask)
 
@@ -121,50 +121,25 @@ class F1Metric(Metric):
 @MetricRegistry.register("bce")
 class BCEMetric(BCELoss, Metric):
     pass
-    # def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
-    #     return binary_cross_entropy_with_logits(preds[mask], targets[mask].long())
-
 
 @MetricRegistry.register("ce")
 class CrossEntropyMetric(CrossEntropyLoss, Metric):
     pass
-    # def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
-    #     return cross_entropy(preds[mask], targets[mask].long())
 
 
-@MetricRegistry.register("mcc")
-class MCCMetric(Metric):
-    minimize = False
-    """NOTE(degraff): don't think this works rn"""
+@MetricRegistry.register("binary-mcc")
+class BinaryMCCMetric(BinaryMCCLoss, Metric):
+    pass
 
-    def __init__(self, n_classes: int, threshold: float = 0.5, *args) -> Tensor:
-        self.n_classes = n_classes
-        self.threshold = threshold
-
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.matthews_corrcoef(
-            preds[mask], targets[mask].long(), self.n_classes, self.threshold
-        )
-
+@MetricRegistry.register("multiclass-mcc")
+class BinaryMCCMetric(MulticlassMCCLoss, Metric):
+    pass
 
 @MetricRegistry.register("sid")
-class SIDMetric(Metric, ThresholdedMixin):
-    def forward(self, preds, targets, mask, *args) -> Tensor:
-        preds = preds.clamp(min=self.threshold)
-        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
-
-        targets = targets.masked_fill(~mask, 1)
-        preds_norm = preds_norm.masked_fill(~mask, 1)
-
-        return (
-            torch.log(preds_norm / targets) * preds_norm + torch.log(targets / preds_norm) * targets
-        )
+class SIDMetric(SIDLoss, Metric):
+    pass
 
 
 @MetricRegistry.register("wasserstein")
-class WassersteinMetric(Metric, ThresholdedMixin):
-    def forward(self, preds: Tensor, targets, mask, *args) -> Tensor:
-        preds = preds.clamp(min=self.threshold)
-        preds_norm = preds / (preds * mask).sum(1, keepdim=True)
-
-        return torch.abs(targets.cumsum(1) - preds_norm.cumsum(1))
+class WassersteinMetric(WassersteinLoss, Metric):
+    pass
