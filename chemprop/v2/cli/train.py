@@ -239,12 +239,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     # data_args is added in add_common_args()
     data_args.add_argument(
         "--target-columns",
-        type=list,
+        nargs="+",
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     data_args.add_argument(
         "--ignore-columns",
-        type=list,
+        nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
 
@@ -329,11 +329,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument(
-        "--target-weights",
-        type=list[float],
-        help="Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns.",
-    )
     train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
     train_args.add_argument(
         "--v-kl",
@@ -526,6 +521,7 @@ def main(args):
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
+        data_weights_path=args.data_weights_path,
         **featurization_kwargs,
     )
 
@@ -610,11 +606,11 @@ def main(args):
     else:
         scaler = None
 
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.n_cpu)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.n_cpu, shuffle=False)
+    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     else:
         test_loader = None
 
