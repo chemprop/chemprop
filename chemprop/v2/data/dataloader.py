@@ -23,6 +23,7 @@ class TrainingBatch(NamedTuple):
 class MulticomponentTrainingBatch(NamedTuple):
     bmgs: list[BatchMolGraph]
     V_ds: list[Tensor | None]
+    X_f: Tensor | None
     Y: Tensor | None
     w: Tensor
     lt_mask: Tensor | None
@@ -49,6 +50,7 @@ def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> Multicomponent
     return MulticomponentTrainingBatch(
         [tb.bmg for tb in tbs],
         [tb.V_d for tb in tbs],
+        tbs[0].X_f,
         tbs[0].Y,
         tbs[0].w,
         tbs[0].lt_mask,
