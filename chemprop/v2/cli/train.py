@@ -252,8 +252,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        choices=ReadoutRegistry.keys(),  # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
-        type=lambda x: x.lower(),
+        choices=RegistryAction(ReadoutRegistry),
         help="Type of task. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -339,8 +338,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "-l",
         "--loss-function",
-        choices=LossFunctionRegistry.keys(),
-        type=lambda x: x.lower(),
+        choices=RegistryAction(LossFunctionRegistry),
         help="Loss function to use during training. If not specified, will use the default loss function for the given task type.",
     )
     train_args.add_argument(
