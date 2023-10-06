@@ -123,16 +123,16 @@ def make_datapoints(
 
         data = [
             ReactionDatapoint.from_smi(
-                rxn_or_smis=smis[i],
-                keep_h=keep_h,
-                add_h=add_h,
-                y=targetss[i],
-                weight=weights[i],
-                gt_mask=gt_targetss[i],
-                lt_mask=lt_targetss[i],
-                x_f=featuress[i],
-                mfs=mfs,
-                x_phase=None,
+                smis[i],
+                keep_h,
+                add_h,
+                targetss[i],
+                weights[i],
+                gt_targetss[i],
+                lt_targetss[i],
+                featuress[i],
+                mfs,
+                None,
             )
             for i in range(len(smis))
         ]
@@ -149,18 +149,18 @@ def make_datapoints(
         data = [
             MoleculeDatapoint.from_smi(
                 smis[i],
-                y=targetss[i],
-                weight=weights[i],
-                gt_mask=gt_targetss[i],
-                lt_mask=lt_targetss[i],
-                x_f=featuress[i],
-                mfs=mfs,
-                x_phase=None,
-                keep_h=keep_h,
-                add_h=add_h,
-                V_f=atom_features[i],
-                E_f=bond_features[i],
-                V_d=atom_descriptors[i],
+                targetss[i],
+                weights[i],
+                gt_targetss[i],
+                lt_targetss[i],
+                featuress[i],
+                mfs,
+                None,
+                keep_h,
+                add_h,
+                atom_features[i],
+                bond_features[i],
+                atom_descriptors[i],
             )
             for i in range(len(smis))
         ]
