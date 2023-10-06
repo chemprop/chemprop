@@ -7,6 +7,7 @@ from typing import Sequence, Tuple
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
+from rdkit import Chem
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.utils.utils import AutoName
@@ -87,7 +88,7 @@ def split_data(
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
             # get two arrays: one of all the smiles strings, one of just the unique
-            all_smiles = np.array([d.mol for d in datapoints])
+            all_smiles = np.array([Chem.MolToSmiles(d.mol) for d in datapoints])
             unique_smiles = np.unique(all_smiles)
 
             # save a mapping of smiles -> all the indices that it appeared at
@@ -96,13 +97,13 @@ def split_data(
                 smiles_indices[smiles] = np.where(all_smiles == smiles)[0]
 
             # randomly split the unique smiles
-            result = split_fun(np.arange(len(unique_smiles)))
+            result = split_fun(np.arange(len(unique_smiles)), sampler="random", **astartes_kwargs)
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
-            val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
-            test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
+            train = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)]
+            val = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)]
+            test = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
