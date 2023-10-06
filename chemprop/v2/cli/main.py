@@ -6,6 +6,7 @@ from chemprop.v2.cli.train import TrainSubcommand
 from chemprop.v2.cli.predict import PredictSubcommand
 from chemprop.v2.cli.fingerprint import FingerprintSubcommand
 from chemprop.v2.cli.hyperopt import HyperoptSubcommand
+
 # TODO: add subcommands for Fingerprint and Hyperopt and Interpret
 
 from chemprop.v2.cli.utils import LOG_DIR, NOW, pop_attr
@@ -15,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LOGFILE = f"{LOG_DIR}/{NOW}.log"
 LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
-SUBCOMMANDS = [TrainSubcommand, PredictSubcommand, ConvertSubcommand]  #, FingerprintSubcommand, HyperoptSubcommand]
+SUBCOMMANDS = [
+    TrainSubcommand,
+    PredictSubcommand,
+    ConvertSubcommand,
+]  # , FingerprintSubcommand, HyperoptSubcommand]
 
 
 def main():

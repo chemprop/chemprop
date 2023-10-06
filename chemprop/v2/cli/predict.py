@@ -12,17 +12,16 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MetricRegistry, modules
-from chemprop.v2.featurizers.reaction import RxnMode
+from chemprop.v2.featurizers import RxnMode
 from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
-from chemprop.v2.models.model import MPNN
-from chemprop.v2.models.modules.agg import AggregationRegistry
+from chemprop.v2.models import MPNN
+from chemprop.v2.nn.agg import AggregationRegistry
+from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.utils import Factory
 
 from chemprop.v2.cli.utils import Subcommand, RegistryAction
 from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
-from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
-from chemprop.v2.utils.registry import Factory
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
@@ -49,10 +48,7 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i",
-        "--test-path",
-        required=True,
-        help="Path to an input CSV file containing SMILES.",
+        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
     )
     parser.add_argument(
         "-o",
@@ -168,10 +164,14 @@ def main(args):
     model = MPNN.load_from_checkpoint(args.checkpoint_path)
 
     bond_messages = isinstance(model.message_passing, BondMessageBlock)
-    bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
+    bounded = any(
+        isinstance(model.criterion, LossFunctionRegistry[loss_function])
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded,
+        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
@@ -239,7 +239,9 @@ def main(args):
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test["preds"] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    df_test[
+        "preds"
+    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
         df_test.to_pickle(args.output, index=False)
     else:

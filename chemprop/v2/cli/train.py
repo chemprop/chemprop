@@ -15,7 +15,7 @@ from chemprop.v2.data.utils import split_data
 from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, Activation
-from chemprop.v2.nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
@@ -257,9 +257,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path",
-        dest="val_path",
-        help="Path to separate val set, optional.",
+        "--separate-val-path", dest="val_path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
@@ -427,8 +425,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
     )
     split_args.add_argument(
-        "--crossval-index-dir",
-        help="Directory in which to find cross validation index files.",
+        "--crossval-index-dir", help="Directory in which to find cross validation index files."
     )
     split_args.add_argument(
         "--crossval-index-file",
@@ -554,7 +551,7 @@ def main(args):
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
     val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
 
-    mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
+    mp_cls = BondMessageBlock if bond_messages else AtomMessageBlock
     mp_block = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
