@@ -328,7 +328,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
+    train_args.add_argument(
+        "-l",
+        "--loss-function",
+        choices=LossFunctionRegistry.keys(),
+        type=lambda x: x.lower(),
+        help="Loss function to use during training. If not specified, will use the default loss function for the given task type.",
+    )
     train_args.add_argument(
         "--v-kl",
         "--evidential-regularization",
