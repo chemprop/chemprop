@@ -28,10 +28,10 @@ class SplitType(AutoName):
 def split_data(
     data: Sequence[MoleculeDatapoint],
     split: SplitType = "random",
-    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+    sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
-) -> Tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
+) -> tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
     r"""
     Splits data into training, validation, and test splits.
 
