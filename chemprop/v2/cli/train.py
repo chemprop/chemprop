@@ -623,7 +623,6 @@ def main(args):
         None,
         args.task_weights,
         args.warmup_epochs,
-        # args.num_lrs,  # this argument is currently commented out in MPNN.__init__()
         args.init_lr,
         args.max_lr,
         args.final_lr,
