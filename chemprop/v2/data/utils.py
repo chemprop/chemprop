@@ -75,8 +75,8 @@ def split_data(
 
         case SplitType.SCAFFOLD_BALANCED:
             mols_without_atommaps = []
-            for mol_datapoint in datapoints:
-                mol = mol_datapoint.mol
+            for d in datapoints:
+                mol = d.mol
                 copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
