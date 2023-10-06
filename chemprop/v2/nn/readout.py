@@ -7,7 +7,7 @@ from torch.nn import functional as F
 
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.utils import ClassRegistry, HasHParams
-from chemprop.v2.nn import loss
+from chemprop.v2.nn import loss, metrics
 from chemprop.v2.nn.ffn import SimpleFFN
 
 ReadoutRegistry = ClassRegistry()
@@ -41,6 +41,7 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
     :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
 
     _default_criterion: loss.LossFunction
+    _default_metric: metrics.Metric
 
     def __init__(
         self,
@@ -84,9 +85,21 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
 class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.MSELoss()
+    _default_metric = metrics.MSEMetric()
 
-    def __init__(self, *args, loc: float | Tensor = 0, scale: float | Tensor = 1, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
+        hidden_dim: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0,
+        activation: str = "relu",
+        criterion: loss.LossFunction | None = None,
+        loc: float | Tensor = 0,
+        scale: float | Tensor = 1,
+    ):
+        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
         self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
         self.scale = nn.Parameter(torch.tensor(scale).view(-1, 1), False)
@@ -155,6 +168,7 @@ class BinaryClassificationFFNBase(ReadoutFFNBase):
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = loss.BCELoss()
+    # _default_metric = metrics.AUROCMetric()  # TODO: AUROCMetric default causes error
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -169,6 +183,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = loss.BinaryDirichletLoss()
+    # _default_metric = metrics.AUROCMetric()  # TODO: AUROCMetric default causes error
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -186,9 +201,22 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.CrossEntropyLoss()
+    _default_metric = metrics.CrossEntropyMetric()
 
-    def __init__(self, n_classes: int, n_tasks: int = 1, *args, **kwargs):
-        super().__init__(n_tasks * n_classes, *args, **kwargs)
+    def __init__(
+        self,
+        n_classes: int,
+        n_tasks: int = 1,
+        input_dim: int = DEFAULT_HIDDEN_DIM,
+        hidden_dim: int = 300,
+        n_layers: int = 1,
+        dropout: float = 0,
+        activation: str = "relu",
+        criterion: loss.LossFunction | None = None,
+    ):
+        super().__init__(
+            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
+        )
 
         self.n_classes = n_classes
 
@@ -205,6 +233,7 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
 @ReadoutRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _default_criterion = loss.MulticlassDirichletLoss()
+    _default_metric = metrics.CrossEntropyMetric()
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -232,6 +261,7 @@ class _Exp(nn.Module):
 class SpectralFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = loss.SIDLoss()
+    _default_metric = metrics.SIDMetric()
 
     def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
         super().__init__(*args, **kwargs)

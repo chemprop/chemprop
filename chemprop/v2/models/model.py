@@ -72,13 +72,8 @@ class MPNN(pl.LightningModule):
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
     ):
-        if message_passing.output_dim != readout.input_dim:
-            raise ValueError(
-                f"Message passing output dimension ({message_passing.output_dim}) "
-                f"does not match readout input dimension ({readout.input_dim})!"
-            )
-
         super().__init__()
+
         self.save_hyperparameters(ignore=["message_passing", "agg", "readout"])
         self.hparams.update(
             {
@@ -94,7 +89,7 @@ class MPNN(pl.LightningModule):
         self.readout = readout
 
         # NOTE(degraff): should think about how to handle no supplied metric
-        self.metrics = [*metrics, self.criterion] if metrics else [self.criterion]
+        self.metrics = [*metrics, self.criterion] if metrics else [self.readout._default_metric, self.criterion]
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
         self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 
