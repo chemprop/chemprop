@@ -122,7 +122,6 @@ def test_BinaryDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl,
     """
     binary_dirichlet_loss = BinaryDirichletLoss(v_kl = v_kl)
     loss = binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-    print(loss)
     torch.testing.assert_close(loss, expected_loss)
 
 

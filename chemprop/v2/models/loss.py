@@ -251,22 +251,22 @@ class DirichletMixin:
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
-class BinaryDirichletLoss(LossFunction, DirichletMixin):
+class BinaryDirichletLoss(DirichletMixin, LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         N_CLASSES = 2
         n_tasks = targets.shape[1]
         preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
         y_one_hot = torch.eye(N_CLASSES, device=preds.device)[targets.long()]
-        
-        return DirichletMixin.forward(self, preds, y_one_hot, *args)
+
+        return super().forward(preds, y_one_hot, *args)
 
 
 @LossFunctionRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletLoss(LossFunction, DirichletMixin):
+class MulticlassDirichletLoss(DirichletMixin, LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
 
-        return DirichletMixin.forward(self, preds, y_one_hot, mask)
+        return super().forward(preds, y_one_hot, mask)
 
 
 @dataclass
