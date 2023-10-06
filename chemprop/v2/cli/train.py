@@ -615,16 +615,17 @@ def main(args):
         test_loader = None
 
     model = MPNN(
-        mp_block,
-        agg,
-        readout_ffn,
-        None,
-        args.task_weights,
-        args.warmup_epochs,
-        args.num_lrs,
-        args.init_lr,
-        args.max_lr,
-        args.final_lr,
+        message_passing=mp_block,
+        agg=agg,
+        readout=readout_ffn,
+        batch_norm=True,
+        metrics=None,
+        w_t=args.task_weights,
+        warmup_epochs=args.warmup_epochs,
+        # num_lrs=args.num_lrs,  # this argument is currently commented out in MPNN.__init__()
+        init_lr=args.init_lr,
+        max_lr=args.max_lr,
+        final_lr=args.final_lr,
     )
     logger.info(model)
 
