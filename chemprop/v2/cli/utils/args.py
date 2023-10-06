@@ -24,7 +24,3 @@ def bounded(lo: float | None = None, hi: float | None = None):
         return wrapper
 
     return decorator
-
-
-def lowercase(x: str):
-    return x.lower()
