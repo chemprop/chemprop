@@ -23,7 +23,7 @@ class FFN(nn.Module, _FFNProto):
 
 class SimpleFFN(FFN):
     r"""A :class:`SimpleFFN` is a simple FFN that implements the following function:
-     
+
     .. math::
         \mathbf H_0 &= \mathbf X\,\mathbf W_0 + \mathbf b_0 \\
         \mathbf H_l &= \mathtt{dropout} \left(

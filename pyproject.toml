@@ -57,10 +57,19 @@ demo = "http://chemprop.csail.mit.edu/"
 [project.scripts]
 chemprop = "chemprop.v2.cli.main:main"
 
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]
 skip-magic-trailing-comma = true
+
+[tool.autopep8]
+select = ["E262", "W293"]
+in_place = true
+recursive = true
+aggressive = 2
+max_line_length = 100
+
 
 [tool.pytest.ini_options]
 addopts = "--cov chemprop"

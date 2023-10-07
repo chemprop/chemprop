@@ -397,7 +397,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         choices=[
             "random",
             "scaffold",
-        ],  #'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
+        ],  # 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
         help="Method of splitting the data into train/val/test.",
     )
     split_args.add_argument(
