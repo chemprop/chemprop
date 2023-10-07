@@ -77,14 +77,13 @@ def validate_loss_function(
             )
 
 
-def column_str_to_int(
-        columns: list,
-        header: list,
-) -> list:
+def column_str_to_int(columns: list, header: list) -> list:
     if columns is None:
         return None
+    try:
+        columns = [int(col) for col in columns]
+    except:
+        pass
     if all(isinstance(col, str) for col in columns):
-        columns = [i for i, name in enumerate(header) if name in columns]
-    if not all(isinstance(col, int) for col in columns):
-        raise ValueError("header and columns do not match")
+        columns = [header.index(col) for col in columns]
     return columns
