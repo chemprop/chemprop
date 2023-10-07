@@ -47,9 +47,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint-dir",
         help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
     )
-    data_args.add_argument(
-        "--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file)."
-    )
+    data_args.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
     data_args.add_argument(
         "--checkpoint-paths",
         type=list[str],

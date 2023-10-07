@@ -49,10 +49,7 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i",
-        "--test-path",
-        required=True,
-        help="Path to an input CSV file containing SMILES.",
+        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
     )
     parser.add_argument(
         "-o",
@@ -168,10 +165,14 @@ def main(args):
     model = MPNN.load_from_checkpoint(args.checkpoint_path)
 
     bond_messages = isinstance(model.message_passing, BondMessageBlock)
-    bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
+    bounded = any(
+        isinstance(model.criterion, LossFunctionRegistry[loss_function])
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded,
+        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
@@ -239,7 +240,9 @@ def main(args):
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test["preds"] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    df_test[
+        "preds"
+    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
         df_test.to_pickle(args.output, index=False)
     else:

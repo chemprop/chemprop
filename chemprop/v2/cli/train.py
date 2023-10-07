@@ -265,9 +265,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path",
-        dest="val_path",
-        help="Path to separate val set, optional.",
+        "--separate-val-path", dest="val_path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
@@ -430,8 +428,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
     )
     split_args.add_argument(
-        "--crossval-index-dir",
-        help="Directory in which to find cross validation index files.",
+        "--crossval-index-dir", help="Directory in which to find cross validation index files."
     )
     split_args.add_argument(
         "--crossval-index-file",
@@ -609,7 +606,9 @@ def main(args):
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+        test_loader = data.MolGraphDataLoader(
+            test_dset, args.batch_size, args.num_workers, shuffle=False
+        )
     else:
         test_loader = None
 

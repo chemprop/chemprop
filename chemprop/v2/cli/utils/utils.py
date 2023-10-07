@@ -77,10 +77,7 @@ def validate_loss_function(
             )
 
 
-def column_str_to_int(
-        columns: list,
-        header: list,
-) -> list:
+def column_str_to_int(columns: list, header: list) -> list:
     if columns is None:
         return None
     if all(isinstance(col, str) for col in columns):
