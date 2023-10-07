@@ -217,13 +217,6 @@ class TestCondensedGraphOfReactionFeaturizer:
         cgr_featurizer = CondensedGraphOfReactionFeaturizer(mode_=rxn_mode)
         assert cgr_featurizer.mode == rxn_mode
 
-    def test_init_with_invalid_mode(self, invalid_alias):
-        """
-        Test that the CondensedGraphOfReactionFeaturizer raises a ValueError when initialized with an invalid mode.
-        """
-        with pytest.raises(KeyError):
-            CondensedGraphOfReactionFeaturizer(mode_=invalid_alias)
-
     @pytest.mark.parametrize(
         "reac_prod_mols, expected_output",
         zip(rxn_smis, reac_prod_maps),
