@@ -1,4 +1,4 @@
-from typing import Protocol, Type, TypedDict, TypeVar
+from typing import Protocol, Type, TypedDict
 
 
 class HParamsDict(TypedDict):

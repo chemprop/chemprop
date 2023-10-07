@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass, field
-from typing import Protocol, Sequence
+from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
