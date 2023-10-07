@@ -10,12 +10,12 @@ from astartes.molecules import train_test_split_molecules, train_val_test_split_
 from rdkit import Chem
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.utils.utils import AutoName
+from chemprop.v2.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
 
 
-class SplitType(AutoName):
+class SplitType(EnumMapping):
     CV_NO_VAL = auto()
     CV = auto()
     SCAFFOLD_BALANCED = auto()
