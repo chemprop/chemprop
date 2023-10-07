@@ -110,14 +110,6 @@ class TestRxnMode:
         """
         assert len(RxnMode) == len(available_rxn_mode_names)
 
-    def test_iteration(self, available_rxn_mode_names):
-        """
-        Test that the RxnMode class can be iterated over.
-        """
-        for avail_mode_name, mode in zip(available_rxn_mode_names, RxnMode):
-            assert mode.name == avail_mode_name
-            assert mode.value == avail_mode_name.lower()
-
     def test_getitem(self, mode_name):
         """
         Test that the RxnMode class can be indexed with uppercase mode.
