@@ -156,17 +156,3 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
         ]
 
         return np.hstack(x_fs)
-
-
-@dataclass
-class _MulticomponentDatapointMixin:
-    mols: list[Chem.Mol]
-    """the molecules associated with this datapoint"""
-
-    @classmethod
-    def from_smis(
-        cls, smis: list[str], keep_h: bool = False, add_h: bool = False, *args, **kwargs
-    ) -> _MulticomponentDatapointMixin:
-        mols = [make_mol(smi, keep_h, add_h) for smi in smis]
-
-        return cls(mols, *args, **kwargs)
