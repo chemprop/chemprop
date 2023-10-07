@@ -67,10 +67,10 @@ class MSELoss(LossFunction):
 @LossFunctionRegistry.register("bounded-mse")
 class BoundedMSELoss(MSELoss):
     def forward(
-        self, preds: Tensor, targets: Tensor, *args, lt_mask: Tensor, gt_mask: Tensor
+        self, preds: Tensor, targets: Tensor, mask, w_s, w_t, lt_mask: Tensor, gt_mask: Tensor
     ) -> Tensor:
-        preds[preds < targets & lt_mask] = targets
-        preds[preds > targets & gt_mask] = targets
+        preds = torch.where((preds < targets) & lt_mask, targets, preds)
+        preds = torch.where((preds > targets) & gt_mask, targets, preds)
 
         return super().forward(preds, targets)
 
@@ -194,14 +194,14 @@ class MulticlassMCCLoss(LossFunction, MccMixin):
 
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)
-        c = (bin_preds * bin_targets * masked_data_weights).sum((0, 2))
-        s = (preds * masked_data_weights).sum((0, 2))
+        c = (bin_preds * bin_targets * masked_data_weights).sum()
+        s = (preds * masked_data_weights).sum()
         s2 = s.square()
 
         # the `einsum` calls amount to calculating the batched dot product
-        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t)
-        cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p)
-        cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t)
+        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t) .sum()
+        cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p).sum()
+        cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t).sum()
 
         x = cov_ypyp * cov_ytyt
         MCC = torch.tensor(0.0, device=device) if x == 0 else cov_ytyp / x.sqrt()
@@ -251,18 +251,18 @@ class DirichletMixin:
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
-class BinaryDirichletLoss(LossFunction, DirichletMixin):
+class BinaryDirichletLoss(DirichletMixin, LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         N_CLASSES = 2
         n_tasks = targets.shape[1]
         preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
         y_one_hot = torch.eye(N_CLASSES, device=preds.device)[targets.long()]
 
-        return super().forward(preds, y_one_hot)
+        return super().forward(preds, y_one_hot, *args)
 
 
 @LossFunctionRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletLoss(LossFunction, DirichletMixin):
+class MulticlassDirichletLoss(DirichletMixin, LossFunction):
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
 
