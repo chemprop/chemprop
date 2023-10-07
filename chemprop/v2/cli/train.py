@@ -252,7 +252,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        choices=RegistryAction(ReadoutRegistry),
+        action=RegistryAction(ReadoutRegistry),
         help="Type of task. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -264,9 +264,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path",
-        dest="val_path",
-        help="Path to separate val set, optional.",
+        "--separate-val-path", dest="val_path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
@@ -338,8 +336,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "-l",
         "--loss-function",
-        choices=RegistryAction(LossFunctionRegistry),
-        help="Loss function to use during training. If not specified, will use the default loss function for the given task type.",
+        action=RegistryAction(LossFunctionRegistry),
+        help="Loss function to use during training. If not specified, will use the default loss function for the given task type (see documentation).",
     )
     train_args.add_argument(
         "--v-kl",
