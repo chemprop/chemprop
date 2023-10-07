@@ -1,7 +1,6 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
-import csv
 import sys
 import warnings
 
@@ -467,15 +466,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_train_args(args: Namespace) -> Namespace:
     args.data_path = Path(args.data_path)
-    with open(args.data_path) as f:
-        args.header = next(csv.reader(f))
-
-    # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
-    args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
-    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
-    args.number_of_molecules = len(
-        args.smiles_columns
-    )  # Does nothing if smiles_columns was not specified
 
     args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
     args.output_dir.mkdir(exist_ok=True, parents=True)

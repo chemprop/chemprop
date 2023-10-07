@@ -192,6 +192,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_common_args(args: Namespace) -> Namespace:
+    if args.no_header_row:
+        data = pd.read_fwf(data_path)
+        data = data[0].str.split(',', expand=True)        
+    else:
+        data = pd.read_csv(data_path)
+    
+    args.header = list(data.columns)
+
+    args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
+    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
+    args.number_of_molecules = len(args.smiles_columns)
     return args
 
 
