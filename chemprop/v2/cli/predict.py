@@ -148,10 +148,10 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.test_path = Path(args.test_path)
+    args.separate_test_path = Path(args.separate_test_path)
     if args.output is None:
-        name = f"{args.test_path.stem}_preds.csv"
-        args.output = Path(args.test_path.with_name(name))
+        name = f"{args.separate_test_path.stem}_preds.csv"
+        args.output = Path(args.separate_test_path.with_name(name))
     else:
         args.output = Path(args.output)
 
@@ -183,7 +183,7 @@ def main(args):
     )
 
     test_data = build_data_from_files(
-        args.test_path,
+        args.separate_test_path,
         **format_kwargs,
         target_cols=[],
         p_features=args.features_path,
@@ -239,9 +239,11 @@ def main(args):
     #     predss_cal = trainer.predict(model, cal_loader)[0]
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
-    df_test = pd.read_csv(args.test_path)
+    df_test = pd.read_csv(args.separate_test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test["preds"] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    df_test[
+        "preds"
+    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
         df_test.to_pickle(args.output, index=False)
     else:
