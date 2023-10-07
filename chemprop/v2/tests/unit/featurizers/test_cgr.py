@@ -1,3 +1,6 @@
+import random
+import uuid
+
 import numpy as np
 import pytest
 
@@ -15,8 +18,13 @@ AVAILABLE_RXN_MODE_NAMES = [
 ]
 
 
+# @pytest.fixture(params=list(RxnMode))
+# def rxn_mode(request):
+#     return request.param
+
+
 @pytest.fixture
-def available_rxn_mode_names():
+def expected_aliases():
     return AVAILABLE_RXN_MODE_NAMES
 
 
@@ -30,9 +38,9 @@ def rxn_mode(mode_name):
     return getattr(RxnMode, mode_name)
 
 
-@pytest.fixture
-def invalid_mode_name():
-    return "INVALID_RXN_MODE"
+@pytest.fixture(params=[str(uuid.uuid4()) for _ in range(3)])
+def invalid_alias(request):
+    return request.param
 
 
 rxn_smis = [
@@ -103,66 +111,88 @@ def bond_reac_prod(request):
     return (bond if request.param[0] else None, bond if request.param[1] else None)
 
 
-class TestRxnMode:
-    def test_len(self, available_rxn_mode_names):
-        """
-        Test that the RxnMode class has the correct length.
-        """
-        assert len(RxnMode) == len(available_rxn_mode_names)
+def randomize_case(s: str) -> str:
+    choices = (str.upper, str.lower)
 
-    def test_getitem(self, mode_name):
+    return ''.join(random.choice(choices)(x) for x in s)
+
+
+@pytest.mark.parametrize("s", [str(uuid.uuid4()) for _ in range(3)])
+def test_randomize_case(s):
+    """test our helper function to ensure that it's not mangling our strings"""
+    assert randomize_case(s).upper() == s.upper()
+
+
+def test_len(expected_aliases):
+    """
+    Test that the RxnMode class has the correct length.
+    """
+    assert len(RxnMode) == len(expected_aliases)
+
+
+def test_keys(expected_aliases):
+        """
+        Test that the keys function returns the correct set of modes.
+        """
+        assert set(RxnMode.keys()) == set(alias.upper() for alias in expected_aliases)
+
+
+@pytest.mark.parametrize(
+    "alias,rxn_mode",
+    [
+        ("REAC_PROD", RxnMode.REAC_PROD),
+        ("REAC_PROD_BALANCE", RxnMode.REAC_PROD_BALANCE),
+        ("REAC_DIFF", RxnMode.REAC_DIFF),
+        ("REAC_DIFF_BALANCE", RxnMode.REAC_DIFF_BALANCE),
+        ("PROD_DIFF", RxnMode.PROD_DIFF),
+        ("PROD_DIFF_BALANCE", RxnMode.PROD_DIFF_BALANCE),
+    ]
+)
+class TestRxnModeGet:
+    def test_name_and_value(self, alias, rxn_mode):
+        assert alias.upper() == rxn_mode.name
+        assert alias.lower() == rxn_mode.value
+
+    def test_getitem(self, alias, rxn_mode):
         """
         Test that the RxnMode class can be indexed with uppercase mode.
         """
-        assert RxnMode[mode_name] == getattr(RxnMode, mode_name)
-        assert RxnMode[mode_name].name == mode_name
-        assert RxnMode[mode_name].value == mode_name.lower()
+        assert RxnMode[alias.upper()] == rxn_mode
 
-    def test_getitem_invalid_mode(self, invalid_mode_name):
-        """
-        Test that the RxnMode class raises a ValueError when indexed with an invalid mode.
-        """
-        with pytest.raises(KeyError):
-            RxnMode[invalid_mode_name]
 
-    def test_get_function(self, mode_name):
+    def test_get(self, alias, rxn_mode):
         """
         Test that the get function returns the correct RxnMode.
         """
-        assert RxnMode.get(mode_name) == getattr(RxnMode, mode_name)
-        assert RxnMode.get(mode_name).name == mode_name
-        assert RxnMode.get(mode_name).value == mode_name.lower()
+        assert RxnMode.get(alias.upper()) == rxn_mode
 
-    def test_get_function_lowercase_mode(self, mode_name):
+    def test_get_random_case(self, alias, rxn_mode):
         """
-        Test that the get function returns the correct RxnMode when given a lowercase mode.
+        Test that the get function returns the correct RxnMode when given an alias with random case.
         """
-        assert RxnMode.get(mode_name) == getattr(RxnMode, mode_name)
-        assert RxnMode.get(mode_name).name == mode_name
-        assert RxnMode.get(mode_name).value == mode_name.lower()
+        assert RxnMode.get(randomize_case(alias)) == rxn_mode
 
-    def test_get_function_enum(self, rxn_mode):
+    def test_get_enum_identity(self, alias, rxn_mode):
         """
         Test that the get function returns the correct RxnMode when given a RxnMode.
         """
         assert RxnMode.get(rxn_mode) == rxn_mode
-        assert RxnMode.get(rxn_mode).name == rxn_mode.name
-        assert RxnMode.get(rxn_mode).value == rxn_mode.value
 
-    def test_get_function_invalid_mode(self, invalid_mode_name):
-        """
-        Test that the get function raises a ValueError when given an invalid mode.
-        """
-        with pytest.raises(ValueError):
-            RxnMode.get(invalid_mode_name)
 
-    def test_keys(self, available_rxn_mode_names):
-        """
-        Test that the keys function returns the correct set of modes.
-        """
-        assert set(RxnMode.keys()) == set(
-            available_mode.upper() for available_mode in available_rxn_mode_names
-        )
+def test_getitem_invalid_mode(invalid_alias):
+    """
+    Test that the RxnMode class raises a ValueError when indexed with an invalid mode.
+    """
+    with pytest.raises(KeyError):
+        RxnMode[invalid_alias]
+
+
+def test_get_invalid_mode(invalid_alias):
+    """
+    Test that the get function raises a ValueError when given an invalid mode.
+    """
+    with pytest.raises(KeyError):
+        RxnMode.get(invalid_alias)
 
 
 class TestCondensedGraphOfReactionFeaturizer:
@@ -187,12 +217,12 @@ class TestCondensedGraphOfReactionFeaturizer:
         cgr_featurizer = CondensedGraphOfReactionFeaturizer(mode_=rxn_mode)
         assert cgr_featurizer.mode == rxn_mode
 
-    def test_init_with_invalid_mode(self, invalid_mode_name):
+    def test_init_with_invalid_mode(self, invalid_alias):
         """
         Test that the CondensedGraphOfReactionFeaturizer raises a ValueError when initialized with an invalid mode.
         """
-        with pytest.raises(ValueError):
-            CondensedGraphOfReactionFeaturizer(mode_=invalid_mode_name)
+        with pytest.raises(KeyError):
+            CondensedGraphOfReactionFeaturizer(mode_=invalid_alias)
 
     @pytest.mark.parametrize(
         "reac_prod_mols, expected_output",
