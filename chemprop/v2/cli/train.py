@@ -264,12 +264,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path", dest="val_path", help="Path to separate val set, optional."
+        "--separate-val-path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
         type=list[str],
-        dest="val_features_path",
         help="Path to file with features for separate val set.",
     )
     data_args.add_argument(
@@ -278,17 +277,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-val-atom-descriptors-path",
-        dest="val_atom_descriptors_path",
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-atom-features-path",
-        dest="val_atom_features_path",
         help="Path to file with extra atom features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-bond-features-path",
-        dest="val_bond_features_path",
         help="Path to file with extra bond features for separate val set.",
     )
     data_args.add_argument(
@@ -299,13 +295,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--separate-test-path",
         default=None,
-        dest="test_path",
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
         "--separate-test-features-path",
         type=list[str],
-        dest="test_features_path",
         help="Path to file with features for separate test set.",
     )
     data_args.add_argument(
@@ -314,17 +308,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument(
         "--separate-test-atom-descriptors-path",
-        dest="test_atom_descriptors_path",
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-atom-features-path",
-        dest="test_atom_features_path",
         help="Path to file with extra bond features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-bond-features-path",
-        dest="test_bond_features_path",
         help="Path to file with extra atom features for separate test set.",
     )
     data_args.add_argument(
@@ -534,25 +525,25 @@ def main(args):
         **featurization_kwargs,
     )
 
-    if args.val_path is None and args.test_path is None:
+    if args.separate_val_path is None and args.separate_test_path is None:
         train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
-    elif args.test_path is not None:
+    elif args.separate_test_path is not None:
         test_data = build_data_from_files(
-            args.test_path,
-            p_features=args.test_features_path,
-            p_atom_feats=args.test_atom_features_path,
-            p_bond_feats=args.test_bond_features_path,
-            p_atom_descs=args.test_atom_descriptors_path,
+            args.separate_test_path,
+            p_features=args.separate_test_features_path,
+            p_atom_feats=args.separate_test_atom_features_path,
+            p_bond_feats=args.separate_test_bond_features_path,
+            p_atom_descs=args.separate_test_atom_descriptors_path,
             **format_kwargs,
             **featurization_kwargs,
         )
-        if args.val_path is not None:
+        if args.separate_val_path is not None:
             val_data = build_data_from_files(
-                args.val_path,
-                p_features=args.val_features_path,
-                p_atom_feats=args.val_atom_features_path,
-                p_bond_feats=args.val_bond_features_path,
-                p_atom_descs=args.val_atom_descriptors_path,
+                args.separate_val_path,
+                p_features=args.separate_val_features_path,
+                p_atom_feats=args.separate_val_atom_features_path,
+                p_bond_feats=args.separate_val_bond_features_path,
+                p_atom_descs=args.separate_val_atom_descriptors_path,
                 **format_kwargs,
                 **featurization_kwargs,
             )
@@ -619,7 +610,9 @@ def main(args):
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+        test_loader = data.MolGraphDataLoader(
+            test_dset, args.batch_size, args.num_workers, shuffle=False
+        )
     else:
         test_loader = None
 
