@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
 
@@ -91,13 +92,13 @@ def parse_data_csv(
 def make_datapoints(
     smis: list[str],
     targetss: np.ndarray,
-    weights: Optional[np.ndarray],
-    gt_targetss: Optional[np.ndarray],
-    lt_targetss: Optional[np.ndarray],
-    featuress: Optional[np.ndarray],
-    atom_features: Optional[np.ndarray],
-    bond_features: Optional[np.ndarray],
-    atom_descriptors: Optional[np.ndarray],
+    weights: np.ndarray | None,
+    gt_targetss: np.ndarray | None,
+    lt_targetss: np.ndarray | None,
+    featuress: np.ndarray | None,
+    atom_features: np.ndarray | None,
+    bond_features: np.ndarray | None,
+    atom_descriptors: np.ndarray | None,
     features_generators: Optional[str],
     keep_h: bool,
     add_h: bool,
@@ -170,6 +171,7 @@ def build_data_from_files(
     p_atom_feats: PathLike,
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
+    data_weights_path: PathLike,
     **featurization_kwargs: Mapping,
 ) -> list[_DatapointMixin]:
     smiss, targetss, gt_targetss, lt_targetss = parse_data_csv(
@@ -179,12 +181,13 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    weights  = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
         smis,
         targetss,
-        None,
+        weights,
         gt_targetss,
         lt_targetss,
         featuress,

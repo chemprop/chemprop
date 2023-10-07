@@ -98,8 +98,11 @@ class _MolGraphDatasetMixin:
         StandardScaler
             a scaler fit to the targets.
         """
-        scaler = scaler or StandardScaler()
-        self.Y = scaler.fit_transform(self._Y)
+        if scaler is None:
+            scaler = StandardScaler()
+            self.Y = scaler.fit_transform(self._Y)
+        else:
+            self.Y = scaler.transform(self._Y)
 
         return scaler
 
@@ -302,3 +305,41 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
     @property
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct, d.pdt) for d in self.data]
+
+
+@dataclass(repr=False, eq=False)
+class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
+    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual ``{Molecule,Reaction}Datasets``"""
+
+    datasets: list[MoleculeDataset | ReactionDataset]
+    """the parallel datasets"""
+
+    def __post_init__(self):
+        sizes = [len(dset) for dset in self.datasets]
+        if not all(sizes[0] == size for size in sizes[1:]):
+            raise ValueError(f"Datasets must have all same length! got: {sizes}")
+
+    def __len__(self) -> int:
+        return len(self.datasets[0])
+
+    def __getitem__(self, idx: int) -> list[Datum]:
+        return [dset[idx] for dset in self.datasets]
+
+    @property
+    def smiles(self) -> list[list[str]]:
+        return list(zip(*[dset.smiles for dset in self.datasets]))
+
+    @property
+    def mols(self) -> list[list[Chem.Mol]]:
+        return list(zip(*[dset.mols for dset in self.datasets]))
+
+    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
+        return self.datasets[0].normalize_targets(scaler)
+
+    def normalize_inputs(
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+    ) -> list[StandardScaler]:
+        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+
+    def reset(self):
+        return [dset.reset() for dset in self.datasets]

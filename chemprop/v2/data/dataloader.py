@@ -1,25 +1,39 @@
-from typing import Iterable
+from typing import Iterable, NamedTuple
 
 import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.v2.data.datasets import Datum, _MolGraphDatasetMixin
+from chemprop.v2.data.datasets import Datum, MoleculeDataset, ReactionDataset, MulticomponentDataset
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
-MulticomponentTrainingBatch = tuple[
-    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
-]
+
+class TrainingBatch(NamedTuple):
+    bmg: BatchMolGraph
+    V_d: Tensor | None
+    X_f: Tensor | None
+    Y: Tensor | None
+    w: Tensor
+    lt_mask: Tensor | None
+    gt_mask: Tensor | None
+
+
+class MulticomponentTrainingBatch(NamedTuple):
+    bmgs: list[BatchMolGraph]
+    V_ds: list[Tensor | None]
+    X_f: Tensor | None
+    Y: Tensor | None
+    w: Tensor
+    lt_mask: Tensor | None
+    gt_mask: Tensor | None
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = zip(*batch)
 
-    # import pdb; pdb.set_trace()
-    return (
+    return TrainingBatch(
         BatchMolGraph(mgs),
         None if np.equal(V_ds, None).all() else torch.from_numpy(np.vstack(V_ds)).float(),
         None if np.equal(x_fs, None).all() else torch.from_numpy(np.array(x_fs)).float(),
@@ -27,6 +41,20 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         torch.tensor(weights).unsqueeze(1),
         None if np.equal(lt_masks, None).all() else torch.from_numpy(np.array(lt_masks)),
         None if np.equal(gt_masks, None).all() else torch.from_numpy(np.array(gt_masks)),
+    )
+
+
+def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> MulticomponentTrainingBatch:
+    tbs = [collate_batch(batch) for batch in zip(*batches)]
+
+    return MulticomponentTrainingBatch(
+        [tb.bmg for tb in tbs],
+        [tb.V_d for tb in tbs],
+        tbs[0].X_f,
+        tbs[0].Y,
+        tbs[0].w,
+        tbs[0].lt_mask,
+        tbs[0].gt_mask,
     )
 
 
@@ -54,7 +82,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: _MolGraphDatasetMixin,
+        dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -73,13 +101,18 @@ class MolGraphDataLoader(DataLoader):
         else:
             self.sampler = None
 
+        if isinstance(dataset, MulticomponentDataset):
+            collate_fn = collate_multicomponent
+        else:
+            collate_fn = collate_batch
+
         super().__init__(
             self.dset,
             batch_size,
             self.sampler is None and self.shuffle,
             self.sampler,
             num_workers=num_workers,
-            collate_fn=collate_batch,
+            collate_fn=collate_fn,
         )
 
     # @property
