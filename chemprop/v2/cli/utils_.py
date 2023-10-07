@@ -28,18 +28,17 @@ def parse_data_csv(
     smiles_cols = smiles_cols or [0]
 
     if no_header_row:
-        target_cols = target_cols or [1]
-        task_names = [f"task_{i}" for i in target_cols]
-        data = pd.read_csv(path, names=smiles_cols + target_cols)
-        # smiles_names = [f"smiles_{i}" for i in smiles_cols]
+        data = pd.read_fwf(path)
+        data = data[0].str.split(',', expand=True)
     else:
         data = pd.read_csv(path)
-        header = list(data.columns)
-        if target_cols is None:
-            target_cols = [i for i in range(header) if i not in smiles_cols]
-        # smiles_names = [header[i] for i in smiles_cols]
-        task_names = [header[i] for i in target_cols]
-        logger.info(f"Parsed tasks: {task_names}")
+
+    header = list(data.columns)
+    if target_cols is None:
+        target_cols = [i for i in range(len(header)) if i not in smiles_cols]
+    # smiles_names = [header[i] for i in smiles_cols]
+    task_names = [header[i] for i in target_cols]
+    logger.info(f"Parsed tasks: {task_names}")
 
     logger.info(f"Parsed {len(task_names)} targets from {path}")
 
