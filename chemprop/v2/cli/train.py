@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from chemprop.v2 import data
+from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
@@ -151,8 +152,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--activation",
-        default="relu",
-        choices=Activation.values(),
+        type=uppercase,
+        default="RELU",
+        choices=Activation.keys(),
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
