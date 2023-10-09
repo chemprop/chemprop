@@ -10,6 +10,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
+from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
@@ -18,7 +19,7 @@ from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
-from chemprop.v2.cli.utils import RegistryAction, column_str_to_int
+from chemprop.v2.cli.utils import LookupAction, column_str_to_int
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
@@ -93,17 +94,16 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--rxn-mode",
         "--reaction-mode",
+        type=uppercase,
+        default="REAC_DIFF",
         choices=RxnMode.keys(),
-        default="reac_diff",
-        help="""
-             Choices for construction of atom and bond features for reactions
-             :code:`reac_prod`: concatenates the reactants feature with the products feature.
-             :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products.
-             :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products.
-             :code:`reac_prod_balance`: concatenates the reactants feature with the products feature, balances imbalanced reactions.
-             :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
-             :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.
-             """,
+        help="""Choices for construction of atom and bond features for reactions
+- 'reac_prod': concatenates the reactants feature with the products feature.
+- 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products.
+- 'prod_diff': concatenates the products feature with the difference in features between reactants and products.
+- 'reac_prod_balance': concatenates the reactants feature with the products feature, balances imbalanced reactions.
+- 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
+- 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
     )
     featurization_args.add_argument(
         "--keep-h",
@@ -117,7 +117,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-generators",
-        action=RegistryAction(MoleculeFeaturizerRegistry),
+        action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(

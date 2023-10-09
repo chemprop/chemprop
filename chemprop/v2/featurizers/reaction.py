@@ -10,10 +10,10 @@ from rdkit.Chem.rdchem import Bond, Mol
 from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
 from chemprop.v2.featurizers.molgraph import MolGraph
 from chemprop.v2.featurizers.protos import RxnMolGraphFeaturizerProto
-from chemprop.v2.utils.utils import AutoName
+from chemprop.v2.utils.utils import EnumMapping
 
 
-class RxnMode(AutoName):
+class RxnMode(EnumMapping):
     """The mode by which a reaction should be featurized into a `MolGraph`"""
 
     REAC_PROD = auto()
