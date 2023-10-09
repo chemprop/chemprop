@@ -10,7 +10,7 @@ from astartes.molecules import train_test_split_molecules, train_val_test_split_
 from rdkit import Chem
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.utils.utils import EnumMapping
+from chemprop.v2.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
 
