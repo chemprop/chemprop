@@ -79,7 +79,6 @@ def make_datapoints(
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
-
     Parameters
     ----------
 
@@ -91,7 +90,6 @@ def make_datapoints(
     list[list[ReactionDatapoint]]
         a list of lists of :class:`MoleculeDatapoint`s of shape ``k x n``, where ``k`` is the
         number of reaction components per datapoint and ``n`` is the total number of datapoints
-
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
     """
@@ -107,7 +105,6 @@ def make_datapoints(
         raise ValueError(
             f"args 'smiss' and 'rxnss' must have same length! got {len(smiss)} and {len(rxnss)}"
         )
-
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
