@@ -1,10 +1,10 @@
-import csv
 import logging
 import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
 
 import numpy as np
+import pandas as pd
 
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
@@ -48,65 +48,58 @@ def parse_data_csv(
 
     smiles_cols = smiles_cols or [0]
 
-    with open(path) as fid:
-        reader = csv.reader(fid)
+    if no_header_row:
+        data = pd.read_fwf(path)
+        data = data[0].str.split(',', expand=True)
+    else:
+        data = pd.read_csv(path)
 
-        if not no_header_row:
-            header = next(reader)
-            if target_cols is None:
-                target_cols = [i for i in range(header) if i not in smiles_cols]
-            # smiles_names = [header[i] for i in smiles_cols]
-            task_names = [header[i] for i in target_cols]
-            logger.info(f"Parsed tasks: {task_names}")
+    header = list(data.columns)
+    if target_cols is None:
+        target_cols = [i for i in range(len(header)) if i not in smiles_cols]
+    # smiles_names = [header[i] for i in smiles_cols]
+    task_names = [header[i] for i in target_cols]
+    logger.info(f"Parsed tasks: {task_names}")
+
+    logger.info(f"Parsed {len(task_names)} targets from {path}")
+
+    smiss = []
+    raw_targetss = []
+    for i, row in data.iterrows():
+        smis = [row[j] for j in smiles_cols]
+        targets = [row[j] for j in target_cols]
+
+        smiss.append(smis)
+        raw_targetss.append(targets)
+
+    try:
+        targetss = []
+
+        if not bounded:
+            gt_targetss = None
+            lt_targetss = None
+            for i, raw_targets in enumerate(raw_targetss):
+                targetss.append([optional_float(t) for t in raw_targets])
         else:
-            target_cols = target_cols or [1]
-            task_names = [f"task_{i}" for i in target_cols]
-            # smiles_names = [f"smiles_{i}" for i in smiles_cols]
+            gt_targetss = []
+            lt_targetss = []
+            for i, raw_targets in enumerate(raw_targetss):
+                targets = []
+                for t in raw_targets:
+                    pass
+                targets, gt_targets, lt_targets = zip(*[bounded_float(t) for t in raw_targets])
+                targetss.append(targets)
+                gt_targetss.append(gt_targets)
+                lt_targetss.append(lt_targets)
+            gt_targetss = np.array(gt_targetss, bool)
+            lt_targetss = np.array(lt_targetss, bool)
+    except ValueError as e:
+        raise ValueError(
+            f"Bad target formatting! The culprit is L{i} of {path}! "
+            f"See message for more details: {e.message}"
+        )
 
-        logger.info(f"Parsed {len(task_names)} targets from {path}")
-
-        smiss = []
-        raw_targetss = []
-        for i, row in enumerate(reader):
-            try:
-                smis = [row[j] for j in smiles_cols]
-                targets = [row[j] for j in target_cols]
-            except IndexError as e:
-                raise ValueError(
-                    f"Input data file contained a ragged row! The culprit is L{i} of {path}!"
-                )
-
-            smiss.append(smis)
-            raw_targetss.append(targets)
-
-        try:
-            targetss = []
-
-            if not bounded:
-                gt_targetss = None
-                lt_targetss = None
-                for i, raw_targets in enumerate(raw_targetss):
-                    targetss.append([optional_float(t) for t in raw_targets])
-            else:
-                gt_targetss = []
-                lt_targetss = []
-                for i, raw_targets in enumerate(raw_targetss):
-                    targets = []
-                    for t in raw_targets:
-                        pass
-                    targets, gt_targets, lt_targets = zip(*[bounded_float(t) for t in raw_targets])
-                    targetss.append(targets)
-                    gt_targetss.append(gt_targets)
-                    lt_targetss.append(lt_targets)
-                gt_targetss = np.array(gt_targetss, bool)
-                lt_targetss = np.array(lt_targetss, bool)
-        except ValueError as e:
-            raise ValueError(
-                f"Bad target formatting! The culprit is L{i} of {path}! "
-                f"See message for more details: {e.message}"
-            )
-
-        targetss = np.array(targetss, float)
+    targetss = np.array(targetss, float)
 
     logger.debug(f"{targetss.shape[0]} molecules | {targetss.shape[1]} tasks")
     logger.debug(f"{np.isfinite(targetss).sum()}/{targetss.size} valid targets")
