@@ -20,7 +20,7 @@ from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
 from chemprop.v2.cli.utils import LookupAction, column_str_to_int
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.cli.utils.parsing import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
@@ -33,15 +33,21 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "-s",
         "--smiles-columns",
-        type=list,
-        help="List of names or numbers (0-indexed) of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
+        nargs="+",
+        help="The columns in the input CSV containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
     )
     data_args.add_argument(
-        "--number-of-molecules",
-        type=int,
-        default=1,
-        help="Number of molecules in each input to the model. This is overwritten by the length of :code:`smiles_columns` (if not :code:`None`).",
+        "-r",
+        "--rxn-columns",
+        nargs="+",
+        help="the columns in the input CSV containing reactions. If ",
     )
+    # data_args.add_argument(
+    #     "--number-of-molecules",
+    #     type=int,
+    #     default=1,
+    #     help="Number of molecules in each input to the model. This is overwritten by the length of :code:`smiles_columns` (if not :code:`None`).",
+    # )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
     data_args.add_argument(
@@ -81,13 +87,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
-    )
-    data_args.add_argument(
-        "--rxn-idxs",
-        nargs="+",
-        type=int,
-        default=list(),
-        help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles_columns` specified",
     )
 
     featurization_args = parser.add_argument_group("featurization args")
@@ -191,17 +190,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_common_args(args: Namespace) -> Namespace:
-    if args.no_header_row:
-        data = pd.read_fwf(data_path)
-        data = data[0].str.split(',', expand=True)        
-    else:
-        data = pd.read_csv(data_path)
+    # if args.no_header_row:
+    #     data = pd.read_fwf(data_path)
+    #     data = data[0].str.split(',', expand=True)        
+    # else:
+    #     data = pd.read_csv(data_path)
     
-    args.header = list(data.columns)
+    # args.header = list(data.columns)
 
-    args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
-    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
-    args.number_of_molecules = len(args.smiles_columns)
+    # args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
+    # args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
+    # args.number_of_molecules = len(args.smiles_columns)
     return args
 
 
