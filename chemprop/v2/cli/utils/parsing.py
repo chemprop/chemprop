@@ -66,7 +66,7 @@ def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
     Y: np.ndarray,
-    weights: np.ndarray | None,  # n
+    weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
     X_f: np.ndarray | None,
