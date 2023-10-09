@@ -17,10 +17,10 @@ class _DatapointMixin:
     """the targets for the molecule with unknown targets indicated by `nan`s"""
     weight: float = 1
     """the weight of this datapoint for the loss calculation."""
-    gt_mask: np.ndarray | None = None
-    """Indicates whether the targets are an inequality regression target of the form `<x`"""
     lt_mask: np.ndarray | None = None
     """Indicates whether the targets are an inequality regression target of the form `>x`"""
+    gt_mask: np.ndarray | None = None
+    """Indicates whether the targets are an inequality regression target of the form `<x`"""
     x_f: np.ndarray | None = None
     """A vector of length ``d_f`` containing additional features (e.g., Morgan fingerprint) that
     will be concatenated to the global representation *after* aggregation"""
