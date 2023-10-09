@@ -153,7 +153,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--activation",
         type=uppercase,
         default="RELU",
-        choices=Activation.keys(),
+        choices=list(Activation.keys()),
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
