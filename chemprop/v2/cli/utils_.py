@@ -21,11 +21,31 @@ def optional_float(x: str) -> float:
 
 def parse_data_csv(
     path: PathLike,
-    no_header_row: bool = False,
-    smiles_cols: Optional[Sequence[int]] = None,
-    target_cols: Optional[Sequence[int]] = None,
+    smiles_cols: Sequence[str],
+    rxn_cols: Sequence[str],
+    target_cols: Sequence[str],
+    weight_col: str | None,
     bounded: bool = False,
+    no_header_row: bool = False,
 ):
+    df = pd.read_csv(path, header=None if no_header_row else 'infer', index_col=False)
+    
+    smiss = df[smiles_cols].tolist()
+    rxnss = df[rxn_cols].tolist()
+    Y = df[target_cols]
+    weights = None if weight_col is None else df[weight_col].to_numpy()
+
+    if bounded:
+        lt_mask = Y.applymap(lambda x: '<' in x).to_numpy()
+        gt_mask = Y.applymap(lambda x: '>' in x).to_numpy()
+        Y = Y.applymap(lambda x: x.strip('<').strip('>')).astype(float).to_numpy()
+    else:
+        Y = Y.to_numpy()
+        lt_mask = None
+        gt_mask = None
+
+    return smiss, rxnss, Y, weights, lt_mask, gt_mask
+
     smiles_cols = smiles_cols or [0]
 
     with open(path) as fid:
