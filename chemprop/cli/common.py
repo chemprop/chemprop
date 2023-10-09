@@ -66,7 +66,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--reaction-mode",
         type=uppercase,
         default="REAC_DIFF",
-        choices=RxnMode.keys(),
+        choices=list(RxnMode.keys()),
         help="""Choices for construction of atom and bond features for reactions
 - 'reac_prod': concatenates the reactants feature with the products feature.
 - 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products.
