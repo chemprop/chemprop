@@ -1,14 +1,13 @@
 import logging
-import warnings
-import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
+import warnings
 
 import numpy as np
 import pandas as pd
 
 from chemprop.v2 import models
-from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
+from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
 from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
@@ -19,14 +18,14 @@ logger = logging.getLogger(__name__)
 def parse_csv(
     path: PathLike,
     smiles_cols: Sequence[str] | None,
-    rxn_cols: Sequence[str]| None,
+    rxn_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
     weight_col: str | None,
     bounded: bool = False,
     no_header_row: bool = False,
 ):
-    df = pd.read_csv(path, header=None if no_header_row else 'infer', index_col=False)
+    df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
     if smiles_cols is not None and rxn_cols is not None:
         smiss = df[smiles_cols].values.tolist()
@@ -52,9 +51,9 @@ def parse_csv(
     weights = None if weight_col is None else df[weight_col].to_numpy()
 
     if bounded:
-        lt_mask = Y.applymap(lambda x: '<' in x).to_numpy()
-        gt_mask = Y.applymap(lambda x: '>' in x).to_numpy()
-        Y = Y.applymap(lambda x: x.strip('<').strip('>')).astype(float).to_numpy()
+        lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
+        gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
+        Y = Y.applymap(lambda x: x.strip("<").strip(">")).astype(float).to_numpy()
     else:
         Y = Y.to_numpy()
         lt_mask = None
@@ -67,7 +66,7 @@ def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
     Y: np.ndarray,
-    weights: np.ndarray | None, # n
+    weights: np.ndarray | None,  # n
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
     X_f: np.ndarray | None,
@@ -80,7 +79,7 @@ def make_datapoints(
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
-    
+
     Parameters
     ----------
 
@@ -92,7 +91,7 @@ def make_datapoints(
     list[list[ReactionDatapoint]]
         a list of lists of :class:`MoleculeDatapoint`s of shape ``k x n``, where ``k`` is the
         number of reaction components per datapoint and ``n`` is the total number of datapoints
-    
+
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
     """
@@ -108,7 +107,7 @@ def make_datapoints(
         raise ValueError(
             f"args 'smiss' and 'rxnss' must have same length! got {len(smiss)} and {len(rxnss)}"
         )
-    
+
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
@@ -184,7 +183,7 @@ def build_data_from_files(
     V_ds = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
 
     mol_data, rxn_data = make_datapoints(
-        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs,
+        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs
     )
 
     # NOTE: return only a single component for now with a preference for rxns
@@ -200,7 +199,7 @@ def build_data_from_files(
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
     bond_messages: bool,
-    reaction_mode: str
+    reaction_mode: str,
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
@@ -212,7 +211,9 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode_=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(
+        bond_messages=bond_messages, mode_=reaction_mode
+    )
 
     return ReactionDataset(data, featurizer)
 
