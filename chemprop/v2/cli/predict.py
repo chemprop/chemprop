@@ -19,7 +19,7 @@ from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 
 from chemprop.v2.cli.utils import Subcommand, LookupAction
-from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
+from chemprop.v2.cli.utils.parsing import build_data_from_files, get_mpnn_cls, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
@@ -171,19 +171,21 @@ def main(args):
     bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded,
+        no_header_row=args.no_header_row,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
+        bounded=bounded,
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        reaction=0 in args.rxn_idxs,
     )
 
     test_data = build_data_from_files(
         args.test_path,
         **format_kwargs,
-        target_columns=[],
+        target_cols=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
