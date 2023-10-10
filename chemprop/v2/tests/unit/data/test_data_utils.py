@@ -28,7 +28,7 @@ def test_splits_sum1_warning(molecule_dataset):
         
 def test_three_splits_provided(molecule_dataset):
     """Testing that three splits are provided"""
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(AssertionError):
         split_data(datapoints=molecule_dataset, sizes=(0.8, 0.2))
         
 def test_seed0(molecule_dataset):
