@@ -1,7 +1,5 @@
 """Chemprop unit tests for chemprop/data/utils.py"""
-import numpy as np
 import pytest
-from astartes.utils.exceptions import InvalidConfigurationError
 from astartes.utils.warnings import NormalizationWarning
 from rdkit import Chem
 
