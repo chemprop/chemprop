@@ -2,6 +2,8 @@
 import numpy as np
 import pytest
 from rdkit import Chem
+from astartes.utils.warnings import NormalizationWarning
+from astartes.utils.exceptions import InvalidConfigurationError
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.data.utils import split_data
@@ -19,14 +21,14 @@ def molecule_dataset_with_repeated_smiles():
     smiles_list = ['C', 'CC', 'CN', 'CN', 'CO', 'C']
     return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
 
-def test_splits_sum1(molecule_dataset):
-    """Testing that the splits sum to 1"""
-    with pytest.raises(Exception):
-        split_data(datapoints=molecule_dataset, sizes=(0.4, 0.8, 0.2))
+def test_splits_sum1_warning(molecule_dataset):
+    """Testing that the splits are normalized to 1"""
+    with pytest.warns(NormalizationWarning):
+        split_data(datapoints=molecule_dataset, sizes=(0.4, 0.6, 0.2))
         
 def test_three_splits_provided(molecule_dataset):
     """Testing that three splits are provided"""
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidConfigurationError):
         split_data(datapoints=molecule_dataset, sizes=(0.8, 0.2))
         
 def test_seed0(molecule_dataset):
