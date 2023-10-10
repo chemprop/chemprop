@@ -21,6 +21,12 @@ def molecule_dataset_with_repeated_smiles():
     smiles_list = ['C', 'CC', 'CN', 'CN', 'CO', 'C']
     return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
 
+@pytest.fixture
+def molecule_dataset_with_rings():
+    """A dataset with rings (for scaffold splitting)"""
+    smiles_list = ['C', 'CC', 'CCC', 'C1CC1', 'C1CCC1']
+    return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
+
 def test_splits_sum1_warning(molecule_dataset):
     """Testing that the splits are normalized to 1"""
     with pytest.warns(NormalizationWarning):
@@ -30,6 +36,10 @@ def test_three_splits_provided(molecule_dataset):
     """Testing that three splits are provided"""
     with pytest.raises(AssertionError):
         split_data(datapoints=molecule_dataset, sizes=(0.8, 0.2))
+
+def test_scaffold(molecule_dataset_with_rings):
+    """Partition based on Bemis-Murcko Scaffolds"""
+    train, val, test = split_data(datapoints=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split="scaffold_balanced")
         
 def test_seed0(molecule_dataset):
     """Testing the random split with seed 0"""
@@ -71,5 +81,5 @@ def test_kennard_stone(molecule_dataset):
 def test_kmeans(molecule_dataset):
     """Testing the KMeans split"""
     train, val, test = split_data(datapoints=molecule_dataset, sizes=(0.5, 0.0, 0.5), split="kmeans")
-    assert [Chem.MolToSmiles(i.mol) for i in train] == ['CC', 'CC', 'CC', 'CC', 'CC', 'CC', 'CC']
-    assert [Chem.MolToSmiles(i.mol) for i in test] == ['C', 'C', 'C']
+    assert [Chem.MolToSmiles(i.mol) for i in train] == ['C', 'CC', 'CCC', 'CN', 'CO', 'CCO', 'CCCO']
+    assert [Chem.MolToSmiles(i.mol) for i in test] == ['CCN', 'CCCN', 'CCCCN']

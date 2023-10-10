@@ -96,7 +96,7 @@ def split_data(
                 copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
-                mols_without_atommaps.append([copied_mol])
+                mols_without_atommaps.append(copied_mol)
             result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
             train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
@@ -174,10 +174,12 @@ def _unpack_astartes_result(
     test: MoleculeDataset
     """
     train_idxs, val_idxs, test_idxs = [], [], []
+    # astartes returns a set of lists containing the data, clusters (if applicable)
+    # and indices (always last), so we pull out the indices
     if include_val:
-        train_idxs, val_idxs, test_idxs = result[3], result[4], result[5]
+        train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
-        train_idxs, test_idxs = result[2], result[3]
+        train_idxs, test_idxs = result[-2], result[-1]
     if data is None:
         return train_idxs, val_idxs, test_idxs
     train = [data[i] for i in train_idxs]
