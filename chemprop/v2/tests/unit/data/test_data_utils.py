@@ -32,7 +32,6 @@ def test_three_splits_provided(molecule_dataset):
 def test_seed0(molecule_dataset):
     """Testing the random split with seed 0"""
     train, val, test = split_data(datapoints=molecule_dataset, seed=0)
-    print([Chem.MolToSmiles(i.mol) for i in train])
     assert set([Chem.MolToSmiles(i.mol) for i in train]) == set(['CCO', 'CCN', 'CCCO', 'CC', 'CCCCN', 'CO', 'CN', 'C'])
     assert set([Chem.MolToSmiles(i.mol) for i in val]) == set(['CCCN'])
     assert set([Chem.MolToSmiles(i.mol) for i in test]) == set(['CCC'])
