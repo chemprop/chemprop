@@ -82,7 +82,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
     def mode(self, m: str | RxnMode):
         self.__mode = RxnMode.get(m)
 
-    def featurize(
+    def __call__(
         self,
         rxn: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: np.ndarray | None = None,

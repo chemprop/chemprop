@@ -253,9 +253,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=LookupAction(
-            ReadoutRegistry
-        ),  # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
+        action=LookupAction(ReadoutRegistry),
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -267,9 +265,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path",
-        dest="val_path",
-        help="Path to separate val set, optional.",
+        "--separate-val-path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
@@ -285,22 +281,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
-        "--separate-val-bond-descriptors-path",
-        help="Path to file with extra atom descriptors for separate val set.",
+        "--separate-val-atom-features-path",
+        help="Path to file with extra atom features for separate val set.",
+    )
+    data_args.add_argument(
+        "--separate-val-bond-features-path",
+        help="Path to file with extra bond features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
         help="Path to file with constraints for separate val set.",
     )
-    data_args.add_argument(
-        "--val-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2
-    data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
         "--separate-test-path",
         default=None,
-        dest="test_path",
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
@@ -317,20 +312,25 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
-        "--separate-test-bond-descriptors-path",
-        help="Path to file with extra atom descriptors for separate test set.",
+        "--separate-test-atom-features-path",
+        help="Path to file with extra bond features for separate test set.",
+    )
+    data_args.add_argument(
+        "--separate-test-bond-features-path",
+        help="Path to file with extra atom features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-constraints-path",
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument(
-        "--test-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
-    data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
-    train_args.add_argument("-l", "--loss-function", action=LookupAction(LossFunctionRegistry))
+    train_args.add_argument(
+        "-l",
+        "--loss-function",
+        action=LookupAction(LossFunctionRegistry),
+        help="Loss function to use during training. If not specified, will use the default loss function for the given task type (see documentation).",
+    )
     train_args.add_argument(
         "--v-kl",
         "--evidential-regularization",
@@ -526,25 +526,25 @@ def main(args):
         **featurization_kwargs,
     )
 
-    if args.val_path is None and args.test_path is None:
+    if args.separate_val_path is None and args.separate_test_path is None:
         train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
-    elif args.test_path is not None:
+    elif args.separate_test_path is not None:
         test_data = build_data_from_files(
-            args.test_path,
-            p_features=args.test_features_path,
-            p_atom_feats=args.test_atom_features_path,
-            p_bond_feats=args.test_bond_features_path,
-            p_atom_descs=args.test_atom_descriptors_path,
+            args.separate_test_path,
+            p_features=args.separate_test_features_path,
+            p_atom_feats=args.separate_test_atom_features_path,
+            p_bond_feats=args.separate_test_bond_features_path,
+            p_atom_descs=args.separate_test_atom_descriptors_path,
             **format_kwargs,
             **featurization_kwargs,
         )
-        if args.val_path is not None:
+        if args.separate_val_path is not None:
             val_data = build_data_from_files(
-                args.val_path,
-                p_features=args.val_features_path,
-                p_atom_feats=args.val_atom_features_path,
-                p_bond_feats=args.val_bond_features_path,
-                p_atom_descs=args.val_atom_descriptors_path,
+                args.separate_val_path,
+                p_features=args.separate_val_features_path,
+                p_atom_feats=args.separate_val_atom_features_path,
+                p_bond_feats=args.separate_val_bond_features_path,
+                p_atom_descs=args.separate_val_atom_descriptors_path,
                 **format_kwargs,
                 **featurization_kwargs,
             )
@@ -611,7 +611,9 @@ def main(args):
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+        test_loader = data.MolGraphDataLoader(
+            test_dset, args.batch_size, args.num_workers, shuffle=False
+        )
     else:
         test_loader = None
 
@@ -619,10 +621,10 @@ def main(args):
         mp_block,
         agg,
         readout_ffn,
+        True,
         None,
         args.task_weights,
         args.warmup_epochs,
-        args.num_lrs,
         args.init_lr,
         args.max_lr,
         args.final_lr,

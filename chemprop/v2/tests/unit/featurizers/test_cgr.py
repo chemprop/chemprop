@@ -347,7 +347,7 @@ class TestCondensedGraphOfReactionFeaturizer:
         """
         Test that the get_bonds method returns the correct bonds when modes are balanced.
         """
-        molgraph = cgr_featurizer.featurize(reac_prod_mols)
+        molgraph = cgr_featurizer(reac_prod_mols)
         ri2pj, pids, rids = reac_prod_maps
 
         expected_bonds = [
