@@ -2,10 +2,10 @@ from argparse import ArgumentParser, Namespace
 from enum import auto
 
 from chemprop.v2.cli.utils.command import Subcommand
-from chemprop.v2.utils.utils import AutoName
+from chemprop.v2.utils.utils import EnumMapping
 
 
-class RepresentationType(AutoName):
+class RepresentationType(EnumMapping):
     FINGERPRINT = auto()
     ENCODING = auto()
 
