@@ -159,7 +159,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--aggregation",
         "--agg",
-        default="mean",
+        default="norm",
         action=LookupAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
@@ -253,7 +253,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=RegistryAction(ReadoutRegistry),
+        action=LookupAction(ReadoutRegistry),
         help="Type of task. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -328,7 +328,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "-l",
         "--loss-function",
-        action=RegistryAction(LossFunctionRegistry),
+        action=LookupAction(LossFunctionRegistry),
         help="Loss function to use during training. If not specified, will use the default loss function for the given task type (see documentation).",
     )
     train_args.add_argument(

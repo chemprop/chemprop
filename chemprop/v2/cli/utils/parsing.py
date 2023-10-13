@@ -105,6 +105,7 @@ def make_datapoints(
         raise ValueError(
             f"args 'smiss' and 'rxnss' must have same length! got {len(smiss)} and {len(rxnss)}"
         )
+    
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
@@ -196,7 +197,7 @@ def build_data_from_files(
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
     bond_messages: bool,
-    reaction_mode: str,
+    reaction_mode: str
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
