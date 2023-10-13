@@ -13,7 +13,7 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
-from chemprop.v2.data.utils import split_data
+from chemprop.v2.data.splitting import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunctionRegistry

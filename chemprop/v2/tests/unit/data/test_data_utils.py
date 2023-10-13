@@ -4,7 +4,7 @@ import pytest
 from rdkit import Chem
 
 from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.data.utils import split_data
+from chemprop.v2.data.splitting import split_data
 
 
 class TestSplitData:

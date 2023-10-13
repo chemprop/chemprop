@@ -1,12 +1,11 @@
 import logging
 from os import PathLike
-from typing import Mapping, Optional, Sequence, Type
+from typing import Mapping, Sequence
 import warnings
 
 import numpy as np
 import pandas as pd
 
-from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
