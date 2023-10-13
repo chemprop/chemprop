@@ -20,7 +20,7 @@ from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
 from chemprop.v2.cli.utils import LookupAction, column_str_to_int
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.cli.utils.parsing import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
