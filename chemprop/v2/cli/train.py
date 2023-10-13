@@ -12,7 +12,7 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
-from chemprop.v2.data.utils import split_data
+from chemprop.v2.data.split import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunctionRegistry
@@ -27,7 +27,7 @@ from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
-from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
+from chemprop.v2.cli.utils import CKPT_DIR
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
@@ -237,7 +237,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args = parser.add_argument_group("input data parsing args")
     # data_args is added in add_common_args()
-    data_args.add_argument('-w', '--weight-column', help="the name of the column in the input CSV containg individual data weights")
+    data_args.add_argument(
+        "-w",
+        "--weight-column",
+        help="the name of the column in the input CSV containg individual data weights",
+    )
     data_args.add_argument(
         "--target-columns",
         nargs="+",
@@ -264,9 +268,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-weights-path",
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
-    data_args.add_argument(
-        "--separate-val-path", help="Path to separate val set, optional."
-    )
+    data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
         "--separate-val-features-path",
         type=list[str],
@@ -294,9 +296,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     data_args.add_argument(
-        "--separate-test-path",
-        default=None,
-        help="Path to separate test set, optional.",
+        "--separate-test-path", default=None, help="Path to separate test set, optional."
     )
     data_args.add_argument(
         "--separate-test-features-path",
@@ -432,8 +432,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
     )
     split_args.add_argument(
-        "--crossval-index-dir",
-        help="Directory in which to find cross validation index files.",
+        "--crossval-index-dir", help="Directory in which to find cross validation index files."
     )
     split_args.add_argument(
         "--crossval-index-file",
@@ -497,9 +496,7 @@ def main(args):
         bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators,
-        keep_h=args.keep_h,
-        add_h=args.add_h,
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     all_data = build_data_from_files(

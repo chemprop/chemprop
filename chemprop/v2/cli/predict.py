@@ -11,7 +11,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
-from chemprop.v2.data.utils import split_data
+from chemprop.v2.data.split import split_data
 from chemprop.v2.models import MetricRegistry, modules
 from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunction, LossFunctionRegistry
@@ -49,10 +49,7 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i",
-        "--test-path",
-        required=True,
-        help="Path to an input CSV file containing SMILES.",
+        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
     )
     parser.add_argument(
         "-o",
@@ -168,7 +165,11 @@ def main(args):
     model = MPNN.load_from_checkpoint(args.checkpoint_path)
 
     bond_messages = isinstance(model.message_passing, BondMessageBlock)
-    bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
+    bounded = any(
+        isinstance(model.criterion, LossFunctionRegistry[loss_function])
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -177,9 +178,7 @@ def main(args):
         bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators,
-        keep_h=args.keep_h,
-        add_h=args.add_h,
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(

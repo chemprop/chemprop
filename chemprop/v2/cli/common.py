@@ -11,7 +11,7 @@ import torch
 
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
-from chemprop.v2.data.utils import split_data
+from chemprop.v2.data.split import split_data
 from chemprop.v2.models import MetricRegistry
 from chemprop.v2.featurizers.reaction import RxnMode
 from chemprop.v2.models.loss import LossFunctionRegistry
@@ -19,7 +19,7 @@ from chemprop.v2.models.model import MPNN
 from chemprop.v2.models.modules.agg import AggregationRegistry
 from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
 
-from chemprop.v2.cli.utils import LookupAction, column_str_to_int
+from chemprop.v2.cli.utils import LookupAction
 from chemprop.v2.cli.utils.parsing import build_data_from_files, make_dataset
 from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
@@ -54,9 +54,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint-dir",
         help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
     )
-    data_args.add_argument(
-        "--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file)."
-    )
+    data_args.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
     data_args.add_argument(
         "--checkpoint-paths",
         type=list[str],
@@ -192,10 +190,10 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 def process_common_args(args: Namespace) -> Namespace:
     # if args.no_header_row:
     #     data = pd.read_fwf(data_path)
-    #     data = data[0].str.split(',', expand=True)        
+    #     data = data[0].str.split(',', expand=True)
     # else:
     #     data = pd.read_csv(data_path)
-    
+
     # args.header = list(data.columns)
 
     # args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
