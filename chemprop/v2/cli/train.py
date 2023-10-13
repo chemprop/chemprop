@@ -239,6 +239,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     data_args = parser.add_argument_group("input data parsing args")
     # data_args is added in add_common_args()
     data_args.add_argument(
+        "-w",
+        "--weight-column",
+        help="the name of the column in the input CSV containg individual data weights",
+    )
+    data_args.add_argument(
         "--target-columns",
         nargs="+",
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
@@ -254,22 +259,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(ReadoutRegistry),
-        help="Type of dataset. This determines the default loss function used during training.",
+        help="Type of task. This determines the default loss function used during training.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
         help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions.",
     )
-    data_args.add_argument(
-        "--data-weights-path",
-        help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
-    )
+    # data_args.add_argument(
+    #     "--data-weights-path",
+    #     help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
+    # )
     data_args.add_argument(
         "--separate-val-path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
-        type=list[str],
         help="Path to file with features for separate val set.",
     )
     data_args.add_argument(
@@ -295,12 +299,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument(
         "--separate-test-path",
-        default=None,
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
         "--separate-test-features-path",
-        type=list[str],
         help="Path to file with features for separate test set.",
     )
     data_args.add_argument(
@@ -466,24 +468,8 @@ def process_train_args(args: Namespace) -> Namespace:
     with open(args.data_path) as f:
         args.header = next(csv.reader(f))
 
-    # First check if --smiles-columns was specified and if not, use the first --number-of-molecules columns (which itself defaults to 1)
-    args.smiles_columns = args.smiles_columns or list(range(args.number_of_molecules))
-    args.smiles_columns = column_str_to_int(args.smiles_columns, args.header)
-    args.number_of_molecules = len(
-        args.smiles_columns
-    )  # Does nothing if smiles_columns was not specified
-
     args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
     args.output_dir.mkdir(exist_ok=True, parents=True)
-
-    args.ignore_columns = column_str_to_int(args.ignore_columns, args.header)
-    args.target_columns = column_str_to_int(args.target_columns, args.header)
-
-    if args.target_columns is None:
-        ignore_columns = set(
-            args.smiles_columns + ([] if args.ignore_columns is None else args.ignore_columns)
-        )
-        args.target_columns = [i for i in range(len(args.header)) if i not in ignore_columns]
 
     return args
 
@@ -497,22 +483,16 @@ def main(args):
     n_tasks = len(args.target_columns)
     bounded = args.loss_function is not None and "bounded" in args.loss_function
 
-    if args.number_of_molecules > 1:
-        warnings.warn(
-            "Multicomponent input is not supported at this time! Using only the 1st input..."
-        )
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
-        smiles_columns=args.smiles_columns,
-        target_columns=args.target_columns,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
         bounded=bounded,
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        reaction=0 in args.rxn_idxs,  # TODO: check if this is correct
     )
 
     all_data = build_data_from_files(

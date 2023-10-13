@@ -171,19 +171,21 @@ def main(args):
     bounded = any(isinstance(model.criterion, LossFunctionRegistry[loss_function]) for loss_function in LossFunctionRegistry.keys() if "bounded" in loss_function)
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded,
+        no_header_row=args.no_header_row,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
+        bounded=bounded,
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        reaction=0 in args.rxn_idxs,
     )
 
     test_data = build_data_from_files(
         args.separate_test_path,
         **format_kwargs,
-        target_columns=[],
+        target_cols=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
