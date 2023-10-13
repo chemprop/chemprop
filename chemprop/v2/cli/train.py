@@ -28,7 +28,7 @@ from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock
 from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
 
-from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
+from chemprop.v2.cli.utils import CKPT_DIR
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
@@ -480,14 +480,16 @@ def validate_train_args(args):
 
 def main(args):
     bond_messages = not args.atom_messages
-    n_tasks = len(args.target_columns)
     bounded = args.loss_function is not None and "bounded" in args.loss_function
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        bounded=bounded,
+        target_cols=args.target_columns,
+        ignore_cols=args.ignore_columns,
+        weight_col=args.weight_column,
+        bounded=bounded
     )
     featurization_kwargs = dict(
         features_generators=args.features_generators,
@@ -502,7 +504,6 @@ def main(args):
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
-        data_weights_path=args.data_weights_path,
         **featurization_kwargs,
     )
 
@@ -570,7 +571,7 @@ def main(args):
     readout_ffn = Factory.build(
         readout_cls,
         input_dim=mp_block.output_dim + train_dset.d_xf,
-        n_tasks=n_tasks,
+        n_tasks=train_dset.Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
