@@ -103,7 +103,7 @@ def split_data(
                 copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
-                mols_without_atommaps.append([copied_mol])
+                mols_without_atommaps.append(copied_mol)
             result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
             train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
