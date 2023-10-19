@@ -89,12 +89,14 @@ def split_data(
                 raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
 
             train, val, test = [], [], []
+            train_val_test_indices = []
             for _ in range(len(num_folds)):
                 result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
-                i_train, i_val, i_test = _unpack_astartes_result(datapoints, result, include_val)
+                i_train, i_val, i_test, i_train_val_test_indices = _unpack_astartes_result(datapoints, result, include_val)
                 train.append(i_train)
                 val.append(i_val)
                 test.append(i_test)
+                train_val_test_indices.append(i_train_val_test_indices)
 
         case SplitType.SCAFFOLD_BALANCED:
             mols_without_atommaps = []
@@ -105,7 +107,7 @@ def split_data(
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append(copied_mol)
             result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test, train_val_test_indices = _unpack_astartes_result(datapoints, result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
@@ -123,13 +125,17 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)]
-            val = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)]
-            test = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)]
+            actual_train_idxs = [ii for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)]
+            actual_val_idxs = [ii for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)]
+            actual_test_idxs = [ii for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)]
+            train_val_test_indices = (actual_train_idxs, actual_val_idxs, actual_test_idxs)
+            train = [datapoints[ii] for ii in actual_train_idxs]
+            val = [datapoints[ii] for ii in actual_val_idxs]
+            test = [datapoints[ii] for ii in actual_test_idxs]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test, train_val_test_indices = _unpack_astartes_result(datapoints, result, include_val)
 
         case SplitType.KENNARD_STONE:
             result = mol_split_fun(
@@ -140,7 +146,7 @@ def split_data(
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test, train_val_test_indices = _unpack_astartes_result(datapoints, result, include_val)
 
         case SplitType.KMEANS:
             result = mol_split_fun(
@@ -151,12 +157,12 @@ def split_data(
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test, train_val_test_indices = _unpack_astartes_result(datapoints, result, include_val)
 
         case _:
             raise ValueError(f'split type "{split}" not supported.')
 
-    return train, val, test
+    return train, val, test, train_val_test_indices
 
 
 def _unpack_astartes_result(
@@ -190,4 +196,4 @@ def _unpack_astartes_result(
     train = [data[i] for i in train_idxs]
     val = [data[i] for i in val_idxs]
     test = [data[i] for i in test_idxs]
-    return train, val, test
+    return train, val, test, (train_idxs, val_idxs, test_idxs)
