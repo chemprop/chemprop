@@ -31,6 +31,7 @@ def split_data(
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
+    train_val_test_indices: tuple[list[int], list[int], list[int]] | None = None,
 ) -> tuple[Sequence[MoleculeDatapoint], ...]:
     """Splits data into training, validation, and test splits.
 
@@ -60,6 +61,13 @@ def split_data(
     ValueError
         Unsupported split method requested
     """
+    if train_val_test_indices is not None:
+        train_idxs, val_idxs, test_idxs = train_val_test_indices
+        train = [datapoints[i] for i in train_idxs]
+        val = [datapoints[i] for i in val_idxs]
+        test = [datapoints[i] for i in test_idxs]
+        return train, val, test, train_val_test_indices
+
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
