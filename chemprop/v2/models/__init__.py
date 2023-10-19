@@ -8,3 +8,4 @@ from .modules import (
 from .model import MPNN
 from .loss import LossFunction
 from .metrics import Metric, MetricRegistry
+from .multi import MulticomponentMPNN
