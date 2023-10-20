@@ -14,7 +14,7 @@ class MulticomponentMessagePassing(nn.Module):
 
     Parameters
     ----------
-    blocks : Sequence[MolecularMessagePassingBlock]
+    blocks : Sequence[MessagePassingBlock]
         the invidual message-passing blocks for each input
     n_components : int
         the number of components in each input
@@ -24,7 +24,7 @@ class MulticomponentMessagePassing(nn.Module):
     """
 
     def __init__(
-        self, blocks: Sequence[MessagePassingBlockBase], n_components: int, shared: bool = False
+        self, blocks: Sequence[MessagePassingBlock], n_components: int, shared: bool = False
     ):
         super().__init__()
 
