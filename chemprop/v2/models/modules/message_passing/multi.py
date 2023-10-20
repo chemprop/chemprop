@@ -1,13 +1,14 @@
 from typing import Iterable, Sequence
 import warnings
 
+from lightning import pytorch as pl
 from torch import Tensor, nn
 
 from chemprop.v2.featurizers.molgraph import BatchMolGraph
 from chemprop.v2.models.modules.message_passing.molecule import MessagePassingBlock
 
 
-class MulticomponentMessagePassing(nn.Module):
+class MulticomponentMessagePassing(pl.LightningModule):
     """A `MulticomponentMessagePassing` performs message-passing on each individual input in a
     multicomponent input then concatenates the representation of each input to construct a
     global representation
