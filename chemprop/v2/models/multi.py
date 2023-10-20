@@ -42,7 +42,7 @@ class MulticomponentMPNN(MPNN):
         self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
     ) -> Tensor:
         H_vs = self.message_passing(bmgs, V_ds)
-        H = torch.cat([self.agg(H_v[1:], bmg.a_scope) for H_v, bmg in zip(H_vs, bmgs)])
+        H = torch.cat([self.agg(H_v[1:], bmg.a_scope) for H_v, bmg in zip(H_vs, bmgs)], 1)
         H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)
