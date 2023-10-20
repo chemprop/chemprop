@@ -465,8 +465,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_train_args(args: Namespace) -> Namespace:
     args.data_path = Path(args.data_path)
-    with open(args.data_path) as f:
-        args.header = next(csv.reader(f))
 
     args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
     args.output_dir.mkdir(exist_ok=True, parents=True)
