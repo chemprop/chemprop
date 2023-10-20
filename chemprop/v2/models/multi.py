@@ -50,13 +50,13 @@ class MulticomponentMPNN(MPNN):
         self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
     ) -> Tensor:
         """Calculate the encoding (i.e., final hidden representation) for the input molecules"""
-        return self.ffn[:-1](self.fingerprint(bmgs, V_ds, X_f))
+        return self.readout[:-1](self.fingerprint(bmgs, V_ds, X_f))
 
     def forward(
         self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
-        return self.transform(self.ffn(self.fingerprint(bmgs, V_ds, X_f)))
+        return self.readout(self.fingerprint(bmgs, V_ds, X_f))
 
     def training_step(self, batch: MulticomponentTrainingBatch, batch_idx):
         return super().training_step(batch, batch_idx)
