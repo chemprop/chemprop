@@ -17,25 +17,22 @@ def split_fail(split_type):
     )
 
 
-@pytest.fixture
-def molecule_dataset():
+@pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])
+def molecule_dataset(request):
     """A dataset with single molecules"""
-    smiles_list = ["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]
-    return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
+    return [MoleculeDatapoint.from_smi(s) for s in request.param]
 
 
-@pytest.fixture
-def molecule_dataset_with_repeated_smiles():
+@pytest.fixture(params=[["C", "CC", "CN", "CN", "CO", "C"]])
+def molecule_dataset_with_repeated_smiles(request):
     """A dataset with repeated single molecules"""
-    smiles_list = ["C", "CC", "CN", "CN", "CO", "C"]
-    return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
+    return [MoleculeDatapoint.from_smi(s) for s in request.param]
 
 
-@pytest.fixture
-def molecule_dataset_with_rings():
+@pytest.fixture(params=[["C", "CC", "CCC", "C1CC1", "C1CCC1"]])
+def molecule_dataset_with_rings(request):
     """A dataset with rings (for scaffold splitting)"""
-    smiles_list = ["C", "CC", "CCC", "C1CC1", "C1CCC1"]
-    return [MoleculeDatapoint.from_smi(s) for s in smiles_list]
+    return [MoleculeDatapoint.from_smi(s) for s in request.param]
 
 
 def test_splits_sum1_warning(molecule_dataset):
