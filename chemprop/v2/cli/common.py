@@ -10,6 +10,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
+from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MPNN
 from chemprop.v2.featurizers import RxnMode, MoleculeFeaturizerRegistry
@@ -20,7 +21,7 @@ from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.utils import Factory
 
-from chemprop.v2.cli.utils import RegistryAction, column_str_to_int
+from chemprop.v2.cli.utils import LookupAction, column_str_to_int
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 
 logger = logging.getLogger(__name__)
@@ -66,15 +67,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--max-data-size", type=int, help="Maximum number of data points to load."
     )
     data_args.add_argument(
-        "-c",
-        "--n-cpu",
+        "-n",
         "--num-workers",
         type=int,
         default=8,
         help="Number of workers for the parallel data loading (0 means sequential).",
     )
     parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
-    data_args.add_argument("-b", "--batch-size", type=int, default=50, help="Batch size.")
+    data_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
     # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
@@ -91,17 +91,16 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--rxn-mode",
         "--reaction-mode",
+        type=uppercase,
+        default="REAC_DIFF",
         choices=RxnMode.keys(),
-        default="reac_diff",
-        help="""
-             Choices for construction of atom and bond features for reactions
-             :code:`reac_prod`: concatenates the reactants feature with the products feature.
-             :code:`reac_diff`: concatenates the reactants feature with the difference in features between reactants and products.
-             :code:`prod_diff`: concatenates the products feature with the difference in features between reactants and products.
-             :code:`reac_prod_balance`: concatenates the reactants feature with the products feature, balances imbalanced reactions.
-             :code:`reac_diff_balance`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
-             :code:`prod_diff_balance`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.
-             """,
+        help="""Choices for construction of atom and bond features for reactions
+- 'reac_prod': concatenates the reactants feature with the products feature.
+- 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products.
+- 'prod_diff': concatenates the products feature with the difference in features between reactants and products.
+- 'reac_prod_balance': concatenates the reactants feature with the products feature, balances imbalanced reactions.
+- 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
+- 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
     )
     featurization_args.add_argument(
         "--keep-h",
@@ -115,7 +114,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-generators",
-        action=RegistryAction(MoleculeFeaturizerRegistry),
+        action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(

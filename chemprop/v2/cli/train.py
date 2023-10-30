@@ -11,6 +11,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
+from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
@@ -18,6 +19,10 @@ from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegi
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
+from chemprop.v2.cli.utils import Subcommand, LookupAction
+from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.utils.registry import Factory
+from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.v2.cli.utils import Subcommand, RegistryAction, column_str_to_int
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
@@ -142,16 +147,16 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--activation",
-        default="relu",
-        choices=Activation.keys(),
-        type=lambda x: x.lower(),
+        type=uppercase,
+        default="RELU",
+        choices=list(Activation.keys()),
         help="activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="mean",
-        action=RegistryAction(AggregationRegistry),
+        action=LookupAction(AggregationRegistry),
         help="the aggregation mode to use during graph readout",
     )
     mp_args.add_argument(
@@ -230,12 +235,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     # data_args is added in add_common_args()
     data_args.add_argument(
         "--target-columns",
-        type=list,
+        nargs="+",
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     data_args.add_argument(
         "--ignore-columns",
-        type=list,
+        nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
 
@@ -243,9 +248,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=RegistryAction(
-            ReadoutRegistry
-        ),  # TODO: is this correct? The choices should be ['regression', 'classification', 'multiclass', 'spectra']
+        action=LookupAction(ReadoutRegistry),
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -257,7 +260,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
     data_args.add_argument(
-        "--separate-val-path", dest="val_path", help="Path to separate val set, optional."
+        "--separate-val-path", help="Path to separate val set, optional."
     )
     data_args.add_argument(
         "--separate-val-features-path",
@@ -273,22 +276,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
-        "--separate-val-bond-descriptors-path",
-        help="Path to file with extra atom descriptors for separate val set.",
+        "--separate-val-atom-features-path",
+        help="Path to file with extra atom features for separate val set.",
+    )
+    data_args.add_argument(
+        "--separate-val-bond-features-path",
+        help="Path to file with extra bond features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
         help="Path to file with constraints for separate val set.",
     )
-    data_args.add_argument(
-        "--val-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2
-    data_args.add_argument("--val-bond-features-path")
 
     data_args.add_argument(
         "--separate-test-path",
         default=None,
-        dest="test_path",
         help="Path to separate test set, optional.",
     )
     data_args.add_argument(
@@ -305,25 +307,25 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
-        "--separate-test-bond-descriptors-path",
-        help="Path to file with extra atom descriptors for separate test set.",
+        "--separate-test-atom-features-path",
+        help="Path to file with extra bond features for separate test set.",
+    )
+    data_args.add_argument(
+        "--separate-test-bond-features-path",
+        help="Path to file with extra atom features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-constraints-path",
         help="Path to file with constraints for separate test set.",
     )
-    data_args.add_argument(
-        "--test-atom-features-path"
-    )  # TODO: find what these were in v1 or if they were new in v2, it probably some combination of the arguments above.
-    data_args.add_argument("--test-bond-features-path")
 
     train_args = parser.add_argument_group("training args")
     train_args.add_argument(
-        "--target-weights",
-        type=list[float],
-        help="Weights associated with each target, affecting the relative weight of targets in the loss function. Must match the number of target columns.",
+        "-l",
+        "--loss-function",
+        action=LookupAction(LossFunctionRegistry),
+        help="Loss function to use during training. If not specified, will use the default loss function for the given task type (see documentation).",
     )
-    train_args.add_argument("-l", "--loss-function", action=RegistryAction(LossFunctionRegistry))
     train_args.add_argument(
         "--v-kl",
         "--evidential-regularization",
@@ -347,7 +349,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--metric" "--metrics",
         nargs="+",
-        action=RegistryAction(MetricRegistry),
+        action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
     train_args.add_argument(
@@ -375,7 +377,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
     train_args.add_argument(
-        "--epochs", type=int, default=30, help="the number of epochs to train over"
+        "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
         "--grad-clip", type=float, help="Maximum magnitude of gradient during training."
@@ -514,28 +516,29 @@ def main(args):
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
+        data_weights_path=args.data_weights_path,
         **featurization_kwargs,
     )
 
-    if args.val_path is None and args.test_path is None:
+    if args.separate_val_path is None and args.separate_test_path is None:
         train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
-    elif args.test_path is not None:
+    elif args.separate_test_path is not None:
         test_data = build_data_from_files(
-            args.test_path,
-            p_features=args.test_features_path,
-            p_atom_feats=args.test_atom_features_path,
-            p_bond_feats=args.test_bond_features_path,
-            p_atom_descs=args.test_atom_descriptors_path,
+            args.separate_test_path,
+            p_features=args.separate_test_features_path,
+            p_atom_feats=args.separate_test_atom_features_path,
+            p_bond_feats=args.separate_test_bond_features_path,
+            p_atom_descs=args.separate_test_atom_descriptors_path,
             **format_kwargs,
             **featurization_kwargs,
         )
-        if args.val_path is not None:
+        if args.separate_val_path is not None:
             val_data = build_data_from_files(
-                args.val_path,
-                p_features=args.val_features_path,
-                p_atom_feats=args.val_atom_features_path,
-                p_bond_feats=args.val_bond_features_path,
-                p_atom_descs=args.val_atom_descriptors_path,
+                args.separate_val_path,
+                p_features=args.separate_val_features_path,
+                p_atom_feats=args.separate_val_atom_features_path,
+                p_bond_feats=args.separate_val_bond_features_path,
+                p_atom_descs=args.separate_val_atom_descriptors_path,
                 **format_kwargs,
                 **featurization_kwargs,
             )
@@ -598,11 +601,13 @@ def main(args):
     else:
         scaler = None
 
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.n_cpu)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.n_cpu, shuffle=False)
+    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
         test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+        test_loader = data.MolGraphDataLoader(
+            test_dset, args.batch_size, args.num_workers, shuffle=False
+        )
     else:
         test_loader = None
 
@@ -610,10 +615,10 @@ def main(args):
         mp_block,
         agg,
         readout_ffn,
+        True,
         None,
         args.task_weights,
         args.warmup_epochs,
-        args.num_lrs,
         args.init_lr,
         args.max_lr,
         args.final_lr,

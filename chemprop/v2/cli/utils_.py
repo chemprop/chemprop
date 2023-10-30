@@ -1,5 +1,6 @@
 import csv
 import logging
+import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
 
@@ -10,6 +11,8 @@ from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, Reac
 from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
 from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
+from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,7 @@ def parse_data_csv(
             task_names = [header[i] for i in target_cols]
             logger.info(f"Parsed tasks: {task_names}")
         else:
-            target_cols = target_cols or [1]
+            target_cols = [1] if target_cols is None else target_cols
             task_names = [f"task_{i}" for i in target_cols]
             # smiles_names = [f"smiles_{i}" for i in smiles_cols]
 
@@ -98,13 +101,13 @@ def parse_data_csv(
 def make_datapoints(
     smis: list[str],
     targetss: np.ndarray,
-    weights: Optional[np.ndarray],
-    gt_targetss: Optional[np.ndarray],
-    lt_targetss: Optional[np.ndarray],
-    featuress: Optional[np.ndarray],
-    atom_features: Optional[np.ndarray],
-    bond_features: Optional[np.ndarray],
-    atom_descriptors: Optional[np.ndarray],
+    weights: np.ndarray | None,
+    gt_targetss: np.ndarray | None,
+    lt_targetss: np.ndarray | None,
+    featuress: np.ndarray | None,
+    atom_features: np.ndarray | None,
+    bond_features: np.ndarray | None,
+    atom_descriptors: np.ndarray | None,
     features_generators: Optional[str],
     keep_h: bool,
     add_h: bool,
@@ -114,26 +117,24 @@ def make_datapoints(
     gt_targetss = [None] * len(smis) if gt_targetss is None else gt_targetss
     lt_targetss = [None] * len(smis) if lt_targetss is None else lt_targetss
     featuress = [None] * len(smis) if featuress is None else featuress
+    mfs = [MoleculeFeaturizerRegistry.get(features_generators)()] if features_generators else None
 
     if reaction:
-        rxns = [smi.split(">") for smi in smis]
-        rxns = [(".".join(r, a), p) if a else (r, p) for r, a, p in rxns]
 
         data = [
-            ReactionDatapoint(
-                rxns[i],
+            ReactionDatapoint.from_smi(
+                smis[i],
+                keep_h,
+                add_h,
                 targetss[i],
-                None,
                 weights[i],
                 gt_targetss[i],
                 lt_targetss[i],
-                next(featuress),
-                features_generators,
+                featuress[i],
+                mfs,
                 None,
-                keep_h,
-                add_h,
             )
-            for i in range(len(rxns))
+            for i in range(len(smis))
         ]
     else:
         if atom_features is None:
@@ -148,18 +149,18 @@ def make_datapoints(
         data = [
             MoleculeDatapoint.from_smi(
                 smis[i],
-                y=targetss[i],
-                weight=weights[i],
-                gt_mask=gt_targetss[i],
-                lt_mask=lt_targetss[i],
-                x_f=featuress[i],
-                mfs=features_generators,
-                x_phase=None,
-                keep_h=keep_h,
-                add_h=add_h,
-                V_f=atom_features[i],
-                E_f=bond_features[i],
-                V_d=atom_descriptors[i],
+                targetss[i],
+                weights[i],
+                gt_targetss[i],
+                lt_targetss[i],
+                featuress[i],
+                mfs,
+                None,
+                keep_h,
+                add_h,
+                atom_features[i],
+                bond_features[i],
+                atom_descriptors[i],
             )
             for i in range(len(smis))
         ]
@@ -177,6 +178,7 @@ def build_data_from_files(
     p_atom_feats: PathLike,
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
+    data_weights_path: PathLike,
     **featurization_kwargs: Mapping,
 ) -> list[_DatapointMixin]:
     smiss, targetss, gt_targetss, lt_targetss = parse_data_csv(
@@ -186,12 +188,13 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    weights  = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
         smis,
         targetss,
-        None,
+        weights,
         gt_targetss,
         lt_targetss,
         featuress,
@@ -217,7 +220,7 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode_=reaction_mode)
 
     return ReactionDataset(data, featurizer)
 

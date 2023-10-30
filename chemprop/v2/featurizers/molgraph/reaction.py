@@ -7,12 +7,12 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
-from chemprop.v2.utils import AutoName
-from chemprop.v2.featurizers.molgraph import MolGraph
+from chemprop.v2.featurizers.molgraph.molgraph import MolGraph
 from chemprop.v2.featurizers.molgraph.mixins import MolGraphFeaturizerMixin
+from chemprop.v2.utils.utils import EnumMapping
 
 
-class RxnMode(AutoName):
+class RxnMode(EnumMapping):
     """The mode by which a reaction should be featurized into a `MolGraph`"""
 
     REAC_PROD = auto()
@@ -112,7 +112,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
     def mode(self, m: str | RxnMode):
         self.__mode = RxnMode.get(m)
 
-    def featurize(
+    def __call__(
         self,
         rxn: tuple[Chem.Mol, Chem.Mol],
         atom_features_extra: np.ndarray | None = None,

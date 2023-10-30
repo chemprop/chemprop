@@ -29,7 +29,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: MolGraphDataset,
+        dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -48,11 +48,16 @@ class MolGraphDataLoader(DataLoader):
         else:
             self.sampler = None
 
+        if isinstance(dataset, MulticomponentDataset):
+            collate_fn = collate_multicomponent
+        else:
+            collate_fn = collate_batch
+
         super().__init__(
             self.dset,
             batch_size,
             self.sampler is None and self.shuffle,
             self.sampler,
             num_workers=num_workers,
-            collate_fn=collate_batch,
+            collate_fn=collate_fn,
         )
