@@ -40,15 +40,20 @@ def main():
     test_dset = data.MoleculeDataset(test_data, featurizer)
     test_dset.normalize_targets(scaler)
 
-    train_loader = data.MolGraphDataLoader(train_dset, num_workers=args.num_workers, shuffle=True)
-    val_loader = data.MolGraphDataLoader(val_dset, num_workers=args.num_workers, shuffle=False)
+    batch_size = 64
+    train_loader = data.MolGraphDataLoader(
+        train_dset, batch_size, num_workers=args.num_workers, shuffle=True, persistent_workers=True
+    )
+    val_loader = data.MolGraphDataLoader(
+        val_dset, batch_size, num_workers=args.num_workers, shuffle=False, persistent_workers=True
+    )
     test_loader = data.MolGraphDataLoader(test_dset, num_workers=args.num_workers, shuffle=False)
 
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
         enable_progress_bar=True,
-        accelerator="auto",
+        accelerator="cpu",
         devices=1,
         max_epochs=20,
     )
