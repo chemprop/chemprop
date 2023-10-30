@@ -259,9 +259,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-weights-path",
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
-    data_args.add_argument(
-        "--separate-val-path", help="Path to separate val set, optional."
-    )
+    data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
         "--separate-val-features-path",
         type=list[str],
@@ -289,9 +287,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     data_args.add_argument(
-        "--separate-test-path",
-        default=None,
-        help="Path to separate test set, optional.",
+        "--separate-test-path", default=None, help="Path to separate test set, optional."
     )
     data_args.add_argument(
         "--separate-test-features-path",

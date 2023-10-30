@@ -7,7 +7,17 @@ from torch.nn import functional as F
 
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.utils import ClassRegistry, HasHParams
-from chemprop.v2.nn.loss import LossFunction, MSELoss, MVELoss, EvidentialLoss, BCELoss, BinaryDirichletLoss, CrossEntropyLoss, MulticlassDirichletLoss, SIDLoss
+from chemprop.v2.nn.loss import (
+    LossFunction,
+    MSELoss,
+    MVELoss,
+    EvidentialLoss,
+    BCELoss,
+    BinaryDirichletLoss,
+    CrossEntropyLoss,
+    MulticlassDirichletLoss,
+    SIDLoss,
+)
 from chemprop.v2.nn.metrics import Metric, MSEMetric, CrossEntropyMetric, SIDMetric
 from chemprop.v2.nn.ffn import SimpleFFN
 

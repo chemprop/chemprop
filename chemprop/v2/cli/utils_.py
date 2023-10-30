@@ -120,7 +120,6 @@ def make_datapoints(
     mfs = [MoleculeFeaturizerRegistry.get(features_generators)()] if features_generators else None
 
     if reaction:
-
         data = [
             ReactionDatapoint.from_smi(
                 smis[i],
@@ -188,7 +187,7 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
-    weights  = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
+    weights = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
@@ -220,7 +219,9 @@ def make_dataset(
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode_=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(
+        bond_messages=bond_messages, mode_=reaction_mode
+    )
 
     return ReactionDataset(data, featurizer)
 

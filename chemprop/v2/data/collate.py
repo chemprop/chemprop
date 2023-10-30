@@ -130,5 +130,3 @@ def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> Multicomponent
         tbs[0].lt_mask,
         tbs[0].gt_mask,
     )
-
-

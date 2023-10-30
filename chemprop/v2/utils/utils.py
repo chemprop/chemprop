@@ -26,7 +26,7 @@ class EnumMapping(StrEnum):
     @classmethod
     def values(cls) -> Iterator[str]:
         return (e.value for e in cls)
-    
+
     @classmethod
     def items(cls) -> Iterator[tuple[str, str]]:
         return zip(cls.keys(), cls.values())

@@ -15,6 +15,7 @@ from chemprop.v2.models.model import MPNN
 
 OutputTransform = None
 
+
 class MulticomponentMPNN(MPNN):
     def __init__(
         self,

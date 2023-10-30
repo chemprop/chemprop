@@ -6,7 +6,16 @@ from torch import Tensor
 from torchmetrics import functional as F
 
 from chemprop.v2.utils import ClassRegistry
-from chemprop.v2.nn.loss import BCELoss, BinaryMCCLoss, CrossEntropyLoss, LossFunction, MSELoss, MulticlassMCCLoss, SIDLoss, WassersteinLoss
+from chemprop.v2.nn.loss import (
+    BCELoss,
+    BinaryMCCLoss,
+    CrossEntropyLoss,
+    LossFunction,
+    MSELoss,
+    MulticlassMCCLoss,
+    SIDLoss,
+    WassersteinLoss,
+)
 
 MetricRegistry = ClassRegistry()
 
