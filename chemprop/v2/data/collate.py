@@ -116,3 +116,19 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
         None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
+
+
+def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> MulticomponentTrainingBatch:
+    tbs = [collate_batch(batch) for batch in zip(*batches)]
+
+    return MulticomponentTrainingBatch(
+        [tb.bmg for tb in tbs],
+        [tb.V_d for tb in tbs],
+        tbs[0].X_f,
+        tbs[0].Y,
+        tbs[0].w,
+        tbs[0].lt_mask,
+        tbs[0].gt_mask,
+    )
+
+
