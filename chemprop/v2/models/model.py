@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor, optim
 
 from chemprop.v2.data import TrainingBatch, BatchMolGraph
-from chemprop.v2.nn import MessagePassingBlock, Aggregation, Readout, LossFunction, Metric
+from chemprop.v2.nn import MessagePassingBlock, Aggregation, Predictor, LossFunction, Metric
 from chemprop.v2.schedulers import NoamLR
 
 
@@ -21,7 +21,7 @@ class MPNN(pl.LightningModule):
 
     .. math::
         \mathtt{MPNN}(\mathcal{G}) =
-            \mathtt{readout}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
+            \mathtt{predictor}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
 
     The full model is trained end-to-end.
 
@@ -31,8 +31,8 @@ class MPNN(pl.LightningModule):
         the message passing block to use to calculate learned fingerprints
     agg : Aggregation
         the aggregation operation to use during molecule-level readout
-    readout : Readout
-        the readout operation to use to calculate the final prediction
+    predictor : Predictor
+        the function to use to calculate the final prediction
     batch_norm : bool, default=True
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
@@ -59,7 +59,7 @@ class MPNN(pl.LightningModule):
         self,
         message_passing: MessagePassingBlock,
         agg: Aggregation,
-        readout: Readout,
+        predictor: Predictor,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -75,14 +75,14 @@ class MPNN(pl.LightningModule):
             {
                 "message_passing": message_passing.hparams,
                 "agg": agg.hparams,
-                "readout": readout.hparams,
+                "readout": predictor.hparams,
             }
         )
 
         self.message_passing = message_passing
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
-        self.readout = readout
+        self.readout = predictor
 
         # NOTE(degraff): should think about how to handle no supplied metric
         self.metrics = (

@@ -17,7 +17,7 @@ from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, Activation
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
 
 from chemprop.v2.cli.utils import Subcommand, LookupAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
@@ -248,7 +248,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=LookupAction(ReadoutRegistry),
+        action=LookupAction(PredictorRegistry),
         help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
@@ -562,7 +562,7 @@ def main(args):
         activation=args.activation,
     )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
-    readout_cls = ReadoutRegistry[args.task_type]
+    readout_cls = PredictorRegistry[args.task_type]
 
     if args.loss_function is not None:
         criterion = Factory.build(

@@ -21,10 +21,10 @@ from chemprop.v2.nn.loss import (
 from chemprop.v2.nn.metrics import Metric, MSEMetric, CrossEntropyMetric, SIDMetric
 from chemprop.v2.nn.ffn import SimpleFFN
 
-ReadoutRegistry = ClassRegistry()
+PredictorRegistry = ClassRegistry()
 
 
-class _ReadoutProto(Protocol):
+class _PredicorProto(Protocol):
     input_dim: int
     """the input dimension"""
     output_dim: int
@@ -43,13 +43,14 @@ class _ReadoutProto(Protocol):
         pass
 
 
-class Readout(nn.Module, _ReadoutProto, HasHParams):
-    """A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`"""
+class Predictor(nn.Module, _PredicorProto, HasHParams):
+    r"""A :class:`Predictor` is a protocol that defines a differentiable function
+    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
 
 
-class ReadoutFFNBase(Readout, HyperparametersMixin):
-    """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
-    :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
+class FFNPredictorBase(Predictor, HyperparametersMixin):
+    """A :class:`FFNPredictorBase` is the base class for all :class:`Predictor`s that use an
+    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
 
     _default_criterion: LossFunction
     _default_metric: Metric
@@ -92,8 +93,8 @@ class ReadoutFFNBase(Readout, HyperparametersMixin):
         return self.ffn(Z)
 
 
-@ReadoutRegistry.register("regression")
-class RegressionFFN(ReadoutFFNBase):
+@PredictorRegistry.register("regression")
+class RegressionFFN(FFNPredictorBase):
     n_targets = 1
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
@@ -124,7 +125,7 @@ class RegressionFFN(ReadoutFFNBase):
         return super().forward(Z)
 
 
-@ReadoutRegistry.register("regression-mve")
+@PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
     _default_criterion = MVELoss()
@@ -146,7 +147,7 @@ class MveFFN(RegressionFFN):
         return torch.cat((mean, var), 1)
 
 
-@ReadoutRegistry.register("regression-evidential")
+@PredictorRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _default_criterion = EvidentialLoss()
@@ -171,11 +172,11 @@ class EvidentialFFN(RegressionFFN):
         return torch.cat((mean, v, alpha, beta), 1)
 
 
-class BinaryClassificationFFNBase(ReadoutFFNBase):
+class BinaryClassificationFFNBase(FFNPredictorBase):
     pass
 
 
-@ReadoutRegistry.register("classification")
+@PredictorRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = BCELoss()
@@ -190,7 +191,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
         return super().forward(Z)
 
 
-@ReadoutRegistry.register("classification-dirichlet")
+@PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = BinaryDirichletLoss()
@@ -208,8 +209,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
         F.softplus(Y) + 1
 
 
-@ReadoutRegistry.register("multiclass")
-class MulticlassClassificationFFN(ReadoutFFNBase):
+@PredictorRegistry.register("multiclass")
+class MulticlassClassificationFFN(FFNPredictorBase):
     n_targets = 1
     _default_criterion = CrossEntropyLoss()
     _default_metric = CrossEntropyMetric()
@@ -241,7 +242,7 @@ class MulticlassClassificationFFN(ReadoutFFNBase):
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
 
 
-@ReadoutRegistry.register("multiclass-dirichlet")
+@PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _default_criterion = MulticlassDirichletLoss()
     _default_metric = CrossEntropyMetric()
@@ -268,8 +269,8 @@ class _Exp(nn.Module):
         return X.exp()
 
 
-@ReadoutRegistry.register("spectral")
-class SpectralFFN(ReadoutFFNBase):
+@PredictorRegistry.register("spectral")
+class SpectralFFN(FFNPredictorBase):
     n_targets = 1
     _default_criterion = SIDLoss()
     _default_metric = SIDMetric()

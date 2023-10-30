@@ -17,7 +17,7 @@ from chemprop.v2.featurizers import RxnMode, MoleculeFeaturizerRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
 from chemprop.v2.nn.metrics import MetricRegistry
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.utils import Factory
 

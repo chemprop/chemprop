@@ -17,7 +17,7 @@ from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
+from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.v2.utils import Factory
 
 from chemprop.v2.cli.utils import Subcommand, LookupAction

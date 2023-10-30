@@ -6,7 +6,7 @@ import torch
 
 from chemprop.v2.nn.metrics import MetricRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
-from chemprop.v2.nn.readout import ReadoutRegistry
+from chemprop.v2.nn.predictors import PredictorRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 
@@ -89,7 +89,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     hyper_parameters_v2["readout"] = AttributeDict(
         {
             "activation": args_v1.activation,
-            "cls": ReadoutRegistry[args_v1.dataset_type],
+            "cls": PredictorRegistry[args_v1.dataset_type],
             "criterion": LossFunctionRegistry[args_v1.loss_function],
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
