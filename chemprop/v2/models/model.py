@@ -6,8 +6,7 @@ from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
-from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
+from chemprop.v2.data import TrainingBatch, BatchMolGraph
 from chemprop.v2.nn import MessagePassingBlock, Aggregation, Readout, LossFunction, Metric
 from chemprop.v2.schedulers import NoamLR
 

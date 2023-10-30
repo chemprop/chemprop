@@ -4,7 +4,7 @@ import uuid
 import numpy as np
 import pytest
 
-from chemprop.v2.featurizers.reaction import RxnMode, CondensedGraphOfReactionFeaturizer
+from chemprop.v2.featurizers.molgraph import RxnMode, CondensedGraphOfReactionFeaturizer
 from chemprop.v2.utils import make_mol
 
 

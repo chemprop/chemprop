@@ -2,7 +2,7 @@ from typing import Protocol
 
 from torch import nn, Tensor
 
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
+from chemprop.v2.data import BatchMolGraph
 from chemprop.v2.utils.hparams import HasHParams
 
 
