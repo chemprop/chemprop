@@ -324,7 +324,8 @@ class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
-    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual ``{Molecule,Reaction}Datasets``"""
+    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual
+    ``{Molecule,Reaction}Datasets``"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""
