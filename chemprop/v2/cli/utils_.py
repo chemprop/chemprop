@@ -8,10 +8,11 @@ import numpy as np
 
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
-from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
-from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
+from chemprop.v2.featurizers.molgraph import (
+    MoleculeMolGraphFeaturizerProto, CondensedGraphOfReactionFeaturizer
+)
 
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ def make_dataset(
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-        featurizer = MoleculeMolGraphFeaturizer(
+        featurizer = MoleculeMolGraphFeaturizerProto(
             bond_messages=bond_messages,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,

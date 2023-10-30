@@ -143,7 +143,7 @@ class BinaryMCCMetric(BinaryMCCLoss, Metric):
 
 
 @MetricRegistry.register("multiclass-mcc")
-class BinaryMCCMetric(MulticlassMCCLoss, Metric):
+class MulticlassMCCMetric(MulticlassMCCLoss, Metric):
     pass
 
 

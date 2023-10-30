@@ -246,7 +246,7 @@ def test_Evidential_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt
     """
     evidential_loss = EvidentialLoss()
     with pytest.raises(ValueError):
-        loss = evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+        evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
 
 @pytest.mark.parametrize(

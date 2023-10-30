@@ -2,7 +2,7 @@ import copy
 import itertools
 import logging
 from enum import auto
-from typing import Sequence, Tuple
+from typing import Sequence
 
 import numpy as np
 from astartes import train_test_split, train_val_test_split
