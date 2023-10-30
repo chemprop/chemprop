@@ -63,7 +63,9 @@ def split_data(
         Unsupported split method requested
     """
     if (num_splits := len(sizes)) != 3:
-        raise RuntimeError(f"Specify sizes for train, validation, and test (got {num_splits} values).")
+        raise RuntimeError(
+            f"Specify sizes for train, validation, and test (got {num_splits} values)."
+        )
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
@@ -104,7 +106,9 @@ def split_data(
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append(copied_mol)
-            result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
+            result = mol_split_fun(
+                np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs
+            )
             train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.

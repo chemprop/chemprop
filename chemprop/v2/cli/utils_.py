@@ -11,7 +11,8 @@ from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, Reac
 from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.v2.featurizers.molgraph import (
-    MoleculeMolGraphFeaturizerProto, CondensedGraphOfReactionFeaturizer
+    MoleculeMolGraphFeaturizerProto,
+    CondensedGraphOfReactionFeaturizer,
 )
 
 
