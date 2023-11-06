@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Union, Tuple
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ import numpy as np
 from chemprop.args import TrainArgs
 
 
-def get_loss_func(args: TrainArgs) -> Callable:
+def get_loss_func(args: TrainArgs) -> Union[Callable, Tuple[Callable]]:
     """
     Gets the loss function corresponding to a given dataset type.
 
@@ -37,24 +37,36 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "sid": sid_loss,
             "wasserstein": wasserstein_loss,
         },
+        "SSL_pretrain": {
+            "MA": nn.CrossEntropyLoss(),  # get the mean loss directly
+            "contrastive": Contrastive_loss,  # get the mean loss directly
+            "Triplet": nn.TripletMarginLoss(margin=args.triplet_margin, p=args.triplet_p),  # get the mean loss directly
+        },
     }
 
     # Error if no loss function supported
     if args.dataset_type not in supported_loss_functions.keys():
         raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
 
-    # Return loss function if it is represented in the supported_loss_functions dictionary
-    loss_function_choices = supported_loss_functions.get(args.dataset_type, dict())
-    loss_function = loss_function_choices.get(args.loss_function)
-
-    if loss_function is not None:
-        return loss_function
-
+    if args.is_pretrain:
+        loss_function_choices = supported_loss_functions.get(args.dataset_type, dict())
+        MA_loss = loss_function_choices.get("MA")
+        contrastive_loss = loss_function_choices.get("contrastive")
+        triplet_loss = loss_function_choices.get("Triplet")
+        return MA_loss, contrastive_loss, triplet_loss
     else:
-        raise ValueError(
-            f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. \
-            Available options for that dataset type are {loss_function_choices.keys()}.'
-        )
+        # Return loss function if it is represented in the supported_loss_functions dictionary
+        loss_function_choices = supported_loss_functions.get(args.dataset_type, dict())
+        loss_function = loss_function_choices.get(args.loss_function)
+
+        if loss_function is not None:
+            return loss_function
+
+        else:
+            raise ValueError(
+                f'Loss function "{args.loss_function}" not supported with dataset type {args.dataset_type}. \
+                Available options for that dataset type are {loss_function_choices.keys()}.'
+            )
 
 
 def bounded_mse_loss(
@@ -366,4 +378,17 @@ def evidential_loss(pred_values, targets, lam: float = 0, epsilon: float = 1e-8,
     # TODO If we want to optimize the dual- of the objective use the line below:
     loss = L_NLL + lam * (L_REG - epsilon)
 
+    return loss
+
+def Contrastive_loss(pred_values_1, pred_values_2, T: float = 0.1):
+    T = T
+    batch_size, _ = pred_values_1.size()
+    pred_values_1_abs = pred_values_1.norm(dim=1)
+    pred_values_2_abs = pred_values_2.norm(dim=1)
+
+    sim_matrix = torch.einsum('ik,jk->ij', pred_values_1, pred_values_2) / torch.einsum('i,j->ij', pred_values_1_abs, pred_values_2_abs)
+    sim_matrix = torch.exp(sim_matrix / T)
+    pos_sim = sim_matrix[range(batch_size), range(batch_size)]
+    loss = pos_sim / (sim_matrix.sum(dim=1) - pos_sim)
+    loss = - torch.log(loss).mean()
     return loss

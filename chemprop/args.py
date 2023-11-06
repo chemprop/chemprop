@@ -114,6 +114,7 @@ class CommonArgs(Tap):
     no_cache_mol: bool = False
     """
     Whether to not cache the RDKit molecule for each SMILES string to reduce memory usage (cached by default).
+    If SSL_pretrain with large dataset, better to set it to be True
     """
     empty_cache: bool = False
     """
@@ -123,6 +124,128 @@ class CommonArgs(Tap):
     """
     Path to constraints applied to atomic/bond properties prediction.
     """
+    is_pretrain: bool = False
+
+    """
+    Whether self supervised pretraining or not
+    """
+    not_skip_invalid_smiles: bool = False
+    """
+    Whether to filter smiles or not, if large data set it to False
+    """
+    is_pretrain_contra: bool = False
+    """
+    Whether self supervised pretraining use contrastive learning or not
+    """
+    is_pretrain_mask: bool = False
+    """
+    Whether self supervised pretraining use mask atom learning or not
+    """
+    mask_atom_pre_auto: bool = True
+    """
+    For self supervised pretraining whether the atom mask is done by auto
+    """
+    mask_bond_pre_auto: bool = True
+    """
+    For self supervised pretraining whether the bond mask is done by auto
+    """
+    MA_vocab_num_classes: int = 100
+    """
+    For self supervised pretraining the mask atom prediction has a number of possible classes ( Most basic is same as the max_atomic_number )
+    """
+    contrastive_output_size: int = 300
+    """
+    For self supervised pretraining the contrastive learning projection head output size. This dimension is used in calculating contrastive loss
+    """
+    Mode_of_contrastive_learning_probabilities: List = [1/6, 1/6, 1/6, 1/6, 1/6, 1/6]
+    """
+    For self supervised pretraining the contrastive learning different modes probabilities.
+    """
+    is_triplet: bool = False
+    """
+    For self supervised pretraining whether the triplet loss that has three views as input is added
+    """
+    triplet_margin: float = 0.0
+    """
+    For self supervised pretraining, the triplet loss margin parameter
+    """
+    triplet_p: int = 2
+    """
+    For self supervised pretraining, the triplet loss p parameter
+    """
+    triplet_loss_para: float = 0.1
+    """
+    For self supervised pretraining, the trade-off hyperparameter
+    """
+    MA_first_percent: float = 0.1
+    """
+    For self supervised pretraining, the mask atom percentage for first view 
+    """
+    MA_second_percent: float = 0.3
+    """
+    For self supervised pretraining, the mask atom percentage for second view
+    """
+    BD_first_percent: float = 0.1
+    """
+    For self supervised pretraining, the mask bond percentage for first view 
+    """
+    BD_second_percent: float = 0.3
+    """
+    For self supervised pretraining, the mask bond percentage for second view
+    """
+    SG_first_percent: float = 0.1
+    """
+    For self supervised pretraining, the subgraph deletion percentage for first view 
+    """
+    SG_second_percent: float = 0.3
+    """
+    For self supervised pretraining, the subgraph deletion percentage for second view
+    """
+    pretrain_with_val: bool = False
+    """
+    For self supervised pretraining, whether the model is only saved with the validation score lower, not implemented well yet
+    """
+    pretrain_save_per_epoch: int = 2
+    """
+    For self supervised pretraining,save model for number of epoch trained. Normally, big model is only saved with this kind of criteria 
+    """
+    is_whole_finetune_pretrain_checkpoint: bool = False
+    """
+    Whether to load a SSL pretrained model and fit it to a new model structure and finetune the whole model 
+    """
+    large_mpn_encoder: bool = False
+    """
+    Whether to train a large mpn encoder
+    """
+    use_resnet: bool = False
+    """
+    Whether to use resnet structure for message passing
+    """
+    depth_resnet: bool = False
+    """
+    Whether to use resnet structure for message passing for each depth
+    """
+    per_depth_mpn_number: int = 1
+    """
+    The number of FFNs in each depth for the mpn
+    """
+    DDP_training: bool = False
+    """
+    Whether to use DDP training or not, necessary for large data and large model. Now it is only implemented for SSL_pretrain
+    """
+    DDP_rank: int = 0
+    """
+    The current rank information, it will be set dynamically for different processes
+    """
+    load_DDP: bool = False
+    """
+    Whether to load from a DDP trained model, since it will have module prefix.
+    """
+    num_DDP_gpus: int = 1
+    """
+    Record number of gpus used in DDP
+    """
+
 
     def __init__(self, *args, **kwargs):
         super(CommonArgs, self).__init__(*args, **kwargs)
@@ -136,15 +259,20 @@ class CommonArgs(Tap):
     @property
     def device(self) -> torch.device:
         """The :code:`torch.device` on which to load and process data and models."""
-        if not self.cuda:
-            return torch.device('cpu')
+        if not self.DDP_training:
+            if not self.cuda:
+                return torch.device('cpu')
 
-        return torch.device('cuda', self.gpu)
+            return torch.device('cuda', self.gpu)
+        else:
+            return self.DDP_rank
 
     @device.setter
     def device(self, device: torch.device) -> None:
-        self.cuda = device.type == 'cuda'
-        self.gpu = device.index
+        if not self.DDP_training:
+            self.cuda = device.type == 'cuda'
+            self.gpu = device.index
+
 
     @property
     def cuda(self) -> bool:
@@ -256,9 +384,9 @@ class TrainArgs(CommonArgs):
     """
     ignore_columns: List[str] = None
     """Name of the columns to ignore when :code:`target_columns` is not provided."""
-    dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra']
+    dataset_type: Literal['regression', 'classification', 'multiclass', 'spectra', 'SSL_pretrain']
     """Type of dataset. This determines the default loss function used during training."""
-    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet'] = None
+    loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid', 'wasserstein', 'mve', 'evidential', 'dirichlet', 'MA', 'contrastive', 'Triplet'] = None
     """Choice of loss function. Loss functions are limited to compatible dataset types."""
     multiclass_num_classes: int = 3
     """Number of classes when running multiclass classification."""
@@ -339,8 +467,10 @@ class TrainArgs(CommonArgs):
     """Whether to add bias to linear layers."""
     hidden_size: int = 300
     """Dimensionality of hidden layers in MPN."""
+    mpn_encoder_middle_dim: int = 300
+    """Dimensionality of middle hidden layers in large MPN."""
     depth: int = 3
-    """Number of message passing steps."""
+    """Number of message passing steps + 1."""
     bias_solvent: bool = False
     """Whether to add bias to linear layers for solvent MPN if :code:`reaction_solvent` is True."""
     hidden_size_solvent: int = 300
@@ -700,6 +830,8 @@ class TrainArgs(CommonArgs):
                 self.metric = 'bounded_mse'
             elif self.dataset_type == 'regression':
                 self.metric = 'rmse'
+            elif self.dataset_type == 'SSL_pretrain':
+                self.metric = 'cross_entropy'
             else:
                 raise ValueError(f'Dataset type {self.dataset_type} is not supported.')
 
@@ -711,7 +843,8 @@ class TrainArgs(CommonArgs):
             if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']),
                         (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']),
                         (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
-                        (self.dataset_type == 'spectra' and metric in ['sid', 'wasserstein'])]):
+                        (self.dataset_type == 'spectra' and metric in ['sid', 'wasserstein']),
+                        (self.dataset_type == 'SSL_pretrain' and metric in ['cross_entropy'])]):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
 
         if self.loss_function is None:
@@ -723,6 +856,9 @@ class TrainArgs(CommonArgs):
                 self.loss_function = 'sid'
             elif self.dataset_type == 'regression':
                 self.loss_function = 'mse'
+            elif self.dataset_type == 'SSL_pretrain':
+                self.loss_function = 'MA'
+                print('the loss function of SSL_pretrain is not simple one loss function, hyperparameter tuning is available in common args, the loss_function will not be used')
             else:
                 raise ValueError(f'Default loss function not configured for dataset type {self.dataset_type}.')
 

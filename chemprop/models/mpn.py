@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from chemprop.args import TrainArgs
-from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph
+from chemprop.features import BatchMolGraph, get_atom_fdim, get_bond_fdim, mol2graph, BatchMolGraphPretrain
 from chemprop.nn_utils import index_select_ND, get_activation_function
 
 
@@ -15,7 +15,7 @@ class MPNEncoder(nn.Module):
     """An :class:`MPNEncoder` is a message passing neural network for encoding a molecule."""
 
     def __init__(self, args: TrainArgs, atom_fdim: int, bond_fdim: int, hidden_size: int = None,
-                 bias: bool = None, depth: int = None):
+                 bias: bool = None, depth: int = None, is_MA_pretrain: bool = None):
         """
         :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
         :param atom_fdim: Atom feature vector dimension.
@@ -37,6 +37,9 @@ class MPNEncoder(nn.Module):
         self.aggregation = args.aggregation
         self.aggregation_norm = args.aggregation_norm
         self.is_atom_bond_targets = args.is_atom_bond_targets
+        self.large_mpn_encoder = args.large_mpn_encoder
+        self.use_resnet = args.use_resnet
+        self.depth_resnet = args.depth_resnet
 
         # Dropout
         self.dropout = nn.Dropout(args.dropout)
@@ -51,39 +54,69 @@ class MPNEncoder(nn.Module):
         input_dim = self.atom_fdim if self.atom_messages else self.bond_fdim
         self.W_i = nn.Linear(input_dim, self.hidden_size, bias=self.bias)
 
-        if self.atom_messages:
-            w_h_input_size = self.hidden_size + self.bond_fdim
+        if self.large_mpn_encoder:
+            '''
+            The option of large_mpn_encoder can be crucial for a SSL_pretrain model, since for SSL pretrain, the amount
+            of data will not be the limitation, the expressive power of a model to learn a huge and complex distribution is
+            very important. For the current chemprop arichitecture, the mpn is shared across different depths and only one
+            FFN is used as the mpn learnable parameters. This is too small, may not enjoy the full power of SSL pretrain.
+            Thus the option of large_mpn_encoder is created.
+            '''
+            if self.atom_messages:
+                w_h_input_size = self.hidden_size + self.bond_fdim
+            else:
+                w_h_input_size = self.hidden_size
+
+            self.varied_mpn_number = self.depth
+            self.per_depth_mpn_number = args.per_depth_mpn_number
+            mpn_encoder_middle_dim = args.mpn_encoder_middle_dim
+            self.W_h_list = nn.ModuleList()
+
+            for i in range(self.depth - 1):
+                per_depth_modules = nn.ModuleList([MPN_FeedForwardNetwork(w_h_input_size, mpn_encoder_middle_dim, self.hidden_size, bias=self.bias, use_resnet=self.use_resnet) for _ in range(self.per_depth_mpn_number)])
+                self.W_h_list.append(per_depth_modules)
+
+            self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+
+
         else:
-            w_h_input_size = self.hidden_size
 
-        self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
+            if self.atom_messages:
+                w_h_input_size = self.hidden_size + self.bond_fdim
+            else:
+                w_h_input_size = self.hidden_size
 
-        self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
+            self.W_h = nn.Linear(w_h_input_size, self.hidden_size, bias=self.bias)
 
-        if self.is_atom_bond_targets:
-            self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
+            self.W_o = nn.Linear(self.atom_fdim + self.hidden_size, self.hidden_size)
 
-        if args.atom_descriptors == 'descriptor':
-            self.atom_descriptors_size = args.atom_descriptors_size
-            self.atom_descriptors_layer = nn.Linear(self.hidden_size + self.atom_descriptors_size,
-                                                    self.hidden_size + self.atom_descriptors_size,)
+            if self.is_atom_bond_targets:
+                self.W_o_b = nn.Linear(self.bond_fdim + self.hidden_size, self.hidden_size)
 
-        if args.bond_descriptors == 'descriptor':
-            self.bond_descriptors_size = args.bond_descriptors_size
-            self.bond_descriptors_layer = nn.Linear(self.hidden_size + self.bond_descriptors_size,
-                                                    self.hidden_size + self.bond_descriptors_size,)
+            if args.atom_descriptors == 'descriptor':
+                self.atom_descriptors_size = args.atom_descriptors_size
+                self.atom_descriptors_layer = nn.Linear(self.hidden_size + self.atom_descriptors_size,
+                                                        self.hidden_size + self.atom_descriptors_size,)
+
+            if args.bond_descriptors == 'descriptor':
+                self.bond_descriptors_size = args.bond_descriptors_size
+                self.bond_descriptors_layer = nn.Linear(self.hidden_size + self.bond_descriptors_size,
+                                                        self.hidden_size + self.bond_descriptors_size,)
 
     def forward(self,
-                mol_graph: BatchMolGraph,
+                mol_graph: Union[BatchMolGraph,BatchMolGraphPretrain],
                 atom_descriptors_batch: List[np.ndarray] = None,
-                bond_descriptors_batch: List[np.ndarray] = None) -> torch.Tensor:
+                bond_descriptors_batch: List[np.ndarray] = None,
+                is_MA_pretrain: bool = False) -> torch.Tensor:
         """
         Encodes a batch of molecular graphs.
 
         :param mol_graph: A :class:`~chemprop.features.featurization.BatchMolGraph` representing
-                          a batch of molecular graphs.
+                          a batch of molecular graphs. Or A class:`~chemprop.features.featurization.BatchMolGraphPretrain` representing
+                          a batch of pretrain molecular graphs.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atomic descriptors.
         :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors
+        :param is_MA_pretrain: A boolean indicates whether the mask atom prediction information is needed to be retrived.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
         if atom_descriptors_batch is not None:
@@ -117,26 +150,55 @@ class MPNEncoder(nn.Module):
         message = self.act_func(input)  # num_bonds x hidden_size
 
         # Message passing
-        for depth in range(self.depth - 1):
-            if self.undirected:
-                message = (message + message[b2revb]) / 2
+        if self.large_mpn_encoder:
+            for depth in range(self.depth - 1):
 
-            if self.atom_messages:
-                nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
-                nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
-                nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
-                message = nei_message.sum(dim=1)  # num_atoms x hidden + bond_fdim
-            else:
-                # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
-                # message      a_message = sum(nei_a_message)      rev_message
-                nei_a_message = index_select_ND(message, a2b)  # num_atoms x max_num_bonds x hidden
-                a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
-                rev_message = message[b2revb]  # num_bonds x hidden
-                message = a_message[b2a] - rev_message  # num_bonds x hidden
+                if self.depth_resnet:
+                    orig_message = message
 
-            message = self.W_h(message)
-            message = self.act_func(input + message)  # num_bonds x hidden_size
-            message = self.dropout(message)  # num_bonds x hidden
+                if self.undirected:
+                    message = (message + message[b2revb]) / 2
+
+                if self.atom_messages:
+                    nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
+                    nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
+                    nei_message = torch.cat((nei_a_message, nei_f_bonds),
+                                            dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
+                    message = nei_message.sum(dim=1)  # num_atoms x hidden + bond_fdim
+                else:
+                    # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
+                    # message      a_message = sum(nei_a_message)      rev_message
+                    nei_a_message = index_select_ND(message, a2b)  # num_atoms x max_num_bonds x hidden
+                    a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+                    rev_message = message[b2revb]  # num_bonds x hidden
+                    message = a_message[b2a] - rev_message  # num_bonds x hidden
+                for i in range(self.per_depth_mpn_number):
+                    message = self.W_h_list[depth][i](message)
+                message = self.act_func(input + message)  # num_bonds x hidden_size
+                message = self.dropout(message)  # num_bonds x hidden
+                if self.depth_resnet:
+                    message = message + orig_message
+        else:
+            for depth in range(self.depth - 1):
+                if self.undirected:
+                    message = (message + message[b2revb]) / 2
+
+                if self.atom_messages:
+                    nei_a_message = index_select_ND(message, a2a)  # num_atoms x max_num_bonds x hidden
+                    nei_f_bonds = index_select_ND(f_bonds, a2b)  # num_atoms x max_num_bonds x bond_fdim
+                    nei_message = torch.cat((nei_a_message, nei_f_bonds), dim=2)  # num_atoms x max_num_bonds x hidden + bond_fdim
+                    message = nei_message.sum(dim=1)  # num_atoms x hidden + bond_fdim
+                else:
+                    # m(a1 -> a2) = [sum_{a0 \in nei(a1)} m(a0 -> a1)] - m(a2 -> a1)
+                    # message      a_message = sum(nei_a_message)      rev_message
+                    nei_a_message = index_select_ND(message, a2b)  # num_atoms x max_num_bonds x hidden
+                    a_message = nei_a_message.sum(dim=1)  # num_atoms x hidden
+                    rev_message = message[b2revb]  # num_bonds x hidden
+                    message = a_message[b2a] - rev_message  # num_bonds x hidden
+
+                message = self.W_h(message)
+                message = self.act_func(input + message)  # num_bonds x hidden_size
+                message = self.dropout(message)  # num_bonds x hidden
 
         # atom hidden
         a2x = a2a if self.atom_messages else a2b
@@ -173,6 +235,14 @@ class MPNEncoder(nn.Module):
         # Readout
         if self.is_atom_bond_targets:
             return atom_hiddens, a_scope, bond_hiddens, b_scope, b2br  # num_atoms x hidden, remove the first one which is zero padding
+
+        # Readout for mask atom pretraining
+        if is_MA_pretrain:
+            mask_atom_index = torch.tensor(mol_graph.final_masked_atom_index)
+            mask_atom_index = mask_atom_index.to(self.device)
+            mask_atom_hiddens = torch.index_select(atom_hiddens ,0, mask_atom_index).float()
+
+            return mask_atom_hiddens # num_mask_atoms x hidden
 
         mol_vecs = []
         for i, (a_start, a_size) in enumerate(a_scope):
@@ -245,27 +315,29 @@ class MPN(nn.Module):
                                               args.hidden_size_solvent, args.bias_solvent, args.depth_solvent)
 
     def forward(self,
-                batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
+                batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph],List[BatchMolGraphPretrain]],
                 features_batch: List[np.ndarray] = None,
                 atom_descriptors_batch: List[np.ndarray] = None,
                 atom_features_batch: List[np.ndarray] = None,
                 bond_descriptors_batch: List[np.ndarray] = None,
-                bond_features_batch: List[np.ndarray] = None) -> torch.Tensor:
+                bond_features_batch: List[np.ndarray] = None,
+                is_MA_pretrain: bool = False) -> torch.Tensor:
         """
         Encodes a batch of molecules.
 
         :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
                       list of :class:`~chemprop.features.featurization.BatchMolGraph`.
-                      The outer list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch),
+                      The outer list or BatchMolGraph or BatchMolGraphPretrain is of length :code:`num_molecules` (number of datapoints in batch),
                       the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
         :param features_batch: A list of numpy arrays containing additional features.
         :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
         :param atom_features_batch: A list of numpy arrays containing additional atom features.
         :param bond_descriptors_batch: A list of numpy arrays containing additional bond descriptors.
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
+        :param is_MA_pretrain: A boolean indicates whether the mask atom prediction information is needed to be retrived.
         :return: A PyTorch tensor of shape :code:`(num_molecules, hidden_size)` containing the encoding of each molecule.
         """
-        if type(batch[0]) != BatchMolGraph:
+        if type(batch[0]) != BatchMolGraph and type(batch[0]) != BatchMolGraphPretrain:
             # Group first molecules, second molecules, etc for mol2graph
             batch = [[mols[i] for mols in batch] for i in range(len(batch[0]))]
 
@@ -316,7 +388,8 @@ class MPN(nn.Module):
             encodings = [enc(ba, atom_descriptors_batch, bond_descriptors_batch) for enc, ba in zip(self.encoder, batch)]
         else:
             if not self.reaction_solvent:
-                encodings = [enc(ba) for enc, ba in zip(self.encoder, batch)]
+                # Pretrain now will not enter into other logic branch so keep is_MA_pretrain = False for them to be safe.
+                encodings = [enc(ba,is_MA_pretrain=is_MA_pretrain) for enc, ba in zip(self.encoder, batch)]
             else:
                 encodings = []
                 for ba in batch:
@@ -334,3 +407,23 @@ class MPN(nn.Module):
             output = torch.cat([output, features_batch], dim=1)
 
         return output
+
+class MPN_FeedForwardNetwork(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, bias, use_resnet=False):
+        super(MPN_FeedForwardNetwork, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim, bias)
+        self.fc2 = nn.Linear(hidden_dim, output_dim, bias)
+        self.use_resnet = use_resnet
+        if use_resnet and input_dim != output_dim:
+            self.residual_mapping = nn.Linear(input_dim, output_dim, bias=False)
+
+
+    def forward(self, x):
+        orig_x = x
+        x = nn.functional.relu(self.fc1(x))
+        x = self.fc2(x)
+        if self.use_resnet:
+            if orig_x.size(-1) != x.size(-1):
+                orig_x = self.residual_mapping(orig_x)
+            x += orig_x
+        return x

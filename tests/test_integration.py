@@ -18,13 +18,14 @@ from chemprop.hyperparameter_optimization import chemprop_hyperopt
 from chemprop.interpret import chemprop_interpret
 from chemprop.sklearn_predict import sklearn_predict
 from chemprop.sklearn_train import sklearn_train
-from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions, chemprop_fingerprint
+from chemprop.train import chemprop_train, chemprop_predict, evaluate_predictions, chemprop_fingerprint, chemprop_DDP_train
 from chemprop.web.wsgi import build_app
 from chemprop.spectra_utils import normalize_spectra, load_phase_mask
 from chemprop.features import load_features
+import torch
 
 
-TEST_DATA_DIR = 'tests/data'
+TEST_DATA_DIR = '/home/lijiali/projects/chemprop_final/tests/data'
 SEED = 0
 EPOCHS = 10
 NUM_FOLDS = 3
@@ -32,8 +33,8 @@ NUM_ITER = 2
 SIZE = 10
 DEPTH = 2
 DELTA = 0.025
-
-
+MIDDLE_DIM = 128
+PER_D_MPN_NUM =2
 class ChempropTests(TestCase):
     @staticmethod
     def create_raw_train_args(dataset_type: str,
@@ -57,6 +58,37 @@ class ChempropTests(TestCase):
             '--quiet',
             '--empty_cache'
         ] + (['--model_type', model_type] if model_type != 'chemprop' else []) + (flags if flags is not None else [])
+
+    @staticmethod
+    def create_SSL_raw_train_args(dataset_type: str,
+                              save_dir: str,
+                              model_type: str = 'chemprop',
+                              flags: List[str] = None) -> List[str]:
+        """Creates a list of raw command line arguments for training."""
+        return [
+            'train',  # Note: not actually used, just a placeholder
+            '--data_path', os.path.join(TEST_DATA_DIR, f'{dataset_type}.csv'), # Note: adding another --data_path argument will overwrite this one
+            '--dataset_type', dataset_type,
+            '--epochs', str(EPOCHS),
+            '--num_folds', str(NUM_FOLDS),
+            '--seed', str(SEED),
+            '--save_dir', save_dir,
+            '--hidden_size', str(SIZE),
+            '--ffn_hidden_size', str(SIZE),
+            '--depth', str(DEPTH),
+            '--mpn_encoder_middle_dim', str(MIDDLE_DIM),
+            '--per_depth_mpn_number', str(PER_D_MPN_NUM),
+            '--epochs', str(2),
+            '--quiet',
+            '--empty_cache',
+            '--is_pretrain',
+            '--is_pretrain_contra',
+            '--is_triplet',
+            '--is_pretrain_mask',
+            '--no_cache_mol',
+            '--not_skip_invalid_smiles',
+            '--large_mpn_encoder',
+        ] + (['--model_type', model_type] if model_type not in ['chemprop', 'chemprop_DDP']  else []) + (flags if flags is not None else [])
 
     @staticmethod
     def create_raw_predict_args(dataset_type: str,
@@ -125,6 +157,34 @@ class ChempropTests(TestCase):
             else:
                 print(f'python sklearn_train.py {command_line}')
                 sklearn_train()
+
+    def train_SSL(self,
+              dataset_type: str,
+              save_dir: str,
+              model_type: str = 'chemprop',
+              flags: List[str] = None):
+        # Set up command line arguments
+        raw_args = self.create_SSL_raw_train_args(
+            dataset_type=dataset_type,
+            save_dir=save_dir,
+            model_type=model_type,
+            flags=flags
+        )
+
+        # Train
+        with patch('sys.argv', raw_args):
+            command_line = ' '.join(raw_args[1:])
+
+            if model_type == 'chemprop':
+                print(f'python train.py {command_line}')
+                chemprop_train()
+            elif model_type == 'chemprop_DDP':
+                print(f'python DDP_train.py {command_line}')
+                chemprop_DDP_train()
+            else:
+                print(f'python sklearn_train.py {command_line}')
+                sklearn_train()
+
 
     def predict(self,
                 dataset_type: str,
@@ -1336,6 +1396,37 @@ class ChempropTests(TestCase):
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
+
+    @parameterized.expand([
+        (
+                'SSL_pretrain',
+                'chemprop',
+                ['--split_sizes', '0.99', '0.01', '0.0'],
+        )])
+    def test_train_SSL_large_model(self,dataset_type: str,
+                                        model_type: str,
+                                        train_flags: List[str] = None):
+        with TemporaryDirectory() as save_dir:
+            self.train_SSL(dataset_type=dataset_type,model_type=model_type,save_dir=save_dir,flags=train_flags)
+
+
+    @parameterized.expand([
+        (
+                'SSL_pretrain',
+                'chemprop_DDP',
+                ['--split_sizes', '0.99', '0.01', '0.0', '--DDP_training'],
+        )])
+    def test_train_SSL_large_model_DDP(self,dataset_type: str,
+                                        model_type: str,
+                                        train_flags: List[str] = None):
+       if torch.cuda.device_count() < 2:
+            print('no enough gpus')
+            return
+
+       with TemporaryDirectory() as save_dir:
+            self.train_SSL(dataset_type=dataset_type,model_type=model_type,save_dir=save_dir,flags=train_flags)
+
+
 
 
 if __name__ == '__main__':

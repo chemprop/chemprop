@@ -589,7 +589,10 @@ def get_data(path: str,
                 constraints=all_constraints_data[i] if constraints_data is not None else None,
                 raw_constraints=all_raw_constraints_data[i] if raw_constraints_data is not None else None,
                 overwrite_default_atom_features=args.overwrite_default_atom_features if args is not None else False,
-                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False
+                overwrite_default_bond_features=args.overwrite_default_bond_features if args is not None else False,
+                mask_atom_pre_auto=args.mask_atom_pre_auto if args is not None else False,
+                mask_bond_pre_auto=args.mask_bond_pre_auto if args is not None else False,
+                is_pretrain=args.is_pretrain if args is not None else False
             ) for i, (smiles, targets) in tqdm(enumerate(zip(all_smiles, all_targets)),
                                             total=len(all_smiles))
         ])
