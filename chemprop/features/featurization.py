@@ -1297,8 +1297,7 @@ def mol2graphMaskAtom(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol
                                                  overwrite_default_atom_features=overwrite_default_atom_features,
                                                  overwrite_default_bond_features=overwrite_default_bond_features,
                                                  mask_atom_pre_auto=mask_atom_pre_auto,
-                                                 mask_atom_pre_percent=mask_atom_pre_percent,
-                                                 mask_atom_pre_extra_mask_idx=ma_idx)
+                                                 mask_atom_pre_percent=mask_atom_pre_percent)
                                 for mol, af, bf, ma_idx
                                 in zip_longest(mols, atom_features_batch, bond_features_batch,
                                                mask_atom_pre_extra_mask_idx_batch)]
@@ -1338,8 +1337,7 @@ def mol2graphBondDele(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol
                                                  overwrite_default_atom_features=overwrite_default_atom_features,
                                                  overwrite_default_bond_features=overwrite_default_bond_features,
                                                  mask_bond_pre_auto=mask_bond_pre_auto,
-                                                 mask_bond_pre_percent=mask_bond_pre_percent,
-                                                 mask_atom_pre_extra_mask_idx=mb_idx)
+                                                 mask_bond_pre_percent=mask_bond_pre_percent)
                                 for mol, af, bf, mb_idx
                                 in zip_longest(mols, atom_features_batch, bond_features_batch,
                                                mask_bond_pre_extra_mask_idx_batch)]

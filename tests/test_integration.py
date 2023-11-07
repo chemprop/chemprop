@@ -25,7 +25,7 @@ from chemprop.features import load_features
 import torch
 
 
-TEST_DATA_DIR = '/home/lijiali/projects/chemprop_final/tests/data'
+TEST_DATA_DIR = 'tests/data'
 SEED = 0
 EPOCHS = 10
 NUM_FOLDS = 3
