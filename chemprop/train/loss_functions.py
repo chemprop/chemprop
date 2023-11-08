@@ -40,8 +40,8 @@ def get_loss_func(args: TrainArgs) -> Union[Callable, Tuple[Callable]]:
         "SSL_pretrain": {
             "MA": nn.CrossEntropyLoss(),  # get the mean loss directly
             "contrastive": Contrastive_loss,  # get the mean loss directly
-            "Triplet": nn.TripletMarginLoss( margin=getattr(args, triplet_margin, 0),
-                                             p=getattr(args, triplet_p, 2),),  # get the mean loss directly
+            "Triplet": nn.TripletMarginLoss( margin=getattr(args, 'triplet_margin', 0),
+                                             p=getattr(args, 'triplet_p', 2),),  # get the mean loss directly
         },
     }
 
