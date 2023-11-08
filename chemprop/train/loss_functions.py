@@ -49,7 +49,8 @@ def get_loss_func(args: TrainArgs) -> Union[Callable, Tuple[Callable]]:
     if args.dataset_type not in supported_loss_functions.keys():
         raise ValueError(f'Dataset type "{args.dataset_type}" not supported.')
 
-    if args.is_pretrain:
+    is_pretrain = getattr(args, 'is_pretrain', False)
+    if is_pretrain:
         loss_function_choices = supported_loss_functions.get(args.dataset_type, dict())
         MA_loss = loss_function_choices.get("MA")
         contrastive_loss = loss_function_choices.get("contrastive")
