@@ -517,7 +517,6 @@ class MoleculeDataset(Dataset):
         # Now is good for current SSL pretrain setting.
 
         mol_graphs_SG = []
-        center_list = center_list
         for i, d in enumerate(self._data):
             mol_graphs_list_SG = []
             for s, m in zip(d.smiles, d.mol):

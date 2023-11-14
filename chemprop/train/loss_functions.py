@@ -383,7 +383,6 @@ def evidential_loss(pred_values, targets, lam: float = 0, epsilon: float = 1e-8,
     return loss
 
 def Contrastive_loss(pred_values_1, pred_values_2, T: float = 0.1):
-    T = T
     batch_size, _ = pred_values_1.size()
     pred_values_1_abs = pred_values_1.norm(dim=1)
     pred_values_2_abs = pred_values_2.norm(dim=1)

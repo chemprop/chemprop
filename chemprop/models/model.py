@@ -369,7 +369,7 @@ class MoleculeModel(nn.Module):
                     output
                 )  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
         if self.is_pretrain and is_MA_pretrain:
-            output = output # batch size  x num classes per target (since MA always have only 1 task, then to simplify the train.py retain only this shape is better)
+            # output = output batch size  x num classes per target (since MA always have only 1 task, then to simplify the train.py retain only this shape is better)
             if (
                 not (self.training and self.no_training_normalization)
                 and self.loss_function != "dirichlet"
