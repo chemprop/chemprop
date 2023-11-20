@@ -14,9 +14,9 @@ from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
 from chemprop.v2.models import MPNN
 from chemprop.v2.featurizers import RxnMode, MoleculeFeaturizerRegistry
+from chemprop.v2.metrics import MetricRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
-from chemprop.v2.nn.metrics import MetricRegistry
 from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.utils import Factory

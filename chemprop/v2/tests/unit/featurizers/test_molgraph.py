@@ -28,11 +28,6 @@ def mol(smi):
     return Chem.MolFromSmiles(smi)
 
 
-@pytest.fixture(params=[True, False])
-def atom_messages(request):
-    return request.param
-
-
 @pytest.fixture(params=[0, 10, 100])
 def extra(request):
     return request.param
@@ -53,13 +48,13 @@ def bond_features_extra(mol, extra):
 
 
 @pytest.fixture
-def mol_featurizer(atom_messages):
-    return MoleculeMolGraphFeaturizer(bond_messages=not atom_messages)
+def mol_featurizer():
+    return MoleculeMolGraphFeaturizer()
 
 
 @pytest.fixture
 def mol_featurizer_extra(extra):
-    return MoleculeMolGraphFeaturizer(None, None, extra, extra, False)
+    return MoleculeMolGraphFeaturizer(None, None, extra, extra)
 
 
 @pytest.fixture
@@ -78,28 +73,14 @@ def test_atom_fdim(extra):
     assert mf.atom_fdim == len(mf.atom_featurizer) + extra
 
 
-def test_bond_fdim(atom_messages, extra):
-    mf = MoleculeMolGraphFeaturizer(extra_bond_fdim=extra, bond_messages=not atom_messages)
-
-    if atom_messages:
-        assert mf.bond_fdim == len(mf.bond_featurizer) + extra
-    else:
-        assert mf.bond_fdim == len(mf.bond_featurizer) + extra + mf.atom_fdim
-
-
-def test_n_atoms_bonds(mol: Chem.Mol, mg: MolGraph):
-    assert mol.GetNumAtoms() == mg.n_atoms
-    assert 2 * mol.GetNumBonds() == mg.n_bonds
-
-
-def test_X_v_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
+def test_V_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
     n_a = mol.GetNumAtoms()
     d_a = mol_featurizer.atom_fdim
 
     assert mg.V.shape == (n_a, d_a)
 
 
-def test_X_e_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
+def test_E_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph):
     n_b = mol.GetNumBonds()
     d_b = mol_featurizer.bond_fdim
 
@@ -107,20 +88,10 @@ def test_X_e_shape(mol, mol_featurizer: MoleculeMolGraphFeaturizer, mg: MolGraph
 
 
 def test_x2y_len(mol: Chem.Mol, mg: MolGraph):
-    n_a = mol.GetNumAtoms()
-    n_b = mol.GetNumBonds()
+    num_bonds = mol.GetNumBonds()
 
-    assert len(mg.a2b) == n_a
-    assert len(mg.b2a) == 2 * n_b
-    assert len(mg.b2revb) == 2 * n_b
-
-
-def test_a2a_none(mg):
-    assert mg.a2a is None
-
-
-def test_b2b_none(mg):
-    assert mg.b2b is None
+    assert mg.edge_index.shape == (2, 2 * num_bonds)
+    assert mg.rev_edge_index.shape == (2 * num_bonds,)
 
 
 def test_composability(mol):
@@ -164,12 +135,7 @@ def test_bond_extra(mol, extra, bond_features_extra):
 
 
 def test_atom_bond_extra(mol, extra, atom_features_extra, bond_features_extra):
-    mf = MoleculeMolGraphFeaturizer(
-        extra_atom_fdim=extra, extra_bond_fdim=extra, bond_messages=True
-    )
+    mf = MoleculeMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra)
     mg = mf(mol, atom_features_extra, bond_features_extra)
 
-    assert mg.E.shape == (
-        2 * mol.GetNumBonds(),
-        len(mf.atom_featurizer) + len(mf.bond_featurizer) + 2 * extra,
-    )
+    assert mg.E.shape == (2 * mol.GetNumBonds(), len(mf.bond_featurizer) + extra)

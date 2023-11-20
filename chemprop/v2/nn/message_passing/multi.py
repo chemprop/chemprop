@@ -4,7 +4,7 @@ import warnings
 from torch import Tensor, nn
 
 from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.nn.message_passing.base import MessagePassingBlock
+from chemprop.v2.nn.message_passing.proto import MessagePassing
 
 
 class MulticomponentMessagePassing(nn.Module):
@@ -23,9 +23,7 @@ class MulticomponentMessagePassing(nn.Module):
         block will be learned for each component.
     """
 
-    def __init__(
-        self, blocks: Sequence[MessagePassingBlock], n_components: int, shared: bool = False
-    ):
+    def __init__(self, blocks: Sequence[MessagePassing], n_components: int, shared: bool = False):
         super().__init__()
 
         if len(blocks) == 0:

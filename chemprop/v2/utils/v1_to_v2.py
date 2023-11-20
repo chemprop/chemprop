@@ -4,11 +4,11 @@ from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
-from chemprop.v2.nn.metrics import MetricRegistry
+from chemprop.v2.metrics import MetricRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.predictors import PredictorRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
-from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.nn.message_passing import AtomMessagePassing, BondMessagePassing
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -66,7 +66,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         {
             "activation": args_v1.activation,
             "bias": args_v1.bias,
-            "cls": BondMessageBlock if not args_v1.atom_messages else AtomMessageBlock,
+            "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
             "d_e": d_e,  # the feature dimension of the edges
             "d_h": args_v1.hidden_size,  # dimension of the hidden layer
             "d_v": d_v,  # the feature dimension of the vertices
