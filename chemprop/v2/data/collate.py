@@ -77,7 +77,7 @@ MulticomponentTrainingBatch = tuple[
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, V_ds, x_fs, ys, weights, gt_masks, lt_masks = zip(*batch)
+    mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = zip(*batch)
 
     return (
         BatchMolGraph(mgs),
