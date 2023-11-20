@@ -7,7 +7,6 @@ from torch.nn import functional as F
 
 from chemprop.v2.utils import ClassRegistry, ReprMixin
 
-LossFunctionRegistry = ClassRegistry()
 
 __all__ = [
     "LossFunction",
@@ -74,6 +73,9 @@ class LossFunction(ABC, ReprMixin):
     @abstractmethod
     def forward(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
+
+
+LossFunctionRegistry = ClassRegistry[LossFunction]()
 
 
 @LossFunctionRegistry.register("mse")

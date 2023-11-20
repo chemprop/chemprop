@@ -6,8 +6,6 @@ from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.v2.utils import ClassRegistry
 
-MoleculeFeaturizerRegistry = ClassRegistry()
-
 
 class MoleculeFeaturizerProto(Protocol):
     """A :class:`MoleculeFeaturizerProto` calculates feature vectors of RDKit molecules."""
@@ -17,6 +15,9 @@ class MoleculeFeaturizerProto(Protocol):
 
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
         """Featurize the molecule ``mol``"""
+
+
+MoleculeFeaturizerRegistry = ClassRegistry[MoleculeFeaturizerProto]()
 
 
 class MorganFeaturizerMixin:

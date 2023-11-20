@@ -5,7 +5,6 @@ from torch_scatter import scatter, scatter_softmax
 from chemprop.v2.utils import ClassRegistry
 from chemprop.v2.nn.hparams import HasHParams
 
-AggregationRegistry = ClassRegistry()
 
 
 class Aggregation(ABC, nn.Module, HasHParams):
@@ -49,6 +48,9 @@ class Aggregation(ABC, nn.Module, HasHParams):
         Tensor
             a tensor of shape ``n x d`` containing the graph-level representations
         """
+
+
+AggregationRegistry = ClassRegistry[Aggregation]()
 
 
 @AggregationRegistry.register("mean")

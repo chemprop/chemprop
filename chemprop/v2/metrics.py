@@ -8,8 +8,6 @@ from torchmetrics import functional as F
 from chemprop.v2.nn.loss import *
 from chemprop.v2.utils.registry import ClassRegistry
 
-MetricRegistry = ClassRegistry()
-
 
 class Metric(LossFunction):
     minimize: bool = True
@@ -29,6 +27,9 @@ class Metric(LossFunction):
     @abstractmethod
     def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
         pass
+
+
+MetricRegistry = ClassRegistry[Metric]()
 
 
 @dataclass

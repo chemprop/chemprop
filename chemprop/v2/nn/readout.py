@@ -12,8 +12,6 @@ from chemprop.v2.nn.hparams import HasHParams
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.utils import ClassRegistry
 
-ReadoutRegistry = ClassRegistry()
-
 
 class _ReadoutProto(Protocol):
     input_dim: int
@@ -36,6 +34,9 @@ class _ReadoutProto(Protocol):
 
 class Readout(nn.Module, _ReadoutProto, HasHParams):
     """A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`"""
+
+
+ReadoutRegistry = ClassRegistry[Readout]()
 
 
 class ReadoutFFNBase(Readout, HyperparametersMixin):
