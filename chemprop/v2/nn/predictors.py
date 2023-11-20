@@ -13,6 +13,20 @@ from chemprop.v2.nn.hparams import HasHParams
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
 from chemprop.v2.utils import ClassRegistry
 
+__all__ = [
+    "Predictor",
+    "PredictorRegistry",
+    "RegressionFFN",
+    "MveFFN",
+    "EvidentialFFN",
+    "BinaryClassificationFFNBase",
+    "BinaryClassificationFFN",
+    "BinaryDirichletFFN",
+    "MulticlassClassificationFFN",
+    "MulticlassDirichletFFN",
+    "SpectralFFN",
+]
+
 
 class _PredicorProto(Protocol):
     input_dim: int
