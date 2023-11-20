@@ -1,4 +1,4 @@
-from typing import Protocol
+from abc import abstractmethod
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
@@ -7,7 +7,7 @@ from torch.nn import functional as F
 
 from chemprop.v2.nn.loss import *
 from chemprop.v2.metrics import *
-from chemprop.v2.nn.ffn import SimpleFFN
+from chemprop.v2.nn.ffn import MLP
 
 from chemprop.v2.nn.hparams import HasHParams
 from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
@@ -28,7 +28,10 @@ __all__ = [
 ]
 
 
-class _PredicorProto(Protocol):
+class Predictor(nn.Module, HasHParams):
+    r"""A :class:`Predictor` is a protocol that defines a differentiable function
+    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
+
     input_dim: int
     """the input dimension"""
     output_dim: int
@@ -40,22 +43,20 @@ class _PredicorProto(Protocol):
     criterion: LossFunction
     """the loss function to use for training"""
 
+    @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
         pass
 
+    @abstractmethod
     def train_step(self, Z: Tensor) -> Tensor:
         pass
 
 
-class Predictor(nn.Module, _PredicorProto, HasHParams):
-    r"""A :class:`Predictor` is a protocol that defines a differentiable function
-    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
-
 PredictorRegistry = ClassRegistry[Predictor]()
 
 
-class FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`FFNPredictorBase` is the base class for all :class:`Predictor`s that use an
+class _FFNPredictorBase(Predictor, HyperparametersMixin):
+    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`s that use an
     underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
 
     _default_criterion: LossFunction
@@ -75,7 +76,7 @@ class FFNPredictorBase(Predictor, HyperparametersMixin):
         self.save_hyperparameters()
         self.hparams["cls"] = self.__class__
 
-        self.ffn = SimpleFFN(
+        self.ffn = MLP(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
@@ -100,7 +101,7 @@ class FFNPredictorBase(Predictor, HyperparametersMixin):
 
 
 @PredictorRegistry.register("regression")
-class RegressionFFN(FFNPredictorBase):
+class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
@@ -119,8 +120,8 @@ class RegressionFFN(FFNPredictorBase):
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        self.loc = nn.Parameter(torch.tensor(loc).view(-1, 1), False)
-        self.scale = nn.Parameter(torch.tensor(scale).view(-1, 1), False)
+        self.register_buffer("loc", torch.tensor(loc).view(-1, 1))
+        self.register_buffer("scale", torch.tensor(scale).view(-1, 1))
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -178,7 +179,7 @@ class EvidentialFFN(RegressionFFN):
         return torch.cat((mean, v, alpha, beta), 1)
 
 
-class BinaryClassificationFFNBase(FFNPredictorBase):
+class BinaryClassificationFFNBase(_FFNPredictorBase):
     pass
 
 
@@ -216,7 +217,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 
 
 @PredictorRegistry.register("multiclass")
-class MulticlassClassificationFFN(FFNPredictorBase):
+class MulticlassClassificationFFN(_FFNPredictorBase):
     n_targets = 1
     _default_criterion = CrossEntropyLoss()
     _default_metric = CrossEntropyMetric()
@@ -276,7 +277,7 @@ class _Exp(nn.Module):
 
 
 @PredictorRegistry.register("spectral")
-class SpectralFFN(FFNPredictorBase):
+class SpectralFFN(_FFNPredictorBase):
     n_targets = 1
     _default_criterion = SIDLoss()
     _default_metric = SIDMetric()

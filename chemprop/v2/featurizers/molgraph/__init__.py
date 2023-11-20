@@ -1,7 +1,7 @@
 from .molgraph import MolGraph
-from .molecule import MoleculeMolGraphFeaturizerProto, MoleculeMolGraphFeaturizer
+from .molecule import MoleculeMolGraphFeaturizer, SimpleMoleculeMolGraphFeaturizer
 from .reaction import (
-    RxnMolGraphFeaturizerProto,
+    RxnMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
     CGRFeaturizer,
     RxnMode,

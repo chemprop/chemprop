@@ -8,7 +8,7 @@ from rdkit import Chem
 
 class EnumMapping(StrEnum):
     @classmethod
-    def get(cls, name: str | EnumMapping) -> EnumMapping | None:
+    def get(cls, name: str | EnumMapping) -> EnumMapping:
         if isinstance(name, cls):
             return name
 

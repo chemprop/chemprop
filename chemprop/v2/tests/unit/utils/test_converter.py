@@ -29,7 +29,7 @@ def example_model_v1_prediction():
         next(reader)
         smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
 
-    featurizer = featurizers.MoleculeMolGraphFeaturizer()
+    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
 
     ys = np.array(ys).reshape(-1, 1)
     test_data = [data.MoleculeDatapoint.from_smi(smi, None) for smi in smis]

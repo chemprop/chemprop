@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import auto
-from typing import Iterable, Protocol, Sequence
+from typing import Iterable, Sequence
 import warnings
 
 import numpy as np
@@ -8,7 +9,7 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
 from chemprop.v2.featurizers.molgraph.molgraph import MolGraph
-from chemprop.v2.featurizers.molgraph.mixins import MolGraphFeaturizerMixin
+from chemprop.v2.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.v2.utils.utils import EnumMapping
 
 
@@ -34,10 +35,11 @@ class RxnMode(EnumMapping):
     products and balances imbalanced reactions"""
 
 
-class RxnMolGraphFeaturizerProto(Protocol):
+class RxnMolGraphFeaturizer(ABC):
     """A :class:`RxnMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
     and product molecules) into :class:`MolGraph`s"""
 
+    @abstractmethod
     def __call__(
         self,
         rxn: tuple[Chem.Mol, Chem.Mol],
@@ -66,7 +68,7 @@ class RxnMolGraphFeaturizerProto(Protocol):
 
 
 @dataclass
-class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFeaturizerProto):
+class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFeaturizer):
     """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
@@ -81,8 +83,6 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
     bond_featurizer : BondFeaturizerBase, default=BondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
-    bond_messages : bool, default=True
-        whether to prepare the `MolGraph`s for use with bond-based message-passing
     mode_ : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
         the mode by which to featurize the reaction as either the string code or enum value
 
@@ -93,7 +93,6 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         2101-2110. https://doi.org/10.1021/acs.jcim.1c00975
     """
 
-    # bond_messages: bool = True
     mode_: InitVar[str | RxnMode] = RxnMode.REAC_DIFF
 
     def __post_init__(self, mode_: str | RxnMode):
@@ -102,8 +101,6 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         self.mode = mode_
         self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
         self.bond_fdim *= 2
-        # if self.bond_messages:
-        #     self.bond_fdim += self.atom_fdim
 
     @property
     def mode(self) -> RxnMode:

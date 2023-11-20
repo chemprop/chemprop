@@ -1,4 +1,4 @@
-from typing import Protocol
+from abc import abstractmethod
 
 from torch import nn, Tensor
 
@@ -6,10 +6,12 @@ from chemprop.v2.data import BatchMolGraph
 from chemprop.v2.utils.hparams import HasHParams
 
 
-class MessagePassingProto(Protocol):
+class MessagePassing(nn.Module, HasHParams):
+    """A :class:`MessagePassing` module encodes a batch of molecular graphs using message passing to learn vertex-level hidden representations."""
     input_dim: int
     output_dim: int
 
+    @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         """Encode a batch of molecular graphs.
 
@@ -30,8 +32,3 @@ class MessagePassingProto(Protocol):
             of each vertex in the batch of graphs. The feature dimension depends on whether
             additional atom descriptors were provided
         """
-
-
-class MessagePassing(nn.Module, MessagePassingProto, HasHParams):
-    """A :class:`MessagePassing` is encodes a batch of molecular graphs using message passing
-    to learn vertex-level hidden representations."""

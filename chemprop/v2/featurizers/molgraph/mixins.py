@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 
-from chemprop.v2.featurizers.atom import AtomFeaturizer, AtomFeaturizerProto
-from chemprop.v2.featurizers.bond import BondFeaturizer, BondFeaturizerProto
+from chemprop.v2.featurizers.atom import MultiHotAtomFeaturizer, AtomFeaturizer
+from chemprop.v2.featurizers.bond import MultiHotBondFeaturizer, BondFeaturizer
 
 
 @dataclass
-class MolGraphFeaturizerMixin:
-    atom_featurizer: AtomFeaturizerProto = field(default_factory=AtomFeaturizer)
-    bond_featurizer: BondFeaturizerProto = field(default_factory=BondFeaturizer)
+class _MolGraphFeaturizerMixin:
+    atom_featurizer: AtomFeaturizer = field(default_factory=MultiHotAtomFeaturizer)
+    bond_featurizer: BondFeaturizer = field(default_factory=MultiHotBondFeaturizer)
 
     def __post_init__(self):
         self.atom_fdim = len(self.atom_featurizer)
