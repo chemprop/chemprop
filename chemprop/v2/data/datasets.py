@@ -11,11 +11,12 @@ from torch.utils.data import Dataset
 from chemprop.v2.featurizers import (
     MolGraph,
     MoleculeMolGraphFeaturizerProto,
-    MolGraphFeaturizer,
+    MoleculeMolGraphFeaturizer,
     RxnMolGraphFeaturizerProto,
-    CondensedGraphOfReactionFeaturizer,
+    CGRFeaturizer,
 )
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.featurizers.molgraph.reaction import CGRFeaturizer
 
 
 class Datum(NamedTuple):
@@ -156,7 +157,7 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MolGraphFeaturizer)
+    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer())
 
     def __post_init__(self):
         if self.data is None:
@@ -299,7 +300,7 @@ class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
     featurizer: RxnMolGraphFeaturizerProto = field(
-        default_factory=CondensedGraphOfReactionFeaturizer
+        default_factory=CGRFeaturizer
     )
     """the featurizer with which to generate MolGraphs of the input"""
 
