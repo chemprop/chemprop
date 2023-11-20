@@ -138,13 +138,13 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         i = 0
         for u in range(n_atoms_tot):
             for v in range(u + 1, n_atoms_tot):
-                b_reac, b_pdt = self._get_corresponding_bond(
+                b_reac, b_prod = self._get_bonds(
                     reac, pdt, r2p_idx_map, pdt_idxs, n_atoms_reac, u, v
                 )
-                if b_reac is None and b_pdt is None:
+                if b_reac is None and b_prod is None:
                     continue
 
-                x_e = self._calc_edge_feature(b_reac, b_pdt)
+                x_e = self._calc_edge_feature(b_reac, b_prod)
                 E.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
@@ -225,7 +225,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
 
         return X_v
 
-    def _get_corresponding_bond(
+    def _get_bonds(
         self,
         rct: Bond,
         pdt: Bond,
