@@ -5,24 +5,33 @@ import torch
 from torch import Tensor
 from torchmetrics import functional as F
 
-<<<<<<<< HEAD:chemprop/v2/metrics.py
 from chemprop.v2.utils.registry import ClassRegistry
-from chemprop.v2.nn.loss import BCELoss, CrossEntropyLoss, LossFunction, MSELoss
-========
-from chemprop.v2.utils import ClassRegistry
-from chemprop.v2.nn.loss import (
-    BCELoss,
-    BinaryMCCLoss,
-    CrossEntropyLoss,
-    LossFunction,
-    MSELoss,
-    MulticlassMCCLoss,
-    SIDLoss,
-    WassersteinLoss,
-)
->>>>>>>> 523fa860296ef4142456067df36d675bf0a0e719:chemprop/v2/nn/metrics.py
+from chemprop.v2.nn.loss import *
 
 MetricRegistry = ClassRegistry()
+
+__all__ = [
+    "Metric",
+    "ThresholdedMixin",
+    "MAEMetric",
+    "MSEMetric",
+    "RMSEMetric",
+    "BoundedMixin",
+    "BoundedMAEMetric",
+    "BoundedMSEMetric",
+    "BoundedRMSEMetric",
+    "R2Metric",
+    "AUROCMetric",
+    "AUPRCMetric",
+    "AccuracyMetric",
+    "F1Metric",
+    "BCEMetric",
+    "CrossEntropyMetric",
+    "BinaryMCCMetric",
+    "MulticlassMCCMetric",
+    "SIDMetric",
+    "WassersteinMetric",
+]
 
 
 class Metric(LossFunction):

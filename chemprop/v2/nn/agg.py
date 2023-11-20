@@ -12,14 +12,14 @@ class Aggregation(ABC, nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
     a batch of graph-level representations
 
-    **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
-    concrete subclasses.
+    .. note::
+        this class is abstract and cannot be instantiated.
 
     See also
     --------
-    :class:`chemprop.v2.models.modules.agg.MeanAggregation`
-    :class:`chemprop.v2.models.modules.agg.SumAggregation`
-    :class:`chemprop.v2.models.modules.agg.NormAggregation`
+    :class:`~chemprop.v2.models.modules.agg.MeanAggregation`
+    :class:`~chemprop.v2.models.modules.agg.SumAggregation`
+    :class:`~chemprop.v2.models.modules.agg.NormAggregation`
     """
 
     def __init__(self, dim: int = 0, *args, **kwargs):
@@ -53,7 +53,7 @@ class Aggregation(ABC, nn.Module, HasHParams):
 
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
-    r"""Average the graph-level representation
+    r"""Average the graph-level representation:
 
     .. math::
         \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
@@ -65,7 +65,7 @@ class MeanAggregation(Aggregation):
 
 @AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
-    r"""Sum the graph-level representation
+    r"""Sum the graph-level representation:
 
     .. math::
         \mathbf h = \sum_{v \in V} \mathbf h_v
@@ -78,7 +78,7 @@ class SumAggregation(Aggregation):
 
 @AggregationRegistry.register("norm")
 class NormAggregation(SumAggregation):
-    r"""Sum the graph-level representation and divide by a normalization constant
+    r"""Sum the graph-level representation and divide by a normalization constant:
 
     .. math::
         \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v

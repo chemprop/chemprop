@@ -9,6 +9,25 @@ from chemprop.v2.utils import ClassRegistry, ReprMixin
 
 LossFunctionRegistry = ClassRegistry()
 
+__all__ = [
+    "LossFunction",
+    "MSELoss",
+    "BoundedMSELoss",
+    "MVELoss",
+    "EvidentialLoss",
+    "BCELoss",
+    "CrossEntropyLoss",
+    "MccMixin",
+    "BinaryMCCLoss",
+    "MulticlassMCCLoss",
+    "DirichletMixin",
+    "BinaryDirichletLoss",
+    "MulticlassDirichletLoss",
+    "_ThresholdMixin",
+    "SIDLoss",
+    "WassersteinLoss",
+]
+
 
 class LossFunction(ABC, ReprMixin):
     def __call__(
