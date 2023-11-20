@@ -157,7 +157,9 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer())
+    featurizer: MoleculeMolGraphFeaturizerProto = field(
+        default_factory=MoleculeMolGraphFeaturizer()
+    )
 
     def __post_init__(self):
         if self.data is None:
@@ -299,9 +301,7 @@ class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizerProto = field(
-        default_factory=CGRFeaturizer
-    )
+    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):

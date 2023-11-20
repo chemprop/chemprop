@@ -32,7 +32,7 @@ def datum_2():
         V=np.array([[4.0], [5.0]]),
         E=np.array([[2.5]]),
         edge_index=np.array([[0, 1], [1, 0]]),
-        rev_edge_index=np.array([1, 0])
+        rev_edge_index=np.array([1, 0]),
     )
     return Datum(
         mol_graph2,

@@ -23,9 +23,7 @@ class MulticomponentMessagePassing(nn.Module):
         block will be learned for each component.
     """
 
-    def __init__(
-        self, blocks: Sequence[MessagePassing], n_components: int, shared: bool = False
-    ):
+    def __init__(self, blocks: Sequence[MessagePassing], n_components: int, shared: bool = False):
         super().__init__()
 
         if len(blocks) == 0:

@@ -6,7 +6,6 @@ from chemprop.v2.utils import ClassRegistry
 from chemprop.v2.nn.hparams import HasHParams
 
 
-
 class Aggregation(ABC, nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
     a batch of graph-level representations
