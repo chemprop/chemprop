@@ -128,11 +128,11 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
-        X_v = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
-        X_e = []
+        V = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
+        E = []
         edge_index = [[], []]
 
-        n_atoms_tot = len(X_v)
+        n_atoms_tot = len(V)
         n_atoms_reac = reac.GetNumAtoms()
 
         i = 0
@@ -145,17 +145,17 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
                     continue
 
                 x_e = self._calc_edge_feature(b_reac, b_pdt)
-                X_e.extend([x_e, x_e])
+                E.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
 
                 i += 2
 
-        X_e = np.array(X_e)
-        rev_edge_index = np.arange(len(X_e)).reshape(-1, 2)[:, ::-1].ravel()
+        E = np.array(E)
+        rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
 
-        return MolGraph(X_v, X_e, edge_index, rev_edge_index)
+        return MolGraph(V, E, edge_index, rev_edge_index)
 
     def _calc_node_feature_matrix(
         self,

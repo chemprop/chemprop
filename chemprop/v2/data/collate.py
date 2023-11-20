@@ -2,7 +2,6 @@ from dataclasses import dataclass, field, InitVar
 from typing import Iterable, Sequence
 
 import numpy as np
-from rdkit import Chem
 import torch
 from torch import Tensor
 
@@ -69,70 +68,6 @@ class BatchMolGraph:
         self.edge_index = self.edge_index.to(device)
         self.rev_edge_index = self.rev_edge_index.to(device)
         self.batch = self.batch.to(device)
-
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
-        super().__post_init__()
-
-        self.atom_fdim += extra_atom_fdim
-        self.bond_fdim += extra_bond_fdim
-
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        n_atoms = mol.GetNumAtoms()
-        n_bonds = mol.GetNumBonds()
-
-        if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
-            raise ValueError(
-                "Input molecule must have same number of atoms as `len(atom_features_extra)`!"
-                f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
-            )
-        if bond_features_extra is not None and len(bond_features_extra) != n_bonds:
-            raise ValueError(
-                "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
-                f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
-            )
-
-        X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
-        X_e = np.empty((2 * n_bonds, self.bond_fdim))
-        edge_index = [[], []]
-
-        if atom_features_extra is not None:
-            X_v = np.hstack((X_v, atom_features_extra))
-
-        i = 0
-        for u in range(n_atoms):
-            for v in range(u + 1, n_atoms):
-                bond = mol.GetBondBetweenAtoms(u, v)
-                if bond is None:
-                    continue
-
-                x_e = self.bond_featurizer(bond)
-                if bond_features_extra is not None:
-                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
-
-                X_e[i : i + 2] = x_e
-
-                edge_index[0].extend([u, v])
-                edge_index[1].extend([v, u])
-
-                i += 2
-
-        rev_edge_index = np.arange(len(X_e)).reshape(-1, 2)[:, ::-1].ravel()
-        edge_index = np.array(edge_index, int)
-
-        return MolGraph(X_v, X_e, edge_index, rev_edge_index)
-
-    def to(self, device: str | torch.device):
-        self.V = self.V.to(device)
-        self.E = self.E.to(device)
-        self.a2b = self.a2b.to(device)
-        self.b2a = self.b2a.to(device)
-        self.b2revb = self.b2revb.to(device)
-        self.a2a = self.a2a.to(device)
 
 
 TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
