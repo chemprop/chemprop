@@ -1,14 +1,14 @@
-import torch
-from pathlib import Path
+from os import PathLike
 
-from lightning.pytorch.utilities.parsing import AttributeDict
 from lightning.pytorch import __version__
+from lightning.pytorch.utilities.parsing import AttributeDict
+import torch
 
-from chemprop.v2.models.metrics import MetricRegistry
-from chemprop.v2.models.modules.agg import AggregationRegistry
-from chemprop.v2.models.modules.readout import ReadoutRegistry
-from chemprop.v2.models.loss import LossFunctionRegistry
-from chemprop.v2.models.modules.message_passing.molecule import BondMessageBlock, AtomMessageBlock
+from chemprop.v2.nn.metrics import MetricRegistry
+from chemprop.v2.nn.agg import AggregationRegistry
+from chemprop.v2.nn.readout import ReadoutRegistry
+from chemprop.v2.nn.loss import LossFunctionRegistry
+from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -125,7 +125,7 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     return model_v2_dict
 
 
-def convert_model_file_v1_to_v2(model_v1_file: str | Path, model_v2_file: str | Path) -> None:
+def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
     """Converts a v1 model .pt file to a v2 model .ckpt file"""
 
     model_v1_dict = torch.load(model_v1_file)

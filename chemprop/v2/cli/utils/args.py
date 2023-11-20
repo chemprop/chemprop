@@ -25,6 +25,7 @@ def bounded(lo: float | None = None, hi: float | None = None):
 
     return decorator
 
+
 def uppercase(x: str):
     return x.upper()
 

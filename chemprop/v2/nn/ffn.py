@@ -3,7 +3,7 @@ from typing import Protocol
 
 from torch import nn, Tensor
 
-from chemprop.v2.models.utils import get_activation_function
+from chemprop.v2.nn.utils import get_activation_function
 
 
 class _FFNProto(Protocol):
@@ -23,7 +23,7 @@ class FFN(nn.Module, _FFNProto):
 
 class SimpleFFN(FFN):
     r"""A :class:`SimpleFFN` is a simple FFN that implements the following function:
-     
+
     .. math::
         \mathbf H_0 &= \mathbf X\,\mathbf W_0 + \mathbf b_0 \\
         \mathbf H_l &= \mathtt{dropout} \left(

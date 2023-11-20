@@ -63,13 +63,17 @@ def split_data(
         Unsupported split method requested
     """
     if (num_splits := len(sizes)) != 3:
-        raise RuntimeError(f"Specify sizes for train, validation, and test (got {num_splits} values).")
+        raise RuntimeError(
+            f"Specify sizes for train, validation, and test (got {num_splits} values)."
+        )
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
     mol_split_fun = train_val_test_split_molecules
     # default sampling arguments for astartes sampler
-    astartes_kwargs = dict(train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed)
+    astartes_kwargs = dict(
+        train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed
+    )
     # if no validation set, reassign the splitting functions
     if sizes[1] == 0.0:
         include_val = False
@@ -82,7 +86,9 @@ def split_data(
     match SplitType.get(split):
         case SplitType.CV_NO_VAL, SplitType.CV:
             if (max_folds := len(datapoints)) > num_folds or num_folds <= 1:
-                raise ValueError(f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds}).")
+                raise ValueError(
+                    f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
+                )
 
             train, val, test = [], [], []
             for _ in range(len(num_folds)):
@@ -100,7 +106,9 @@ def split_data(
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
                 mols_without_atommaps.append(copied_mol)
-            result = mol_split_fun(np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs)
+            result = mol_split_fun(
+                np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs
+            )
             train, val, test = _unpack_astartes_result(datapoints, result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.
@@ -119,9 +127,24 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)]
-            val = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)]
-            test = [datapoints[ii] for ii in itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)]
+            train = [
+                datapoints[ii]
+                for ii in itertools.chain.from_iterable(
+                    smiles_indices[unique_smiles[i]] for i in train_idxs
+                )
+            ]
+            val = [
+                datapoints[ii]
+                for ii in itertools.chain.from_iterable(
+                    smiles_indices[unique_smiles[i]] for i in val_idxs
+                )
+            ]
+            test = [
+                datapoints[ii]
+                for ii in itertools.chain.from_iterable(
+                    smiles_indices[unique_smiles[i]] for i in test_idxs
+                )
+            ]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)

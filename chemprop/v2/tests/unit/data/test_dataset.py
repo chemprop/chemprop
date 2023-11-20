@@ -96,13 +96,12 @@ def test_num_tasks(dataset, targets):
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert np.isnan(dataset.X_f).all()
-    # assert dataset.X_phase is None # there's no attribute in dataset that is relevant to phase?
-    np.testing.assert_array_equal(dataset.X_f, np.nan)  # .all()
-    np.testing.assert_array_equal(dataset.V_fs, np.nan)  # .all()
-    np.testing.assert_array_equal(dataset.E_fs, np.nan)  # .all()
-    np.testing.assert_array_equal(dataset.gt_mask, None)  # .all()
-    np.testing.assert_array_equal(dataset.lt_mask, None)  # .all()
+    np.testing.assert_array_equal(dataset.X_f, None)
+    np.testing.assert_array_equal(dataset.X_f, None)
+    np.testing.assert_array_equal(dataset.V_fs, None)
+    np.testing.assert_array_equal(dataset.E_fs, None)
+    np.testing.assert_array_equal(dataset.gt_mask, None)
+    np.testing.assert_array_equal(dataset.lt_mask, None)
     assert dataset.d_vd == 0
     assert dataset.d_vf == 0
     assert dataset.d_ef == 0

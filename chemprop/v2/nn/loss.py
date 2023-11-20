@@ -5,8 +5,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.utils import ReprMixin
-from chemprop.v2.utils.registry import ClassRegistry
+from chemprop.v2.utils import ClassRegistry, ReprMixin
 
 LossFunctionRegistry = ClassRegistry()
 
@@ -199,7 +198,7 @@ class MulticlassMCCLoss(LossFunction, MccMixin):
         s2 = s.square()
 
         # the `einsum` calls amount to calculating the batched dot product
-        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t) .sum()
+        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t).sum()
         cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p).sum()
         cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t).sum()
 

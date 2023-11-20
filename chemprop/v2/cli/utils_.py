@@ -8,10 +8,12 @@ import numpy as np
 
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
-from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers.reaction import CondensedGraphOfReactionFeaturizer
-from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
+from chemprop.v2.featurizers.molgraph import (
+    MoleculeMolGraphFeaturizerProto,
+    CondensedGraphOfReactionFeaturizer,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +122,6 @@ def make_datapoints(
     mfs = [MoleculeFeaturizerRegistry.get(features_generators)()] if features_generators else None
 
     if reaction:
-
         data = [
             ReactionDatapoint.from_smi(
                 smis[i],
@@ -188,7 +189,7 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
-    weights  = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
+    weights = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
@@ -213,14 +214,16 @@ def make_dataset(
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-        featurizer = MoleculeMolGraphFeaturizer(
+        featurizer = MoleculeMolGraphFeaturizerProto(
             bond_messages=bond_messages,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(bond_messages=bond_messages, mode_=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(
+        bond_messages=bond_messages, mode_=reaction_mode
+    )
 
     return ReactionDataset(data, featurizer)
 

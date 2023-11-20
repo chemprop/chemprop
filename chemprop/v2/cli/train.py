@@ -8,29 +8,24 @@ import warnings
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
-import numpy as np
 import torch
 
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MetricRegistry
-from chemprop.v2.featurizers.reaction import RxnMode
-from chemprop.v2.models.loss import LossFunctionRegistry
-from chemprop.v2.models.model import MPNN
-from chemprop.v2.models.modules.agg import AggregationRegistry
-from chemprop.v2.models.utils import Activation
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+from chemprop.v2.utils import Factory
+from chemprop.v2.models import MPNN
+from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, Activation
+from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
 from chemprop.v2.cli.utils import Subcommand, LookupAction
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
-from chemprop.v2.models.modules.message_passing.molecule import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.models.modules.readout import ReadoutRegistry, RegressionFFN
 from chemprop.v2.utils.registry import Factory
-
 from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
-
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.v2.cli.utils import Subcommand, RegistryAction, column_str_to_int
+from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -264,9 +259,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-weights-path",
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
-    data_args.add_argument(
-        "--separate-val-path", help="Path to separate val set, optional."
-    )
+    data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
         "--separate-val-features-path",
         type=list[str],
@@ -294,9 +287,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     data_args.add_argument(
-        "--separate-test-path",
-        default=None,
-        help="Path to separate test set, optional.",
+        "--separate-test-path", default=None, help="Path to separate test set, optional."
     )
     data_args.add_argument(
         "--separate-test-features-path",
@@ -432,8 +423,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
     )
     split_args.add_argument(
-        "--crossval-index-dir",
-        help="Directory in which to find cross validation index files.",
+        "--crossval-index-dir", help="Directory in which to find cross validation index files."
     )
     split_args.add_argument(
         "--crossval-index-file",

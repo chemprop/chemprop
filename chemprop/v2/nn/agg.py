@@ -4,8 +4,7 @@ from typing import Sequence
 import torch
 from torch import Tensor, nn
 
-from chemprop.v2.utils import ClassRegistry
-from chemprop.v2.models.hparams import HasHParams
+from chemprop.v2.utils import HasHParams, ClassRegistry
 
 AggregationRegistry = ClassRegistry()
 

@@ -1,5 +1,5 @@
 """Global configuration variables for chemprop"""
-from chemprop.v2.featurizers.molecule import MoleculeMolGraphFeaturizer
+from chemprop.v2.featurizers.molgraph import MoleculeMolGraphFeaturizer
 
 
 DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM = MoleculeMolGraphFeaturizer().shape

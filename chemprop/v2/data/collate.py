@@ -1,32 +1,12 @@
-from dataclasses import InitVar, dataclass, field
-from typing import NamedTuple, Sequence
+from dataclasses import dataclass, field, InitVar
+from typing import Iterable, Sequence
 
 import numpy as np
 import torch
+from torch import Tensor
 
-
-class MolGraph(NamedTuple):
-    """A :class:`MolGraph` represents the graph featurization of a molecule."""
-
-    n_atoms: int
-    """the number of atoms in the molecule"""
-    n_bonds: int
-    """the number of bonds in the molecule"""
-    V: np.ndarray
-    """an array of shape `V x d_v` containing the atom features of the molecule"""
-    E: np.ndarray
-    """an array of shape `E x d_e` containing the bond features of the molecule"""
-    a2b: list[tuple[int]]
-    """A list of length `V` that maps from an atom index to a list of incoming bond indices."""
-    b2a: list[int]
-    """A list of length `E` that maps from a bond index to the index of the atom the bond
-    originates from."""
-    b2revb: np.ndarray
-    """A list of length `E` that maps from a bond index to the index of the reverse bond."""
-    a2a: list[int] | None
-    """a mapping from atom index to the indices of connected atoms"""
-    b2b: np.ndarray | None
-    """a mapping from bond index to the indices of connected bonds"""
+from chemprop.v2.data.datasets import Datum
+from chemprop.v2.featurizers.molgraph import MolGraph
 
 
 @dataclass(repr=False, eq=False, slots=True)
@@ -45,19 +25,19 @@ class BatchMolGraph:
     """the number of atoms in the batched graph"""
     n_bonds: int = field(init=False)
     """the number of bonds in the batched graph"""
-    V: torch.Tensor = field(init=False)
+    V: Tensor = field(init=False)
     """the atom feature matrix"""
-    E: torch.Tensor = field(init=False)
+    E: Tensor = field(init=False)
     """the bond feature matrix"""
-    a2b: torch.Tensor = field(init=False)
+    a2b: Tensor = field(init=False)
     """a mapping from atom index to indices of incoming bonds"""
-    b2a: torch.Tensor = field(init=False)
+    b2a: Tensor = field(init=False)
     """a mapping from bond index to index of the originating atom"""
-    b2revb: torch.Tensor = field(init=False)
+    b2revb: Tensor = field(init=False)
     """A mapping from bond index to the index of the reverse bond."""
-    a2a: torch.Tensor | None = field(init=False)
+    a2a: Tensor | None = field(init=False)
     """a mapping from atom index to the indices of connected atoms"""
-    b2b: torch.Tensor | None = field(init=False, default=None)
+    b2b: Tensor | None = field(init=False, default=None)
     """a mapping from bond index to the indices of connected bonds"""
     a_scope: list[int] = field(init=False)
     """the number of atoms for each molecule in the batch"""
@@ -116,3 +96,37 @@ class BatchMolGraph:
         self.b2a = self.b2a.to(device)
         self.b2revb = self.b2revb.to(device)
         self.a2a = self.a2a.to(device)
+
+
+TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
+MulticomponentTrainingBatch = tuple[
+    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
+]
+
+
+def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
+    mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = zip(*batch)
+
+    return (
+        BatchMolGraph(mgs),
+        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
+        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
+        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        torch.tensor(weights).unsqueeze(1),
+        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
+        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
+    )
+
+
+def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> MulticomponentTrainingBatch:
+    tbs = [collate_batch(batch) for batch in zip(*batches)]
+
+    return MulticomponentTrainingBatch(
+        [tb.bmg for tb in tbs],
+        [tb.V_d for tb in tbs],
+        tbs[0].X_f,
+        tbs[0].Y,
+        tbs[0].w,
+        tbs[0].lt_mask,
+        tbs[0].gt_mask,
+    )
