@@ -38,14 +38,14 @@ def mp(request):
 
 @pytest.fixture
 def dataloader(data):
-    featurizer = featurizers.MolGraphFeaturizer()
+    featurizer = featurizers.MoleculeMolGraphFeaturizer()
     dset = MoleculeDataset(data, featurizer)
     dset.normalize_targets()
 
     return DataLoader(dset, 20, collate_fn=collate_batch)
 
 
-def test_integration(mp, dataloader):
+def test_quick(mp, dataloader):
     agg = nn.MeanAggregation()
     ffn = nn.RegressionFFN()
     mpnn = models.MPNN(mp, agg, ffn, True)
@@ -62,7 +62,7 @@ def test_integration(mp, dataloader):
     trainer.fit(mpnn, dataloader, None)
 
 
-def test_overfitting(mp, dataloader):
+def test_overfit(mp, dataloader):
     agg = nn.MeanAggregation()
     ffn = nn.RegressionFFN()
     mpnn = models.MPNN(mp, agg, ffn, True)

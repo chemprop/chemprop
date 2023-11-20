@@ -67,8 +67,6 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
 
         self.atom_fdim += extra_atom_fdim
         self.bond_fdim += extra_bond_fdim
-        if self.bond_messages:
-            self.bond_fdim += self.atom_fdim
 
     def __call__(
         self,
