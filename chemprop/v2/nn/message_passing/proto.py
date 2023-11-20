@@ -3,11 +3,7 @@ from typing import Protocol
 from torch import nn, Tensor
 
 from chemprop.v2.data import BatchMolGraph
-<<<<<<<< HEAD:chemprop/v2/nn/message_passing/proto.py
-from chemprop.v2.nn.hparams import HasHParams
-========
 from chemprop.v2.utils.hparams import HasHParams
->>>>>>>> 523fa860296ef4142456067df36d675bf0a0e719:chemprop/v2/nn/message_passing/base.py
 
 
 class MessagePassingProto(Protocol):
