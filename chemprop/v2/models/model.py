@@ -43,8 +43,6 @@ class MPNN(pl.LightningModule):
         the weights to use for each task during training. If `None`, use uniform weights
     warmup_epochs : int, default=2
         the number of epochs to use for the learning rate warmup
-    # num_lrs : int, default=1
-    #     the number of learning rates to use during training
     init_lr : int, default=1e-4
         the initial learning rate
     max_lr : float, default=1e-3
@@ -68,18 +66,12 @@ class MPNN(pl.LightningModule):
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
         warmup_epochs: int = 2,
-        # num_lrs: int = 1,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
     ):
-        if message_passing.output_dim != readout.input_dim:
-            raise ValueError(
-                f"Message passing output dimension ({message_passing.output_dim}) "
-                f"does not match readout input dimension ({readout.input_dim})!"
-            )
-
         super().__init__()
+
         self.save_hyperparameters(ignore=["message_passing", "agg", "readout"])
         self.hparams.update(
             {
@@ -95,12 +87,15 @@ class MPNN(pl.LightningModule):
         self.readout = readout
 
         # NOTE(degraff): should think about how to handle no supplied metric
-        self.metrics = [*metrics, self.criterion] if metrics else [self.criterion]
+        self.metrics = (
+            [*metrics, self.criterion]
+            if metrics
+            else [self.readout._default_metric, self.criterion]
+        )
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
         self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 
         self.warmup_epochs = warmup_epochs
-        # self.num_lrs = num_lrs
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
@@ -212,7 +207,7 @@ class MPNN(pl.LightningModule):
         lr_sched = NoamLR(
             opt,
             self.warmup_epochs,
-            self.trainer.max_epochs,  # * self.num_lrs,
+            self.trainer.max_epochs,
             self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
             self.init_lr,
             self.max_lr,

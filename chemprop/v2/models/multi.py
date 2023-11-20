@@ -19,7 +19,6 @@ class MulticomponentMPNN(MPNN):
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
         warmup_epochs: int = 2,
-        # num_lrs: int = 1,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,

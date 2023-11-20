@@ -1,33 +1,35 @@
 from __future__ import annotations
 
-from enum import Enum
-from typing import Iterable
+from enum import StrEnum
+from typing import Iterable, Iterator
 
 from rdkit import Chem
 
 
-class AutoName(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name.lower()
-
-    def __str__(self) -> str:
-        return self.value
-
+class EnumMapping(StrEnum):
     @classmethod
-    def get(cls, name: str | AutoName) -> AutoName:
+    def get(cls, name: str | EnumMapping) -> EnumMapping | None:
         if isinstance(name, cls):
             return name
 
         try:
             return cls[name.upper()]
         except KeyError:
-            raise ValueError(
-                f"Unsupported {cls.__name__} alias! got: '{name}'. expected one of: {cls.keys()}"
+            raise KeyError(
+                f"Unsupported {cls.__name__} member! got: '{name}'. expected one of: {cls.keys()}"
             )
 
     @classmethod
-    def keys(cls) -> set[str]:
-        return {e.value for e in cls}
+    def keys(cls) -> Iterator[str]:
+        return (e.name for e in cls)
+
+    @classmethod
+    def values(cls) -> Iterator[str]:
+        return (e.value for e in cls)
+
+    @classmethod
+    def items(cls) -> Iterator[tuple[str, str]]:
+        return zip(cls.keys(), cls.values())
 
 
 def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:

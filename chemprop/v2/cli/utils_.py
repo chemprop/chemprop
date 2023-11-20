@@ -1,5 +1,6 @@
 import csv
 import logging
+import pandas as pd
 from os import PathLike
 from typing import Mapping, Optional, Sequence, Type
 
@@ -7,8 +8,13 @@ import numpy as np
 
 from chemprop.v2 import models
 from chemprop.v2.data.datapoints import MoleculeDatapoint, _DatapointMixin, ReactionDatapoint
-from chemprop.v2.data.datasets import _MolGraphDatasetMixin, MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers import RxnMolGraphFeaturizer, MolGraphFeaturizer
+from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
+from chemprop.v2.featurizers.molgraph import (
+    MoleculeMolGraphFeaturizer,
+    CondensedGraphOfReactionFeaturizer,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +43,7 @@ def parse_data_csv(
             task_names = [header[i] for i in target_cols]
             logger.info(f"Parsed tasks: {task_names}")
         else:
-            target_cols = target_cols or [1]
+            target_cols = [1] if target_cols is None else target_cols
             task_names = [f"task_{i}" for i in target_cols]
             # smiles_names = [f"smiles_{i}" for i in smiles_cols]
 
@@ -97,15 +103,15 @@ def parse_data_csv(
 def make_datapoints(
     smis: list[str],
     targetss: np.ndarray,
-    weights: Optional[np.ndarray],
-    gt_targetss: Optional[np.ndarray],
-    lt_targetss: Optional[np.ndarray],
-    featuress: Optional[np.ndarray],
-    atom_features: Optional[np.ndarray],
-    bond_features: Optional[np.ndarray],
-    atom_descriptors: Optional[np.ndarray],
+    weights: np.ndarray | None,
+    gt_targetss: np.ndarray | None,
+    lt_targetss: np.ndarray | None,
+    featuress: np.ndarray | None,
+    atom_features: np.ndarray | None,
+    bond_features: np.ndarray | None,
+    atom_descriptors: np.ndarray | None,
     features_generators: Optional[str],
-    explicit_h: bool,
+    keep_h: bool,
     add_h: bool,
     reaction: bool,
 ) -> list[_DatapointMixin]:
@@ -113,26 +119,23 @@ def make_datapoints(
     gt_targetss = [None] * len(smis) if gt_targetss is None else gt_targetss
     lt_targetss = [None] * len(smis) if lt_targetss is None else lt_targetss
     featuress = [None] * len(smis) if featuress is None else featuress
+    mfs = [MoleculeFeaturizerRegistry.get(features_generators)()] if features_generators else None
 
     if reaction:
-        rxns = [smi.split(">") for smi in smis]
-        rxns = [(".".join(r, a), p) if a else (r, p) for r, a, p in rxns]
-
         data = [
-            ReactionDatapoint(
-                rxns[i],
+            ReactionDatapoint.from_smi(
+                smis[i],
+                keep_h,
+                add_h,
                 targetss[i],
-                None,
                 weights[i],
                 gt_targetss[i],
                 lt_targetss[i],
-                next(featuress),
-                features_generators,
+                featuress[i],
+                mfs,
                 None,
-                explicit_h,
-                add_h,
             )
-            for i in range(len(rxns))
+            for i in range(len(smis))
         ]
     else:
         if atom_features is None:
@@ -145,17 +148,16 @@ def make_datapoints(
             atom_descriptors = [None] * (len(smis))
 
         data = [
-            MoleculeDatapoint(
+            MoleculeDatapoint.from_smi(
                 smis[i],
                 targetss[i],
-                None,
                 weights[i],
                 gt_targetss[i],
                 lt_targetss[i],
                 featuress[i],
-                features_generators,
+                mfs,
                 None,
-                explicit_h,
+                keep_h,
                 add_h,
                 atom_features[i],
                 bond_features[i],
@@ -177,6 +179,7 @@ def build_data_from_files(
     p_atom_feats: PathLike,
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
+    data_weights_path: PathLike,
     **featurization_kwargs: Mapping,
 ) -> list[_DatapointMixin]:
     smiss, targetss, gt_targetss, lt_targetss = parse_data_csv(
@@ -186,12 +189,13 @@ def build_data_from_files(
     atom_featss = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
     bond_featss = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
     atom_descss = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    weights = pd.read_csv(data_weights_path, header=None).values if data_weights_path else None
 
     smis = [smis[0] for smis in smiss]  # only use 0th input for now
     data = make_datapoints(
         smis,
         targetss,
-        None,
+        weights,
         gt_targetss,
         lt_targetss,
         featuress,
@@ -210,40 +214,42 @@ def make_dataset(
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-        featurizer = MolGraphFeaturizer(
+        featurizer = MoleculeMolGraphFeaturizer(
             bond_messages=bond_messages,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = RxnMolGraphFeaturizer(bond_messages=bond_messages, mode=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(
+        bond_messages=bond_messages, mode_=reaction_mode
+    )
 
     return ReactionDataset(data, featurizer)
 
 
-def get_mpnn_cls(dataset_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
-    if dataset_type == "regression":
+def get_mpnn_cls(task_type: str, loss_function: Optional[str] = None) -> Type[models.MPNN]:
+    if task_type == "regression":
         if loss_function == "mve":
             return models.MveRegressionMPNN
         elif loss_function == "evidential":
             return models.EvidentialMPNN
         elif loss_function in ("bounded", "mse", None):
             return models.RegressionMPNN
-    elif dataset_type == "classification":
+    elif task_type == "classification":
         if loss_function == "dirichlet":
             return models.DirichletClassificationMPNN
         elif loss_function in ("mcc", "bce", None):
             return models.BinaryClassificationMPNN
-    elif dataset_type == "multiclass":
+    elif task_type == "multiclass":
         if loss_function == "dirichlet":
             return models.DirichletMulticlassMPNN
         elif loss_function in ("mcc", "ce", None):
             return models.MulticlassMPNN
-    elif dataset_type == "spectral":
+    elif task_type == "spectral":
         if loss_function in ("sid", "wasserstein", None):
             return models.SpectralMPNN
 
     raise ValueError(
-        f"Incompatible dataset type ('{dataset_type}') and loss function ('{loss_function}')!"
+        f"Incompatible dataset type ('{task_type}') and loss function ('{loss_function}')!"
     )

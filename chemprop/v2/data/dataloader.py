@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 
-from chemprop.v2.data.collate import collate_batch
-from chemprop.v2.data.datasets import MoleculeDataset
+from chemprop.v2.data.collate import collate_batch, collate_multicomponent
+from chemprop.v2.data.datasets import MoleculeDataset, MulticomponentDataset, ReactionDataset
 from chemprop.v2.data.samplers import ClassBalanceSampler, SeededSampler
 
 
@@ -29,7 +29,7 @@ class MolGraphDataLoader(DataLoader):
 
     def __init__(
         self,
-        dataset: MoleculeDataset,
+        dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
         batch_size: int = 50,
         num_workers: int = 0,
         class_balance: bool = False,
@@ -44,12 +44,16 @@ class MolGraphDataLoader(DataLoader):
         else:
             sampler = None
 
+        if isinstance(dataset, MulticomponentDataset):
+            collate_fn = collate_multicomponent
+        else:
+            collate_fn = collate_batch
+
         super().__init__(
             dataset,
             batch_size,
             sampler is None and shuffle,
             sampler,
             num_workers=num_workers,
-            collate_fn=collate_batch,
-            **kwargs,
+            collate_fn=collate_fn,
         )

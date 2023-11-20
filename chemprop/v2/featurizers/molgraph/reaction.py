@@ -7,12 +7,12 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
-from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
-from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.utils import AutoName
+from chemprop.v2.featurizers.molgraph.molgraph import MolGraph
+from chemprop.v2.featurizers.molgraph.mixins import MolGraphFeaturizerMixin
+from chemprop.v2.utils.utils import EnumMapping
 
 
-class RxnMode(AutoName):
+class RxnMode(EnumMapping):
     """The mode by which a reaction should be featurized into a `MolGraph`"""
 
     REAC_PROD = auto()
@@ -83,7 +83,7 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
         molecule
     bond_messages : bool, default=True
         whether to prepare the `MolGraph`s for use with bond-based message-passing
-    mode : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
+    mode_ : Union[str, ReactionMode], default=ReactionMode.REAC_DIFF
         the mode by which to featurize the reaction as either the string code or enum value
 
     References
@@ -338,3 +338,6 @@ class CondensedGraphOfReactionFeaturizer(MolGraphFeaturizerMixin, RxnMolGraphFea
                 rct_idxs.append(i)
 
         return r2p_idx_map, pdt_idxs, rct_idxs
+
+
+CGRFeaturizer = CondensedGraphOfReactionFeaturizer
