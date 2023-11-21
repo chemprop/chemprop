@@ -316,30 +316,68 @@ class TestCondensedGraphOfReactionFeaturizer:
             len(featurizer.bond_featurizer) * 2,
         )
 
-    # @pytest.mark.parametrize(
-    #     "reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds",
-    #     zip(
-    #         rxn_smis,
-    #         reac_prod_maps,
-    #         AVAILABLE_RXN_MODE_NAMES[1::2] * 2,
-    #         elements_from_get_bond_is_None_balanced,
-    #     ),
-    #     indirect=["reac_prod_mols", "cgr_featurizer"],
-    # )
-    # def test_featurize(self, reac_prod_mols, reac_prod_maps, cgr_featurizer, expected_bonds):
-    #     """
-    #     Test that the get_bonds method returns the correct bonds when modes are balanced.
-    #     """
-    #     molgraph = cgr_featurizer(reac_prod_mols)
-    #     ri2pj, pids, rids = reac_prod_maps
+    @pytest.mark.parametrize("rxn_smi, rxn_mode,", zip(rxn_smis, AVAILABLE_RXN_MODE_BALANCED * 2))
+    def test_featurize_balanced(self, rxn_smi, rxn_mode):
+        """
+        Test CGR featurizer returns the correct features with balanced modes.
+        """
+        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        reac, prod = get_reac_prod(rxn_smi)
+        ri2pj, pids, rids = featurizer.map_reac_to_prod(reac, prod)
 
-    #     expected_bonds = [
-    #         list(bond_pair)
-    #         for bond_pair, expect_to_be_None in expected_bonds.items()
-    #         if expect_to_be_None != (True, True)
-    #     ]
+        molgraph = featurizer((reac, prod))
 
-    #     assert molgraph.V.shape == (molgraph.n_atoms, cgr_featurizer.atom_fdim)
-    #     assert molgraph.E.shape == (molgraph.n_bonds, cgr_featurizer.bond_fdim)
-    #     assert molgraph.b2a == sum(sorted(expected_bonds), [])
-    #     assert molgraph.b2revb == sum([[i + 1, i] for i in range(0, molgraph.n_bonds, 2)], [])
+        n_atoms = len(ri2pj) + len(pids) + len(rids)
+        atom_fdim = featurizer.atom_fdim
+
+        assert molgraph.V.shape == (n_atoms, atom_fdim)
+
+        bonds = [
+            b.bond
+            for b in bond_expect_balanced[rxn_smi]
+            if not (b.bond_reac_none and b.bond_prod_none)
+        ]
+        bond_fdim = featurizer.bond_fdim
+
+        assert molgraph.E.shape == (len(bonds) * 2, bond_fdim)
+
+        expect_edge_index = []
+        expect_rev_edge_index = []
+        for i, bond in enumerate(bonds):
+            expect_edge_index.extend([bond, bond[::-1]])
+            expect_rev_edge_index.extend([i * 2 + 1, i * 2])
+        assert np.array_equal(molgraph.edge_index, expect_edge_index)
+        assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
+
+    @pytest.mark.parametrize("rxn_smi, rxn_mode,", zip(rxn_smis, AVAILABLE_RXN_MODE_IMBALANCED * 2))
+    def test_featurize_imbalanced(self, rxn_smi, rxn_mode):
+        """
+        Test CGR featurizer returns the correct features with balanced modes.
+        """
+        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        reac, prod = get_reac_prod(rxn_smi)
+        ri2pj, pids, rids = featurizer.map_reac_to_prod(reac, prod)
+
+        molgraph = featurizer((reac, prod))
+
+        n_atoms = len(ri2pj) + len(pids) + len(rids)
+        atom_fdim = featurizer.atom_fdim
+
+        assert molgraph.V.shape == (n_atoms, atom_fdim)
+
+        bonds = [
+            b.bond
+            for b in bond_expect_imbalanced[rxn_smi]
+            if not (b.bond_reac_none and b.bond_prod_none)
+        ]
+        bond_fdim = featurizer.bond_fdim
+
+        assert molgraph.E.shape == (len(bonds) * 2, bond_fdim)
+
+        expect_edge_index = []
+        expect_rev_edge_index = []
+        for i, bond in enumerate(bonds):
+            expect_edge_index.extend([bond, bond[::-1]])
+            expect_rev_edge_index.extend([i * 2 + 1, i * 2])
+        assert np.array_equal(molgraph.edge_index, expect_edge_index)
+        assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
