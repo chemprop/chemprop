@@ -34,13 +34,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-s",
         "--smiles-columns",
         nargs="+",
-        help="The columns in the input CSV containing SMILES strings. If unspecified, uses the the 0th column",
+        help="The columns in the input CSV containing SMILES strings. If unspecified, uses the the 0th column.",
     )
     data_args.add_argument(
         "-r",
         "--reaction-columns",
         nargs="+",
-        help="the columns in the input CSV containing reactions.",
+        help="The columns in the input CSV containing reactions.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
