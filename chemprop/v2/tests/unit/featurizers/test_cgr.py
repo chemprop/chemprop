@@ -17,8 +17,6 @@ AVAILABLE_RXN_MODE_NAMES = [
     "PROD_DIFF",
     "PROD_DIFF_BALANCE",
 ]
-AVAILABLE_RXN_MODE_IMBALANCED = AVAILABLE_RXN_MODE_NAMES[::2]
-AVAILABLE_RXN_MODE_BALANCED = AVAILABLE_RXN_MODE_NAMES[1::2]
 
 
 @pytest.fixture
@@ -28,6 +26,16 @@ def expected_aliases():
 
 @pytest.fixture(params=AVAILABLE_RXN_MODE_NAMES)
 def mode_name(request):
+    return request.param
+
+
+@pytest.fixture(params=AVAILABLE_RXN_MODE_NAMES[::2])
+def mode_imbalanced(request):
+    return request.param
+
+
+@pytest.fixture(params=AVAILABLE_RXN_MODE_NAMES[1::2])
+def mode_balanced(request):
     return request.param
 
 
@@ -61,6 +69,11 @@ reac_prod_maps = {
     "[CH4:1]>>[CH2:1].[H:2][H:3]": ({0: 0}, [1, 2], []),
     "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]": ({1: 0, 2: 1}, [], [0]),
 }
+
+
+@pytest.fixture(params=rxn_smis)
+def rxn_smi(request):
+    return request.param
 
 
 # whether elements in the returns for _get_bonds are Nones under imbalanced and balanced modes
@@ -220,15 +233,13 @@ class TestCondensedGraphOfReactionFeaturizer:
         featurizer = CGRFeaturizer(mode_=rxn_mode)
         assert featurizer.mode == rxn_mode
 
-    @pytest.mark.parametrize("rxn_smi, reac_prod_map", reac_prod_maps.items())
-    def test_map_reac_to_prod(self, rxn_smi, reac_prod_map):
+    def test_map_reac_to_prod(self, rxn_smi):
         """
         Test that the map_reac_to_prod method returns the correct mapping.
         """
         reac, prod = get_reac_prod(rxn_smi)
-        assert CGRFeaturizer.map_reac_to_prod(reac, prod) == reac_prod_map
+        assert CGRFeaturizer.map_reac_to_prod(reac, prod) == reac_prod_maps[rxn_smi]
 
-    @pytest.mark.parametrize("rxn_smi, mode_name", zip(rxn_smis, AVAILABLE_RXN_MODE_NAMES))
     def test_calc_node_feature_matrix_shape(self, rxn_smi, mode_name):
         """
         Test that the calc_node_feature_matrix method returns the correct node feature matrix.
@@ -244,7 +255,6 @@ class TestCondensedGraphOfReactionFeaturizer:
         assert num_nodes == len(ri2pj) + len(pids) + len(rids)
         assert atom_fdim == featurizer.atom_fdim
 
-    @pytest.mark.parametrize("rxn_smi, rxn_mode", zip(rxn_smis, AVAILABLE_RXN_MODE_NAMES))
     def test_calc_node_feature_matrix_atomic_number_features(self, rxn_smi, rxn_mode):
         """
         Test that the calc_node_feature_matrix method returns the correct feature matrix for the atomic number features.
@@ -267,34 +277,30 @@ class TestCondensedGraphOfReactionFeaturizer:
 
         np.testing.assert_equal(atomic_num_features, atomic_num_features_expected)
 
-    @pytest.mark.parametrize("rxn_smi, bonds_expect", bond_expect_imbalanced.items())
-    @pytest.mark.parametrize("rxn_mode", AVAILABLE_RXN_MODE_IMBALANCED)
-    def test_get_bonds_imbalanced(self, rxn_smi, rxn_mode, bonds_expect):
+    def test_get_bonds_imbalanced(self, rxn_smi, mode_imbalanced):
         """
         Test that the get_bonds method returns the correct bonds when modes are imbalanced.
         """
-        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        featurizer = CGRFeaturizer(mode_=mode_imbalanced)
         reac, prod = get_reac_prod(rxn_smi)
         ri2pj, pids, _ = featurizer.map_reac_to_prod(reac, prod)
 
-        for bond_expect in bonds_expect:
+        for bond_expect in bond_expect_imbalanced[rxn_smi]:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
         assert (bond_reac is None) == bond_expect.bond_reac_none
         assert (bond_prod is None) == bond_expect.bond_prod_none
 
-    @pytest.mark.parametrize("rxn_smi, bonds_expect", bond_expect_balanced.items())
-    @pytest.mark.parametrize("rxn_mode", AVAILABLE_RXN_MODE_BALANCED)
-    def test_get_bonds_balanced(self, rxn_smi, rxn_mode, bonds_expect):
+    def test_get_bonds_balanced(self, rxn_smi, mode_balanced):
         """
         Test that the get_bonds method returns the correct bonds when modes are balanced.
         """
-        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        featurizer = CGRFeaturizer(mode_=mode_balanced)
         reac, prod = get_reac_prod(rxn_smi)
         ri2pj, pids, _ = featurizer.map_reac_to_prod(reac, prod)
 
-        for bond_expect in bonds_expect:
+        for bond_expect in bond_expect_balanced[rxn_smi]:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
@@ -302,10 +308,9 @@ class TestCondensedGraphOfReactionFeaturizer:
         assert (bond_prod is None) == bond_expect.bond_prod_none
 
     @pytest.mark.parametrize(
-        "rxn_mode, reac_prod_bonds",
-        zip(AVAILABLE_RXN_MODE_NAMES, [(bond, bond), (bond, None), (None, bond), (None, None)]),
+        "reac_prod_bonds", [(bond, bond), (bond, None), (None, bond), (None, None)]
     )
-    def test_calc_edge_feature_shape(self, rxn_mode, reac_prod_bonds):
+    def test_calc_edge_feature_shape(self, reac_prod_bonds, rxn_mode):
         """
         Test that the calc_edge_feature method returns the correct edge feature.
         """
@@ -316,12 +321,11 @@ class TestCondensedGraphOfReactionFeaturizer:
             len(featurizer.bond_featurizer) * 2,
         )
 
-    @pytest.mark.parametrize("rxn_smi, rxn_mode,", zip(rxn_smis, AVAILABLE_RXN_MODE_BALANCED * 2))
-    def test_featurize_balanced(self, rxn_smi, rxn_mode):
+    def test_featurize_balanced(self, rxn_smi, mode_balanced):
         """
         Test CGR featurizer returns the correct features with balanced modes.
         """
-        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        featurizer = CGRFeaturizer(mode_=mode_balanced)
         reac, prod = get_reac_prod(rxn_smi)
         ri2pj, pids, rids = featurizer.map_reac_to_prod(reac, prod)
 
@@ -349,12 +353,11 @@ class TestCondensedGraphOfReactionFeaturizer:
         assert np.array_equal(molgraph.edge_index, expect_edge_index)
         assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
 
-    @pytest.mark.parametrize("rxn_smi, rxn_mode,", zip(rxn_smis, AVAILABLE_RXN_MODE_IMBALANCED * 2))
-    def test_featurize_imbalanced(self, rxn_smi, rxn_mode):
+    def test_featurize_imbalanced(self, rxn_smi, mode_imbalanced):
         """
         Test CGR featurizer returns the correct features with balanced modes.
         """
-        featurizer = CGRFeaturizer(mode_=rxn_mode)
+        featurizer = CGRFeaturizer(mode_=mode_imbalanced)
         reac, prod = get_reac_prod(rxn_smi)
         ri2pj, pids, rids = featurizer.map_reac_to_prod(reac, prod)
 
