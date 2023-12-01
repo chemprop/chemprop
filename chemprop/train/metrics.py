@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from sklearn.metrics import auc, mean_absolute_error, mean_squared_error, precision_recall_curve, r2_score, \
     roc_auc_score, accuracy_score, log_loss, f1_score, matthews_corrcoef, recall_score, precision_score, \
-    balanced_accuracy_score, confusion_matrix, multilabel_confusion_matrix
+    balanced_accuracy_score
 
 
 def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], List[float]], float]:
@@ -30,7 +30,6 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     * :code:`balanced_accuracy`: Balanced accuracy
     * :code:`recall`: Recall
     * :code:`precision`: Precision
-    * :code:`confusion_matrix`: Confusion matrix
 
     :param metric: Metric name.
     :return: A metric function which takes as arguments a list of targets and a list of predictions and returns.
@@ -91,9 +90,6 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
 
     if metric == 'precision':
         return precision_metric
-
-    if metric == 'confusion_matrix':
-        return confusion_matrix_metric
 
     raise ValueError(f'Metric "{metric}" not supported.')
 
@@ -291,20 +287,6 @@ def balanced_accuracy_metric(targets: List[int], preds: Union[List[float], List[
     return balanced_accuracy_score(targets, hard_preds)
 
 
-def confusion_matrix_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5):
-    """
-    Computes the confusion matrix for a binary or multiclass prediction task using a given threshold for generating hard predictions.
-
-    :param targets: A list of binary or multiclass targets.
-    :param preds: A list of prediction probabilities.
-    :param threshold: The threshold above which a prediction is considered positive (only for binary).
-    :return: The computed confusion matrix.
-    """
-    if type(preds[0]) == list:  # multiclass
-        return multilabel_confusion_matrix(targets, preds)
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
-        return confusion_matrix(targets, hard_preds).tolist()
 
 
 def f1_metric(targets: List[int], preds: Union[List[float], List[List[float]]], threshold: float = 0.5) -> float:
