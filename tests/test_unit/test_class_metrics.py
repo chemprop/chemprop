@@ -1,7 +1,3 @@
-from types import SimpleNamespace
-
-import numpy as np
-import torch
 import pytest
 
 from chemprop.train.metrics import recall_metric,precision_metric,balanced_accuracy_metric,f1_metric,mcc_metric,prc_auc,accuracy
