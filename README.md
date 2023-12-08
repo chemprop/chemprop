@@ -15,6 +15,8 @@ This repository contains message passing neural networks for molecular property 
 
 **License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CCO 1.0](logo/LICENSE.txt).
 
+**Antibiotics Checkpoints:** The checkpoints for the [Cell antibiotics paper](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1) are available on [Zenodo](https://doi.org/10.5281/zenodo.6527882).
+
 ## COVID-19 Update
 
 Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use Chemprop to identify drug candidates for treating COVID-19.
