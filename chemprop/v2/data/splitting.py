@@ -31,7 +31,7 @@ def split_data(
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
-) -> tuple[Sequence[MoleculeDatapoint], ...]:
+) -> tuple[list[int], ...] | tuple[list[list[int], ...], ...]:
     """Splits data into training, validation, and test splits.
 
     Parameters
@@ -49,8 +49,9 @@ def split_data(
 
     Returns
     -------
-    tuple[Sequence[MoleculeDatapoint], ...]
-        A tuple of Sequences of ~chemprop.data.MoleculeDatapoint containing the train, validation, and test splits of the data.
+    tuple[list[int], ...] | tuple[list[list[int], ...], ...]
+        A tuple of list of indices corresponding to the train, validation, and test splits of the data.
+        If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of indices corresponding to the train, validation, and test splits of each fold.
             NOTE: validation may or may not be present
 
     Raises
@@ -90,10 +91,11 @@ def split_data(
                     f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
                 )
 
+            # returns nested lists of indices
             train, val, test = [], [], []
             for _ in range(len(num_folds)):
                 result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
-                i_train, i_val, i_test = _unpack_astartes_result(datapoints, result, include_val)
+                i_train, i_val, i_test = _unpack_astartes_result(result, include_val)
                 train.append(i_train)
                 val.append(i_val)
                 test.append(i_test)
@@ -109,7 +111,7 @@ def split_data(
             result = mol_split_fun(
                 np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs
             )
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test = _unpack_astartes_result(result, include_val)
 
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
@@ -124,23 +126,23 @@ def split_data(
 
             # randomly split the unique smiles
             result = split_fun(np.arange(len(unique_smiles)), sampler="random", **astartes_kwargs)
-            train_idxs, val_idxs, test_idxs = _unpack_astartes_result(None, result, include_val)
+            train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
             train = [
-                datapoints[ii]
+                ii
                 for ii in itertools.chain.from_iterable(
                     smiles_indices[unique_smiles[i]] for i in train_idxs
                 )
             ]
             val = [
-                datapoints[ii]
+                ii
                 for ii in itertools.chain.from_iterable(
                     smiles_indices[unique_smiles[i]] for i in val_idxs
                 )
             ]
             test = [
-                datapoints[ii]
+                ii
                 for ii in itertools.chain.from_iterable(
                     smiles_indices[unique_smiles[i]] for i in test_idxs
                 )
@@ -148,7 +150,7 @@ def split_data(
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test = _unpack_astartes_result(result, include_val)
 
         case SplitType.KENNARD_STONE:
             result = mol_split_fun(
@@ -159,7 +161,7 @@ def split_data(
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test = _unpack_astartes_result(result, include_val)
 
         case SplitType.KMEANS:
             result = mol_split_fun(
@@ -170,7 +172,7 @@ def split_data(
                 fprints_hopts=dict(n_bits=2048),
                 **astartes_kwargs,
             )
-            train, val, test = _unpack_astartes_result(datapoints, result, include_val)
+            train, val, test = _unpack_astartes_result(result, include_val)
 
         case _:
             raise ValueError(f'split type "{split}" not supported.')
