@@ -1,28 +1,11 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace
 import logging
-from pathlib import Path
-import sys
-import warnings
 
-from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
-import torch
 
-from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
-from chemprop.v2.data.utils import split_data
-from chemprop.v2.models import MPNN
 from chemprop.v2.featurizers import RxnMode, MoleculeFeaturizerRegistry
-from chemprop.v2.nn.agg import AggregationRegistry
-from chemprop.v2.nn.loss import LossFunctionRegistry
-from chemprop.v2.metrics import MetricRegistry
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
-from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.utils import Factory
 
-from chemprop.v2.cli.utils import LookupAction, column_str_to_int
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.cli.utils import LookupAction
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +15,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "-s",
         "--smiles-columns",
-        type=list,
-        help="List of names or numbers (0-indexed) of the columns containing SMILES strings. By default, uses the first :code:`number_of_molecules` columns.",
+        nargs="+",
+        help="The columns in the input CSV containing SMILES strings. If unspecified, uses the the 0th column.",
     )
     data_args.add_argument(
-        "--number-of-molecules",
-        type=int,
-        default=1,
-        help="Number of molecules in each input to the model. This is overwritten by the length of :code:`smiles_columns` (if not :code:`None`).",
+        "-r",
+        "--reaction-columns",
+        nargs="+",
+        help="The columns in the input CSV containing reactions.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -56,8 +39,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # TODO: Is this a prediction only argument?
     parser.add_argument(
         "--checkpoint",
-        help="""Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found.
-        If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.""",
+        help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
     )
     data_args.add_argument(
         "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
@@ -78,13 +60,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # TODO: The next two arguments aren't in v1. See what they do in v2.
     data_args.add_argument(
         "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
-    )
-    data_args.add_argument(
-        "--rxn-idxs",
-        nargs="+",
-        type=int,
-        default=list(),
-        help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles_columns` specified",
     )
 
     featurization_args = parser.add_argument_group("featurization args")
