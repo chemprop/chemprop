@@ -13,6 +13,7 @@ from chemprop.v2.data.datapoints import MoleculeDatapoint
 from chemprop.v2.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
+MulticomponentDatapoint = Sequence[MoleculeDatapoint]
 
 
 class SplitType(EnumMapping):
@@ -207,3 +208,50 @@ def _unpack_astartes_result(
     else:
         train_idxs, test_idxs = result[-2], result[-1]
     return train_idxs, val_idxs, test_idxs
+
+
+def split_monocomponent(
+    datapoints: Sequence[MoleculeDatapoint], *args, **kwargs
+) -> tuple[Sequence[MoleculeDatapoint], ...] | tuple[list[Sequence[MoleculeDatapoint], ...], ...]:
+    """Splits monocomponent data into training, validation, and test splits."""
+
+    # split the data
+    train_idxs, val_idxs, test_idxs = split_data(datapoints, *args, **kwargs)
+
+    if isinstance(train_idxs[0], list):
+        # convert indices to datapoints for each fold
+        train = [[datapoints[i] for i in fold] for fold in train_idxs]
+        val = [[datapoints[i] for i in fold] for fold in val_idxs]
+        test = [[datapoints[i] for i in fold] for fold in test_idxs]
+    else:
+        # convert indices to datapoints
+        train = [datapoints[i] for i in train_idxs]
+        val = [datapoints[i] for i in val_idxs]
+        test = [datapoints[i] for i in test_idxs]
+
+    return train, val, test
+
+
+def split_multicomponent(
+    datapointss: Sequence[MulticomponentDatapoint], key_index: int = 0, *args, **kwargs
+) -> (
+    tuple[Sequence[MulticomponentDatapoint], ...]
+    | tuple[Sequence[Sequence[MulticomponentDatapoint], ...], ...]
+):
+    """Splits multicomponent data into training, validation, and test splits."""
+
+    key_datapoints = datapointss[key_index]
+    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, *args, **kwargs)
+
+    if isinstance(train_idxs[0], list):
+        # convert indices to datapoints for each fold
+        train = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in train_idxs]
+        val = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in val_idxs]
+        test = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in test_idxs]
+    else:
+        # convert indices to datapoints
+        train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
+        val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
+        test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+
+    return train, val, test
