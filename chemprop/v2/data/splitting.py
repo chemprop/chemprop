@@ -63,7 +63,9 @@ def split_data(
         Unsupported split method requested
     """
     if (num_splits := len(sizes)) != 3:
-        raise ValueError(f"Specify sizes for train, validation, and test (got {num_splits} values).")
+        raise ValueError(
+            f"Specify sizes for train, validation, and test (got {num_splits} values)."
+        )
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split
