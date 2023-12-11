@@ -176,7 +176,7 @@ def split_data(
             train, val, test = _unpack_astartes_result(result, include_val)
 
         case _:
-            raise ValueError(f'split type "{split}" not supported.')
+            raise ValueError(f'Split type "{split}" not supported.')
 
     return train, val, test
 
