@@ -55,7 +55,7 @@ def split_data(
 
     Raises
     ------
-    RuntimeError
+    ValueError
         Requested split sizes tuple not of length 3
     ValueError
         Innapropriate number of folds requested
