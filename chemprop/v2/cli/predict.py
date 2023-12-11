@@ -17,6 +17,10 @@ from chemprop.v2.nn.message_passing import BondMessagePassing
 
 from chemprop.v2.cli.utils import Subcommand
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.nn.loss import LossFunctionRegistry
+from chemprop.v2.models import MPNN
+
+from chemprop.v2.cli.utils import Subcommand, build_data_from_files, make_dataset
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
@@ -318,19 +322,19 @@ def main(args):
     )
 
     format_kwargs = dict(
-        no_header_row=args.no_header_row, smiles_columns=args.smiles_columns, bounded=bounded
+        no_header_row=args.no_header_row,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
+        bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators,
-        keep_h=args.keep_h,
-        add_h=args.add_h,
-        reaction=0 in args.rxn_idxs,
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(
         args.separate_test_path,
         **format_kwargs,
-        target_columns=[],
+        target_cols=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
