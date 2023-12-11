@@ -1,7 +1,7 @@
 from typing import Any, Type
 
 from chemprop.v2.nn import loss
-from chemprop.v2.models.modules import readout
+from chemprop.v2.nn import readout
 
 __all__ = ["pop_attr"]
 
@@ -75,13 +75,3 @@ def validate_loss_function(
                 f"Unknown readout function! got: {readout_ffn}. "
                 f"Expected one of: {tuple(readout.ReadoutRegistry.values())}"
             )
-
-
-def column_str_to_int(columns: list, header: list) -> list:
-    if columns is None:
-        return None
-    if all(isinstance(col, str) for col in columns):
-        columns = [i for i, name in enumerate(header) if name in columns]
-    if not all(isinstance(col, int) for col in columns):
-        raise ValueError("header and columns do not match")
-    return columns
