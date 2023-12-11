@@ -179,14 +179,12 @@ def split_data(
 
 
 def _unpack_astartes_result(
-    data: Sequence[MoleculeDatapoint], result: tuple, include_val: bool
-) -> tuple[list[MoleculeDatapoint], list[MoleculeDatapoint], list[MoleculeDatapoint]]:
+    result: tuple, include_val: bool
+) -> tuple[list[int], list[int], list[int]]:
     """Helper function to partition input data based on output of astartes sampler
 
     Parameters
     -----------
-    data: MoleculeDataset
-        The data being partitioned. If None, returns indices.
     result: tuple
         Output from call to astartes containing the split indices
     include_val: bool
@@ -194,10 +192,10 @@ def _unpack_astartes_result(
 
     Returns
     ---------
-    train: MoleculeDataset
-    val: MoleculeDataset
+    train: list[int]
+    val: list[int]
         NOTE: possibly empty
-    test: MoleculeDataset
+    test: list[int]
     """
     train_idxs, val_idxs, test_idxs = [], [], []
     # astartes returns a set of lists containing the data, clusters (if applicable)
@@ -206,9 +204,4 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
         train_idxs, test_idxs = result[-2], result[-1]
-    if data is None:
-        return train_idxs, val_idxs, test_idxs
-    train = [data[i] for i in train_idxs]
-    val = [data[i] for i in val_idxs]
-    test = [data[i] for i in test_idxs]
-    return train, val, test
+    return train_idxs, val_idxs, test_idxs
