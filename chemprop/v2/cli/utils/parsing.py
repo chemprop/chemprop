@@ -104,6 +104,8 @@ def make_datapoints(
         raise ValueError(
             f"args 'smiss' and 'rxnss' must have same length! got {len(smiss)} and {len(rxnss)}"
         )
+    else:
+        N = len(smiss)
 
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
