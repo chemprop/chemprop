@@ -4,7 +4,7 @@ import uuid
 import numpy as np
 import pytest
 
-from chemprop.v2.featurizers.reaction import RxnMode, CondensedGraphOfReactionFeaturizer
+from chemprop.v2.featurizers.molgraph import RxnMode, CondensedGraphOfReactionFeaturizer
 from chemprop.v2.utils import make_mol
 
 
@@ -114,7 +114,7 @@ def bond_reac_prod(request):
 def randomize_case(s: str) -> str:
     choices = (str.upper, str.lower)
 
-    return ''.join(random.choice(choices)(x) for x in s)
+    return "".join(random.choice(choices)(x) for x in s)
 
 
 @pytest.mark.parametrize("s", [str(uuid.uuid4()) for _ in range(3)])
@@ -131,10 +131,10 @@ def test_len(expected_aliases):
 
 
 def test_keys(expected_aliases):
-        """
-        Test that the keys function returns the correct set of modes.
-        """
-        assert set(RxnMode.keys()) == set(alias.upper() for alias in expected_aliases)
+    """
+    Test that the keys function returns the correct set of modes.
+    """
+    assert set(RxnMode.keys()) == set(alias.upper() for alias in expected_aliases)
 
 
 @pytest.mark.parametrize(
@@ -146,7 +146,7 @@ def test_keys(expected_aliases):
         ("REAC_DIFF_BALANCE", RxnMode.REAC_DIFF_BALANCE),
         ("PROD_DIFF", RxnMode.PROD_DIFF),
         ("PROD_DIFF_BALANCE", RxnMode.PROD_DIFF_BALANCE),
-    ]
+    ],
 )
 class TestRxnModeGet:
     def test_name_and_value(self, alias, rxn_mode):
@@ -158,7 +158,6 @@ class TestRxnModeGet:
         Test that the RxnMode class can be indexed with uppercase mode.
         """
         assert RxnMode[alias.upper()] == rxn_mode
-
 
     def test_get(self, alias, rxn_mode):
         """

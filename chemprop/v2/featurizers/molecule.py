@@ -1,103 +1,119 @@
-from dataclasses import InitVar, dataclass
+from typing import Protocol
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
-from chemprop.v2.featurizers.protos import MoleculeMolGraphFeaturizerProto
-from chemprop.v2.featurizers.mixins import MolGraphFeaturizerMixin
-from chemprop.v2.featurizers.molgraph import MolGraph
+from chemprop.v2.utils import ClassRegistry
+
+MoleculeFeaturizerRegistry = ClassRegistry()
 
 
-@dataclass
-class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProto):
-    """A :class:`MoleculeMolGraphFeaturizer` is the default implementation of a
-    :class:`MoleculeMolGraphFeaturizerProto`
+class MoleculeFeaturizerProto(Protocol):
+    """A :class:`MoleculeFeaturizerProto` calculates feature vectors of RDKit molecules."""
 
-    Parameters
-    ----------
-    atom_featurizer : AtomFeaturizerProto, default=AtomFeaturizer()
-        the featurizer with which to calculate feature representations of the atoms in a given
-        molecule
-    bond_featurizer : BondFeaturizerProto, default=BondFeaturizer()
-        the featurizer with which to calculate feature representations of the bonds in a given
-        molecule
-    bond_messages : bool, default=True
-        whether to prepare the `MolGraph`s for use with message passing on bonds
-    extra_atom_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated
-        features of each atom
-    extra_bond_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated
-        features of each bond
-    """
+    def __len__(self) -> int:
+        """the length of the feature vector"""
 
-    extra_atom_fdim: InitVar[int] = 0
-    extra_bond_fdim: InitVar[int] = 0
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        """Featurize the molecule ``mol``"""
 
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
-        super().__post_init__()
 
-        self.atom_fdim += extra_atom_fdim
-        self.bond_fdim += extra_bond_fdim
-        if self.bond_messages:
-            self.bond_fdim += self.atom_fdim
+class MorganFeaturizerMixin:
+    def __init__(self, radius: int = 2, length: int = 2048, include_chirality: bool = True):
+        if radius < 0:
+            raise ValueError(f"arg 'radius' must be >= 0! got: {radius}")
 
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        n_atoms = mol.GetNumAtoms()
-        n_bonds = mol.GetNumBonds()
+        self.length = length
+        self.F = GetMorganGenerator(
+            radius=radius, fpSize=length, includeChirality=include_chirality
+        )
 
-        if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
-            raise ValueError(
-                "Input molecule must have same number of atoms as `len(atom_features_extra)`!"
-                f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
-            )
-        if bond_features_extra is not None and len(bond_features_extra) != n_bonds:
-            raise ValueError(
-                "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
-                f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
-            )
+    def __len__(self) -> int:
+        return self.length
 
-        X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
-        X_e = np.empty((2 * n_bonds, self.bond_fdim))
-        a2b = [[] for _ in range(n_atoms)]
-        b2a = np.empty(2 * n_bonds, int)
-        b2revb = np.empty(2 * n_bonds, int)
 
-        if atom_features_extra is not None:
-            X_v = np.hstack((X_v, atom_features_extra))
+class BinaryFeaturizerMixin:
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        return self.F.GetFingerprintAsNumPy(mol)
 
-        i = 0
-        for a1 in range(n_atoms):
-            for a2 in range(a1 + 1, n_atoms):
-                bond = mol.GetBondBetweenAtoms(a1, a2)
-                if bond is None:
-                    continue
 
-                x_e = self.bond_featurizer(bond)
-                if bond_features_extra is not None:
-                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
+class CountFeaturizerMixin:
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        return self.F.GetCountFingerprintAsNumPy(mol)
 
-                b12 = i
-                b21 = b12 + 1
 
-                if self.bond_messages:
-                    X_e[b12] = np.concatenate((X_v[a1], x_e))
-                    X_e[b21] = np.concatenate((X_v[a2], x_e))
-                else:
-                    X_e[b12] = x_e
-                    X_e[b21] = x_e
+@MoleculeFeaturizerRegistry("morgan_binary")
+class MorganBinaryFeaturzer(MorganFeaturizerMixin, BinaryFeaturizerMixin, MoleculeFeaturizerProto):
+    pass
 
-                a2b[a2].append(b12)
-                a2b[a1].append(b21)
 
-                b2a[i : i + 2] = [a1, a2]
-                b2revb[i : i + 2] = [b21, b12]
+@MoleculeFeaturizerRegistry("morgan_count")
+class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, MoleculeFeaturizerProto):
+    pass
 
-                i += 2
 
-        return MolGraph(n_atoms, 2 * n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)
+# try:
+#     from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
+
+#     # @register_features_generator('rdkit_2d')
+#     def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+#         """
+#         Generates RDKit 2D features for a molecule.
+
+#         :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
+#         :return: A 1D numpy array containing the RDKit 2D features.
+#         """
+#         smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+#         generator = rdDescriptors.RDKit2D()
+#         features = generator.process(smiles)[1:]
+
+#         return features
+
+#     # @register_features_generator('rdkit_2d_normalized')
+#     def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
+#         """
+#         Generates RDKit 2D normalized features for a molecule.
+
+#         :param mol: A molecule (i.e., either a SMILES or an RDKit molecule).
+#         :return: A 1D numpy array containing the RDKit 2D normalized features.
+#         """
+#         smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+#         generator = rdNormalizedDescriptors.RDKit2DNormalized()
+#         features = generator.process(smiles)[1:]
+
+#         return features
+# except ImportError:
+#     # @register_features_generator('rdkit_2d')
+#     def rdkit_2d_features_generator(mol: Molecule) -> np.ndarray:
+#         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+#         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+#                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features.')
+
+#     # @register_features_generator('rdkit_2d_normalized')
+#     def rdkit_2d_normalized_features_generator(mol: Molecule) -> np.ndarray:
+#         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
+#         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
+#                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
+
+
+"""
+Custom features generator template.
+
+Note: The name you use to register the features generator is the name
+you will specify on the command line when using the --features_generator <name> flag.
+Ex. python train.py ... --features_generator custom ...
+
+@register_features_generator('custom')
+def custom_features_generator(mol: Molecule) -> np.ndarray:
+    # If you want to use the SMILES string
+    smiles = Chem.MolToSmiles(mol, isomericSmiles=True) if type(mol) != str else mol
+
+    # If you want to use the RDKit molecule
+    mol = Chem.MolFromSmiles(mol) if type(mol) == str else mol
+
+    # Replace this with code which generates features from the molecule
+    features = np.array([0, 0, 1])
+
+    return features
+"""

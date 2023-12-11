@@ -6,12 +6,9 @@ from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
-from chemprop.v2.data.dataloader import TrainingBatch
-from chemprop.v2.featurizers.molgraph import BatchMolGraph
-from chemprop.v2.models.modules import MessagePassingBlock, Aggregation, Readout
-from chemprop.v2.models.loss import LossFunction
-from chemprop.v2.models.metrics import Metric
-from chemprop.v2.models.schedulers import NoamLR
+from chemprop.v2.data import TrainingBatch, BatchMolGraph
+from chemprop.v2.nn import MessagePassingBlock, Aggregation, Readout, LossFunction, Metric
+from chemprop.v2.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
@@ -88,7 +85,11 @@ class MPNN(pl.LightningModule):
         self.readout = readout
 
         # NOTE(degraff): should think about how to handle no supplied metric
-        self.metrics = [*metrics, self.criterion] if metrics else [self.readout._default_metric, self.criterion]
+        self.metrics = (
+            [*metrics, self.criterion]
+            if metrics
+            else [self.readout._default_metric, self.criterion]
+        )
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
         self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 

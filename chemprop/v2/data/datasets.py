@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -28,6 +28,15 @@ class Datum(NamedTuple):
     weight: float
     lt_mask: np.ndarray | None
     gt_mask: np.ndarray | None
+
+
+class MolGraphDatasetProto(Protocol):
+    def __getitem__(self, idx) -> Datum:
+        pass
+
+
+class MolGraphDataset(Dataset, MolGraphDatasetProto):
+    pass
 
 
 class _MolGraphDatasetMixin:
@@ -135,7 +144,7 @@ class _MolGraphDatasetMixin:
 
 
 @dataclass
-class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
+class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     """A `MolgraphDataset` composed of `MoleculeDatapoint`s
 
     Parameters
@@ -284,7 +293,7 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
 
 
 @dataclass
-class ReactionDataset(Dataset, _MolGraphDatasetMixin):
+class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
     """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
 
     data: list[ReactionDatapoint]
@@ -315,7 +324,8 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
-    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual ``{Molecule,Reaction}Datasets``"""
+    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual
+    ``{Molecule,Reaction}Datasets``"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""

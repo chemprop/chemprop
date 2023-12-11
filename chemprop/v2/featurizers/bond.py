@@ -1,9 +1,17 @@
-from typing import Sequence
+from typing import Protocol, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-from chemprop.v2.featurizers.protos import BondFeaturizerProto
+
+class BondFeaturizerProto(Protocol):
+    """A :class:`BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
+
+    def __len__(self) -> int:
+        """the length of a bond feature vector"""
+
+    def __call__(self, b: Bond) -> np.ndarray:
+        """featurize the bond ``b``"""
 
 
 class BondFeaturizer(BondFeaturizerProto):
