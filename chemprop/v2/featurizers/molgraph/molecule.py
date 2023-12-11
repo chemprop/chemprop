@@ -88,7 +88,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGrap
             )
 
         if n_atoms == 0:
-            V = np.zeros((0, self.atom_fdim))
+            V = np.zeros((1, self.atom_fdim))
         else:
             V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
         E = np.empty((2 * n_bonds, self.bond_fdim))
