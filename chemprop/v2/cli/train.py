@@ -1,9 +1,7 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
-import csv
 import sys
-import warnings
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -19,13 +17,10 @@ from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegi
 from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
 from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
-from chemprop.v2.cli.utils import Subcommand, LookupAction
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.utils.registry import Factory
-from chemprop.v2.cli.utils import CKPT_DIR, column_str_to_int
+from chemprop.v2.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.v2.cli.utils import Subcommand, RegistryAction, column_str_to_int
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
+from chemprop.v2.cli.utils import Subcommand
 
 logger = logging.getLogger(__name__)
 

@@ -1,27 +1,18 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
-import numpy as np
 import pandas as pd
 
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.v2 import data
-from chemprop.v2.data.splitting import split_data
-from chemprop.v2.featurizers import RxnMode
-from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
+from chemprop.v2.nn.loss import LossFunctionRegistry
 from chemprop.v2.models import MPNN
-from chemprop.v2.nn.agg import AggregationRegistry
-from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
-from chemprop.v2.utils import Factory
+from chemprop.v2.nn.message_passing import BondMessageBlock
 
-from chemprop.v2.cli.utils import Subcommand, LookupAction
-from chemprop.v2.cli.utils_ import build_data_from_files, get_mpnn_cls, make_dataset
+from chemprop.v2.cli.utils import Subcommand, build_data_from_files, make_dataset
 
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
@@ -177,9 +168,7 @@ def main(args):
         bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators,
-        keep_h=args.keep_h,
-        add_h=args.add_h,
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(
