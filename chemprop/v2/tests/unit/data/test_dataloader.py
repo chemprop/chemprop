@@ -53,7 +53,7 @@ def test_collate_batch_single_graph(datum_1):
 
     assert isinstance(result, tuple)
     assert isinstance(mgs, BatchMolGraph)
-    torch.testing.assert_close(V_ds, torch.tensor([1.0, 2.0], dtype=torch.float32))
+    torch.testing.assert_close(V_ds, torch.tensor([[1.0, 2.0]], dtype=torch.float32))
     torch.testing.assert_close(x_fs, torch.tensor([[3.0, 4.0]], dtype=torch.float32))
     torch.testing.assert_close(ys, torch.tensor([[6.0, 7.0]], dtype=torch.float32))
     torch.testing.assert_close(weights, torch.tensor([[[8.0]]], dtype=torch.float32))
@@ -68,7 +68,7 @@ def test_collate_batch_multiple_graphs(datum_1, datum_2):
     mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(mgs, BatchMolGraph)
-    torch.testing.assert_close(V_ds, torch.tensor([1.0, 2.0, 5.0, 7.0], dtype=torch.float32))
+    torch.testing.assert_close(V_ds, torch.tensor([[1.0, 2.0], [5.0, 7.0]], dtype=torch.float32))
     torch.testing.assert_close(x_fs, torch.tensor([[3.0, 4.0], [8.0, 9.0]], dtype=torch.float32))
     torch.testing.assert_close(ys, torch.tensor([[6.0, 7.0], [6.0, 4.0]], dtype=torch.float32))
     torch.testing.assert_close(weights, torch.tensor([[[8.0]], [[1.0]]], dtype=torch.float32))
