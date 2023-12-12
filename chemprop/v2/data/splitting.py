@@ -130,24 +130,9 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = [
-                ii
-                for ii in itertools.chain.from_iterable(
-                    smiles_indices[unique_smiles[i]] for i in train_idxs
-                )
-            ]
-            val = [
-                ii
-                for ii in itertools.chain.from_iterable(
-                    smiles_indices[unique_smiles[i]] for i in val_idxs
-                )
-            ]
-            test = [
-                ii
-                for ii in itertools.chain.from_iterable(
-                    smiles_indices[unique_smiles[i]] for i in test_idxs
-                )
-            ]
+            train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
+            val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
+            test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
