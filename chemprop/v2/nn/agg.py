@@ -1,35 +1,33 @@
 from abc import ABC, abstractmethod
-from typing import Sequence
-
-import torch
 from torch import Tensor, nn
+from torch_scatter import scatter, scatter_softmax
 
-from chemprop.v2.utils import HasHParams, ClassRegistry
-
-AggregationRegistry = ClassRegistry()
+from chemprop.v2.utils import ClassRegistry
+from chemprop.v2.nn.hparams import HasHParams
 
 
 class Aggregation(ABC, nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
     a batch of graph-level representations
 
-    **NOTE**: this class is abstract and cannot be instantiated. Instead, you must use one of the
-    concrete subclasses.
+    .. note::
+        this class is abstract and cannot be instantiated.
 
     See also
     --------
-    :class:`chemprop.v2.models.modules.agg.MeanAggregation`
-    :class:`chemprop.v2.models.modules.agg.SumAggregation`
-    :class:`chemprop.v2.models.modules.agg.NormAggregation`
+    :class:`~chemprop.v2.models.modules.agg.MeanAggregation`
+    :class:`~chemprop.v2.models.modules.agg.SumAggregation`
+    :class:`~chemprop.v2.models.modules.agg.NormAggregation`
     """
 
-    def __init__(self, dim: int = 0):
+    def __init__(self, dim: int = 0, *args, **kwargs):
         super().__init__()
 
         self.dim = dim
         self.hparams = {"dim": dim, "cls": self.__class__}
 
-    def forward(self, H: Tensor, sizes: Sequence[int] | None) -> Tensor:
+    @abstractmethod
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
         """Aggregate the graph-level representations of a batch of graphs into their respective
         global representations
 
@@ -39,106 +37,71 @@ class Aggregation(ABC, nn.Module, HasHParams):
         Parameters
         ----------
         H : Tensor
-            A tensor of shape ``sum(sizes) x d`` containing the stacked node-level representations
-            of ``len(sizes)`` graphs
-        sizes : Sequence[int]
-            an list containing the number of nodes in each graph, respectively.
+            A tensor of shape ``V x d`` containing the batched node-level representations of ``n``
+            graphs
+        batch : Tensor
+            a tensor of shape ``V`` containing the index of the graph a given vertex corresponds to
 
         Returns
         -------
         Tensor
-            a tensor of shape ``len(sizes) x d`` containing the graph-level representation of each
-            graph
-
-        Raises
-        ------
-        ValueError
-            if ``sum(sizes)`` is not equal to ``len(H_v)``
-
-        Examples
-        --------
-        **NOTE**: the following examples are for illustrative purposes only. In practice, you must
-        use one of the concrete subclasses.
-
-        1. A typical use-case:
-
-        >>> H = torch.rand(10, 4)
-        >>> sizes = [3, 4, 3]
-        >>> agg = Aggregation()
-        >>> agg(H, sizes).shape
-        torch.Size([3, 4])
-
-        2. A batch containing a graph with 0 nodes:
-
-        >>> H = torch.rand(10, 4)
-        >>> sizes = [3, 4, 0, 3]
-        >>> agg = Aggregation()
-        >>> agg(H, sizes).shape
-        torch.Size([4, 4])
+            a tensor of shape ``n x d`` containing the graph-level representations
         """
-        try:
-            hs = [
-                self.agg(H_i) if len(H_i) > 0 else torch.zeros(H.shape[1]) for H_i in H.split(sizes)
-            ]
-        except RuntimeError:
-            raise ValueError(f"arg 'sizes' must sum to `len(H)` ({len(H)})! got: {sum(sizes)}")
 
-        return torch.stack(hs)
 
-    @abstractmethod
-    def agg(self, H: Tensor) -> Tensor:
-        r"""Aggregate the graph-level of a single graph into a vector
-
-        Parameters
-        ----------
-        H : Tensor
-            A tensor of shape ``V x d`` containing the node-level representation of a graph with
-            ``V`` nodes and node feature dimension ``d``
-
-        Returns
-        -------
-        Tensor
-            a tensor of shape ``d`` containing the global representation of the input graph
-        """
+AggregationRegistry = ClassRegistry[Aggregation]()
 
 
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
-    r"""Average the graph-level representation
+    r"""Average the graph-level representation:
 
     .. math::
-        \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v"""
+        \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
+    """
 
-    def agg(self, H: Tensor) -> Tensor:
-        return H.mean(self.dim)
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        return scatter(H, batch, self.dim, reduce="mean")
 
 
 @AggregationRegistry.register("sum")
 class SumAggregation(Aggregation):
-    r"""Sum the graph-level representation
+    r"""Sum the graph-level representation:
 
     .. math::
         \mathbf h = \sum_{v \in V} \mathbf h_v
 
     """
 
-    def agg(self, H: Tensor) -> Tensor:
-        return H.sum(self.dim)
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        return scatter(H, batch, self.dim, reduce="sum")
 
 
 @AggregationRegistry.register("norm")
-class NormAggregation(Aggregation):
-    r"""Sum the graph-level representation and divide by a normalization constant
+class NormAggregation(SumAggregation):
+    r"""Sum the graph-level representation and divide by a normalization constant:
 
     .. math::
         \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
     """
 
-    def __init__(self, *args, norm: float = 100, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, dim: int = 0, *args, norm: float = 100, **kwargs):
+        super().__init__(dim, **kwargs)
 
         self.norm = norm
         self.hparams["norm"] = norm
 
-    def agg(self, H: Tensor) -> Tensor:
-        return H.sum(self.dim) / self.norm
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        return super().forward(H, batch, self.dim) / self.norm
+
+
+class AttentiveAggregation(Aggregation):
+    def __init__(self, dim: int = 0, *args, output_size: int, **kwargs):
+        super().__init__(dim, *args, **kwargs)
+
+        self.W = nn.Linear(output_size, 1)
+
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        alphas = scatter_softmax(self.W(H), batch, self.dim)
+
+        return scatter(alphas * H, batch, self.dim, reduce="sum")
