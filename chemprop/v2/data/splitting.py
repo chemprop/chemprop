@@ -196,44 +196,50 @@ def _unpack_astartes_result(
 
 
 def split_monocomponent(
-    datapoints: Sequence[MoleculeDatapoint], *args, **kwargs
+    datapoints: Sequence[MoleculeDatapoint], split: SplitType | str = "random", **kwargs
 ) -> tuple[list[MoleculeDatapoint], ...] | tuple[list[list[MoleculeDatapoint]], ...]:
     """Splits monocomponent data into training, validation, and test splits."""
 
     # split the data
-    train_idxs, val_idxs, test_idxs = split_data(datapoints, *args, **kwargs)
+    train_idxs, val_idxs, test_idxs = split_data(datapoints, **kwargs)
 
-    if isinstance(train_idxs[0], list):
-        # convert indices to datapoints for each fold
-        train = [[datapoints[i] for i in fold] for fold in train_idxs]
-        val = [[datapoints[i] for i in fold] for fold in val_idxs]
-        test = [[datapoints[i] for i in fold] for fold in test_idxs]
-    else:
-        # convert indices to datapoints
-        train = [datapoints[i] for i in train_idxs]
-        val = [datapoints[i] for i in val_idxs]
-        test = [datapoints[i] for i in test_idxs]
+    match SplitType.get(split):
+        case SplitType.CV_NO_VAL, SplitType.CV:
+            # convert indices to datapoints for each fold
+            train = [[datapoints[i] for i in fold] for fold in train_idxs]
+            val = [[datapoints[i] for i in fold] for fold in val_idxs]
+            test = [[datapoints[i] for i in fold] for fold in test_idxs]
+        case SplitType.SCAFFOLD_BALANCED, SplitType.RANDOM_WITH_REPEATED_SMILES, SplitType.RANDOM, SplitType.KENNARD_STONE, SplitType.KMEANS:
+            # convert indices to datapoints
+            train = [datapoints[i] for i in train_idxs]
+            val = [datapoints[i] for i in val_idxs]
+            test = [datapoints[i] for i in test_idxs]
+        case _:
+            raise ValueError(f'Split type "{split}" not supported.')
 
     return train, val, test
 
 
 def split_multicomponent(
-    datapointss: Sequence[MulticomponentDatapoint], key_index: int = 0, *args, **kwargs
+    datapointss: Sequence[MulticomponentDatapoint], split: SplitType | str = "random", key_index: int = 0, **kwargs
 ) -> tuple[list[MulticomponentDatapoint], ...] | tuple[list[list[MulticomponentDatapoint]], ...]:
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
-    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, *args, **kwargs)
+    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, **kwargs)
 
-    if isinstance(train_idxs[0], list):
-        # convert indices to datapoints for each fold
-        train = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in train_idxs]
-        val = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in val_idxs]
-        test = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in test_idxs]
-    else:
-        # convert indices to datapoints
-        train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
-        val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
-        test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+    match SplitType.get(split):
+        case SplitType.CV_NO_VAL, SplitType.CV:
+            # convert indices to datapoints for each fold
+            train = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in train_idxs]
+            val = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in val_idxs]
+            test = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in test_idxs]
+        case SplitType.SCAFFOLD_BALANCED, SplitType.RANDOM_WITH_REPEATED_SMILES, SplitType.RANDOM, SplitType.KENNARD_STONE, SplitType.KMEANS:
+            # convert indices to datapoints
+            train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
+            val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
+            test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+        case _:
+            raise ValueError(f'Split type "{split}" not supported.')
 
     return train, val, test
