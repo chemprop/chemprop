@@ -207,7 +207,7 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
         train_idxs, test_idxs = result[-2], result[-1]
-    return train_idxs, val_idxs, test_idxs
+    return list(train_idxs), list(val_idxs), list(test_idxs)
 
 
 def split_monocomponent(
