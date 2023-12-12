@@ -10,10 +10,15 @@ from chemprop.v2.featurizers.molgraph import MolGraph
 @pytest.fixture
 def datum_1():
     mol_graph1 = MolGraph(
+        n_atoms=3,
+        n_bonds=2,
         V=np.array([[1.0], [2.0], [3.0]]),
         E=np.array([[0.5], [1.5]]),
-        edge_index=np.array([[0, 1, 0, 2], [1, 0, 2, 0]]),
-        rev_edge_index=np.array([1, 0, 3, 2]),
+        a2b=[(0,), (1,), (1,)],
+        b2a=[0, 2],
+        b2revb=np.array([1, 0]),
+        a2a=[0, 1, 2],
+        b2b=np.array([0, 1]),
     )
     return Datum(
         mol_graph1,
@@ -29,10 +34,15 @@ def datum_1():
 @pytest.fixture
 def datum_2():
     mol_graph2 = MolGraph(
+        n_atoms=2,
+        n_bonds=1,
         V=np.array([[4.0], [5.0]]),
         E=np.array([[2.5]]),
-        edge_index=np.array([[0, 1], [1, 0]]),
-        rev_edge_index=np.array([1, 0]),
+        a2b=[(0,), (0,)],
+        b2a=[1],
+        b2revb=np.array([0]),
+        a2a=None,
+        b2b=None,
     )
     return Datum(
         mol_graph2,

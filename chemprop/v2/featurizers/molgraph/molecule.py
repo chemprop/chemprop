@@ -67,6 +67,8 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
 
         self.atom_fdim += extra_atom_fdim
         self.bond_fdim += extra_bond_fdim
+        if self.bond_messages:
+            self.bond_fdim += self.atom_fdim
 
     def __call__(
         self,
@@ -88,17 +90,19 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
                 f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
             )
 
-        V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
-        E = np.empty((2 * n_bonds, self.bond_fdim))
-        edge_index = [[], []]
+        X_v = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
+        X_e = np.empty((2 * n_bonds, self.bond_fdim))
+        a2b = [[] for _ in range(n_atoms)]
+        b2a = np.empty(2 * n_bonds, int)
+        b2revb = np.empty(2 * n_bonds, int)
 
         if atom_features_extra is not None:
-            V = np.hstack((V, atom_features_extra))
+            X_v = np.hstack((X_v, atom_features_extra))
 
         i = 0
-        for u in range(n_atoms):
-            for v in range(u + 1, n_atoms):
-                bond = mol.GetBondBetweenAtoms(u, v)
+        for a1 in range(n_atoms):
+            for a2 in range(a1 + 1, n_atoms):
+                bond = mol.GetBondBetweenAtoms(a1, a2)
                 if bond is None:
                     continue
 
@@ -106,14 +110,22 @@ class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeatur
                 if bond_features_extra is not None:
                     x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
 
-                E[i : i + 2] = x_e
+                b12 = i
+                b21 = b12 + 1
 
-                edge_index[0].extend([u, v])
-                edge_index[1].extend([v, u])
+                if self.bond_messages:
+                    X_e[b12] = np.concatenate((X_v[a1], x_e))
+                    X_e[b21] = np.concatenate((X_v[a2], x_e))
+                else:
+                    X_e[b12] = x_e
+                    X_e[b21] = x_e
+
+                a2b[a2].append(b12)
+                a2b[a1].append(b21)
+
+                b2a[i : i + 2] = [a1, a2]
+                b2revb[i : i + 2] = [b21, b12]
 
                 i += 2
 
-        rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
-        edge_index = np.array(edge_index, int)
-
-        return MolGraph(V, E, edge_index, rev_edge_index)
+        return MolGraph(n_atoms, 2 * n_bonds, X_v, X_e, a2b, b2a, b2revb, None, None)

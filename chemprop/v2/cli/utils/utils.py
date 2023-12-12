@@ -1,6 +1,7 @@
 from typing import Any, Type
 
-from chemprop.v2.nn import loss, predictors
+from chemprop.v2.nn import loss
+from chemprop.v2.nn import readout
 
 __all__ = ["pop_attr"]
 
@@ -34,43 +35,43 @@ def _pop_attr_d(o: object, attr: str, default: Any | None = None) -> Any | None:
 
 
 def validate_loss_function(
-    predictor_ffn: Type[predictors.FFNPredictorBase], criterion: Type[loss.LossFunction]
+    readout_ffn: Type[readout.ReadoutFFNBase], criterion: Type[loss.LossFunction]
 ):
-    match predictor_ffn:
-        case predictors.RegressionFFN:
+    match readout_ffn:
+        case readout.RegressionFFN:
             if criterion not in (loss.MSELoss, loss.BoundedMSELoss):
                 raise ValueError(f"Expected a regression loss function! got: {criterion.__name__}")
-        case predictors.MveFFN:
+        case readout.MveFFN:
             if criterion is not loss.MVELoss:
                 raise ValueError(f"Expected a MVE loss function! got: {criterion.__name__}")
-        case predictors.EvidentialFFN:
+        case readout.EvidentialFFN:
             if criterion is not loss.EvidentialLoss:
                 raise ValueError(f"Expected an evidential loss function! got: {criterion.__name__}")
-        case predictors.BinaryClassificationFFN:
+        case readout.BinaryClassificationFFN:
             if criterion not in (loss.BCELoss, loss.BinaryMCCLoss):
                 raise ValueError(
                     f"Expected a binary classification loss function! got: {criterion.__name__}"
                 )
-        case predictors.BinaryDirichletFFN:
+        case readout.BinaryDirichletFFN:
             if loss is not loss.BinaryDirichletLoss:
                 raise ValueError(
                     f"Expected a binary Dirichlet loss function! got: {criterion.__name__}"
                 )
-        case predictors.MulticlassClassificationFFN:
+        case readout.MulticlassClassificationFFN:
             if loss not in (loss.CrossEntropyLoss, loss.MulticlassMCCLoss):
                 raise ValueError(
                     f"Expected a multiclass classification loss function! got: {criterion.__name__}"
                 )
-        case predictors.MulticlassDirichletFFN:
+        case readout.MulticlassDirichletFFN:
             if loss is not loss.MulticlassDirichletLoss:
                 raise ValueError(
                     f"Expected a multiclass Dirichlet loss function! got: {criterion.__name__}"
                 )
-        case predictors.SpectralFFN:
+        case readout.SpectralFFN:
             if loss not in (loss.SIDLoss, loss.WassersteinLoss):
                 raise ValueError(f"Expected a spectral loss function! got: {criterion.__name__}")
         case _:
             raise ValueError(
-                f"Unknown predictor function! got: {predictor_ffn}. "
-                f"Expected one of: {tuple(predictors.PredictorRegistry.values())}"
+                f"Unknown readout function! got: {readout_ffn}. "
+                f"Expected one of: {tuple(readout.ReadoutRegistry.values())}"
             )

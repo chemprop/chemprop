@@ -15,15 +15,14 @@ class _FFNProto(Protocol):
 
 
 class FFN(nn.Module, _FFNProto):
-    r"""A :class:`FFN` is a differentiable function
-    :math:`f_\theta : \mathbb R^{d} \mapsto \mathbb R^o`
+    """A :class:`FFN` is a fully differentiable function that maps a tensor of shape ``N x d_i`` to a tensor of shape ``N x d_o``
 
     :inherited-members:
     """
 
 
 class SimpleFFN(FFN):
-    r"""A :class:`SimpleFFN` is an FFN that implements the following function:
+    r"""A :class:`SimpleFFN` is a simple FFN that implements the following function:
 
     .. math::
         \mathbf H_0 &= \mathbf X\,\mathbf W_0 + \mathbf b_0 \\

@@ -7,17 +7,13 @@ import torch
 from torch import nn, Tensor, optim
 
 from chemprop.v2.data import TrainingBatch, BatchMolGraph
-from chemprop.v2.metrics import Metric
-from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.data.collate import TrainingBatch
-from chemprop.v2.nn import MessagePassing, Aggregation, Predictor, LossFunction
-from chemprop.v2.metrics import Metric
+from chemprop.v2.nn import MessagePassingBlock, Aggregation, Readout, LossFunction, Metric
 from chemprop.v2.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
     r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
-    predictor routine.
+    readout routine.
 
     The first two modules calculate learned fingerprints from an input molecule
     reaction graph, and the final module takes these leared fingerprints as input to calculate a
@@ -25,7 +21,7 @@ class MPNN(pl.LightningModule):
 
     .. math::
         \mathtt{MPNN}(\mathcal{G}) =
-            \mathtt{predictor}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
+            \mathtt{readout}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
 
     The full model is trained end-to-end.
 
@@ -34,9 +30,9 @@ class MPNN(pl.LightningModule):
     message_passing : MessagePassingBlock
         the message passing block to use to calculate learned fingerprints
     agg : Aggregation
-        the aggregation operation to use during molecule-level predictor
-    predictor : Predictor
-        the function to use to calculate the final prediction
+        the aggregation operation to use during molecule-level readout
+    readout : Readout
+        the readout operation to use to calculate the final prediction
     batch_norm : bool, default=True
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
@@ -56,14 +52,14 @@ class MPNN(pl.LightningModule):
     ------
     ValueError
         if the output dimension of the message passing block does not match the input dimension of
-        the predictor function
+        the readout block
     """
 
     def __init__(
         self,
-        message_passing: MessagePassing,
+        message_passing: MessagePassingBlock,
         agg: Aggregation,
-        predictor: Predictor,
+        readout: Readout,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -74,25 +70,25 @@ class MPNN(pl.LightningModule):
     ):
         super().__init__()
 
-        self.save_hyperparameters(ignore=["message_passing", "agg", "predictor"])
+        self.save_hyperparameters(ignore=["message_passing", "agg", "readout"])
         self.hparams.update(
             {
                 "message_passing": message_passing.hparams,
                 "agg": agg.hparams,
-                "predictor": predictor.hparams,
+                "readout": readout.hparams,
             }
         )
 
         self.message_passing = message_passing
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
-        self.predictor = predictor
+        self.readout = readout
 
         # NOTE(degraff): should think about how to handle no supplied metric
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
-            else [self.predictor._default_metric, self.criterion]
+            else [self.readout._default_metric, self.criterion]
         )
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
         self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
@@ -104,26 +100,26 @@ class MPNN(pl.LightningModule):
 
     @property
     def output_dim(self) -> int:
-        return self.predictor.output_dim
+        return self.readout.output_dim
 
     @property
     def n_tasks(self) -> int:
-        return self.predictor.n_tasks
+        return self.readout.n_tasks
 
     @property
     def n_targets(self) -> int:
-        return self.predictor.n_targets
+        return self.readout.n_targets
 
     @property
     def criterion(self) -> LossFunction:
-        return self.predictor.criterion
+        return self.readout.criterion
 
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
-        H = self.agg(H_v, bmg.batch)
+        H = self.agg(H_v[1:], bmg.a_scope)
         H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)
@@ -132,13 +128,13 @@ class MPNN(pl.LightningModule):
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """the final hidden representations for the input molecules"""
-        return self.predictor[:-1](self.fingerprint(bmg, V_d, X_f))
+        return self.readout[:-1](self.fingerprint(bmg, V_d, X_f))
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
-        return self.predictor(self.fingerprint(bmg, V_d, X_f))
+        return self.readout(self.fingerprint(bmg, V_d, X_f))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
         bmg, V_d, X_f, targets, w_s, lt_mask, gt_mask = batch
@@ -147,7 +143,7 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
 
         Z = self.fingerprint(bmg, V_d, X_f)
-        preds = self.predictor.train_step(Z)
+        preds = self.readout.train_step(Z)
         l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
         self.log("train/loss", l, prog_bar=True)
@@ -230,7 +226,7 @@ class MPNN(pl.LightningModule):
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
+            for key in ("message_passing", "agg", "readout")
         }
 
         return super().load_from_checkpoint(

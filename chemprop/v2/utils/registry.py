@@ -4,7 +4,7 @@ from typing import Any, Iterable, Type, TypeVar
 T = TypeVar("T")
 
 
-class ClassRegistry(dict[str, Type[T]]):
+class ClassRegistry(dict[Any, Type[T]]):
     def register(self, alias: Any | Iterable[Any] | None = None):
         def decorator(cls):
             if alias is None:

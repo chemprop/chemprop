@@ -5,30 +5,26 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.nn.loss import *
-from chemprop.v2.metrics import *
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
+from chemprop.v2.utils import ClassRegistry, HasHParams
+from chemprop.v2.nn.loss import (
+    LossFunction,
+    MSELoss,
+    MVELoss,
+    EvidentialLoss,
+    BCELoss,
+    BinaryDirichletLoss,
+    CrossEntropyLoss,
+    MulticlassDirichletLoss,
+    SIDLoss,
+)
+from chemprop.v2.nn.metrics import Metric, MSEMetric, CrossEntropyMetric, SIDMetric
 from chemprop.v2.nn.ffn import SimpleFFN
 
-from chemprop.v2.nn.hparams import HasHParams
-from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
-from chemprop.v2.utils import ClassRegistry
-
-__all__ = [
-    "Predictor",
-    "PredictorRegistry",
-    "RegressionFFN",
-    "MveFFN",
-    "EvidentialFFN",
-    "BinaryClassificationFFNBase",
-    "BinaryClassificationFFN",
-    "BinaryDirichletFFN",
-    "MulticlassClassificationFFN",
-    "MulticlassDirichletFFN",
-    "SpectralFFN",
-]
+ReadoutRegistry = ClassRegistry()
 
 
-class _PredicorProto(Protocol):
+class _ReadoutProto(Protocol):
     input_dim: int
     """the input dimension"""
     output_dim: int
@@ -38,7 +34,7 @@ class _PredicorProto(Protocol):
     n_targets: int
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
-    """the loss function to use for training"""
+    """the function to use for training"""
 
     def forward(self, Z: Tensor) -> Tensor:
         pass
@@ -47,16 +43,13 @@ class _PredicorProto(Protocol):
         pass
 
 
-class Predictor(nn.Module, _PredicorProto, HasHParams):
-    r"""A :class:`Predictor` is a protocol that defines a differentiable function
-    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
-
-PredictorRegistry = ClassRegistry[Predictor]()
+class Readout(nn.Module, _ReadoutProto, HasHParams):
+    """A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`"""
 
 
-class FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`FFNPredictorBase` is the base class for all :class:`Predictor`s that use an
-    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
+class ReadoutFFNBase(Readout, HyperparametersMixin):
+    """A :class:`ReadoutFFNBase` is the base class for all readout functions that use a
+    :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
 
     _default_criterion: LossFunction
     _default_metric: Metric
@@ -99,8 +92,8 @@ class FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.ffn(Z)
 
 
-@PredictorRegistry.register("regression")
-class RegressionFFN(FFNPredictorBase):
+@ReadoutRegistry.register("regression")
+class RegressionFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
@@ -131,7 +124,7 @@ class RegressionFFN(FFNPredictorBase):
         return super().forward(Z)
 
 
-@PredictorRegistry.register("regression-mve")
+@ReadoutRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
     _default_criterion = MVELoss()
@@ -153,7 +146,7 @@ class MveFFN(RegressionFFN):
         return torch.cat((mean, var), 1)
 
 
-@PredictorRegistry.register("regression-evidential")
+@ReadoutRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _default_criterion = EvidentialLoss()
@@ -178,11 +171,11 @@ class EvidentialFFN(RegressionFFN):
         return torch.cat((mean, v, alpha, beta), 1)
 
 
-class BinaryClassificationFFNBase(FFNPredictorBase):
+class BinaryClassificationFFNBase(ReadoutFFNBase):
     pass
 
 
-@PredictorRegistry.register("classification")
+@ReadoutRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = BCELoss()
@@ -197,7 +190,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
         return super().forward(Z)
 
 
-@PredictorRegistry.register("classification-dirichlet")
+@ReadoutRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = BinaryDirichletLoss()
@@ -215,8 +208,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
         F.softplus(Y) + 1
 
 
-@PredictorRegistry.register("multiclass")
-class MulticlassClassificationFFN(FFNPredictorBase):
+@ReadoutRegistry.register("multiclass")
+class MulticlassClassificationFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = CrossEntropyLoss()
     _default_metric = CrossEntropyMetric()
@@ -248,7 +241,7 @@ class MulticlassClassificationFFN(FFNPredictorBase):
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
 
 
-@PredictorRegistry.register("multiclass-dirichlet")
+@ReadoutRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _default_criterion = MulticlassDirichletLoss()
     _default_metric = CrossEntropyMetric()
@@ -275,8 +268,8 @@ class _Exp(nn.Module):
         return X.exp()
 
 
-@PredictorRegistry.register("spectral")
-class SpectralFFN(FFNPredictorBase):
+@ReadoutRegistry.register("spectral")
+class SpectralFFN(ReadoutFFNBase):
     n_targets = 1
     _default_criterion = SIDLoss()
     _default_metric = SIDMetric()

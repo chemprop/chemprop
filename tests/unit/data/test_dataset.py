@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.v2.featurizers import MolGraphFeaturizer
+from chemprop.v2.featurizers import MoleculeMolGraphFeaturizer
 
 
 @pytest.fixture(
@@ -61,12 +61,12 @@ def data(smis, targets):
 
 @pytest.fixture
 def dataset(data):
-    return MoleculeDataset(data, MolGraphFeaturizer())
+    return MoleculeDataset(data, MoleculeMolGraphFeaturizer())
 
 
 def test_none():
     with pytest.raises(ValueError):
-        MoleculeDataset(None, MolGraphFeaturizer())
+        MoleculeDataset(None, MoleculeMolGraphFeaturizer())
 
 
 def test_empty():
