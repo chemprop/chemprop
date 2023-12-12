@@ -11,6 +11,7 @@ import torch
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.splitting import split_data
+from chemprop.v2.nn.utils import Activation
 from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry

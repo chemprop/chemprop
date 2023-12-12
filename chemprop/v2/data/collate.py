@@ -81,7 +81,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
     return (
         BatchMolGraph(mgs),
-        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds, axis=0)).float(),
+        None if V_ds[0] is None else torch.from_numpy(np.stack(V_ds, axis=0)).float(),
         None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
         None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
         torch.tensor(weights).unsqueeze(1),
