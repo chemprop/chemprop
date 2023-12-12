@@ -41,7 +41,7 @@ def test_splits_sum2_warning(molecule_dataset):
 
 def test_three_splits_provided(molecule_dataset):
     """Testing that three splits are provided"""
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         split_data(datapoints=molecule_dataset, sizes=(0.8, 0.2))
 
 
