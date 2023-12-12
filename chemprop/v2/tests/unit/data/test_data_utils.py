@@ -52,7 +52,6 @@ def test_seed0(molecule_dataset):
     """
     train, val, test = split_data(datapoints=molecule_dataset, seed=0)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
-        molecule_dataset,
         train_val_test_split(np.arange(len(molecule_dataset)), sampler="random", random_state=0),
         True,
     )
@@ -74,7 +73,6 @@ def test_seed100(molecule_dataset):
     """
     train, val, test = split_data(datapoints=molecule_dataset, seed=100)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
-        molecule_dataset,
         train_val_test_split(np.arange(len(molecule_dataset)), sampler="random", random_state=100),
         True,
     )
