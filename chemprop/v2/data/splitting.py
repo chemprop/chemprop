@@ -212,7 +212,7 @@ def _unpack_astartes_result(
 
 def split_monocomponent(
     datapoints: Sequence[MoleculeDatapoint], *args, **kwargs
-) -> tuple[Sequence[MoleculeDatapoint], ...] | tuple[list[Sequence[MoleculeDatapoint], ...], ...]:
+) -> tuple[list[MoleculeDatapoint], ...] | tuple[list[list[MoleculeDatapoint]], ...]:
     """Splits monocomponent data into training, validation, and test splits."""
 
     # split the data
@@ -234,10 +234,7 @@ def split_monocomponent(
 
 def split_multicomponent(
     datapointss: Sequence[MulticomponentDatapoint], key_index: int = 0, *args, **kwargs
-) -> (
-    tuple[Sequence[MulticomponentDatapoint], ...]
-    | tuple[Sequence[Sequence[MulticomponentDatapoint], ...], ...]
-):
+) -> tuple[list[MulticomponentDatapoint], ...] | tuple[list[list[MulticomponentDatapoint]], ...]:
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
