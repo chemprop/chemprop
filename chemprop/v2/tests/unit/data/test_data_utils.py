@@ -55,15 +55,9 @@ def test_seed0(molecule_dataset):
         train_val_test_split(np.arange(len(molecule_dataset)), sampler="random", random_state=0),
         True,
     )
-    assert set([Chem.MolToSmiles(i.mol) for i in train]) == set(
-        [Chem.MolToSmiles(i.mol) for i in train_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in val]) == set(
-        [Chem.MolToSmiles(i.mol) for i in val_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in test]) == set(
-        [Chem.MolToSmiles(i.mol) for i in test_astartes]
-    )
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_seed100(molecule_dataset):
@@ -76,22 +70,15 @@ def test_seed100(molecule_dataset):
         train_val_test_split(np.arange(len(molecule_dataset)), sampler="random", random_state=100),
         True,
     )
-    assert set([Chem.MolToSmiles(i.mol) for i in train]) == set(
-        [Chem.MolToSmiles(i.mol) for i in train_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in val]) == set(
-        [Chem.MolToSmiles(i.mol) for i in val_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in test]) == set(
-        [Chem.MolToSmiles(i.mol) for i in test_astartes]
-    )
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_split_4_4_2(molecule_dataset):
     """Testing the random split with changed sizes"""
     train, val, test = split_data(datapoints=molecule_dataset, sizes=(0.4, 0.4, 0.2))
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
-        molecule_dataset,
         train_val_test_split(
             np.arange(len(molecule_dataset)),
             sampler="random",
@@ -102,21 +89,15 @@ def test_split_4_4_2(molecule_dataset):
         ),
         True,
     )
-    assert set([Chem.MolToSmiles(i.mol) for i in train]) == set(
-        [Chem.MolToSmiles(i.mol) for i in train_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in val]) == set(
-        [Chem.MolToSmiles(i.mol) for i in val_astartes]
-    )
-    assert set([Chem.MolToSmiles(i.mol) for i in test]) == set(
-        [Chem.MolToSmiles(i.mol) for i in test_astartes]
-    )
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_split_empty_validation_set(molecule_dataset):
     """Testing the random split with an empty validation set"""
     train, val, test = split_data(datapoints=molecule_dataset, sizes=(0.4, 0, 0.6))
-    assert set([Chem.MolToSmiles(i.mol) for i in val]) == set([])
+    assert set(val) == set([])
 
 
 def test_random_split(molecule_dataset_with_repeated_smiles):
@@ -129,7 +110,7 @@ def test_random_split(molecule_dataset_with_repeated_smiles):
         datapoints=molecule_dataset_with_repeated_smiles, sizes=(0.4, 0.4, 0.2), split=split_type
     )
 
-    assert [Chem.MolToSmiles(i.mol) for i in train] == ["CN", "CC"]
+    assert train == [2, 1]
 
 
 def test_repeated_smiles(molecule_dataset_with_repeated_smiles):
@@ -142,8 +123,8 @@ def test_repeated_smiles(molecule_dataset_with_repeated_smiles):
         datapoints=molecule_dataset_with_repeated_smiles, sizes=(0.8, 0.0, 0.2), split=split_type
     )
 
-    assert [Chem.MolToSmiles(i.mol) for i in train] == ["CO", "CC", "C", "C"]
-    assert [Chem.MolToSmiles(i.mol) for i in test] == ["CN", "CN"]
+    assert train == [4, 1, 0, 5]
+    assert test == [2, 3]
 
 
 def test_kennard_stone(molecule_dataset):
@@ -156,7 +137,7 @@ def test_kennard_stone(molecule_dataset):
         datapoints=molecule_dataset, sizes=(0.4, 0.4, 0.2), split=split_type
     )
 
-    assert set([Chem.MolToSmiles(i.mol) for i in test]) == set(["CCCO", "CCCN"])
+    assert set(test) == set([9, 5])
 
 
 def test_kmeans(molecule_dataset):
@@ -169,7 +150,7 @@ def test_kmeans(molecule_dataset):
         datapoints=molecule_dataset, sizes=(0.5, 0.0, 0.5), split=split_type
     )
 
-    assert [Chem.MolToSmiles(i.mol) for i in train] == ["C", "CC", "CCC", "CN", "CO", "CCO", "CCCO"]
+    assert train == [0, 1, 2, 3, 7, 8, 9]
 
 
 def test_scaffold(molecule_dataset_with_rings):
@@ -182,4 +163,4 @@ def test_scaffold(molecule_dataset_with_rings):
         datapoints=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split=split_type
     )
 
-    assert [Chem.MolToSmiles(i.mol) for i in train] == ["C", "CC", "CCC"]
+    assert train == [0, 1, 2]
