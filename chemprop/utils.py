@@ -16,7 +16,6 @@ import numpy as np
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
-from scipy.stats.mstats import gmean
 
 from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
@@ -864,10 +863,11 @@ def multitask_mean(
         "binary_cross_entropy", "sid", "wasserstein", "f1", "mcc",
     ]
 
+    mean_fn = np.nanmean if ignore_nan_metrics else np.mean
+
     if metric in scale_dependent_metrics:
-        return gmean(scores, axis=axis)
+        return np.exp(mean_fn(np.log(scores), axis=axis))
     elif metric in nonscale_dependent_metrics:
-        mean_fn = np.nanmean if ignore_nan_metrics else np.mean
         return mean_fn(scores, axis=axis)
     else:
         raise NotImplementedError(
