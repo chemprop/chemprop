@@ -255,6 +255,10 @@ def recall_metric(targets: List[int], preds: Union[List[float], List[List[float]
     :return: The computed recall.
     """
     hard_preds = compute_hard_predictions(preds)
+    if isinstance(preds[0], list):  # multiclass
+        hard_preds = [np.argmax(p) for p in preds]
+    else:
+        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
 
     return recall_score(targets, hard_preds)
 
