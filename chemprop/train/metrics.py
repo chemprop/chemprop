@@ -240,7 +240,7 @@ def recall_metric(targets: List[int], preds: Union[List[float], List[List[float]
     :param threshold: The threshold above which a prediction is considered positive.
     :return: The computed recall.
     """
-    if type(preds[0]) == list:  # multiclass
+    if isinstance(preds[0], list):  # multiclass
         hard_preds = [p.index(max(p)) for p in preds]
     else:
         hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
