@@ -94,6 +94,23 @@ def get_metric_func(metric: str) -> Callable[[Union[List[int], List[float]], Lis
     raise ValueError(f'Metric "{metric}" not supported.')
 
 
+def compute_hard_predictions(preds, threshold=0.5):
+    """
+    Compute hard predictions from model outputs.
+
+    Args:
+    - preds (list): A list of predictions, either probabilities for binary classification or class probabilities for multiclass classification.
+    - threshold (float, optional): Threshold for converting probabilities to binary outcomes in binary classification. Defaults to 0.5.
+
+    Returns:
+    - hard_preds (list): A list of hard predictions (0/1 for binary, class index for multiclass).
+    """
+    if preds and isinstance(preds[0], list):  # Multiclass prediction
+        return [p.index(max(p)) for p in preds]
+    else:  # Binary prediction
+        return [1 if p > threshold else 0 for p in preds]
+
+
 def prc_auc(targets: List[int], preds: List[float]) -> float:
     """
     Computes the area under the precision-recall curve.
@@ -221,10 +238,7 @@ def accuracy(targets: List[int], preds: Union[List[float], List[List[float]]], t
     :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
     :return: The computed accuracy.
     """
-    if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+    hard_preds = compute_hard_predictions(preds)
 
     return accuracy_score(targets, hard_preds)
 
@@ -240,10 +254,7 @@ def recall_metric(targets: List[int], preds: Union[List[float], List[List[float]
     :param threshold: The threshold above which a prediction is considered positive.
     :return: The computed recall.
     """
-    if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+    hard_preds = compute_hard_predictions(preds)
 
     return recall_score(targets, hard_preds)
 
@@ -259,10 +270,7 @@ def precision_metric(targets: List[int], preds: Union[List[float], List[List[flo
     :param threshold: The threshold above which a prediction is considered positive.
     :return: The computed precision.
     """
-    if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+    hard_preds = compute_hard_predictions(preds)
 
     return precision_score(targets, hard_preds)
 
@@ -279,10 +287,7 @@ def balanced_accuracy_metric(targets: List[int], preds: Union[List[float], List[
     :param threshold: The threshold above which a prediction is considered positive.
     :return: The computed balanced accuracy.
     """
-    if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+    hard_preds = compute_hard_predictions(preds)
 
     return balanced_accuracy_score(targets, hard_preds)
 
@@ -300,11 +305,11 @@ def f1_metric(targets: List[int], preds: Union[List[float], List[List[float]]], 
     :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
     :return: The computed f1 score.
     """
+    hard_preds = compute_hard_predictions(preds)
+
     if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
         score = f1_score(targets, hard_preds, average='micro')
     else:  # binary prediction
-        hard_preds = [1 if p > threshold else 0 for p in preds]
         score = f1_score(targets, hard_preds)
 
     return score
@@ -321,10 +326,7 @@ def mcc_metric(targets: List[int], preds: Union[List[float], List[List[float]]],
     :param threshold: The threshold above which a prediction is a 1 and below which (inclusive) a prediction is a 0.
     :return: The computed accuracy.
     """
-    if type(preds[0]) == list:  # multiclass
-        hard_preds = [p.index(max(p)) for p in preds]
-    else:
-        hard_preds = [1 if p > threshold else 0 for p in preds]  # binary prediction
+    hard_preds = compute_hard_predictions(preds)
 
     return matthews_corrcoef(targets, hard_preds)
 
