@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import NamedTuple
@@ -8,14 +9,15 @@ from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.v2.featurizers import (
     MolGraph,
-    MoleculeMolGraphFeaturizerProto,
     MoleculeMolGraphFeaturizer,
-    RxnMolGraphFeaturizerProto,
+    SimpleMoleculeMolGraphFeaturizer,
+    RxnMolGraphFeaturizer,
     CGRFeaturizer,
 )
+from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.v2.featurizers.molgraph.reaction import CGRFeaturizer
 
 
 class Datum(NamedTuple):
@@ -28,6 +30,12 @@ class Datum(NamedTuple):
     weight: float
     lt_mask: np.ndarray | None
     gt_mask: np.ndarray | None
+
+
+class MolGraphDataset(Dataset):
+    @abstractmethod
+    def __getitem__(self, idx) -> Datum:
+        pass
 
 
 class _MolGraphDatasetMixin:
@@ -88,7 +96,7 @@ class _MolGraphDatasetMixin:
         return 0 if np.equal(self.X_f, None).all() else self.X_f.shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
-        """Normalizes the targets of the dataset using a :obj:`StandardScaler`
+        """Normalizes the targets of this dataset using a :obj:`StandardScaler`
 
         The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
         each task independently. NOTE: This should only be used for regression datasets.
@@ -135,8 +143,8 @@ class _MolGraphDatasetMixin:
 
 
 @dataclass
-class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
-    """A `MolgraphDataset` composed of `MoleculeDatapoint`s
+class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
+    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`s
 
     Parameters
     ----------
@@ -147,7 +155,9 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizerProto = field(default_factory=MoleculeMolGraphFeaturizer)
+    featurizer: MoleculeMolGraphFeaturizer = field(
+        default_factory=SimpleMoleculeMolGraphFeaturizer()
+    )
 
     def __post_init__(self):
         if self.data is None:
@@ -284,17 +294,23 @@ class MoleculeDataset(Dataset, _MolGraphDatasetMixin):
 
 
 @dataclass
-class ReactionDataset(Dataset, _MolGraphDatasetMixin):
+class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=CGRFeaturizer)
+    featurizer: RxnMolGraphFeaturizer = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
+
+    def __post_init__(self):
+        if self.data is None:
+            raise ValueError("Data cannot be None!")
+
+        self.reset()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(((d.rct, d.pdt)), None, None)
+        mg = self.featurizer((d.rct, d.pdt), None, None)
 
         return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
@@ -305,3 +321,41 @@ class ReactionDataset(Dataset, _MolGraphDatasetMixin):
     @property
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct, d.pdt) for d in self.data]
+
+
+@dataclass(repr=False, eq=False)
+class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`s"""
+
+    datasets: list[MoleculeDataset | ReactionDataset]
+    """the parallel datasets"""
+
+    def __post_init__(self):
+        sizes = [len(dset) for dset in self.datasets]
+        if not all(sizes[0] == size for size in sizes[1:]):
+            raise ValueError(f"Datasets must have all same length! got: {sizes}")
+
+    def __len__(self) -> int:
+        return len(self.datasets[0])
+
+    def __getitem__(self, idx: int) -> list[Datum]:
+        return [dset[idx] for dset in self.datasets]
+
+    @property
+    def smiles(self) -> list[list[str]]:
+        return list(zip(*[dset.smiles for dset in self.datasets]))
+
+    @property
+    def mols(self) -> list[list[Chem.Mol]]:
+        return list(zip(*[dset.mols for dset in self.datasets]))
+
+    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
+        return self.datasets[0].normalize_targets(scaler)
+
+    def normalize_inputs(
+        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+    ) -> list[StandardScaler]:
+        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+
+    def reset(self):
+        return [dset.reset() for dset in self.datasets]

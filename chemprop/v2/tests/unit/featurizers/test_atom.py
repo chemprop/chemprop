@@ -5,7 +5,7 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 
-from chemprop.v2.featurizers import AtomFeaturizer
+from chemprop.v2.featurizers import MultiHotAtomFeaturizer
 
 
 @pytest.fixture(
@@ -63,7 +63,7 @@ def hybridization():
 
 @pytest.fixture
 def featurizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
-    return AtomFeaturizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization)
+    return MultiHotAtomFeaturizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization)
 
 
 @pytest.fixture
@@ -124,7 +124,7 @@ def test_mass_bit(x, mass_bit):
     ),
 )
 def test_x_orig(a, x_v_orig):
-    f = AtomFeaturizer()
+    f = MultiHotAtomFeaturizer()
     x_v_calc = f(a)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

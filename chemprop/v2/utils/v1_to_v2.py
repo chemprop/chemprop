@@ -1,14 +1,14 @@
-import torch
-from pathlib import Path
+from os import PathLike
 
-from lightning.pytorch.utilities.parsing import AttributeDict
 from lightning.pytorch import __version__
+from lightning.pytorch.utilities.parsing import AttributeDict
+import torch
 
-from chemprop.v2.models.metrics import MetricRegistry
-from chemprop.v2.models.modules.agg import AggregationRegistry
-from chemprop.v2.models.modules.readout import ReadoutRegistry
-from chemprop.v2.models.loss import LossFunctionRegistry
-from chemprop.v2.models.modules.message_passing.molecule import BondMessageBlock, AtomMessageBlock
+from chemprop.v2.metrics import MetricRegistry
+from chemprop.v2.nn.agg import AggregationRegistry
+from chemprop.v2.nn.predictors import PredictorRegistry
+from chemprop.v2.nn.loss import LossFunctionRegistry
+from chemprop.v2.nn.message_passing import AtomMessagePassing, BondMessagePassing
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -29,16 +29,16 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
 
     if args_v1.dataset_type == "regression":
-        state_dict_v2["readout.loc"] = torch.from_numpy(
+        state_dict_v2["predictor.loc"] = torch.from_numpy(
             model_v1_dict["data_scaler"]["means"]
         ).unsqueeze(0)
-        state_dict_v2["readout.scale"] = torch.from_numpy(
+        state_dict_v2["predictor.scale"] = torch.from_numpy(
             model_v1_dict["data_scaler"]["stds"]
         ).unsqueeze(0)
 
     for i in range(args_v1.ffn_num_layers):
-        state_dict_v2[f"readout.ffn.ffn.{i*3}.weight"] = state_dict_v1[f"readout.{i*3+1}.weight"]
-        state_dict_v2[f"readout.ffn.ffn.{i*3}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
+        state_dict_v2[f"predictor.ffn.ffn.{i*3}.weight"] = state_dict_v1[f"readout.{i*3+1}.weight"]
+        state_dict_v2[f"predictor.ffn.ffn.{i*3}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
 
     return state_dict_v2
 
@@ -60,13 +60,19 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     hyper_parameters_v2["final_lr"] = args_v1.final_lr
 
     # convert the message passing block
-    d_h, d_e = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
-    d_v = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape[1] - d_h
+    W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
+    W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_h.weight"].shape
+    W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape
+
+    d_h = W_i_shape[0]
+    d_v = W_o_shape[1] - d_h
+    d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+
     hyper_parameters_v2["message_passing"] = AttributeDict(
         {
             "activation": args_v1.activation,
             "bias": args_v1.bias,
-            "cls": BondMessageBlock if not args_v1.atom_messages else AtomMessageBlock,
+            "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
             "d_e": d_e,  # the feature dimension of the edges
             "d_h": args_v1.hidden_size,  # dimension of the hidden layer
             "d_v": d_v,  # the feature dimension of the vertices
@@ -85,11 +91,11 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     if args_v1.aggregation == "norm":
         hyper_parameters_v2["agg"]["norm"] = args_v1.aggregation_norm
 
-    # convert the readout block
-    hyper_parameters_v2["readout"] = AttributeDict(
+    # convert the predictor block
+    hyper_parameters_v2["predictor"] = AttributeDict(
         {
             "activation": args_v1.activation,
-            "cls": ReadoutRegistry[args_v1.dataset_type],
+            "cls": PredictorRegistry[args_v1.dataset_type],
             "criterion": LossFunctionRegistry[args_v1.loss_function],
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
@@ -100,8 +106,8 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     )
 
     if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["readout"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
-        hyper_parameters_v2["readout"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
+        hyper_parameters_v2["predictor"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
+        hyper_parameters_v2["predictor"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
 
     return hyper_parameters_v2
 
@@ -125,7 +131,7 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     return model_v2_dict
 
 
-def convert_model_file_v1_to_v2(model_v1_file: str | Path, model_v2_file: str | Path) -> None:
+def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
     """Converts a v1 model .pt file to a v2 model .ckpt file"""
 
     model_v1_dict = torch.load(model_v1_file)

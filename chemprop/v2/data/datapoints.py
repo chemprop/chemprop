@@ -5,7 +5,7 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerProto
+from chemprop.v2.featurizers import MoleculeFeaturizer
 from chemprop.v2.utils import make_mol
 
 
@@ -24,12 +24,12 @@ class _DatapointMixin:
     x_f: np.ndarray | None = None
     """A vector of length ``d_f`` containing additional features (e.g., Morgan fingerprint) that
     will be concatenated to the global representation *after* aggregation"""
-    mfs: InitVar[list[MoleculeFeaturizerProto] | None] = None
+    mfs: InitVar[list[MoleculeFeaturizer] | None] = None
     """A list of molecule featurizers to use"""
     x_phase: list[float] = None
     """A one-hot vector indicating the phase of the data, as used in spectra data."""
 
-    def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
+    def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.x_f is not None and mfs is not None:
             raise ValueError("Cannot provide both loaded features and molecular featurizers!")
 
@@ -76,7 +76,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     ``d_vd`` is the number of additional features that will be concatenated to atom-level features
     *after* message passing"""
 
-    def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
+    def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.mol is None:
             raise ValueError("Input molecule was `None`!")
 
@@ -94,7 +94,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     def __len__(self) -> int:
         return 1
 
-    def calc_features(self, mfs: list[MoleculeFeaturizerProto]) -> np.ndarray:
+    def calc_features(self, mfs: list[MoleculeFeaturizer]) -> np.ndarray:
         if self.mol.GetNumHeavyAtoms() == 0:
             return np.zeros(sum(len(mf) for mf in mfs))
 
@@ -112,14 +112,15 @@ class _ReactionDatapointMixin:
     def from_smi(
         cls,
         rxn_or_smis: str | tuple[str, str],
+        *args,
         keep_h: bool = False,
         add_h: bool = False,
-        *args,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
             case str():
-                rct_smi, pdt_smi = rxn_or_smis.split(">>")
+                rct_smi, agt_smi, pdt_smi = rxn_or_smis.split(">")
+                rct_smi = f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi
             case tuple():
                 rct_smi, pdt_smi = rxn_or_smis
             case _:
@@ -137,7 +138,7 @@ class _ReactionDatapointMixin:
 class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
     """A :class:`ReactionDatapoint` contains a single reaction and its associated features and targets."""
 
-    def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
+    def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.rct is None:
             raise ValueError("Reactant cannot be `None`!")
         if self.pdt is None:
@@ -148,48 +149,11 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
     def __len__(self) -> int:
         return 2
 
-    def calc_features(self, mfs: list[MoleculeFeaturizerProto]) -> np.ndarray:
+    def calc_features(self, mfs: list[MoleculeFeaturizer]) -> np.ndarray:
         x_fs = [
             mf(mol) if mol.GetNumHeavyAtoms() > 0 else np.zeros(len(mf))
             for mf in mfs
             for mol in [self.rct, self.pdt]
-        ]
-
-        return np.hstack(x_fs)
-
-
-@dataclass
-class _MulticomponentDatapointMixin:
-    mols: list[Chem.Mol]
-    """the molecules associated with this datapoint"""
-
-    @classmethod
-    def from_smis(
-        cls, smis: list[str], keep_h: bool = False, add_h: bool = False, *args, **kwargs
-    ) -> _MulticomponentDatapointMixin:
-        mols = [make_mol(smi, keep_h, add_h) for smi in smis]
-
-        return cls(mols, *args, **kwargs)
-
-
-@dataclass
-class MulticomponentDatapoint(_DatapointMixin, _MulticomponentDatapointMixin):
-    """A :class:`MulticomponentDatapoint` contains a list of molecules and their associated features and targets."""
-
-    def __post_init__(self, mfs: list[MoleculeFeaturizerProto] | None):
-        if any(mol is None for mol in self.mols):
-            raise ValueError(f"An input molecule was `None`! Index: {self.mols.index(None)}")
-
-        return super().__post_init__(mfs)
-
-    def __len__(self) -> int:
-        return len(self.mols)
-
-    def calc_features(self, mfs: list[MoleculeFeaturizerProto]) -> np.ndarray:
-        x_fs = [
-            mf(mol) if mol.GetNumHeavyAtoms() > 0 else np.zeros(len(mf))
-            for mf in mfs
-            for mol in self.mols
         ]
 
         return np.hstack(x_fs)

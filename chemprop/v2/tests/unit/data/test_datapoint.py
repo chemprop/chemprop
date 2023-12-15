@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDatapoint
-from chemprop.v2.featurizers.featurizers import MoleculeFeaturizerRegistry
+
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.v2.utils.registry import Factory
 
 
