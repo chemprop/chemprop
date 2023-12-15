@@ -7,7 +7,9 @@ from chemprop.v2.utils.hparams import HasHParams
 
 
 class MessagePassing(nn.Module, HasHParams):
-    """A :class:`MessagePassing` module encodes a batch of molecular graphs using message passing to learn vertex-level hidden representations."""
+    """A :class:`MessagePassing` module encodes a batch of molecular graphs
+    using message passing to learn vertex-level hidden representations."""
+
     input_dim: int
     output_dim: int
 
