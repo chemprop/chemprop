@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.nn import MulticomponentMessagePassing, Aggregation, Readout
+from chemprop.v2.nn import MulticomponentMessagePassing, Aggregation, Predictor
 from chemprop.v2.models.model import MPNN
 from chemprop.v2.metrics import Metric
 
@@ -14,7 +14,7 @@ class MulticomponentMPNN(MPNN):
         self,
         message_passing: MulticomponentMessagePassing,
         agg: Aggregation,
-        readout: Readout,
+        predictor: Predictor,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -26,7 +26,7 @@ class MulticomponentMPNN(MPNN):
         super().__init__(
             message_passing,
             agg,
-            readout,
+            predictor,
             batch_norm,
             metrics,
             w_t,
