@@ -262,8 +262,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
-        "--separate-val-features-path",
-        help="Path to file with features for separate val set.",
+        "--separate-val-features-path", help="Path to file with features for separate val set."
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
@@ -286,13 +285,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to file with constraints for separate val set.",
     )
 
+    data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
     data_args.add_argument(
-        "--separate-test-path",
-        help="Path to separate test set, optional.",
-    )
-    data_args.add_argument(
-        "--separate-test-features-path",
-        help="Path to file with features for separate test set.",
+        "--separate-test-features-path", help="Path to file with features for separate test set."
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
@@ -475,12 +470,10 @@ def main(args):
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
         weight_col=args.weight_column,
-        bounded=bounded
+        bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators,
-        keep_h=args.keep_h,
-        add_h=args.add_h,
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     all_data = build_data_from_files(
@@ -634,10 +627,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    add_args(parser)
+    parser = TrainSubcommand.add_args(parser)
 
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
-    process_args(args)
-
-    main(args)
+    TrainSubcommand.func(args)
