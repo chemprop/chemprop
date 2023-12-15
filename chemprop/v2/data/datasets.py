@@ -17,7 +17,6 @@ from chemprop.v2.featurizers import (
     CGRFeaturizer,
 )
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.v2.featurizers.molgraph.reaction import CGRFeaturizer
 
 
 class Datum(NamedTuple):

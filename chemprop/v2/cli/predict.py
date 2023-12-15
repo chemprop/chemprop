@@ -15,15 +15,7 @@ from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn.message_passing import BondMessagePassing
 
-from chemprop.v2.cli.utils import Subcommand
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
-from chemprop.v2.nn.loss import LossFunctionRegistry
-from chemprop.v2.models import MPNN
-
 from chemprop.v2.cli.utils import Subcommand, build_data_from_files, make_dataset
-
-from chemprop.v2.cli.utils import Subcommand
-from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
 
 
