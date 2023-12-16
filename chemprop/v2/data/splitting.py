@@ -86,7 +86,7 @@ def split_data(
 
     train, val, test = None, None, None
     match SplitType.get(split):
-        case SplitType.CV_NO_VAL, SplitType.CV:
+        case SplitType.CV_NO_VAL | SplitType.CV:
             if (max_folds := len(datapoints)) > num_folds or num_folds <= 1:
                 raise ValueError(
                     f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
@@ -204,12 +204,12 @@ def split_monocomponent(
     train_idxs, val_idxs, test_idxs = split_data(datapoints, **kwargs)
 
     match SplitType.get(split):
-        case SplitType.CV_NO_VAL, SplitType.CV:
+        case SplitType.CV_NO_VAL | SplitType.CV:
             # convert indices to datapoints for each fold
             train = [[datapoints[i] for i in fold] for fold in train_idxs]
             val = [[datapoints[i] for i in fold] for fold in val_idxs]
             test = [[datapoints[i] for i in fold] for fold in test_idxs]
-        case SplitType.SCAFFOLD_BALANCED, SplitType.RANDOM_WITH_REPEATED_SMILES, SplitType.RANDOM, SplitType.KENNARD_STONE, SplitType.KMEANS:
+        case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
             # convert indices to datapoints
             train = [datapoints[i] for i in train_idxs]
             val = [datapoints[i] for i in val_idxs]
@@ -229,12 +229,12 @@ def split_multicomponent(
     train_idxs, val_idxs, test_idxs = split_data(key_datapoints, **kwargs)
 
     match SplitType.get(split):
-        case SplitType.CV_NO_VAL, SplitType.CV:
+        case SplitType.CV_NO_VAL | SplitType.CV:
             # convert indices to datapoints for each fold
             train = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in train_idxs]
             val = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in val_idxs]
             test = [[datapoints[i] for i in fold] for datapoints in datapointss for fold in test_idxs]
-        case SplitType.SCAFFOLD_BALANCED, SplitType.RANDOM_WITH_REPEATED_SMILES, SplitType.RANDOM, SplitType.KENNARD_STONE, SplitType.KMEANS:
+        case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
             # convert indices to datapoints
             train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
             val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
