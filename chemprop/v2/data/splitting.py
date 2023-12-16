@@ -240,6 +240,6 @@ def split_multicomponent(
             val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
             test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
         case _:
-            raise ValueError(f'Split type "{split}" not supported.')
+            raise RuntimeError("Unreachable code reached!")
 
     return train, val, test
