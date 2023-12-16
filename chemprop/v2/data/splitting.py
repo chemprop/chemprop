@@ -32,7 +32,7 @@ def split_data(
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_folds: int = 1,
-) -> tuple[list[int], ...] | tuple[list[list[int], ...], ...]:
+):
     """Splits data into training, validation, and test splits.
 
     Parameters
@@ -50,7 +50,7 @@ def split_data(
 
     Returns
     -------
-    tuple[list[int], ...] | tuple[list[list[int], ...], ...]
+    tuple[list[int], list[int], list[int]] | tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
         A tuple of list of indices corresponding to the train, validation, and test splits of the data.
         If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of indices corresponding to the train, validation, and test splits of each fold.
             NOTE: validation may or may not be present
@@ -197,7 +197,7 @@ def _unpack_astartes_result(
 
 def split_monocomponent(
     datapoints: Sequence[MoleculeDatapoint], split: SplitType | str = "random", **kwargs
-) -> tuple[list[MoleculeDatapoint], ...] | tuple[list[list[MoleculeDatapoint]], ...]:
+):
     """Splits monocomponent data into training, validation, and test splits."""
 
     # split the data
@@ -222,7 +222,7 @@ def split_monocomponent(
 
 def split_multicomponent(
     datapointss: Sequence[MulticomponentDatapoint], split: SplitType | str = "random", key_index: int = 0, **kwargs
-) -> tuple[list[MulticomponentDatapoint], ...] | tuple[list[list[MulticomponentDatapoint]], ...]:
+):
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
