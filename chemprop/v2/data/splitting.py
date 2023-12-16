@@ -201,7 +201,7 @@ def split_monocomponent(
     """Splits monocomponent data into training, validation, and test splits."""
 
     # split the data
-    train_idxs, val_idxs, test_idxs = split_data(datapoints, **kwargs)
+    train_idxs, val_idxs, test_idxs = split_data(datapoints, split=split, **kwargs)
 
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
@@ -226,7 +226,7 @@ def split_multicomponent(
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
-    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, **kwargs)
+    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, split=split, **kwargs)
 
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
