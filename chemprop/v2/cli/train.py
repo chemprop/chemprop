@@ -16,13 +16,10 @@ from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
 from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
-from chemprop.v2.nn.utils import Activation
 from chemprop.v2.nn.message_passing import BondMessagePassing, AtomMessagePassing
 
-from chemprop.v2.utils.registry import Factory
 from chemprop.v2.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
 from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.v2.cli.utils import Subcommand
 
 logger = logging.getLogger(__name__)
 
@@ -388,7 +385,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         choices=[
             "random",
             "scaffold",
-        ],  #'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
+        ],  # 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
         help="Method of splitting the data into train/val/test.",
     )
     split_args.add_argument(

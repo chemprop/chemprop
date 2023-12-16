@@ -63,7 +63,9 @@ def hybridization():
 
 @pytest.fixture
 def featurizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
-    return MultiHotAtomFeaturizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization)
+    return MultiHotAtomFeaturizer(
+        max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization
+    )
 
 
 @pytest.fixture

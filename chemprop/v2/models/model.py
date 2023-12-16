@@ -8,10 +8,7 @@ from torch import nn, Tensor, optim
 
 from chemprop.v2.data import TrainingBatch, BatchMolGraph
 from chemprop.v2.metrics import Metric
-from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.data.collate import TrainingBatch
 from chemprop.v2.nn import MessagePassing, Aggregation, Predictor, LossFunction
-from chemprop.v2.metrics import Metric
 from chemprop.v2.schedulers import NoamLR
 
 

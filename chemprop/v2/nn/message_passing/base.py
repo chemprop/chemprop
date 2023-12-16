@@ -218,7 +218,7 @@ class BondMessagePassing(_MessagePassingBase):
         h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf W_h m_{vw}^{(t-1)} \right) \\
         m_v^{(T)} &= \sum_{w \in \mathcal N(v)} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf W_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
-        
+
     where :math:`\tau` is the activation function; :math:`\mathbf W_i`, :math:`\mathbf W_h`, and
     :math:`\mathbf W_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
