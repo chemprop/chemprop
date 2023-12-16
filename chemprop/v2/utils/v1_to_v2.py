@@ -6,7 +6,7 @@ import torch
 
 from chemprop.v2.metrics import MetricRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
-from chemprop.v2.nn.readout import ReadoutRegistry
+from chemprop.v2.nn.predictors import PredictorRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
 from chemprop.v2.nn.message_passing import AtomMessagePassing, BondMessagePassing
 
@@ -29,16 +29,16 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
 
     if args_v1.dataset_type == "regression":
-        state_dict_v2["readout.loc"] = torch.from_numpy(
+        state_dict_v2["predictor.loc"] = torch.from_numpy(
             model_v1_dict["data_scaler"]["means"]
         ).unsqueeze(0)
-        state_dict_v2["readout.scale"] = torch.from_numpy(
+        state_dict_v2["predictor.scale"] = torch.from_numpy(
             model_v1_dict["data_scaler"]["stds"]
         ).unsqueeze(0)
 
     for i in range(args_v1.ffn_num_layers):
-        state_dict_v2[f"readout.ffn.ffn.{i*3}.weight"] = state_dict_v1[f"readout.{i*3+1}.weight"]
-        state_dict_v2[f"readout.ffn.ffn.{i*3}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
+        state_dict_v2[f"predictor.ffn.ffn.{i*3}.weight"] = state_dict_v1[f"readout.{i*3+1}.weight"]
+        state_dict_v2[f"predictor.ffn.ffn.{i*3}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
 
     return state_dict_v2
 
@@ -91,11 +91,11 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     if args_v1.aggregation == "norm":
         hyper_parameters_v2["agg"]["norm"] = args_v1.aggregation_norm
 
-    # convert the readout block
-    hyper_parameters_v2["readout"] = AttributeDict(
+    # convert the predictor block
+    hyper_parameters_v2["predictor"] = AttributeDict(
         {
             "activation": args_v1.activation,
-            "cls": ReadoutRegistry[args_v1.dataset_type],
+            "cls": PredictorRegistry[args_v1.dataset_type],
             "criterion": LossFunctionRegistry[args_v1.loss_function],
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
@@ -106,8 +106,8 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     )
 
     if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["readout"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
-        hyper_parameters_v2["readout"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
+        hyper_parameters_v2["predictor"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
+        hyper_parameters_v2["predictor"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
 
     return hyper_parameters_v2
 

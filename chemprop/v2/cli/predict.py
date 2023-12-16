@@ -10,10 +10,10 @@ import torch
 from chemprop.v2 import data
 from chemprop.v2.featurizers import RxnMode
 from chemprop.v2.metrics import MetricRegistry
+from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn.message_passing import BondMessagePassing
-from chemprop.v2.nn.readout import ReadoutRegistry
 
 from chemprop.v2.cli.utils import Subcommand
 from chemprop.v2.cli.utils_ import build_data_from_files, make_dataset
@@ -82,7 +82,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--aggregation",
         "--agg",
         default="mean",
-        choices=ReadoutRegistry.choices,
+        choices=AggregationRegistry.choices,
         help="aggregation mode to use during graph readout",
     )
     mp_args.add_argument(

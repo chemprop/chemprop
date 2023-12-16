@@ -15,8 +15,9 @@ from chemprop.v2.nn.utils import Activation
 from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
 from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
+from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
+from chemprop.v2.nn.utils import Activation
 from chemprop.v2.nn.message_passing import BondMessagePassing, AtomMessagePassing
-from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
 from chemprop.v2.utils.registry import Factory
 from chemprop.v2.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
@@ -153,7 +154,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--agg",
         default="mean",
         action=LookupAction(AggregationRegistry),
-        help="the aggregation mode to use during graph readout",
+        help="the aggregation mode to use during graph predictor",
     )
     mp_args.add_argument(
         "--aggregation-norm",
@@ -249,8 +250,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-t",
         "--task-type",
         default="regression",
-        action=LookupAction(ReadoutRegistry),
-        help="Type of task. This determines the default loss function used during training.",
+        action=LookupAction(PredictorRegistry),
+        help="Type of dataset. This determines the default loss function used during training.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
@@ -532,7 +533,7 @@ def main(args):
         activation=args.activation,
     )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
-    readout_cls = ReadoutRegistry[args.task_type]
+    predictor_cls = PredictorRegistry[args.task_type]
 
     if args.loss_function is not None:
         criterion = Factory.build(
@@ -543,12 +544,12 @@ def main(args):
         )
     else:
         logger.info(
-            f"No loss function specified, will use class default: {readout_cls._default_criterion}"
+            f"No loss function specified, will use class default: {predictor_cls._default_criterion}"
         )
-        criterion = readout_cls._default_criterion
+        criterion = predictor_cls._default_criterion
 
-    readout_ffn = Factory.build(
-        readout_cls,
+    predictor_ffn = Factory.build(
+        predictor_cls,
         input_dim=mp_block.output_dim + train_dset.d_xf,
         n_tasks=train_dset.Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
@@ -560,7 +561,7 @@ def main(args):
         spectral_activation=args.spectral_activation,
     )
 
-    if isinstance(readout_ffn, RegressionFFN):
+    if isinstance(predictor_ffn, RegressionFFN):
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
         logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
@@ -580,7 +581,7 @@ def main(args):
     model = MPNN(
         mp_block,
         agg,
-        readout_ffn,
+        predictor_ffn,
         True,
         None,
         args.task_weights,
