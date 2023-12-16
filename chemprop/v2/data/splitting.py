@@ -87,7 +87,7 @@ def split_data(
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
-            if (max_folds := len(datapoints)) > num_folds or num_folds <= 1:
+            if (max_folds := len(datapoints)) < num_folds or num_folds <= 1:
                 raise ValueError(
                     f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
                 )
