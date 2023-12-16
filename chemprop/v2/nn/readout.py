@@ -5,23 +5,12 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
-from chemprop.v2.utils import ClassRegistry, HasHParams
-from chemprop.v2.nn.loss import (
-    LossFunction,
-    MSELoss,
-    MVELoss,
-    EvidentialLoss,
-    BCELoss,
-    BinaryDirichletLoss,
-    CrossEntropyLoss,
-    MulticlassDirichletLoss,
-    SIDLoss,
-)
-from chemprop.v2.nn.metrics import Metric, MSEMetric, CrossEntropyMetric, SIDMetric
+from chemprop.v2.nn.loss import *
+from chemprop.v2.metrics import *
 from chemprop.v2.nn.ffn import SimpleFFN
-
-ReadoutRegistry = ClassRegistry()
+from chemprop.v2.nn.hparams import HasHParams
+from chemprop.v2.conf import DEFAULT_HIDDEN_DIM
+from chemprop.v2.utils import ClassRegistry
 
 
 class _ReadoutProto(Protocol):
@@ -34,7 +23,7 @@ class _ReadoutProto(Protocol):
     n_targets: int
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
-    """the function to use for training"""
+    """the loss function to use for training"""
 
     def forward(self, Z: Tensor) -> Tensor:
         pass
@@ -45,6 +34,9 @@ class _ReadoutProto(Protocol):
 
 class Readout(nn.Module, _ReadoutProto, HasHParams):
     """A :class:`Readout` is a protocol that defines a fully differentiable function which maps a tensor of shape `N x d_i` to a tensor of shape `N x d_o`"""
+
+
+ReadoutRegistry = ClassRegistry[Readout]()
 
 
 class ReadoutFFNBase(Readout, HyperparametersMixin):

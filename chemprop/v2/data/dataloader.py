@@ -37,16 +37,12 @@ class MolGraphDataLoader(DataLoader):
         shuffle: bool = True,
         **kwargs,
     ):
-        self.dset = dataset
-        self.class_balance = class_balance
-        self.shuffle = shuffle
-
-        if self.class_balance:
-            self.sampler = ClassBalanceSampler(self.dset.Y, seed, self.shuffle)
-        elif self.shuffle and seed is not None:
-            self.sampler = SeededSampler(len(self.dset), seed)
+        if class_balance:
+            sampler = ClassBalanceSampler(dataset.Y, seed, shuffle)
+        elif shuffle and seed is not None:
+            sampler = SeededSampler(len(dataset), seed)
         else:
-            self.sampler = None
+            sampler = None
 
         if isinstance(dataset, MulticomponentDataset):
             collate_fn = collate_multicomponent
@@ -54,10 +50,10 @@ class MolGraphDataLoader(DataLoader):
             collate_fn = collate_batch
 
         super().__init__(
-            self.dset,
+            dataset,
             batch_size,
-            self.sampler is None and self.shuffle,
-            self.sampler,
+            sampler is None and shuffle,
+            sampler,
             num_workers=num_workers,
             collate_fn=collate_fn,
         )

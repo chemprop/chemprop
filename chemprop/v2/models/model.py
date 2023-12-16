@@ -6,8 +6,10 @@ from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
-from chemprop.v2.data import TrainingBatch, BatchMolGraph
-from chemprop.v2.nn import MessagePassingBlock, Aggregation, Readout, LossFunction, Metric
+from chemprop.v2.data import BatchMolGraph
+from chemprop.v2.data.collate import TrainingBatch
+from chemprop.v2.nn import MessagePassing, Aggregation, Readout, LossFunction
+from chemprop.v2.metrics import Metric
 from chemprop.v2.schedulers import NoamLR
 
 
@@ -57,7 +59,7 @@ class MPNN(pl.LightningModule):
 
     def __init__(
         self,
-        message_passing: MessagePassingBlock,
+        message_passing: MessagePassing,
         agg: Aggregation,
         readout: Readout,
         batch_norm: bool = True,
@@ -119,7 +121,7 @@ class MPNN(pl.LightningModule):
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
-        H = self.agg(H_v[1:], bmg.a_scope)
+        H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)

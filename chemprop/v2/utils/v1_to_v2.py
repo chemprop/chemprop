@@ -4,11 +4,11 @@ from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
-from chemprop.v2.nn.metrics import MetricRegistry
+from chemprop.v2.metrics import MetricRegistry
 from chemprop.v2.nn.agg import AggregationRegistry
 from chemprop.v2.nn.readout import ReadoutRegistry
 from chemprop.v2.nn.loss import LossFunctionRegistry
-from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.nn.message_passing import AtomMessagePassing, BondMessagePassing
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -60,13 +60,19 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     hyper_parameters_v2["final_lr"] = args_v1.final_lr
 
     # convert the message passing block
-    d_h, d_e = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
-    d_v = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape[1] - d_h
+    W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
+    W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_h.weight"].shape
+    W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape
+
+    d_h = W_i_shape[0]
+    d_v = W_o_shape[1] - d_h
+    d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+
     hyper_parameters_v2["message_passing"] = AttributeDict(
         {
             "activation": args_v1.activation,
             "bias": args_v1.bias,
-            "cls": BondMessageBlock if not args_v1.atom_messages else AtomMessageBlock,
+            "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
             "d_e": d_e,  # the feature dimension of the edges
             "d_h": args_v1.hidden_size,  # dimension of the hidden layer
             "d_v": d_v,  # the feature dimension of the vertices

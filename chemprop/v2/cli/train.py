@@ -11,10 +11,11 @@ import torch
 from chemprop.v2 import data
 from chemprop.v2.cli.utils.args import uppercase
 from chemprop.v2.data.splitting import split_data
+from chemprop.v2.nn.utils import Activation
 from chemprop.v2.utils import Factory
 from chemprop.v2.models import MPNN
-from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, Activation
-from chemprop.v2.nn.message_passing import AtomMessageBlock, BondMessageBlock
+from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
+from chemprop.v2.nn.message_passing import BondMessagePassing, AtomMessagePassing
 from chemprop.v2.nn.readout import ReadoutRegistry, RegressionFFN
 
 from chemprop.v2.utils.registry import Factory
@@ -519,7 +520,7 @@ def main(args):
     train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
     val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
 
-    mp_cls = BondMessageBlock if bond_messages else AtomMessageBlock
+    mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     mp_block = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
