@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from torch import Tensor, nn
 from torch_scatter import scatter, scatter_softmax
 
@@ -6,7 +6,7 @@ from chemprop.v2.utils import ClassRegistry
 from chemprop.v2.nn.hparams import HasHParams
 
 
-class Aggregation(ABC, nn.Module, HasHParams):
+class Aggregation(nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
     a batch of graph-level representations
 

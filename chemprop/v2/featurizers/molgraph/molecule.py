@@ -1,17 +1,18 @@
+from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
-from typing import Protocol
 
 import numpy as np
 from rdkit import Chem
 
 from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.molgraph.mixins import MolGraphFeaturizerMixin
+from chemprop.v2.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
-class MoleculeMolGraphFeaturizerProto(Protocol):
-    """A :class:`MoleculeMolGraphFeaturizerProto` featurizes RDKit molecules into
+class MoleculeMolGraphFeaturizer(ABC):
+    """A :class:`MoleculeMolGraphFeaturizer` featurizes RDKit molecules into
     :class:`MolGraph`s"""
 
+    @abstractmethod
     def __call__(
         self,
         mol: Chem.Mol,
@@ -37,20 +38,18 @@ class MoleculeMolGraphFeaturizerProto(Protocol):
 
 
 @dataclass
-class MoleculeMolGraphFeaturizer(MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizerProto):
-    """A :class:`MoleculeMolGraphFeaturizer` is the default implementation of a
+class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizer):
+    """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
     :class:`MoleculeMolGraphFeaturizerProto`
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizerProto, default=AtomFeaturizer()
+    atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
         molecule
-    bond_featurizer : BondFeaturizerProto, default=BondFeaturizer()
+    bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
-    bond_messages : bool, default=True
-        whether to prepare the `MolGraph`s for use with message passing on bonds
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom

@@ -38,7 +38,7 @@ def mp(request):
 
 @pytest.fixture
 def dataloader(data):
-    featurizer = featurizers.MoleculeMolGraphFeaturizer()
+    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
     dset = MoleculeDataset(data, featurizer)
     dset.normalize_targets()
 

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.v2.featurizers import MolGraphFeaturizerProto, MolGraphFeaturizer, MolGraph, AtomFeaturizer
+from chemprop.v2.featurizers import MolGraphFeaturizerProto, MolGraphFeaturizer, MolGraph, MultiHotAtomFeaturizer
 
 
 @pytest.fixture(params=[
@@ -117,8 +117,8 @@ def test_b2b_none(mg):
 
 
 def test_composability(mol):
-    mf1 = MolGraphFeaturizer(AtomFeaturizer(50))
-    mf2 = MolGraphFeaturizer(AtomFeaturizer(100))
+    mf1 = MolGraphFeaturizer(MultiHotAtomFeaturizer(50))
+    mf2 = MolGraphFeaturizer(MultiHotAtomFeaturizer(100))
 
     assert mf1(mol).V.shape != mf2(mol).V.shape
 

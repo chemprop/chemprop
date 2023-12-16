@@ -1,43 +1,36 @@
+from abc import abstractmethod
 from itertools import chain
-from typing import Protocol
 
 from torch import nn, Tensor
 
 from chemprop.v2.nn.utils import get_activation_function
 
 
-class _FFNProto(Protocol):
+class FFN(nn.Module):
+    r"""A :class:`FFN` is a differentiable function
+    :math:`f_\theta : \mathbb R^i \mapsto \mathbb R^o`"""
     input_dim: int
     output_dim: int
 
+    @abstractmethod
     def forward(self, X: Tensor) -> Tensor:
         pass
 
 
-class FFN(nn.Module, _FFNProto):
-    r"""A :class:`FFN` is a differentiable function
-    :math:`f_\theta : \mathbb R^{d} \mapsto \mathbb R^o`
-
-    :inherited-members:
-    """
-
-
-class SimpleFFN(FFN):
-    r"""A :class:`SimpleFFN` is an FFN that implements the following function:
+class MLP(nn.Sequential, FFN):
+    r"""An :class:`MLP` is an FFN that implements the following function:
 
     .. math::
-        \mathbf H_0 &= \mathbf X\,\mathbf W_0 + \mathbf b_0 \\
-        \mathbf H_l &= \mathtt{dropout} \left(
-            \sigma \left(\,\mathbf H_{l-1}\,\mathbf W_l \right)
+        \mathbf h_0 &= \mathbf x\,\mathbf W^{(0)} + \mathbf b^{(0)} \\
+        \mathbf h_l &= \mathtt{dropout} \left(
+            \sigma \left(\,\mathbf h_{l-1}\,\mathbf W^{{l)} \right)
         \right) \\
-        \mathbf H_L &= \mathbf H_{L-1} \mathbf W_L + \mathbf b_L,
+        \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{{l)} + \mathbf b^{{l)},
 
-    where :math:`\mathbf X` is the input tensor, :math:`\mathbf W_l` is the learned weight matrix
-    for the :math:`l`-th layer, :math:`\mathbf b_l` is the bias vector for the :math:`l`-th layer,
-    :math:`\mathbf H_l` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
+    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{{l)}` is the learned weight matrix
+    for the :math:`l`-th layer, :math:`\mathbf b^{{l)}` is the bias vector for the :math:`l`-th layer,
+    :math:`\mathbf h^{{l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
     activation function, and :math:`L` is the number of layers.
-
-    :inherited-members:
     """
 
     def __init__(
@@ -58,9 +51,7 @@ class SimpleFFN(FFN):
         blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(dims[:-1], dims[1:]))
         layers = list(chain(*blocks))
 
-        self.ffn = nn.Sequential(*layers[1:-1])
-        self.input_dim = self.ffn[0].in_features
-        self.output_dim = self.ffn[-1].out_features
+        super().__init__(*layers[1:-1])
 
-    def forward(self, X):
-        return self.ffn(X)
+        self.input_dim = self[0].in_features
+        self.output_dim = self[-1].out_features

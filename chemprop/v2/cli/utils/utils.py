@@ -34,7 +34,7 @@ def _pop_attr_d(o: object, attr: str, default: Any | None = None) -> Any | None:
 
 
 def validate_loss_function(
-    predictor_ffn: Type[predictors.FFNPredictorBase], criterion: Type[loss.LossFunction]
+    predictor_ffn: Type[predictors._FFNPredictorBase], criterion: Type[loss.LossFunction]
 ):
     match predictor_ffn:
         case predictors.RegressionFFN:

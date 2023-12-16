@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, InitVar
-from typing import Iterable, Sequence
+from typing import Iterable, NamedTuple, Sequence
 
 import numpy as np
 import torch
@@ -70,10 +70,14 @@ class BatchMolGraph:
         self.batch = self.batch.to(device)
 
 
-TrainingBatch = tuple[BatchMolGraph, Tensor, Tensor, Tensor, Tensor | None, Tensor | None]
-MulticomponentTrainingBatch = tuple[
-    list[BatchMolGraph], list[Tensor], Tensor, Tensor, Tensor | None, Tensor | None
-]
+class TrainingBatch(NamedTuple):
+    bmg: BatchMolGraph
+    V_d: Tensor | None
+    X_f: Tensor | None
+    Y: Tensor | None
+    w: Tensor
+    lt_mask: Tensor | None
+    gt_mask: Tensor | None
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
@@ -88,6 +92,16 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
         None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
+
+
+class MulticomponentTrainingBatch(NamedTuple):
+    bmgs: list[BatchMolGraph]
+    V_ds: list[Tensor]
+    X_f: Tensor | None
+    Y: Tensor | None
+    w: Tensor
+    lt_mask: Tensor | None
+    gt_mask: Tensor | None
 
 
 def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> MulticomponentTrainingBatch:

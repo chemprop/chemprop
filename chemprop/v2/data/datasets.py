@@ -1,6 +1,7 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import NamedTuple, Protocol
+from typing import NamedTuple
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -10,9 +11,9 @@ from torch.utils.data import Dataset
 
 from chemprop.v2.featurizers import (
     MolGraph,
-    MoleculeMolGraphFeaturizerProto,
     MoleculeMolGraphFeaturizer,
-    RxnMolGraphFeaturizerProto,
+    SimpleMoleculeMolGraphFeaturizer,
+    RxnMolGraphFeaturizer,
     CGRFeaturizer,
 )
 from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
@@ -31,13 +32,10 @@ class Datum(NamedTuple):
     gt_mask: np.ndarray | None
 
 
-class MolGraphDatasetProto(Protocol):
+class MolGraphDataset(Dataset):
+    @abstractmethod
     def __getitem__(self, idx) -> Datum:
         pass
-
-
-class MolGraphDataset(Dataset, MolGraphDatasetProto):
-    pass
 
 
 class _MolGraphDatasetMixin:
@@ -145,8 +143,8 @@ class _MolGraphDatasetMixin:
 
 
 @dataclass
-class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
-    """A `MolgraphDataset` composed of `MoleculeDatapoint`s
+class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
+    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`s
 
     Parameters
     ----------
@@ -157,8 +155,8 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizerProto = field(
-        default_factory=MoleculeMolGraphFeaturizer()
+    featurizer: MoleculeMolGraphFeaturizer = field(
+        default_factory=SimpleMoleculeMolGraphFeaturizer()
     )
 
     def __post_init__(self):
@@ -296,12 +294,12 @@ class MoleculeDataset(MolGraphDataset, _MolGraphDatasetMixin):
 
 
 @dataclass
-class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
+class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizerProto = field(default_factory=CGRFeaturizer)
+    featurizer: RxnMolGraphFeaturizer = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):
@@ -326,9 +324,8 @@ class ReactionDataset(MolGraphDataset, _MolGraphDatasetMixin):
 
 
 @dataclass(repr=False, eq=False)
-class MulticomponentDataset(Dataset, _MolGraphDatasetMixin):
-    """A :class:`MulticomponentDataset` is a ``Dataset`` composed of individual
-    ``{Molecule,Reaction}Datasets``"""
+class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""

@@ -1,20 +1,23 @@
-from typing import Protocol, Sequence
+from abc import ABC, abstractmethod
+from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
 
-class BondFeaturizerProto(Protocol):
+class BondFeaturizer(ABC):
     """A :class:`BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
 
+    @abstractmethod
     def __len__(self) -> int:
         """the length of a bond feature vector"""
 
+    @abstractmethod
     def __call__(self, b: Bond) -> np.ndarray:
         """featurize the bond ``b``"""
 
 
-class BondFeaturizer(BondFeaturizerProto):
+class MultiHotBondFeaturizer(BondFeaturizer):
     """A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
 
     * ``null``-ity (i.e., is the bond ``None``?)
