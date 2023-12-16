@@ -161,7 +161,7 @@ def split_data(
             train, val, test = _unpack_astartes_result(result, include_val)
 
         case _:
-            raise ValueError(f'Split type "{split}" not supported.')
+            raise RuntimeError("Unreachable code reached!")
 
     return train, val, test
 
@@ -215,7 +215,7 @@ def split_monocomponent(
             val = [datapoints[i] for i in val_idxs]
             test = [datapoints[i] for i in test_idxs]
         case _:
-            raise ValueError(f'Split type "{split}" not supported.')
+            raise RuntimeError("Unreachable code reached!")
 
     return train, val, test
 
