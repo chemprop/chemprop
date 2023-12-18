@@ -9,7 +9,7 @@
 project = "Chemprop"
 copyright = "2023, Chemprop developers"
 author = "Chemprop developers"
-release = "2.0.0"
+release = "2.0.0b1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
