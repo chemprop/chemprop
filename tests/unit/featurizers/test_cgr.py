@@ -5,8 +5,8 @@ import uuid
 import numpy as np
 import pytest
 
-from chemprop.v2.featurizers.molgraph import RxnMode, CGRFeaturizer
-from chemprop.v2.utils import make_mol
+from chemprop.featurizers.molgraph import RxnMode, CGRFeaturizer
+from chemprop.utils import make_mol
 
 
 AVAILABLE_RXN_MODE_NAMES = [

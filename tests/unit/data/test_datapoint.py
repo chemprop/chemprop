@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from chemprop.v2.data import MoleculeDatapoint
+from chemprop.data import MoleculeDatapoint
 
-from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.v2.utils.registry import Factory
+from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
+from chemprop.utils.registry import Factory
 
 
 @pytest.fixture(

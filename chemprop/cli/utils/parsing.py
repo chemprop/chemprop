@@ -6,10 +6,10 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.v2.data.datasets import MoleculeDataset, ReactionDataset
-from chemprop.v2.featurizers.molecule import MoleculeFeaturizerProto
-from chemprop.v2.featurizers.molgraph import (
+from data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from data.datasets import MoleculeDataset, ReactionDataset
+from featurizers.molecule import MoleculeFeaturizerProto
+from featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     MoleculeMolGraphFeaturizer,
 )

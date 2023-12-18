@@ -5,8 +5,8 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
-from chemprop.v2.featurizers import MoleculeFeaturizer
-from chemprop.v2.utils import make_mol
+from featurizers import MoleculeFeaturizer
+from utils import make_mol
 
 
 @dataclass(slots=True)

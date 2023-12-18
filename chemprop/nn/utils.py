@@ -2,7 +2,7 @@ from enum import auto
 
 from torch import nn
 
-from chemprop.v2.utils.utils import EnumMapping
+from utils.utils import EnumMapping
 
 
 class Activation(EnumMapping):

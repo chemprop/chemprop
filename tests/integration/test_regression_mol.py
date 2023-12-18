@@ -11,8 +11,8 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.v2 import featurizers, models, nn
-from chemprop.v2.data import MoleculeDatapoint, MoleculeDataset, collate_batch
+from chemprop import featurizers, models, nn
+from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)

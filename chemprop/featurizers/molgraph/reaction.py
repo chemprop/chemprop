@@ -8,9 +8,9 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
-from chemprop.v2.featurizers.molgraph.molgraph import MolGraph
-from chemprop.v2.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
-from chemprop.v2.utils.utils import EnumMapping
+from featurizers.molgraph.molgraph import MolGraph
+from featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from utils.utils import EnumMapping
 
 
 class RxnMode(EnumMapping):

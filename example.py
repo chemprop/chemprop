@@ -5,7 +5,7 @@ from lightning import pytorch as pl
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from chemprop.v2 import data, metrics, nn, models, featurizers
+from chemprop import data, metrics, nn, models, featurizers
 
 
 def main():

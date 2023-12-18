@@ -4,8 +4,8 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit import Chem
 
-from chemprop.v2.featurizers.molgraph import MolGraph
-from chemprop.v2.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from featurizers.molgraph import MolGraph
+from featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
 class MoleculeMolGraphFeaturizer(ABC):

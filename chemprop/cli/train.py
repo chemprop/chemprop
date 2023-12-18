@@ -8,18 +8,18 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.v2 import data
-from chemprop.v2.cli.utils.args import uppercase
-from chemprop.v2.data.splitting import split_data
-from chemprop.v2.nn.utils import Activation
-from chemprop.v2.utils import Factory
-from chemprop.v2.models import MPNN
-from chemprop.v2.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
-from chemprop.v2.nn.predictors import PredictorRegistry, RegressionFFN
-from chemprop.v2.nn.message_passing import BondMessagePassing, AtomMessagePassing
+import data
+from cli.utils.args import uppercase
+from data.splitting import split_data
+from nn.utils import Activation
+from utils import Factory
+from models import MPNN
+from nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
+from nn.predictors import PredictorRegistry, RegressionFFN
+from nn.message_passing import BondMessagePassing, AtomMessagePassing
 
-from chemprop.v2.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
-from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
+from cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from cli.common import add_common_args, process_common_args, validate_common_args
 
 logger = logging.getLogger(__name__)
 

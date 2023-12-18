@@ -4,8 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
-from chemprop.v2.featurizers import SimpleMoleculeMolGraphFeaturizer
+from chemprop.data import MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
+from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
 
 
 TEST_DIR = Path(__file__).parents[2]

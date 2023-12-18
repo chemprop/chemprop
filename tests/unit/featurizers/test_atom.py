@@ -5,7 +5,7 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 
-from chemprop.v2.featurizers import MultiHotAtomFeaturizer
+from chemprop.featurizers import MultiHotAtomFeaturizer
 
 
 @pytest.fixture(

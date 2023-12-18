@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from chemprop.v2.data.datasets import Datum
-from chemprop.v2.featurizers import MolGraph
+from data.datasets import Datum
+from featurizers import MolGraph
 
 
 @dataclass(repr=False, eq=False, slots=True)

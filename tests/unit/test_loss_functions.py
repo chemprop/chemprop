@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import pytest
 
-from chemprop.v2.nn.loss import (
+from chemprop.nn.loss import (
     BoundedMSELoss,
     MVELoss,
     BinaryDirichletLoss,

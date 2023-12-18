@@ -7,16 +7,16 @@ import pandas as pd
 from lightning import pytorch as pl
 import torch
 
-from chemprop.v2 import data
-from chemprop.v2.featurizers import RxnMode
-from chemprop.v2.metrics import MetricRegistry
-from chemprop.v2.nn.agg import AggregationRegistry
-from chemprop.v2.nn.loss import LossFunction, LossFunctionRegistry
-from chemprop.v2.models import MPNN
-from chemprop.v2.nn.message_passing import BondMessagePassing
+import data
+from featurizers import RxnMode
+from metrics import MetricRegistry
+from nn.agg import AggregationRegistry
+from nn.loss import LossFunction, LossFunctionRegistry
+from models import MPNN
+from nn.message_passing import BondMessagePassing
 
-from chemprop.v2.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.v2.cli.common import add_common_args, process_common_args, validate_common_args
+from cli.utils import Subcommand, build_data_from_files, make_dataset
+from cli.common import add_common_args, process_common_args, validate_common_args
 
 
 logger = logging.getLogger(__name__)

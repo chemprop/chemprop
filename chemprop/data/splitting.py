@@ -9,8 +9,8 @@ from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 from rdkit import Chem
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.utils.utils import EnumMapping
+from data.datapoints import MoleculeDatapoint
+from utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
 MulticomponentDatapoint = Sequence[MoleculeDatapoint]

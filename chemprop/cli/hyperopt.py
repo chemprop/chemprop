@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 
-from chemprop.v2.cli.utils.command import Subcommand
+from cli.utils.command import Subcommand
 
 
 class HyperoptSubcommand(Subcommand):

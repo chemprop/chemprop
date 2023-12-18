@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.v2.featurizers import SimpleMoleculeMolGraphFeaturizer
+from chemprop.data import MoleculeDataset, MoleculeDatapoint
+from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
 
 
 @pytest.fixture(

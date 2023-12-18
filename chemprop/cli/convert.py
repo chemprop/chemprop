@@ -3,8 +3,8 @@ import sys
 import logging
 from pathlib import Path
 
-from chemprop.v2.cli.utils import Subcommand
-from chemprop.v2.utils.v1_to_v2 import convert_model_file_v1_to_v2
+from cli.utils import Subcommand
+from utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 logger = logging.getLogger(__name__)
 

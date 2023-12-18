@@ -3,10 +3,9 @@ import pytest
 import numpy as np
 from astartes import train_val_test_split
 from astartes.utils.warnings import NormalizationWarning
-from rdkit import Chem
 
-from chemprop.v2.data.datapoints import MoleculeDatapoint
-from chemprop.v2.data.splitting import split_data, _unpack_astartes_result
+from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.splitting import split_data, _unpack_astartes_result
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])

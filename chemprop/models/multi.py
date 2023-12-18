@@ -3,10 +3,10 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
-from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.nn import MulticomponentMessagePassing, Aggregation, Predictor
-from chemprop.v2.models.model import MPNN
-from chemprop.v2.metrics import Metric
+from data import BatchMolGraph
+from nn import MulticomponentMessagePassing, Aggregation, Predictor
+from models.model import MPNN
+from metrics import Metric
 
 
 class MulticomponentMPNN(MPNN):

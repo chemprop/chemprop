@@ -2,8 +2,8 @@ from abc import abstractmethod
 
 from torch import nn, Tensor
 
-from chemprop.v2.data import BatchMolGraph
-from chemprop.v2.utils.hparams import HasHParams
+from data import BatchMolGraph
+from utils.hparams import HasHParams
 
 
 class MessagePassing(nn.Module, HasHParams):

@@ -6,10 +6,10 @@ from pathlib import Path
 
 from lightning import pytorch as pl
 
-from chemprop.v2 import data
-from chemprop.v2 import featurizers
-from chemprop.v2.models.model import MPNN
-from chemprop.v2.utils.v1_to_v2 import convert_model_file_v1_to_v2
+from chemprop import data
+from chemprop import featurizers
+from chemprop.models.model import MPNN
+from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 TEST_DIR = Path(__file__).parents[2]
 TEST_DATA_DIR = TEST_DIR / "data"
