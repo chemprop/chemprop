@@ -49,7 +49,7 @@ PyPi = "https://pypi.org/project/chemprop/"
 demo = "http://chemprop.csail.mit.edu/"
 
 [project.scripts]
-chemprop = "chemprop.v2.cli.main:main"
+chemprop = "chemprop.cli.main:main"
 
 
 [tool.black]
