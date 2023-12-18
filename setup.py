@@ -8,7 +8,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="chemprop",
-    author="Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld, Allison Tam",
+    author="The Chemprop Development Team (see LICENSE.txt)",
     author_email="chemprop@mit.edu",
     description="Molecular Property Prediction with Message Passing Neural Networks",
     long_description=long_description,
