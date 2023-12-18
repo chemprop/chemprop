@@ -46,7 +46,6 @@ test = ["parameterized > 0.8", "pytest >= 6.2", "pytest-cov"]
 documentation = "https://chemprop.readthedocs.io/en/latest/"
 source = "https://github.com/chemprop/chemprop"
 PyPi = "https://pypi.org/project/chemprop/"
-demo = "http://chemprop.csail.mit.edu/"
 
 [project.scripts]
 chemprop = "chemprop.cli.main:main"
