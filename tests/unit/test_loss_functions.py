@@ -1,237 +1,487 @@
-"""Chemprop unit tests for chemprop/train/loss_functions.py"""
-from types import SimpleNamespace
-
+"""Chemprop unit tests for chemprop/v2/models/loss.py"""
 import numpy as np
 import torch
 import pytest
 
-from chemprop.train.loss_functions import (
-    bounded_mse_loss,
-    dirichlet_class_loss,
-    evidential_loss,
-    get_loss_func,
-    normal_mve,
+from chemprop.v2.nn.loss import (
+    BoundedMSELoss,
+    MVELoss,
+    BinaryDirichletLoss,
+    MulticlassDirichletLoss,
+    EvidentialLoss,
+    BCELoss,
+    CrossEntropyLoss,
+    BinaryMCCLoss,
+    MulticlassMCCLoss,
+    SIDLoss,
+    WassersteinLoss,
 )
-
-
-# Fixtures
-@pytest.fixture(params=["regression", "classification", "multiclass"])
-def dataset_type(request):
-    return request.param
-
-
-@pytest.fixture(params=["mse", "bounded_mse", "mve", "evidential"])
-def regression_function(request):
-    return request.param
-
-
-@pytest.fixture(params=["binary_cross_entropy", "mcc", "dirichlet"])
-def classification_function(request):
-    return request.param
-
-
-@pytest.fixture(params=["cross_entropy", "mcc", "dirichlet"])
-def multiclass_function(request):
-    return request.param
-
-
-@pytest.fixture(params=["sid", "wasserstein"])
-def spectra_function(request):
-    return request.param
-
-
-# Tests
-def test_get_regression_function(regression_function):
-    """
-    Tests the get_loss_func function for regression.
-    """
-    args = SimpleNamespace(
-        loss_function=regression_function,
-        dataset_type='regression',
-    )
-    assert get_loss_func(args)
-
-
-def test_get_class_function(classification_function):
-    """
-    Tests the get_loss_func function for classification.
-    """
-    args = SimpleNamespace(
-        loss_function=classification_function,
-        dataset_type='classification',
-    )
-    assert get_loss_func(args)
-
-
-def test_get_multiclass_function(multiclass_function):
-    """
-    Tests the get_loss_func function for multiclass.
-    """
-    args = SimpleNamespace(
-        loss_function=multiclass_function,
-        dataset_type='multiclass',
-    )
-    assert get_loss_func(args)
-
-
-def test_get_spectra_function(spectra_function):
-    """
-    Tests the get_loss_func function for spectra.
-    """
-    args = SimpleNamespace(
-        loss_function=spectra_function,
-        dataset_type='spectra',
-    )
-    assert get_loss_func(args)
-
-
-def test_get_unsupported_function(dataset_type):
-    """
-    Tests the error triggering for unsupported loss functions in get_loss_func.
-    """
-    with pytest.raises(ValueError):
-        args = SimpleNamespace(
-            dataset_type=dataset_type, loss_function="dummy_loss"
-        )
-        get_loss_func(args=args)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,lt_targets,gt_targets,mse",
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,mse",
     [
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
-            torch.zeros([2, 2], dtype=bool),
-            torch.zeros([2, 2], dtype=bool),
-            15
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.tensor(3.75000, dtype=torch.float),
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
-            torch.zeros([2, 2], dtype=bool),
-            torch.ones([2, 2], dtype=bool),
-            10
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.tensor(2.5000, dtype=torch.float),
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=float),
-            torch.zeros([2, 2], dtype=float),
-            torch.ones([2, 2], dtype=bool),
-            torch.zeros([2, 2], dtype=bool),
-            5
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.tensor(1.25000, dtype=torch.float),
         ),
-    ]
+    ],
 )
-def test_bounded_mse(preds, targets, lt_targets, gt_targets, mse):
+def test_BoundedMSE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, mse):
     """
     Testing the bounded_mse loss function
     """
-    loss = bounded_mse_loss(preds, targets, lt_targets, gt_targets)
-    assert loss.sum() == mse
+    bmse_loss = BoundedMSELoss()
+    loss = bmse_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, mse)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,likelihood",
-    [(
-        torch.tensor([[0, 1]], dtype=float),
-        torch.zeros([1, 1]),
-        [[0.3989]],
-    )]
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,likelihood",
+    [
+        (
+            torch.tensor([[0, 1]], dtype=torch.float),
+            torch.zeros([1, 1]),
+            torch.ones([1, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            torch.tensor(0.39894228, dtype=torch.float),
+        )
+    ],
 )
-def test_mve(preds, targets, likelihood):
+def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
     """
     Tests the normal_mve loss function
     """
-    nll_calc = normal_mve(preds, targets)
+    mve_loss = MVELoss()
+    nll_calc = mve_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
     likelihood_calc = np.exp(-1 * nll_calc)
-    np.testing.assert_array_almost_equal(likelihood, likelihood_calc, decimal=4)
+    torch.testing.assert_close(likelihood_calc, likelihood)
 
 
 @pytest.mark.parametrize(
-    "alphas,target_labels,lam,expected_loss",
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
             torch.tensor([[2, 2]]),
             torch.ones([1, 1]),
+            torch.ones([1, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
             0,
-            [[0.6]]
+            torch.tensor(0.6, dtype=torch.float),
         ),
         (
             torch.tensor([[2, 2]]),
             torch.ones([1, 1]),
+            torch.ones([1, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
             0.2,
-            [[0.63862943]]
-        )
-    ]
+            torch.tensor(0.63862943, dtype=torch.float),
+        ),
+    ],
 )
-def test_dirichlet(alphas, target_labels, lam, expected_loss):
+def test_BinaryDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
     """
     Test on the dirichlet loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    loss = dirichlet_class_loss(alphas, target_labels, lam=lam)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    binary_dirichlet_loss = BinaryDirichletLoss(v_kl=v_kl)
+    loss = binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "alphas,target_labels",
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,",
     [
         (
             torch.ones([1, 1]),
             torch.ones([1, 1]),
-        ),
-    ]
+            torch.ones([1, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
+        )
+    ],
 )
-def test_dirichlet_wrong_dimensions(alphas, target_labels):
+def test_BinaryDirichlet_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt_mask):
     """
     Test on the dirichlet loss function for classification
     for dimension errors.
     """
     with pytest.raises(RuntimeError):
-        dirichlet_class_loss(alphas, target_labels)
+        binary_dirichlet_loss = BinaryDirichletLoss()
+        binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
 
 
 @pytest.mark.parametrize(
-    "alphas,targets,lam,expected_loss",
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
+    [
+        (
+            torch.tensor([[[0.2, 0.1, 0.3], [0.1, 0.3, 0.1]], [[1.2, 0.5, 1.7], [1.1, 1.4, 0.8]]]),
+            torch.tensor([[0, 0], [1, 1]]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            0.2,
+            torch.tensor(1.868991, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[[0.2, 0.1, 0.3], [0.1, 0.3, 0.1]], [[1.2, 0.5, 1.7], [1.1, 1.4, 0.8]]]),
+            torch.tensor([[0, 0], [1, 1]]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            0.0,
+            torch.tensor(1.102344, dtype=torch.float),
+        ),
+    ],
+)
+def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
+    """
+    Test on the dirichlet loss function for classification.
+    Note these values were not hand derived, just testing for
+    dimensional consistency.
+    """
+    multiclass_dirichlet_loss = MulticlassDirichletLoss(v_kl)
+    loss = multiclass_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
             torch.tensor([[2, 2, 2, 2]]),
             torch.ones([1, 1]),
+            torch.ones([1, 1], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
             0,
-            [[1.56893861]]
+            torch.tensor(1.56893861, dtype=torch.float),
         ),
         (
             torch.tensor([[2, 2, 2, 2]]),
             torch.ones([1, 1]),
+            torch.ones([1, 1], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
             0.2,
-            [[2.768938541]]
-        )
-    ]
+            torch.tensor(2.768938541, dtype=torch.float),
+        ),
+    ],
 )
-def test_evidential(alphas, targets, lam, expected_loss):
+def test_Evidential(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
     """
     Test on the evidential loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    loss = evidential_loss(alphas, targets, lam=lam)
-    np.testing.assert_array_almost_equal(loss, expected_loss)
+    evidential_loss = EvidentialLoss(v_kl=v_kl)
+    loss = evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "alphas,targets",
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask",
     [
         (
             torch.ones([2, 2]),
             torch.ones([2, 2]),
-        ),
-    ]
+            torch.ones([1, 1], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([1]),
+            torch.zeros([1], dtype=torch.bool),
+            torch.zeros([1], dtype=torch.bool),
+        )
+    ],
 )
-def test_evidential_wrong_dimensions(alphas, targets):
+def test_Evidential_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt_mask):
     """
-    Test on the dirichlet loss function for classification
+    Test on the Evidential loss function for classification
     for dimension errors.
     """
-    with pytest.raises(RuntimeError):
-        evidential_loss(alphas, targets)
+    evidential_loss = EvidentialLoss()
+    with pytest.raises(ValueError):
+        evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    [
+        (
+            torch.tensor([2, 2], dtype=torch.float),
+            torch.ones([2], dtype=torch.float),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            torch.tensor(0.126928, dtype=torch.float),
+        ),
+        (
+            torch.tensor([0.5, 0.5], dtype=torch.float),
+            torch.ones([2], dtype=torch.float),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            torch.tensor(0.474077, dtype=torch.float),
+        ),
+    ],
+)
+def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+    """
+    Test on the BCE loss function for classification.
+    """
+    bce_loss = BCELoss()
+    loss = bce_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    [
+        (
+            torch.tensor([[[1.2, 0.5, 0.7], [-0.1, 0.3, 0.1]], [[1.2, 0.5, 0.7], [1.1, 1.3, 1.1]]]),
+            torch.tensor([[1, 0], [1, 2]]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.tensor(1.34214, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[[1.2, 1.5, 0.7], [-0.1, 2.3, 1.1]], [[1.2, 1.5, 1.7], [2.1, 1.3, 1.1]]]),
+            torch.tensor([[1, 1], [2, 2]], dtype=torch.float64),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.tensor(0.899472, dtype=torch.float),
+        ),
+    ],
+)
+def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+    """
+    Test on the CE loss function for classification.
+    Note these values were not hand derived, just testing for
+    dimensional consistency.
+    """
+    cross_entropy_loss = CrossEntropyLoss()
+    loss = cross_entropy_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    [
+        (
+            torch.tensor([0, 1, 1, 0]),
+            torch.tensor([0, 1, 1, 0]),
+            torch.ones([4], dtype=torch.bool),
+            torch.ones(1),
+            torch.ones(4),
+            torch.zeros([1, 4], dtype=torch.bool),
+            torch.zeros([1, 4], dtype=torch.bool),
+            torch.tensor(0, dtype=torch.float),
+        ),
+        (
+            torch.tensor([0, 1, 0, 1, 1, 1, 0, 1, 1]),
+            torch.tensor([0, 1, 1, 0, 1, 1, 0, 0, 1]),
+            torch.ones([9], dtype=torch.bool),
+            torch.ones(1),
+            torch.ones(9),
+            torch.zeros([1, 9], dtype=torch.bool),
+            torch.zeros([1, 9], dtype=torch.bool),
+            torch.tensor(0.683772, dtype=torch.float),
+        ),
+    ],
+)
+def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+    """
+    Test on the BinaryMCC loss function for classification. Values have been checked using TorchMetrics.
+    """
+    binary_mcc_loss = BinaryMCCLoss()
+    loss = binary_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    [
+        (
+            torch.tensor(
+                [[[0.16, 0.26, 0.58], [0.22, 0.61, 0.17]], [[0.71, 0.09, 0.20], [0.05, 0.82, 0.13]]]
+            ),
+            torch.tensor([[2, 1], [0, 0]]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([1, 2]),
+            torch.ones([2]),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.tensor(0.2697033, dtype=torch.float),
+        ),
+        (
+            torch.tensor(
+                [[[0.16, 0.26, 0.58], [0.22, 0.61, 0.17]], [[0.71, 0.09, 0.20], [0.05, 0.82, 0.13]]]
+            ),
+            torch.tensor([[2, 1], [0, 0]]),
+            torch.tensor([[1, 1], [0, 1]], dtype=torch.bool),
+            torch.ones([1, 2]),
+            torch.ones([2]),
+            torch.zeros([2, 2], dtype=bool),
+            torch.zeros([2, 2], dtype=bool),
+            torch.tensor(0.3876276, dtype=torch.float),
+        ),
+    ],
+)
+def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+    """
+    Test on the MulticlassMCC loss function for classification.
+    """
+    multiclass_mcc_loss = MulticlassMCCLoss()
+    loss = multiclass_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,threshold,expected_loss",
+    [
+        (
+            torch.tensor([[0.8, 0.2], [0.3, 0.7]]),
+            torch.tensor([[0.9, 0.1], [0.4, 0.6]]),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones([2], dtype=torch.bool),
+            None,
+            torch.tensor(0.031319, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[0.6, 0.4], [0.2, 0.8]]),
+            torch.tensor([[0.7, 0.3], [0.3, 0.7]]),
+            torch.tensor([[1, 1], [1, 0]], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones([2], dtype=torch.bool),
+            None,
+            torch.tensor(0.295655, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[0.6, 0.4], [0.2, 0.8]]),
+            torch.tensor([[0.7, 0.3], [0.3, 0.7]]),
+            torch.tensor([[1, 1], [1, 1]], dtype=torch.bool),
+            torch.ones([1]),
+            torch.ones([2]),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones([2], dtype=torch.bool),
+            0.5,
+            torch.tensor(0.033673, dtype=torch.float),
+        ),
+    ],
+)
+def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expected_loss):
+    """
+    Test on the SID loss function. These values were not handchecked,
+    just checking function returns values with/without mask and threshold.
+    """
+    sid_loss = SIDLoss(threshold)
+    loss = sid_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,threshold,expected_loss",
+    [
+        (
+            torch.tensor([[0.1, 0.3, 0.5, 0.7], [0.2, 0.4, 0.6, 0.8]]),
+            torch.tensor([[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]),
+            torch.tensor([[1, 1, 1, 1], [1, 0, 1, 0]], dtype=torch.bool),
+            torch.ones([2, 1]),
+            torch.ones([1, 4]),
+            torch.zeros([2, 4], dtype=torch.bool),
+            torch.zeros([2, 4], dtype=torch.bool),
+            None,
+            torch.tensor(0.1125, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[0.1, 0.3, 0.5, 0.7], [0.2, 0.4, 0.6, 0.8]]),
+            torch.tensor([[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]),
+            torch.ones([2, 4], dtype=torch.bool),
+            torch.ones([2, 1]),
+            torch.ones([1, 4]),
+            torch.zeros([2, 4], dtype=torch.bool),
+            torch.zeros([2, 4], dtype=torch.bool),
+            None,
+            torch.tensor(0.515625, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[0.1, 0.3, 0.5, 0.7], [0.2, 0.4, 0.6, 0.8]]),
+            torch.tensor([[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]),
+            torch.ones([2, 4], dtype=torch.bool),
+            torch.ones([2, 1]),
+            torch.ones([1, 4]),
+            torch.zeros([2, 4], dtype=torch.bool),
+            torch.zeros([2, 4], dtype=torch.bool),
+            0.3,
+            torch.tensor(0.501984, dtype=torch.float),
+        ),
+    ],
+)
+def test_Wasserstein(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expected_loss):
+    """
+    Test on the Wasserstein loss function. These values were not handchecked,
+    just checking function returns values with/without mask and threshold.
+    """
+    wasserstein_loss = WassersteinLoss(threshold)
+    loss = wasserstein_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss)

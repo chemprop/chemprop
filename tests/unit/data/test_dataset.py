@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.v2.featurizers import MolGraphFeaturizer
+from chemprop.v2.featurizers import SimpleMoleculeMolGraphFeaturizer
 
 
 @pytest.fixture(
@@ -56,17 +56,17 @@ def targets(smis):
 
 @pytest.fixture
 def data(smis, targets):
-    return [MoleculeDatapoint(smi, t) for smi, t in zip(smis, targets)]
+    return [MoleculeDatapoint.from_smi(smi, t) for smi, t in zip(smis, targets)]
 
 
 @pytest.fixture
 def dataset(data):
-    return MoleculeDataset(data, MolGraphFeaturizer())
+    return MoleculeDataset(data, SimpleMoleculeMolGraphFeaturizer())
 
 
 def test_none():
     with pytest.raises(ValueError):
-        MoleculeDataset(None, MolGraphFeaturizer())
+        MoleculeDataset(None, SimpleMoleculeMolGraphFeaturizer())
 
 
 def test_empty():
@@ -83,25 +83,25 @@ def test_smis(dataset, smis):
 
 
 def test_targets(dataset, targets):
-    np.testing.assert_array_equal(dataset.targets, targets)
+    np.testing.assert_array_equal(dataset.Y, targets)
 
 
 def test_set_targets_too_short(dataset):
     with pytest.raises(ValueError):
-        dataset.targets = np.random.rand(len(dataset) // 2, 1)
+        dataset.Y = np.random.rand(len(dataset) // 2, 1)
 
 
 def test_num_tasks(dataset, targets):
-    assert dataset.num_tasks == targets.shape[1]
+    assert dataset.t == targets.shape[1]
 
 
 def test_aux_nones(dataset: MoleculeDataset):
-    assert dataset.X_f is None
-    assert dataset.X_phase is None
-    assert dataset.V_fs is None
-    assert dataset.E_fs is None
-    assert dataset.gt_mask is None
-    assert dataset.lt_mask is None
-    assert dataset.d_v is None
-    assert dataset.d_vf is None
-    assert dataset.d_ef is None
+    np.testing.assert_array_equal(dataset.X_f, None)
+    np.testing.assert_array_equal(dataset.X_f, None)
+    np.testing.assert_array_equal(dataset.V_fs, None)
+    np.testing.assert_array_equal(dataset.E_fs, None)
+    np.testing.assert_array_equal(dataset.gt_mask, None)
+    np.testing.assert_array_equal(dataset.lt_mask, None)
+    assert dataset.d_vd == 0
+    assert dataset.d_vf == 0
+    assert dataset.d_ef == 0

@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 
 from chemprop.v2.data import MoleculeDatapoint
-from chemprop.featurizers.features_generators import get_available_features_generators
+
+from chemprop.v2.featurizers.molecule import MoleculeFeaturizerRegistry
+from chemprop.v2.utils.registry import Factory
 
 
 @pytest.fixture(
@@ -52,7 +54,7 @@ def features_with_nans(features):
 
 @pytest.fixture
 def features_generators():
-    return get_available_features_generators()
+    return [Factory.build(featurizer) for featurizer in MoleculeFeaturizerRegistry.values()]
 
 
 def test_features_and_fg(features_generators):
@@ -60,26 +62,26 @@ def test_features_and_fg(features_generators):
     targets = np.random.rand(1, 1)
     features = np.random.rand(1024)
     with pytest.raises(ValueError):
-        MoleculeDatapoint(smi, targets, features=features, molecule_featurizers=features_generators)
+        MoleculeDatapoint.from_smi(smi, y=targets, x_f=features, mfs=features_generators)
 
 
 def test_num_tasks(targets):
-    d = MoleculeDatapoint("c1ccccc1", targets)
+    d = MoleculeDatapoint.from_smi("c1ccccc1", y=targets)
 
     assert d.t == targets.shape[0]
 
 
 def test_addh(smi, targets):
-    d1 = MoleculeDatapoint(smi, targets)
-    d2 = MoleculeDatapoint(smi, targets, add_h=True)
+    d1 = MoleculeDatapoint.from_smi(smi, y=targets)
+    d2 = MoleculeDatapoint.from_smi(smi, y=targets, add_h=True)
 
-    assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms
+    assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms()
 
 
 def test_replace_token(smi, targets, features_with_nans):
     if not np.isnan(features_with_nans).any():
         pytest.skip("no `nan`s")
 
-    d = MoleculeDatapoint(smi, targets, features=features_with_nans)
+    d = MoleculeDatapoint.from_smi(smi, y=targets, x_f=features_with_nans)
 
     assert not np.isnan(d.x_f).any()
