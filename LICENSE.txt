@@ -1,6 +1,8 @@
 MIT License
 
-Copyright (c) 2020 Wengong Jin, Kyle Swanson, Kevin Yang, Regina Barzilay, Tommi Jaakkola
+Copyright (c) 2023 Regina Barzilay, Jackson Burns, Yunsie Chung, David Graff,
+William Green, Kevin Greenman, Esther Heid, Tommi Jaakkola, Wengong Jin, Shih-Cheng Li,
+Mengjie Liu, Charles McGill, Kyle Swanson, Florence Vermeire, Haoyang Wu, Kevin Yang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
