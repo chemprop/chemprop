@@ -4,10 +4,9 @@ from pathlib import Path
 
 from cli.train import TrainSubcommand
 from cli.predict import PredictSubcommand
-from cli.fingerprint import FingerprintSubcommand
-from cli.hyperopt import HyperoptSubcommand
-
 # TODO: add subcommands for Fingerprint and Hyperopt
+# from cli.fingerprint import FingerprintSubcommand
+# from cli.hyperopt import HyperoptSubcommand
 
 from cli.utils import LOG_DIR, NOW, pop_attr
 from cli.convert import ConvertSubcommand

@@ -18,6 +18,7 @@ from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
+
 @pytest.fixture(
     params=[
         (Path("tests/data/regression_rxn.csv"), "smiles", "ea"),
@@ -96,5 +97,5 @@ def test_overfitting(dataloader, mp: nn.MessagePassing):
 
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
-    
+
     assert mse <= 0.01

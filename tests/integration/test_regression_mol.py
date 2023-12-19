@@ -17,6 +17,7 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
+
 @pytest.fixture(
     params=[
         (Path("tests/data/regression_mol.csv"), "smiles", "lipo"),
@@ -87,5 +88,5 @@ def test_overfit(mp, dataloader):
 
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
-    
+
     assert mse <= 0.05
