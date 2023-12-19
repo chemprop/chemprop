@@ -1,11 +1,9 @@
 from argparse import ArgumentParser, Namespace
 import logging
 
-
-from cli.utils.args import uppercase
-from featurizers import RxnMode, MoleculeFeaturizerRegistry
-
-from cli.utils import LookupAction
+from chemprop.cli.utils import LookupAction
+from chemprop.cli.utils.args import uppercase
+from chemprop.featurizers import RxnMode, MoleculeFeaturizerRegistry
 
 logger = logging.getLogger(__name__)
 

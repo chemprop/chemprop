@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
-from featurizers.atom import MultiHotAtomFeaturizer, AtomFeaturizer
-from featurizers.bond import MultiHotBondFeaturizer, BondFeaturizer
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer, AtomFeaturizer
+from chemprop.featurizers.bond import MultiHotBondFeaturizer, BondFeaturizer
 
 
 @dataclass

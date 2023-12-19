@@ -4,7 +4,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
-from utils import ClassRegistry
+from chemprop.utils import ClassRegistry
 
 
 class MoleculeFeaturizer(ABC):

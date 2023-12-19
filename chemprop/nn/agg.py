@@ -2,8 +2,8 @@ from abc import abstractmethod
 from torch import Tensor, nn
 from torch_scatter import scatter, scatter_softmax
 
-from utils import ClassRegistry
-from nn.hparams import HasHParams
+from chemprop.utils import ClassRegistry
+from chemprop.nn.hparams import HasHParams
 
 
 class Aggregation(nn.Module, HasHParams):

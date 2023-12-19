@@ -61,5 +61,6 @@ def main():
     results = trainer.test(mpnn, test_loader)
     print(results)
 
+
 if __name__ == "__main__":
     main()

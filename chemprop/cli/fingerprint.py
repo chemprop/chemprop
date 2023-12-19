@@ -1,8 +1,8 @@
 from argparse import ArgumentParser, Namespace
 from enum import auto
 
-from cli.utils.command import Subcommand
-from utils.utils import EnumMapping
+from chemprop.cli.utils.command import Subcommand
+from chemprop.utils.utils import EnumMapping
 
 
 class RepresentationType(EnumMapping):

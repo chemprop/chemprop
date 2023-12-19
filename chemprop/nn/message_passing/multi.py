@@ -3,8 +3,8 @@ import warnings
 
 from torch import Tensor, nn
 
-from data import BatchMolGraph
-from nn.message_passing.proto import MessagePassing
+from chemprop.data import BatchMolGraph
+from chemprop.nn.message_passing.proto import MessagePassing
 
 
 class MulticomponentMessagePassing(nn.Module):

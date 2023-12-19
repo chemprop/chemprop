@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from utils import ClassRegistry, ReprMixin
+from chemprop.utils import ClassRegistry, ReprMixin
 
 
 __all__ = [

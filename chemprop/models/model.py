@@ -6,10 +6,10 @@ from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
-from data import TrainingBatch, BatchMolGraph
-from metrics import Metric
-from nn import MessagePassing, Aggregation, Predictor, LossFunction
-from schedulers import NoamLR
+from chemprop.data import TrainingBatch, BatchMolGraph
+from chemprop.metrics import Metric
+from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):

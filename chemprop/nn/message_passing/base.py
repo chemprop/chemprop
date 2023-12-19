@@ -5,11 +5,11 @@ import torch
 from torch import Tensor, nn
 from torch_scatter import scatter_sum
 
-from conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
-from exceptions import InvalidShapeError
-from data import BatchMolGraph
-from nn.utils import Activation, get_activation_function
-from nn.message_passing.proto import MessagePassing
+from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
+from chemprop.exceptions import InvalidShapeError
+from chemprop.data import BatchMolGraph
+from chemprop.nn.utils import Activation, get_activation_function
+from chemprop.nn.message_passing.proto import MessagePassing
 
 
 class _MessagePassingBase(MessagePassing, HyperparametersMixin):

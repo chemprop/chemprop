@@ -3,7 +3,7 @@ from itertools import chain
 
 from torch import nn, Tensor
 
-from nn.utils import get_activation_function
+from chemprop.nn.utils import get_activation_function
 
 
 class FFN(nn.Module):

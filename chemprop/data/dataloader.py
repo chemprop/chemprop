@@ -1,8 +1,8 @@
 from torch.utils.data import DataLoader
 
-from data.collate import collate_batch, collate_multicomponent
-from data.datasets import MoleculeDataset, MulticomponentDataset, ReactionDataset
-from data.samplers import ClassBalanceSampler, SeededSampler
+from chemprop.data.collate import collate_batch, collate_multicomponent
+from chemprop.data.datasets import MoleculeDataset, MulticomponentDataset, ReactionDataset
+from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 
 class MolGraphDataLoader(DataLoader):

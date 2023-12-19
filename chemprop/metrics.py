@@ -5,8 +5,8 @@ import torch
 from torch import Tensor
 from torchmetrics import functional as F
 
-from utils.registry import ClassRegistry
-from nn.loss import *
+from chemprop.utils.registry import ClassRegistry
+from chemprop.nn.loss import *
 
 __all__ = [
     "Metric",

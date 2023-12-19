@@ -4,11 +4,11 @@ from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
-from metrics import MetricRegistry
-from nn.agg import AggregationRegistry
-from nn.predictors import PredictorRegistry
-from nn.loss import LossFunctionRegistry
-from nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.metrics import MetricRegistry
+from chemprop.nn.agg import AggregationRegistry
+from chemprop.nn.predictors import PredictorRegistry
+from chemprop.nn.loss import LossFunctionRegistry
+from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:

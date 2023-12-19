@@ -5,13 +5,13 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-from nn.loss import *
-from metrics import *
-from nn.ffn import MLP
+from chemprop.nn.loss import *
+from chemprop.metrics import *
+from chemprop.nn.ffn import MLP
 
-from nn.hparams import HasHParams
-from conf import DEFAULT_HIDDEN_DIM
-from utils import ClassRegistry
+from chemprop.nn.hparams import HasHParams
+from chemprop.conf import DEFAULT_HIDDEN_DIM
+from chemprop.utils import ClassRegistry
 
 __all__ = [
     "Predictor",

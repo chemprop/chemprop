@@ -2,14 +2,14 @@ from argparse import ArgumentParser
 import logging
 from pathlib import Path
 
-from cli.train import TrainSubcommand
-from cli.predict import PredictSubcommand
+from chemprop.cli.train import TrainSubcommand
+from chemprop.cli.predict import PredictSubcommand
 # TODO: add subcommands for Fingerprint and Hyperopt
-# from cli.fingerprint import FingerprintSubcommand
-# from cli.hyperopt import HyperoptSubcommand
+# from chemprop.cli.fingerprint import FingerprintSubcommand
+# from chemprop.cli.hyperopt import HyperoptSubcommand
 
-from cli.utils import LOG_DIR, NOW, pop_attr
-from cli.convert import ConvertSubcommand
+from chemprop.cli.utils import LOG_DIR, NOW, pop_attr
+from chemprop.cli.convert import ConvertSubcommand
 
 logger = logging.getLogger(__name__)
 
