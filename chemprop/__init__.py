@@ -1,9 +1,4 @@
-import chemprop.cli
-import chemprop.data
-import chemprop.featurizers
-import chemprop.models
-import chemprop.nn
-import chemprop.utils
+from . import data, featurizers, models, nn, utils
 
 import chemprop.conf
 import chemprop.exceptions
