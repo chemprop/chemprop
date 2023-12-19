@@ -1,6 +1,6 @@
 from typing import Any, Type
 
-from nn import loss, predictors
+from chemprop.nn import loss, predictors
 
 __all__ = ["pop_attr"]
 
