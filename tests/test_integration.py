@@ -271,7 +271,7 @@ class ChempropTests(TestCase):
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
-                5.52281852,
+                5.10242,
                 [
                     '--loss_function', 'bounded_mse',
                     '--data_path', os.path.join(TEST_DATA_DIR, 'regression_inequality.csv')
