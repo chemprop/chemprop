@@ -11,12 +11,13 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop.v2 import featurizers, models, nn
-from chemprop.v2.data import ReactionDatapoint, ReactionDataset, collate_batch
-from chemprop.v2.featurizers import CondensedGraphOfReactionFeaturizer
+from chemprop import featurizers, models, nn
+from chemprop.data import ReactionDatapoint, ReactionDataset, collate_batch
+from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
 
 # warnings.simplefilter("ignore", category=UserWarning, append=True)
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
+
 
 @pytest.fixture(
     params=[
@@ -96,5 +97,5 @@ def test_overfitting(dataloader, mp: nn.MessagePassing):
 
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
-    
+
     assert mse <= 0.01

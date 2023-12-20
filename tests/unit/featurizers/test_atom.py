@@ -5,7 +5,7 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 
-from chemprop.v2.featurizers.multihot import AtomFeaturizer
+from chemprop.featurizers import MultiHotAtomFeaturizer
 
 
 @pytest.fixture(
@@ -63,7 +63,9 @@ def hybridization():
 
 @pytest.fixture
 def featurizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
-    return AtomFeaturizer(max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization)
+    return MultiHotAtomFeaturizer(
+        max_atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization
+    )
 
 
 @pytest.fixture
@@ -84,10 +86,6 @@ def test_len(featurizer, expected_len):
     assert len(featurizer) == expected_len
 
 
-def test_num_subfeatures():
-    assert AtomFeaturizer().num_subfeatures == 8
-
-
 def test_none(featurizer):
     np.testing.assert_array_equal(featurizer(None), np.zeros(len(featurizer)))
 
@@ -101,32 +99,34 @@ def test_atomic_num_bit(atom, x, max_atomic_num):
         assert x[n - 1] == 1
 
 
-def test_aromatic_bit(featurizer, x, aromatic):
-    i = featurizer.subfeatures["aromatic"].start
+def test_aromatic_bit(x, aromatic):
+    i = -2
     if aromatic:
         assert x[i] == 1
     else:
         assert x[i] == 0
 
 
-def test_mass_bit(featurizer, x, mass_bit):
-    assert x[featurizer.subfeatures["mass"].start] == pytest.approx(mass_bit)
+def test_mass_bit(x, mass_bit):
+    assert x[-1] == pytest.approx(mass_bit)
 
 
 @pytest.mark.parametrize(
     "a,x_v_orig",
     zip(
         list(Chem.MolFromSmiles("Fc1cccc(C2(c3nnc(Cc4cccc5ccccc45)o3)CCOCC2)c1").GetAtoms()),
+        # fmt: off
         [
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0.18998],
             [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0.12011],
             [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0.12011],
             [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0.12011]
         ]
-    )
+        # fmt: on
+    ),
 )
 def test_x_orig(a, x_v_orig):
-    f = AtomFeaturizer()
+    f = MultiHotAtomFeaturizer()
     x_v_calc = f(a)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

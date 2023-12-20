@@ -5,7 +5,8 @@ from lightning import pytorch as pl
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from chemprop.v2 import data, metrics, nn, models, featurizers
+from chemprop import data, nn, models, featurizers
+from chemprop.nn import metrics
 
 
 def main():
@@ -60,6 +61,7 @@ def main():
     trainer.fit(mpnn, train_loader, val_loader)
     results = trainer.test(mpnn, test_loader)
     print(results)
+
 
 if __name__ == "__main__":
     main()
