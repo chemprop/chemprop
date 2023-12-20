@@ -1,4 +1,4 @@
-![ChemProp Logo](docs/source/_static/images/chemprop_logo.svg)
+![ChemProp Logo](logo/chemprop_logo.svg)
 # Molecular Property Prediction
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)
@@ -12,6 +12,10 @@ This repository contains message passing neural networks for molecular property 
 **Website:** A web prediction interface with some trained Chemprop models is available at [chemprop.csail.mit.edu](http://chemprop.csail.mit.edu).
 
 **Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a Chemprop tutorial and highlight recent additions as of April 28th, 2020.
+
+**License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CCO 1.0](logo/LICENSE.txt).
+
+**Antibiotics Checkpoints:** The checkpoints for the [Cell antibiotics paper](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1) are available on [Zenodo](https://doi.org/10.5281/zenodo.6527882).
 
 ## COVID-19 Update
 
