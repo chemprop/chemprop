@@ -1268,7 +1268,8 @@ class DirichletPredictor(UncertaintyPredictor):
             )
         if self.dataset_type not in ["classification", "multiclass"]:
             raise ValueError(
-                "Dirichlet evidential epistemic uncertainty is only compatible with classification dataset types."
+                f"Dirichlet evidential epistemic uncertainty is only compatible with classification dataset types. \
+                    Current dataset is of type {self.dataset_type}."
             )
 
     def calculate_predictions(self):
