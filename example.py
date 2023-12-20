@@ -11,11 +11,11 @@ from chemprop.nn import metrics
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('-i', '--input', default='./data/lipo.csv')
+    parser.add_argument('-i', '--input', default='tests/data/regression.csv')
     parser.add_argument('-c', '--num-workers', type=int, default=4)
     args = parser.parse_args()
 
-    featurizer = featurizers.MolGraphFeaturizer()
+    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
     mp = nn.BondMessagePassing()
     agg = nn.SumAggregation(output_size=mp.output_dim)
     ffn = nn.RegressionFFN()
