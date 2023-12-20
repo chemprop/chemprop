@@ -293,8 +293,9 @@ def mcts(smiles: str,
 
     return rationales
 
+
 @timeit()
-def interpret(args: InterpretArgs) -> List[Dict[str, float]]:
+def interpret(args: InterpretArgs) -> None:
     """
     Runs interpretation of a Chemprop model using the Monte Carlo Tree Search algorithm.
 
@@ -321,12 +322,9 @@ def interpret(args: InterpretArgs) -> List[Dict[str, float]]:
 
     property_name = header[args.property_id] if len(header) > args.property_id else 'score'
     print(f'smiles,{property_name},rationale,rationale_score')
-    results = []
 
     for smiles in all_smiles:
         score = scoring_function([smiles])[0]
-        result_dict = {'smiles': smiles, 'score': round(score, 3)}
-
         if score > args.prop_delta:
             rationales = mcts(
                 smiles=smiles[0],
@@ -340,17 +338,11 @@ def interpret(args: InterpretArgs) -> List[Dict[str, float]]:
 
         if len(rationales) == 0:
             print(f'{smiles},{score:.3f},,')
-            result_dict['rationale'] = None
-            result_dict['rationale_score'] = None
         else:
             min_size = min(len(x.atoms) for x in rationales)
             min_rationales = [x for x in rationales if len(x.atoms) == min_size]
             rats = sorted(min_rationales, key=lambda x: x.P, reverse=True)
-            print(f"{smiles},{score:.3f},{rats[0].smiles},{rats[0].P:.3f}")
-            result_dict['rationale'] = rats[0].smiles
-            result_dict['rationale_score'] = round(rats[0].P, 3)
-        results.append(result_dict)
-    return results
+            print(f'{smiles},{score:.3f},{rats[0].smiles},{rats[0].P:.3f}')
 
 
 def chemprop_interpret() -> None:
