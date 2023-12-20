@@ -17,7 +17,7 @@ from chemprop.features import get_available_features_generators
 
 
 Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse',
-                'recall', 'precision','balanced_accuracy','confusion_matrix']
+                'recall', 'precision','balanced_accuracy']
 
 
 def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
