@@ -66,9 +66,9 @@ def evaluate_predictions(preds: List[List[float]],
                         valid_preds[i].append(preds[j][i])
                         valid_targets[i].append(targets[j][i])
                         if gt_targets is not None:
-                            valid_gt_targets[i].append(list(gt_targets[i][j]))
+                            valid_gt_targets[i].append(gt_targets[j][i])
                         if lt_targets is not None:
-                            valid_lt_targets[i].append(list(lt_targets[i][j]))
+                            valid_lt_targets[i].append(lt_targets[j][i])
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
