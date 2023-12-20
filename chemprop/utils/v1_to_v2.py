@@ -4,7 +4,7 @@ from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
-from chemprop.metrics import MetricRegistry
+from chemprop.nn.metrics import MetricRegistry
 from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.loss import LossFunctionRegistry

@@ -9,7 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.featurizers import RxnMode
-from chemprop.metrics import MetricRegistry
+from chemprop.nn.metrics import MetricRegistry
 from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.loss import LossFunction, LossFunctionRegistry
 from chemprop.models import MPNN

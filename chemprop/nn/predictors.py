@@ -6,7 +6,7 @@ from torch import nn, Tensor
 from torch.nn import functional as F
 
 from chemprop.nn.loss import *
-from chemprop.metrics import *
+from chemprop.nn.metrics import *
 from chemprop.nn.ffn import MLP
 
 from chemprop.nn.hparams import HasHParams

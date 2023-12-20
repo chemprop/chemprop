@@ -6,7 +6,7 @@ from torch import Tensor
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
 from chemprop.models.model import MPNN
-from chemprop.metrics import Metric
+from chemprop.nn.metrics import Metric
 
 
 class MulticomponentMPNN(MPNN):
