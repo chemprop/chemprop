@@ -45,11 +45,11 @@ def evaluate_predictions(preds: List[List[float]],
 
     # Filter out empty targets for most data types, excluding dataset_type spectra
     # valid_preds and valid_targets have shape (num_tasks, data_size)
+    valid_preds = [[] for _ in range(num_tasks)]
+    valid_targets = [[] for _ in range(num_tasks)]
+    valid_gt_targets = [[] for _ in range(num_tasks)]
+    valid_lt_targets = [[] for _ in range(num_tasks)]
     if dataset_type != 'spectra':
-        valid_preds = [[] for _ in range(num_tasks)]
-        valid_targets = [[] for _ in range(num_tasks)]
-        valid_gt_targets = [[] for _ in range(num_tasks)]
-        valid_lt_targets = [[] for _ in range(num_tasks)]
         for i in range(num_tasks):
             if is_atom_bond_targets:
                 for j in range(len(preds[i])):
