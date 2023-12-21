@@ -37,6 +37,7 @@ def targets(smis):
 def mol_data(mols, targets):
     return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
 
+
 @pytest.fixture
 def rxn_data(rxns, targets):
     return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
