@@ -5,8 +5,10 @@ from rdkit import Chem
 from chemprop.featurizers import MultiHotBondFeaturizer
 
 
+SMI = "Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O"
+
 @pytest.fixture(
-    params=list(Chem.MolFromSmiles("Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O").GetBonds())
+    params=list(Chem.MolFromSmiles(SMI).GetBonds())
 )
 def bond(request):
     return request.param

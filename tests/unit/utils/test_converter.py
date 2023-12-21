@@ -11,18 +11,15 @@ from chemprop import featurizers
 from chemprop.models.model import MPNN
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
-TEST_DIR = Path(__file__).parents[2]
-TEST_DATA_DIR = TEST_DIR / "data"
+
+@pytest.fixture
+def example_model_v1_path(data_dir):
+    return data_dir / "example_model_v1.pt"
 
 
 @pytest.fixture
-def example_model_v1_path():
-    return TEST_DATA_DIR / "example_model_v1.pt"
-
-
-@pytest.fixture
-def example_model_v1_prediction():
-    path = TEST_DATA_DIR / "example_model_v1_prediction.csv"
+def example_model_v1_prediction(data_dir):
+    path = data_dir / "example_model_v1_prediction.csv"
 
     with open(path) as fid:
         reader = csv.reader(fid)

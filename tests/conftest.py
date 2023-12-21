@@ -1,14 +1,60 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
+from rdkit import Chem
 
-DATA_PATH = Path("tests/data")
+from chemprop.data.datapoints import MoleculeDatapoint
+
+_DATA_DIR = Path(__file__).parent / "data"
+_DF = pd.read_csv(_DATA_DIR / "smis.csv")
+_DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
+_DF["smi"] = _DF["mol"].map(Chem.MolToSmiles)
 
 
 @pytest.fixture
-def mol_regression_data():
-    df = pd.read_csv(DATA_PATH / "regression/mol.csv")
+def data_dir():
+    return _DATA_DIR
+
+
+@pytest.fixture
+def smis():
+    return _DF.smi
+
+
+@pytest.fixture
+def mols():
+    return _DF.mol
+
+
+@pytest.fixture
+def targets(smis):
+    return np.random.rand(len(smis), 1)
+
+
+@pytest.fixture
+def mol_data(mols, targets):
+    return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
+
+@pytest.fixture
+def rxn_data(rxns, targets):
+    return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
+
+
+@pytest.fixture(params=_DF.smi.sample(5))
+def smi(request):
+    return request.param
+
+
+@pytest.fixture(params=_DF.mol.sample(5))
+def mol(request):
+    return request.param
+
+
+@pytest.fixture
+def mol_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/mol.csv")
     smis = df["smiles"].to_list()
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
@@ -16,8 +62,8 @@ def mol_regression_data():
 
 
 @pytest.fixture
-def rxn_regression_data():
-    df = pd.read_csv(DATA_PATH / "regression/rxn.csv")
+def rxn_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/rxn.csv")
     smis = df["smiles"].to_list()
     Y = df["ea"].to_numpy().reshape(-1, 1)
 
@@ -25,8 +71,8 @@ def rxn_regression_data():
 
 
 @pytest.fixture
-def mol_mol_regression_data():
-    df = pd.read_csv(DATA_PATH / "regression/mol+mol.csv")
+def mol_mol_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/mol+mol.csv")
     smis1 = df["smiles"].to_list()
     smis2 = df["solvent"].to_list()
     Y = df["peakwavs_max"].to_numpy().reshape(-1, 1)
@@ -35,8 +81,8 @@ def mol_mol_regression_data():
 
 
 @pytest.fixture
-def rxn_mol_regression_data():
-    df = pd.read_csv(DATA_PATH / "regression/rxn+mol.csv")
+def rxn_mol_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/rxn+mol.csv")
     rxns = df["rxn_smiles"].to_list()
     smis = df["solven_smiles"].to_list()
     Y = df["target"].to_numpy().reshape(-1, 1)
