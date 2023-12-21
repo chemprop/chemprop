@@ -18,16 +18,9 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
 
-@pytest.fixture(
-    params=[
-        (Path("tests/data/regression_mol.csv"), "smiles", "lipo"),
-    ]
-)
-def data(request):
-    p_data, key_col, val_col = request.param
-    df = pd.read_csv(p_data)
-    smis = df[key_col].to_list()
-    Y = df[val_col].to_numpy().reshape(-1, 1)
+@pytest.fixture
+def data(mol_regression_data):
+    smis, Y = mol_regression_data
 
     return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
 

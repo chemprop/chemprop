@@ -19,16 +19,9 @@ from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
 warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
 
-@pytest.fixture(
-    params=[
-        (Path("tests/data/regression_rxn.csv"), "smiles", "ea"),
-    ]
-)
-def data(request):
-    p_data, key_col, val_col = request.param
-    df = pd.read_csv(p_data)
-    smis = df[key_col].to_list()
-    Y = df[val_col].to_numpy().reshape(-1, 1)
+@pytest.fixture
+def data(rxn_regression_data):
+    smis, Y = rxn_regression_data
 
     return [ReactionDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
 
@@ -54,7 +47,7 @@ def dataloader(data):
     return DataLoader(dset, 100, collate_fn=collate_batch)
 
 
-def test_integration(dataloader, mp):
+def test_quick(dataloader, mp):
     agg = nn.MeanAggregation()
     ffn = nn.RegressionFFN()
     mpnn = models.MPNN(mp, agg, ffn, True)
@@ -71,7 +64,7 @@ def test_integration(dataloader, mp):
     trainer.fit(mpnn, dataloader)
 
 
-def test_overfitting(dataloader, mp: nn.MessagePassing):
+def test_overfit(dataloader, mp: nn.MessagePassing):
     agg = nn.MeanAggregation()
     ffn = nn.RegressionFFN()
     mpnn = models.MPNN(mp, agg, ffn, True)
