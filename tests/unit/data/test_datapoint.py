@@ -9,6 +9,7 @@ from chemprop.utils.registry import Factory
 
 SMI = "c1ccccc1"
 
+
 @pytest.fixture(params=range(1, 3))
 def targets(request):
     return np.random.rand(request.param)
@@ -36,9 +37,7 @@ def test_features_and_fg(features_generators):
     targets = np.random.rand(1, 1)
     features = np.random.rand(1024)
     with pytest.raises(ValueError):
-        MoleculeDatapoint.from_smi(
-            SMI, y=targets, x_f=features, mfs=features_generators
-        )
+        MoleculeDatapoint.from_smi(SMI, y=targets, x_f=features, mfs=features_generators)
 
 
 def test_num_tasks(targets):

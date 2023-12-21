@@ -51,8 +51,7 @@ def test_seed0(mol_data):
     """
     train, val, test = split_data(datapoints=mol_data, seed=0)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
-        train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=0),
-        True,
+        train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=0), True
     )
     assert set(train) == set(train_astartes)
     assert set(val) == set(val_astartes)
@@ -66,8 +65,7 @@ def test_seed100(mol_data):
     """
     train, val, test = split_data(datapoints=mol_data, seed=100)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
-        train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=100),
-        True,
+        train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=100), True
     )
     assert set(train) == set(train_astartes)
     assert set(val) == set(val_astartes)
@@ -132,9 +130,7 @@ def test_kennard_stone(mol_data):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "kennard_stone"
-    train, val, test = split_data(
-        datapoints=mol_data, sizes=(0.4, 0.4, 0.2), split=split_type
-    )
+    train, val, test = split_data(datapoints=mol_data, sizes=(0.4, 0.4, 0.2), split=split_type)
 
     assert set(test) == set([9, 5])
 
@@ -145,9 +141,7 @@ def test_kmeans(mol_data):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "kmeans"
-    train, val, test = split_data(
-        datapoints=mol_data, sizes=(0.5, 0.0, 0.5), split=split_type
-    )
+    train, val, test = split_data(datapoints=mol_data, sizes=(0.5, 0.0, 0.5), split=split_type)
 
     assert train == [0, 1, 2, 3, 7, 8, 9]
 

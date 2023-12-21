@@ -9,7 +9,9 @@ from torch.utils.data import DataLoader
 from chemprop import nn
 from chemprop.data import MoleculeDataset, collate_batch
 
-pytestmark = pytest.mark.parametrize("mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True)
+pytestmark = pytest.mark.parametrize(
+    "mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+)
 
 
 @pytest.fixture
