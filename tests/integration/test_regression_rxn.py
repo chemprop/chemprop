@@ -1,22 +1,19 @@
 """This integration test is designed to ensure that the chemprop model can _overfit_ the training
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
-
-from pathlib import Path
-import warnings
-
 from lightning import pytorch as pl
-import pandas as pd
 import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop import featurizers, models, nn
+from chemprop import nn
 from chemprop.data import ReactionDatapoint, ReactionDataset, collate_batch
 from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
 
-# warnings.simplefilter("ignore", category=UserWarning, append=True)
-warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
+SHAPE = CondensedGraphOfReactionFeaturizer().shape
+pytestmark = pytest.mark.parametrize(
+    "mpnn", [nn.BondMessagePassing(*SHAPE), nn.AtomMessagePassing(*SHAPE)], indirect=True
+)
 
 
 @pytest.fixture
@@ -27,31 +24,14 @@ def data(rxn_regression_data):
 
 
 @pytest.fixture
-def dims():
-    return CondensedGraphOfReactionFeaturizer().shape
-
-
-@pytest.fixture(params=[nn.BondMessagePassing, nn.AtomMessagePassing])
-def mp(request, dims):
-    d_v, d_e = dims
-
-    return request.param(d_v, d_e)
-
-
-@pytest.fixture
 def dataloader(data):
-    featurizer = featurizers.CondensedGraphOfReactionFeaturizer()
-    dset = ReactionDataset(data, featurizer)
+    dset = ReactionDataset(data)
     dset.normalize_targets()
 
-    return DataLoader(dset, 100, collate_fn=collate_batch)
+    return DataLoader(dset, 32, collate_fn=collate_batch)
 
 
-def test_quick(dataloader, mp):
-    agg = nn.MeanAggregation()
-    ffn = nn.RegressionFFN()
-    mpnn = models.MPNN(mp, agg, ffn, True)
-
+def test_quick(dataloader, mpnn):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -64,11 +44,7 @@ def test_quick(dataloader, mp):
     trainer.fit(mpnn, dataloader)
 
 
-def test_overfit(dataloader, mp: nn.MessagePassing):
-    agg = nn.MeanAggregation()
-    ffn = nn.RegressionFFN()
-    mpnn = models.MPNN(mp, agg, ffn, True)
-
+def test_overfit(dataloader, mpnn):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -77,7 +53,7 @@ def test_overfit(dataloader, mp: nn.MessagePassing):
         accelerator="cpu",
         devices=1,
         max_epochs=100,
-        overfit_batches=1.00
+        overfit_batches=1.00,
     )
     trainer.fit(mpnn, dataloader)
 

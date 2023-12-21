@@ -7,7 +7,7 @@ from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.utils.registry import Factory
 
 
-SMI = "c1cccc1"
+SMI = "c1ccccc1"
 
 @pytest.fixture(params=range(1, 3))
 def targets(request):
