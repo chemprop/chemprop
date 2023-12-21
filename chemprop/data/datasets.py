@@ -155,7 +155,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[MoleculeDatapoint]
     featurizer: MoleculeMolGraphFeaturizer = field(
-        default_factory=SimpleMoleculeMolGraphFeaturizer()
+        default_factory=SimpleMoleculeMolGraphFeaturizer
     )
 
     def __post_init__(self):
