@@ -131,7 +131,9 @@ except ImportError:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
-
+except AttributeError as e:
+    raise AttributeError('It appears you are using `scipy>=1.11` and `descriptastorus<=2.6.0`'
+                         'Please try updating descriptastorus to avoid issues with `scipy.stats.gibrat`.')
 
 """
 Custom features generator template.
