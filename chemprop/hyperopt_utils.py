@@ -36,7 +36,7 @@ def build_search_space(search_parameters: List[str], train_epochs: int = None) -
             ]
         ),
         "ffn_hidden_size": hp.quniform("ffn_hidden_size", low=300, high=2400, q=100),
-        "ffn_num_layers": hp.quniform("ffn_num_layers", low=1, high=3, q=1),
+        "ffn_num_layers": hp.quniform("ffn_num_layers", low=2, high=6, q=1),
         "final_lr_ratio": hp.loguniform("final_lr_ratio", low=np.log(1e-4), high=0.),
         "hidden_size": hp.quniform("hidden_size", low=300, high=2400, q=100),
         "init_lr_ratio": hp.loguniform("init_lr_ratio", low=np.log(1e-4), high=0.),
