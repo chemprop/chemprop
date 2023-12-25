@@ -135,6 +135,7 @@ def hyperopt(args: HyperoptArgs) -> None:
             dir_path=args.hyperopt_checkpoint_dir, previous_trials=manual_trials
         )
         if len(trials) > 0 and set(space.keys()) != set(trials.vals.keys()):
+        if len(trials) > 0 and set(space.keys()) != set(trials.best_trial["result"]["hyperparams"].keys()):
             raise ValueError(
                 f"Loaded hyperopt checkpoints files must be searching over the same parameters as \
                     the hyperparameter optimization job. Loaded trials covered variation in the parameters {set(trials.vals.keys())}. \

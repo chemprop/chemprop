@@ -29,7 +29,12 @@ def build_search_space(search_parameters: List[str], train_epochs: int = None) -
         "aggregation_norm": hp.quniform("aggregation_norm", low=1, high=200, q=1),
         "batch_size": hp.quniform("batch_size", low=5, high=200, q=5),
         "depth": hp.quniform("depth", low=2, high=6, q=1),
-        "dropout": hp.quniform("dropout", low=0.0, high=0.4, q=0.05),
+        "dropout": hp.choice(
+            "dropout", options=[
+                hp.choice("no_dropout", [0.]),
+                hp.quniform("dropout_magnitude", low=0.05, high=0.4, q=0.05),
+            ]
+        ),
         "ffn_hidden_size": hp.quniform("ffn_hidden_size", low=300, high=2400, q=100),
         "ffn_num_layers": hp.quniform("ffn_num_layers", low=1, high=3, q=1),
         "final_lr_ratio": hp.loguniform("final_lr_ratio", low=np.log(1e-4), high=0.),
@@ -90,6 +95,8 @@ def merge_trials(trials: Trials, new_trials_data: List[Dict]) -> Trials:
         hyperopt_trial[0]["tid"] = tid
         hyperopt_trial[0]["misc"]["tid"] = tid
         for key in hyperopt_trial[0]["misc"]["idxs"].keys():
+            if hyperopt_trial[0]["misc"]["vals"][key] == []:
+                continue
             hyperopt_trial[0]["misc"]["idxs"][key] = [tid]
         trials.insert_trial_docs(hyperopt_trial)
         trials.refresh()
@@ -276,7 +283,9 @@ def load_manual_trials(
         # Construct data dict
         param_dict = {}
         vals_dict = {}
+        idxs_dict = {}
         for key in param_keys:
+            idxs_dict[key] = [i]
             if key == "init_lr_ratio":
                 param_value = val_value = trial_args["init_lr"] / trial_args["max_lr"]
             elif key == "final_lr_ratio":
@@ -285,17 +294,33 @@ def load_manual_trials(
                 param_value = val_value = trial_args["hidden_size"]
             elif key == "aggregation":
                 param_value = trial_args[key]
+                # This list must match the list in build_search_space
                 val_value = ["mean", "sum", "norm"].index(param_value)
             elif key == "activation":
                 param_value = trial_args[key]
+                # This list must match the list in build_search_space
                 val_value = ["ReLU", "LeakyReLU", "PReLU", "tanh", "SELU", "ELU"].index(
                     param_value
                 )
+            elif key == "dropout":
+                # Must create values for the two nested dropout parameters and blanks for the unused value
+                param_value = trial_args[key]
+                if trial_args[key] == 0:
+                    val_value = 0
+                    vals_dict["no_dropout"] = [0]
+                    idxs_dict["dropout_magnitude"] = []
+                    vals_dict["dropout_magnitude"] = []
+                    idxs_dict["no_dropout"] = [i]
+                else:
+                    val_value = 1
+                    vals_dict["dropout_magnitude"] = [trial_args[key]]
+                    idxs_dict["dropout_magnitude"] = [i]
+                    vals_dict["no_dropout"] = []
+                    idxs_dict["no_dropout"] = []
             else:
                 param_value = val_value = trial_args[key]
             param_dict[key] = param_value
             vals_dict[key] = [val_value]
-        idxs_dict = {key: [i] for key in param_keys}
         results_dict = {
             "loss": loss,
             "status": "ok",
