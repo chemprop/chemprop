@@ -15,8 +15,8 @@ pytestmark = pytest.mark.parametrize(
 
 
 @pytest.fixture
-def dataloader(mol_data):
-    dset = MoleculeDataset(mol_data)
+def dataloader(mol_regression_data):
+    dset = MoleculeDataset(mol_regression_data)
     dset.normalize_targets()
 
     return DataLoader(dset, 20, collate_fn=collate_batch)

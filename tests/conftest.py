@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from rdkit import Chem
 
-from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 
 _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
@@ -33,14 +33,14 @@ def targets(smis):
     return np.random.rand(len(smis), 1)
 
 
-@pytest.fixture
-def mol_data(mols, targets):
-    return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
+# @pytest.fixture
+# def mol_data(mols, targets):
+#     return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
 
 
-@pytest.fixture
-def rxn_data(rxns, targets):
-    return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
+# @pytest.fixture
+# def rxn_data(rxns, targets):
+#     return [ReactionDatapoint(mol, y) for mol, y in zip(mols, targets)]
 
 
 @pytest.fixture(params=_DF.smi.sample(5))
