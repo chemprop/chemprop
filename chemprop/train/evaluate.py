@@ -45,20 +45,30 @@ def evaluate_predictions(preds: List[List[float]],
 
     # Filter out empty targets for most data types, excluding dataset_type spectra
     # valid_preds and valid_targets have shape (num_tasks, data_size)
+    valid_preds = [[] for _ in range(num_tasks)]
+    valid_targets = [[] for _ in range(num_tasks)]
+    valid_gt_targets = [[] for _ in range(num_tasks)]
+    valid_lt_targets = [[] for _ in range(num_tasks)]
     if dataset_type != 'spectra':
-        valid_preds = [[] for _ in range(num_tasks)]
-        valid_targets = [[] for _ in range(num_tasks)]
         for i in range(num_tasks):
             if is_atom_bond_targets:
                 for j in range(len(preds[i])):
                     if targets[i][j][0] is not None:  # Skip those without targets
                         valid_preds[i].append(list(preds[i][j]))
                         valid_targets[i].append(list(targets[i][j]))
+                        if gt_targets is not None:
+                            valid_gt_targets[i].append(list(gt_targets[i][j]))
+                        if lt_targets is not None:
+                            valid_lt_targets[i].append(list(lt_targets[i][j]))
             else:
                 for j in range(len(preds)):
                     if targets[j][i] is not None:  # Skip those without targets
                         valid_preds[i].append(preds[j][i])
                         valid_targets[i].append(targets[j][i])
+                        if gt_targets is not None:
+                            valid_gt_targets[i].append(gt_targets[j][i])
+                        if lt_targets is not None:
+                            valid_lt_targets[i].append(lt_targets[j][i])
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
@@ -94,7 +104,7 @@ def evaluate_predictions(preds: List[List[float]],
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i],
                                                     labels=list(range(len(valid_preds[i][0])))))
                 elif metric in ['bounded_rmse', 'bounded_mse', 'bounded_mae']:
-                    results[metric].append(metric_func(valid_targets[i], valid_preds[i], gt_targets[i], lt_targets[i]))
+                    results[metric].append(metric_func(valid_targets[i], valid_preds[i], valid_gt_targets[i], valid_lt_targets[i]))
                 else:
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
 
