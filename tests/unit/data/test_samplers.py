@@ -4,10 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chemprop.v2.data import (
-    MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
-)
-from chemprop.v2.featurizers import MoleculeMolGraphFeaturizer
+from chemprop.data import MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
+from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
 
 
 TEST_DIR = Path(__file__).parents[2]
@@ -46,12 +44,12 @@ def targets(scores, t):
 
 @pytest.fixture
 def featurizer():
-    return MoleculeMolGraphFeaturizer()
+    return SimpleMoleculeMolGraphFeaturizer()
 
 
 @pytest.fixture
 def dataset(smis, scores, featurizer):
-    data = [MoleculeDatapoint(smi, score) for smi, score in zip(smis, scores)]
+    data = [MoleculeDatapoint.from_smi(smi, score) for smi, score in zip(smis, scores)]
 
     return MoleculeDataset(data, featurizer)
 
@@ -63,26 +61,26 @@ def seed(request):
 
 @pytest.fixture
 def class_sampler(smis, targets, featurizer):
-    data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
+    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, targets)]
     dset = MoleculeDataset(data, featurizer)
 
-    return ClassBalanceSampler(dset, shuffle=True)
+    return ClassBalanceSampler(dset.Y, shuffle=True)
 
 
 def test_seeded_no_seed(dataset):
     with pytest.raises(ValueError):
-        SeededSampler(dataset, None)
+        SeededSampler(len(dataset), None)
 
 
 def test_seeded_shuffle(dataset, seed):
-    sampler = SeededSampler(dataset, seed)
+    sampler = SeededSampler(len(dataset), seed)
 
     assert list(sampler) != list(sampler)
 
 
 def test_seeded_fixed_shuffle(dataset, seed):
-    sampler1 = SeededSampler(dataset, seed)
-    sampler2 = SeededSampler(dataset, seed)
+    sampler1 = SeededSampler(len(dataset), seed)
+    sampler2 = SeededSampler(len(dataset), seed)
 
     idxs1 = list(sampler1)
     idxs2 = list(sampler2)
@@ -116,10 +114,10 @@ def test_class_balance_shuffle(class_sampler):
 
 
 def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
-    data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
+    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, targets)]
     dset = MoleculeDataset(data, featurizer)
 
-    sampler = ClassBalanceSampler(dset, seed, True)
+    sampler = ClassBalanceSampler(dset.Y, seed, True)
 
     if len(sampler) == 0:
         pytest.skip("no indices to sample!")
@@ -128,10 +126,10 @@ def test_seed_class_balance_shuffle(smis, targets, featurizer, seed):
 
 
 def test_seed_class_balance_reproducibility(smis, targets, featurizer, seed):
-    data = [MoleculeDatapoint(smi, target) for smi, target in zip(smis, targets)]
+    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, targets)]
     dset = MoleculeDataset(data, featurizer)
 
-    sampler1 = ClassBalanceSampler(dset, seed, True)
-    sampler2 = ClassBalanceSampler(dset, seed, True)
+    sampler1 = ClassBalanceSampler(dset.Y, seed, True)
+    sampler2 = ClassBalanceSampler(dset.Y, seed, True)
 
     assert list(sampler1) == list(sampler2)

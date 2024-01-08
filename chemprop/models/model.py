@@ -1,220 +1,235 @@
-from typing import List, Union, Tuple
+from __future__ import annotations
 
-import numpy as np
-from rdkit import Chem
+from typing import Iterable
+
+from lightning import pytorch as pl
 import torch
-import torch.nn as nn
+from torch import nn, Tensor, optim
 
-from .mpn import MPN
-from chemprop.args import TrainArgs
-from chemprop.featurizers import BatchMolGraph
-from chemprop.nn_utils import get_activation_function, initialize_weights
+from chemprop.data import TrainingBatch, BatchMolGraph
+from chemprop.nn.metrics import Metric
+from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.schedulers import NoamLR
 
 
-class MoleculeModel(nn.Module):
-    """A :class:`MoleculeModel` is a model which contains a message passing network following by feed-forward layers."""
+class MPNN(pl.LightningModule):
+    r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
+    predictor routine.
 
-    def __init__(self, args: TrainArgs):
+    The first two modules calculate learned fingerprints from an input molecule
+    reaction graph, and the final module takes these leared fingerprints as input to calculate a
+    final prediction. I.e., the following operation:
+
+    .. math::
+        \mathtt{MPNN}(\mathcal{G}) =
+            \mathtt{predictor}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
+
+    The full model is trained end-to-end.
+
+    Parameters
+    ----------
+    message_passing : MessagePassingBlock
+        the message passing block to use to calculate learned fingerprints
+    agg : Aggregation
+        the aggregation operation to use during molecule-level predictor
+    predictor : Predictor
+        the function to use to calculate the final prediction
+    batch_norm : bool, default=True
+        if `True`, apply batch normalization to the output of the aggregation operation
+    metrics : Iterable[Metric] | None, default=None
+        the metrics to use to evaluate the model during training and evaluation
+    w_t : Tensor | None, default=None
+        the weights to use for each task during training. If `None`, use uniform weights
+    warmup_epochs : int, default=2
+        the number of epochs to use for the learning rate warmup
+    init_lr : int, default=1e-4
+        the initial learning rate
+    max_lr : float, default=1e-3
+        the maximum learning rate
+    final_lr : float, default=1e-4
+        the final learning rate
+
+    Raises
+    ------
+    ValueError
+        if the output dimension of the message passing block does not match the input dimension of
+        the predictor function
+    """
+
+    def __init__(
+        self,
+        message_passing: MessagePassing,
+        agg: Aggregation,
+        predictor: Predictor,
+        batch_norm: bool = True,
+        metrics: Iterable[Metric] | None = None,
+        w_t: Tensor | None = None,
+        warmup_epochs: int = 2,
+        init_lr: float = 1e-4,
+        max_lr: float = 1e-3,
+        final_lr: float = 1e-4,
+    ):
+        super().__init__()
+
+        self.save_hyperparameters(ignore=["message_passing", "agg", "predictor"])
+        self.hparams.update(
+            {
+                "message_passing": message_passing.hparams,
+                "agg": agg.hparams,
+                "predictor": predictor.hparams,
+            }
+        )
+
+        self.message_passing = message_passing
+        self.agg = agg
+        self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
+        self.predictor = predictor
+
+        # NOTE(degraff): should think about how to handle no supplied metric
+        self.metrics = (
+            [*metrics, self.criterion]
+            if metrics
+            else [self.predictor._default_metric, self.criterion]
+        )
+        w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
+        self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
+
+        self.warmup_epochs = warmup_epochs
+        self.init_lr = init_lr
+        self.max_lr = max_lr
+        self.final_lr = final_lr
+
+    @property
+    def output_dim(self) -> int:
+        return self.predictor.output_dim
+
+    @property
+    def n_tasks(self) -> int:
+        return self.predictor.n_tasks
+
+    @property
+    def n_targets(self) -> int:
+        return self.predictor.n_targets
+
+    @property
+    def criterion(self) -> LossFunction:
+        return self.predictor.criterion
+
+    def fingerprint(
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+    ) -> Tensor:
+        """the learned fingerprints for the input molecules"""
+        H_v = self.message_passing(bmg, V_d)
+        H = self.agg(H_v, bmg.batch)
+        H = self.bn(H)
+
+        return H if X_f is None else torch.cat((H, X_f), 1)
+
+    def encoding(
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+    ) -> Tensor:
+        """the final hidden representations for the input molecules"""
+        return self.predictor[:-1](self.fingerprint(bmg, V_d, X_f))
+
+    def forward(
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+    ) -> Tensor:
+        """Generate predictions for the input molecules/reactions"""
+        return self.predictor(self.fingerprint(bmg, V_d, X_f))
+
+    def training_step(self, batch: TrainingBatch, batch_idx):
+        bmg, V_d, X_f, targets, w_s, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
+        Z = self.fingerprint(bmg, V_d, X_f)
+        preds = self.predictor.train_step(Z)
+        l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
+
+        self.log("train/loss", l, prog_bar=True)
+
+        return l
+
+    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        losses = self._evaluate_batch(batch)
+        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
+
+    def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        losses = self._evaluate_batch(batch)
+        metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
+
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+
+    def _evaluate_batch(self, batch) -> list[Tensor]:
+        bmg, V_d, X_f, targets, _, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+        preds = self(bmg, V_d, X_f)
+
+        return [
+            metric(preds, targets, mask, None, None, lt_mask, gt_mask)
+            for metric in self.metrics[:-1]
+        ]
+
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        """Return the predictions of the input batch
+
+        Parameters
+        ----------
+        batch : TrainingBatch
+            the input batch
+
+        Returns
+        -------
+        Tensor
+            a tensor of varying shape depending on the task type:
+
+            * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
+            per task. The final dimension is flattened, so that the targets for each task are
+            grouped. I.e., the first ``t`` elements are the first target for each task, the second
+            ``t`` elements the second target, etc.
+            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
-        :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
-        """
-        super(MoleculeModel, self).__init__()
+        bmg, X_vd, X_f, *_ = batch
 
-        self.classification = args.dataset_type == 'classification'
-        self.multiclass = args.dataset_type == 'multiclass'
-        self.loss_function = args.loss_function
+        return self(bmg, X_vd, X_f)
 
-        if hasattr(args, 'train_class_sizes'):
-            self.train_class_sizes = args.train_class_sizes
-        else:
-            self.train_class_sizes = None
+    def configure_optimizers(self):
+        opt = optim.Adam(self.parameters(), self.init_lr)
 
-        # when using cross entropy losses, no sigmoid or softmax during training. But they are needed for mcc loss.
-        if self.classification or self.multiclass:
-            self.no_training_normalization = args.loss_function in ['cross_entropy', 'binary_cross_entropy']
+        lr_sched = NoamLR(
+            opt,
+            self.warmup_epochs,
+            self.trainer.max_epochs,
+            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
+            self.init_lr,
+            self.max_lr,
+            self.final_lr,
+        )
+        lr_sched_config = {
+            "scheduler": lr_sched,
+            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
+        }
 
-        self.output_size = args.num_tasks
-        if self.multiclass:
-            self.output_size *= args.multiclass_num_classes
-        if self.loss_function == 'mve':
-            self.output_size *= 2  # return means and variances
-        if self.loss_function == 'dirichlet' and self.classification:
-            self.output_size *= 2  # return dirichlet parameters for positive and negative class
-        if self.loss_function == 'evidential':
-            self.output_size *= 4  # return four evidential parameters: gamma, lambda, alpha, beta
+        return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
-        if self.classification:
-            self.sigmoid = nn.Sigmoid()
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
-        if self.multiclass:
-            self.multiclass_softmax = nn.Softmax(dim=2)
+        kwargs |= {
+            key: hparams[key].pop("cls")(**hparams[key])
+            for key in ("message_passing", "agg", "predictor")
+        }
 
-        if self.loss_function in ['mve', 'evidential', 'dirichlet']:
-            self.softplus = nn.Softplus()
-
-        self.create_encoder(args)
-        self.create_ffn(args)
-
-        initialize_weights(self)
-
-    def create_encoder(self, args: TrainArgs) -> None:
-        """
-        Creates the message passing encoder for the model.
-
-        :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
-        """
-        self.encoder = MPN(args)
-
-        if args.checkpoint_frzn is not None:
-            if args.freeze_first_only:  # Freeze only the first encoder
-                for param in list(self.encoder.encoder.children())[0].parameters():
-                    param.requires_grad = False
-            else:  # Freeze all encoders
-                for param in self.encoder.parameters():
-                    param.requires_grad = False
-
-    def create_ffn(self, args: TrainArgs) -> None:
-        """
-        Creates the feed-forward layers for the model.
-
-        :param args: A :class:`~chemprop.args.TrainArgs` object containing model arguments.
-        """
-        self.multiclass = args.dataset_type == 'multiclass'
-        if self.multiclass:
-            self.num_classes = args.multiclass_num_classes
-        if args.features_only:
-            first_linear_dim = args.features_size
-        else:
-            if args.reaction_solvent:
-                first_linear_dim = args.hidden_size + args.hidden_size_solvent
-            else:
-                first_linear_dim = args.hidden_size * args.number_of_molecules
-            if args.use_input_features:
-                first_linear_dim += args.features_size
-
-        if args.atom_descriptors == 'descriptor':
-            first_linear_dim += args.atom_descriptors_size
-
-        dropout = nn.Dropout(args.dropout)
-        activation = get_activation_function(args.activation)
-
-        # Create FFN layers
-        if args.ffn_num_layers == 1:
-            ffn = [
-                dropout,
-                nn.Linear(first_linear_dim, self.output_size)
-            ]
-        else:
-            ffn = [
-                dropout,
-                nn.Linear(first_linear_dim, args.ffn_hidden_size)
-            ]
-            for _ in range(args.ffn_num_layers - 2):
-                ffn.extend([
-                    activation,
-                    dropout,
-                    nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
-                ])
-            ffn.extend([
-                activation,
-                dropout,
-                nn.Linear(args.ffn_hidden_size, self.output_size),
-            ])
-
-        # If spectra model, also include spectra activation
-        if args.dataset_type == 'spectra':
-            if args.spectra_activation == 'softplus':
-                spectra_activation = nn.Softplus()
-            else:  # default exponential activation which must be made into a custom nn module
-                class nn_exp(torch.nn.Module):
-                    def __init__(self):
-                        super(nn_exp, self).__init__()
-
-                    def forward(self, x):
-                        return torch.exp(x)
-
-                spectra_activation = nn_exp()
-            ffn.append(spectra_activation)
-
-        # Create FFN model
-        self.ffn = nn.Sequential(*ffn)
-
-        if args.checkpoint_frzn is not None:
-            if args.frzn_ffn_layers > 0:
-                for param in list(self.ffn.parameters())[0:2 * args.frzn_ffn_layers]:  # Freeze weights and bias for given number of layers
-                    param.requires_grad = False
-
-    def fingerprint(self,
-                    batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
-                    features_batch: List[np.ndarray] = None,
-                    atom_descriptors_batch: List[np.ndarray] = None,
-                    atom_features_batch: List[np.ndarray] = None,
-                    bond_features_batch: List[np.ndarray] = None,
-                    fingerprint_type: str = 'MPN') -> torch.Tensor:
-        """
-        Encodes the latent representations of the input molecules from intermediate stages of the model.
-
-        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
-                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
-                      The outer list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch),
-                      the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
-        :param features_batch: A list of numpy arrays containing additional features.
-        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
-        :param fingerprint_type: The choice of which type of latent representation to return as the molecular fingerprint. Currently
-                                 supported MPN for the output of the MPNN portion of the model or last_FFN for the input to the final readout layer.
-        :return: The latent fingerprint vectors.
-        """
-        if fingerprint_type == 'MPN':
-            return self.encoder(batch, features_batch, atom_descriptors_batch,
-                                atom_features_batch, bond_features_batch)
-        elif fingerprint_type == 'last_FFN':
-            return self.ffn[:-1](self.encoder(batch, features_batch, atom_descriptors_batch,
-                                              atom_features_batch, bond_features_batch))
-        else:
-            raise ValueError(f'Unsupported fingerprint type {fingerprint_type}.')
-
-    def forward(self,
-                batch: Union[List[List[str]], List[List[Chem.Mol]], List[List[Tuple[Chem.Mol, Chem.Mol]]], List[BatchMolGraph]],
-                features_batch: List[np.ndarray] = None,
-                atom_descriptors_batch: List[np.ndarray] = None,
-                atom_features_batch: List[np.ndarray] = None,
-                bond_features_batch: List[np.ndarray] = None) -> torch.FloatTensor:
-        """
-        Runs the :class:`MoleculeModel` on input.
-
-        :param batch: A list of list of SMILES, a list of list of RDKit molecules, or a
-                      list of :class:`~chemprop.features.featurization.BatchMolGraph`.
-                      The outer list or BatchMolGraph is of length :code:`num_molecules` (number of datapoints in batch),
-                      the inner list is of length :code:`number_of_molecules` (number of molecules per datapoint).
-        :param features_batch: A list of numpy arrays containing additional features.
-        :param atom_descriptors_batch: A list of numpy arrays containing additional atom descriptors.
-        :param atom_features_batch: A list of numpy arrays containing additional atom features.
-        :param bond_features_batch: A list of numpy arrays containing additional bond features.
-        :return: The output of the :class:`MoleculeModel`, containing a list of property predictions
-        """
-
-        output = self.ffn(self.encoder(batch, features_batch, atom_descriptors_batch,
-                                       atom_features_batch, bond_features_batch))
-
-        if self.classification and not (self.training and self.no_training_normalization) and self.loss_function != 'dirichlet':
-            output = self.sigmoid(output)
-        if self.multiclass:
-            output = output.reshape((output.shape[0], -1, self.num_classes))  # batch size x num targets x num classes per target
-            if not (self.training and self.no_training_normalization) and self.loss_function != 'dirichlet':
-                output = self.multiclass_softmax(output)  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
-
-        # Modify multi-input loss functions
-        if self.loss_function == 'mve':
-            means, variances = torch.split(output, output.shape[1] // 2, dim=1)
-            variances = self.softplus(variances)
-            output = torch.cat([means, variances], axis=1)
-        if self.loss_function == 'evidential':
-            means, lambdas, alphas, betas = torch.split(output, output.shape[1]//4, dim=1)
-            lambdas = self.softplus(lambdas)  # + min_val
-            alphas = self.softplus(alphas) + 1  # + min_val # add 1 for numerical contraints of Gamma function
-            betas = self.softplus(betas)  # + min_val
-            output = torch.cat([means, lambdas, alphas, betas], dim=1)
-        if self.loss_function == 'dirichlet':
-            output = nn.functional.softplus(output) + 1
-
-        return output
+        return super().load_from_checkpoint(
+            checkpoint_path, map_location, hparams_file, strict, **kwargs
+        )

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.v2.featurizers.multihot import BondFeaturizer
+from chemprop.featurizers import MultiHotBondFeaturizer
 
 
 @pytest.fixture(
@@ -24,7 +24,7 @@ def stereo():
 
 @pytest.fixture
 def featurizer(bond_types, stereo):
-    return BondFeaturizer(bond_types, stereo)
+    return MultiHotBondFeaturizer(bond_types, stereo)
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def bt_bit(bond, bond_types, featurizer):
     if i == -1:
         return i
 
-    return range(len(featurizer))[featurizer.subfeatures["bond_type"].start + i]
+    return featurizer.one_hot_index(bt, featurizer.bond_types)[0] + 1
 
 
 @pytest.fixture
@@ -65,9 +65,8 @@ def test_bt_bit(x, bt_bit):
     assert x[bt_bit] == 1
 
 
-def test_conj_bit(featurizer, x, bond):
-    conj_bit = featurizer.subfeatures["conjugated"].start
-
+def test_conj_bit(featurizer, bond, x):
+    conj_bit = 1 + len(featurizer.bond_types)
     assert x[conj_bit] == int(bond.GetIsConjugated())
 
 
@@ -87,7 +86,7 @@ def test_conj_bit(featurizer, x, bond):
     ],
 )
 def test_x_hand_calc(mol, X_e_orig):
-    f = BondFeaturizer()
+    f = MultiHotBondFeaturizer()
 
     bonds = list(mol.GetBonds())
     X_e_calc = np.array([f(b) for b in bonds[: len(X_e_orig)]])
