@@ -39,17 +39,24 @@ class UncertaintyEvaluator(ABC):
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
         """
         if self.dataset_type == "spectra":
-            raise NotImplementedError(
+            raise ValueError(
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
         if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in [
             "classification",
             "multiclass",
         ]:
-            raise NotImplementedError(
+            raise ValueError(
                 "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented evaluation methods for classification."
+            )
+        if self.uncertainty_method == "dirichlet":
+            raise ValueError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented evaluation methods. \
+                    To evaluate the performance of a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method in a separate job."
             )
 
     @abstractmethod
@@ -233,7 +240,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
-            raise NotImplementedError(
+            raise ValueError(
                 "Miscalibration area is only implemented for regression dataset types."
             )
 
@@ -493,7 +500,7 @@ def build_uncertainty_evaluator(
 
     if evaluator_class is None:
         raise NotImplementedError(
-            f"Evaluator type {evaluation_method} is not supported. Avalable options are all calibration/multiclass metrics and {list(supported_evaluators.keys())}"
+            f"Evaluator type {evaluation_method} is not supported. Available options are all calibration/multiclass metrics and {list(supported_evaluators.keys())}"
         )
     else:
         evaluator = evaluator_class(
