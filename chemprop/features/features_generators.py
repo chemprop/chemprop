@@ -132,7 +132,7 @@ except ImportError:
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
 except AttributeError as e:
-    raise AttributeError('`descriptastorus==2.6.1` is incompatible with `scipy<1.9`. Please try changing '
+    raise e('`descriptastorus==2.6.1` is incompatible with `scipy<1.9`. Please try changing '
                          'descriptastorus versions or update scipy to avoid issues with `scipy.stats.gibrat`.')
 
 """
