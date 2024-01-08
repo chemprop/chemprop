@@ -293,6 +293,7 @@ def mcts(smiles: str,
 
     return rationales
 
+
 @timeit()
 def interpret(args: InterpretArgs) -> None:
     """
@@ -302,8 +303,10 @@ def interpret(args: InterpretArgs) -> None:
     """
 
     if args.number_of_molecules != 1:
-        raise ValueError("Interpreting is currently only available for single-molecule models.")
-    
+        raise ValueError(
+            "Interpreting is currently only available for single-molecule models."
+        )
+
     global C_PUCT, MIN_ATOMS
 
     chemprop_model = ChempropModel(args)
