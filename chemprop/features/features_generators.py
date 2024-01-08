@@ -132,8 +132,16 @@ except ImportError:
         raise ImportError('Failed to import descriptastorus. Please install descriptastorus '
                           '(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D normalized features.')
 except AttributeError as e:
-    raise e('`descriptastorus==2.6.1` is incompatible with `scipy<1.9`. Please try changing '
-                         'descriptastorus versions or update scipy to avoid issues with `scipy.stats.gibrat`.')
+    from packaging import version
+    from scipy import __version__ as scipy_version
+    from descriptastorus import __version__ as descriptastorus_version
+
+    if (version.parse(descriptastorus_version) == version.parse('2.5.1') or 
+        version.parse(descriptastorus_version) == version.parse('2.6.1')) and version.parse(scipy_version) < version.parse('1.9'):
+        raise Exception('`descriptastorus==2.6.1` and `==2.5.1` are incompatible with `scipy<1.9`. Please try changing '
+                        'descriptastorus versions or update scipy to avoid issues with `scipy.stats.gibrat`.') from e
+    else:
+        raise e
 
 """
 Custom features generator template.
