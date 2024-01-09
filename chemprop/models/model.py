@@ -225,10 +225,9 @@ class MPNN(pl.LightningModule):
     ) -> MPNN:
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
-        kwargs |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-        }
+        for key in ("message_passing", "agg", "predictor"):
+            if key not in kwargs:
+                kwargs[key] = hparams[key].pop("cls")(**hparams[key])
 
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
