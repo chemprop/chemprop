@@ -47,6 +47,7 @@ jobs:
           pytest --nbmake examples/predicting.ipynb
           pytest --nbmake examples/convert_v1_to_v2.ipynb
           pytest --nbmake examples/training_regression_multicomponent.ipynb
+          pytest --nbmake examples/predicting_regression_multicomponent.ipynb
       # TODO: move this back before the tests after v2 development is done
       - name: Lint with flake8
         shell: bash -l {0}
