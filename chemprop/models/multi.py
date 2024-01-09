@@ -46,3 +46,33 @@ class MulticomponentMPNN(MPNN):
         H = self.bn(H)
 
         return H if X_f is None else torch.cat((H, X_f), 1)
+
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        hparams = torch.load(checkpoint_path)["hyper_parameters"]
+
+        # construct the `agg` and `readout` modules from their hparam dicts like before
+        # and store them into `kwargs`
+        agg_hparams = hparams["agg"]
+        agg = agg_hparams.pop("cls")(**agg_hparams)
+        kwargs["agg"] = agg
+
+        readout_hparams = hparams["readout"]
+        readout = readout_hparams.pop("cls")(**readout_hparams)
+        kwargs["readout"] = readout
+
+        # iteratively construct the input message blocks from their corresponding hparams
+        # we do this because the `MulticomponentMessagePassing.hparams` attribute is a nested
+        # dictionary of hparams 
+        mp_hparams = hparams["message_passing"]
+        mp_hparams["blocks"] = [
+            block_hparams.pop("cls")(**block_hparams) for block_hparams in mp_hparams["blocks"]
+        ]
+        message_passing = mp_hparams.pop("cls")(**mp_hparams)
+        kwargs["message_passing"] = message_passing
+
+        return super().load_from_checkpoint(
+            checkpoint_path, map_location, hparams_file, strict, **kwargs
+        )
