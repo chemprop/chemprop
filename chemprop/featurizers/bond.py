@@ -6,7 +6,7 @@ from rdkit.Chem.rdchem import Bond, BondType
 
 
 class BondFeaturizer(ABC):
-    """A :class:`BondFeaturizerProto` calculates feature vectors of RDKit bonds"""
+    """A :class:`BondFeaturizer` calculates feature vectors of RDKit bonds"""
 
     @abstractmethod
     def __len__(self) -> int:

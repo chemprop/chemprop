@@ -36,7 +36,7 @@ class RxnMode(EnumMapping):
 
 
 class RxnMolGraphFeaturizer(ABC):
-    """A :class:`RxnMolGraphFeaturizerProto` featurizes reactions (i.e., a 2-tuple of reactant
+    """A :class:`RxnMolGraphFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant
     and product molecules) into :class:`MolGraph`s"""
 
     @abstractmethod
@@ -71,7 +71,7 @@ class RxnMolGraphFeaturizer(ABC):
 class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFeaturizer):
     """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
 
-    **NOTE**: This class *does not* accept a :class:`AtomFeaturizerProto` instance. This is because
+    **NOTE**: This class *does not* accept a :class:`AtomFeaturizer` instance. This is because
     it requries the :meth:`num_only()` method, which is only implemented in the concrete
     :class:`AtomFeaturizer` class
 
