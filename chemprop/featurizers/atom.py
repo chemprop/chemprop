@@ -7,7 +7,7 @@ from rdkit.Chem.rdchem import Atom, HybridizationType
 
 
 class AtomFeaturizer(ABC):
-    """An :class:`AtomFeaturizerProto` calculates feature vectors of RDKit atoms."""
+    """An :class:`AtomFeaturizer` calculates feature vectors of RDKit atoms."""
 
     @abstractmethod
     def __len__(self) -> int:
