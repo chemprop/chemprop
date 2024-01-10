@@ -8,7 +8,7 @@ import pandas as pd
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
-from chemprop.featurizers.molecule import MoleculeFeaturizerProto
+from chemprop.featurizers.molecule import MoleculeFeaturizer
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     MoleculeMolGraphFeaturizer,
@@ -75,7 +75,7 @@ def make_datapoints(
     V_fs: list[np.ndarray] | None,
     E_fs: list[np.ndarray] | None,
     V_ds: list[np.ndarray] | None,
-    features_generators: list[MoleculeFeaturizerProto] | None,
+    features_generators: list[MoleculeFeaturizer] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:

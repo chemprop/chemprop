@@ -40,7 +40,7 @@ class MoleculeMolGraphFeaturizer(ABC):
 @dataclass
 class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizer):
     """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
-    :class:`MoleculeMolGraphFeaturizerProto`
+    :class:`MoleculeMolGraphFeaturizer`
 
     Parameters
     ----------
