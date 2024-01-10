@@ -53,31 +53,13 @@ class MulticomponentMPNN(MPNN):
     ) -> MPNN:
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
-        kwargs = construct_modules(hparams, **kwargs)
+        mp_hparams = hparams["message_passing"]
+        mp_hparams["blocks"] = [
+            block_hparams.pop("cls")(**block_hparams) for block_hparams in mp_hparams["blocks"]
+        ]
+        message_passing = mp_hparams.pop("cls")(**mp_hparams)
+        kwargs["message_passing"] = message_passing
 
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
-
-
-def construct_modules(hparams: dict, **kwargs):
-    # construct the `agg` and `predictor` modules from their hparam dicts like before
-    # and store them into `kwargs`
-    agg_hparams = hparams["agg"]
-    agg = agg_hparams.pop("cls")(**agg_hparams)
-    kwargs["agg"] = agg
-
-    predictor_hparams = hparams["predictor"]
-    predictor = predictor_hparams.pop("cls")(**predictor_hparams)
-    kwargs["predictor"] = predictor
-
-    # iteratively construct the input message blocks from their corresponding hparams
-    # we do this because the `MulticomponentMessagePassing.hparams` attribute is a nested
-    # dictionary of hparams 
-    mp_hparams = hparams["message_passing"]
-    mp_hparams["blocks"] = [
-        block_hparams.pop("cls")(**block_hparams) for block_hparams in mp_hparams["blocks"]
-    ]
-    message_passing = mp_hparams.pop("cls")(**mp_hparams)
-    kwargs["message_passing"] = message_passing
-    return kwargs
