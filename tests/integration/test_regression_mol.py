@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop import nn
-from chemprop.data import MoleculeDataset, collate_batch
+from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 pytestmark = pytest.mark.parametrize(
     "mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
@@ -15,11 +15,18 @@ pytestmark = pytest.mark.parametrize(
 
 
 @pytest.fixture
-def dataloader(mol_regression_data):
-    dset = MoleculeDataset(mol_regression_data)
+def data(mol_regression_data):
+    smis, Y = mol_regression_data
+
+    return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
+
+
+@pytest.fixture
+def dataloader(data):
+    dset = MoleculeDataset(data)
     dset.normalize_targets()
 
-    return DataLoader(dset, 20, collate_fn=collate_batch)
+    return DataLoader(dset, 32, collate_fn=collate_batch)
 
 
 def test_quick(mpnn, dataloader):
