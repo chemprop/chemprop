@@ -12,6 +12,7 @@ from chemprop import data
 from chemprop.cli.utils.args import uppercase
 from chemprop.data.splitting import split_data
 from chemprop.nn.utils import Activation
+from chemprop.data import SplitType
 from chemprop.utils import Factory
 from chemprop.models import MPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
@@ -381,12 +382,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--split",
         "--split-type",
-        default="random",
-        choices=[
-            "random",
-            "scaffold",
-        ],  # 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
-        help="Method of splitting the data into train/val/test.",
+        type=uppercase,
+        default="RANDOM",
+        choices=list(SplitType.keys()),
+        help="Method of splitting the data into train/val/test (case insensitive).",
     )
     split_args.add_argument(
         "--split-sizes",
@@ -408,31 +407,32 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    split_args.add_argument(
-        "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    )
-    split_args.add_argument(
-        "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    )
-    split_args.add_argument(
-        "--crossval-index-dir", help="Directory in which to find cross validation index files."
-    )
-    split_args.add_argument(
-        "--crossval-index-file",
-        help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    )
+    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
+    # split_args.add_argument(
+    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
+    # )
+    # split_args.add_argument(
+    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
+    # )
+    # split_args.add_argument(
+    #     "--crossval-index-dir",
+    #     help="Directory in which to find cross validation index files.",
+    # )
+    # split_args.add_argument(
+    #     "--crossval-index-file",
+    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
+    # )
     split_args.add_argument(
         "--seed",
         type=int,
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
-    split_args.add_argument(
-        "--save-smiles-splits",
-        action="store_true",
-        help="Save smiles for each train/val/test splits for prediction convenience later.",
-    )
+    # split_args.add_argument(
+    #     "--save-smiles-splits",
+    #     action="store_true",
+    #     help="Save smiles for each train/val/test splits for prediction convenience later.",
+    # )
 
     parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
@@ -485,7 +485,7 @@ def main(args):
     )
 
     if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
+        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -508,7 +508,7 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
+            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
     else:
         raise ArgumentError(
             "'val_path' must be specified if 'test_path' is provided!"
