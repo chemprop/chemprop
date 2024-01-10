@@ -83,7 +83,7 @@ class TrainingBatch(NamedTuple):
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = zip(*batch)
 
-    return (
+    return TrainingBatch(
         BatchMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.stack(V_ds, axis=0)).float(),
         None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
