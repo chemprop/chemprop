@@ -6,6 +6,16 @@ from chemprop.utils import ClassRegistry
 from chemprop.nn.hparams import HasHParams
 
 
+__all__ = [
+    "Aggregation",
+    "AggregationRegistry",
+    "MeanAggregation",
+    "SumAggregation",
+    "NormAggregation",
+    "AttentiveAggregation",
+]
+
+
 class Aggregation(nn.Module, HasHParams):
     """An :class:`Aggregation` aggregates the node-level representations of a batch of graphs into
     a batch of graph-level representations
