@@ -74,8 +74,17 @@ class MSEMetric(MSELoss, Metric):
 
 @MetricRegistry.register("rmse")
 class RMSEMetric(MSEMetric):
-    def forward(self, *args, **kwargs) -> Tensor:
-        return super().forward(*args, **kwargs).sqrt()
+    def __call__(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor,
+        w_s: Tensor,
+        w_t: Tensor,
+        lt_mask: Tensor,
+        gt_mask: Tensor,
+    ):
+        return super().forward(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
 
 
 class BoundedMixin:
