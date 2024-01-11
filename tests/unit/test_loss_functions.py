@@ -1,4 +1,4 @@
-"""Chemprop unit tests for chemprop/v2/models/loss.py"""
+"""Chemprop unit tests for chemprop/models/loss.py"""
 import numpy as np
 import torch
 import pytest

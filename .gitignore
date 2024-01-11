@@ -172,3 +172,5 @@ cython_debug/
 chemprop/_version.py
 *.ckpt
 *.ipynb
+
+!tests/data/*
