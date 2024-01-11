@@ -84,10 +84,7 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return self.forward(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
-
-    def forward(self, *args, **kwargs) -> Tensor:
-        return super().forward(*args, **kwargs)
+        return super().forward(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
 
 
 class BoundedMixin:
