@@ -485,7 +485,9 @@ def main(args):
     )
 
     if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
+        train_data, val_data, test_data = split_data(
+            all_data, args.split, args.split_sizes, args.seed, args.num_folds
+        )
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -508,7 +510,9 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
+            train_data, val_data, _ = split_data(
+                all_data, args.split, args.split_sizes, args.seed, args.num_folds
+            )
     else:
         raise ArgumentError(
             "'val_path' must be specified if 'test_path' is provided!"
