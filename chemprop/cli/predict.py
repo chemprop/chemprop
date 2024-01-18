@@ -168,6 +168,9 @@ def main(args):
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        target_cols=None,
+        ignore_cols=None,
+        weight_col=None,
         bounded=bounded,
     )
     featurization_kwargs = dict(
@@ -177,7 +180,6 @@ def main(args):
     test_data = build_data_from_files(
         args.test_path,
         **format_kwargs,
-        target_cols=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
