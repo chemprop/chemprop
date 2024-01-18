@@ -533,8 +533,14 @@ def main(args):
         )  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
-    train_dset = make_dataset(train_data, args.rxn_mode)
-    val_dset = make_dataset(val_data, args.rxn_mode)
+    if n_components == 1:
+        train_dset = make_dataset(train_data, args.rxn_mode)
+        val_dset = make_dataset(val_data, args.rxn_mode)
+    else:
+        train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
+        val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
+        train_dset = data.MulticomponentDataset(train_dsets)
+        val_dset = data.MulticomponentDataset(val_dsets)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     mp_block = mp_cls(
