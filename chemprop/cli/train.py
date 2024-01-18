@@ -608,10 +608,12 @@ def main(args):
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
-        test_dset = make_dataset(test_data, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(
-            test_dset, args.batch_size, args.num_workers, shuffle=False
-        )
+        if n_components == 1:
+            test_dset = make_dataset(test_data, args.rxn_mode)
+        else:
+            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dset = data.MulticomponentDataset(test_dsets)
+        test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     else:
         test_loader = None
 
