@@ -190,13 +190,7 @@ def build_data_from_files(
 
     # NOTE: return only a single component for now with a preference for rxns
     data = rxn_data if len(rxn_data) > 0 else mol_data
-    # TODO: add support for multicomponent
-    if len(data) > 1:
-        warnings.warn(
-            "Multicomponent input is not supported at this time! Using only the 1st input..."
-        )
-
-    return data[0]
+    return data
 
 
 def make_dataset(
