@@ -33,6 +33,7 @@ dependencies = [
     "rdkit",
     "scikit-learn",
     "scipy",
+    "tensorboard",
     "torch >= 2.1",
     "torch_scatter",
     "astartes[molecules]",
