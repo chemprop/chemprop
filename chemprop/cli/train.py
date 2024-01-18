@@ -15,6 +15,7 @@ from chemprop.nn.utils import Activation
 from chemprop.data import SplitType
 from chemprop.utils import Factory
 from chemprop.models import MPNN
+from chemprop.models.multi import MulticomponentMessagePassing, MulticomponentMPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.nn.message_passing import BondMessagePassing, AtomMessagePassing
