@@ -121,7 +121,6 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         if bond_features_extra is not None:
             warnings.warn("'bond_features_extra' is currently unsupported for reactions")
 
-        # import pdb; pdb.set_trace()
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 

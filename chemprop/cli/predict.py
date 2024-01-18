@@ -232,7 +232,7 @@ def main(args):
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.separate_test_path)
-    preds = torch.concat(predss, 1).numpy()
+    preds = torch.cat(predss, 1).numpy()
     df_test[
         "preds"
     ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions

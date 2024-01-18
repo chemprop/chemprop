@@ -514,7 +514,7 @@ def main(args):
             )
     else:
         raise ArgumentError(
-            "'val_path' must be specified if 'test_path' is provided!"
+            argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
@@ -621,12 +621,13 @@ def main(args):
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
-    p_model = args.output_dir / "model.pt"
+    p_model = args.output_dir / "model.ckpt"
     torch.save(model.state_dict(), p_model)
     logger.info(f"model state dict saved to '{p_model}'")
 
 
 if __name__ == "__main__":
+    # TODO: update this old code or remove it. 
     parser = ArgumentParser()
     parser = TrainSubcommand.add_args(parser)
 

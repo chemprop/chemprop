@@ -261,7 +261,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case None:
                 return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
             case _:
-                ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
         if X is None:
             return scaler
