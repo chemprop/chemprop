@@ -151,12 +151,12 @@ def process_predict_args(args: Namespace) -> Namespace:
 
 def validate_predict_args(args):
     # TODO: once args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
-    if args.checkpoint_path is None:
+    if args.checkpoint is None:
         raise ValueError("Must provide a checkpoint path for prediction.")
 
 
 def main(args):
-    model = MPNN.load_from_checkpoint(args.checkpoint_path)
+    model = MPNN.load_from_checkpoint(args.checkpoint)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
