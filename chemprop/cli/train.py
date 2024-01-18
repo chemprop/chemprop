@@ -543,16 +543,32 @@ def main(args):
         val_dset = data.MulticomponentDataset(val_dsets)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
-    mp_block = mp_cls(
-        train_dset.featurizer.atom_fdim,
-        train_dset.featurizer.bond_fdim,
-        d_h=args.message_hidden_dim,
-        bias=args.message_bias,
-        depth=args.depth,
-        undirected=args.undirected,
-        dropout=args.dropout,
-        activation=args.activation,
-    )
+    if n_components == 1:
+        mp_block = mp_cls(
+            train_dset.featurizer.atom_fdim,
+            train_dset.featurizer.bond_fdim,
+            d_h=args.message_hidden_dim,
+            bias=args.message_bias,
+            depth=args.depth,
+            undirected=args.undirected,
+            dropout=args.dropout,
+            activation=args.activation,
+        )
+    else:
+        mp_blocks = [mp_cls(
+            train_dset.datasets[i].featurizer.atom_fdim,
+            train_dset.datasets[i].featurizer.bond_fdim,
+            d_h=args.message_hidden_dim,
+            bias=args.message_bias,
+            depth=args.depth,
+            undirected=args.undirected,
+            dropout=args.dropout,
+            activation=args.activation,
+        ) for i in range(n_components)]
+        if args.mpn_shared:
+            mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
+        else:
+            mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
 
