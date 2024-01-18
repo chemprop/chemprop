@@ -43,8 +43,8 @@ jobs:
       - name: Test CLI
         shell: bash -l {0}
         run: |
-          chemprop train -i estts/data/regression/mol.csv --dataset_type regression --epochs 1
-          chemprop predict --checkpoint-path tests/data/example_model_v2.ckpt -i estts/data/regression/mol.csv
+          chemprop train -i tests/data/regression/mol.csv --task-type regression --epochs 1
+          chemprop predict --checkpoint tests/data/example_model_v2.ckpt -i tests/data/regression/mol.csv
       - name: Test notebooks
         shell: bash -l {0}
         run: |
