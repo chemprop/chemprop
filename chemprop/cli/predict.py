@@ -139,7 +139,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.separate_test_path = Path(args.separate_test_path)
     if args.output is None:
         name = f"{args.separate_test_path.stem}_preds.csv"
         args.output = Path(args.separate_test_path.with_name(name))
