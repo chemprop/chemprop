@@ -29,16 +29,15 @@ def datas(mol_mol_regression_data):
 
 
 @pytest.fixture
-def dataloader_scaler(datas):
+def dataloader(datas):
     dsets = [MoleculeDataset(data) for data in datas]
     mcdset = MulticomponentDataset(dsets)
-    scaler = mcdset.normalize_targets()
+    mcdset.normalize_targets()
 
-    return DataLoader(mcdset, 32, collate_fn=collate_multicomponent), scaler
+    return DataLoader(mcdset, 32, collate_fn=collate_multicomponent)
 
 
-def test_quick(mcmpnn, dataloader_scaler):
-    dataloader, _ = dataloader_scaler
+def test_quick(mcmpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -51,10 +50,7 @@ def test_quick(mcmpnn, dataloader_scaler):
     trainer.fit(mcmpnn, dataloader)
 
 
-def test_overfit(mcmpnn, dataloader_scaler):
-    dataloader, scaler = dataloader_scaler
-    mcmpnn.loc = scaler.mean_
-    mcmpnn.scale = scaler.scale_
+def test_overfit(mcmpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
