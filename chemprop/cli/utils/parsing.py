@@ -200,21 +200,15 @@ def build_data_from_files(
 
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
-    bond_messages: bool,
     reaction_mode: str,
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-        featurizer = MoleculeMolGraphFeaturizer(
-            bond_messages=bond_messages,
-            extra_atom_fdim=extra_atom_fdim,
-            extra_bond_fdim=extra_bond_fdim,
+            extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(
-        bond_messages=bond_messages, mode_=reaction_mode
-    )
+    featurizer = CondensedGraphOfReactionFeaturizer(mode_=reaction_mode)
 
     return ReactionDataset(data, featurizer)

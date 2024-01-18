@@ -10,7 +10,6 @@ import torch
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.models import MPNN
-from chemprop.nn.message_passing import BondMessagePassing
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
@@ -159,7 +158,6 @@ def validate_predict_args(args):
 def main(args):
     model = MPNN.load_from_checkpoint(args.checkpoint_path)
 
-    bond_messages = isinstance(model.message_passing, BondMessagePassing)
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
@@ -204,7 +202,7 @@ def main(args):
     # else:
     #     cal_data = None
 
-    test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+    test_dset = make_dataset(test_data, args.rxn_mode)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
     # TODO: add uncertainty and calibration

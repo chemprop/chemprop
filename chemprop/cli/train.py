@@ -519,8 +519,8 @@ def main(args):
         )  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
-    train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
-    val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
+    train_dset = make_dataset(train_data, args.rxn_mode)
+    val_dset = make_dataset(val_data, args.rxn_mode)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     mp_block = mp_cls(
@@ -572,7 +572,7 @@ def main(args):
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
-        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+        test_dset = make_dataset(test_data, args.rxn_mode)
         test_loader = data.MolGraphDataLoader(
             test_dset, args.batch_size, args.num_workers, shuffle=False
         )
