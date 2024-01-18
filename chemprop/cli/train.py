@@ -52,9 +52,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "-o",
-        "--output-dir",
-        "--save-dir",
-        help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+        "--output",
+        help="basename of final model",
     )
     # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
@@ -446,10 +445,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_train_args(args: Namespace) -> Namespace:
     args.data_path = Path(args.data_path)
-
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
-    args.output_dir.mkdir(exist_ok=True, parents=True)
-
+    args.output = args.output_dir / (
+        str(args.data_path.stem) + "_model.pt" if args.output is None else args.output
+    )
     return args
 
 
@@ -621,9 +619,8 @@ def main(args):
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
-    p_model = args.output_dir / "model.pt"
-    torch.save(model.state_dict(), p_model)
-    logger.info(f"model state dict saved to '{p_model}'")
+    torch.save(model.state_dict(), args.output)
+    logger.info(f"model state dict saved to '{args.output}'")
 
 
 if __name__ == "__main__":
