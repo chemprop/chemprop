@@ -395,12 +395,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=[0.8, 0.1, 0.1],
         help="Split proportions for train/validation/test sets.",
     )
-    # split_args.add_argument(
-    #     "--split-key-molecule",
-    #     type=int,
-    #     default=0,
-    #     help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
-    # )
+    split_args.add_argument(
+        "--split-key-molecule",
+        type=int,
+        default=0,
+        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
+    )
     split_args.add_argument(
         "-k",
         "--num-folds",
