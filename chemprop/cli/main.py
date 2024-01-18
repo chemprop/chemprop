@@ -28,16 +28,16 @@ def main():
 
     parent = ArgumentParser(add_help=False)
     parent.add_argument("--output-dir", "--save-dir", help="Directory where outputs will be saved.")
-    parent.add_argument("-v", "--verbose", action="count", default=0, help="the verbosity level")
+    parent.add_argument(
+        "-q", "--quiet", action="count", default=0, help="supression level for logging"
+    )
 
     parents = [parent]
     for subcommand in SUBCOMMANDS:
         subcommand.add(subparsers, parents)
 
     args = parser.parse_args()
-    verbose, mode, func = (
-        pop_attr(args, attr) for attr in ["verbose", "mode", "func"]
-    )
+    quiet, mode, func = (pop_attr(args, attr) for attr in ["quiet", "mode", "func"])
 
     args.output_dir = (
         Path.cwd() / "output_files" / mode if args.output_dir is None else args.output_dir
@@ -48,7 +48,7 @@ def main():
     logging.basicConfig(
         filename=str(logfile),
         format="%(asctime)s - %(levelname)s:%(name)s - %(message)s",
-        level=LOG_LEVELS[min(verbose, len(LOG_LEVELS) - 1)],
+        level=LOG_LEVELS[max(0, len(LOG_LEVELS) - 1 - quiet)],
         datefmt="%Y-%m-%dT%H:%M:%S",
         force=True,
     )
