@@ -140,8 +140,9 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_predict_args(args: Namespace) -> Namespace:
     if args.output is None:
-        name = f"{args.separate_test_path.stem}_preds.csv"
-        args.output = Path(args.separate_test_path.with_name(name))
+        args.test_path = Path(args.test_path)
+        name = f"{args.test_path.stem}_preds.csv"
+        args.output = Path(args.test_path.with_name(name))
     else:
         args.output = Path(args.output)
 
@@ -174,7 +175,7 @@ def main(args):
     )
 
     test_data = build_data_from_files(
-        args.separate_test_path,
+        args.test_path,
         **format_kwargs,
         target_cols=[],
         p_features=args.features_path,
@@ -230,7 +231,7 @@ def main(args):
     #     predss_cal = trainer.predict(model, cal_loader)[0]
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
-    df_test = pd.read_csv(args.separate_test_path)
+    df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
     df_test[
         "preds"
