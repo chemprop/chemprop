@@ -484,10 +484,21 @@ def main(args):
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
+
+    n_components = len(all_data)
+
+    if n_components == 1:
+        all_data = all_data[0]
+
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
+    if n_components != 1:
+        split_kwargs["key_index"] = args.split_key_molecule
+
     if args.separate_val_path is None and args.separate_test_path is None:
-        # TODO: add multicomponent split
-        train_data, val_data, test_data = split_monocomponent(all_data, args.split, **split_kwargs)
+        if n_components == 1:
+            train_data, val_data, test_data = split_monocomponent(all_data, args.split, **split_kwargs)
+        else:
+            train_data, val_data, test_data = split_multicomponent(all_data, args.split, **split_kwargs)
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -510,9 +521,12 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_monocomponent(
-                all_data, args.split, **split_kwargs
-            )
+            if n_components == 1:
+                train_data, val_data, _ = split_monocomponent(
+                    all_data, args.split, **split_kwargs
+                )
+            else:
+                train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
