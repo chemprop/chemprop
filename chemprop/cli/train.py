@@ -50,11 +50,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         required=True,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
-    parser.add_argument(
-        "-o",
-        "--output",
-        help="basename of final model",
-    )
+    parser.add_argument("-o", "--output", help="basename of final model")
     # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
         "--log-frequency",
@@ -472,6 +468,7 @@ def main(args):
         features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
+    logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
         **format_kwargs,
@@ -507,9 +504,7 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_monocomponent(
-                all_data, args.split, **split_kwargs
-            )
+            train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
@@ -624,7 +619,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # TODO: update this old code or remove it. 
+    # TODO: update this old code or remove it.
     parser = ArgumentParser()
     parser = TrainSubcommand.add_args(parser)
 

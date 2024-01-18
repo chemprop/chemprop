@@ -6,6 +6,7 @@ import pandas as pd
 
 from lightning import pytorch as pl
 import torch
+from lightning.pytorch.loggers import TensorBoardLogger
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
@@ -203,7 +204,9 @@ def main(args):
 
     test_dset = make_dataset(test_data, args.rxn_mode)
 
-    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+    test_loader = data.MolGraphDataLoader(
+        test_dset, args.batch_size, args.num_workers, shuffle=False
+    )
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
@@ -213,9 +216,10 @@ def main(args):
 
     logger.info(model)
 
+    tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
     with torch.inference_mode():
         trainer = pl.Trainer(
-            logger=None,
+            logger=tb_logger,
             enable_progress_bar=True,
             accelerator="auto",
             devices=args.n_gpu if torch.cuda.is_available() else 1,
@@ -239,6 +243,7 @@ def main(args):
         df_test.to_pickle(args.output, index=False)
     else:
         df_test.to_csv(args.output, index=False)
+    logger.info(f"predictions saved to '{args.output}'")
 
 
 if __name__ == "__main__":
