@@ -587,8 +587,8 @@ def main(args):
 
     predictor_ffn = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + train_dset.d_xf,
-        n_tasks=train_dset.Y.shape[1],
+        input_dim=mp_block.output_dim + train_dset.d_xf if n_components == 1 else mp_block.output_dim + sum(train_dset.datasets[i].d_xf for i in range(n_components)),
+        n_tasks=train_dset.Y.shape[1] if n_components == 1 else train_dset.datasets[0].Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
