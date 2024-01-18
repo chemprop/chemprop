@@ -617,7 +617,8 @@ def main(args):
     else:
         test_loader = None
 
-    model = MPNN(
+    mpnn_cls = MulticomponentMPNN if n_components > 1 else MPNN
+    model = mpnn_cls(
         mp_block,
         agg,
         predictor_ffn,
