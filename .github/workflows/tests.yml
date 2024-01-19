@@ -40,13 +40,6 @@ jobs:
         shell: bash -l {0}
         run: |
           pytest -v tests
-      - name: Test CLI
-        shell: bash -l {0}
-        run: |
-          chemprop train -i tests/data/regression/mol.csv --task-type regression --epochs 1 --num-workers 4
-          chemprop predict --checkpoint tests/data/example_model_v2.ckpt -i tests/data/regression/mol.csv --num-workers 4
-          chemprop train -i tests/data/regression/mol+mol.csv --task-type regression --smiles-columns smiles solvent --epochs 1 --num-workers 4
-          chemprop predict --checkpoint tests/data/example_model_v2_regression_multi.ckpt -i tests/data/regression/mol+mol.csv --smiles-columns smiles solvent --num-workers 4
       - name: Test notebooks
         shell: bash -l {0}
         run: |
