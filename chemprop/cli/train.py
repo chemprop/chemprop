@@ -531,7 +531,11 @@ def main(args):
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
-    logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
+    
+    if n_components == 1:
+        logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
+    else:
+        logger.info(f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}")
 
     if n_components == 1:
         train_dset = make_dataset(train_data, args.rxn_mode)
