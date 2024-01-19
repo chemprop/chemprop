@@ -197,7 +197,13 @@ def main(args):
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
-    logger.info(f"test size: {len(test_data)}")
+
+    if n_components == 1:
+        test_data = test_data[0]
+        logger.info(f"test size: {len(test_data)}")
+    else:
+        logger.info(f"test size: {len(test_data[0])}")
+
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
