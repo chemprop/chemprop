@@ -590,10 +590,11 @@ def main(args):
         )
         criterion = predictor_cls._default_criterion
 
+    d_xf = sum(dset.d_xf for dset in train_dset.datasets) if multicomponent else train_dset.d_xf
     predictor_ffn = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xf),
-        n_tasks=train_dset.Y.shape[1] if n_components == 1 else train_dset.datasets[0].Y.shape[1],
+        input_dim=mp_block.output_dim + d_xf,
+        n_tasks=train_dset.Y.shape[1] if multicomponent else train_dset.datasets[0].Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
