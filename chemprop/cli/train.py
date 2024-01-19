@@ -492,7 +492,7 @@ def main(args):
         all_data = all_data[0]
 
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
-    if n_components != 1:
+    if multicomponent:
         split_kwargs["key_index"] = args.split_key_molecule
 
     if args.separate_val_path is None and args.separate_test_path is None:
@@ -623,7 +623,7 @@ def main(args):
     else:
         test_loader = None
 
-    mpnn_cls = MulticomponentMPNN if n_components > 1 else MPNN
+    mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
     model = mpnn_cls(
         mp_block,
         agg,
