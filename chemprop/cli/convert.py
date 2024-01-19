@@ -16,7 +16,11 @@ class ConvertSubcommand(Subcommand):
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument(
-            "-i", "--input_path", type=Path, help="The path to a v1 model .pt checkpoint file."
+            "-i",
+            "--input_path",
+            required=True,
+            type=Path,
+            help="The path to a v1 model .pt checkpoint file.",
         )
         parser.add_argument(
             "-o",
