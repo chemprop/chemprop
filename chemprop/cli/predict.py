@@ -221,7 +221,11 @@ def main(args):
     # else:
     #     cal_data = None
 
-    test_dset = make_dataset(test_data, args.rxn_mode)
+    if n_components == 1:
+        test_dset = make_dataset(test_data, args.rxn_mode)
+    else:
+        test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
+        test_dset = data.MulticomponentDataset(test_dsets)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
