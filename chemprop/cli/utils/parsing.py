@@ -1,7 +1,6 @@
 import logging
 from os import PathLike
 from typing import Mapping, Sequence
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -9,10 +8,8 @@ import pandas as pd
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.molecule import MoleculeFeaturizer
-from chemprop.featurizers.molgraph import (
-    CondensedGraphOfReactionFeaturizer,
-    SimpleMoleculeMolGraphFeaturizer,
-)
+from chemprop.featurizers.molgraph import (CondensedGraphOfReactionFeaturizer,
+                                           SimpleMoleculeMolGraphFeaturizer)
 
 logger = logging.getLogger(__name__)
 

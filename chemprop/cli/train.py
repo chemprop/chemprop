@@ -668,7 +668,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # TODO: update this old code or remove it. 
+    # TODO: update this old code or remove it.
     parser = ArgumentParser()
     parser = TrainSubcommand.add_args(parser)
 
