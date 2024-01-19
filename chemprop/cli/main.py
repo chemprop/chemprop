@@ -27,7 +27,11 @@ def main():
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
 
     parent = ArgumentParser(add_help=False)
-    parent.add_argument("--output-dir", "--save-dir", help="Directory where outputs will be saved.")
+    parent.add_argument(
+        "--output-dir",
+        "--save-dir",
+        help="Directory where outputs will be saved. Defaults to <current working directory>/<mode>/<date time>.",
+    )
     parent.add_argument(
         "-q", "--quiet", action="count", default=0, help="supression level for logging"
     )

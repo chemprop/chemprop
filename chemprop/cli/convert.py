@@ -21,7 +21,7 @@ class ConvertSubcommand(Subcommand):
         parser.add_argument(
             "-o",
             "--output_path",
-            help="The path to which the converted model will be saved. If not specified and the input file is '/path/to/checkpoint/model.pt', the output will default to '/path/to/checkpoint/model_v2.ckpt'",
+            help="The path to which the converted model will be saved. If not provided and the model file is model.pt, the model will be saved to /default/output/dir/model_v2.ckpt.",
         )
         return parser
 
