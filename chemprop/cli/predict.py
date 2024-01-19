@@ -252,7 +252,7 @@ def main(args):
         "preds"
     ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
-        df_test.to_pickle(args.output, index=False)
+        df_test.to_pickle(args.output)
     else:
         df_test.to_csv(args.output, index=False)
     logger.info(f"predictions saved to '{args.output}'")
