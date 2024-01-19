@@ -158,11 +158,15 @@ def validate_predict_args(args):
 
 def main(args):
 
-    if args.smiles_columns is None and args.reaction_columns is None:
-        n_components = 1
-    else:
-        n_components = len(args.smiles_columns) if args.smiles_columns is not None else 0
-        n_components += len(args.reaction_columns) if args.reaction_columns is not None else 0
+    match (args.smiles_columns, args.reaction_columns):
+        case [None, None]:
+            n_components = 1
+        case [_, None]:
+            n_components = len(args.smiles_columns)
+        case [None, _]:
+            n_components = len(args.reaction_columns)
+        case _:
+            n_components = len(args.smiles_columns) + len(args.reaction_columns)
 
     if n_components == 1:
         model = MPNN.load_from_checkpoint(args.checkpoint)
