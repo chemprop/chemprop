@@ -399,7 +399,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--split-key-molecule",
         type=int,
         default=0,
-        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
+        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., 'scaffold_balanced' or 'random_with_repeated_smiles'). Note that this index begins with zero for the first molecule.",
     )
     split_args.add_argument(
         "-k",
@@ -591,7 +591,7 @@ def main(args):
 
     predictor_ffn = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + train_dset.d_xf if n_components == 1 else mp_block.output_dim + sum(train_dset.datasets[i].d_xf for i in range(n_components)),
+        input_dim=mp_block.output_dim + d_xf),
         n_tasks=train_dset.Y.shape[1] if n_components == 1 else train_dset.datasets[0].Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
