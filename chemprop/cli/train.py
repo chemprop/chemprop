@@ -486,8 +486,9 @@ def main(args):
     )
 
     n_components = len(all_data)
+    multicomponent = n_components > 1
 
-    if n_components == 1:
+    if multicomponent:
         all_data = all_data[0]
 
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
@@ -495,7 +496,7 @@ def main(args):
         split_kwargs["key_index"] = args.split_key_molecule
 
     if args.separate_val_path is None and args.separate_test_path is None:
-        if n_components == 1:
+        if multicomponent:
             train_data, val_data, test_data = split_monocomponent(all_data, args.split, **split_kwargs)
         else:
             train_data, val_data, test_data = split_multicomponent(all_data, args.split, **split_kwargs)
@@ -521,7 +522,7 @@ def main(args):
             )
             train_data = all_data
         else:
-            if n_components == 1:
+            if multicomponent:
                 train_data, val_data, _ = split_monocomponent(
                     all_data, args.split, **split_kwargs
                 )
@@ -532,12 +533,12 @@ def main(args):
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
     
-    if n_components == 1:
+    if multicomponent:
         logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
     else:
         logger.info(f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}")
 
-    if n_components == 1:
+    if multicomponent:
         train_dset = make_dataset(train_data, args.rxn_mode)
         val_dset = make_dataset(val_data, args.rxn_mode)
     else:
@@ -547,7 +548,7 @@ def main(args):
         val_dset = data.MulticomponentDataset(val_dsets)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
-    if n_components == 1:
+    if multicomponent:
         mp_block = mp_cls(
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
@@ -612,7 +613,7 @@ def main(args):
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
-        if n_components == 1:
+        if multicomponent:
             test_dset = make_dataset(test_data, args.rxn_mode)
         else:
             test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
