@@ -10,7 +10,7 @@ import torch
 
 from chemprop import data
 from chemprop.cli.utils.args import uppercase
-from chemprop.data.splitting import split_data
+from chemprop.data.splitting import split_monocomponent, split_multicomponent
 from chemprop.nn.utils import Activation
 from chemprop.data import SplitType
 from chemprop.utils import Factory
@@ -483,9 +483,10 @@ def main(args):
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
-
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
     if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
+        # TODO: add multicomponent split
+        train_data, val_data, test_data = split_monocomponent(all_data, args.split, **split_kwargs)
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -508,15 +509,17 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes, args.seed, args.num_folds)
+            train_data, val_data, _ = split_monocomponent(
+                all_data, args.split, **split_kwargs
+            )
     else:
         raise ArgumentError(
-            "'val_path' must be specified if 'test_path' is provided!"
+            argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
     logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
-    train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
-    val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
+    train_dset = make_dataset(train_data, args.rxn_mode)
+    val_dset = make_dataset(val_data, args.rxn_mode)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     mp_block = mp_cls(
@@ -568,7 +571,7 @@ def main(args):
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
     if len(test_data) > 0:
-        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+        test_dset = make_dataset(test_data, args.rxn_mode)
         test_loader = data.MolGraphDataLoader(
             test_dset, args.batch_size, args.num_workers, shuffle=False
         )
@@ -624,6 +627,7 @@ def main(args):
 
 
 if __name__ == "__main__":
+    # TODO: update this old code or remove it. 
     parser = ArgumentParser()
     parser = TrainSubcommand.add_args(parser)
 

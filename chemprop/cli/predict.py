@@ -8,12 +8,8 @@ from lightning import pytorch as pl
 import torch
 
 from chemprop import data
-from chemprop.featurizers import RxnMode
-from chemprop.nn.metrics import MetricRegistry
-from chemprop.nn.agg import AggregationRegistry
-from chemprop.nn.loss import LossFunction, LossFunctionRegistry
+from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.models import MPNN
-from chemprop.nn.message_passing import BondMessagePassing
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
@@ -50,158 +46,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--preds-path",
         help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test_path is /path/to/test/test.csv, predictions will be saved to /path/to/test/test_preds.csv.",
     )
-
-    mp_args = parser.add_argument_group("message passing")
-    mp_args.add_argument(
-        "--message-hidden-dim", type=int, default=300, help="hidden dimension of the messages"
-    )
-    mp_args.add_argument(
-        "--message-bias", action="store_true", help="add bias to the message passing layers"
-    )
-    mp_args.add_argument(
-        "--depth", type=int, default=3, help="the number of message passing layers to stack"
-    )
-    mp_args.add_argument(
-        "--undirected", action="store_true", help="pass messages on undirected bonds"
-    )
-    mp_args.add_argument(
-        "--dropout",
-        type=float,
-        default=0.0,
-        help="dropout probability in message passing/FFN layers",
-    )
-    mp_args.add_argument(
-        "--activation", default="relu", help="activation function in message passing/FFN layers"
-    )
-    mp_args.add_argument(
-        "--aggregation",
-        "--agg",
-        default="mean",
-        choices=AggregationRegistry.choices,
-        help="aggregation mode to use during graph readout",
-    )
-    mp_args.add_argument(
-        "--norm", type=float, default=100, help="normalization factor to use for 'norm' aggregation"
-    )
-    mp_args.add_argument(
-        "--atom-messages", action="store_true", help="pass messages on atoms rather than bonds"
-    )
-
-    ffn_args = parser.add_argument_group("FFN args")
-    ffn_args.add_argument(
-        "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
-    )
-    ffn_args.add_argument(
-        "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
-    )
-
-    exta_mpnn_args = parser.add_argument_group("extra MPNN args")
-    exta_mpnn_args.add_argument(
-        "--multiclass-num-classes",
-        type=int,
-        help="the number of classes to predict in multiclass settings",
-    )
-    exta_mpnn_args.add_argument("--spectral-activation", default="exp", choices=["softplus", "exp"])
-
-    data_args = parser.add_argument_group("input data parsing args")
-    data_args.add_argument(
-        "-d",
-        "--dataset-type",
-        default="regression",
-        choices={l.split("-")[0] for l in LossFunction.registry.keys()},
-    )
-    data_args.add_argument(
-        "--no-header-row", action="store_true", help="if there is no header in the input data CSV"
-    )
-    data_args.add_argument(
-        "-s",
-        "--smiles-columns",
-        nargs="+",
-        type=int,
-        default=[0],
-        help="the columns in the CSV containing the SMILES strings of the inputs",
-    )
-    data_args.add_argument(
-        "-t",
-        "--target-columns",
-        nargs="+",
-        type=int,
-        default=[1],
-        help="the columns in the CSV containing the target values of the inputs",
-    )
-
-    data_args.add_argument(
-        "--rxn-idxs",
-        nargs="+",
-        type=int,
-        default=list(),
-        help="the indices in the input SMILES containing reactions. Unless specified, each input is assumed to be a molecule. Should be a number in `[0, N)`, where `N` is the number of `--smiles-columns` specified",
-    )
-    data_args.add_argument("--cal-path")
-    data_args.add_argument("--cal-features-path")
-    data_args.add_argument("--cal-atom-features-path")
-    data_args.add_argument("--cal-bond-features-path")
-    data_args.add_argument("--cal-atom-descriptors-path")
-
-    featurization_args = parser.add_argument_group("featurization args")
-    featurization_args.add_argument("--rxn-mode", choices=RxnMode.choices, default="reac_diff")
-    featurization_args.add_argument(
-        "--atom-features-path",
-        help="the path to a .npy file containing a _list_ of `N` 2D arrays, where the `i`th array contains the atom features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom features of the `j`th atom in the molecule.",
-    )
-    featurization_args.add_argument(
-        "--bond-features-path",
-        help="the path to a .npy file containing a _list_ of `N` arrays, where the `i`th array contains the bond features for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the bond features of the `j`th bond in the molecule.",
-    )
-    featurization_args.add_argument(
-        "--atom-descriptors-path",
-        help="the path to a .npy file containing a _list_ of `N` arrays, where the `i`th array contains the atom descriptors for the `i`th molecule in the input data file. NOTE: each 2D array *must* have correct ordering with respect to the corresponding molecule in the data file. I.e., row `j` contains the atom descriptors of the `j`th atom in the molecule.",
-    )
-    featurization_args.add_argument("--features-generators", nargs="+")
-    featurization_args.add_argument("--features-path")
-    featurization_args.add_argument("--explicit-h", action="store_true")
-    featurization_args.add_argument("--add-h", action="store_true")
-
-    train_args = parser.add_argument_group("training args")
-    train_args.add_argument("-b", "--batch-size", type=int, default=50)
-    train_args.add_argument("--target-weights", type=float, nargs="+")
-    train_args.add_argument(
-        "-l", "--loss-function", choices={l.split("-")[1] for l in LossFunction.registry.keys()}
-    )
-    train_args.add_argument(
-        "--v-kl", type=float, default=0.2, help="evidential/dirichlet regularization term weight"
-    )
-    train_args.add_argument(
-        "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
-    )
-    train_args.add_argument("-T", "--threshold", type=float, help="spectral threshold limit")
-    train_args.add_argument(
-        "--metrics",
-        nargs="+",
-        choices=MetricRegistry.choices,
-        help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
-    )
-    train_args.add_argument(
-        "-tw",
-        "--task-weights",
-        nargs="+",
-        type=float,
-        help="the weight to apply to an individual task in the overall loss",
-    )
-    train_args.add_argument("--warmup-epochs", type=int, default=2)
-    train_args.add_argument("--num-lrs", type=int, default=1)
-    train_args.add_argument("--init-lr", type=float, default=1e-4)
-    train_args.add_argument("--max-lr", type=float, default=1e-3)
-    train_args.add_argument("--final-lr", type=float, default=1e-4)
-
-    parser.add_argument("--epochs", type=int, default=30, help="the number of epochs to train over")
-
-    parser.add_argument("--split", "--split-type", default="random")
-    parser.add_argument("--split-sizes", type=float, nargs=3, default=[0.8, 0.1, 0.1])
-    parser.add_argument("-k", "--num-folds", type=int, default=1)
-    parser.add_argument("--save-splits", action="store_true")
-
-    parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
@@ -210,6 +54,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
     # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
+    # unc_args.add_argument("--cal-path")
+    # unc_args.add_argument("--cal-features-path")
+    # unc_args.add_argument("--cal-atom-features-path")
+    # unc_args.add_argument("--cal-bond-features-path")
+    # unc_args.add_argument("--cal-atom-descriptors-path")
     # unc_args.add_argument(
     #     "--ensemble-variance",
     #     type=None,
@@ -290,10 +139,10 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.separate_test_path = Path(args.separate_test_path)
     if args.output is None:
-        name = f"{args.separate_test_path.stem}_preds.csv"
-        args.output = Path(args.separate_test_path.with_name(name))
+        args.test_path = Path(args.test_path)
+        name = f"{args.test_path.stem}_preds.csv"
+        args.output = args.test_path.with_name(name)
     else:
         args.output = Path(args.output)
 
@@ -302,14 +151,13 @@ def process_predict_args(args: Namespace) -> Namespace:
 
 def validate_predict_args(args):
     # TODO: once args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
-    if args.checkpoint_path is None:
+    if args.checkpoint is None:
         raise ValueError("Must provide a checkpoint path for prediction.")
 
 
 def main(args):
-    model = MPNN.load_from_checkpoint(args.checkpoint_path)
+    model = MPNN.load_from_checkpoint(args.checkpoint)
 
-    bond_messages = isinstance(model.message_passing, BondMessagePassing)
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
@@ -320,6 +168,9 @@ def main(args):
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        target_cols=None,
+        ignore_cols=None,
+        weight_col=None,
         bounded=bounded,
     )
     featurization_kwargs = dict(
@@ -327,9 +178,8 @@ def main(args):
     )
 
     test_data = build_data_from_files(
-        args.separate_test_path,
+        args.test_path,
         **format_kwargs,
-        target_cols=[],
         p_features=args.features_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
@@ -354,13 +204,13 @@ def main(args):
     # else:
     #     cal_data = None
 
-    test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
+    test_dset = make_dataset(test_data, args.rxn_mode)
 
-    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.n_cpu, shuffle=False)
+    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
-    #     cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.n_cpu, shuffle=False)
+    #     cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
     # else:
     #     cal_loader = None
 
@@ -383,7 +233,7 @@ def main(args):
     #     predss_cal = trainer.predict(model, cal_loader)[0]
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
-    df_test = pd.read_csv(args.separate_test_path)
+    df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
     df_test[
         "preds"
