@@ -148,10 +148,14 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.test_path = Path(args.test_path)
-    args.output = args.output_dir / (
-        str(args.test_path.stem) + "_preds.csv" if args.output is None else args.output
-    )
+    args.output = args.output or Path(str(args.test_path.stem) + "_preds.csv")
+    if args.output.suffix not in [".csv", ".pkl"]:
+        args.output = Path(str(args.output) + ".csv")
+    if len(args.output.parents) > 1:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        args.output = args.output_dir / args.output
+
     return args
 
 

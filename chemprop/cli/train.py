@@ -463,10 +463,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.data_path = Path(args.data_path)
-    args.output = args.output_dir / (
-        str(args.data_path.stem) + "_model.pt" if args.output is None else args.output
-    )
+    args.output = args.output or Path(str(args.data_path.stem) + "_model.pt")
+    if args.output.suffix != ".pt":
+        args.output = Path(str(args.output) + ".pt")
+    if len(args.output.parents) > 1:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        args.output = args.output_dir / args.output
+
     return args
 
 

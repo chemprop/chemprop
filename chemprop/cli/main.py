@@ -44,9 +44,7 @@ def main():
     args = parser.parse_args()
     quiet, mode, func = (pop_attr(args, attr) for attr in ["quiet", "mode", "func"])
 
-    args.output_dir = (
-        Path.cwd() / "output_files" / mode if args.output_dir is None else args.output_dir
-    ) / NOW
+    args.output_dir = (args.output_dir or Path.cwd() / "output_files" / mode) / NOW
     args.output_dir.mkdir(parents=True, exist_ok=True)
     logfile = args.output_dir / "chemprop.log"
 

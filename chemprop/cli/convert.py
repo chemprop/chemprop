@@ -28,9 +28,13 @@ class ConvertSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
-        args.output_path = args.output_dir / (
-            args.output_path or str(args.input_path.stem) + "_v2.ckpt"
-        )
+        args.output_path = args.output_path or Path(str(args.input_path.stem) + "_v2.ckpt")
+        if args.output_path.suffix != ".ckpt":
+            args.output_path = Path(str(args.output_path) + ".ckpt")
+        if len(args.output_path.parents) > 1:
+            args.output_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            args.output_path = args.output_dir / args.output_path
 
         logger.info(
             f"Converting v1 model checkpoint '{args.input_path}' to v2 model checkpoint '{args.output_path}'..."
