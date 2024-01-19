@@ -48,9 +48,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-i",
         "--data-path",
         required=True,
+        type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
-    parser.add_argument("-o", "--output", help="basename of final model")
+    parser.add_argument("-o", "--output", type=Path, help="basename of final model")
     # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
         "--log-frequency",
@@ -60,6 +61,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--checkpoint-frzn",
+        type=Path,
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
     )
     parser.add_argument(
@@ -85,6 +87,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--config-path",
+        type=Path,
         help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
     )
     parser.add_argument(
@@ -244,63 +247,83 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset. This determines the default loss function used during training.",
+        help="Type of dataset (defaults to regession). This determines the default loss function used during training.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
+        type=Path,
         help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions.",
     )
     data_args.add_argument(
         "--data-weights-path",
+        type=Path,
         help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
     )
-    data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
-        "--separate-val-features-path", help="Path to file with features for separate val set."
+        "--separate-val-path", type=Path, help="Path to separate val set, optional."
+    )
+    data_args.add_argument(
+        "--separate-val-features-path",
+        type=Path,
+        help="Path to file with features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
+        type=Path,
         help="Path to file with phase features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-atom-descriptors-path",
+        type=Path,
         help="Path to file with extra atom descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-atom-features-path",
+        type=Path,
         help="Path to file with extra atom features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-bond-features-path",
+        type=Path,
         help="Path to file with extra bond features for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-constraints-path",
+        type=Path,
         help="Path to file with constraints for separate val set.",
     )
 
-    data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
     data_args.add_argument(
-        "--separate-test-features-path", help="Path to file with features for separate test set."
+        "--separate-test-path", type=Path, help="Path to separate test set, optional."
+    )
+    data_args.add_argument(
+        "--separate-test-features-path",
+        type=Path,
+        help="Path to file with features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
+        type=Path,
         help="Path to file with phase features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-atom-descriptors-path",
+        type=Path,
         help="Path to file with extra atom descriptors for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-atom-features-path",
+        type=Path,
         help="Path to file with extra bond features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-bond-features-path",
+        type=Path,
         help="Path to file with extra atom features for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-constraints-path",
+        type=Path,
         help="Path to file with constraints for separate test set.",
     )
 

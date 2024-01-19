@@ -16,18 +16,18 @@ class ConvertSubcommand(Subcommand):
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument(
-            "-i", "--input_path", help="The path to a v1 model .pt checkpoint file."
+            "-i", "--input_path", type=Path, help="The path to a v1 model .pt checkpoint file."
         )
         parser.add_argument(
             "-o",
             "--output_path",
+            type=Path,
             help="The path to which the converted model will be saved. If not provided and the model file is model.pt, the model will be saved to /default/output/dir/model_v2.ckpt.",
         )
         return parser
 
     @classmethod
     def func(cls, args: Namespace):
-        args.input_path = Path(args.input_path)
         args.output_path = args.output_dir / (
             args.output_path or str(args.input_path.stem) + "_v2.ckpt"
         )

@@ -30,6 +30,7 @@ def main():
     parent.add_argument(
         "--output-dir",
         "--save-dir",
+        type=Path,
         help="Directory where outputs will be saved. Defaults to <current working directory>/<mode>/<date time>.",
     )
     parent.add_argument(

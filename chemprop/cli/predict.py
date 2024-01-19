@@ -39,12 +39,17 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
+        "-i",
+        "--test-path",
+        required=True,
+        type=Path,
+        help="Path to an input CSV file containing SMILES.",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
+        type=Path,
         help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test file is test.csv, predictions will be saved to /default/output/dir/test_preds.csv.",
     )
     parser.add_argument(
@@ -55,11 +60,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
     # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
-    # unc_args.add_argument("--cal-path")
-    # unc_args.add_argument("--cal-features-path")
-    # unc_args.add_argument("--cal-atom-features-path")
-    # unc_args.add_argument("--cal-bond-features-path")
-    # unc_args.add_argument("--cal-atom-descriptors-path")
+    # unc_args.add_argument("--cal-path", type=Path)
+    # unc_args.add_argument("--cal-features-path", type=Path)
+    # unc_args.add_argument("--cal-atom-features-path", type=Path)
+    # unc_args.add_argument("--cal-bond-features-path", type=Path)
+    # unc_args.add_argument("--cal-atom-descriptors-path", type=Path)
     # unc_args.add_argument(
     #     "--ensemble-variance",
     #     type=None,
@@ -120,19 +125,22 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     # )
     # unc_args.add_argument(
     #     "--calibration-features-path",
-    #     type=list[str],
+    #     type=Path,
     #     help="Path to features data to be used with the uncertainty calibration dataset.",
     # )
     # unc_args.add_argument(
     #     "--calibration-phase-features-path",
+    #     type=Path,
     #     help=" ",
     # )
     # unc_args.add_argument(
     #     "--calibration-atom-descriptors-path",
+    #     type=Path,
     #     help="Path to the extra atom descriptors.",
     # )
     # unc_args.add_argument(
     #     "--calibration-bond-descriptors-path",
+    #     type=Path,
     #     help="Path to the extra bond descriptors that will be used as bond features to featurize a given molecule.",
     # )
 
