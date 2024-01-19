@@ -10,6 +10,7 @@ import torch
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.models import MPNN
+from chemprop.models.multi import MulticomponentMPNN
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
