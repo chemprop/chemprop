@@ -157,7 +157,17 @@ def validate_predict_args(args):
 
 
 def main(args):
-    model = MPNN.load_from_checkpoint(args.checkpoint)
+
+    if args.smiles_columns is None and args.reaction_columns is None:
+        n_components = 1
+    else:
+        n_components = len(args.smiles_columns) if args.smiles_columns is not None else 0
+        n_components += len(args.reaction_columns) if args.reaction_columns is not None else 0
+
+    if n_components == 1:
+        model = MPNN.load_from_checkpoint(args.checkpoint)
+    else:
+        model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
