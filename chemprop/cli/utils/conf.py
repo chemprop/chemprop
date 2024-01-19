@@ -1,3 +1,3 @@
 from datetime import datetime
 
-NOW = datetime.now().isoformat("T", "seconds")
+NOW = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
