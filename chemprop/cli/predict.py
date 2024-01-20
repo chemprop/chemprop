@@ -6,7 +6,6 @@ import pandas as pd
 
 from lightning import pytorch as pl
 import torch
-from lightning.pytorch.loggers import TensorBoardLogger
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
@@ -228,10 +227,9 @@ def main(args):
 
     logger.info(model)
 
-    tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
     with torch.inference_mode():
         trainer = pl.Trainer(
-            logger=tb_logger,
+            logger=False,
             enable_progress_bar=True,
             accelerator="auto",
             devices=args.n_gpu if torch.cuda.is_available() else 1,

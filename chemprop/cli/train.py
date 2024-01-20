@@ -5,6 +5,7 @@ import sys
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
@@ -617,7 +618,11 @@ def main(args):
     monitor_mode = "min" if model.metrics[0].minimize else "max"
     logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
-    tb_logger = TensorBoardLogger(args.output_dir, "tb_logs")
+    try:
+        trainer_logger = TensorBoardLogger(args.output_dir, "trainer_logs")
+    except ImportError:
+        trainer_logger = CSVLogger(args.output_dir, "trainer_logs")
+
     checkpointing = ModelCheckpoint(
         args.output_dir / "chkpts",
         "{epoch}-{val_loss:.2f}",
@@ -628,7 +633,7 @@ def main(args):
     early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
 
     trainer = pl.Trainer(
-        logger=tb_logger,
+        logger=trainer_logger,
         enable_progress_bar=True,
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
