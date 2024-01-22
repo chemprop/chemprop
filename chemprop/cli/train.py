@@ -497,9 +497,13 @@ def main(args):
 
     if args.separate_val_path is None and args.separate_test_path is None:
         if multicomponent:
-            train_data, val_data, test_data = split_multicomponent(all_data, args.split, **split_kwargs)
+            train_data, val_data, test_data = split_multicomponent(
+                all_data, args.split, **split_kwargs
+            )
         else:
-            train_data, val_data, test_data = split_monocomponent(all_data, args.split, **split_kwargs)
+            train_data, val_data, test_data = split_monocomponent(
+                all_data, args.split, **split_kwargs
+            )
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -525,16 +529,16 @@ def main(args):
             if multicomponent:
                 train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
             else:
-                train_data, val_data, _ = split_monocomponent(
-                    all_data, args.split, **split_kwargs
-                )
+                train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
-    
+
     if multicomponent:
-        logger.info(f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}")
+        logger.info(
+            f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}"
+        )
     else:
         logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
@@ -549,16 +553,19 @@ def main(args):
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     if multicomponent:
-        mp_blocks = [mp_cls(
-            train_dset.datasets[i].featurizer.atom_fdim,
-            train_dset.datasets[i].featurizer.bond_fdim,
-            d_h=args.message_hidden_dim,
-            bias=args.message_bias,
-            depth=args.depth,
-            undirected=args.undirected,
-            dropout=args.dropout,
-            activation=args.activation,
-        ) for i in range(n_components)]
+        mp_blocks = [
+            mp_cls(
+                train_dset.datasets[i].featurizer.atom_fdim,
+                train_dset.datasets[i].featurizer.bond_fdim,
+                d_h=args.message_hidden_dim,
+                bias=args.message_bias,
+                depth=args.depth,
+                undirected=args.undirected,
+                dropout=args.dropout,
+                activation=args.activation,
+            )
+            for i in range(n_components)
+        ]
         if args.mpn_shared:
             mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         else:
@@ -618,13 +625,17 @@ def main(args):
         if len(test_data[0]) > 0:
             test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
             test_dset = data.MulticomponentDataset(test_dsets)
-            test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
         else:
             test_loader = None
     else:
         if len(test_data) > 0:
             test_dset = make_dataset(test_data, args.rxn_mode)
-            test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
         else:
             test_loader = None
 

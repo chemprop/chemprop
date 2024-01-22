@@ -8,8 +8,10 @@ import pandas as pd
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.molecule import MoleculeFeaturizer
-from chemprop.featurizers.molgraph import (CondensedGraphOfReactionFeaturizer,
-                                           SimpleMoleculeMolGraphFeaturizer)
+from chemprop.featurizers.molgraph import (
+    CondensedGraphOfReactionFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -191,8 +193,7 @@ def build_data_from_files(
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
-    reaction_mode: str,
+    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
