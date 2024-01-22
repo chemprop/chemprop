@@ -38,12 +38,17 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
+        "-i",
+        "--test-path",
+        required=True,
+        type=Path,
+        help="Path to an input CSV file containing SMILES.",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
+        type=Path,
         help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test_path is /path/to/test/test.csv, predictions will be saved to /path/to/test/test_preds.csv.",
     )
     parser.add_argument(
@@ -261,6 +266,7 @@ def main(args):
         df_test.to_pickle(args.output)
     else:
         df_test.to_csv(args.output, index=False)
+    logger.info(f"predictions saved to '{args.output}'")
 
 
 if __name__ == "__main__":

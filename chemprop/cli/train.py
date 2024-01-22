@@ -49,12 +49,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-i",
         "--data-path",
         required=True,
+        type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
     parser.add_argument(
         "-o",
         "--output-dir",
         "--save-dir",
+        type=Path,
         help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
@@ -493,6 +495,7 @@ def main(args):
         features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
+    logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
         **format_kwargs,
