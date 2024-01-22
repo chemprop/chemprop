@@ -267,7 +267,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset. This determines the default loss function used during training.",
+        help="Type of dataset. This determines the default loss function used during training. Defaults to regression.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
@@ -355,7 +355,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
     )
     train_args.add_argument(
-        "--metric" "--metrics",
+        "--metric",
+        "--metrics",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
@@ -549,7 +550,8 @@ def main(args):
                 train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
-            argument=None, message="'val_path' must be specified if 'test_path' is provided!"
+            argument=None,
+            message="'separate_val_path' must be specified if 'separate_test_path' is provided!",
         )  # TODO: In v1 this wasn't the case?
 
     if multicomponent:

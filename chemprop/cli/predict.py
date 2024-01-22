@@ -237,7 +237,7 @@ def main(args):
 
     with torch.inference_mode():
         trainer = pl.Trainer(
-            logger=None,
+            logger=False,
             enable_progress_bar=True,
             accelerator="auto",
             devices=args.n_gpu if torch.cuda.is_available() else 1,
@@ -258,7 +258,7 @@ def main(args):
         "preds"
     ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
-        df_test.to_pickle(args.output, index=False)
+        df_test.to_pickle(args.output)
     else:
         df_test.to_csv(args.output, index=False)
 

@@ -89,7 +89,7 @@ def make_datapoints(
         a list of lists of :class:`MoleculeDatapoint`s of shape ``j x n``, where ``j`` is the
         number of molecule components per datapoint and ``n`` is the total number of datapoints
     list[list[ReactionDatapoint]]
-        a list of lists of :class:`MoleculeDatapoint`s of shape ``k x n``, where ``k`` is the
+        a list of lists of :class:`ReactionDatapoint`s of shape ``k x n``, where ``k`` is the
         number of reaction components per datapoint and ``n`` is the total number of datapoints
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
