@@ -1,7 +1,6 @@
 import logging
 from os import PathLike
 from typing import Mapping, Sequence
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -190,18 +189,11 @@ def build_data_from_files(
 
     # NOTE: return only a single component for now with a preference for rxns
     data = rxn_data if len(rxn_data) > 0 else mol_data
-    # TODO: add support for multicomponent
-    if len(data) > 1:
-        warnings.warn(
-            "Multicomponent input is not supported at this time! Using only the 1st input..."
-        )
-
-    return data[0]
+    return data
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
-    reaction_mode: str,
+    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

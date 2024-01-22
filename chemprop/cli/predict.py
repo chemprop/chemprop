@@ -10,6 +10,7 @@ import torch
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.models import MPNN
+from chemprop.models.multi import MulticomponentMPNN
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
@@ -156,7 +157,22 @@ def validate_predict_args(args):
 
 
 def main(args):
-    model = MPNN.load_from_checkpoint(args.checkpoint)
+    match (args.smiles_columns, args.reaction_columns):
+        case [None, None]:
+            n_components = 1
+        case [_, None]:
+            n_components = len(args.smiles_columns)
+        case [None, _]:
+            n_components = len(args.reaction_columns)
+        case _:
+            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+
+    multicomponent = n_components > 1
+
+    if multicomponent:
+        model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
+    else:
+        model = MPNN.load_from_checkpoint(args.checkpoint)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -186,7 +202,13 @@ def main(args):
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
-    logger.info(f"test size: {len(test_data)}")
+    logger.info(f"test size: {len(test_data[0])}")
+    test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
+
+    if multicomponent:
+        test_dset = data.MulticomponentDataset(test_dsets)
+    else:
+        test_data = test_data[0]
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
@@ -204,9 +226,9 @@ def main(args):
     # else:
     #     cal_data = None
 
-    test_dset = make_dataset(test_data, args.rxn_mode)
-
-    test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+    test_loader = data.MolGraphDataLoader(
+        test_dset, args.batch_size, args.num_workers, shuffle=False
+    )
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
