@@ -203,13 +203,13 @@ def main(args):
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
+    logger.info(f"test size: {len(test_data[0])}")
+    test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
 
     if multicomponent:
-        logger.info(f"test size: {len(test_data[0])}")
+        test_dset = data.MulticomponentDataset(test_dsets)
     else:
         test_data = test_data[0]
-        logger.info(f"test size: {len(test_data)}")
-
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
@@ -226,12 +226,6 @@ def main(args):
     #     logger.info(f"calibration size: {len(cal_data)}")
     # else:
     #     cal_data = None
-
-    if multicomponent:
-        test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
-        test_dset = data.MulticomponentDataset(test_dsets)
-    else:
-        test_dset = make_dataset(test_data, args.rxn_mode)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
