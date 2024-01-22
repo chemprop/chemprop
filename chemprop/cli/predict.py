@@ -168,10 +168,12 @@ def main(args):
         case _:
             n_components = len(args.smiles_columns) + len(args.reaction_columns)
 
-    if n_components == 1:
-        model = MPNN.load_from_checkpoint(args.checkpoint)
-    else:
+    multicomponent = n_components > 1
+
+    if multicomponent:
         model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
+    else:
+        model = MPNN.load_from_checkpoint(args.checkpoint)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -202,11 +204,11 @@ def main(args):
         **featurization_kwargs,
     )
 
-    if n_components == 1:
+    if multicomponent:
+        logger.info(f"test size: {len(test_data[0])}")
+    else:
         test_data = test_data[0]
         logger.info(f"test size: {len(test_data)}")
-    else:
-        logger.info(f"test size: {len(test_data[0])}")
 
 
     # TODO: add uncertainty and calibration
@@ -225,11 +227,11 @@ def main(args):
     # else:
     #     cal_data = None
 
-    if n_components == 1:
-        test_dset = make_dataset(test_data, args.rxn_mode)
-    else:
+    if multicomponent:
         test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
         test_dset = data.MulticomponentDataset(test_dsets)
+    else:
+        test_dset = make_dataset(test_data, args.rxn_mode)
 
     test_loader = data.MolGraphDataLoader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
