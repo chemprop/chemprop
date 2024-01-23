@@ -15,20 +15,26 @@ class ConvertSubcommand(Subcommand):
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument("input_path", help="The path to a v1 model .pt checkpoint file.")
         parser.add_argument(
-            "output_path",
-            nargs="?",
-            help="The path to which the converted model will be saved. If not specified and the input file is '/path/to/checkpoint/model.pt', the output will default to '/path/to/checkpoint/model_v2.ckpt'",
+            "-i",
+            "--input-path",
+            required=True,
+            type=Path,
+            help="The path to a v1 model .pt checkpoint file.",
+        )
+        parser.add_argument(
+            "-o",
+            "--output-path",
+            type=Path,
+            help="The path to which the converted model will be saved. Defaults to '<current working directory>/<stem of input>_v2.ckpt'",
         )
         return parser
 
     @classmethod
     def func(cls, args: Namespace):
-        args.input_path = Path(args.input_path)
-        args.output_path = Path(
-            args.output_path or args.input_path.parent / (args.input_path.stem + "_v2.ckpt")
-        )
+        args.output_path = args.output_path or Path(args.input_path.stem + "_v2.ckpt")
+        if args.output_path.suffix != ".ckpt":
+            args.output_path = Path(str(args.output_path) + ".ckpt")
 
         logger.info(
             f"Converting v1 model checkpoint '{args.input_path}' to v2 model checkpoint '{args.output_path}'..."
