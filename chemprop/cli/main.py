@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import logging
+import sys
 from pathlib import Path
 
 from chemprop.cli.train import TrainSubcommand
@@ -14,7 +15,6 @@ from chemprop.cli.utils import LOG_DIR, NOW, pop_attr
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LOGFILE = f"{LOG_DIR}/{NOW}.log"
 LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
 SUBCOMMANDS = [
     TrainSubcommand,
@@ -32,7 +32,7 @@ def main():
         "--logfile",
         "--log",
         nargs="?",
-        default=DEFAULT_LOGFILE,
+        const="default",
         help=f"the path to which the log file should be written. Specifying just the flag (i.e., '--log/--logfile') will automatically log to a file '{LOG_DIR}/MODE/{NOW}.log', where 'MODE' is the CLI mode chosen.",
     )
     parent.add_argument("-v", "--verbose", action="count", default=0, help="the verbosity level")
@@ -46,11 +46,18 @@ def main():
         pop_attr(args, attr) for attr in ["logfile", "verbose", "mode", "func"]
     )
 
-    logfile = Path(LOG_DIR / mode / f"{NOW}.log" if logfile is None else logfile)
-    logfile.parent.mkdir(parents=True, exist_ok=True)
+    match logfile:
+        case None:
+            handler = logging.StreamHandler(sys.stderr)
+        case "default":
+            (LOG_DIR / mode).mkdir(parents=True, exist_ok=True)
+            handler = logging.FileHandler(str(LOG_DIR / mode / f"{NOW}.log"))
+        case _:
+            Path(logfile).parent.mkdir(parents=True, exist_ok=True)
+            handler = logging.FileHandler(logfile)
 
     logging.basicConfig(
-        filename=str(logfile),
+        handlers=[handler],
         format="%(asctime)s - %(levelname)s:%(name)s - %(message)s",
         level=LOG_LEVELS[min(verbose, len(LOG_LEVELS) - 1)],
         datefmt="%Y-%m-%dT%H:%M:%S",
