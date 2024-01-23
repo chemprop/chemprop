@@ -20,7 +20,7 @@ from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistr
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.nn.message_passing import BondMessagePassing, AtomMessagePassing
 
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, NOW
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         type=Path,
-        help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>_<time stamp>'.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -466,9 +466,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.data_path = Path(args.data_path)
-
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
+    args.output_dir = args.output_dir or Path("chemprop_training") / (
+        "_".join([args.data_path.stem, NOW])
+    )
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args

@@ -49,7 +49,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test_path is /path/to/test/test.csv, predictions will be saved to /path/to/test/test_preds.csv.",
+        help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. Defaults to '<current working directory>/<stem of input>_preds.csv'.",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -149,13 +149,9 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    if args.output is None:
-        args.test_path = Path(args.test_path)
-        name = f"{args.test_path.stem}_preds.csv"
-        args.output = args.test_path.with_name(name)
-    else:
-        args.output = Path(args.output)
-
+    args.output = args.output or Path(args.test_path.stem + "_preds.csv")
+    if args.output.suffix not in [".csv", ".pkl"]:
+        args.output = Path(str(args.output) + ".csv")
     return args
 
 
