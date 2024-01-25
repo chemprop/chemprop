@@ -212,9 +212,9 @@ def split_monocomponent(
             test = [[datapoints[i] for i in fold] for fold in test_idxs]
         case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
             # convert indices to datapoints
-            train = [datapoints[i] for i in train_idxs]
-            val = [datapoints[i] for i in val_idxs]
-            test = [datapoints[i] for i in test_idxs]
+            train = [[datapoints[i] for i in train_idxs]]
+            val = [[datapoints[i] for i in val_idxs]]
+            test = [[datapoints[i] for i in test_idxs]]
         case _:
             raise RuntimeError("Unreachable code reached!")
 
@@ -237,9 +237,9 @@ def split_multicomponent(
             test = [[[datapoints[i] for i in fold] for datapoints in datapointss] for fold in test_idxs]
         case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
             # convert indices to datapoints
-            train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
-            val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
-            test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+            train = [[[datapoints[i] for i in train_idxs] for datapoints in datapointss]]
+            val = [[[datapoints[i] for i in val_idxs] for datapoints in datapointss]]
+            test = [[[datapoints[i] for i in test_idxs] for datapoints in datapointss]]
         case _:
             raise RuntimeError("Unreachable code reached!")
 
