@@ -94,7 +94,8 @@ def split_data(
 
             # returns nested lists of indices
             train, val, test = [], [], []
-            for _ in range(num_folds):
+            for i in range(num_folds):
+                astartes_kwargs["random_state"] = seed + i
                 result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
                 i_train, i_val, i_test = _unpack_astartes_result(result, include_val)
                 train.append(i_train)
