@@ -18,7 +18,7 @@ def checkpoint_path(data_dir):
     return str(data_dir / "example_model_v2_regression_multi.ckpt")
 
 
-def test_training(monkeypatch, data_path):
+def test_train(monkeypatch, data_path):
     args = ["chemprop", "train", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--epochs", "1", "--num-workers", "4"]
 
     with monkeypatch.context() as m:
