@@ -19,7 +19,7 @@ def checkpoint_path(data_dir):
 
 
 def test_train(monkeypatch, data_path):
-    args = ["chemprop", "train", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--epochs", "1", "--num-workers", "4"]
+    args = ["chemprop", "train", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--epochs", "1", "--num-workers", "0"]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
