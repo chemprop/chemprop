@@ -663,9 +663,14 @@ def main(args):
         monitor_mode = "min" if model.metrics[0].minimize else "max"
         logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
-        tb_logger = TensorBoardLogger(args.output_dir / f"fold_{fold_idx}" / "tb_logs")
+        if args.num_folds == 1:
+            output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
+
+        tb_logger = TensorBoardLogger(output_dir / "tb_logs")
         checkpointing = ModelCheckpoint(
-            args.output_dir / f"fold_{fold_idx}" / "chkpts",
+            output_dir / "chkpts",
             "{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -690,7 +695,7 @@ def main(args):
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
-        p_model = args.output_dir / f"fold_{fold_idx}" / "model.pt"
+        p_model = output_dir / "model.pt"
         torch.save(model.state_dict(), p_model)
         logger.info(f"model state dict saved to '{p_model}'")
 
