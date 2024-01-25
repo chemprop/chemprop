@@ -535,6 +535,11 @@ def main(args):
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
 
+    if args.num_folds == 1:
+        train_data = [train_data]
+        val_data = [val_data]
+        test_data = [test_data]
+
     for fold_idx in range(args.num_folds):
         if multicomponent:
             logger.info(
