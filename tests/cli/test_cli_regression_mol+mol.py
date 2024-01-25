@@ -26,7 +26,7 @@ def test_train(monkeypatch, data_path):
         main()
 
 
-def test_predicting(monkeypatch, data_path, checkpoint_path):
+def test_predict(monkeypatch, data_path, checkpoint_path):
     args = ["chemprop", "predict", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--checkpoint", checkpoint_path]
 
     with monkeypatch.context() as m:
