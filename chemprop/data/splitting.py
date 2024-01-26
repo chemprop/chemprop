@@ -101,7 +101,7 @@ def split_data(
 
             for fold_idx in range(num_folds):
                 test_index = fold_idx
-                val_index = fold_idx + 1 if fold_idx + 1 < num_folds else 0
+                val_index = (fold_idx + 1) % num_folds
 
                 if split != SplitType.CV_NO_VAL:
                     i_val = np.where(indices == val_index)[0]
