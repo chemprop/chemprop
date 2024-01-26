@@ -94,7 +94,7 @@ def split_data(
 
             # returns nested lists of indices
             train, val, test = [], [], []
-            random = Random(seed)
+            random = np.random.default_rng(seed)
 
             indices = np.tile(np.arange(num_folds), 1 + len(datapoints) // num_folds)[:len(datapoints)]
             random.shuffle(indices)
