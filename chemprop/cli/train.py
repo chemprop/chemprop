@@ -8,20 +8,21 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop import data
-from chemprop.cli.utils.args import uppercase
-from chemprop.data.splitting import split_monocomponent, split_multicomponent
-from chemprop.nn.utils import Activation
-from chemprop.data import SplitType
+from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
+from chemprop.data import SplitType, split_monocomponent, split_multicomponent
 from chemprop.utils import Factory
-from chemprop.models import MPNN
-from chemprop.models.multi import MulticomponentMessagePassing, MulticomponentMPNN
-from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
-from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
-from chemprop.nn.message_passing import BondMessagePassing, AtomMessagePassing
+from chemprop.models import MPNN, MulticomponentMPNN
+from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
+from chemprop.nn.message_passing import (
+    BondMessagePassing,
+    AtomMessagePassing,
+    MulticomponentMessagePassing,
+)
+from chemprop.nn.utils import Activation
 
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
 
@@ -458,52 +459,19 @@ def validate_train_args(args):
     pass
 
 
-def main(args):
-    bond_messages = not args.atom_messages
-    bounded = args.loss_function is not None and "bounded" in args.loss_function
-
-    format_kwargs = dict(
-        no_header_row=args.no_header_row,
-        smiles_cols=args.smiles_columns,
-        rxn_cols=args.reaction_columns,
-        target_cols=args.target_columns,
-        ignore_cols=args.ignore_columns,
-        weight_col=args.weight_column,
-        bounded=bounded,
-    )
-    featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
-    )
-
-    all_data = build_data_from_files(
-        args.data_path,
-        **format_kwargs,
-        p_features=args.features_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **featurization_kwargs,
-    )
-
-    n_components = len(all_data)
-    multicomponent = n_components > 1
-
-    if not multicomponent:
-        all_data = all_data[0]
+def build_splits(args, all_data, format_kwargs, featurization_kwargs):
+    """build the train/val/test splits"""
+    multicomponent = len(all_data) > 1
 
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
     if multicomponent:
+        split_fn = split_multicomponent
         split_kwargs["key_index"] = args.split_key_molecule
+    else:
+        split_fn = split_monocomponent
 
     if args.separate_val_path is None and args.separate_test_path is None:
-        if multicomponent:
-            train_data, val_data, test_data = split_multicomponent(
-                all_data, args.split, **split_kwargs
-            )
-        else:
-            train_data, val_data, test_data = split_monocomponent(
-                all_data, args.split, **split_kwargs
-            )
+        train_data, val_data, test_data = split_fn(all_data, args.split, **split_kwargs)
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -526,33 +494,49 @@ def main(args):
             )
             train_data = all_data
         else:
-            if multicomponent:
-                train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
-            else:
-                train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
+            train_data, val_data, _ = split_fn(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
 
     if multicomponent:
-        logger.info(
-            f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}"
-        )
+        sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
     else:
-        logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
+        sizes = [len(train_data), len(val_data), len(test_data)]
 
+    logger.info(f"train/val/test sizes: {sizes}")
+
+    return train_data, val_data, test_data
+
+
+def build_datasets(args, multicomponent: bool, train_data, val_data, test_data):
+    """build the train/val/test datasets, where :attr:`test_data` may be None"""
     if multicomponent:
         train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
         val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
-        train_dset = data.MulticomponentDataset(train_dsets)
-        val_dset = data.MulticomponentDataset(val_dsets)
+        train_dset = MulticomponentDataset(train_dsets)
+        val_dset = MulticomponentDataset(val_dsets)
+        if len(test_data[0]) > 0:
+            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dset = MulticomponentDataset(test_dsets)
+        else:
+            test_dset = None
     else:
         train_dset = make_dataset(train_data, args.rxn_mode)
         val_dset = make_dataset(val_data, args.rxn_mode)
+        if len(test_data) > 0:
+            test_dset = make_dataset(test_data, args.rxn_mode)
+        else:
+            test_dset = None
 
-    mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
-    if multicomponent:
+    return train_dset, val_dset, test_dset
+
+
+def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MPNN:
+    mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+
+    if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
             mp_cls(
                 train_dset.datasets[i].featurizer.atom_fdim,
@@ -564,12 +548,16 @@ def main(args):
                 dropout=args.dropout,
                 activation=args.activation,
             )
-            for i in range(n_components)
+            for i in range(train_dset.n_components)
         ]
-        if args.mpn_shared:
-            mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
-        else:
-            mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
+        mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
+        # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
+        # if args.mpn_shared:
+        #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
+        # else:
+        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        n_tasks = train_dset.datasets[0].Y.shape[1]
+        mpnn_cls = MulticomponentMPNN
     else:
         mp_block = mp_cls(
             train_dset.featurizer.atom_fdim,
@@ -581,9 +569,12 @@ def main(args):
             dropout=args.dropout,
             activation=args.activation,
         )
+        d_xf = train_dset.d_xf
+        n_tasks = train_dset.Y.shape[1]
+        mpnn_cls = MPNN
+
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
-
     if args.loss_function is not None:
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
@@ -592,16 +583,12 @@ def main(args):
             eps=args.eps,
         )
     else:
-        logger.info(
-            f"No loss function specified, will use class default: {predictor_cls._default_criterion}"
-        )
-        criterion = predictor_cls._default_criterion
+        criterion = None
 
-    d_xf = sum(dset.d_xf for dset in train_dset.datasets) if multicomponent else train_dset.d_xf
-    predictor_ffn = Factory.build(
+    predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xf,
-        n_tasks=train_dset.datasets[0].Y.shape[1] if multicomponent else train_dset.Y.shape[1],
+        n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
@@ -611,39 +598,15 @@ def main(args):
         spectral_activation=args.spectral_activation,
     )
 
-    if isinstance(predictor_ffn, RegressionFFN):
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
-    else:
-        scaler = None
+    if args.loss_function is None:
+        logger.info(
+            f"No loss function was specified! Using class default: {predictor_cls.criterion}"
+        )
 
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-
-    if multicomponent:
-        if len(test_data[0]) > 0:
-            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
-            test_dset = data.MulticomponentDataset(test_dsets)
-            test_loader = data.MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
-    else:
-        if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode)
-            test_loader = data.MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
-
-    mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
-    model = mpnn_cls(
+    return mpnn_cls(
         mp_block,
         agg,
-        predictor_ffn,
+        predictor,
         True,
         None,
         args.task_weights,
@@ -652,6 +615,58 @@ def main(args):
         args.max_lr,
         args.final_lr,
     )
+
+
+def main(args):
+    format_kwargs = dict(
+        no_header_row=args.no_header_row,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
+        target_cols=args.target_columns,
+        ignore_cols=args.ignore_columns,
+        weight_col=args.weight_column,
+        bounded=args.loss_function is not None and "bounded" in args.loss_function,
+    )
+    featurization_kwargs = dict(
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+    )
+
+    all_data = build_data_from_files(
+        args.data_path,
+        p_features=args.features_path,
+        p_atom_feats=args.atom_features_path,
+        p_bond_feats=args.bond_features_path,
+        p_atom_descs=args.atom_descriptors_path,
+        **format_kwargs,
+        **featurization_kwargs,
+    )
+
+    multicomponent = len(all_data) > 1
+    if not multicomponent:
+        all_data = all_data[0]
+
+    train_data, val_data, test_data = build_splits(
+        args, all_data, format_kwargs, featurization_kwargs
+    )
+    train_dset, val_dset, test_dset = build_datasets(
+        args, multicomponent, train_data, val_data, test_data
+    )
+
+    if args.task_type == "regression":
+        scaler = train_dset.normalize_targets()
+        val_dset.normalize_targets(scaler)
+        logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+
+    train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    if test_dset is not None:
+        test_loader = MolGraphDataLoader(
+            test_dset, args.batch_size, args.num_workers, shuffle=False
+        )
+    else:
+        test_loader = None
+
+    model = build_model(args, train_dset)
     logger.info(model)
 
     monitor_mode = "min" if model.metrics[0].minimize else "max"
