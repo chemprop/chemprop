@@ -3,7 +3,7 @@ import itertools
 import logging
 from enum import auto
 from typing import Sequence
-
+from random import Random
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
@@ -94,9 +94,24 @@ def split_data(
 
             # returns nested lists of indices
             train, val, test = [], [], []
-            for _ in range(num_folds):
-                result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
-                i_train, i_val, i_test = _unpack_astartes_result(result, include_val)
+            random = Random(seed)
+
+            indices = np.tile(np.arange(num_folds), 1 + len(datapoints) // num_folds)[:len(datapoints)]
+            random.shuffle(indices)
+
+            for fold_idx in range(num_folds):
+                test_index = fold_idx
+                val_index = fold_idx + 1 if fold_idx + 1 < num_folds else 0
+
+                if split != SplitType.CV_NO_VAL:
+                    i_val = np.where(indices == val_index)[0]
+                    i_test = np.where(indices == test_index)[0]
+                    i_train = np.where((indices != val_index) & (indices != test_index))[0]
+                else:
+                    i_val = []
+                    i_test = np.where(indices == test_index)[0]
+                    i_train = np.where(indices != test_index)[0]
+
                 train.append(i_train)
                 val.append(i_val)
                 test.append(i_test)
