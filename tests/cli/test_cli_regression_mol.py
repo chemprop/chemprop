@@ -42,10 +42,9 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "logs" / "chemprop").exists()
-    assert (tmp_path / "mol" / "model.pt").exists()
-    assert (tmp_path / "mol" / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "mol" / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "model.pt").exists()
+    assert (tmp_path / "chkpts" / "last.ckpt").exists()
+    assert (tmp_path / "tb_logs" / "version_0").exists()
 
 
 def test_predict_output_structure(monkeypatch, data_path, tmp_path):
@@ -55,8 +54,6 @@ def test_predict_output_structure(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "logs" / "chemprop").exists()
-    assert (tmp_path / "lightning_logs").exists()
     assert (tmp_path / "preds.csv").exists()
 
 
@@ -67,6 +64,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    checkpoint_path = tmp_path / "mol" / "chkpts" / "last.ckpt"
+    checkpoint_path = tmp_path / "chkpts" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
