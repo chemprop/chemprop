@@ -18,7 +18,7 @@ def checkpoint_path(data_dir):
     return str(data_dir / "example_model_v2_regression_multi.ckpt")
 
 
-def test_train(monkeypatch, data_path):
+def test_quick_train(monkeypatch, data_path):
     args = ["chemprop", "train", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--epochs", "1", "--num-workers", "0"]
 
     with monkeypatch.context() as m:
@@ -26,7 +26,7 @@ def test_train(monkeypatch, data_path):
         main()
 
 
-def test_predict(monkeypatch, data_path, checkpoint_path):
+def test_quick_predict(monkeypatch, data_path, checkpoint_path):
     args = ["chemprop", "predict", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--checkpoint", checkpoint_path]
 
     with monkeypatch.context() as m:
