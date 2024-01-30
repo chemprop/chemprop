@@ -2,6 +2,8 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+import json
+from copy import deepcopy
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -476,6 +478,14 @@ def validate_train_args(args):
 
 
 def main(args):
+    command_config_path = args.output_dir / "config.json"
+    with open(command_config_path, "w") as f:
+        config = deepcopy(vars(args))
+        for key in config:
+            if isinstance(config[key], Path):
+                config[key] = str(config[key])
+        json.dump(config, f, indent=4)
+
     bond_messages = not args.atom_messages
     bounded = args.loss_function is not None and "bounded" in args.loss_function
 
