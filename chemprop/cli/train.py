@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 import json
 from copy import deepcopy
+import pandas as pd
+from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -448,11 +450,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
-    # split_args.add_argument(
-    #     "--save-smiles-splits",
-    #     action="store_true",
-    #     help="Save smiles for each train/val/test splits for prediction convenience later.",
-    # )
+    split_args.add_argument(
+        "--save-smiles-splits",
+        action="store_true",
+        help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
 
     parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
@@ -561,6 +563,25 @@ def main(args):
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
+    
+    if args.save_smiles_splits:
+        if multicomponent:
+            train_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in train_data]
+            val_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in val_data]
+            test_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in test_data]
+
+        else:
+            train_smis = [Chem.MolToSmiles(data.mol) for data in train_data]
+            val_smis = [Chem.MolToSmiles(data.mol) for data in val_data]
+            test_smis = [Chem.MolToSmiles(data.mol) for data in test_data]
+
+        df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+        df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+
+        df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+        df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
     if multicomponent:
         logger.info(
