@@ -19,7 +19,6 @@ setup(
         "Documentation": "https://chemprop.readthedocs.io/en/latest/",
         "Source": "https://github.com/chemprop/chemprop",
         "PyPi": "https://pypi.org/project/chemprop/",
-        "Demo": "http://chemprop.csail.mit.edu/",
     },
     license="MIT",
     packages=find_packages(),
