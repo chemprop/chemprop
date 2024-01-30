@@ -268,3 +268,16 @@ def save_model(path: PathLike, model: MPNN, input_scalers: list[StandardScaler] 
         },
         path,
     )
+
+
+def load_model(path: PathLike) -> tuple[MPNN, list[StandardScaler] | None, StandardScaler | None]:
+    try:
+        model = MulticomponentMPNN.load_from_file(path)
+    except KeyError: # MPNN
+        model = MPNN.load_from_file(path)
+
+    d = torch.load(path)
+    input_scalers = d["input_scalers"]
+    output_scaler = d["output_scaler"]
+
+    return model, input_scalers, output_scaler
