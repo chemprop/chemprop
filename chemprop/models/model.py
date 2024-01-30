@@ -258,7 +258,7 @@ class MPNN(pl.LightningModule):
         return model
 
 
-def save_model(path, model, input_scalers, output_scaler):
+def save_model(path: PathLike, model: MPNN, input_scalers: list[StandardScaler] | None, output_scaler: StandardScaler | None) -> None:
     torch.save(
         {
             "hyper_parameters": model.hparams,
