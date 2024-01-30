@@ -36,7 +36,7 @@ def test_predict_quick(monkeypatch, data_path, checkpoint_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", tmp_path]
+    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path)]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -49,7 +49,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
 
 def test_predict_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", "tests/data/example_model_v2.ckpt", "--output", tmp_path / "preds.csv"]
+    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", "tests/data/example_model_v2.ckpt", "--output", str(tmp_path / "preds.csv")]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -61,7 +61,7 @@ def test_predict_output_structure(monkeypatch, data_path, tmp_path):
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", tmp_path]
+    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path)]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
