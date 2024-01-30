@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Iterable
+from os import PathLike
+from typing import Iterable, Union
+from sklearn.preprocessing import StandardScaler
 
 from lightning import pytorch as pl
 import torch
@@ -10,6 +12,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
+from chemprop.models.multi import MulticomponentMPNN
 
 
 class MPNN(pl.LightningModule):
