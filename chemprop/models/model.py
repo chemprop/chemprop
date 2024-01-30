@@ -28,7 +28,7 @@ class MPNN(pl.LightningModule):
 
     Parameters
     ----------
-    message_passing : MessagePassingBlock
+    message_passing : MessagePassing
         the message passing block to use to calculate learned fingerprints
     agg : Aggregation
         the aggregation operation to use during molecule-level predictor
