@@ -167,10 +167,7 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    if multicomponent:
-        model, input_scalers, output_scaler = load_model(args.model_path) # TODO: connect input_scalers and output_scaler to the model
-    else:
-        model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
+    model, input_scalers, output_scaler = load_model(args.model_path, multicomponent) # TODO: connect input_scalers and output_scaler to the model
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
