@@ -52,6 +52,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
+    parser.add_argument(
+        "--model-path",
+        required=True,
+        help="Path to a pretrained model checkpoint (.chkp) or a pretrained model file (.pt).",
+    )
 
     # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
