@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
-from chemprop.models.model import save_model
+from chemprop.models.utils import save_model
 
 
 @pytest.fixture
