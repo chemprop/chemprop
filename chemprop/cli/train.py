@@ -14,7 +14,7 @@ from chemprop.data.splitting import split_monocomponent, split_multicomponent
 from chemprop.nn.utils import Activation
 from chemprop.data import SplitType
 from chemprop.utils import Factory
-from chemprop.models import MPNN
+from chemprop.models import MPNN, save_model
 from chemprop.models.multi import MulticomponentMessagePassing, MulticomponentMPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
@@ -684,9 +684,11 @@ def main(args):
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
-    p_model = args.output_dir / "model.pt"
-    torch.save(model.state_dict(), p_model)
-    logger.info(f"model state dict saved to '{p_model}'")
+    p_model = args.output_dir / "model.pkl"
+    input_scalers = [] # TODO: we should add descriptor scalers here
+    output_scaler = scaler
+    save_model(model, p_model, input_scalers, output_scaler)
+    logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":
