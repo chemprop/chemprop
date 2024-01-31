@@ -684,7 +684,7 @@ def main(args):
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
-    p_model = args.output_dir / "model.pkl"
+    p_model = args.output_dir / "model.pt"
     input_scalers = [] # TODO: we should add descriptor scalers here
     output_scaler = scaler
     save_model(model, p_model, input_scalers, output_scaler)
