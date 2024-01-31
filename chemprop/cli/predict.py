@@ -175,15 +175,9 @@ def main(args):
     multicomponent = n_components > 1
 
     if multicomponent:
-        if args.checkpoint.endswith(".pkl"):
-            model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
-        else:
-            model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
+        model, input_scalers, output_scaler = load_model(args.model_path) # TODO: connect input_scalers and output_scaler to the model
     else:
-        if args.checkpoint.endswith(".pkl"):
-            model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
-        else:
-            model = MPNN.load_from_checkpoint(args.checkpoint)
+        model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
