@@ -9,7 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.models import MPNN
+from chemprop.models import MPNN, load_model
 from chemprop.models.multi import MulticomponentMPNN
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
@@ -170,9 +170,15 @@ def main(args):
     multicomponent = n_components > 1
 
     if multicomponent:
-        model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
+        if args.checkpoint.endswith(".pkl"):
+            model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
+        else:
+            model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
     else:
-        model = MPNN.load_from_checkpoint(args.checkpoint)
+        if args.checkpoint.endswith(".pkl"):
+            model, input_scalers, output_scaler = load_model(args.checkpoint) # TODO: connect input_scalers and output_scaler to the model
+        else:
+            model = MPNN.load_from_checkpoint(args.checkpoint)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
