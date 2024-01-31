@@ -24,7 +24,7 @@ def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, list[Standar
         model = MPNN.load_from_file(path)
 
     d = torch.load(path)
-    input_scalers = d["input_scalers"]
-    output_scaler = d["output_scaler"]
+    input_scalers = d.get("input_scalers", None)
+    output_scaler = d.get("output_scaler", None)
 
     return model, input_scalers, output_scaler
