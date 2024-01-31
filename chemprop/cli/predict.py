@@ -33,7 +33,6 @@ class PredictSubcommand(Subcommand):
         args = process_common_args(args)
         validate_common_args(args)
         args = process_predict_args(args)
-        validate_predict_args(args)
         main(args)
 
 
@@ -153,12 +152,6 @@ def process_predict_args(args: Namespace) -> Namespace:
         args.output = Path(args.output)
 
     return args
-
-
-def validate_predict_args(args):
-    # TODO: once args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
-    if args.checkpoint is None:
-        raise ValueError("Must provide a checkpoint path for prediction.")
 
 
 def main(args):
