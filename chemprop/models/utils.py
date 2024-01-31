@@ -17,10 +17,10 @@ def save_model(path: PathLike, model: MPNN, input_scalers: list[StandardScaler] 
     )
 
 
-def load_model(path: PathLike) -> tuple[MPNN, list[StandardScaler] | None, StandardScaler | None]:
-    try:
+def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, list[StandardScaler] | None, StandardScaler | None]:
+    if multicomponent:
         model = MulticomponentMPNN.load_from_file(path)
-    except KeyError: # MPNN
+    else:
         model = MPNN.load_from_file(path)
 
     d = torch.load(path)
