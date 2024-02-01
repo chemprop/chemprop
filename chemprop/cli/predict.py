@@ -208,7 +208,7 @@ def main(args):
     if multicomponent:
         test_dset = data.MulticomponentDataset(test_dsets)
     else:
-        test_data = test_data[0]
+        test_dset = test_dsets[0]
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
