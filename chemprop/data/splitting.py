@@ -89,7 +89,7 @@ def split_data(
         case SplitType.CV_NO_VAL | SplitType.CV:
             if (max_folds := len(datapoints)) < num_folds or num_folds <= 1:
                 raise ValueError(
-                    f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
+                    f"Number of folds for cross-validation must be between 3 and {max_folds} (length of data) inclusive for `--split cv` and 2 and {max_folds} (length of data) inclusive for `--split cv_no_val` (got {num_folds})."
                 )
 
             # returns nested lists of indices
