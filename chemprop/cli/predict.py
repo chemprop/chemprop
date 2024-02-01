@@ -9,7 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.models import MPNN
+from chemprop.models import MPNN, load_model
 from chemprop.models.multi import MulticomponentMPNN
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
@@ -33,7 +33,6 @@ class PredictSubcommand(Subcommand):
         args = process_common_args(args)
         validate_common_args(args)
         args = process_predict_args(args)
-        validate_predict_args(args)
         main(args)
 
 
@@ -51,6 +50,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--drop-extra-columns",
         action="store_true",
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+    )
+    parser.add_argument(
+        "--model-path",
+        required=True,
+        help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
     )
 
     # TODO: add uncertainty and calibration
@@ -150,12 +154,6 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def validate_predict_args(args):
-    # TODO: once args.checkpoint_dir and args.checkpoint are consolidated, need to change this as well. Not able to make this required in common.py as it may not be provided for training.
-    if args.checkpoint is None:
-        raise ValueError("Must provide a checkpoint path for prediction.")
-
-
 def main(args):
     match (args.smiles_columns, args.reaction_columns):
         case [None, None]:
@@ -169,10 +167,9 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    if multicomponent:
-        model = MulticomponentMPNN.load_from_checkpoint(args.checkpoint)
-    else:
-        model = MPNN.load_from_checkpoint(args.checkpoint)
+    model, input_scalers, output_scaler = load_model(
+        args.model_path, multicomponent
+    )  # TODO: connect input_scalers and output_scaler to the model
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -208,7 +205,7 @@ def main(args):
     if multicomponent:
         test_dset = data.MulticomponentDataset(test_dsets)
     else:
-        test_data = test_data[0]
+        test_dset = test_dsets[0]
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
