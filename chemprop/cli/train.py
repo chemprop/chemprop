@@ -14,7 +14,7 @@ from chemprop.data.splitting import split_monocomponent, split_multicomponent
 from chemprop.nn.utils import Activation
 from chemprop.data import SplitType
 from chemprop.utils import Factory
-from chemprop.models import MPNN
+from chemprop.models import MPNN, save_model
 from chemprop.models.multi import MulticomponentMessagePassing, MulticomponentMPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
@@ -56,6 +56,23 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+    )
+    # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
+    #        similar to how --features-path is/will be implemented
+    parser.add_argument(
+        "--checkpoint-dir",
+        help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
+    )
+    parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
+    parser.add_argument(
+        "--checkpoint-paths",
+        type=list[str],
+        help="List of paths to model checkpoints (:code:`.pt` files).",
+    )
+    # TODO: Is this a prediction only argument?
+    parser.add_argument(
+        "--checkpoint",
+        help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
     )
     # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
@@ -685,8 +702,10 @@ def main(args):
         logger.info(f"Test results: {results}")
 
     p_model = args.output_dir / "model.pt"
-    torch.save(model.state_dict(), p_model)
-    logger.info(f"model state dict saved to '{p_model}'")
+    input_scalers = [] # TODO: we should add descriptor scalers here
+    output_scaler = scaler
+    save_model(model, p_model, input_scalers, output_scaler)
+    logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":
