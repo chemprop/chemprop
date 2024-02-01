@@ -82,14 +82,21 @@ class UncertaintyCalibrator(ABC):
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
         """
         if self.dataset_type == "spectra":
-            raise NotImplementedError(
+            raise ValueError(
                 "No uncertainty calibrators are implemented for the spectra dataset type."
             )
         if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in ["classification", "multiclass"]:
-            raise NotImplementedError(
+            raise ValueError(
                 "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented calibration methods for classification."
+            )
+        if self.uncertainty_method == "dirichlet":
+            raise ValueError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented calibration methods. \
+                    To calibrate a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method."
             )
 
     @abstractmethod
@@ -938,10 +945,11 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         all_scores = self.nonconformity_scores(uncal_preds)
         self.qhats = []
 
-        for task_id in range(self.num_tasks):
+        for i in range(self.num_tasks):
+            task_mask = mask[i]
             task_scores = np.take_along_axis(
-                all_scores[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
-            ).squeeze(1) # shape(valid_data)
+                all_scores[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
+            ).squeeze(1)  # shape(valid_data)
             task_scores = np.append(task_scores, np.inf)
             qhat = np.quantile(task_scores, 1 - self.conformal_alpha / self.num_tasks, interpolation="higher")
             self.qhats.append(qhat)
@@ -1104,21 +1112,26 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
         return np.array(predictor.get_uncal_output())
 
     def calibrate(self):
-        uncal_interval = self.get_interval(self.calibration_predictor)
-        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
-        mask = np.array(self.calibration_data.mask(), dtype=bool)
+        unc_interval = self.get_interval(self.calibration_predictor)
+        targets = np.array(self.calibration_data.targets())  # shape(data, tasks)
+        mask = np.array(self.calibration_data.mask())
+        self.num_tasks = unc_interval.shape[1] // 2
+        if self.calibration_data.is_atom_bond_targets:
+            unc_interval = [np.concatenate(x) for x in zip(*unc_interval)]
+            targets = [np.concatenate(x) for x in zip(*targets)]
+        else:
+            unc_interval = np.array(list(zip(*unc_interval)))
+            targets = targets.astype(float)
+            targets = np.array(list(zip(*targets)))
 
-        self.num_tasks = uncal_interval.shape[1] // 2
         self.qhats = []
-
-        for task_id in range(self.num_tasks):
-            targets_task_id = targets[:, task_id]
-            targets_task_id = targets_task_id[mask[:, task_id]]
-            uncal_interval_lower = uncal_interval[mask[:, task_id], task_id]
-            uncal_interval_upper = uncal_interval[mask[:, task_id], task_id + self.num_tasks]
-
+        for i in range(self.num_tasks):
+            task_mask = mask[i]
+            task_targets = targets[i][task_mask]
+            unc_interval_lower = unc_interval[i][task_mask]
+            uncal_interval_upper = unc_interval[i + self.num_tasks][task_mask]
             calibration_scores = np.maximum(
-                uncal_interval_lower - targets_task_id, targets_task_id - uncal_interval_upper
+                unc_interval_lower - task_targets, task_targets - uncal_interval_upper
             )
             calibration_scores = np.append(calibration_scores, np.inf)
             qhat = np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks, interpolation="higher")
@@ -1126,16 +1139,15 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = self.get_preds(uncal_predictor)  # shape(data, task)
-        uncal_interval = self.get_interval(uncal_predictor) # shape(data, 2 * task)
+        uncal_interval = self.get_interval(uncal_predictor)  # shape(data, 2 * task)
         num_data = uncal_interval.shape[0]
         intervals = np.zeros((num_data, 2 * self.num_tasks), dtype=float)
 
-        for task_id in range(self.num_tasks):
-            uncal_interval_lower = uncal_interval[:, task_id]
-            uncal_interval_upper = uncal_interval[:, task_id + self.num_tasks]
-
-            intervals[:, task_id] = uncal_interval_lower - self.qhats[task_id]
-            intervals[:, task_id + self.num_tasks] = uncal_interval_upper + self.qhats[task_id]
+        for i in range(self.num_tasks):
+            uncal_interval_lower = uncal_interval[:, i]
+            uncal_interval_upper = uncal_interval[:, i + self.num_tasks]
+            intervals[:, i] = uncal_interval_lower - self.qhats[i]
+            intervals[:, i + self.num_tasks] = uncal_interval_upper + self.qhats[i]
 
         return uncal_preds.tolist(), intervals.tolist()
 

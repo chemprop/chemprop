@@ -53,20 +53,20 @@ def spearman_evaluator():
 
 @pytest.fixture
 def conformal_coverage_regression_evaluator():
-    return build_uncertainty_evaluator("conformal_coverage", None, None, "regression", "mse", None)
+    return build_uncertainty_evaluator("conformal_coverage", None, None, "regression", "mse", None, False)
 
 
 @pytest.fixture
 def conformal_coverage_multiclass_evaluator():
     return build_uncertainty_evaluator(
-        "conformal_coverage", None, None, "multiclass", "cross_entropy", None
+        "conformal_coverage", None, None, "multiclass", "cross_entropy", None, False
     )
 
 
 @pytest.fixture
 def conformal_coverage_multilabel_evaluator():
     return build_uncertainty_evaluator(
-        "conformal_coverage", None, None, "classification", "auc", None
+        "conformal_coverage", None, None, "classification", "auc", None, False
     )
 
 
@@ -179,14 +179,14 @@ def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spe
             np.full((100, 1), 0.5),
             np.full((100, 1), 0.5),
             np.ones((100, 2)),
-            np.full((100, 1), True, dtype=bool),
+            np.full((1, 100), True, dtype=bool),
             [0],
         ),
         (
             np.array([[0.5, 0.5, 0.5]]),
             np.array([[0.5, 0.5, 0.5]]),
             np.array([[0, 0, 1, 0, 1, 1]]),
-            np.full((1, 3), True, dtype=bool),
+            np.full((3, 1), True, dtype=bool),
             [0, 1, 0],
         ),
     ],
@@ -210,14 +210,14 @@ def test_conformal_regression_coverage(
             np.array([0, 1, 1]).reshape(3, 1),
             np.full((3, 1, 2), 0.5),
             np.array([[1, 0], [0, 1], [1, 0]]).reshape(3, 1, 2),
-            np.full((3, 1), True, dtype=bool),
+            np.full((1, 3), True, dtype=bool),
             [0.6666],
         ),
         (
             np.array([0, 1, 2]).reshape(3, 1),
             np.full((3, 1, 3), 0.5),
             np.array([[1, 0, 0], [1, 0, 0], [1, 0, 0]]).reshape(3, 1, 3),
-            np.full((3, 1), True, dtype=bool),
+            np.full((1, 3), True, dtype=bool),
             [0.3333],
         ),
     ],

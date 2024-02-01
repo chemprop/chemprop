@@ -39,17 +39,24 @@ class UncertaintyEvaluator(ABC):
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
         """
         if self.dataset_type == "spectra":
-            raise NotImplementedError(
+            raise ValueError(
                 "No uncertainty evaluators implemented for spectra dataset type."
             )
         if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in [
             "classification",
             "multiclass",
         ]:
-            raise NotImplementedError(
+            raise ValueError(
                 "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented evaluation methods for classification."
+            )
+        if self.uncertainty_method == "dirichlet":
+            raise ValueError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented evaluation methods. \
+                    To evaluate the performance of a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method in a separate job."
             )
 
     @abstractmethod
@@ -233,7 +240,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
-            raise NotImplementedError(
+            raise ValueError(
                 "Miscalibration area is only implemented for regression dataset types."
             )
 
@@ -479,17 +486,28 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
         Returns:
             Conformal coverage for each task
         """
-        targets = np.array(targets)
-        mask = np.array(mask, dtype=bool)
         uncertainties = np.array(uncertainties)
-        num_tasks = uncertainties.shape[1]//2
-        results = []
+        preds = np.array(preds)
+        targets = np.array(targets)
+        mask = np.array(mask)
+        num_tasks = uncertainties.shape[1] // 2
+        if self.is_atom_bond_targets:
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            preds = [np.concatenate(x) for x in zip(*preds)]
+            targets = [np.concatenate(x) for x in zip(*targets)]
+        else:
+            uncertainties = np.array(list(zip(*uncertainties)))
+            preds = np.array(list(zip(*preds)))
+            targets = targets.astype(float)
+            targets = np.array(list(zip(*targets)))
 
-        for task_id in range(num_tasks):
-            unc_task_id_lower = uncertainties[mask[:, task_id], task_id]
-            unc_task_id_upper = uncertainties[mask[:, task_id], task_id + num_tasks]
-            targets_task_id = targets[mask[:, task_id], task_id]
-            task_results = np.logical_and(unc_task_id_lower <= targets_task_id, targets_task_id <= unc_task_id_upper)
+        results = []
+        for i in range(num_tasks):
+            task_mask = mask[i]
+            unc_task_lower = uncertainties[i][task_mask]
+            unc_task_upper = uncertainties[i + num_tasks][task_mask]
+            task_targets = targets[i][task_mask]
+            task_results = np.logical_and(unc_task_lower <= task_targets, task_targets <= unc_task_upper)
             results.append(task_results.sum() / task_results.shape[0])
 
         return results
@@ -530,11 +548,10 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
         num_tasks = targets.shape[1]
         results = []
 
-        for task_id in range(num_tasks):
-            print(uncertainties[mask[:, task_id], task_id])
-            print(targets[mask[:, task_id], task_id])
+        for i in range(num_tasks):
+            task_mask = mask[i]
             task_results = np.take_along_axis(
-                uncertainties[mask[:, task_id], task_id], targets[mask[:, task_id], task_id].reshape(-1, 1).astype(int), axis=1
+                uncertainties[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)
             results.append(task_results.sum() / task_results.shape[0])
 
@@ -636,7 +653,7 @@ def build_uncertainty_evaluator(
 
     if evaluator_class is None:
         raise NotImplementedError(
-            f"Evaluator type {evaluation_method} is not supported. Avalable options are all calibration/multiclass metrics and {list(supported_evaluators.keys())}"
+            f"Evaluator type {evaluation_method} is not supported. Available options are all calibration/multiclass metrics and {list(supported_evaluators.keys())}"
         )
     else:
         evaluator = evaluator_class(

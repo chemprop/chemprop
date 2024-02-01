@@ -306,7 +306,7 @@ class ChempropTests(TestCase):
                 'chemprop_bounded_mse_loss',
                 'chemprop',
                 'bounded_mse',
-                5.52281852,
+                5.10242,
                 [
                     "--loss_function",
                     "bounded_mse",
@@ -1522,7 +1522,7 @@ class ChempropTests(TestCase):
     @parameterized.expand(
         [
             (
-                [[0.992, 0.998, 0.95, 1, 0.996, 1, 1, 1, 0.992, 1, 1, 1]],
+                [[0.994, 0.998, 0.956, 1, 0.996, 1, 1, 1, 0.992, 1, 1, 1]],
                 None,
                 "conformal",
                 "conformal_coverage",

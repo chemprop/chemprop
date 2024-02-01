@@ -207,9 +207,9 @@ def train(
                 loss = loss_func(preds, targets, args.evidential_regularization) * target_weights * data_weights * masks
             elif args.loss_function == "quantile_interval":
                 quantiles_tensor = torch.tensor(args.quantiles, device=torch_device)
-                loss = loss_func(preds, targets, quantiles_tensor) * target_weights * data_weights * mask
+                loss = loss_func(preds, targets, quantiles_tensor) * target_weights * data_weights * masks
             else:
-                loss = loss_func(preds, targets) * target_weights * data_weights * mask
+                loss = loss_func(preds, targets) * target_weights * data_weights * masks
 
 
             if args.loss_function == "mcc":
