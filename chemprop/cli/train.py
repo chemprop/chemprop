@@ -743,9 +743,11 @@ def main(args):
                     results = trainer.test(model, test_loader)[0]
                     logger.info(f"Test results: {results}")
 
-                p_model = output_dir / "model.pt"
-                torch.save(model.state_dict(), p_model)
-                logger.info(f"model state dict saved to '{p_model}'")
+                p_model = args.output_dir / "model.pt"
+                input_scalers = [] # TODO: we should add descriptor scalers here
+                output_scaler = scaler
+                save_model(p_model, model, input_scalers, output_scaler)
+                logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":

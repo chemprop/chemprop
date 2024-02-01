@@ -1,0 +1,17 @@
+                # "train",
+                # "-i",
+                # "tests/data/regression.csv",
+                # "--epochs",
+                # "1",
+                # "--num-workers",
+                # "0",
+                # "--split-type",
+                # "cv",
+                # "--num-folds",
+                # "3",
+                # "--n-gpu",
+                # "0",
+                # "--ensemble-size",
+                # "2",
+chemprop train -i tests/data/regression.csv --epochs 1 --num-workers 0 --split-type cv --num-folds 3 --n-gpu 0 --ensemble-size 2
+chemprop train -i tests/data/regression.csv --epochs 1 --num-workers 0 --n-gpu 0 --ensemble-size 2
