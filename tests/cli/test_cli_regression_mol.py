@@ -28,7 +28,7 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, checkpoint_path):
-    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", checkpoint_path]
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", checkpoint_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -48,7 +48,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
 
 def test_predict_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", "tests/data/example_model_v2.ckpt", "--output", str(tmp_path / "preds.csv")]
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", "tests/data/example_model_v2.ckpt", "--output", str(tmp_path / "preds.csv")]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
