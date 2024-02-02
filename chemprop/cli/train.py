@@ -537,86 +537,62 @@ def main(args):
             argument=None, message="'test_path' must be specified if 'val_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
 
-    for model_idx in range(args.ensemble_size):
-        seed = args.seed + model_idx
-        split_kwargs = dict(sizes=args.split_sizes, seed=seed, num_folds=args.num_folds)
+    seed = args.seed
+    split_kwargs = dict(sizes=args.split_sizes, seed=seed, num_folds=args.num_folds)
+    if multicomponent:
+        split_kwargs["key_index"] = args.split_key_molecule
+
+    if needs_val_data and needs_test_data:
         if multicomponent:
-            split_kwargs["key_index"] = args.split_key_molecule
+            train_data, val_data, test_data = split_multicomponent(
+                all_data, args.split, **split_kwargs
+            )
+        else:
+            train_data, val_data, test_data = split_monocomponent(
+                all_data, args.split, **split_kwargs
+            )
+    elif needs_val_data:
+        if multicomponent:
+            train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
+        else:
+            train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
 
-        if needs_val_data and needs_test_data:
-            if multicomponent:
-                train_data, val_data, test_data = split_multicomponent(
-                    all_data, args.split, **split_kwargs
-                )
+    no_cv = args.num_folds == 1
+    if no_cv:
+        train_data = [train_data]
+        val_data = [val_data]
+        test_data = [test_data]
+
+    for fold_idx in range(args.num_folds):
+        if multicomponent:
+            logger.info(
+                f"train/val/test sizes: {len(train_data[fold_idx][0])}/{len(val_data[fold_idx][0])}/{len(test_data[fold_idx][0])}"
+            )
+        else:
+            logger.info(
+                f"train/val/test sizes: {len(train_data[fold_idx])}/{len(val_data[fold_idx])}/{len(test_data[fold_idx])}"
+            )
+
+        if multicomponent:
+            train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data[fold_idx]]
+            val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data[fold_idx]]
+            train_dset = data.MulticomponentDataset(train_dsets)
+            val_dset = data.MulticomponentDataset(val_dsets)
+        else:
+            train_dset = make_dataset(train_data[fold_idx], args.rxn_mode)
+            val_dset = make_dataset(val_data[fold_idx], args.rxn_mode)
+
+            if no_cv:
+                logger.info(f"Training model")
             else:
-                train_data, val_data, test_data = split_monocomponent(
-                    all_data, args.split, **split_kwargs
-                )
-        elif needs_val_data:
+                logger.info(f"Training model for fold {fold_idx + 1}/{args.num_folds}")
+
+            mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
             if multicomponent:
-                train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
-            else:
-                train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
-
-        no_cv = args.num_folds == 1
-        if no_cv:
-            train_data = [train_data]
-            val_data = [val_data]
-            test_data = [test_data]
-
-        for fold_idx in range(args.num_folds):
-            if multicomponent:
-                logger.info(
-                    f"train/val/test sizes: {len(train_data[fold_idx][0])}/{len(val_data[fold_idx][0])}/{len(test_data[fold_idx][0])}"
-                )
-            else:
-                logger.info(
-                    f"train/val/test sizes: {len(train_data[fold_idx])}/{len(val_data[fold_idx])}/{len(test_data[fold_idx])}"
-                )
-
-            if multicomponent:
-                train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data[fold_idx]]
-                val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data[fold_idx]]
-                train_dset = data.MulticomponentDataset(train_dsets)
-                val_dset = data.MulticomponentDataset(val_dsets)
-            else:
-                train_dset = make_dataset(train_data[fold_idx], args.rxn_mode)
-                val_dset = make_dataset(val_data[fold_idx], args.rxn_mode)
-
-                if no_cv:
-                    logger.info(f"Training model {model_idx + 1}/{args.ensemble_size}")
-                else:
-                    logger.info(
-                        f"Training model {model_idx + 1}/{args.ensemble_size} for fold {fold_idx + 1}/{args.num_folds}"
-                    )
-
-                mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
-                if multicomponent:
-                    mp_blocks = [
-                        mp_cls(
-                            train_dset.datasets[i].featurizer.atom_fdim,
-                            train_dset.datasets[i].featurizer.bond_fdim,
-                            d_h=args.message_hidden_dim,
-                            bias=args.message_bias,
-                            depth=args.depth,
-                            undirected=args.undirected,
-                            dropout=args.dropout,
-                            activation=args.activation,
-                        )
-                        for i in range(n_components)
-                    ]
-                    if args.mpn_shared:
-                        mp_block = MulticomponentMessagePassing(
-                            mp_blocks[0], n_components, args.mpn_shared
-                        )
-                    else:
-                        mp_block = MulticomponentMessagePassing(
-                            mp_blocks, n_components, args.mpn_shared
-                        )
-                else:
-                    mp_block = mp_cls(
-                        train_dset.featurizer.atom_fdim,
-                        train_dset.featurizer.bond_fdim,
+                mp_blocks = [
+                    mp_cls(
+                        train_dset.datasets[i].featurizer.atom_fdim,
+                        train_dset.datasets[i].featurizer.bond_fdim,
                         d_h=args.message_hidden_dim,
                         bias=args.message_bias,
                         depth=args.depth,
@@ -624,130 +600,151 @@ def main(args):
                         dropout=args.dropout,
                         activation=args.activation,
                     )
-                agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
-                predictor_cls = PredictorRegistry[args.task_type]
-
-                if args.loss_function is not None:
-                    criterion = Factory.build(
-                        LossFunctionRegistry[args.loss_function],
-                        v_kl=args.v_kl,
-                        threshold=args.threshold,
-                        eps=args.eps,
+                    for i in range(n_components)
+                ]
+                if args.mpn_shared:
+                    mp_block = MulticomponentMessagePassing(
+                        mp_blocks[0], n_components, args.mpn_shared
                     )
                 else:
-                    logger.info(
-                        f"No loss function specified, will use class default: {predictor_cls._default_criterion}"
+                    mp_block = MulticomponentMessagePassing(
+                        mp_blocks, n_components, args.mpn_shared
                     )
-                    criterion = predictor_cls._default_criterion
-
-                d_xf = (
-                    sum(dset.d_xf for dset in train_dset.datasets)
-                    if multicomponent
-                    else train_dset.d_xf
-                )
-                predictor_ffn = Factory.build(
-                    predictor_cls,
-                    input_dim=mp_block.output_dim + d_xf,
-                    n_tasks=train_dset.datasets[0].Y.shape[1]
-                    if multicomponent
-                    else train_dset.Y.shape[1],
-                    hidden_dim=args.ffn_hidden_dim,
-                    n_layers=args.ffn_num_layers,
+            else:
+                mp_block = mp_cls(
+                    train_dset.featurizer.atom_fdim,
+                    train_dset.featurizer.bond_fdim,
+                    d_h=args.message_hidden_dim,
+                    bias=args.message_bias,
+                    depth=args.depth,
+                    undirected=args.undirected,
                     dropout=args.dropout,
                     activation=args.activation,
-                    criterion=criterion,
-                    n_classes=args.multiclass_num_classes,
-                    spectral_activation=args.spectral_activation,
                 )
+            agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
+            predictor_cls = PredictorRegistry[args.task_type]
 
-                if isinstance(predictor_ffn, RegressionFFN):
-                    scaler = train_dset.normalize_targets()
-                    val_dset.normalize_targets(scaler)
-                    logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            if args.loss_function is not None:
+                criterion = Factory.build(
+                    LossFunctionRegistry[args.loss_function],
+                    v_kl=args.v_kl,
+                    threshold=args.threshold,
+                    eps=args.eps,
+                )
+            else:
+                logger.info(
+                    f"No loss function specified, will use class default: {predictor_cls._default_criterion}"
+                )
+                criterion = predictor_cls._default_criterion
+
+            d_xf = (
+                sum(dset.d_xf for dset in train_dset.datasets)
+                if multicomponent
+                else train_dset.d_xf
+            )
+            predictor_ffn = Factory.build(
+                predictor_cls,
+                input_dim=mp_block.output_dim + d_xf,
+                n_tasks=train_dset.datasets[0].Y.shape[1]
+                if multicomponent
+                else train_dset.Y.shape[1],
+                hidden_dim=args.ffn_hidden_dim,
+                n_layers=args.ffn_num_layers,
+                dropout=args.dropout,
+                activation=args.activation,
+                criterion=criterion,
+                n_classes=args.multiclass_num_classes,
+                spectral_activation=args.spectral_activation,
+            )
+
+            if isinstance(predictor_ffn, RegressionFFN):
+                scaler = train_dset.normalize_targets()
+                val_dset.normalize_targets(scaler)
+                logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            else:
+                scaler = None
+
+            train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+            val_loader = data.MolGraphDataLoader(
+                val_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+
+            if multicomponent:
+                if len(test_data[0]) > 0:
+                    test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data[fold_idx]]
+                    test_dset = data.MulticomponentDataset(test_dsets)
+                    test_loader = data.MolGraphDataLoader(
+                        test_dset, args.batch_size, args.num_workers, shuffle=False
+                    )
                 else:
-                    scaler = None
-
-                train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-                val_loader = data.MolGraphDataLoader(
-                    val_dset, args.batch_size, args.num_workers, shuffle=False
-                )
-
-                if multicomponent:
-                    if len(test_data[0]) > 0:
-                        test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data[fold_idx]]
-                        test_dset = data.MulticomponentDataset(test_dsets)
-                        test_loader = data.MolGraphDataLoader(
-                            test_dset, args.batch_size, args.num_workers, shuffle=False
-                        )
-                    else:
-                        test_loader = None
+                    test_loader = None
+            else:
+                if len(test_data) > 0:
+                    test_dset = make_dataset(test_data[fold_idx], args.rxn_mode)
+                    test_loader = data.MolGraphDataLoader(
+                        test_dset, args.batch_size, args.num_workers, shuffle=False
+                    )
                 else:
-                    if len(test_data) > 0:
-                        test_dset = make_dataset(test_data[fold_idx], args.rxn_mode)
-                        test_loader = data.MolGraphDataLoader(
-                            test_dset, args.batch_size, args.num_workers, shuffle=False
-                        )
-                    else:
-                        test_loader = None
+                    test_loader = None
 
-                mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
-                model = mpnn_cls(
-                    mp_block,
-                    agg,
-                    predictor_ffn,
-                    True,
-                    None,
-                    args.task_weights,
-                    args.warmup_epochs,
-                    args.init_lr,
-                    args.max_lr,
-                    args.final_lr,
-                )
-                logger.info(model)
+            mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
+            model = mpnn_cls(
+                mp_block,
+                agg,
+                predictor_ffn,
+                True,
+                None,
+                args.task_weights,
+                args.warmup_epochs,
+                args.init_lr,
+                args.max_lr,
+                args.final_lr,
+            )
+            logger.info(model)
 
-                monitor_mode = "min" if model.metrics[0].minimize else "max"
-                logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+            monitor_mode = "min" if model.metrics[0].minimize else "max"
+            logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
-                if no_cv:
-                    output_dir = args.output_dir / f"model_{model_idx}"
-                else:
-                    output_dir = args.output_dir / f"model_{model_idx}" / f"fold_{fold_idx}"
+            if no_cv:
+                output_dir = args.output_dir
+            else:
+                output_dir = args.output_dir / f"fold_{fold_idx}"
 
-                tb_logger = TensorBoardLogger(output_dir / "tb_logs")
-                checkpointing = ModelCheckpoint(
-                    output_dir / "chkpts",
-                    "{epoch}-{val_loss:.2f}",
-                    "val_loss",
-                    mode=monitor_mode,
-                    save_last=True,
-                )
+            tb_logger = TensorBoardLogger(output_dir / "tb_logs")
+            checkpointing = ModelCheckpoint(
+                output_dir / "chkpts",
+                "{epoch}-{val_loss:.2f}",
+                "val_loss",
+                mode=monitor_mode,
+                save_last=True,
+            )
 
-                early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
+            early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
 
-                trainer = pl.Trainer(
-                    logger=tb_logger,
-                    enable_progress_bar=True,
-                    accelerator="auto",
-                    devices=args.n_gpu if torch.cuda.is_available() else 1,
-                    max_epochs=args.epochs,
-                    callbacks=[checkpointing, early_stopping],
-                )
-                trainer.fit(model, train_loader, val_loader)
+            trainer = pl.Trainer(
+                logger=tb_logger,
+                enable_progress_bar=True,
+                accelerator="auto",
+                devices=args.n_gpu if torch.cuda.is_available() else 1,
+                max_epochs=args.epochs,
+                callbacks=[checkpointing, early_stopping],
+            )
+            trainer.fit(model, train_loader, val_loader)
 
-                if test_loader is not None:
-                    if args.task_type == "regression":
-                        model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                        model.predictor.register_buffer(
-                            "scale", torch.tensor(scaler.scale_).view(-1, 1)
-                        )
-                    results = trainer.test(model, test_loader)[0]
-                    logger.info(f"Test results: {results}")
+            if test_loader is not None:
+                if args.task_type == "regression":
+                    model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
+                    model.predictor.register_buffer(
+                        "scale", torch.tensor(scaler.scale_).view(-1, 1)
+                    )
+                results = trainer.test(model, test_loader)[0]
+                logger.info(f"Test results: {results}")
 
-                p_model = args.output_dir / "model.pt"
-                input_scalers = [] # TODO: we should add descriptor scalers here
-                output_scaler = scaler
-                save_model(p_model, model, input_scalers, output_scaler)
-                logger.info(f"Model saved to '{p_model}'")
+            p_model = args.output_dir / "model.pt"
+            input_scalers = []  # TODO: we should add descriptor scalers here
+            output_scaler = scaler
+            save_model(p_model, model, input_scalers, output_scaler)
+            logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":
