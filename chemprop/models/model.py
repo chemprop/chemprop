@@ -197,6 +197,7 @@ class MPNN(pl.LightningModule):
             grouped. I.e., the first ``t`` elements are the first target for each task, the second
             ``t`` elements the second target, etc.
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
+
         """
         bmg, X_vd, X_f, *_ = batch
 

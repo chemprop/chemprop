@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath('../..'))
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -15,6 +18,7 @@ release = "2.0.0b1"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "autoapi.extension",
@@ -25,12 +29,12 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = []
-autodoc_typehints = 'description'
+# autodoc_typehints = 'description'
 
-# -- AutoAPI configuration ---------------------------------------------------
-
-autoapi_dirs = ["../../chemprop/v2"]
+# # -- AutoAPI configuration ---------------------------------------------------
+autoapi_dirs = ["../../chemprop"]
 autoapi_ignore = ["*test*", "*cli*"]
+autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",
     "undoc-members",
@@ -39,7 +43,7 @@ autoapi_options = [
     "special-members",
     "imported-members",
 ]
-autoapi_keep_files = True
+# autoapi_keep_files = True
 
 # -- bibtex configuration ---------------------------------------------------
 

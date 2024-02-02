@@ -95,9 +95,9 @@ class _MolGraphDatasetMixin:
         return 0 if np.equal(self.X_f, None).all() else self.X_f.shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
-        """Normalizes the targets of this dataset using a :obj:`StandardScaler`
+        """Normalizes the targets of this dataset using a :obj: `StandardScaler`
 
-        The :obj:`StandardScaler` subtracts the mean and divides by the standard deviation for
+        The :obj: `StandardScaler` subtracts the mean and divides by the standard deviation for
         each task independently. NOTE: This should only be used for regression datasets.
 
         Returns
@@ -143,7 +143,7 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`s
+    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`\s
 
     Parameters
     ----------
@@ -294,7 +294,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
@@ -324,7 +324,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`s"""
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""
