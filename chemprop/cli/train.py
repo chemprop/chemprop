@@ -504,7 +504,7 @@ def main(args):
 
     n_components = len(all_data)
     multicomponent = n_components > 1
-    has_mol_and_rxn = len(args.smiles_columns) > 0 and len(args.reaction_columns) > 0
+    has_mol_and_rxn = args.reaction_columns is not None and args.smiles_columns is not None
 
     if not multicomponent:
         all_data = all_data[0]
