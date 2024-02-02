@@ -305,5 +305,5 @@ class SpectralFFN(_FFNPredictorBase):
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
-        Y = self.ffn.spectral_activation(Y)
-        return Y / Y.sum(1, keepdim=True)
+        return self.ffn.spectral_activation(Y)
+
