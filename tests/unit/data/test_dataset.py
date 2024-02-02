@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from rdkit import Chem
 
 from chemprop.data import MoleculeDataset, MoleculeDatapoint
 from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
@@ -16,8 +17,44 @@ def targets(smis):
 
 
 @pytest.fixture
-def data(smis, targets):
-    return [MoleculeDatapoint.from_smi(smi, t) for smi, t in zip(smis, targets)]
+def mols(smis):
+    return [Chem.MolFromSmiles(smi) for smi in smis]
+
+
+@pytest.fixture
+def V_fs(mols):
+    return [np.random.rand(mol.GetNumAtoms(), 2) for mol in mols]
+
+
+@pytest.fixture
+def E_fs(mols):
+    return [np.random.rand(mol.GetNumBonds(), 2) for mol in mols]
+
+
+@pytest.fixture
+def V_ds(mols):
+    return [np.random.rand(mol.GetNumAtoms(), 2) for mol in mols]
+
+
+@pytest.fixture
+def X_f(mols):
+    return [np.random.rand(1, 2) for _ in mols]
+
+
+pytestmark = pytest.mark.parametrize(
+    "data",
+    [(mols, targets, None, None, None, None), (mols, targets, X_f, V_fs, E_fs, V_ds)],
+    indirect=True,
+)
+
+
+@pytest.fixture
+def data(request):
+    mols, targets, X_f, V_fs, E_fs, V_ds = request.param
+    return [
+        MoleculeDatapoint(mol=mol, y=target, x_f=x_f, V_f=V_f, E_f=E_f, V_d=V_d)
+        for mol, target, x_f, V_f, E_f, V_d in zip(mols, targets, X_f, V_fs, E_fs, V_ds)
+    ]
 
 
 @pytest.fixture
@@ -65,3 +102,21 @@ def test_aux_nones(dataset: MoleculeDataset):
     assert dataset.d_vd == 0
     assert dataset.d_vf == 0
     assert dataset.d_ef == 0
+
+
+def test_normalize_targets(dataset):
+    scaler = dataset.normalize_targets()
+    np.testing.assert_array_equal(dataset.Y, (dataset.Y - np.mean(dataset)) / np.std(dataset.Y))
+    np.testing.assert_array_equal(scaler.loc_, np.mean(dataset.Y))
+    np.testing.assert_array_equal(scaler.scale_, np.std(dataset.Y))
+
+
+def test_normalize_inputs(dataset):
+    for name in ["X_f", "V_fs", "E_fs", "V_ds"]:
+        scaler = dataset.normalize_inputs(name)
+        np.testing.assert_array_equal(
+            getattr(dataset, name),
+            (getattr(dataset, name) - np.mean(dataset)) / np.std(getattr(dataset, name)),
+        )
+        np.testing.assert_array_equal(scaler.loc_, np.mean(getattr(dataset, name)))
+        np.testing.assert_array_equal(scaler.scale_, np.std(getattr(dataset, name)))
