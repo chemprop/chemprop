@@ -29,7 +29,7 @@ autodoc_typehints = 'description'
 
 # -- AutoAPI configuration ---------------------------------------------------
 
-autoapi_dirs = ["../../chemprop/v2"]
+autoapi_dirs = ["../../chemprop"]
 autoapi_ignore = ["*test*", "*cli*"]
 autoapi_options = [
     "members",
