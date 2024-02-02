@@ -24,7 +24,8 @@ extensions = [
     "autoapi.extension",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.bibtex"
+    "sphinxcontrib.bibtex",
+    "sphinx.ext.doctest",
 ]
 
 templates_path = ["_templates"]
