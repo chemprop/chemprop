@@ -12,12 +12,12 @@ from chemprop.models.utils import save_model
 
 @pytest.fixture
 def checkpoint_path(data_dir):
-    return data_dir / "example_model_v2.ckpt"
+    return data_dir / "example_model_v2_regression_mol.ckpt"
 
 
 @pytest.fixture
-def file_path(data_dir):
-    return data_dir / "example_model_v2.pkl"
+def model_path(data_dir):
+    return data_dir / "example_model_v2_regression_mol.pt"
 
 
 @pytest.fixture
@@ -73,9 +73,9 @@ def test_checkpoint_is_valid(checkpoint_path, test_loader, trainer, ys):
     assert np.allclose(ys_from_checkpoint, ys, atol=1e-6)
 
 
-def test_checkpoint_roundtrip(checkpoint_path, file_path, trainer, test_loader):
+def test_checkpoint_roundtrip(checkpoint_path, model_path, trainer, test_loader):
     model_from_checkpoint = MPNN.load_from_checkpoint(checkpoint_path)
-    model_from_file = MPNN.load_from_file(file_path)
+    model_from_file = MPNN.load_from_file(model_path)
 
     predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
