@@ -87,14 +87,15 @@ def test_num_tasks(dataset, targets):
 
 def test_aux_nones(dataset: MoleculeDataset):
     np.testing.assert_array_equal(dataset.X_f, None)
-    np.testing.assert_array_equal(dataset.X_f, None)
     np.testing.assert_array_equal(dataset.V_fs, None)
     np.testing.assert_array_equal(dataset.E_fs, None)
+    np.testing.assert_array_equal(dataset.V_ds, None)
     np.testing.assert_array_equal(dataset.gt_mask, None)
     np.testing.assert_array_equal(dataset.lt_mask, None)
-    assert dataset.d_vd == 0
+    assert dataset.d_xf == 0
     assert dataset.d_vf == 0
     assert dataset.d_ef == 0
+    assert dataset.d_vd == 0
 
 
 def test_normalize_targets(dataset):
