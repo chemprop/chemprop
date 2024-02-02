@@ -56,7 +56,7 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
     def output_dim(self) -> int:
         d_o = sum(block.output_dim for block in self.blocks)
 
-        return d_o if not self.shared else self.blocks[0].output_dim
+        return d_o
 
     def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> list[Tensor]:
         """Encode the multicomponent inputs
