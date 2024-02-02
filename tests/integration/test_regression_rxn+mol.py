@@ -22,7 +22,10 @@ SHAPE = CondensedGraphOfReactionFeaturizer().shape
 pytestmark = [
     pytest.mark.parametrize(
         "mcmpnn",
-        [([nn.BondMessagePassing(*SHAPE), nn.BondMessagePassing()], N_COMPONENTS), ([nn.AtomMessagePassing(*SHAPE), nn.BondMessagePassing()], N_COMPONENTS)],
+        [
+            ([nn.BondMessagePassing(*SHAPE), nn.BondMessagePassing()], N_COMPONENTS, False),
+            ([nn.AtomMessagePassing(*SHAPE), nn.AtomMessagePassing()], N_COMPONENTS, False),
+        ],
         indirect=True,
     ),
     pytest.mark.integration,
