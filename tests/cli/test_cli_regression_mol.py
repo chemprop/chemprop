@@ -15,8 +15,8 @@ def data_path(data_dir):
 
 
 @pytest.fixture
-def checkpoint_path(data_dir):
-    return str(data_dir / "example_model_v2.ckpt")
+def model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mol.pt")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -27,8 +27,8 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
-def test_predict_quick(monkeypatch, data_path, checkpoint_path):
-    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", checkpoint_path]
+def test_predict_quick(monkeypatch, data_path, model_path):
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -47,8 +47,8 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "tb_logs" / "version_0").exists()
 
 
-def test_predict_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "predict", "-i", data_path, "--checkpoint", "tests/data/example_model_v2.ckpt", "--output", str(tmp_path / "preds.csv")]
+def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path, "--output", str(tmp_path / "preds.csv")]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
