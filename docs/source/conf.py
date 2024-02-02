@@ -29,7 +29,7 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = []
-# autodoc_typehints = 'description'
+autodoc_typehints = 'description'
 
 # # -- AutoAPI configuration ---------------------------------------------------
 autoapi_dirs = ["../../chemprop"]
