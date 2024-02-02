@@ -11,11 +11,11 @@ from chemprop.cli.convert import ConvertSubcommand
 # from chemprop.cli.fingerprint import FingerprintSubcommand
 # from chemprop.cli.hyperopt import HyperoptSubcommand
 
-from chemprop.cli.utils import LOG_DIR, NOW, pop_attr
+from chemprop.cli.utils import pop_attr
+from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 
 logger = logging.getLogger(__name__)
 
-LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
 SUBCOMMANDS = [
     TrainSubcommand,
     PredictSubcommand,

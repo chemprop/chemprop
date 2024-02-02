@@ -49,7 +49,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. Defaults to '<current working directory>/<stem of input>_preds.csv'.",
+        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds.csv'.",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -149,7 +149,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    args.output = args.output or Path(args.test_path.stem + "_preds.csv")
+    args.output = args.output or args.test_path.parent / (args.test_path.stem + "_preds.csv")
     if args.output.suffix not in [".csv", ".pkl"]:
         args.output = Path(str(args.output) + ".csv")
     return args
@@ -255,14 +255,15 @@ def main(args):
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test[
-        "preds"
-    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    df_test["preds"] = (
+        preds.flatten()
+    )  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
+        df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(args.output)
     else:
         df_test.to_csv(args.output, index=False)
-    logger.info(f"predictions saved to '{args.output}'")
+    logger.info(f"Predictions saved to '{args.output}'")
 
 
 if __name__ == "__main__":

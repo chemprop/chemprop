@@ -20,7 +20,8 @@ from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistr
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.nn.message_passing import BondMessagePassing, AtomMessagePassing
 
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, NOW
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.conf import NOW
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         type=Path,
-        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>_<time stamp>'.",
+        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>/<time stamp>'.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -466,9 +467,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.output_dir = args.output_dir or Path("chemprop_training") / (
-        "_".join([args.data_path.stem, NOW])
-    )
+    if args.output_dir is None:
+        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
@@ -554,7 +554,7 @@ def main(args):
     else:
         raise ArgumentError(
             argument=None,
-            message="'separate_val_path' must be specified if 'separate_test_path' is provided!",
+            message="'--separate-val-path' must be specified if '--separate-test-path' is provided!",
         )  # TODO: In v1 this wasn't the case?
 
     if multicomponent:
@@ -681,7 +681,7 @@ def main(args):
 
     try:
         trainer_logger = TensorBoardLogger(args.output_dir, "trainer_logs")
-    except ImportError:
+    except ModuleNotFoundError:
         trainer_logger = CSVLogger(args.output_dir, "trainer_logs")
 
     checkpointing = ModelCheckpoint(
