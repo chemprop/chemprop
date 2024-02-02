@@ -7,7 +7,7 @@ from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 class MolGraphDataLoader(DataLoader):
     """A :class:`MolGraphDataLoader` is a :obj:`~torch.utils.data.DataLoader` for
-    :class:`MolGraphDataset`s
+    :class:`MolGraphDataset`\s
 
     Parameters
     ----------

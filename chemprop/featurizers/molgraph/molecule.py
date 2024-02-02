@@ -10,7 +10,7 @@ from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 class MoleculeMolGraphFeaturizer(ABC):
     """A :class:`MoleculeMolGraphFeaturizer` featurizes RDKit molecules into
-    :class:`MolGraph`s"""
+    :class:`MolGraph`\s"""
 
     @abstractmethod
     def __call__(

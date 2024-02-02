@@ -11,10 +11,10 @@ from chemprop.featurizers import MolGraph
 
 @dataclass(repr=False, eq=False, slots=True)
 class BatchMolGraph:
-    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
+    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`\s.
 
     It has all the attributes of a ``MolGraph`` with the addition of the ``batch`` attribute. This
-    class is intended for use with data loading, so it uses :obj:`~torch.Tensor`s to store data
+    class is intended for use with data loading, so it uses :obj:`~torch.Tensor`\s to store data
     """
 
     mgs: InitVar[Sequence[MolGraph]]
@@ -59,7 +59,7 @@ class BatchMolGraph:
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
 
     def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`s in this batch"""
+        """the number of individual :class:`MolGraph`\s in this batch"""
         return self.__size
 
     def to(self, device: str | torch.device):
