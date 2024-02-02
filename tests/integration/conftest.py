@@ -18,8 +18,8 @@ def mpnn(request):
 
 @pytest.fixture(scope="session")
 def mcmpnn(request):
-    block, n_components = request.param
-    mcmp = nn.MulticomponentMessagePassing([block for _ in range(n_components)], n_components)
+    blocks, n_components = request.param
+    mcmp = nn.MulticomponentMessagePassing(blocks, n_components)
     agg = nn.SumAggregation()
     ffn = nn.RegressionFFN(input_dim=mcmp.output_dim,)
 
