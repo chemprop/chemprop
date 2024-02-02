@@ -43,7 +43,7 @@ autoapi_options = [
     "special-members",
     "imported-members",
 ]
-# autoapi_keep_files = True
+autoapi_keep_files = True
 
 # -- bibtex configuration ---------------------------------------------------
 
