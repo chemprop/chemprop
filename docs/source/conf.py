@@ -40,6 +40,7 @@ autoapi_options = [
     "imported-members",
 ]
 autoapi_keep_files = True
+autoapi_file_patterns = ["*.py"]
 
 # -- bibtex configuration ---------------------------------------------------
 
