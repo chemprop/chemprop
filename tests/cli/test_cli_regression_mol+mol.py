@@ -15,7 +15,7 @@ def data_path(data_dir):
 
 @pytest.fixture
 def model_path(data_dir):
-    return str(data_dir / "example_model_v2_regression_multi.ckpt")
+    return str(data_dir / "example_model_v2_regression_mol+mol.pt")
 
 
 def test_train_quick(monkeypatch, data_path):
