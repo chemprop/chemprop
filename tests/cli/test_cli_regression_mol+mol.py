@@ -14,8 +14,8 @@ def data_path(data_dir):
 
 
 @pytest.fixture
-def checkpoint_path(data_dir):
-    return str(data_dir / "example_model_v2_regression_multi.ckpt")
+def model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mol+mol.pt")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -26,8 +26,8 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
-def test_predict_quick(monkeypatch, data_path, checkpoint_path):
-    args = ["chemprop", "predict", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--model-path", checkpoint_path]
+def test_predict_quick(monkeypatch, data_path, model_path):
+    args = ["chemprop", "predict", "-i", data_path, "--smiles-columns", "smiles", "solvent", "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
