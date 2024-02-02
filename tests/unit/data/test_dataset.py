@@ -41,20 +41,13 @@ def X_f(mols):
     return [np.random.rand(1, 2) for _ in mols]
 
 
-@pytest.fixture
+@pytest.fixture(params=[(mols, targets, None, None, None, None), (mols, targets, X_f, V_fs, E_fs, V_ds)])
 def data(request):
     mols, targets, X_f, V_fs, E_fs, V_ds = request.param
     return [
         MoleculeDatapoint(mol=mol, y=target, x_f=x_f, V_f=V_f, E_f=E_f, V_d=V_d)
         for mol, target, x_f, V_f, E_f, V_d in zip(mols, targets, X_f, V_fs, E_fs, V_ds)
     ]
-
-
-pytestmark = pytest.mark.parametrize(
-    "data",
-    [(mols, targets, None, None, None, None), (mols, targets, X_f, V_fs, E_fs, V_ds)],
-    indirect=True,
-)
 
 
 @pytest.fixture
