@@ -20,7 +20,7 @@ N_COMPONENTS = 2
 pytestmark = [
     pytest.mark.parametrize(
         "mcmpnn",
-        [(nn.BondMessagePassing(), N_COMPONENTS), (nn.AtomMessagePassing(), N_COMPONENTS)],
+        [([nn.BondMessagePassing() for _ in range(N_COMPONENTS)], N_COMPONENTS), ([nn.AtomMessagePassing() for _ in range(N_COMPONENTS)], N_COMPONENTS)],
         indirect=True,
     ),
     pytest.mark.integration,
