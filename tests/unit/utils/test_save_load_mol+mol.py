@@ -11,12 +11,12 @@ from chemprop.models import MulticomponentMPNN, save_model
 
 @pytest.fixture
 def checkpoint_path(data_dir):
-    return data_dir / "example_model_v2_regression_multi.ckpt"
+    return data_dir / "example_model_v2_regression_mol+mol.ckpt"
 
 
 @pytest.fixture
 def file_path(data_dir):
-    return data_dir / "example_model_v2_regression_mol+mol.pkl"
+    return data_dir / "example_model_v2_regression_mol+mol.pt"
 
 
 @pytest.fixture
