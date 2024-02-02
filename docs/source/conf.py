@@ -31,7 +31,8 @@ templates_path = ["_templates"]
 exclude_patterns = []
 autodoc_typehints = 'description'
 
-# # -- AutoAPI configuration ---------------------------------------------------
+# -- AutoAPI configuration ---------------------------------------------------
+
 autoapi_dirs = ["../../chemprop"]
 autoapi_ignore = ["*test*", "*cli*"]
 autoapi_file_patterns = ["*.py"]

@@ -704,7 +704,7 @@ def main(args):
     p_model = args.output_dir / "model.pt"
     input_scalers = [] # TODO: we should add descriptor scalers here
     output_scaler = scaler
-    save_model(model, p_model, input_scalers, output_scaler)
+    save_model(p_model, model, input_scalers, output_scaler)
     logger.info(f"Model saved to '{p_model}'")
 
 
