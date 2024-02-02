@@ -14,12 +14,12 @@ from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 @pytest.fixture
 def example_model_v1_path(data_dir):
-    return data_dir / "example_model_v1.pt"
+    return data_dir / "example_model_v1_regression_mol.pt"
 
 
 @pytest.fixture
 def example_model_v1_prediction(data_dir):
-    path = data_dir / "example_model_v1_prediction.csv"
+    path = data_dir / "example_model_v1_regression_mol_prediction.csv"
 
     with open(path) as fid:
         reader = csv.reader(fid)
@@ -39,7 +39,7 @@ def example_model_v1_prediction(data_dir):
 def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction):
     directory = tmp_path / "test_converter"
     directory.mkdir()
-    model_v2_save_path = directory / "example_model_v2.ckpt"
+    model_v2_save_path = directory / "example_model_v2_regression_mol.ckpt"
 
     convert_model_file_v1_to_v2(example_model_v1_path, model_v2_save_path)
     assert model_v2_save_path.exists()
