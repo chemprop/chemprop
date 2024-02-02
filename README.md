@@ -33,6 +33,7 @@ Chemprop is a repository containing message passing neural networks for molecula
   * [Option 1: Installing from PyPi](#option-1-installing-from-pypi)
   * [Option 2: Installing from source](#option-2-installing-from-source)
   * [Docker](#docker)
+- [Known Issues](#known-issues)
 - [Web Interface](#web-interface)
 - [Within Python](#within-python)
 - [Data](#data)
@@ -116,6 +117,9 @@ Alternatively, with Docker 19.03+, you can specify the `--gpus` command line opt
 In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine.
 Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions.
 To set a specific CUDA toolkit version, add `cudatoolkit=X.Y` to `environment.yml` before building the Docker image.
+
+## Known Issues
+As we approach the upcoming release of Chemprop v2.0, we have closed [several issues](https://github.com/chemprop/chemprop/issues?q=label%3Av1-wontfix+) corresponding to bugs that we don't plan to fix before the final release of v1 (v1.7). We will be discontinuing support for v1 once v2 is released, but we still appreciate bug reports and will tag them as [`v1-wontfix`](https://github.com/chemprop/chemprop/issues?q=label%3Av1-wontfix+) so the community can find them easily.
 
 ## Web Interface
 
