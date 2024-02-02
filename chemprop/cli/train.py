@@ -504,6 +504,7 @@ def main(args):
 
     n_components = len(all_data)
     multicomponent = n_components > 1
+    has_mol_and_rxn = len(args.smiles_columns) > 0 and len(args.reaction_columns) > 0
 
     if not multicomponent:
         all_data = all_data[0]
@@ -584,6 +585,9 @@ def main(args):
             for i in range(n_components)
         ]
         if args.mpn_shared:
+            if has_mol_and_rxn:
+                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+            
             mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         else:
             mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
