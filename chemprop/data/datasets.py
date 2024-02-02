@@ -123,7 +123,8 @@ class _MolGraphDatasetMixin:
         X = self.X_f
 
         if scaler is None:
-            scaler = StandardScaler().fit(X)
+            scaler = StandardScaler()
+            self.X_f = scaler.fit_transform(X)
 
         return scaler
 
