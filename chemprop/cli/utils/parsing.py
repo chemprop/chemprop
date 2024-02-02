@@ -1,17 +1,16 @@
 import logging
 from os import PathLike
 from typing import Mapping, Sequence
-import warnings
 
 import numpy as np
 import pandas as pd
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
-from chemprop.featurizers.molecule import MoleculeFeaturizerProto
+from chemprop.featurizers.molecule import MoleculeFeaturizer
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
-    MoleculeMolGraphFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,7 @@ def make_datapoints(
     V_fs: list[np.ndarray] | None,
     E_fs: list[np.ndarray] | None,
     V_ds: list[np.ndarray] | None,
-    features_generators: list[MoleculeFeaturizerProto] | None,
+    features_generators: list[MoleculeFeaturizer] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
@@ -190,31 +189,20 @@ def build_data_from_files(
 
     # NOTE: return only a single component for now with a preference for rxns
     data = rxn_data if len(rxn_data) > 0 else mol_data
-    if len(data) > 1:
-        warnings.warn(
-            "Multicomponent input is not supported at this time! Using only the 1st input..."
-        )
-
-    return data[0]
+    return data
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
-    bond_messages: bool,
-    reaction_mode: str,
+    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str
 ) -> MoleculeDataset | ReactionDataset:
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-        featurizer = MoleculeMolGraphFeaturizer(
-            bond_messages=bond_messages,
-            extra_atom_fdim=extra_atom_fdim,
-            extra_bond_fdim=extra_bond_fdim,
+        featurizer = SimpleMoleculeMolGraphFeaturizer(
+            extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(
-        bond_messages=bond_messages, mode_=reaction_mode
-    )
+    featurizer = CondensedGraphOfReactionFeaturizer(mode_=reaction_mode)
 
     return ReactionDataset(data, featurizer)

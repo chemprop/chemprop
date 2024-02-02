@@ -10,10 +10,12 @@ import torch
 
 from chemprop import data
 from chemprop.cli.utils.args import uppercase
-from chemprop.data.splitting import split_data
+from chemprop.data.splitting import split_monocomponent, split_multicomponent
 from chemprop.nn.utils import Activation
+from chemprop.data import SplitType
 from chemprop.utils import Factory
-from chemprop.models import MPNN
+from chemprop.models import MPNN, save_model
+from chemprop.models.multi import MulticomponentMessagePassing, MulticomponentMPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry, RegressionFFN
 from chemprop.nn.message_passing import BondMessagePassing, AtomMessagePassing
@@ -54,6 +56,23 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+    )
+    # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
+    #        similar to how --features-path is/will be implemented
+    parser.add_argument(
+        "--checkpoint-dir",
+        help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
+    )
+    parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
+    parser.add_argument(
+        "--checkpoint-paths",
+        type=list[str],
+        help="List of paths to model checkpoints (:code:`.pt` files).",
+    )
+    # TODO: Is this a prediction only argument?
+    parser.add_argument(
+        "--checkpoint",
+        help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
     )
     # TODO: see if we can tell lightning how often to log training loss
     parser.add_argument(
@@ -381,12 +400,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--split",
         "--split-type",
-        default="random",
-        choices=[
-            "random",
-            "scaffold",
-        ],  # 'scaffold_balanced', 'predetermined', 'crossval', 'cv', 'cv-no-test', 'index_predetermined', 'random_with_repeated_smiles'], # TODO: make data splitting CLI play nicely with astartes backend
-        help="Method of splitting the data into train/val/test.",
+        type=uppercase,
+        default="RANDOM",
+        choices=list(SplitType.keys()),
+        help="Method of splitting the data into train/val/test (case insensitive).",
     )
     split_args.add_argument(
         "--split-sizes",
@@ -395,12 +412,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=[0.8, 0.1, 0.1],
         help="Split proportions for train/validation/test sets.",
     )
-    # split_args.add_argument(
-    #     "--split-key-molecule",
-    #     type=int,
-    #     default=0,
-    #     help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used, like scaffold_balanced or random_with_repeated_smiles.       Note that this index begins with zero for the first molecule.",
-    # )
+    split_args.add_argument(
+        "--split-key-molecule",
+        type=int,
+        default=0,
+        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., 'scaffold_balanced' or 'random_with_repeated_smiles'). Note that this index begins with zero for the first molecule.",
+    )
     split_args.add_argument(
         "-k",
         "--num-folds",
@@ -408,31 +425,32 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    split_args.add_argument(
-        "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    )
-    split_args.add_argument(
-        "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    )
-    split_args.add_argument(
-        "--crossval-index-dir", help="Directory in which to find cross validation index files."
-    )
-    split_args.add_argument(
-        "--crossval-index-file",
-        help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    )
+    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
+    # split_args.add_argument(
+    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
+    # )
+    # split_args.add_argument(
+    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
+    # )
+    # split_args.add_argument(
+    #     "--crossval-index-dir",
+    #     help="Directory in which to find cross validation index files.",
+    # )
+    # split_args.add_argument(
+    #     "--crossval-index-file",
+    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
+    # )
     split_args.add_argument(
         "--seed",
         type=int,
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
-    split_args.add_argument(
-        "--save-smiles-splits",
-        action="store_true",
-        help="Save smiles for each train/val/test splits for prediction convenience later.",
-    )
+    # split_args.add_argument(
+    #     "--save-smiles-splits",
+    #     action="store_true",
+    #     help="Save smiles for each train/val/test splits for prediction convenience later.",
+    # )
 
     parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
@@ -484,8 +502,25 @@ def main(args):
         **featurization_kwargs,
     )
 
+    n_components = len(all_data)
+    multicomponent = n_components > 1
+
+    if not multicomponent:
+        all_data = all_data[0]
+
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
+    if multicomponent:
+        split_kwargs["key_index"] = args.split_key_molecule
+
     if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_data(all_data, args.split, args.split_sizes)
+        if multicomponent:
+            train_data, val_data, test_data = split_multicomponent(
+                all_data, args.split, **split_kwargs
+            )
+        else:
+            train_data, val_data, test_data = split_monocomponent(
+                all_data, args.split, **split_kwargs
+            )
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -508,27 +543,61 @@ def main(args):
             )
             train_data = all_data
         else:
-            train_data, val_data, _ = split_data(all_data, args.split, args.split_sizes)
+            if multicomponent:
+                train_data, val_data, _ = split_multicomponent(all_data, args.split, **split_kwargs)
+            else:
+                train_data, val_data, _ = split_monocomponent(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
-            "'val_path' must be specified if 'test_path' is provided!"
+            argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
-    logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
 
-    train_dset = make_dataset(train_data, bond_messages, args.rxn_mode)
-    val_dset = make_dataset(val_data, bond_messages, args.rxn_mode)
+    if multicomponent:
+        logger.info(
+            f"train/val/test sizes: {len(train_data[0])}/{len(val_data[0])}/{len(test_data[0])}"
+        )
+    else:
+        logger.info(f"train/val/test sizes: {len(train_data)}/{len(val_data)}/{len(test_data)}")
+
+    if multicomponent:
+        train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
+        val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
+        train_dset = data.MulticomponentDataset(train_dsets)
+        val_dset = data.MulticomponentDataset(val_dsets)
+    else:
+        train_dset = make_dataset(train_data, args.rxn_mode)
+        val_dset = make_dataset(val_data, args.rxn_mode)
 
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
-    mp_block = mp_cls(
-        train_dset.featurizer.atom_fdim,
-        train_dset.featurizer.bond_fdim,
-        d_h=args.message_hidden_dim,
-        bias=args.message_bias,
-        depth=args.depth,
-        undirected=args.undirected,
-        dropout=args.dropout,
-        activation=args.activation,
-    )
+    if multicomponent:
+        mp_blocks = [
+            mp_cls(
+                train_dset.datasets[i].featurizer.atom_fdim,
+                train_dset.datasets[i].featurizer.bond_fdim,
+                d_h=args.message_hidden_dim,
+                bias=args.message_bias,
+                depth=args.depth,
+                undirected=args.undirected,
+                dropout=args.dropout,
+                activation=args.activation,
+            )
+            for i in range(n_components)
+        ]
+        if args.mpn_shared:
+            mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
+        else:
+            mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
+    else:
+        mp_block = mp_cls(
+            train_dset.featurizer.atom_fdim,
+            train_dset.featurizer.bond_fdim,
+            d_h=args.message_hidden_dim,
+            bias=args.message_bias,
+            depth=args.depth,
+            undirected=args.undirected,
+            dropout=args.dropout,
+            activation=args.activation,
+        )
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
 
@@ -545,10 +614,11 @@ def main(args):
         )
         criterion = predictor_cls._default_criterion
 
+    d_xf = sum(dset.d_xf for dset in train_dset.datasets) if multicomponent else train_dset.d_xf
     predictor_ffn = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + train_dset.d_xf,
-        n_tasks=train_dset.Y.shape[1],
+        input_dim=mp_block.output_dim + d_xf,
+        n_tasks=train_dset.datasets[0].Y.shape[1] if multicomponent else train_dset.Y.shape[1],
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
@@ -567,15 +637,27 @@ def main(args):
 
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-    if len(test_data) > 0:
-        test_dset = make_dataset(test_data, bond_messages, args.rxn_mode)
-        test_loader = data.MolGraphDataLoader(
-            test_dset, args.batch_size, args.num_workers, shuffle=False
-        )
-    else:
-        test_loader = None
 
-    model = MPNN(
+    if multicomponent:
+        if len(test_data[0]) > 0:
+            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dset = data.MulticomponentDataset(test_dsets)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+    else:
+        if len(test_data) > 0:
+            test_dset = make_dataset(test_data, args.rxn_mode)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+
+    mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
+    model = mpnn_cls(
         mp_block,
         agg,
         predictor_ffn,
@@ -614,16 +696,20 @@ def main(args):
 
     if test_loader is not None:
         if args.task_type == "regression":
-            model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
+            model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
+            model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
         results = trainer.test(model, test_loader)[0]
         logger.info(f"Test results: {results}")
 
     p_model = args.output_dir / "model.pt"
-    torch.save(model.state_dict(), p_model)
-    logger.info(f"model state dict saved to '{p_model}'")
+    input_scalers = [] # TODO: we should add descriptor scalers here
+    output_scaler = scaler
+    save_model(p_model, model, input_scalers, output_scaler)
+    logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":
+    # TODO: update this old code or remove it.
     parser = ArgumentParser()
     parser = TrainSubcommand.add_args(parser)
 

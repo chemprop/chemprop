@@ -10,6 +10,7 @@ from chemprop.utils import ClassRegistry, ReprMixin
 
 __all__ = [
     "LossFunction",
+    "LossFunctionRegistry",
     "MSELoss",
     "BoundedMSELoss",
     "MVELoss",

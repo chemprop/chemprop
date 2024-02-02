@@ -296,4 +296,4 @@ class SpectralFFN(_FFNPredictorBase):
                     "Expected one of 'exp', 'softplus' or None."
                 )
 
-        self.ffn.ffn.add_module("spectral_activation", spectral_activation)
+        self.ffn.add_module("spectral_activation", spectral_activation)

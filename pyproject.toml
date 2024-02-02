@@ -33,6 +33,7 @@ dependencies = [
     "rdkit",
     "scikit-learn",
     "scipy",
+    "tensorboard",
     "torch >= 2.1",
     "torch_scatter",
     "astartes[molecules]",
@@ -51,6 +52,8 @@ PyPi = "https://pypi.org/project/chemprop/"
 [project.scripts]
 chemprop = "chemprop.cli.main:main"
 
+[tool.setuptools]
+packages = ["chemprop"]
 
 [tool.black]
 line-length = 100

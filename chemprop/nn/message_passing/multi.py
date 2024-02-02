@@ -5,9 +5,10 @@ from torch import Tensor, nn
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn.message_passing.proto import MessagePassing
+from chemprop.nn.hparams import HasHParams
 
 
-class MulticomponentMessagePassing(nn.Module):
+class MulticomponentMessagePassing(nn.Module, HasHParams):
     """A `MulticomponentMessagePassing` performs message-passing on each individual input in a
     multicomponent input then concatenates the representation of each input to construct a
     global representation
@@ -25,6 +26,12 @@ class MulticomponentMessagePassing(nn.Module):
 
     def __init__(self, blocks: Sequence[MessagePassing], n_components: int, shared: bool = False):
         super().__init__()
+        self.hparams = {
+            "cls": self.__class__,
+            "blocks": [block.hparams for block in blocks],
+            "n_components": n_components,
+            "shared": shared,
+        }
 
         if len(blocks) == 0:
             raise ValueError("arg 'blocks' was empty!")
@@ -64,4 +71,7 @@ class MulticomponentMessagePassing(nn.Module):
         list[Tensor]
             a list of tensors of shape `b x d_i` containing the respective encodings of the `i`th component, where `b` is the number of components in the batch, and `d_i` is the output dimension of the `i`th encoder
         """
-        return [block(bmg, V_d) for block, bmg, V_d in zip(self.blocks, bmgs, V_ds)]
+        if V_ds is None:
+            return [block(bmg) for block, bmg in zip(self.blocks, bmgs)]
+        else:
+            return [block(bmg, V_d) for block, bmg, V_d in zip(self.blocks, bmgs, V_ds)]

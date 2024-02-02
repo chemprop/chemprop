@@ -22,23 +22,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         nargs="+",
         help="The columns in the input CSV containing reactions.",
     )
-    # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
-    #        similar to how --features-path is/will be implemented
-    data_args.add_argument(
-        "--checkpoint-dir",
-        help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
-    )
-    data_args.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
-    data_args.add_argument(
-        "--checkpoint-paths",
-        type=list[str],
-        help="List of paths to model checkpoints (:code:`.pt` files).",
-    )
-    # TODO: Is this a prediction only argument?
-    parser.add_argument(
-        "--checkpoint",
-        help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
-    )
     data_args.add_argument(
         "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
     )
@@ -66,8 +49,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--reaction-mode",
         type=uppercase,
         default="REAC_DIFF",
-        choices=RxnMode.keys(),
-        help="""Choices for construction of atom and bond features for reactions
+        choices=list(RxnMode.keys()),
+        help="""Choices for construction of atom and bond features for reactions (case insensitive):
 - 'reac_prod': concatenates the reactants feature with the products feature.
 - 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products.
 - 'prod_diff': concatenates the products feature with the difference in features between reactants and products.
