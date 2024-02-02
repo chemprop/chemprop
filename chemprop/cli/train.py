@@ -632,6 +632,32 @@ def main(args):
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
         logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
+
+        if train_dset.d_xf > 0:
+            if not args.no_features_scaling:
+                Xf_scalers = train_dset.normalize_inputs("X_f")
+                val_dset.normalize_inputs("X_f", input_scalers)
+                logger.info(f"Features: loc = {input_scalers.mean_}, scale = {input_scalers.scale_}")
+
+        if train_dset.d_vf > 0:
+            if not args.no_atom_features_scaling:
+                V_fs_scalers = train_dset.normalize_inputs("V_fs")
+                val_dset.normalize_inputs("V_fs", input_scalers)
+                logger.info(f"Atom features: loc = {input_scalers.mean_}, scale = {input_scalers.scale_}")
+
+        if train_dset.d_ef > 0:
+            if not args.no_bond_features_scaling:
+                E_fs_scalers = train_dset.normalize_inputs("E_fs")
+                val_dset.normalize_inputs("E_fs", input_scalers)
+                logger.info(f"Bond features: loc = {input_scalers.mean_}, scale = {input_scalers.scale_}")
+
+        if train_dset.d_vd:
+            if not args.no_atom_descriptors_scaling:
+                V_ds_scalers = train_dset.normalize_inputs("V_ds")
+                val_dset.normalize_inputs("V_ds", input_scalers)
+                logger.info(f"Atom descriptors: loc = {input_scalers.mean_}, scale = {input_scalers.scale_}")
+
+        
     else:
         scaler = None
 
