@@ -36,7 +36,8 @@ setup(
         ]
     },
     install_requires=[
-        "flask>=1.1.2",
+        "flask>=1.1.2,<=2.1.3",
+        "Werkzeug<3",
         "hyperopt>=0.2.3",
         "matplotlib>=3.1.3",
         "numpy>=1.18.1",
