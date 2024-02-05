@@ -92,8 +92,8 @@ def train(
             original_batch_atom_scope = original_batch[0].a_scope
             number_of_atoms_of_each_mol = torch.tensor([scope[1] for scope in original_batch_atom_scope])
 
-            MA_first_view = batch.batch_graph_pretrain_MA(args.MA_first_percent)
-            MA_second_view = batch.batch_graph_pretrain_MA(args.MA_second_percent)
+            MA_first_view = batch.batch_graph_pretrain_MA(args.MA_percent[0])
+            MA_second_view = batch.batch_graph_pretrain_MA(args.MA_percent[1])
             MA_first_label = torch.tensor(MA_first_view[0].masked_atom_label_list).to(args.device)
             MA_second_label = torch.tensor(MA_second_view[0].masked_atom_label_list).to(args.device)
             contra_first_view = 0
@@ -110,8 +110,8 @@ def train(
                 elif Mode_of_contrastive_learning == 1:
                     # Contrastive_learning_loss is calculated by different version of mask bond BD-BD
                     # Bond deletion operation of batch graph
-                    contra_first_view = batch.batch_graph_pretrain_BD(args.BD_first_percent)
-                    contra_second_view = batch.batch_graph_pretrain_BD(args.BD_second_percent)
+                    contra_first_view = batch.batch_graph_pretrain_BD(args.BD_percent[0])
+                    contra_second_view = batch.batch_graph_pretrain_BD(args.BD_percent[1])
 
                 elif Mode_of_contrastive_learning == 2:
                     # Contrastive_learning_loss is calculated by different version of subgraph deletion SG-SG
@@ -132,14 +132,14 @@ def train(
                     for i, num_atoms in enumerate(number_of_atoms_of_each_mol):
                         center[i] = torch.randint(num_atoms, size=(1,))
 
-                    contra_first_view = batch.batch_graph_pretrain_SG(args.SG_first_percent,center)
-                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_second_percent,center)
+                    contra_first_view = batch.batch_graph_pretrain_SG(args.SG_percent[0],center)
+                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_percent[1],center)
 
 
                 elif Mode_of_contrastive_learning == 3:
                     # Contrastive_learning_loss is calculated by MA-BD
                     contra_first_view = MA_first_view
-                    contra_second_view = batch.batch_graph_pretrain_BD(args.BD_first_percent)
+                    contra_second_view = batch.batch_graph_pretrain_BD(args.BD_percent[0])
 
                 elif Mode_of_contrastive_learning == 4:
                     # Contrastive_learning_loss is calculated by MA-SG
@@ -148,16 +148,16 @@ def train(
 
                     for i, num_atoms in enumerate(number_of_atoms_of_each_mol):
                         center[i] = torch.randint(num_atoms, size=(1,))
-                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_first_percent,center)
+                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_percent[0],center)
 
                 elif Mode_of_contrastive_learning == 5:
                     # Contrastive_learning_loss is calculated by BD-SG
-                    contra_first_view = batch.batch_graph_pretrain_BD(args.BD_first_percent)
+                    contra_first_view = batch.batch_graph_pretrain_BD(args.BD_percent[0])
                     center = torch.zeros(len(number_of_atoms_of_each_mol), dtype=torch.long)
 
                     for i, num_atoms in enumerate(number_of_atoms_of_each_mol):
                         center[i] = torch.randint(num_atoms, size=(1,))
-                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_first_percent,center)
+                    contra_second_view = batch.batch_graph_pretrain_SG(args.SG_percent[0],center)
 
             '''
             First calculate the mask atom prediction (local information prediction task)

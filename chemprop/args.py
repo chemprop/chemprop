@@ -125,7 +125,6 @@ class CommonArgs(Tap):
     Path to constraints applied to atomic/bond properties prediction.
     """
     is_pretrain: bool = False
-
     """
     Whether self supervised pretraining or not
     """
@@ -177,29 +176,20 @@ class CommonArgs(Tap):
     """
     For self supervised pretraining, the trade-off hyperparameter
     """
-    MA_first_percent: float = 0.1
+    MA_percent: List = [0.1, 0.3]
     """
-    For self supervised pretraining, the mask atom percentage for first view 
+    For self supervised pretraining, the mask atom percentage for first and second view, when using triplet loss please 
+    ensure second view has a larger probability
     """
-    MA_second_percent: float = 0.3
+    BD_percent: List = [0.1, 0.3]
     """
-    For self supervised pretraining, the mask atom percentage for second view
+    For self supervised pretraining, the mask bond percentage for first and second view, when using triplet loss please 
+    ensure second view has a larger probability
     """
-    BD_first_percent: float = 0.1
+    SG_percent: List = [0.1, 0.3]
     """
-    For self supervised pretraining, the mask bond percentage for first view 
-    """
-    BD_second_percent: float = 0.3
-    """
-    For self supervised pretraining, the mask bond percentage for second view
-    """
-    SG_first_percent: float = 0.1
-    """
-    For self supervised pretraining, the subgraph deletion percentage for first view 
-    """
-    SG_second_percent: float = 0.3
-    """
-    For self supervised pretraining, the subgraph deletion percentage for second view
+    For self supervised pretraining, the subgraph deletion percentage for first and second view, when using triplet loss please 
+    ensure second view has a larger probability
     """
     pretrain_with_val: bool = False
     """
