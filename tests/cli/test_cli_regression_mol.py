@@ -44,7 +44,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
     assert (tmp_path / "model.pt").exists()
     assert (tmp_path / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "trainer_logs" / "version_0").exists()
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
