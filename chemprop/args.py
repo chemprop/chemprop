@@ -231,7 +231,7 @@ class CommonArgs(Tap):
     """
     Whether to load from a DDP trained model, since it will have module prefix.
     """
-    num_DDP_gpus: int = 1
+    num_DDP_gpus: int = 2
     """
     Record number of gpus used in DDP
     """
@@ -821,7 +821,8 @@ class TrainArgs(CommonArgs):
             elif self.dataset_type == 'regression':
                 self.metric = 'rmse'
             elif self.dataset_type == 'SSL_pretrain':
-                self.metric = 'cross_entropy'
+                self.metric = 'SSL_pretrain_placeholder'
+                print('The SSL pretrain will not have the validation or testing as there is no overfitting for SSL pretrain, so there will be no metrics')
             else:
                 raise ValueError(f'Dataset type {self.dataset_type} is not supported.')
 
@@ -834,7 +835,7 @@ class TrainArgs(CommonArgs):
                         (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']),
                         (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
                         (self.dataset_type == 'spectra' and metric in ['sid', 'wasserstein']),
-                        (self.dataset_type == 'SSL_pretrain' and metric in ['cross_entropy'])]):
+                        (self.dataset_type == 'SSL_pretrain' and metric in ['SSL_pretrain_placeholder'])]):
                 raise ValueError(f'Metric "{metric}" invalid for dataset type "{self.dataset_type}".')
 
         if self.loss_function is None:
@@ -847,8 +848,7 @@ class TrainArgs(CommonArgs):
             elif self.dataset_type == 'regression':
                 self.loss_function = 'mse'
             elif self.dataset_type == 'SSL_pretrain':
-                self.loss_function = 'MA'
-                print('the loss function of SSL_pretrain is not simple one loss function, hyperparameter tuning is available in common args, the loss_function will not be used')
+                print('The loss function of SSL_pretrain can contain three losses at the same time. It is specially designed. The choice of choosing which combination of the loss is controlled by the SSL related args')
             else:
                 raise ValueError(f'Default loss function not configured for dataset type {self.dataset_type}.')
 
