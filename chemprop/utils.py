@@ -16,7 +16,6 @@ import numpy as np
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from tqdm import tqdm
-from scipy.stats.mstats import gmean
 
 from chemprop.args import PredictArgs, TrainArgs, FingerprintArgs
 from chemprop.data import StandardScaler, AtomBondScaler, MoleculeDataset, preprocess_smiles_columns, get_task_names
@@ -918,6 +917,7 @@ def multitask_mean(
     scores: np.ndarray,
     metric: str,
     axis: int = None,
+    ignore_nan_metrics: bool = False,
 ) -> float:
     """
     A function for combining the metric scores across different
@@ -929,7 +929,8 @@ def multitask_mean(
 
     :param scores: The scores from different tasks for a single metric.
     :param metric: The metric used to generate the scores.
-    :axis: The axis along which to take the mean.
+    :param axis: The axis along which to take the mean.
+    :param ignore_nan_metrics: Ignore invalid task metrics (NaNs) when computing average metrics across tasks.
     :return: The combined score across the tasks.
     """
     scale_dependent_metrics = ["rmse", "mae", "mse", "bounded_rmse", "bounded_mae", "bounded_mse"]
@@ -937,11 +938,12 @@ def multitask_mean(
         "auc", "prc-auc", "r2", "accuracy", "cross_entropy",
         "binary_cross_entropy", "sid", "wasserstein", "f1", "mcc",
     ]
+    mean_fn = np.nanmean if ignore_nan_metrics else np.mean
 
     if metric in scale_dependent_metrics:
-        return gmean(scores, axis=axis)
+        return np.exp(mean_fn(np.log(scores), axis=axis))
     elif metric in nonscale_dependent_metrics:
-        return np.mean(scores, axis=axis)
+        return mean_fn(scores, axis=axis)
     else:
         raise NotImplementedError(
             f"The metric used, {metric}, has not been added to the list of\

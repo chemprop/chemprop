@@ -525,7 +525,11 @@ def run_training(args: TrainArgs,
 
     for metric, scores in ensemble_scores.items():
         # Average ensemble score
-        mean_ensemble_test_score = multitask_mean(scores, metric=metric)
+        mean_ensemble_test_score = multitask_mean(
+            scores=scores,
+            metric=metric,
+            ignore_nan_metrics=args.ignore_nan_metrics
+        )
         info(f'Ensemble test {metric} = {mean_ensemble_test_score:.6f}')
 
         # Individual ensemble scores
