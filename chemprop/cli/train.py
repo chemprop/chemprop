@@ -478,8 +478,7 @@ def process_train_args(args: Namespace) -> Namespace:
 def validate_train_args(args):
     pass
 
-
-def main(args):
+def save_config(args: Namespace):
     command_config_path = args.output_dir / "config.json"
     with open(command_config_path, "w") as f:
         config = deepcopy(vars(args))
@@ -487,6 +486,10 @@ def main(args):
             if isinstance(config[key], Path):
                 config[key] = str(config[key])
         json.dump(config, f, indent=4)
+
+
+def main(args):
+    save_config(args)
 
     bond_messages = not args.atom_messages
     bounded = args.loss_function is not None and "bounded" in args.loss_function
