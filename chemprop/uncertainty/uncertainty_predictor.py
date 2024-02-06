@@ -159,7 +159,11 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                     excluded_sub_value=float("nan"),
                 )
             if i == 0:
-                sum_preds = np.array(preds)
+                if model.is_atom_bond_targets:
+                    sum_preds = np.array(preds, dtype=object)
+                else:
+                    sum_preds = np.array(preds)
+
                 if self.individual_ensemble_predictions:
                     if model.is_atom_bond_targets:
                         n_atoms, n_bonds = (
@@ -180,7 +184,11 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                     else:
                         individual_preds = np.expand_dims(np.array(preds), axis=-1)
             else:
-                sum_preds += np.array(preds)
+                if model.is_atom_bond_targets:
+                    sum_preds += np.array(preds, dtype=object)
+                else:
+                    sum_preds += np.array(preds)
+
                 if self.individual_ensemble_predictions:
                     if model.is_atom_bond_targets:
                         for j, pred in enumerate(preds):
