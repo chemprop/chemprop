@@ -61,8 +61,8 @@ class MoleculeDatapoint:
                  bond_targets: List[Optional[float]] = None,
                  row: OrderedDict = None,
                  data_weight: float = None,
-                 gt_targets: List[bool] = None,
-                 lt_targets: List[bool] = None,
+                 gt_targets: List[List[bool]] = None,
+                 lt_targets: List[List[bool]] = None,
                  features: np.ndarray = None,
                  features_generator: List[str] = None,
                  phase_features: List[float] = None,
@@ -139,7 +139,7 @@ class MoleculeDatapoint:
                         # for H2
                         elif m is not None and m.GetNumHeavyAtoms() == 0:
                             # not all features are equally long, so use methane as dummy molecule to determine length
-                            self.features.extend(np.zeros(len(features_generator(Chem.MolFromSmiles('C')))))                           
+                            self.features.extend(np.zeros(len(features_generator(Chem.MolFromSmiles('C')))))
                     else:
                         if m[0] is not None and m[1] is not None and m[0].GetNumHeavyAtoms() > 0:
                             self.features.extend(features_generator(m[0]))
@@ -221,6 +221,14 @@ class MoleculeDatapoint:
         :return: A list of bond types for each molecule.
         """
         return [[b.GetBondTypeAsDouble() for b in self.mol[i].GetBonds()] for i in range(self.number_of_molecules)]
+    @property
+    def max_molwt(self) -> float:
+        """
+        Gets the maximum molecular weight among all the molecules in the :class:`MoleculeDatapoint`.
+
+        :return: The maximum molecular weight.
+        """
+        return max(Chem.rdMolDescriptors.CalcExactMolWt(mol) for mol in self.mol)
 
     def set_features(self, features: np.ndarray) -> None:
         """

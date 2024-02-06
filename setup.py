@@ -8,7 +8,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="chemprop",
-    author="Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld, Allison Tam",
+    author="The Chemprop Development Team (see LICENSE.txt)",
     author_email="chemprop@mit.edu",
     description="Molecular Property Prediction with Message Passing Neural Networks",
     long_description=long_description,
@@ -19,7 +19,6 @@ setup(
         "Documentation": "https://chemprop.readthedocs.io/en/latest/",
         "Source": "https://github.com/chemprop/chemprop",
         "PyPi": "https://pypi.org/project/chemprop/",
-        "Demo": "http://chemprop.csail.mit.edu/",
     },
     license="MIT",
     packages=find_packages(),
@@ -37,7 +36,8 @@ setup(
         ]
     },
     install_requires=[
-        "flask>=1.1.2",
+        "flask>=1.1.2,<=2.1.3",
+        "Werkzeug<3",
         "hyperopt>=0.2.3",
         "matplotlib>=3.1.3",
         "numpy>=1.18.1",
@@ -56,9 +56,8 @@ setup(
         "descriptastorus>=2.6.1 ; python_version=='3.8'",
     ],
     extras_require={"test": ["pytest>=6.2.2", "parameterized>=0.8.1"]},
-    python_requires=">=3.7",
+    python_requires=">=3.7,<3.9",
     classifiers=[
-        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
