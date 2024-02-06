@@ -628,6 +628,8 @@ def main(args):
         spectral_activation=args.spectral_activation,
     )
 
+    scaler, Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = None, None, None, None, None
+
     if isinstance(predictor_ffn, RegressionFFN):
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
