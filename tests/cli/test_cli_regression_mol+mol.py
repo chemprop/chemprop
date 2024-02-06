@@ -32,3 +32,15 @@ def test_predict_quick(monkeypatch, data_path, model_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+def test_train_output_structure(monkeypatch, data_path, tmp_path):
+    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path), "--save-smiles-splits"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model.pt").exists()
+    assert (tmp_path / "chkpts" / "last.ckpt").exists()
+    assert (tmp_path / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "smiles_train.csv").exists()
