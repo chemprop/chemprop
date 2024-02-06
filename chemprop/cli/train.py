@@ -476,9 +476,20 @@ def validate_train_args(args):
     pass
 
 
-def build_splits(args, all_data, format_kwargs, featurization_kwargs):
+def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
+    all_data = build_data_from_files(
+        args.data_path,
+        p_features=args.features_path,
+        p_atom_feats=args.atom_features_path,
+        p_bond_feats=args.bond_features_path,
+        p_atom_descs=args.atom_descriptors_path,
+        **format_kwargs,
+        **featurization_kwargs,
+    )
     multicomponent = len(all_data) > 1
+    if not multicomponent:
+        all_data = all_data[0]
 
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
     if multicomponent:
@@ -527,8 +538,9 @@ def build_splits(args, all_data, format_kwargs, featurization_kwargs):
     return train_data, val_data, test_data
 
 
-def build_datasets(args, multicomponent: bool, train_data, val_data, test_data):
+def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
+    multicomponent = isinstance(train_data[0], list)
     if multicomponent:
         train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
         val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
@@ -648,26 +660,8 @@ def main(args):
         features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    all_data = build_data_from_files(
-        args.data_path,
-        p_features=args.features_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **format_kwargs,
-        **featurization_kwargs,
-    )
-
-    multicomponent = len(all_data) > 1
-    if not multicomponent:
-        all_data = all_data[0]
-
-    train_data, val_data, test_data = build_splits(
-        args, all_data, format_kwargs, featurization_kwargs
-    )
-    train_dset, val_dset, test_dset = build_datasets(
-        args, multicomponent, train_data, val_data, test_data
-    )
+    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
+    train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
     if args.task_type == "regression":
         scaler = train_dset.normalize_targets()
