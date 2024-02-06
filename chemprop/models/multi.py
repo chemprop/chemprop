@@ -66,3 +66,28 @@ class MulticomponentMPNN(MPNN):
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
+
+    @classmethod
+    def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
+        d = torch.load(model_path, map_location=map_location)
+
+        try:
+            hparams = d["hyper_parameters"]
+            state_dict = d["state_dict"]
+        except KeyError:
+            raise KeyError(f"Could not find hyper parameters and/or state dict in {model_path}. ")
+
+        for key in ["message_passing", "agg", "predictor"]:
+            hparam_kwargs = hparams[key]
+            if key == "message_passing":
+                hparam_kwargs["blocks"] = [
+                    block_hparams.pop("cls")(**block_hparams)
+                    for block_hparams in hparam_kwargs["blocks"]
+                ]
+            hparam_cls = hparam_kwargs.pop("cls")
+            hparams[key] = hparam_cls(**hparam_kwargs)
+
+        model = cls(**hparams)
+        model.load_state_dict(state_dict, strict=strict)
+
+        return model

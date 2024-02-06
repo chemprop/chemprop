@@ -17,9 +17,15 @@ from chemprop.data import (MoleculeDatapoint, MoleculeDataset,
 from chemprop.models import multi
 
 N_COMPONENTS = 2
-pytestmark = pytest.mark.parametrize(
-    "mcmpnn", [(nn.BondMessagePassing(), N_COMPONENTS), (nn.AtomMessagePassing(), N_COMPONENTS)], indirect=True
-)
+pytestmark = [
+    pytest.mark.parametrize(
+        "mcmpnn",
+        [(nn.BondMessagePassing(), N_COMPONENTS), (nn.AtomMessagePassing(), N_COMPONENTS)],
+        indirect=True,
+    ),
+    pytest.mark.integration,
+]
+
 
 @pytest.fixture
 def datas(mol_mol_regression_data):
