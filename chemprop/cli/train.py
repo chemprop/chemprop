@@ -475,6 +475,43 @@ def validate_train_args(args):
     pass
 
 
+def normalize_inputs(multicomponent, train_dset, val_dset, args):
+    Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = None, None, None, None
+
+    if multicomponent:
+        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        d_vf = sum(dset.d_vf for dset in train_dset.datasets)
+        d_ef = sum(dset.d_ef for dset in train_dset.datasets)
+        d_vd = sum(dset.d_vd for dset in train_dset.datasets)
+    else:
+        d_xf = train_dset.d_xf
+        d_vf = train_dset.d_vf
+        d_ef = train_dset.d_ef
+        d_vd = train_dset.d_vd
+
+    if d_xf > 0 and not args.no_features_scaling:
+        Xf_scaler = train_dset.normalize_inputs("X_f")
+        val_dset.normalize_inputs("X_f", Xf_scaler)
+        logger.info(f"Features: loc = {Xf_scaler.mean_}, scale = {Xf_scaler.scale_}")
+
+    if d_vf > 0 and not args.no_atom_features_scaling:
+        V_f_scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_fs", V_f_scaler)
+        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+
+    if d_ef > 0 and not args.no_bond_features_scaling:
+        E_f_scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_fs", E_f_scaler)
+        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+
+    if d_vd > 0 and not args.no_atom_descriptors_scaling:
+        V_ds_scalers = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_ds", V_ds_scalers)
+        logger.info(f"Atom descriptors: loc = {V_ds_scalers.mean_}, scale = {V_ds_scalers.scale_}")
+
+    return Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers
+
+
 def main(args):
     bond_messages = not args.atom_messages
     bounded = args.loss_function is not None and "bounded" in args.loss_function
@@ -628,36 +665,16 @@ def main(args):
         spectral_activation=args.spectral_activation,
     )
 
-    scaler, Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = None, None, None, None, None
-
     if isinstance(predictor_ffn, RegressionFFN):
         scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(scaler)
         logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
-
-        if train_dset.d_xf > 0 and not args.no_features_scaling:
-            Xf_scaler = train_dset.normalize_inputs("X_f")
-            val_dset.normalize_inputs("X_f", Xf_scaler)
-            logger.info(f"Features: loc = {Xf_scaler.mean_}, scale = {Xf_scaler.scale_}")
-
-        if train_dset.d_vf > 0 and not args.no_atom_features_scaling:
-            V_f_scaler = train_dset.normalize_inputs("V_f")
-            val_dset.normalize_inputs("V_fs", V_f_scaler)
-            logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
-
-        if train_dset.d_ef > 0 and not args.no_bond_features_scaling:
-            E_f_scaler = train_dset.normalize_inputs("E_f")
-            val_dset.normalize_inputs("E_fs", E_f_scaler)
-            logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
-
-        if train_dset.d_vd > 0 and not args.no_atom_descriptors_scaling:
-            V_ds_scalers = train_dset.normalize_inputs("V_d")
-            val_dset.normalize_inputs("V_ds", V_ds_scalers)
-            logger.info(f"Atom descriptors: loc = {V_ds_scalers.mean_}, scale = {V_ds_scalers.scale_}")
-
-        
     else:
         scaler = None
+
+    Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = normalize_inputs(
+        multicomponent, train_dset, val_dset, args
+    )
 
     train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
     val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
@@ -726,12 +743,7 @@ def main(args):
         logger.info(f"Test results: {results}")
 
     p_model = args.output_dir / "model.pt"
-    input_scalers = {
-        "X_f": Xf_scaler,
-        "V_fs": V_f_scaler,
-        "E_fs": E_f_scaler,
-        "V_ds": V_ds_scalers,
-    }
+    input_scalers = {"X_f": Xf_scaler, "V_fs": V_f_scaler, "E_fs": E_f_scaler, "V_ds": V_ds_scalers}
     output_scaler = scaler
     save_model(p_model, model, input_scalers, output_scaler)
     logger.info(f"Model saved to '{p_model}'")
