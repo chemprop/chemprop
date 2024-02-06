@@ -1,29 +1,37 @@
-![ChemProp Logo](docs/source/_static/images/chemprop_logo.svg)
-# Molecular Property Prediction
+![ChemProp Logo](logo/chemprop_logo.svg)
+# Chemprop
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)
 [![PyPI version](https://badge.fury.io/py/chemprop.svg)](https://badge.fury.io/py/chemprop)
 [![Build Status](https://github.com/chemprop/chemprop/workflows/tests/badge.svg)](https://github.com/chemprop/chemprop)
 
-This repository contains message passing neural networks for molecular property prediction as initially described in the paper [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) and as used in the paper [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1) for molecules and [Machine Learning of Reaction Properties via Learned Representations of the Condensed Graph of Reaction](https://doi.org/10.1021/acs.jcim.1c00975) for reactions. Chemprop now also has its own dedicated manuscript: [Chemprop: Machine Learning Package for Chemical Property Prediction](https://doi.org/10.26434/chemrxiv-2023-3zcfl). Please cite us if Chemprop is helpful to your research.
+Chemprop is a repository containing message passing neural networks for molecular property prediction.
 
-**Documentation:** Full documentation of Chemprop is available at https://chemprop.readthedocs.io/en/latest/.
+**License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CCO 1.0](logo/LICENSE.txt).
 
-**Website:** A web prediction interface with some trained Chemprop models is available at [chemprop.csail.mit.edu](http://chemprop.csail.mit.edu).
+**References**: Please cite the appropriate papers if Chemprop is helpful to your research.
 
-**Tutorial:** These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a Chemprop tutorial and highlight recent additions as of April 28th, 2020.
+- Chemprop was initially described in the papers [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) for molecules and [Machine Learning of Reaction Properties via Learned Representations of the Condensed Graph of Reaction](https://doi.org/10.1021/acs.jcim.1c00975) for reactions.
+- The interpretation functionality is based on the paper [Multi-Objective Molecule Generation using Interpretable Substructures](https://arxiv.org/abs/2002.03244).
+- Chemprop now has its own dedicated manuscript that describes and benchmarks it in more detail: [Chemprop: A Machine Learning Package for Chemical Property Prediction](https://doi.org/10.1021/acs.jcim.3c01250).
 
-## COVID-19 Update
+**Selected Applications**: Chemprop has been successfully used in the following works.
 
-Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data GitHub repo](https://github.com/yangkevin2/coronavirus_data) for information about our recent efforts to use Chemprop to identify drug candidates for treating COVID-19.
+- [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1) - _Cell_ (2020): Chemprop was used to predict antibiotic activity against _E. coli_, leading to the discovery of [Halicin](https://en.wikipedia.org/wiki/Halicin), a novel antibiotic candidate. Model checkpoints are availabile on [Zenodo](https://doi.org/10.5281/zenodo.6527882).
+- [Discovery of a structural class of antibiotics with explainable deep learning](https://www.nature.com/articles/s41586-023-06887-8) - _Nature_ (2023): Identified a structural class of antibiotics selective against methicillin-resistant _S. aureus_ (MRSA) and vancomycin-resistant enterococci using ensembles of Chemprop models, and explained results using Chemprop's interpret method.
+- [ADMET-AI: A machine learning ADMET platform for evaluation of large-scale chemical libraries](https://www.biorxiv.org/content/10.1101/2023.12.28.573531v1): Chemprop was trained on 41 absorption, distribution, metabolism, excretion, and toxicity (ADMET) datasets from the [Therapeutics Data Commons](https://tdcommons.ai). The Chemprop models in ADMET-AI are available both as a web server at [admet.ai.greenstonebio.com](https://admet.ai.greenstonebio.com) and as a Python package at [github.com/swansonk14/admet_ai](https://github.com/swansonk14/admet_ai). 
+- A more extensive list of successful Chemprop applications is given in our [2023 paper](https://doi.org/10.1021/acs.jcim.3c01250)
 
 ## Table of Contents
 
+- [Documentation](#documentation)
+- [Tutorials and Examples](#tutorials-and-examples)
 - [Requirements](#requirements)
 - [Installation](#installation)
   * [Option 1: Installing from PyPi](#option-1-installing-from-pypi)
   * [Option 2: Installing from source](#option-2-installing-from-source)
   * [Docker](#docker)
+- [Known Issues](#known-issues)
 - [Web Interface](#web-interface)
 - [Within Python](#within-python)
 - [Data](#data)
@@ -58,6 +66,21 @@ Please see [aicures.mit.edu](https://aicures.mit.edu) and the associated [data G
 - [Interpreting Model Prediction](#interpreting)
 - [TensorBoard](#tensorboard)
 - [Results](#results)
+
+## Documentation
+
+* Documentation of Chemprop is available at https://chemprop.readthedocs.io/en/latest/. Note that this site is several versions behind. An up-to-date version of Read the Docs is forthcoming with the release of Chemprop v2.0.
+* This README is currently the best source for documentation on more recently-added features.
+* Please also see descriptions of all the possible command line arguments in our [`args.py`](https://github.com/chemprop/chemprop/blob/master/chemprop/args.py) file.
+
+## Tutorials and Examples
+
+* [Benchmark scripts](https://github.com/chemprop/chemprop_benchmark) - scripts from our 2023 paper, providing examples of many features using Chemprop v1.6.1
+* [ACS Fall 2023 Workshop](https://github.com/chemprop/chemprop-workshop-acs-fall2023) - presentation, interactive demo, exercises on Google Colab with solution key
+* [Google Colab notebook](https://colab.research.google.com/github/chemprop/chemprop/blob/master/colab_demo.ipynb) - several examples, intended to be run in Google Colab rather than as a Jupyter notebook on your local machine
+* [nanoHUB tool](https://nanohub.org/resources/chempropdemo/) - a notebook of examples similar to the Colab notebook above, doesn't require any installation
+  * [YouTube video](https://www.youtube.com/watch?v=TeOl5E8Wo2M) - lecture accompanying nanoHUB tool
+* These [slides](https://docs.google.com/presentation/d/14pbd9LTXzfPSJHyXYkfLxnK8Q80LhVnjImg8a3WqCRM/edit?usp=sharing) provide a Chemprop tutorial and highlight additions as of April 28th, 2020
 
 ## Requirements
 
@@ -108,11 +131,13 @@ In addition, you will also need to ensure that the CUDA toolkit version in the D
 Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions.
 To set a specific CUDA toolkit version, add `cudatoolkit=X.Y` to `environment.yml` before building the Docker image.
 
+## Known Issues
+
+As we approach the upcoming release of Chemprop v2.0, we have closed [several issues](https://github.com/chemprop/chemprop/issues?q=label%3Av1-wontfix+) corresponding to bugs that we don't plan to fix before the final release of v1 (v1.7). We will be discontinuing support for v1 once v2 is released, but we still appreciate bug reports and will tag them as [`v1-wontfix`](https://github.com/chemprop/chemprop/issues?q=label%3Av1-wontfix+) so the community can find them easily.
+
 ## Web Interface
 
-For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. An example of the website (in demo mode with training disabled) is available here: [chemprop.csail.mit.edu](http://chemprop.csail.mit.edu/).
-
-You can start the web interface on your local machine in two ways. Flask is used for development mode while gunicorn is used for production mode.
+For those less familiar with the command line, Chemprop also includes a web interface which allows for basic training and predicting. You can start the web interface on your local machine in two ways. Flask is used for development mode while gunicorn is used for production mode.
 
 ### Flask
 
@@ -212,7 +237,7 @@ The regression loss functions `mve` and `evidential` function by minimizing the 
 
 Metrics are used to evaluate the success of the model against the test set as the final model score and to determine the optimal epoch to save the model at based on the validation set. The primary metric used for both purposes is selected with the argument `--metric <metric>` and additional metrics for test set score only can be added with `--extra_metrics <metric1> <metric2> ...`. Supported metrics are dependent on the dataset type. Unlike loss functions, metrics do not have to be differentiable.
 * **Regression.** rmse (default), mae, mse, r2, bounded_rmse, bounded_mae, bounded_mse (default if bounded_mse is loss function).
-* **Classification.** auc (default), prc-auc, accuracy, binary_cross_entropy, f1, mcc.
+* **Classification.** auc (default), prc-auc, accuracy, binary_cross_entropy, f1, mcc, recall, precision and balanced accuracy.
 * **Multiclass.** cross_entropy (default), accuracy, f1, mcc.
 * **Spectra.** sid (default), wasserstein.
 

@@ -160,7 +160,7 @@ def predict(
             preds.append(batch_preds)
             if model.loss_function == "mve":
                 var.append(batch_vars)
-            elif model.loss_function == "dirichlet" and model.classification:
+            elif model.loss_function == "dirichlet":
                 alphas.append(batch_alphas)
             elif model.loss_function == "evidential":  # regression
                 lambdas.append(batch_lambdas)
@@ -203,7 +203,7 @@ def predict(
             preds.extend(batch_preds)
             if model.loss_function == "mve":
                 var.extend(batch_var.tolist())
-            elif model.loss_function == "dirichlet" and model.classification:
+            elif model.loss_function == "dirichlet":
                 alphas.extend(batch_alphas.tolist())
             elif model.loss_function == "evidential":  # regression
                 lambdas.extend(batch_lambdas.tolist())
