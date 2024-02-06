@@ -510,6 +510,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
+        if not multicomponent:
+            test_data = test_data[0]
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
@@ -520,6 +522,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 **format_kwargs,
                 **featurization_kwargs,
             )
+            if not multicomponent:
+                val_data = val_data[0]
             train_data = all_data
         else:
             train_data, val_data, _ = split_fn(all_data, args.split, **split_kwargs)
@@ -629,7 +633,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
     if args.loss_function is None:
         logger.info(
-            f"No loss function was specified! Using class default: {predictor_cls.criterion}"
+            f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
         )
 
     return mpnn_cls(
