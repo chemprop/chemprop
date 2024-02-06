@@ -487,6 +487,21 @@ def save_config(args: Namespace):
                 config[key] = str(config[key])
         json.dump(config, f, indent=4)
 
+def save_smiles_splits(args: Namespace, train_dset, val_dset, test_dset):
+    train_smis = train_dset.smiles
+    val_smis = val_dset.smiles
+    if test_dset is not None:
+        test_smis = test_dset.smiles
+    else:
+        test_smis = []
+    
+    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+    df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+
+    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+    df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
 def main(args):
     save_config(args)
@@ -566,25 +581,6 @@ def main(args):
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
-    
-    if args.save_smiles_splits:
-        if multicomponent:
-            train_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in train_data]
-            val_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in val_data]
-            test_smis = [[Chem.MolToSmiles(data.mol) for data in dset] for dset in test_data]
-
-        else:
-            train_smis = [Chem.MolToSmiles(data.mol) for data in train_data]
-            val_smis = [Chem.MolToSmiles(data.mol) for data in val_data]
-            test_smis = [Chem.MolToSmiles(data.mol) for data in test_data]
-
-        df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
-        df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
-        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
-
-        df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
-        df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
-        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
     if multicomponent:
         logger.info(
@@ -624,6 +620,10 @@ def main(args):
         else:
             test_dset = None
             test_loader = None
+
+    if args.save_smiles_splits:
+        save_smiles_splits(args, train_dset, val_dset, test_dset)
+
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     if multicomponent:
         mp_blocks = [
