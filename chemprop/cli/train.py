@@ -2,6 +2,10 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+import json
+from copy import deepcopy
+import pandas as pd
+from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -447,11 +451,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
-    # split_args.add_argument(
-    #     "--save-smiles-splits",
-    #     action="store_true",
-    #     help="Save smiles for each train/val/test splits for prediction convenience later.",
-    # )
+    split_args.add_argument(
+        "--save-smiles-splits",
+        action="store_true",
+        help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
 
     parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
@@ -474,6 +478,31 @@ def process_train_args(args: Namespace) -> Namespace:
 
 def validate_train_args(args):
     pass
+
+
+def save_config(args: Namespace):
+    command_config_path = args.output_dir / "config.json"
+    with open(command_config_path, "w") as f:
+        config = deepcopy(vars(args))
+        for key in config:
+            if isinstance(config[key], Path):
+                config[key] = str(config[key])
+        json.dump(config, f, indent=4)
+
+
+def save_smiles_splits(args: Namespace, train_dset, val_dset, test_dset):
+    train_smis = train_dset.smiles
+    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+
+    val_smis = val_dset.smiles
+    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+
+    if test_dset is not None:
+        test_smis = test_dset.smiles
+        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
 
 def build_splits(args, format_kwargs, featurization_kwargs):
@@ -574,6 +603,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             )
             for i in range(train_dset.n_components)
         ]
+        if args.mpn_shared:
+            if args.reaction_columns is not None and args.smiles_columns is not None:
+                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+
         mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
         # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
         # if args.mpn_shared:
@@ -642,6 +675,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
 
 def main(args):
+    save_config(args)
+
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
@@ -657,6 +692,9 @@ def main(args):
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+
+    if args.save_smiles_splits:
+        save_smiles_splits(args, train_dset, val_dset, test_dset)
 
     if args.task_type == "regression":
         scaler = train_dset.normalize_targets()

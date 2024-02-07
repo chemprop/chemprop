@@ -187,9 +187,7 @@ def build_data_from_files(
         smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs
     )
 
-    # NOTE: return only a single component for now with a preference for rxns
-    data = rxn_data if len(rxn_data) > 0 else mol_data
-    return data
+    return mol_data + rxn_data
 
 
 def make_dataset(
