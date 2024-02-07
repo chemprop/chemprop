@@ -9,7 +9,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
-from chemprop.data import SplitType, split_monocomponent, split_multicomponent
+from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -488,18 +488,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **featurization_kwargs,
     )
     multicomponent = len(all_data) > 1
-    if not multicomponent:
-        all_data = all_data[0]
 
     split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
-    if multicomponent:
-        split_fn = split_multicomponent
-        split_kwargs["key_index"] = args.split_key_molecule
-    else:
-        split_fn = split_monocomponent
+    split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
     if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_fn(all_data, args.split, **split_kwargs)
+        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
     elif args.separate_test_path is not None:
         test_data = build_data_from_files(
             args.separate_test_path,
@@ -510,8 +504,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
-        if not multicomponent:
-            test_data = test_data[0]
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
@@ -522,20 +514,15 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 **format_kwargs,
                 **featurization_kwargs,
             )
-            if not multicomponent:
-                val_data = val_data[0]
             train_data = all_data
         else:
-            train_data, val_data, _ = split_fn(all_data, args.split, **split_kwargs)
+            train_data, val_data, _ = split_component(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
             argument=None, message="'val_path' must be specified if 'test_path' is provided!"
         )  # TODO: In v1 this wasn't the case?
 
-    if multicomponent:
-        sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
-    else:
-        sizes = [len(train_data), len(val_data), len(test_data)]
+    sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
 
     logger.info(f"train/val/test sizes: {sizes}")
 
@@ -544,7 +531,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
-    multicomponent = isinstance(train_data[0], list)
+    multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
         val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
@@ -556,6 +543,10 @@ def build_datasets(args, train_data, val_data, test_data):
         else:
             test_dset = None
     else:
+        train_data = train_data[0]
+        val_data = val_data[0]
+        test_data = test_data[0]
+
         train_dset = make_dataset(train_data, args.rxn_mode)
         val_dset = make_dataset(val_data, args.rxn_mode)
         if len(test_data) > 0:
@@ -715,7 +706,7 @@ def main(args):
         logger.info(f"Test results: {results}")
 
     p_model = args.output_dir / "model.pt"
-    input_scalers = [] # TODO: we should add descriptor scalers here
+    input_scalers = []  # TODO: we should add descriptor scalers here
     output_scaler = scaler
     save_model(p_model, model, input_scalers, output_scaler)
     logger.info(f"Model saved to '{p_model}'")

@@ -9,4 +9,4 @@ from .datasets import (
     MolGraphDataset,
 )
 from .samplers import ClassBalanceSampler, SeededSampler
-from .splitting import split_monocomponent, split_multicomponent, SplitType
+from .splitting import split_component, SplitType
