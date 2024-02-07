@@ -489,19 +489,17 @@ def save_config(args: Namespace):
 
 def save_smiles_splits(args: Namespace, train_dset, val_dset, test_dset):
     train_smis = train_dset.smiles
+    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+
     val_smis = val_dset.smiles
+    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+
     if test_dset is not None:
         test_smis = test_dset.smiles
-    else:
-        test_smis = []
-    
-    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
-    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
-    df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
-
-    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
-    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
-    df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
+        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
 def main(args):
     save_config(args)
