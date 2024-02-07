@@ -2,6 +2,10 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+import json
+from copy import deepcopy
+import pandas as pd
+from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -449,11 +453,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
     )
-    # split_args.add_argument(
-    #     "--save-smiles-splits",
-    #     action="store_true",
-    #     help="Save smiles for each train/val/test splits for prediction convenience later.",
-    # )
+    split_args.add_argument(
+        "--save-smiles-splits",
+        action="store_true",
+        help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
 
     parser.add_argument(  # TODO: do we need this?
         "--pytorch-seed",
@@ -477,8 +481,32 @@ def process_train_args(args: Namespace) -> Namespace:
 def validate_train_args(args):
     pass
 
+def save_config(args: Namespace):
+    command_config_path = args.output_dir / "config.json"
+    with open(command_config_path, "w") as f:
+        config = deepcopy(vars(args))
+        for key in config:
+            if isinstance(config[key], Path):
+                config[key] = str(config[key])
+        json.dump(config, f, indent=4)
+
+def save_smiles_splits(args: Namespace, train_dset, val_dset, test_dset):
+    train_smis = train_dset.smiles
+    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+
+    val_smis = val_dset.smiles
+    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+
+    if test_dset is not None:
+        test_smis = test_dset.smiles
+        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
 
 def main(args):
+    save_config(args)
+
     bond_messages = not args.atom_messages
     bounded = args.loss_function is not None and "bounded" in args.loss_function
 
@@ -573,6 +601,32 @@ def main(args):
         train_dset = make_dataset(train_data, args.rxn_mode)
         val_dset = make_dataset(val_data, args.rxn_mode)
 
+    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+
+    if multicomponent:
+        if len(test_data[0]) > 0:
+            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dset = data.MulticomponentDataset(test_dsets)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_dset = None
+            test_loader = None
+    else:
+        if len(test_data) > 0:
+            test_dset = make_dataset(test_data, args.rxn_mode)
+            test_loader = data.MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_dset = None
+            test_loader = None
+
+    if args.save_smiles_splits:
+        save_smiles_splits(args, train_dset, val_dset, test_dset)
+
     mp_cls = BondMessagePassing if bond_messages else AtomMessagePassing
     if multicomponent:
         mp_blocks = [
@@ -589,6 +643,9 @@ def main(args):
             for i in range(n_components)
         ]
         if args.mpn_shared:
+            if args.reaction_columns is not None and args.smiles_columns is not None:
+                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+            
             mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         else:
             mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
@@ -639,27 +696,6 @@ def main(args):
         logger.info(f"Train data: loc = {scaler.mean_}, scale = {scaler.scale_}")
     else:
         scaler = None
-
-    train_loader = data.MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-    val_loader = data.MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-
-    if multicomponent:
-        if len(test_data[0]) > 0:
-            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
-            test_dset = data.MulticomponentDataset(test_dsets)
-            test_loader = data.MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
-    else:
-        if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode)
-            test_loader = data.MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
 
     mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
     model = mpnn_cls(
