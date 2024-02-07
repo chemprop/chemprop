@@ -602,14 +602,7 @@ def main(args):
                     )
                     for i in range(n_components)
                 ]
-                if args.mpn_shared:
-                    mp_block = MulticomponentMessagePassing(
-                        mp_blocks[0], n_components, args.mpn_shared
-                    )
-                else:
-                    mp_block = MulticomponentMessagePassing(
-                        mp_blocks, n_components, args.mpn_shared
-                    )
+                mp_block = MulticomponentMessagePassing(mp_blocks, n_components, args.mpn_shared)
             else:
                 mp_block = mp_cls(
                     train_dset.featurizer.atom_fdim,
