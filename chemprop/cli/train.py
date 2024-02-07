@@ -458,6 +458,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Seed for PyTorch randomness (e.g., random initial weights).",
     )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=None,
+        help="Number of epochs to wait for improvement before early stopping.",
+    )
 
     return parser
 
@@ -711,7 +717,8 @@ def main(args):
                 save_last=True,
             )
 
-            early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
+            patience = args.patience if args.patience is not None else args.epochs
+            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
             trainer = pl.Trainer(
                 logger=tb_logger,
