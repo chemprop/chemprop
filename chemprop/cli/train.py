@@ -663,22 +663,21 @@ def main(args):
             )
 
             if multicomponent:
-                if len(test_data[0]) > 0:
+                has_test_data = len(test_data[0]) > 0
+                if has_test_data:
                     test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data[fold_idx]]
                     test_dset = data.MulticomponentDataset(test_dsets)
-                    test_loader = data.MolGraphDataLoader(
-                        test_dset, args.batch_size, args.num_workers, shuffle=False
-                    )
-                else:
-                    test_loader = None
             else:
-                if len(test_data) > 0:
+                has_test_data = len(test_data) > 0
+                if has_test_data:
                     test_dset = make_dataset(test_data[fold_idx], args.rxn_mode)
-                    test_loader = data.MolGraphDataLoader(
-                        test_dset, args.batch_size, args.num_workers, shuffle=False
-                    )
-                else:
-                    test_loader = None
+
+            if has_test_data:
+                test_loader = data.MolGraphDataLoader(
+                    test_dset, args.batch_size, args.num_workers, shuffle=False
+                )
+            else:
+                test_loader = None
 
             mpnn_cls = MulticomponentMPNN if multicomponent else MPNN
             model = mpnn_cls(
