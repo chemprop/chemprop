@@ -720,6 +720,7 @@ def main(args):
             output_dir = args.output_dir
         else:
             output_dir = args.output_dir / f"fold_{fold_idx}"
+            output_dir.mkdir(exist_ok=True, parents=True)
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
