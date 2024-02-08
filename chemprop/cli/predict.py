@@ -206,6 +206,20 @@ def main(args):
         test_dset = data.MulticomponentDataset(test_dsets)
     else:
         test_dset = test_dsets[0]
+    
+    X_f_scaler = input_scalers.get("X_f", None)
+    V_f_scaler = input_scalers.get("V_f", None)
+    E_f_scaler = input_scalers.get("E_f", None)
+    V_d_scaler = input_scalers.get("V_d", None)
+
+    if X_f_scaler is not None:
+        test_dset.normalize_inputs("X_f", X_f_scaler)
+    if V_f_scaler is not None:
+        test_dset.normalize_inputs("V_f", V_f_scaler)
+    if E_f_scaler is not None:
+        test_dset.normalize_inputs("E_f", E_f_scaler)
+    if V_d_scaler is not None:
+        test_dset.normalize_inputs("V_d", V_d_scaler)
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
