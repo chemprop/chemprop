@@ -707,7 +707,7 @@ def main(args):
     else:
         splits = (train_data, val_data, test_data)
 
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(train_datas, val_datas, test_datas)):
+    for fold_idx, (train_data, val_data, test_data) in enumerate(splits):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
