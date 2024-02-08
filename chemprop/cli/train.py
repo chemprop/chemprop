@@ -12,7 +12,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
+from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset, ReactionDataset
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
@@ -485,9 +485,9 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xf = sum(dset.d_xf for dset in train_dset.datasets)
-        d_vf = sum(dset.d_vf for dset in train_dset.datasets)
-        d_ef = sum(dset.d_ef for dset in train_dset.datasets)
-        d_vd = sum(dset.d_vd for dset in train_dset.datasets)
+        d_vf = sum(0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets)
+        d_ef = sum(0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets)
+        d_vd = sum(0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets)
     else:
         d_xf = train_dset.d_xf
         d_vf = train_dset.d_vf
