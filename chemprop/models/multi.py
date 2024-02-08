@@ -38,7 +38,10 @@ class MulticomponentMPNN(MPNN):
         self.message_passing: MulticomponentMessagePassing
 
     def fingerprint(
-        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor], X_f: Tensor | None = None
+        self,
+        bmgs: Iterable[BatchMolGraph],
+        V_ds: Iterable[Tensor | None],
+        X_f: Tensor | None = None,
     ) -> Tensor:
         H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
         Hs = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]

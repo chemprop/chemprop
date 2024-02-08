@@ -338,6 +338,10 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     def __len__(self) -> int:
         return len(self.datasets[0])
 
+    @property
+    def n_components(self) -> int:
+        return len(self.datasets)
+    
     def __getitem__(self, idx: int) -> list[Datum]:
         return [dset[idx] for dset in self.datasets]
 
