@@ -701,15 +701,11 @@ def main(args):
 
     no_cv = args.num_folds == 1
     if no_cv:
-        train_datas = [train_data]
-        val_datas = [val_data]
-        test_datas = [test_data]
+        splits = ([train_data], [val_data], [test_data])
     else:
-        train_datas = train_data
-        val_datas = val_data
-        test_datas = test_data
+        splits = (train_data, val_data, test_data)
 
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(train_datas, val_datas, test_datas)):
+    for fold_idx, (train_data, val_data, test_data) in enumerate(splits):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
