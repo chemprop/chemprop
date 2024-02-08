@@ -11,7 +11,13 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "mol.csv")
+    return (
+        str(data_dir / "regression" / "mol" / "mol.csv"),
+        str(data_dir / "regression" / "mol" / "features.npz"),
+        str(data_dir / "regression" / "mol" / "atom_features.npz"),
+        str(data_dir / "regression" / "mol" / "bond_features.npz"),
+        str(data_dir / "regression" / "mol" / "atom_descriptors.npz"),
+    )
 
 
 @pytest.fixture
@@ -20,7 +26,26 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0"]
+    input_path, features_path, atom_features_path, bond_features_path, atom_descriptors_path = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--features-path",
+        features_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
