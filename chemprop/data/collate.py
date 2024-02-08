@@ -96,7 +96,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
 class MulticomponentTrainingBatch(NamedTuple):
     bmgs: list[BatchMolGraph]
-    V_ds: list[Tensor]
+    V_ds: list[Tensor | None]
     X_f: Tensor | None
     Y: Tensor | None
     w: Tensor
