@@ -734,7 +734,7 @@ def main(args):
         save_smiles_splits(args, train_dset, val_dset, test_dset)
 
     Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = normalize_inputs(
-        multicomponent, train_dset, val_dset, args
+        train_dset, val_dset, args
     )
     
     if args.task_type == "regression":
