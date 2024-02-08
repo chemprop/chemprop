@@ -481,7 +481,7 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = None, None, None, None
+    X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xf = sum(dset.d_xf for dset in train_dset.datasets)
@@ -495,9 +495,9 @@ def normalize_inputs(train_dset, val_dset, args):
         d_vd = train_dset.d_vd
 
     if d_xf > 0 and not args.no_features_scaling:
-        Xf_scaler = train_dset.normalize_inputs("X_f")
-        val_dset.normalize_inputs("X_f", Xf_scaler)
-        logger.info(f"Features: loc = {Xf_scaler.mean_}, scale = {Xf_scaler.scale_}")
+        X_f_scaler = train_dset.normalize_inputs("X_f")
+        val_dset.normalize_inputs("X_f", X_f_scaler)
+        logger.info(f"Features: loc = {X_f_scaler.mean_}, scale = {X_f_scaler.scale_}")
 
     if d_vf > 0 and not args.no_atom_features_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
@@ -506,15 +506,15 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_ef > 0 and not args.no_bond_features_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
-        val_dset.normalize_inputs("E_fs", E_f_scaler)
+        val_dset.normalize_inputs("E_f", E_f_scaler)
         logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
 
     if d_vd > 0 and not args.no_atom_descriptors_scaling:
-        V_ds_scalers = train_dset.normalize_inputs("V_d")
-        val_dset.normalize_inputs("V_ds", V_ds_scalers)
-        logger.info(f"Atom descriptors: loc = {V_ds_scalers.mean_}, scale = {V_ds_scalers.scale_}")
+        V_d_scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", V_d_scaler)
+        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
 
-    return Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers
+    return X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
 def save_config(args: Namespace):
@@ -733,7 +733,7 @@ def main(args):
     if args.save_smiles_splits:
         save_smiles_splits(args, train_dset, val_dset, test_dset)
 
-    Xf_scaler, V_f_scaler, E_f_scaler, V_ds_scalers = normalize_inputs(
+    X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
         train_dset, val_dset, args
     )
     
@@ -785,7 +785,7 @@ def main(args):
         logger.info(f"Test results: {results}")
 
     p_model = args.output_dir / "model.pt"
-    input_scalers = {"X_f": Xf_scaler, "V_fs": V_f_scaler, "E_fs": E_f_scaler, "V_ds": V_ds_scalers}
+    input_scalers = {"X_f": X_f_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
     output_scaler = scaler
     save_model(p_model, model, input_scalers, output_scaler)
     logger.info(f"Model saved to '{p_model}'")
