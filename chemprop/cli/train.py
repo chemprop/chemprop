@@ -705,9 +705,7 @@ def main(args):
         val_datas = [val_data]
         test_datas = [test_data]
     else:
-        train_datas = train_data
-        val_datas = val_data
-        test_datas = test_data
+        splits = (train_data, val_data, test_data)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(train_datas, val_datas, test_datas)):
 
