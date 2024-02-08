@@ -87,9 +87,10 @@ def split_data(
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
-            if (max_folds := len(datapoints)) < num_folds or num_folds <= 1:
+            if not (2 <= num_folds <= len(datapoints)):
+                min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
                 raise ValueError(
-                    f"Number of folds for cross-validation must be between 2 and {max_folds} (length of data) inclusive (got {num_folds})."
+                    f"invalid number of folds requested! got: {num_folds}, but expected between {min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, for split type: {repr(split)}"
                 )
 
             # returns nested lists of indices
