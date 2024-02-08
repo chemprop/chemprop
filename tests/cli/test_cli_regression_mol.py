@@ -56,7 +56,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
     assert (tmp_path / "model.pt").exists()
     assert (tmp_path / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "tb_logs" / "lightning_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
 
 
@@ -85,7 +85,7 @@ def test_train_output_structure_cv(monkeypatch, data_path, tmp_path):
 
     assert (tmp_path / "fold_2" / "model.pt").exists()
     assert (tmp_path / "fold_2" / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "fold_2" / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "fold_2" / "tb_logs" / "lightning_logs" / "version_0").exists()
     assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
 
 
