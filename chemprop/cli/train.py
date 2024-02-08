@@ -701,9 +701,7 @@ def main(args):
 
     no_cv = args.num_folds == 1
     if no_cv:
-        train_datas = [train_data]
-        val_datas = [val_data]
-        test_datas = [test_data]
+        splits = ([train_data], [val_data], [test_data])
     else:
         splits = (train_data, val_data, test_data)
 
