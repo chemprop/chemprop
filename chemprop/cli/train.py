@@ -607,9 +607,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
-                criterion=criterion,
-                n_classes=args.multiclass_num_classes,
-                spectral_activation=args.spectral_activation,
             )
             for i in range(train_dset.n_components)
         ]
