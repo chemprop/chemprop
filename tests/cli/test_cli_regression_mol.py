@@ -36,7 +36,7 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path)]
+    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path), "--save-smiles-splits"]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -44,7 +44,8 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
     assert (tmp_path / "model.pt").exists()
     assert (tmp_path / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "tb_logs" / "version_0").exists()
+    assert (tmp_path / "train_smiles.csv").exists()
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
