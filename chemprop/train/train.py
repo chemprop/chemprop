@@ -168,6 +168,9 @@ def train(
                     loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
                 elif args.loss_function == "dirichlet" and args.dataset_type == "classification":
                     loss = loss_func(pred, target, args.evidential_regularization) * target_weight * data_weight * mask
+                elif args.loss_function == "quantile_interval":
+                    quantiles_tensor = torch.tensor(args.quantiles, device=torch_device)
+                    loss = loss_func(pred, target, quantiles_tensor) * target_weight * data_weight * mask
                 else:
                     raise ValueError(f'Dataset type "{args.dataset_type}" is not supported.')
                 loss = loss.sum() / mask.sum()

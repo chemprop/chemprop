@@ -267,8 +267,7 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
         """
         Make uncalibrated intervals from the uncalibrated predictions.
         """
-
-        return preds[:].tolist()
+        return preds
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -302,6 +301,7 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
                 model=model,
                 data_loader=self.test_data_loader,
                 scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
                 return_unc_parameters=False,
             )
             if i == 0:
@@ -337,36 +337,12 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
                         )
 
         if model.is_atom_bond_targets:
-            num_tasks = len(sum_preds)
-            uncal_preds = sum_preds / self.num_models
-            self.uncal_preds = reshape_values(
-                uncal_preds,
-                self.test_data,
-                len(model.atom_targets),
-                len(model.bond_targets),
-                num_tasks,
+            raise NotImplementedError(
+                f"Uncertainty predictor type ConformalQuantileRegressionPredictor and ConformalRegressionPredictor is not currently supported for atom and bond properties prediction."
             )
-            uncal_vars = np.zeros_like(self.uncal_preds)
-            uncal_vars[:] = np.nan
-            self.uncal_vars = reshape_values(
-                uncal_vars,
-                self.test_data,
-                len(model.atom_targets),
-                len(model.bond_targets),
-                num_tasks,
-            )
-            if self.individual_ensemble_predictions:
-                self.individual_preds = reshape_individual_preds(
-                    individual_preds,
-                    self.test_data,
-                    len(model.atom_targets),
-                    len(model.bond_targets),
-                    num_tasks,
-                    self.num_models,
-                )
         else:
-            self.uncal_preds = (sum_preds / self.num_models).tolist()
-            self.uncal_intervals = self.make_intervals(self.uncal_preds)
+            self.uncal_preds = sum_preds / self.num_models
+            self.uncal_intervals = self.make_intervals(self.uncal_preds.T).T
             uncal_vars = np.zeros_like(sum_preds)
             uncal_vars[:] = np.nan
             self.uncal_vars = uncal_vars
@@ -397,10 +373,8 @@ class ConformalRegressionPredictor(ConformalQuantileRegressionPredictor):
         """
         Make uncalibrated intervals from the uncalibrated predictions.
         """
-
-        intervals = np.concatenate((preds[:], preds[:]), axis=1)
-
-        return intervals.tolist()
+        intervals = np.concatenate((preds, preds))
+        return intervals
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):

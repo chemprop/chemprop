@@ -82,8 +82,16 @@ def evaluate_predictions(preds: List[List[float]],
             results[metric].append(metric_func(preds, targets))
     elif is_atom_bond_targets:
         for metric, metric_func in metric_to_func.items():
-            for valid_target, valid_pred in zip(valid_targets, valid_preds):
-                results[metric].append(metric_func(valid_target, valid_pred))
+            if metric == 'quantile':
+                if not quantiles:
+                    raise ValueError("quantile metric evaluation requires quantiles parameter")
+                for i, (valid_target, valid_pred) in enumerate(zip(valid_targets, valid_preds)):
+                    valid_target = np.concatenate(valid_target)
+                    valid_pred = np.concatenate(valid_pred)
+                    results[metric].append(metric_func(valid_target, valid_pred, quantiles[i]))
+            else:
+                for valid_target, valid_pred in zip(valid_targets, valid_preds):
+                    results[metric].append(metric_func(valid_target, valid_pred))
     else:
         for i in range(num_tasks):
             # # Skip if all targets or preds are identical, otherwise we'll crash during classification
@@ -113,7 +121,6 @@ def evaluate_predictions(preds: List[List[float]],
                 elif metric == 'quantile':
                     if not quantiles:
                         raise ValueError("quantile metric evaluation requires quantiles parameter")
-
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i], quantiles[i]))
                 else:
                     results[metric].append(metric_func(valid_targets[i], valid_preds[i]))

@@ -1103,24 +1103,16 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
     ):
         raise NotImplementedError
 
-    @staticmethod
-    def get_preds(predictor: UncertaintyPredictor):
-        return np.array(predictor.get_uncal_preds())
-
-    @staticmethod
-    def get_interval(predictor: UncertaintyPredictor):
-        return np.array(predictor.get_uncal_output())
-
     def calibrate(self):
-        unc_interval = self.get_interval(self.calibration_predictor)
+        uncal_interval = np.array(self.calibration_predictor.get_uncal_output())  # shape(data, 2 * tasks)
         targets = np.array(self.calibration_data.targets())  # shape(data, tasks)
         mask = np.array(self.calibration_data.mask())
-        self.num_tasks = unc_interval.shape[1] // 2
+        self.num_tasks = uncal_interval.shape[1] // 2
         if self.calibration_data.is_atom_bond_targets:
-            unc_interval = [np.concatenate(x) for x in zip(*unc_interval)]
+            uncal_interval = [np.concatenate(x) for x in zip(*uncal_interval)]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
-            unc_interval = np.array(list(zip(*unc_interval)))
+            uncal_interval = np.array(list(zip(*uncal_interval)))
             targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
 
@@ -1128,28 +1120,26 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
         for i in range(self.num_tasks):
             task_mask = mask[i]
             task_targets = targets[i][task_mask]
-            unc_interval_lower = unc_interval[i][task_mask]
-            uncal_interval_upper = unc_interval[i + self.num_tasks][task_mask]
+            uncal_interval_lower = uncal_interval[i][task_mask]
+            uncal_interval_upper = uncal_interval[i + self.num_tasks][task_mask]
             calibration_scores = np.maximum(
-                unc_interval_lower - task_targets, task_targets - uncal_interval_upper
+                uncal_interval_lower - task_targets, task_targets - uncal_interval_upper
             )
             calibration_scores = np.append(calibration_scores, np.inf)
             qhat = np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks, interpolation="higher")
             self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
-        uncal_preds = self.get_preds(uncal_predictor)  # shape(data, task)
-        uncal_interval = self.get_interval(uncal_predictor)  # shape(data, 2 * task)
+        uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
+        uncal_interval = np.array(uncal_predictor.get_uncal_output())  # shape(data, 2*task)
         num_data = uncal_interval.shape[0]
-        intervals = np.zeros((num_data, 2 * self.num_tasks), dtype=float)
-
+        intervals = np.empty((num_data, 2 * self.num_tasks), dtype=object)
         for i in range(self.num_tasks):
             uncal_interval_lower = uncal_interval[:, i]
             uncal_interval_upper = uncal_interval[:, i + self.num_tasks]
             intervals[:, i] = uncal_interval_lower - self.qhats[i]
             intervals[:, i + self.num_tasks] = uncal_interval_upper + self.qhats[i]
-
-        return uncal_preds.tolist(), intervals.tolist()
+        return uncal_preds, intervals
 
 
 def build_uncertainty_calibrator(

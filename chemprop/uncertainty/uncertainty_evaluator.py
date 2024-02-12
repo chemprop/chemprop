@@ -471,16 +471,16 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
 
     def evaluate(
         self,
-        targets: List[List[float]], # shape (data, tasks)
+        targets: List[List[float]],  # shape (data, tasks)
         preds: List[List[float]],
-        uncertainties: List[List[float]], # shape (data, 2*tasks)
+        uncertainties: List[List[float]],  # shape (data, 2*tasks)
         mask: List[List[bool]],
     ):
         """
         Args:
             targets: shape(data, tasks)
-            preds: shape(data, tasks, num_classes)
-            uncertainties: shape(data, 2*tasks, num_classes)
+            preds: shape(data, tasks)
+            uncertainties: shape(data, 2*tasks)
             mask: shape(data, tasks)
 
         Returns:
