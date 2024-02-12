@@ -230,6 +230,20 @@ def predict_and_save(
     else:
         evaluations = None
 
+    if args.dataset_type == "multiclass":
+        num_tasks = num_tasks * args.multiclass_num_classes
+
+    if args.uncertainty_method == "spectra_roundrobin":
+        num_unc_tasks = 1
+    elif args.uncertainty_method == "dirichlet" and args.dataset_type == "multiclass":
+        num_unc_tasks = num_tasks // args.multiclass_num_classes # dirichlet only returns an uncertainty for each task rather than each class
+    elif args.calibration_method == "conformal_regression":
+        num_unc_tasks = 2 * num_tasks
+    elif args.calibration_method == "conformal" and args.dataset_type == "classification":
+        num_unc_tasks = 2 * num_tasks
+    else:
+        num_unc_tasks = num_tasks
+
     # Save results
     if save_results:
         print(f"Saving predictions to {args.preds_path}")
@@ -246,18 +260,6 @@ def predict_and_save(
                 for name in task_names
                 for i in range(args.multiclass_num_classes)
             ]
-            num_tasks = num_tasks * args.multiclass_num_classes
-
-        if args.uncertainty_method == "spectra_roundrobin":
-            num_unc_tasks = 1
-        elif args.uncertainty_method == "dirichlet" and args.dataset_type == "multiclass":
-            num_unc_tasks = num_tasks // args.multiclass_num_classes # dirichlet only returns an uncertainty for each task rather than each class
-        elif args.calibration_method == "conformal_regression":
-            num_unc_tasks = 2 * num_tasks
-        elif args.calibration_method == "conformal" and args.dataset_type == "classification":
-            num_unc_tasks = 2 * num_tasks
-        else:
-            num_unc_tasks = num_tasks
 
         # Copy predictions over to full_data
         for full_index, datapoint in enumerate(full_data):

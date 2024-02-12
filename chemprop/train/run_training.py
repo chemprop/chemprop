@@ -320,7 +320,11 @@ def run_training(args: TrainArgs,
 
             for metric, scores in val_scores.items():
                 # Average validation score\
-                mean_val_score = multitask_mean(scores, metric=metric)
+                mean_val_score = multitask_mean(
+                    scores=scores,
+                    metric=metric,
+                    ignore_nan_metrics=args.ignore_nan_metrics
+                )
                 debug(f'Validation {metric} = {mean_val_score:.6f}')
                 writer.add_scalar(f'validation_{metric}', mean_val_score, n_iter)
 
@@ -331,7 +335,11 @@ def run_training(args: TrainArgs,
                         writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
 
             # Save model checkpoint if improved validation score
-            mean_val_score = multitask_mean(val_scores[args.metric], metric=args.metric)
+            mean_val_score = multitask_mean(
+                scores=val_scores[args.metric],
+                metric=args.metric,
+                ignore_nan_metrics=args.ignore_nan_metrics
+            )
             if args.minimize_score and mean_val_score < best_score or \
                     not args.minimize_score and mean_val_score > best_score:
                 best_score, best_epoch = mean_val_score, epoch
@@ -406,7 +414,11 @@ def run_training(args: TrainArgs,
 
     for metric, scores in ensemble_scores.items():
         # Average ensemble score
-        mean_ensemble_test_score = multitask_mean(scores, metric=metric)
+        mean_ensemble_test_score = multitask_mean(
+            scores=scores,
+            metric=metric,
+            ignore_nan_metrics=args.ignore_nan_metrics
+        )
         info(f'Ensemble test {metric} = {mean_ensemble_test_score:.6f}')
 
         # Individual ensemble scores
