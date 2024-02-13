@@ -762,8 +762,8 @@ def main(args):
 
         if test_loader is not None:
             if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
