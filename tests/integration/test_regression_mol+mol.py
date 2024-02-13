@@ -12,15 +12,23 @@ from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
 from chemprop import featurizers, nn
-from chemprop.data import (MoleculeDatapoint, MoleculeDataset,
-                           MulticomponentDataset, collate_multicomponent)
+from chemprop.data import (
+    MoleculeDatapoint,
+    MoleculeDataset,
+    MulticomponentDataset,
+    collate_multicomponent,
+)
 from chemprop.models import multi
 
 N_COMPONENTS = 2
 pytestmark = [
     pytest.mark.parametrize(
         "mcmpnn",
-        [(nn.BondMessagePassing(), N_COMPONENTS), (nn.AtomMessagePassing(), N_COMPONENTS)],
+        [
+            ([nn.BondMessagePassing() for _ in range(N_COMPONENTS)], N_COMPONENTS, False),
+            ([nn.AtomMessagePassing() for _ in range(N_COMPONENTS)], N_COMPONENTS, False),
+            ([nn.BondMessagePassing()], N_COMPONENTS, True),
+        ],
         indirect=True,
     ),
     pytest.mark.integration,
@@ -31,7 +39,10 @@ pytestmark = [
 def datas(mol_mol_regression_data):
     smis1, smis2, Y = mol_mol_regression_data
 
-    return [[MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis1, Y)], [MoleculeDatapoint.from_smi(smi) for smi in smis2]]
+    return [
+        [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis1, Y)],
+        [MoleculeDatapoint.from_smi(smi) for smi in smis2],
+    ]
 
 
 @pytest.fixture
@@ -65,7 +76,7 @@ def test_overfit(mcmpnn, dataloader):
         accelerator="cpu",
         devices=1,
         max_epochs=100,
-        overfit_batches=1.00
+        overfit_batches=1.00,
     )
     trainer.fit(mcmpnn, dataloader)
 

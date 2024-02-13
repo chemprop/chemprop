@@ -87,9 +87,10 @@ def split_data(
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
-            if (max_folds := len(datapoints)) < num_folds or num_folds <= 1:
+            if not (2 <= num_folds <= len(datapoints)):
+                min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
                 raise ValueError(
-                    f"Number of folds for cross-validation must be between 3 and {max_folds} (length of data) inclusive for `--split cv` and 2 and {max_folds} (length of data) inclusive for `--split cv_no_val` (got {num_folds})."
+                    f"invalid number of folds requested! got: {num_folds}, but expected between {min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, for split type: {repr(split)}"
                 )
 
             # returns nested lists of indices
@@ -210,33 +211,8 @@ def _unpack_astartes_result(
     return list(train_idxs), list(val_idxs), list(test_idxs)
 
 
-def split_monocomponent(
-    datapoints: Sequence[MoleculeDatapoint], split: SplitType | str = "random", **kwargs
-):
-    """Splits monocomponent data into training, validation, and test splits."""
-
-    # split the data
-    train_idxs, val_idxs, test_idxs = split_data(datapoints, split=split, **kwargs)
-
-    match SplitType.get(split):
-        case SplitType.CV_NO_VAL | SplitType.CV:
-            # convert indices to datapoints for each fold
-            train = [[datapoints[i] for i in fold] for fold in train_idxs]
-            val = [[datapoints[i] for i in fold] for fold in val_idxs]
-            test = [[datapoints[i] for i in fold] for fold in test_idxs]
-        case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
-            # convert indices to datapoints
-            train = [datapoints[i] for i in train_idxs]
-            val = [datapoints[i] for i in val_idxs]
-            test = [datapoints[i] for i in test_idxs]
-        case _:
-            raise RuntimeError("Unreachable code reached!")
-
-    return train, val, test
-
-
-def split_multicomponent(
-    datapointss: Sequence[MulticomponentDatapoint], split: SplitType | str = "random", key_index: int = 0, **kwargs
+def split_component(
+    datapointss: Sequence[Sequence[MoleculeDatapoint | MulticomponentDatapoint]], split: SplitType | str = "random", key_index: int = 0, **kwargs
 ):
     """Splits multicomponent data into training, validation, and test splits."""
 

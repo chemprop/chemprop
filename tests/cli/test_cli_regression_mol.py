@@ -36,19 +36,70 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path)]
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--save-smiles-splits",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
     assert (tmp_path / "model.pt").exists()
-    assert (tmp_path / "model_0" / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "model_0" / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "chkpts" / "last.ckpt").exists()
+    assert (tmp_path / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "train_smiles.csv").exists()
+
+
+def test_train_output_structure_cv(monkeypatch, data_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--save-smiles-splits",
+        "--split-type",
+        "cv",
+        "--num-folds",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "fold_2" / "model.pt").exists()
+    assert (tmp_path / "fold_2" / "chkpts" / "last.ckpt").exists()
+    assert (tmp_path / "fold_2" / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
-    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path, "--output", str(tmp_path / "preds.csv")]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path,
+        "--output",
+        str(tmp_path / "preds.csv"),
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -58,12 +109,23 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--save-dir", str(tmp_path)]
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    checkpoint_path = tmp_path / "model_0" / "chkpts" / "last.ckpt"
+    checkpoint_path = tmp_path / "chkpts" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
