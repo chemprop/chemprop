@@ -120,8 +120,17 @@ class RegressionFFN(_FFNPredictorBase):
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        self.register_buffer("loc", torch.tensor(loc).view(-1, 1))
-        self.register_buffer("scale", torch.tensor(scale).view(-1, 1))
+        if not isinstance(loc, Tensor):
+            loc = torch.ones(1, self.n_tasks) * loc
+        else:
+            loc = torch.tensor(loc).view(1, -1)
+        self.register_buffer("loc", loc)
+
+        if not isinstance(scale, Tensor):
+            scale = torch.ones(1, self.n_tasks) * scale
+        else:
+            scale = torch.tensor(scale).view(1, -1)
+        self.register_buffer("scale", scale)
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
