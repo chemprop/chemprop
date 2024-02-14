@@ -178,17 +178,34 @@ def build_data_from_files(
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )
-    X_f = np.load(p_features) if p_features else None
-    V_fs = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
-    E_fs = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
-    V_ds = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    n_molecules = len(zip(*smiss))
+
+    X_fs = load_input_features(p_features, n_molecules)
+    V_fss = load_input_features(p_atom_feats, n_molecules)
+    E_fss = load_input_features(p_bond_feats, n_molecules)
+    V_dss = load_input_features(p_atom_descs, n_molecules)
 
     mol_data, rxn_data = make_datapoints(
-        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs
+        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_fs, V_fss, E_fss, V_dss, **featurization_kwargs
     )
 
     return mol_data + rxn_data
 
+def load_input_features(paths, n_molecules):
+    if paths is None:
+        return None
+
+    features = []
+    for mol_idx in range(n_molecules):
+        path = paths.get(mol_idx, None)
+        if path:
+            loaded_feature = np.load(path)
+            if isinstance(loaded_feature, np.lib.npyio.NpzFile):
+                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+        else:
+            loaded_feature = None
+        features.append(loaded_feature)
+    return features
 
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str
