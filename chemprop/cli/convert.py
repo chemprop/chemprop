@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentError, ArgumentParser, Namespace
 import sys
 import logging
 from pathlib import Path
@@ -32,9 +32,12 @@ class ConvertSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
-        args.output_path = args.output_path or Path(args.input_path.stem + "_v2.ckpt")
+        if args.output_path is None:
+            args.output_path = Path(args.input_path.stem + "_v2.ckpt")
         if args.output_path.suffix != ".ckpt":
-            args.output_path = Path(str(args.output_path) + ".ckpt")
+            raise ArgumentError(
+                argument=None, message=f"Output must be a `.ckpt` file. Got {str(args.output_path)}"
+            )
 
         logger.info(
             f"Converting v1 model checkpoint '{args.input_path}' to v2 model checkpoint '{args.output_path}'..."

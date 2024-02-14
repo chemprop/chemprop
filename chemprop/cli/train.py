@@ -472,6 +472,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.data_path.suffix not in [".csv"]:
+        raise ArgumentError(
+            argument=None, message=f"Input data must be a CSV file. Got {str(args.data_path)}"
+        )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
     args.output_dir.mkdir(exist_ok=True, parents=True)
@@ -610,7 +614,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         ]
         if args.mpn_shared:
             if args.reaction_columns is not None and args.smiles_columns is not None:
-                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+                raise ArgumentError(
+                    argument=None,
+                    message="Cannot use shared MPNN with both molecule and reaction data.",
+                )
 
         mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
         # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
