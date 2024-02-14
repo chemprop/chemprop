@@ -128,6 +128,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    checkpoint_path = tmp_path / "chkpts" / "last.ckpt"
+    checkpoint_path = tmp_path / "model_0" / "chkpts" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
