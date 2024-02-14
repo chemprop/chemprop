@@ -56,6 +56,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         required=True,
         help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
     )
+    parser.add_argument(
+        "--target-columns",
+        nargs="+",
+        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+    )
 
     # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
@@ -254,9 +259,14 @@ def main(args):
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test[
-        "preds"
-    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+
+    if args.target_columns is not None:
+        assert len(args.target_columns) == model.n_tasks, "Number of target columns must match the number of tasks."
+        target_columns = args.target_columns
+    else:
+        target_columns = [f"pred_{i}" for i in range(preds.shape[1])] # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+
+    df_test[target_columns] = preds.to_list()
     if args.output.suffix == ".pkl":
         df_test.to_pickle(args.output, index=False)
     else:
