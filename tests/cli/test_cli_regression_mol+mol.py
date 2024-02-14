@@ -14,19 +14,19 @@ def data_path(data_dir):
         str(data_dir / "regression" / "mol+mol" / "mol+mol.csv"),
         (
             str(data_dir / "regression" / "mol+mol" / "features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "features_0.npz"),
+            str(data_dir / "regression" / "mol+mol" / "features_1.npz"),
         ),
         (
             str(data_dir / "regression" / "mol+mol" / "atom_features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "atom_features_0.npz"),
+            str(data_dir / "regression" / "mol+mol" / "atom_features_1.npz"),
         ),
         (
             str(data_dir / "regression" / "mol+mol" / "bond_features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "bond_features_0.npz"),
+            str(data_dir / "regression" / "mol+mol" / "bond_features_1.npz"),
         ),
         (
             str(data_dir / "regression" / "mol+mol" / "atom_descriptors_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "atom_descriptors_0.npz"),
+            str(data_dir / "regression" / "mol+mol" / "atom_descriptors_1.npz"),
         ),
     )
 
