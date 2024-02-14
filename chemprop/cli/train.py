@@ -467,6 +467,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Seed for PyTorch randomness (e.g., random initial weights).",
     )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=None,
+        help="Number of epochs to wait for improvement before early stopping.",
+    )
 
     return parser
 
@@ -497,19 +503,19 @@ def save_config(args: Namespace):
         json.dump(config, f, indent=4)
 
 
-def save_smiles_splits(args: Namespace, train_dset, val_dset, test_dset):
+def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
     train_smis = train_dset.smiles
     df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
-    df_train.to_csv(args.output_dir / "train_smiles.csv", index=False)
+    df_train.to_csv(output_dir / "train_smiles.csv", index=False)
 
     val_smis = val_dset.smiles
     df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
-    df_val.to_csv(args.output_dir / "val_smiles.csv", index=False)
+    df_val.to_csv(output_dir / "val_smiles.csv", index=False)
 
     if test_dset is not None:
         test_smis = test_dset.smiles
         df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
-        df_test.to_csv(args.output_dir / "test_smiles.csv", index=False)
+        df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
 def build_splits(args, format_kwargs, featurization_kwargs):
@@ -541,6 +547,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
+        needs_test_data = False
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
@@ -557,7 +564,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     else:
         raise ArgumentError(
             argument=None,
-            message="'--separate-val-path' must be specified if '--separate-test-path' is provided!",
+            message="'--separate-test-path' must be specified if '--separate-val-path' is provided!",
         )  # TODO: In v1 this wasn't the case?
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
@@ -703,67 +710,84 @@ def main(args):
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-    train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-    if args.save_smiles_splits:
-        save_smiles_splits(args, train_dset, val_dset, test_dset)
-
-    if args.task_type == "regression":
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
-
-    train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-    if test_dset is not None:
-        test_loader = MolGraphDataLoader(
-            test_dset, args.batch_size, args.num_workers, shuffle=False
-        )
+    no_cv = args.num_folds == 1
+    if no_cv:
+        splits = ([train_data], [val_data], [test_data])
     else:
-        test_loader = None
+        splits = (train_data, val_data, test_data)
 
-    model = build_model(args, train_dset)
-    logger.info(model)
+    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
 
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
-    logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-    try:
-        trainer_logger = TensorBoardLogger(args.output_dir, "trainer_logs")
-    except ModuleNotFoundError:
-        trainer_logger = CSVLogger(args.output_dir, "trainer_logs")
+        if no_cv:
+            output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
+            output_dir.mkdir(exist_ok=True, parents=True)
 
-    checkpointing = ModelCheckpoint(
-        args.output_dir / "chkpts",
-        "{epoch}-{val_loss:.2f}",
-        "val_loss",
-        mode=monitor_mode,
-        save_last=True,
-    )
-    early_stopping = EarlyStopping("val_loss", patience=5, mode=monitor_mode)
+        if args.save_smiles_splits:
+            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-    trainer = pl.Trainer(
-        logger=trainer_logger,
-        enable_progress_bar=True,
-        accelerator="auto",
-        devices=args.n_gpu if torch.cuda.is_available() else 1,
-        max_epochs=args.epochs,
-        callbacks=[checkpointing, early_stopping],
-    )
-    trainer.fit(model, train_loader, val_loader)
-
-    if test_loader is not None:
         if args.task_type == "regression":
-            model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-            model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
-        results = trainer.test(model, test_loader)[0]
-        logger.info(f"Test results: {results}")
+            scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(scaler)
+            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
 
-    p_model = args.output_dir / "model.pt"
-    input_scalers = []  # TODO: we should add descriptor scalers here
-    output_scaler = scaler
-    save_model(p_model, model, input_scalers, output_scaler)
-    logger.info(f"Model saved to '{p_model}'")
+        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        if test_dset is not None:
+            test_loader = MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+
+        model = build_model(args, train_dset)
+        logger.info(model)
+
+        monitor_mode = "min" if model.metrics[0].minimize else "max"
+        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+
+        try:
+            trainer_logger = TensorBoardLogger(output_dir, "trainer_logs")
+        except ModuleNotFoundError:
+            trainer_logger = CSVLogger(output_dir, "trainer_logs")
+
+        checkpointing = ModelCheckpoint(
+            output_dir / "chkpts",
+            "{epoch}-{val_loss:.2f}",
+            "val_loss",
+            mode=monitor_mode,
+            save_last=True,
+        )
+
+        patience = args.patience if args.patience is not None else args.epochs
+        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+
+        trainer = pl.Trainer(
+            logger=trainer_logger,
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            max_epochs=args.epochs,
+            callbacks=[checkpointing, early_stopping],
+        )
+        trainer.fit(model, train_loader, val_loader)
+
+        if test_loader is not None:
+            if args.task_type == "regression":
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+            results = trainer.test(model, test_loader)[0]
+            logger.info(f"Test results: {results}")
+
+        p_model = output_dir / "model.pt"
+        input_scalers = []
+        output_scaler = scaler
+        save_model(p_model, model, input_scalers, output_scaler)
+        logger.info(f"Model saved to '{p_model}'")
 
 
 if __name__ == "__main__":
