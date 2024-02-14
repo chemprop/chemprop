@@ -75,7 +75,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        help="Path(s) to features to use in FNN (instead of features_generator).",
+        help="Path to features to use in FFN (instead of features_generator).",
     )
     featurization_args.add_argument(
         "--phase-features-path",
