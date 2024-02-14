@@ -160,7 +160,7 @@ def process_common_args(args: Namespace) -> Namespace:
                 )
             indices = [int(ind) for ind in getattr(args, key)[::2]]
             paths = getattr(args, key)[1::2]
-            setattr(args, key, list(zip(indices, paths)))
+            setattr(args, key, dict(zip(indices, paths)))
 
     return args
 
