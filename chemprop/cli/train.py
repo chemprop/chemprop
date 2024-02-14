@@ -756,7 +756,7 @@ def main(args):
             trainer_logger = CSVLogger(output_dir, "trainer_logs")
 
         checkpointing = ModelCheckpoint(
-            output_dir / "chkpts",
+            output_dir / "checkpoints",
             "{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
