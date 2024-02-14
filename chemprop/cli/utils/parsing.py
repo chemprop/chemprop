@@ -127,16 +127,16 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i],
+                x_f=X_f[mol_idx][i],
                 mfs=features_generators,
                 x_phase=None,
-                V_f=V_fs[i],
-                E_f=E_fs[i],
-                V_d=V_ds[i],
+                V_f=V_fs[mol_idx][i],
+                E_f=E_fs[mol_idx][i],
+                V_d=V_ds[mol_idx][i],
             )
             for i in range(N)
         ]
-        for smis in list(zip(*smiss))
+        for mol_idx, smis in enumerate(zip(*smiss))
     ]
     rxn_data = [
         [
