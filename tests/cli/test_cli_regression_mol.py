@@ -44,12 +44,16 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--features-path",
+        "0",
         features_path,
         "--atom-features-path",
+        "0",
         atom_features_path,
         "--bond-features-path",
+        "0",
         bond_features_path,
         "--atom-descriptors-path",
+        "0",
         atom_descriptors_path,
     ]
 
