@@ -31,7 +31,7 @@ class ReprMixin:
         """Get the default parameters for initializing the class."""
         return sorted(self._get_default_params().keys())
 
-    def get_params(self, deep=True) -> dict[str, Any]:
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the current parameters of the class, required to initialize the class.
 
         This method mimics the behavior of `sklearn.base.BaseEstimator.get_params`.
