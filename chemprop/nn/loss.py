@@ -151,7 +151,7 @@ class EvidentialLoss(LossFunction):
 
         return L_nll + self.v_kl * (L_reg - self.eps)
 
-    def get_params(self, deep: bool = True) -> dict[str, float]:
+    def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
         """Get the parameters of the class.
 
         Overrides the `ReprMixin.get_params` method to return the `v_kl` and `eps` parameter.
@@ -284,7 +284,9 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
-    def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
+    def get_params(
+            self, deep: bool = True  # pylint: disable=unused-argument
+    ) -> dict[str, float]:
         """Get the parameters of the class.
 
         Overrides the `ReprMixin.get_params` method to return the `v_kl` parameter.
@@ -326,8 +328,8 @@ class _ThresholdMixin:
     threshold: float | None = None
 
     def get_params(
-        self, deep: bool = True
-    ) -> dict[str, float | None]:  # pylint: disable=unused-argument
+        self, deep: bool = True  # pylint: disable=unused-argument
+    ) -> dict[str, float | None]:
         """Get the parameters of the class.
 
         Parameters
