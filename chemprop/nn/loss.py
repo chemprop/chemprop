@@ -285,8 +285,22 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("v_kl", self.v_kl)]
+    def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
+        """Get the parameters of the class.
+
+        Overrides the `ReprMixin.get_params` method to return the `v_kl` parameter.
+
+        Parameters
+        ----------
+        deep: bool, default=True
+            No effect on this method.
+
+        Returns
+        -------
+        dict[str, float]
+            The parameters of the class.
+        """
+        return {"v_kl": self.v_kl}
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
@@ -312,8 +326,20 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 class _ThresholdMixin:
     threshold: float | None = None
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("threshold", self.threshold)]
+    def get_params(self, deep: bool = True) -> dict[str, float | None]:  # pylint: disable=unused-argument
+        """Get the parameters of the class.
+
+        Parameters
+        ----------
+        deep: bool, default=True
+            No effect on this method.
+
+        Returns
+        -------
+        dict[str, float | None]
+            The parameters of the class.
+        """
+        return {"threshold": self.threshold}
 
 
 @LossFunctionRegistry.register("sid")
