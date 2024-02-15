@@ -164,10 +164,7 @@ class EvidentialLoss(LossFunction):
         dict[str, float]
             The parameters of the class.
         """
-        param_dict = {
-            "v_kl": self.v_kl,
-            "eps": self.eps,
-        }
+        param_dict = {"v_kl": self.v_kl, "eps": self.eps}
         return param_dict
 
 
@@ -326,7 +323,9 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 class _ThresholdMixin:
     threshold: float | None = None
 
-    def get_params(self, deep: bool = True) -> dict[str, float | None]:  # pylint: disable=unused-argument
+    def get_params(
+        self, deep: bool = True
+    ) -> dict[str, float | None]:  # pylint: disable=unused-argument
         """Get the parameters of the class.
 
         Parameters
