@@ -36,7 +36,7 @@ class ConvertSubcommand(Subcommand):
             args.output_path = Path(args.input_path.stem + "_v2.ckpt")
         if args.output_path.suffix != ".ckpt":
             raise ArgumentError(
-                argument=None, message=f"Output must be a `.ckpt` file. Got {str(args.output_path)}"
+                argument=None, message=f"Output must be a `.ckpt` file. Got {args.output_path}"
             )
 
         logger.info(

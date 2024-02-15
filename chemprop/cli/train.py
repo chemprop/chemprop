@@ -480,7 +480,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 def process_train_args(args: Namespace) -> Namespace:
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
-            argument=None, message=f"Input data must be a CSV file. Got {str(args.data_path)}"
+            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")

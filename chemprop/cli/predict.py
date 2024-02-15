@@ -151,13 +151,13 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 def process_predict_args(args: Namespace) -> Namespace:
     if args.test_path.suffix not in [".csv"]:
         raise ArgumentError(
-            argument=None, message=f"Input data must be a CSV file. Got {str(args.test_path)}"
+            argument=None, message=f"Input data must be a CSV file. Got {args.test_path}"
         )
     if args.output is None:
         args.output = args.test_path.parent / (args.test_path.stem + "_preds.csv")
     if args.output.suffix not in [".csv", ".pkl"]:
         raise ArgumentError(
-            argument=None, message=f"Output must be a CSV or Pickle file. Got {str(args.output)}"
+            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}"
         )
     return args
 
