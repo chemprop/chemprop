@@ -41,6 +41,6 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "model.pt").exists()
-    assert (tmp_path / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()

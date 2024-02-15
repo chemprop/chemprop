@@ -8,7 +8,7 @@ import pandas as pd
 from rdkit import Chem
 
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
@@ -25,6 +25,7 @@ from chemprop.nn.message_passing import (
 from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.conf import NOW
 from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
 from chemprop.cli.utils.args import uppercase
 
@@ -54,13 +55,15 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-i",
         "--data-path",
         required=True,
+        type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
     parser.add_argument(
         "-o",
         "--output-dir",
         "--save-dir",
-        help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+        type=Path,
+        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>/<time stamp>'.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -272,7 +275,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset. This determines the default loss function used during training.",
+        help="Type of dataset. This determines the default loss function used during training. Defaults to regression.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
@@ -360,7 +363,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
     )
     train_args.add_argument(
-        "--metric" "--metrics",
+        "--metric",
+        "--metrics",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
@@ -474,9 +478,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.data_path = Path(args.data_path)
-
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
+    if args.data_path.suffix not in [".csv"]:
+        raise ArgumentError(
+            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
+        )
+    if args.output_dir is None:
+        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
@@ -513,6 +520,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
+    logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
         p_features=args.features_path,
@@ -555,7 +563,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             train_data, val_data, _ = split_component(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
-            argument=None, message="'test_path' must be specified if 'val_path' is provided!"
+            argument=None,
+            message="'--separate-test-path' must be specified if '--separate-val-path' is provided!",
         )  # TODO: In v1 this wasn't the case?
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
@@ -612,7 +621,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         ]
         if args.mpn_shared:
             if args.reaction_columns is not None and args.smiles_columns is not None:
-                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+                raise ArgumentError(
+                    argument=None,
+                    message="Cannot use shared MPNN with both molecule and reaction data.",
+                )
 
         mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
         # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
@@ -738,9 +750,13 @@ def main(args):
         monitor_mode = "min" if model.metrics[0].minimize else "max"
         logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
-        tb_logger = TensorBoardLogger(output_dir / "tb_logs")
+        try:
+            trainer_logger = TensorBoardLogger(output_dir, "trainer_logs")
+        except ModuleNotFoundError:
+            trainer_logger = CSVLogger(output_dir, "trainer_logs")
+
         checkpointing = ModelCheckpoint(
-            output_dir / "chkpts",
+            output_dir / "checkpoints",
             "{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -751,7 +767,7 @@ def main(args):
         early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
         trainer = pl.Trainer(
-            logger=tb_logger,
+            logger=trainer_logger,
             enable_progress_bar=True,
             accelerator="auto",
             devices=args.n_gpu if torch.cuda.is_available() else 1,
