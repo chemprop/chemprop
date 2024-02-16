@@ -681,6 +681,83 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
+def train_model(args: Namespace, model_idx: int, no_cv: bool, seed: int, format_kwargs: dict, featurization_kwargs: dict):
+    output_dir = args.output_dir / f"model_{model_idx}"
+    
+    train_data, val_data, test_data = build_splits(args, seed, format_kwargs, featurization_kwargs)
+
+    if no_cv:
+        splits = ([train_data], [val_data], [test_data])
+    else:
+        splits = (train_data, val_data, test_data)
+
+    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+
+        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+
+        if not no_cv:
+            output_dir = output_dir / f"fold_{fold_idx}"
+        output_dir.mkdir(exist_ok=True, parents=True)
+
+        if args.save_smiles_splits:
+            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
+
+        if args.task_type == "regression":
+            scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(scaler)
+            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+
+        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        if test_dset is not None:
+            test_loader = MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+
+        model = build_model(args, train_dset)
+        logger.info(model)
+
+        monitor_mode = "min" if model.metrics[0].minimize else "max"
+        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+
+        tb_logger = TensorBoardLogger(output_dir / "tb_logs")
+        checkpointing = ModelCheckpoint(
+            output_dir / "chkpts",
+            "{epoch}-{val_loss:.2f}",
+            "val_loss",
+            mode=monitor_mode,
+            save_last=True,
+        )
+
+        patience = args.patience if args.patience is not None else args.epochs
+        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+
+        trainer = pl.Trainer(
+            logger=tb_logger,
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            max_epochs=args.epochs,
+            callbacks=[checkpointing, early_stopping],
+        )
+        trainer.fit(model, train_loader, val_loader)
+
+        if test_loader is not None:
+            if args.task_type == "regression":
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+            results = trainer.test(model, test_loader)[0]
+            logger.info(f"Test results: {results}")
+
+        p_model = output_dir / "model.pt"
+        input_scalers = []
+        output_scaler = scaler
+        save_model(p_model, model, input_scalers, output_scaler)
+        logger.info(f"Model saved to '{p_model}'")
+
+
 def main(args):
     save_config(args)
 
@@ -703,80 +780,7 @@ def main(args):
         
         seed = args.seed + model_idx
 
-        train_data, val_data, test_data = build_splits(args, seed, format_kwargs, featurization_kwargs)
-
-        if no_cv:
-            splits = ([train_data], [val_data], [test_data])
-        else:
-            splits = (train_data, val_data, test_data)
-
-        for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-
-            train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
-
-            if no_cv:
-                output_dir = args.output_dir / f"model_{model_idx}"
-            else:
-                output_dir = args.output_dir / f"model_{model_idx}" / f"fold_{fold_idx}"
-            output_dir.mkdir(exist_ok=True, parents=True)
-
-            if args.save_smiles_splits:
-                save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
-
-            if args.task_type == "regression":
-                scaler = train_dset.normalize_targets()
-                val_dset.normalize_targets(scaler)
-                logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
-
-            train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-            val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-            if test_dset is not None:
-                test_loader = MolGraphDataLoader(
-                    test_dset, args.batch_size, args.num_workers, shuffle=False
-                )
-            else:
-                test_loader = None
-
-            model = build_model(args, train_dset)
-            logger.info(model)
-
-            monitor_mode = "min" if model.metrics[0].minimize else "max"
-            logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
-
-            tb_logger = TensorBoardLogger(output_dir / "tb_logs")
-            checkpointing = ModelCheckpoint(
-                output_dir / "chkpts",
-                "{epoch}-{val_loss:.2f}",
-                "val_loss",
-                mode=monitor_mode,
-                save_last=True,
-            )
-
-            patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
-
-            trainer = pl.Trainer(
-                logger=tb_logger,
-                enable_progress_bar=True,
-                accelerator="auto",
-                devices=args.n_gpu if torch.cuda.is_available() else 1,
-                max_epochs=args.epochs,
-                callbacks=[checkpointing, early_stopping],
-            )
-            trainer.fit(model, train_loader, val_loader)
-
-            if test_loader is not None:
-                if args.task_type == "regression":
-                    model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                    model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
-                results = trainer.test(model, test_loader)[0]
-                logger.info(f"Test results: {results}")
-
-            p_model = output_dir / "model.pt"
-            input_scalers = []
-            output_scaler = scaler
-            save_model(p_model, model, input_scalers, output_scaler)
-            logger.info(f"Model saved to '{p_model}'")
+        train_model(args, model_idx, no_cv, seed, format_kwargs, featurization_kwargs)
 
 
 if __name__ == "__main__":
