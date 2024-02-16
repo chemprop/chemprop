@@ -287,20 +287,6 @@ class DirichletMixin:
     def get_params(
             self, deep: bool = True  # pylint: disable=unused-argument
     ) -> dict[str, float]:
-        """Get the parameters of the class.
-
-        Overrides the `ReprMixin.get_params` method to return the `v_kl` parameter.
-
-        Parameters
-        ----------
-        deep: bool, default=True
-            No effect on this method.
-
-        Returns
-        -------
-        dict[str, float]
-            The parameters of the class.
-        """
         return {"v_kl": self.v_kl}
 
 
