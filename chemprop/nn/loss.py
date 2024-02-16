@@ -152,22 +152,7 @@ class EvidentialLoss(LossFunction):
         return L_nll + self.v_kl * (L_reg - self.eps)
 
     def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
-        """Get the parameters of the class.
-
-        Overrides the `ReprMixin.get_params` method to return the `v_kl` and `eps` parameter.
-
-        Parameters
-        ----------
-        deep: bool, default=True
-            No effect on this method.
-
-        Returns
-        -------
-        dict[str, float]
-            The parameters of the class.
-        """
-        param_dict = {"v_kl": self.v_kl, "eps": self.eps}
-        return param_dict
+        return {"v_kl": self.v_kl, "eps": self.eps}
 
 
 @LossFunctionRegistry.register("bce")
