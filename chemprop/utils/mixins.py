@@ -26,7 +26,7 @@ class ReprMixin:
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the current parameters of the class, required to initialize the class.
 
-        This method mimics the behavior of `sklearn.base.BaseEstimator.get_params`.
+        This method mimics the behavior of :method:`sklearn.base.BaseEstimator.get_params`.
 
         Parameters
         ----------
@@ -39,11 +39,12 @@ class ReprMixin:
         dict[str, Any]
             Parameter names mapped to their values.
         """
-        out: dict[str, Any] = {}
-        for param_name in self._get_param_names():
+        name_to_value = {}
+        for name in self._get_default_params.keys():
             value = getattr(self, param_name)
+            name_to_value[name] = value
             if deep and hasattr(value, "get_params") and not isinstance(value, type):
-                deep_items = value.get_params().items()
-                out.update((param_name + "__" + k, val) for k, val in deep_items)
-            out[param_name] = value
-        return out
+                _params = value.get_params()
+                name_to_value.update((f"{name}__{k}", v) for k, v in _params.items())
+
+        return name_to_value
