@@ -6,11 +6,12 @@ from typing import Any, Collection
 
 class ReprMixin:
     def __repr__(self) -> str:
-        param_repr_list = []
-        for param_name, param_value in self.get_params(deep=False).items():
-            param_default = self._get_default_params()[param_name]
-            if param_value != param_default:
-                param_repr_list.append(f"{param_name}={repr(param_value)}")
+        default_params = self._get_default_params()
+        param_repr_list = [
+            f"{name}={repr(value)}"
+            for name, value in self.get_params(deep=False).items()
+            if value != default_params[name]
+        ]
 
         non_default_params = ", ".join(param_repr_list)
         return f"{self.__class__.__name__}({non_default_params})"
