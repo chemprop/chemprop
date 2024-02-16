@@ -187,10 +187,6 @@ class CommonArgs(Tap):
     For self supervised pretraining, the subgraph deletion percentage for first and second view, when using triplet loss please 
     ensure second view has a larger probability
     """
-    pretrain_with_val: bool = False
-    """
-    For self supervised pretraining, whether the model is only saved with the validation score lower, not implemented well yet
-    """
     pretrain_save_per_epoch: int = 2
     """
     For self supervised pretraining,save model for number of epoch trained. Normally, big model is only saved with this kind of criteria 
