@@ -19,8 +19,8 @@ class ReprMixin:
         sig = inspect.signature(cls)
         return {k: v.default for k, v in sig.parameters.items()}
 
-    def _get_parm_names(self) -> list[str]:
-        """Get the default parameters for initializing the class."""
+    def _get_param_names(self) -> list[str]:
+        """Get the parameter names for initializing the class."""
         return sorted(self._get_default_params().keys())
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
@@ -40,7 +40,7 @@ class ReprMixin:
             Parameter names mapped to their values.
         """
         out: dict[str, Any] = {}
-        for param_name in self._get_parm_names():
+        for param_name in self._get_param_names():
             value = getattr(self, param_name)
             if deep and hasattr(value, "get_params") and not isinstance(value, type):
                 deep_items = value.get_params().items()
