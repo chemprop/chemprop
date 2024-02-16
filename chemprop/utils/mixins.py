@@ -16,9 +16,10 @@ class ReprMixin:
         non_default_params = ", ".join(param_repr_list)
         return f"{self.__class__.__name__}({non_default_params})"
 
-    def _get_default_params(self) -> dict[str, Any]:
+    @classmethod
+    def _get_default_params(cls) -> dict[str, Any]:
         """Get the default parameters for initializing the class."""
-        sig = inspect.signature(self.__class__)
+        sig = inspect.signature(cls)
         return {k: v.default for k, v in sig.parameters.items()}
 
     def _get_parm_names(self) -> list[str]:
