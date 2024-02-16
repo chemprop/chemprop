@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
@@ -38,13 +38,18 @@ class PredictSubcommand(Subcommand):
 
 def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
-        "-i", "--test-path", required=True, help="Path to an input CSV file containing SMILES."
+        "-i",
+        "--test-path",
+        required=True,
+        type=Path,
+        help="Path to an input CSV file containing SMILES.",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
-        help="Path to CSV or PICKLE file where predictions will be saved. If the file extension is .pkl, will be saved as a PICKLE file. If not provided and the test_path is /path/to/test/test.csv, predictions will be saved to /path/to/test/test_preds.csv.",
+        type=Path,
+        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds.csv'.",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -144,13 +149,16 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
+    if args.test_path.suffix not in [".csv"]:
+        raise ArgumentError(
+            argument=None, message=f"Input data must be a CSV file. Got {args.test_path}"
+        )
     if args.output is None:
-        args.test_path = Path(args.test_path)
-        name = f"{args.test_path.stem}_preds.csv"
-        args.output = args.test_path.with_name(name)
-    else:
-        args.output = Path(args.output)
-
+        args.output = args.test_path.parent / (args.test_path.stem + "_preds.csv")
+    if args.output.suffix not in [".csv", ".pkl"]:
+        raise ArgumentError(
+            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}"
+        )
     return args
 
 
@@ -237,7 +245,7 @@ def main(args):
 
     with torch.inference_mode():
         trainer = pl.Trainer(
-            logger=None,
+            logger=False,
             enable_progress_bar=True,
             accelerator="auto",
             devices=args.n_gpu if torch.cuda.is_available() else 1,
@@ -254,13 +262,15 @@ def main(args):
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test[
-        "preds"
-    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    df_test["preds"] = (
+        preds.flatten()
+    )  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
-        df_test.to_pickle(args.output, index=False)
+        df_test = df_test.reset_index(drop=True)
+        df_test.to_pickle(args.output)
     else:
         df_test.to_csv(args.output, index=False)
+    logger.info(f"Predictions saved to '{args.output}'")
 
 
 if __name__ == "__main__":

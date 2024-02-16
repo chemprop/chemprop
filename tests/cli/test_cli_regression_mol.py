@@ -55,8 +55,8 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "model_0" / "model.pt").exists()
-    assert (tmp_path / "model_0" / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "model_0" / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "model_0" / "train_smiles.csv").exists()
 
 
@@ -86,8 +86,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "model_1" / "fold_2" / "model.pt").exists()
-    assert (tmp_path / "model_1" / "fold_2" / "chkpts" / "last.ckpt").exists()
-    assert (tmp_path / "model_1" / "fold_2" / "tb_logs" / "lightning_logs" / "version_0").exists()
+    assert (tmp_path / "model_1" / "fold_2" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "model_1" / "fold_2" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "model_1" / "fold_2" / "train_smiles.csv").exists()
 
 
@@ -128,6 +128,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    checkpoint_path = tmp_path / "model_0" / "chkpts" / "last.ckpt"
+    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
