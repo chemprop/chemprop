@@ -128,10 +128,6 @@ class CommonArgs(Tap):
     """
     Whether self supervised pretraining or not
     """
-    not_skip_invalid_smiles: bool = False
-    """
-    Whether to filter smiles or not, if large data set it to False
-    """
     is_pretrain_contra: bool = False
     """
     Whether self supervised pretraining use contrastive learning or not

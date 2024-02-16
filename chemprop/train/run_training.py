@@ -50,7 +50,7 @@ def run_training(args: TrainArgs,
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')
-    if args.separate_test_path:
+    if args.separate_test_path and not args.is_pretrain:
         test_data = get_data(path=args.separate_test_path,
                              args=args,
                              features_path=args.separate_test_features_path,
@@ -60,9 +60,8 @@ def run_training(args: TrainArgs,
                              constraints_path=args.separate_test_constraints_path,
                              smiles_columns=args.smiles_columns,
                              loss_function=args.loss_function,
-                             skip_invalid_smiles=not(args.not_skip_invalid_smiles),
                              logger=logger)
-    if args.separate_val_path:
+    if args.separate_val_path and not args.is_pretrain:
         val_data = get_data(path=args.separate_val_path,
                             args=args,
                             features_path=args.separate_val_features_path,
@@ -72,7 +71,6 @@ def run_training(args: TrainArgs,
                             constraints_path=args.separate_val_constraints_path,
                             smiles_columns=args.smiles_columns,
                             loss_function=args.loss_function,
-                            skip_invalid_smiles=not(args.not_skip_invalid_smiles),
                             logger=logger)
 
     if args.separate_val_path and args.separate_test_path:
