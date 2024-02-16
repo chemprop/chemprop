@@ -1,5 +1,3 @@
-"""Mixin classes for the project."""
-
 import inspect
 from typing import Any, Collection
 
