@@ -6,13 +6,6 @@ from typing import Any, Collection
 
 class ReprMixin:
     def __repr__(self) -> str:
-        """Return a string representation of the object.
-
-        Returns
-        -------
-        str
-            The string representation of the object.
-        """
         param_repr_list = []
         for param_name, param_value in self.get_params(deep=False).items():
             param_default = self._get_default_params()[param_name]
