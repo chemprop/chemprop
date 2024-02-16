@@ -26,7 +26,7 @@ class ReprMixin:
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the current parameters of the class, required to initialize the class.
 
-        This method mimics the behavior of `sklearn.base.BaseEstimator.get_params`.
+        This method mimics the behavior of :method:`sklearn.base.BaseEstimator.get_params`.
 
         Parameters
         ----------
