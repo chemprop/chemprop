@@ -136,7 +136,7 @@ def make_datapoints(
             )
             for i in range(N)
         ]
-        for mol_idx, smis in enumerate(zip(*smiss))
+        for mol_idx, smis in enumerate(list(zip(*smiss)))
     ]
     rxn_data = [
         [
@@ -178,7 +178,7 @@ def build_data_from_files(
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )
-    n_molecules = len(zip(*smiss))
+    n_molecules = len(list(zip(*smiss)))
 
     X_fs = load_input_features(p_features, n_molecules)
     V_fss = load_input_features(p_atom_feats, n_molecules)
@@ -200,8 +200,7 @@ def load_input_features(paths, n_molecules):
         path = paths.get(mol_idx, None)
         if path:
             loaded_feature = np.load(path)
-            if isinstance(loaded_feature, np.lib.npyio.NpzFile):
-                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+            loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
         else:
             loaded_feature = None
         features.append(loaded_feature)
