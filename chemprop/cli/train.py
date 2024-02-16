@@ -397,7 +397,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Maximum magnitude of gradient during training."
+        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
     )
     train_args.add_argument(
         "--class-balance",
@@ -773,6 +773,7 @@ def main(args):
             devices=args.n_gpu if torch.cuda.is_available() else 1,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
+            gradient_clip_val=args.grad_clip,
         )
         trainer.fit(model, train_loader, val_loader)
 
