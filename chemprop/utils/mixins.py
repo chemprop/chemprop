@@ -13,8 +13,7 @@ class ReprMixin:
             if value != default_params[name]
         ]
 
-        non_default_params = ", ".join(param_repr_list)
-        return f"{self.__class__.__name__}({non_default_params})"
+        return f"{self.__class__.__name__}({','.join(param_repr_list)})"
 
     @classmethod
     def _get_default_params(cls) -> dict[str, Any]:
