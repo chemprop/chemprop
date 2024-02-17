@@ -47,7 +47,7 @@ class Aggregation(nn.Module, HasHParams):
         Parameters
         ----------
         H : Tensor
-            A tensor of shape ``V x d`` containing the batched node-level representations of ``n``
+            A tensor of shape ``V x d`` containing the batched node-level representations of ``b``
             graphs
         batch : Tensor
             a tensor of shape ``V`` containing the index of the graph a given vertex corresponds to
@@ -55,7 +55,7 @@ class Aggregation(nn.Module, HasHParams):
         Returns
         -------
         Tensor
-            a tensor of shape ``n x d`` containing the graph-level representations
+            a tensor of shape ``b x d`` containing the graph-level representations
         """
 
 
