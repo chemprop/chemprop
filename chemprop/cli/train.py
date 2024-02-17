@@ -693,7 +693,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args: Namespace, model_idx: int, no_cv: bool, seed: int, format_kwargs: dict, featurization_kwargs: dict):
+def train_model(args: Namespace, model_idx: int, no_cv: bool, format_kwargs: dict, featurization_kwargs: dict):
+    seed = args.seed + model_idx
     output_dir = args.output_dir / f"model_{model_idx}"
     
     train_data, val_data, test_data = build_splits(args, seed, format_kwargs, featurization_kwargs)
@@ -794,9 +795,7 @@ def main(args):
 
     for model_idx in range(args.ensemble_size):
         
-        seed = args.seed + model_idx
-
-        train_model(args, model_idx, no_cv, seed, format_kwargs, featurization_kwargs)
+        train_model(args, model_idx, no_cv, format_kwargs, featurization_kwargs)
 
 
 if __name__ == "__main__":
