@@ -235,8 +235,9 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
     """
-    Class that is used for conformal quantile regression. Reformats preds to be midpoint
-    of interval and outputs the interval as the uncal_output.
+    This class is used for conformal quantile regression. The original targets of
+    the model are intervals. Here, we reformat the prediction results to be the
+    midpoint of intervals and use the intervals as the `uncal_output`.
     """
 
     @property
@@ -253,14 +254,11 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
     @staticmethod
     def reformat_preds(preds):
         """
-        Reformat preds so to midpoint of quantiles
+        Reformat predictions to the midpoint between the upper and lower quantiles.
         """
         num_data, num_tasks = preds.shape
-        reformat_preds = np.zeros([num_data, num_tasks // 2])
-        for i in range(num_tasks // 2):
-            reformat_preds[:, i] = (preds[:, i] + preds[:, i + num_tasks // 2]) / 2
-
-        return reformat_preds
+        reshaped_preds = preds.reshape(num_data, 2, num_tasks // 2).mean(axis=1)
+        return reshaped_preds
 
     @staticmethod
     def make_intervals(preds):
@@ -338,17 +336,14 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
 
         if model.is_atom_bond_targets:
             raise NotImplementedError(
-                f"Uncertainty predictor type ConformalQuantileRegressionPredictor and ConformalRegressionPredictor is not currently supported for atom and bond properties prediction."
+                f"Uncertainty predictor type ConformalQuantileRegressionPredictor and ConformalRegressionPredictor are not currently supported for atom and bond properties prediction."
             )
         else:
-            self.uncal_preds = sum_preds / self.num_models
-            self.uncal_intervals = self.make_intervals(self.uncal_preds.T).T
-            uncal_vars = np.zeros_like(sum_preds)
-            uncal_vars[:] = np.nan
-            self.uncal_vars = uncal_vars
+            uncal_preds = sum_preds / self.num_models
+            self.uncal_intervals = self.make_intervals(uncal_preds.T).T
             if self.individual_ensemble_predictions:
                 self.individual_preds = individual_preds.tolist()
-            self.uncal_preds = self.reformat_preds(self.uncal_preds)
+            self.uncal_preds = self.reformat_preds(uncal_preds)
 
     def get_uncal_output(self):
         return self.uncal_intervals
@@ -356,16 +351,15 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
 
 class ConformalRegressionPredictor(ConformalQuantileRegressionPredictor):
     """
-    Class that is used for basic conformal regression. Reformats preds to be midpoint
-    of interval and outputs uncalibrated interval size 0 as the uncal_output.
+    This class is used for basic conformal regression. The prediction outputs are midpoints
+    of intervals, while the uncalibrated intervals are reported as the `uncal_output`.
     """
 
     @staticmethod
     def reformat_preds(preds):
         """
-        Reformat preds so to midpoint of quantiles
+        Reformat predictions to the midpoint between the upper and lower quantiles.
         """
-
         return preds
 
     @staticmethod

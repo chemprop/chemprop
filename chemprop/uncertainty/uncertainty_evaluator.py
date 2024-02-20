@@ -553,7 +553,7 @@ class ConformalMulticlassEvaluator(UncertaintyEvaluator):
             task_results = np.take_along_axis(
                 uncertainties[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)
-            results.append(task_results.sum() / task_results.shape[0])
+            results.append(task_results.sum() / len(task_results))
 
         return results
 
@@ -594,12 +594,12 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
         num_tasks = targets.shape[1]
         results = []
 
-        for task_id in range(num_tasks):
-            unc_task_id_in = uncertainties[:, task_id]
-            unc_task_id_out = uncertainties[:, task_id + num_tasks]
-            targets_out_task_id = targets_out[:, task_id]
-            targets_in_task_id = targets_in[:, task_id]
-            task_results = np.logical_and(unc_task_id_in <= targets_in_task_id, targets_out_task_id <= unc_task_id_out)
+        for i in range(num_tasks):
+            task_unc_in = uncertainties[:, i]
+            task_unc_out = uncertainties[:, i + num_tasks]
+            task_targets_in = targets_in[:, i]
+            task_targets_out = targets_out[:, i]
+            task_results = np.logical_and(task_unc_in <= task_targets_in, task_targets_out <= task_unc_out)
             results.append(task_results.sum() / task_results.shape[0])
 
         return results

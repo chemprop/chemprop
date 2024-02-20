@@ -918,7 +918,9 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        raise NotImplementedError
+        raise NotImplementedError(
+            "The NLL uncertainty evaluation method for classification models has not been implemented for use with the conformal classification calibration method."
+            )
 
     @staticmethod
     def nonconformity_scores(uncal_preds):
@@ -950,8 +952,8 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
             task_scores = np.take_along_axis(
                 all_scores[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)  # shape(valid_data)
-            task_scores = np.append(task_scores, np.inf)
-            qhat = np.quantile(task_scores, 1 - self.conformal_alpha / self.num_tasks, interpolation="higher")
+            q_level = np.ceil((num_data + 1) * (1 - self.conformal_alpha)) / num_data
+            qhat = np.quantile(task_scores, q_level, method='higher')
             self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
@@ -1024,24 +1026,26 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        raise NotImplementedError
+        raise NotImplementedError(
+            "The NLL uncertainty evaluation method for classification models has not been implemented for use with the conformal classification calibration method."
+            )
 
     @staticmethod
     def nonconformity_scores(uncal_preds):
         """Fixed per class. Example is for multilabel conformal.
 
         Args:
-            preds: [num_examples, num_tasks, num_classes]
+            preds: [num_examples, num_tasks]
 
         Returns:
-            scores: [num_examples, num_tasks, num_classes]
+            scores: [num_examples, num_tasks]
         """
         return -uncal_preds
 
     def calibrate(self):
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
-        )  # shape(data, tasks, num_classes)
+        )  # shape(data, tasks)
         targets = np.array(self.calibration_data.targets(), dtype=bool)  # shape(data, tasks)
         self.num_data, self.num_tasks = targets.shape
 
@@ -1085,13 +1089,13 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return f"conformal_{self.conformal_alpha}"
+        return f"conformal_regression_{self.conformal_alpha}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
         if self.dataset_type != "regression":
             raise ValueError(
-                "Conformal Quantile Regression is only implemented for regression dataset types."
+                "Conformal Regression is only implemented for regression dataset types."
             )
 
     def nll(
@@ -1101,12 +1105,15 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
         targets: List[List[float]],
         mask: List[List[bool]],
     ):
-        raise NotImplementedError
+        raise NotImplementedError(
+            "The NLL uncertainty evaluation method for regression models has not been implemented for use with the conformal regression calibration method."
+            )
 
     def calibrate(self):
         uncal_interval = np.array(self.calibration_predictor.get_uncal_output())  # shape(data, 2 * tasks)
         targets = np.array(self.calibration_data.targets())  # shape(data, tasks)
         mask = np.array(self.calibration_data.mask())
+        num_data = uncal_interval.shape[0]
         self.num_tasks = uncal_interval.shape[1] // 2
         if self.calibration_data.is_atom_bond_targets:
             uncal_interval = [np.concatenate(x) for x in zip(*uncal_interval)]
@@ -1125,8 +1132,8 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
             calibration_scores = np.maximum(
                 uncal_interval_lower - task_targets, task_targets - uncal_interval_upper
             )
-            calibration_scores = np.append(calibration_scores, np.inf)
-            qhat = np.quantile(calibration_scores, 1 - self.conformal_alpha / self.num_tasks, interpolation="higher")
+            q_level = np.ceil((num_data + 1) * (1 - self.conformal_alpha)) / num_data
+            qhat = np.quantile(calibration_scores, q_level, interpolation='higher')
             self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
