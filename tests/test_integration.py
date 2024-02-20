@@ -1166,6 +1166,38 @@ class ChempropTests(TestCase):
     #     [],
     #     [],
     # ),
+    (
+        0.903807,
+        None,
+        "conformal_regression",
+        "conformal_coverage",
+        [],
+        ["--conformal_alpha", "0.1"]
+    ),
+    (
+        0.703407,
+        None,
+        "conformal_regression",
+        "conformal_coverage",
+        [],
+        ["--conformal_alpha", "0.3"]
+    ),
+    (
+        0.903808,
+        None,
+        "conformal_regression",
+        "conformal_coverage",
+        ["--loss_function", "quantile_interval", "--quantile_loss_alpha", "0.1"],
+        ["--conformal_alpha", "0.1"]
+    ),
+    (
+        0.703407,
+        None,
+        "conformal_regression",
+        "conformal_coverage",
+        ["--loss_function", "quantile_interval", "--quantile_loss_alpha", "0.1"],
+        ["--conformal_alpha", "0.3"]
+    )
     ])
     def test_uncertainty_regression(
         self,
@@ -1266,6 +1298,128 @@ class ChempropTests(TestCase):
             evaluation_scores_data=pd.read_csv(eval_path)
             self.assertAlmostEqual(evaluation_scores_data['synergy'][0], expected_score, delta=expected_score * DELTA)
 
+    @parameterized.expand(
+        [
+            (
+                0.900013,
+                None,
+                "conformal",
+                "conformal_coverage",
+                [],
+                ["--conformal_alpha", "0.1"]),
+            (
+                0.900013,
+                None, 
+                "conformal_adaptive",
+                "conformal_coverage",
+                [],
+                ["--conformal_alpha", "0.1"]
+            ),
+        ]
+    )
+    def test_conformal_multiclass(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            data_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
+            train_flags.extend(["--data_path", data_path, "--multiclass_num_classes", "11"])
+
+            self.train(
+                dataset_type="multiclass",
+                metric="cross_entropy",
+                save_dir=save_dir,
+                flags=train_flags,
+            )
+            eval_path = os.path.join(save_dir, "eval_scores.csv")
+            test_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
+            preds_path = os.path.join(save_dir, "preds.csv")
+            predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(["--uncertainty_method", uncertainty_method])
+            if calibration_method is not None:
+                predict_flags.extend(
+                    ["--calibration_method", calibration_method, "--calibration_path", test_path]
+                )
+            if evaluation_methods is not None:
+                predict_flags.extend(["--evaluation_methods", evaluation_methods])
+            self.predict(
+                dataset_type="multiclass",
+                preds_path=preds_path,
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores = (
+                pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
+            )
+            mean_score = np.mean(evaluation_scores)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
+
+    @parameterized.expand(
+        [
+            (
+                0.994667,
+                None,
+                "conformal",
+                "conformal_coverage",
+                [],
+                ["--conformal_alpha", "0.1"],
+            ),
+            (
+                0.994667,
+                None,
+                "conformal",
+                "conformal_coverage",
+                [],
+                ["--conformal_alpha", "0.3"],
+            )
+        ]
+    )
+    def test_conformal_multilabel(
+        self,
+        expected_score: float,
+        uncertainty_method: str,
+        calibration_method: str,
+        evaluation_methods: str,
+        train_flags: List[str] = None,
+        predict_flags: List[str] = None,
+    ):
+        with TemporaryDirectory() as save_dir:
+            data_path = os.path.join(TEST_DATA_DIR, "classification.csv")
+            train_flags.extend(["--data_path", data_path])
+
+            self.train(
+                dataset_type="classification", metric="auc", save_dir=save_dir, flags=train_flags
+            )
+            eval_path = os.path.join(save_dir, "eval_scores.csv")
+            test_path = os.path.join(TEST_DATA_DIR, "classification.csv")
+            preds_path = os.path.join(save_dir, "preds.csv")
+            predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
+            if uncertainty_method is not None:
+                predict_flags.extend(["--uncertainty_method", uncertainty_method])
+            if calibration_method is not None:
+                predict_flags.extend(
+                    ["--calibration_method", calibration_method, "--calibration_path", test_path]
+                )
+            if evaluation_methods is not None:
+                predict_flags.extend(["--evaluation_methods", evaluation_methods])
+            self.predict(
+                dataset_type="classification",
+                preds_path=preds_path,
+                save_dir=save_dir,
+                flags=predict_flags,
+            )
+            evaluation_scores = (
+                pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
+            )
+            mean_score = np.mean(evaluation_scores)
+            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
+
     @parameterized.expand([
         (
                 'chemprop_atomic_bond_targets',
@@ -1336,166 +1490,6 @@ class ChempropTests(TestCase):
 
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
-
-    @parameterized.expand(
-        [
-            ([[0.704]], None, "conformal_regression", "conformal_coverage", "0.3", [], []),
-            ([[0.904]], None, "conformal_regression", "conformal_coverage", "0.1", [], []),
-        ]
-    )
-    def test_conformal_regression(
-        self,
-        scores: List[List[float]],
-        uncertainty_method: str,
-        calibration_method: str,
-        evaluation_methods: str,
-        conformal_alpha: str,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
-        with TemporaryDirectory() as save_dir:
-            data_path = os.path.join(TEST_DATA_DIR, "regression.csv")
-            train_flags.extend(["--data_path", data_path])
-
-            self.train(
-                dataset_type="regression", metric="rmse", save_dir=save_dir, flags=train_flags
-            )
-            eval_path = os.path.join(save_dir, "eval_scores.csv")
-            test_path = os.path.join(TEST_DATA_DIR, "regression.csv")
-            preds_path = os.path.join(save_dir, "preds.csv")
-            predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
-            if uncertainty_method is not None:
-                predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if conformal_alpha is not None:
-                predict_flags.extend(["--conformal_alpha", conformal_alpha])
-            if calibration_method is not None:
-                predict_flags.extend(
-                    ["--calibration_method", calibration_method, "--calibration_path", test_path]
-                )
-            if evaluation_methods is not None:
-                predict_flags.extend(["--evaluation_methods", evaluation_methods])
-            self.predict(
-                dataset_type="regression",
-                preds_path=preds_path,
-                save_dir=save_dir,
-                flags=predict_flags,
-            )
-            evaluation_scores = (
-                pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
-            )
-            mean_score = np.mean(evaluation_scores)
-            expected_score = np.mean(scores)
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
-    
-    @parameterized.expand(
-        [
-            ([[0.900013]], None, "conformal", "conformal_coverage", "0.1", [], []),
-            ([[0.900013]], None, "conformal_adaptive", "conformal_coverage", "0.1", [], []),
-        ]
-    )
-    def test_conformal_multiclass(
-        self,
-        scores: List[List[float]],
-        uncertainty_method: str,
-        calibration_method: str,
-        evaluation_methods: str,
-        conformal_alpha: str,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
-        with TemporaryDirectory() as save_dir:
-            data_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
-            train_flags.extend(["--data_path", data_path, "--multiclass_num_classes", "11"])
-
-            self.train(
-                dataset_type="multiclass",
-                metric="cross_entropy",
-                save_dir=save_dir,
-                flags=train_flags,
-            )
-            eval_path = os.path.join(save_dir, "eval_scores.csv")
-            test_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
-            preds_path = os.path.join(save_dir, "preds.csv")
-            predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
-            if uncertainty_method is not None:
-                predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if conformal_alpha is not None:
-                predict_flags.extend(["--conformal_alpha", conformal_alpha])
-            if calibration_method is not None:
-                predict_flags.extend(
-                    ["--calibration_method", calibration_method, "--calibration_path", test_path]
-                )
-            if evaluation_methods is not None:
-                predict_flags.extend(["--evaluation_methods", evaluation_methods])
-            self.predict(
-                dataset_type="multiclass",
-                preds_path=preds_path,
-                save_dir=save_dir,
-                flags=predict_flags,
-            )
-            evaluation_scores = (
-                pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
-            )
-            mean_score = np.mean(evaluation_scores)
-            expected_score = np.mean(scores)
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
-
-    @parameterized.expand(
-        [
-            (
-                [[0.994, 0.998, 0.956, 1, 0.996, 1, 1, 1, 0.992, 1, 1, 1]],
-                None,
-                "conformal",
-                "conformal_coverage",
-                "0.1",
-                [],
-                [],
-            )
-        ]
-    )
-    def test_conformal_multilabel(
-        self,
-        scores: List[List[float]],
-        uncertainty_method: str,
-        calibration_method: str,
-        evaluation_methods: str,
-        conformal_alpha: str,
-        train_flags: List[str] = None,
-        predict_flags: List[str] = None,
-    ):
-        with TemporaryDirectory() as save_dir:
-            data_path = os.path.join(TEST_DATA_DIR, "classification.csv")
-            train_flags.extend(["--data_path", data_path])
-
-            self.train(
-                dataset_type="classification", metric="auc", save_dir=save_dir, flags=train_flags
-            )
-            eval_path = os.path.join(save_dir, "eval_scores.csv")
-            test_path = os.path.join(TEST_DATA_DIR, "classification.csv")
-            preds_path = os.path.join(save_dir, "preds.csv")
-            predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
-            if uncertainty_method is not None:
-                predict_flags.extend(["--uncertainty_method", uncertainty_method])
-            if conformal_alpha is not None:
-                predict_flags.extend(["--conformal_alpha", conformal_alpha])
-            if calibration_method is not None:
-                predict_flags.extend(
-                    ["--calibration_method", calibration_method, "--calibration_path", test_path]
-                )
-            if evaluation_methods is not None:
-                predict_flags.extend(["--evaluation_methods", evaluation_methods])
-            self.predict(
-                dataset_type="classification",
-                preds_path=preds_path,
-                save_dir=save_dir,
-                flags=predict_flags,
-            )
-            evaluation_scores = (
-                pd.read_csv(eval_path).drop(columns=["evaluation_method"]).to_numpy()
-            )
-            mean_score = np.mean(evaluation_scores)
-            expected_score = np.mean(scores)
-            self.assertAlmostEqual(mean_score, expected_score, delta=DELTA*expected_score)
 
 
 if __name__ == '__main__':
