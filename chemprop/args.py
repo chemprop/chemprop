@@ -622,6 +622,10 @@ class TrainArgs(CommonArgs):
             self._atom_constraints = [False] * len(self.atom_targets)
         return self._atom_constraints
 
+    @atom_constraints.setter
+    def atom_constraints(self, atom_constraints: List[bool]) -> None:
+        self._atom_constraints = atom_constraints
+
     @property
     def bond_constraints(self) -> List[bool]:
         """
@@ -634,6 +638,10 @@ class TrainArgs(CommonArgs):
         else:
             self._bond_constraints = [False] * len(self.bond_targets)
         return self._bond_constraints
+
+    @bond_constraints.setter
+    def bond_constraints(self, bond_constraints: List[bool]) -> None:
+        self._bond_constraints = bond_constraints
 
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
