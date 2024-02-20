@@ -886,7 +886,7 @@ class TrainArgs(CommonArgs):
 
         if not 0 <= self.quantile_loss_alpha <= 0.5:
             raise ValueError(
-                "quantile_loss_alpha should be in the range [0,0.5]"
+                "quantile_loss_alpha should be in the range [0, 0.5]"
             )
 
 

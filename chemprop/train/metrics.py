@@ -158,7 +158,7 @@ def quantile(targets: List[float], preds: List[float], quantile: float):
 
     :param targets: A list of targets.
     :param preds: A list of predictions.
-    :param quantile: The quantile value to run pinball loss on
+    :param quantile: The quantile value to run pinball loss on.
     :return: The computed quantile loss.
     """
     num_data = len(preds)

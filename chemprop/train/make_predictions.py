@@ -218,6 +218,8 @@ def predict_and_save(
 
     if evaluators is not None:
         evaluations = []
+        if args.loss_function == "quantile_interval":
+            task_names = task_names[:len(task_names) // 2]
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
@@ -300,13 +302,13 @@ def predict_and_save(
                     task_name + f"_{estimator.label}" + "_upper_bound" for task_name in task_names
                 ]
             elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [task_names[i] + f"_{estimator.label}" + "_quantile_lower_bound" for i in range(0, num_tasks // 2)] + [
-                    task_names[i] + f"_{estimator.label}" + "_quantile_upper_bound" for i in range(num_tasks // 2, num_tasks)
+                unc_names = [task_name + f"_{estimator.label}" + "_quantile_lower_bound" for task_name in task_names] + [
+                    task_name + f"_{estimator.label}" + "_quantile_upper_bound" for task_name in task_names
                 ]
 
             elif args.uncertainty_method == "conformal_quantile_regression" and args.calibration_method is None:
-                unc_names = [task_names[i] + "_quantile_" + str(args.conformal_alpha/2) for i in range(0, num_tasks // 2)] + [
-                    task_names[i] + "_quantile_" + str(1 - args.conformal_alpha/2) for i in range(num_tasks // 2, num_tasks)
+                unc_names = [task_name + "_quantile_" + str(args.conformal_alpha / 2) for task_name in task_names] + [
+                    task_name + "_quantile_" + str(1 - args.conformal_alpha / 2) for task_name in task_names
                 ]
 
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
