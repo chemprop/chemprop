@@ -240,7 +240,7 @@ def test_conformal_multiclass_coverage(
             np.array([[0, 0], [1, 0], [1, 1]]),
             np.full((3, 2), 0.5),
             np.array([[0, 0, 0, 0], [0, 1, 1, 1], [0, 0, 0, 0]]),
-            np.full((3, 2), True, dtype=bool),
+            np.full((2, 3), True, dtype=bool),
             [0.6666, 0.3333],
         )
     ],
