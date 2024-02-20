@@ -588,18 +588,25 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
             Conformal coverage for each task
         """
         targets = np.array(targets, dtype=float)
-        targets_out = np.nan_to_num(targets, nan=0)
-        targets_in = np.nan_to_num(targets, nan=1)
         uncertainties = np.array(uncertainties)
-        num_tasks = targets.shape[1]
+        mask = np.array(mask)
+        num_tasks = len(mask)
+        if self.is_atom_bond_targets:
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            targets = [np.concatenate(x) for x in zip(*targets)]
+            preds = [np.concatenate(x) for x in zip(*preds)]
+        else:
+            uncertainties = np.array(list(zip(*uncertainties)))
+            targets = targets.astype(float)
+            targets = np.array(list(zip(*targets)))
+            preds = np.array(list(zip(*preds)))
         results = []
-
         for i in range(num_tasks):
-            task_unc_in = uncertainties[:, i]
-            task_unc_out = uncertainties[:, i + num_tasks]
-            task_targets_in = targets_in[:, i]
-            task_targets_out = targets_out[:, i]
-            task_results = np.logical_and(task_unc_in <= task_targets_in, task_targets_out <= task_unc_out)
+            task_mask = mask[i]
+            task_targets = targets[i][task_mask]
+            task_unc_in = uncertainties[i][task_mask]
+            task_unc_out = uncertainties[i + num_tasks][task_mask]
+            task_results = np.logical_and(task_unc_in <= task_targets, task_targets <= task_unc_out)
             results.append(task_results.sum() / task_results.shape[0])
 
         return results

@@ -1047,6 +1047,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks)
         targets = np.array(self.calibration_data.targets(), dtype=bool)  # shape(data, tasks)
+        mask = np.array(self.calibration_data.mask(), dtype=bool)
         self.num_data, self.num_tasks = targets.shape
 
         has_zeros = np.any(targets == 0, axis=1)
@@ -1055,7 +1056,11 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         masked_scores_in = scores_in * inds_zeros + np.nan_to_num(
             np.inf * (1 - inds_zeros).astype(float)
         )
-        calibration_scores_in = np.min(masked_scores_in, axis=1)
+        calibration_scores_in = np.empty(masked_scores_in.shape[0])
+        for i, score_row in enumerate(masked_scores_in):
+            data_mask = mask.T[i]
+            masked_scores = score_row[data_mask]
+            calibration_scores_in[i] = np.min(masked_scores)
 
         has_ones = np.any(targets == 1, axis=1)
         inds_ones = targets[has_ones] == 1
@@ -1063,7 +1068,11 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         masked_scores_out = scores_out * inds_ones + np.nan_to_num(
             -np.inf * (1 - inds_ones).astype(float)
         )
-        calibration_scores_out = np.max(masked_scores_out, axis=1)
+        calibration_scores_out = np.empty(masked_scores_out.shape[0])
+        for i, score_row in enumerate(masked_scores_out):
+            data_mask = mask.T[i]
+            masked_scores = score_row[data_mask]
+            calibration_scores_out[i] = np.max(masked_scores)
 
         self.tout = np.quantile(calibration_scores_out, 1 - self.conformal_alpha / 2, interpolation="higher")
         self.tin = np.quantile(calibration_scores_in, self.conformal_alpha / 2, interpolation="higher")
