@@ -1402,7 +1402,7 @@ class ChempropTests(TestCase):
         predict_flags: List[str] = None,
     ):
         with TemporaryDirectory() as save_dir:
-            data_path = os.path.join(TEST_DATA_DIR, "tox21class.csv")
+            data_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
             train_flags.extend(["--data_path", data_path, "--multiclass_num_classes", "11"])
 
             self.train(
@@ -1412,7 +1412,7 @@ class ChempropTests(TestCase):
                 flags=train_flags,
             )
             eval_path = os.path.join(save_dir, "eval_scores.csv")
-            test_path = os.path.join(TEST_DATA_DIR, "tox21class.csv")
+            test_path = os.path.join(TEST_DATA_DIR, "multiclass.csv")
             preds_path = os.path.join(save_dir, "preds.csv")
             predict_flags.extend(["--evaluation_scores_path", eval_path, "--test_path", test_path])
             if uncertainty_method is not None:
