@@ -594,12 +594,10 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
         if self.is_atom_bond_targets:
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
             targets = [np.concatenate(x) for x in zip(*targets)]
-            preds = [np.concatenate(x) for x in zip(*preds)]
         else:
             uncertainties = np.array(list(zip(*uncertainties)))
             targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
-            preds = np.array(list(zip(*preds)))
         results = []
         for i in range(num_tasks):
             task_mask = mask[i]
