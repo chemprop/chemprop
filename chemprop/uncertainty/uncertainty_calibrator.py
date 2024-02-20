@@ -953,7 +953,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
                 all_scores[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
             ).squeeze(1)  # shape(valid_data)
             q_level = np.ceil((num_data + 1) * (1 - self.conformal_alpha)) / num_data
-            qhat = np.quantile(task_scores, q_level, method='higher')
+            qhat = np.quantile(task_scores, q_level, interpolation='higher')
             self.qhats.append(qhat)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
