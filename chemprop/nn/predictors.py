@@ -303,5 +303,5 @@ class SpectralFFN(_FFNPredictorBase):
         Y = self.ffn.spectral_activation(Y)
         return Y / Y.sum(1, keepdim=True)
 
-   train_step = forward
+    train_step = forward
 
