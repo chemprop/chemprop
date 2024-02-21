@@ -795,7 +795,7 @@ def main(args):
         else:
             output_dir = args.output_dir
 
-        train_model(args, train_data, val_data, test_data, output_dir, fold_idx, no_cv)
+        train_model(args, train_data, val_data, test_data, output_dir)
 
 
 if __name__ == "__main__":
