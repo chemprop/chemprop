@@ -697,8 +697,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
 
     for model_idx in range(args.ensemble_size):
 
-        output_dir_idx = output_dir / f"model_{model_idx}"
-        output_dir_idx.mkdir(exist_ok=True, parents=True)
+        model_output_dir = output_dir / f"model_{model_idx}"
+        model_output_dir.mkdir(exist_ok=True, parents=True)
 
         model = build_model(args, train_loader.dataset)
         logger.info(model)
@@ -707,12 +707,12 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
         logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
         try:
-            trainer_logger = TensorBoardLogger(output_dir_idx, "trainer_logs")
+            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
         except ModuleNotFoundError:
-            trainer_logger = CSVLogger(output_dir_idx, "trainer_logs")
+            trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         checkpointing = ModelCheckpoint(
-            output_dir_idx / "checkpoints",
+            model_output_dir / "checkpoints",
             "{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -739,7 +739,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
-        p_model = output_dir_idx / "model.pt"
+        p_model = model_output_dir / "model.pt"
         input_scalers = []
         output_scaler = scaler
         save_model(p_model, model, input_scalers, output_scaler)
