@@ -693,27 +693,16 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args: Namespace, model_idx: int, no_cv: bool, format_kwargs: dict, featurization_kwargs: dict):
-    seed = args.seed + model_idx
-    output_dir = args.output_dir / f"model_{model_idx}"
-    
-    train_data, val_data, test_data = build_splits(args, seed, format_kwargs, featurization_kwargs)
+def train_model(args, train_data, val_data, test_data, output_dir, fold_idx, no_cv):
 
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
+    train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+    if args.save_smiles_splits:
+        save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+    for model_idx in range(args.ensemble_size):
 
-        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
-
-        if not no_cv:
-            output_dir = output_dir / f"fold_{fold_idx}"
+        output_dir = args.output_dir / f"model_{model_idx}"
         output_dir.mkdir(exist_ok=True, parents=True)
-
-        if args.save_smiles_splits:
-            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
         if args.task_type == "regression":
             scaler = train_dset.normalize_targets()
@@ -792,10 +781,21 @@ def main(args):
     )
 
     no_cv = args.num_folds == 1
+    train_data, val_data, test_data = build_splits(args, args.seed, format_kwargs, featurization_kwargs)
 
-    for model_idx in range(args.ensemble_size):
-        
-        train_model(args, model_idx, no_cv, format_kwargs, featurization_kwargs)
+    if no_cv:
+        splits = ([train_data], [val_data], [test_data])
+    else:
+        splits = (train_data, val_data, test_data)
+
+    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+
+        if not no_cv:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
+        else:
+            output_dir = args.output_dir
+
+        train_model(args, train_data, val_data, test_data, output_dir, fold_idx, no_cv)
 
 
 if __name__ == "__main__":
