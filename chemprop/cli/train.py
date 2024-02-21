@@ -693,34 +693,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_data, val_data, test_data, output_dir):
-
-    output_dir.mkdir(exist_ok=True, parents=True)
-
-    train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
-    if args.save_smiles_splits:
-        save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
+def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
 
     for model_idx in range(args.ensemble_size):
 
         output_dir_idx = output_dir / f"model_{model_idx}"
         output_dir_idx.mkdir(exist_ok=True, parents=True)
 
-        if args.task_type == "regression":
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
-
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-        if test_dset is not None:
-            test_loader = MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
-
-        model = build_model(args, train_dset)
+        model = build_model(args, train_loader.dataset)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -797,7 +777,27 @@ def main(args):
         else:
             output_dir = args.output_dir
 
-        train_model(args, train_data, val_data, test_data, output_dir)
+        output_dir.mkdir(exist_ok=True, parents=True)
+
+        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+        if args.save_smiles_splits:
+            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
+
+        if args.task_type == "regression":
+            scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(scaler)
+            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+
+        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        if test_dset is not None:
+            test_loader = MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+
+        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
 
 
 if __name__ == "__main__":
