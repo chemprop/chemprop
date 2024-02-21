@@ -85,10 +85,10 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "model_1" / "fold_2" / "model.pt").exists()
-    assert (tmp_path / "model_1" / "fold_2" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "model_1" / "fold_2" / "trainer_logs" / "version_0").exists()
-    assert (tmp_path / "model_1" / "fold_2" / "train_smiles.csv").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "model.pt").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "train_smiles.csv").exists()
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
