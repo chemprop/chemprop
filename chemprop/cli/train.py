@@ -518,7 +518,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
-def build_splits(args, seed, format_kwargs, featurization_kwargs):
+def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
@@ -532,7 +532,7 @@ def build_splits(args, seed, format_kwargs, featurization_kwargs):
     )
     multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=seed, num_folds=args.num_folds)
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
     split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
     if args.separate_val_path is None and args.separate_test_path is None:
@@ -783,7 +783,7 @@ def main(args):
     )
 
     no_cv = args.num_folds == 1
-    train_data, val_data, test_data = build_splits(args, args.seed, format_kwargs, featurization_kwargs)
+    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
 
     if no_cv:
         splits = ([train_data], [val_data], [test_data])
