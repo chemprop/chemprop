@@ -547,7 +547,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
-        needs_test_data = False
+
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
