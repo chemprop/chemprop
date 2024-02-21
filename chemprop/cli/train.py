@@ -694,9 +694,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
 
 def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
-
     for model_idx in range(args.ensemble_size):
-
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
@@ -771,7 +769,6 @@ def main(args):
         splits = (train_data, val_data, test_data)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-
         if not no_cv:
             output_dir = args.output_dir / f"fold_{fold_idx}"
         else:
