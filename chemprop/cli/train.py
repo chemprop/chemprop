@@ -693,7 +693,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_data, val_data, test_data, output_dir, fold_idx, no_cv):
+def train_model(args, train_data, val_data, test_data, output_dir):
 
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
     if args.save_smiles_splits:
