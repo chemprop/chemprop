@@ -695,6 +695,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
 def train_model(args, train_data, val_data, test_data, output_dir):
 
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
     if args.save_smiles_splits:
         save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
