@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 import sys
 import json
+import numpy as np
 from copy import deepcopy
 import pandas as pd
 from rdkit import Chem
@@ -782,6 +783,12 @@ def main(args):
                 model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
+
+        if args.save_preds:
+            preds = trainer.predict(model, test_loader)
+            preds_list = [pred.flatten() for pred in np.rollaxis(torch.stack(preds).numpy(),-1)]
+            df_preds = pd.DataFrame(list(zip(test_dset.smiles, *preds_list)), columns = args.smiles_columns + args.target_columns)
+            df_preds.to_csv(output_dir / "test_predictions.csv", index=False)
 
         p_model = output_dir / "model.pt"
         input_scalers = []
