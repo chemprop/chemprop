@@ -46,11 +46,11 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     +---------------------+-----------------+--------------+
     | 119-125             | # Hs            | Y            |
     +---------------------+-----------------+--------------+
-    | 125-131             | hybridization   | Y            |
+    | 125-134             | hybridization   | Y            |
     +---------------------+-----------------+--------------+
-    | 131-132             | aromatic?       | N            |
+    | 134-135             | aromatic?       | N            |
     +---------------------+-----------------+--------------+
-    | 132-133             | mass            | N            |
+    | 135-136             | mass            | N            |
     +---------------------+-----------------+--------------+
 
     NOTE: the above signature only applies for the default arguments, as the each slice (save for
@@ -64,11 +64,14 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     num_Hs: Sequence[int] = field(default_factory=lambda: range(5))
     hybridizations: Sequence[HybridizationType] = field(
         default_factory=lambda: [
+            HybridizationType.S,
             HybridizationType.SP,
             HybridizationType.SP2,
+            HybridizationType.SP2D,
             HybridizationType.SP3,
             HybridizationType.SP3D,
             HybridizationType.SP3D2,
+            HybridizationType.OTHER,
         ]
     )
 
