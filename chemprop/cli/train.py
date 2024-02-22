@@ -742,8 +742,12 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
             if args.save_preds:
                 preds = trainer.predict(model, test_loader)
                 preds_list = [pred.flatten() for pred in np.rollaxis(torch.stack(preds).numpy(),-1)]
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds_list)), columns = args.smiles_columns + args.target_columns)
-                df_preds.to_csv(output_dir / "test_predictions.csv", index=False)
+                if args.smiles_columns and args.target_columns:
+                    columns = args.smiles_columns + args.target_columns
+                else:
+                    columns = ['SMILES'] + ['pred_' + str(i) for i in range(len(preds_list))]
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds_list)), columns = columns)
+                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         input_scalers = []
