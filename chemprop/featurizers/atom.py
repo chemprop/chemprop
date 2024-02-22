@@ -36,28 +36,32 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     +---------------------+-----------------+--------------+
     | slice [start, stop) | subfeature      | unknown pad? |
     +=====================+=================+==============+
-    | 0-101               | atomic number   | Y            |
+    | 0-38                | atomic number   | Y            |
     +---------------------+-----------------+--------------+
-    | 101-108             | degree          | Y            |
+    | 38-45               | degree          | Y            |
     +---------------------+-----------------+--------------+
-    | 108-114             | formal charge   | Y            |
+    | 45-51               | formal charge   | Y            |
     +---------------------+-----------------+--------------+
-    | 114-119             | chiral tag      | Y            |
+    | 51-56               | chiral tag      | Y            |
     +---------------------+-----------------+--------------+
-    | 119-125             | # Hs            | Y            |
+    | 56-62               | # Hs            | Y            |
     +---------------------+-----------------+--------------+
-    | 125-134             | hybridization   | Y            |
+    | 62-71               | hybridization   | Y            |
     +---------------------+-----------------+--------------+
-    | 134-135             | aromatic?       | N            |
+    | 71-72               | aromatic?       | N            |
     +---------------------+-----------------+--------------+
-    | 135-136             | mass            | N            |
+    | 72-73               | mass            | N            |
     +---------------------+-----------------+--------------+
 
     NOTE: the above signature only applies for the default arguments, as the each slice (save for
     the final two) can increase in size depending on the input arguments.
     """
 
-    max_atomic_num: InitVar[int] = 100
+    # all elements in the first 4 rows of periodic talbe plus iodine and 0 padding for other elements
+    atomic_nums: Sequence[int] = field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 
+                                                                10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
+                                                                20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
+                                                                30, 31, 32, 33, 34, 35, 36, 53])
     degrees: Sequence[int] = field(default_factory=lambda: range(6))
     formal_charges: Sequence[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
     chiral_tags: Sequence[int] = field(default_factory=lambda: range(4))
@@ -75,8 +79,8 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         ]
     )
 
-    def __post_init__(self, max_atomic_num: int = 100):
-        self.atomic_nums = {i: i for i in range(max_atomic_num)}
+    def __post_init__(self):
+        self.atomic_nums = {j: i for i, j in enumerate(self.atomic_nums)}
         self.degrees = {i: i for i in self.degrees}
         self.formal_charges = {j: i for i, j in enumerate(self.formal_charges)}
         self.chiral_tags = {i: i for i in self.chiral_tags}
@@ -91,7 +95,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             self.hybridizations,
         ]
         subfeat_sizes = [
-            1 + len(self.atomic_nums),
+            len(self.atomic_nums),
             1 + len(self.degrees),
             1 + len(self.formal_charges),
             1 + len(self.chiral_tags),
@@ -112,7 +116,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             return x
 
         feats = [
-            a.GetAtomicNum() - 1,
+            a.GetAtomicNum() if a.GetAtomicNum() in self.atomic_nums else 0,
             a.GetTotalDegree(),
             a.GetFormalCharge(),
             int(a.GetChiralTag()),
@@ -120,10 +124,15 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             a.GetHybridization(),
         ]
         i = 0
+        pad = False
         for feat, choices in zip(feats, self._subfeats):
             j = choices.get(feat, len(choices))
             x[i + j] = 1
-            i += len(choices) + 1
+            if not pad:
+                i += len(choices)
+                pad = True
+            else:
+                i += len(choices) + 1
         x[i] = int(a.GetIsAromatic())
         x[i + 1] = 0.01 * a.GetMass()
 
