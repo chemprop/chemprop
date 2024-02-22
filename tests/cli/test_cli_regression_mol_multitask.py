@@ -26,6 +26,14 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
+def test_train_quick_mve(monkeypatch, data_path):
+    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--loss-function", "mve"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_quick(monkeypatch, data_path, model_path):
     args = [
         "chemprop",
@@ -53,6 +61,47 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         m.setattr("sys.argv", args)
         main()
 
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_quick_mve(monkeypatch, data_path, model_path):
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path,
+        "--target-columns",
+        "mu",
+        "alpha",
+        "homo",
+        "lumo",
+        "gap",
+        "r2",
+        "zpve",
+        "cv",
+        "u0",
+        "u298",
+        "h298",
+        "g298",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+    
     args = [
         "chemprop",
         "predict",
