@@ -10,7 +10,7 @@ from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
-from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction, MveFFN
 from chemprop.schedulers import NoamLR
 
 
@@ -172,6 +172,10 @@ class MPNN(pl.LightningModule):
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_f)
+
+        if isinstance(self.predictor, MveFFN):
+            mean, _ = torch.chunk(preds, self.predictor.n_targets, 1)
+            preds = mean
 
         return [
             metric(preds, targets, mask, None, None, lt_mask, gt_mask)
