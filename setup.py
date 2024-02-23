@@ -45,6 +45,7 @@ setup(
         "pandas-flavor>=0.2.0",
         "scikit-learn>=0.22.2.post1",
         "sphinx>=3.1.2",
+        "sphinx-rtd-theme>=2.0.0",
         "tensorboardX>=2.0",
         "torch>=1.4.0",
         "tqdm>=4.45.0",
