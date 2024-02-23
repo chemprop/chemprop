@@ -90,20 +90,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="The number of batches between each logging of the training loss.",
     )
     parser.add_argument(
-        "--checkpoint-frzn",
-        help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
+        "--model-frzn",
+        type=Path,
+        help="Path to model file or checkpoint file to be loaded for overwriting and freezing weights. If given, the fingerprinting layer is frozen. Parts of the ffn layer can be frozen using '--frzn-ffn-layers'.",
     )
     parser.add_argument(
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input. Automatically also freezes mpnn weights.",
+        help="Overwrites weights for the first n layers of the ffn from '--model_frzn', where n is specified in the input.",
     )
-    parser.add_argument(
-        "--freeze-first-only",
-        action="store_true",
-        help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
-    )
+    # parser.add_argument(
+    #     "--freeze-first-only",
+    #     action="store_true",
+    #     help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
+    # )
     parser.add_argument(
         "--save-preds",
         action="store_true",
@@ -678,6 +679,12 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         logger.info(
             f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
         )
+
+    if args.model_frzn is not None:
+        model = mpnn_cls.load_from_file(args.model_frzn)
+        model.message_passing.freeze = True
+        model.predictor.freeze = args.frzn_ffn_layers
+        return model
 
     return mpnn_cls(
         mp_block,
