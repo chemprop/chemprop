@@ -53,6 +53,15 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
         return len(self.blocks)
 
     @property
+    def freeze(self):
+        return any(block.freeze for block in self.blocks)
+
+    @freeze.setter
+    def freeze(self, value: bool):
+        for block in self.blocks:
+            block.freeze = value
+
+    @property
     def output_dim(self) -> int:
         d_o = sum(block.output_dim for block in self.blocks)
 

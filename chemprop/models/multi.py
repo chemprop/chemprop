@@ -43,6 +43,9 @@ class MulticomponentMPNN(MPNN):
         V_ds: Iterable[Tensor | None],
         X_f: Tensor | None = None,
     ) -> Tensor:
+
+        self.freeze_layers()
+
         H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
         Hs = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]
         H = torch.cat(Hs, 1)

@@ -80,6 +80,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
+        self.freeze = 0
 
     @property
     def input_dim(self) -> int:
