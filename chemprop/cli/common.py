@@ -75,8 +75,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        nargs="+",
-        help="Path to features to use in FFN (instead of features_generator). Use as --features-path 0 /path/to/features/for/mol/0.npz 2 /path/to/features/for/mol/2.npz",
+        help="Path to features to use in FFN (instead of features_generator).",
     )
     featurization_args.add_argument(
         "--phase-features-path",
@@ -93,13 +92,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--atom-features-path",
-        nargs="+",
-        help="Path to the extra atom features. Used as atom features to featurize a given molecule. Use as --atom-features-path 0 /path/to/atom/features/for/mol/0.npz 2 /path/to/atom/features/for/mol/2.npz",
+        help="Path to the extra atom features. Used as atom features to featurize a given molecule.",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
-        nargs="+",
-        help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation. Use as --atom-descriptors-path 0 /path/to/atom/descriptors/for/mol/0.npz 2 /path/to/atom/descriptors/for/mol/2.npz",
+        help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation.",
     )
     featurization_args.add_argument(
         "--overwrite-default-atom-features",
@@ -108,8 +105,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--bond-features-path",
-        nargs="+",
-        help="Path to the extra bond features. Used as bond features to featurize a given molecule. Use as --bond-features-path 0 /path/to/bond/features/for/mol/0.npz 2 /path/to/bond/features/for/mol/2.npz",
+        help="Path to the extra bond features. Used as bond features to featurize a given molecule.",
     )
     featurization_args.add_argument(
         "--bond-descriptors-path",
@@ -147,21 +143,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_common_args(args: Namespace) -> Namespace:
-    for key in [
-        "features_path",
-        "atom_features_path",
-        "bond_features_path",
-        "atom_descriptors_path",
-    ]:
-        if getattr(args, key) is not None:
-            if len(getattr(args, key)) % 2 != 0:
-                raise ValueError(
-                    f"--{key} should be even length (index and path for features for each molecule)."
-                )
-            indices = [int(ind) for ind in getattr(args, key)[::2]]
-            paths = getattr(args, key)[1::2]
-            setattr(args, key, dict(zip(indices, paths)))
-
     return args
 
 

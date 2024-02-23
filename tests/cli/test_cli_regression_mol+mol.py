@@ -10,25 +10,7 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return (
-        str(data_dir / "regression" / "mol+mol" / "mol+mol.csv"),
-        (
-            str(data_dir / "regression" / "mol+mol" / "features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "features_1.npz"),
-        ),
-        (
-            str(data_dir / "regression" / "mol+mol" / "atom_features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "atom_features_1.npz"),
-        ),
-        (
-            str(data_dir / "regression" / "mol+mol" / "bond_features_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "bond_features_1.npz"),
-        ),
-        (
-            str(data_dir / "regression" / "mol+mol" / "atom_descriptors_0.npz"),
-            str(data_dir / "regression" / "mol+mol" / "atom_descriptors_1.npz"),
-        ),
-    )
+    return str(data_dir / "regression" / "mol+mol" / "mol+mol.csv")
 
 
 @pytest.fixture
@@ -37,7 +19,6 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    input_path, features_path, atom_features_path, bond_features_path, atom_descriptors_path = data_path
     args = [
         "chemprop",
         "train",
@@ -50,14 +31,6 @@ def test_train_quick(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
-        "--features-path",
-        features_path,
-        "--atom-features-path",
-        atom_features_path,
-        "--bond-features-path",
-        bond_features_path,
-        "--atom-descriptors-path",
-        atom_descriptors_path,
     ]
 
     with monkeypatch.context() as m:
