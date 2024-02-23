@@ -785,6 +785,8 @@ def main(args):
             scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(scaler)
             logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        else:
+            scaler = None
 
         train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
