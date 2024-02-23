@@ -297,3 +297,11 @@ class SpectralFFN(_FFNPredictorBase):
                 )
 
         self.ffn.add_module("spectral_activation", spectral_activation)
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        Y = self.ffn.spectral_activation(Y)
+        return Y / Y.sum(1, keepdim=True)
+
+    train_step = forward
+

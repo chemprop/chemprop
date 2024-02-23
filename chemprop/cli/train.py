@@ -8,7 +8,7 @@ import pandas as pd
 from rdkit import Chem
 
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
@@ -25,6 +25,7 @@ from chemprop.nn.message_passing import (
 from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.conf import NOW
 from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
 from chemprop.cli.utils.args import uppercase
 
@@ -54,13 +55,15 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-i",
         "--data-path",
         required=True,
+        type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
     parser.add_argument(
         "-o",
         "--output-dir",
         "--save-dir",
-        help="Directory where model checkpoints will be saved. Defaults to a directory in the current working directory with the same base name as the input file.",
+        type=Path,
+        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>/<time stamp>'.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -272,7 +275,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset. This determines the default loss function used during training.",
+        help="Type of dataset. This determines the default loss function used during training. Defaults to regression.",
     )
     data_args.add_argument(
         "--spectra-phase-mask-path",
@@ -360,7 +363,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
     )
     train_args.add_argument(
-        "--metric" "--metrics",
+        "--metric",
+        "--metrics",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
@@ -393,7 +397,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Maximum magnitude of gradient during training."
+        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
     )
     train_args.add_argument(
         "--class-balance",
@@ -474,9 +478,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    args.data_path = Path(args.data_path)
-
-    args.output_dir = Path(args.output_dir or Path.cwd() / args.data_path.stem)
+    if args.data_path.suffix not in [".csv"]:
+        raise ArgumentError(
+            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
+        )
+    if args.output_dir is None:
+        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
@@ -550,6 +557,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
+    logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
         p_features=args.features_path,
@@ -576,7 +584,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
-        needs_test_data = False
+
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
@@ -592,7 +600,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             train_data, val_data, _ = split_component(all_data, args.split, **split_kwargs)
     else:
         raise ArgumentError(
-            argument=None, message="'test_path' must be specified if 'val_path' is provided!"
+            argument=None,
+            message="'--separate-test-path' must be specified if '--separate-val-path' is provided!",
         )  # TODO: In v1 this wasn't the case?
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
@@ -649,7 +658,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         ]
         if args.mpn_shared:
             if args.reaction_columns is not None and args.smiles_columns is not None:
-                raise ArgumentError("Cannot use shared MPNN with both molecule and reaction data.")
+                raise ArgumentError(
+                    argument=None,
+                    message="Cannot use shared MPNN with both molecule and reaction data.",
+                )
 
         mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
         # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
@@ -718,6 +730,57 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
+def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers):
+    for model_idx in range(args.ensemble_size):
+        model_output_dir = output_dir / f"model_{model_idx}"
+        model_output_dir.mkdir(exist_ok=True, parents=True)
+
+        model = build_model(args, train_loader.dataset)
+        logger.info(model)
+
+        monitor_mode = "min" if model.metrics[0].minimize else "max"
+        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+
+        try:
+            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
+        except ModuleNotFoundError:
+            trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
+
+        checkpointing = ModelCheckpoint(
+            model_output_dir / "checkpoints",
+            "{epoch}-{val_loss:.2f}",
+            "val_loss",
+            mode=monitor_mode,
+            save_last=True,
+        )
+
+        patience = args.patience if args.patience is not None else args.epochs
+        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+
+        trainer = pl.Trainer(
+            logger=trainer_logger,
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            max_epochs=args.epochs,
+            callbacks=[checkpointing, early_stopping],
+            gradient_clip_val=args.grad_clip,
+        )
+        trainer.fit(model, train_loader, val_loader)
+
+        if test_loader is not None:
+            if args.task_type == "regression":
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+            results = trainer.test(model, test_loader)[0]
+            logger.info(f"Test results: {results}")
+
+        p_model = model_output_dir / "model.pt"
+        output_scaler = scaler
+        save_model(p_model, model, input_scalers, output_scaler)
+        logger.info(f"Model saved to '{p_model}'")
+
+
 def main(args):
     save_config(args)
 
@@ -734,27 +797,28 @@ def main(args):
         features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
+    no_cv = args.num_folds == 1
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
 
-    no_cv = args.num_folds == 1
     if no_cv:
         splits = ([train_data], [val_data], [test_data])
     else:
         splits = (train_data, val_data, test_data)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+        if not no_cv:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
+        else:
+            output_dir = args.output_dir
+
+        output_dir.mkdir(exist_ok=True, parents=True)
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
         X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
             train_dset, val_dset, args
         )
-
-        if no_cv:
-            output_dir = args.output_dir
-        else:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-            output_dir.mkdir(exist_ok=True, parents=True)
+        input_scalers = {"X_f": X_f_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
@@ -773,46 +837,7 @@ def main(args):
         else:
             test_loader = None
 
-        model = build_model(args, train_dset)
-        logger.info(model)
-
-        monitor_mode = "min" if model.metrics[0].minimize else "max"
-        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
-
-        tb_logger = TensorBoardLogger(output_dir / "tb_logs")
-        checkpointing = ModelCheckpoint(
-            output_dir / "chkpts",
-            "{epoch}-{val_loss:.2f}",
-            "val_loss",
-            mode=monitor_mode,
-            save_last=True,
-        )
-
-        patience = args.patience if args.patience is not None else args.epochs
-        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
-
-        trainer = pl.Trainer(
-            logger=tb_logger,
-            enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
-            max_epochs=args.epochs,
-            callbacks=[checkpointing, early_stopping],
-        )
-        trainer.fit(model, train_loader, val_loader)
-
-        if test_loader is not None:
-            if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
-            results = trainer.test(model, test_loader)[0]
-            logger.info(f"Test results: {results}")
-
-        p_model = output_dir / "model.pt"
-        input_scalers = {"X_f": X_f_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
-        output_scaler = scaler
-        save_model(p_model, model, input_scalers, output_scaler)
-        logger.info(f"Model saved to '{p_model}'")
+        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers)
 
 
 if __name__ == "__main__":
