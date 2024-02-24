@@ -13,7 +13,7 @@
 
 Chemprop is a repository containing message passing neural networks for molecular property prediction.
 
-**License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CCO 1.0](logo/LICENSE.txt).
+**License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CC0 1.0](logo/LICENSE.txt).
 
 **References**: Please cite the appropriate papers if Chemprop is helpful to your research.
 
