@@ -18,8 +18,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 # -- Project information -----------------------------------------------------
 
 project = 'chemprop'
-copyright = '2020, Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld, Allison Tam'
-author = 'Kyle Swanson, Kevin Yang, Wengong Jin, Lior Hirschfeld, Allison Tam'
+copyright = '2024, The Chemprop Development Team'
+author = 'The Chemprop Development Team'
 
 # The full version, including alpha/beta/rc tags
 release = '1.6.1'
