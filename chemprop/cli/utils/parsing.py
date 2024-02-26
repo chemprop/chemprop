@@ -114,7 +114,8 @@ def make_datapoints(
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
     n_mols = len(smiss)
-    X_f = [[None] * N] * n_mols if X_f is None else X_f
+    n_components = len(smiss) + len(rxnss)
+    X_f = [[None] * N] * n_components if X_f is None else X_f
     V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
     E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
     V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
@@ -129,7 +130,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[mol_idx][i],
+                x_f=X_f[mol_idx][i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
                 V_f=V_fs[mol_idx][i],
@@ -150,13 +151,13 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i],
+                x_f=X_f[rxn_idx][i],  # TODO: if X_f contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
             )
             for i in range(N)
         ]
-        for rxns in list(zip(*rxnss))
+        for rxn_idx, rxns in enumerate(zip(*rxnss))
     ]
 
     return mol_data, rxn_data
