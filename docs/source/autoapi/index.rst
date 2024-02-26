@@ -6,11 +6,7 @@ This page contains auto-generated API reference documentation [#f1]_.
 .. toctree::
    :titlesonly:
 
+   /autoapi/chemprop/index
    /autoapi/conf/index
-   /autoapi/exceptions/index
-   /autoapi/featurizers/index
-   /autoapi/utils/index
-   /autoapi/models/index
-   /autoapi/data/index
 
 .. [#f1] Created with `sphinx-autoapi <https://github.com/readthedocs/sphinx-autoapi>`_
