@@ -112,10 +112,12 @@ def make_datapoints(
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
-    X_f = [None] * N if X_f is None else X_f
-    V_fs = [None] * N if V_fs is None else V_fs
-    E_fs = [None] * N if E_fs is None else E_fs
-    V_ds = [None] * N if V_ds is None else V_ds
+
+    n_mols = len(smiss)
+    X_f = [[None] * N] * n_mols if X_f is None else X_f
+    V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
+    E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
+    V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
 
     mol_data = [
         [
