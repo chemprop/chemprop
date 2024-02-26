@@ -4,6 +4,7 @@ should generally pass."""
 from lightning import pytorch as pl
 import pytest
 import torch
+from torchmetrics import functional as F
 from torch.utils.data import DataLoader
 
 from chemprop import nn
@@ -71,5 +72,5 @@ def test_overfit(classification_mpnn, dataloader):
     preds = torch.cat(predss)
     targets = torch.cat(targetss)
     mask = torch.cat(masks)
-    auroc = torch.nn.F.auroc(preds[mask], targets[mask].long(), task="binary")
+    auroc = F.auroc(preds[mask], targets[mask].long(), task="binary")
     assert auroc >= 0.95
