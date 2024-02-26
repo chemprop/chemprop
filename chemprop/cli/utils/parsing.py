@@ -202,7 +202,10 @@ def load_input_features(paths, n_molecules):
         path = paths # TODO: currently only supports a single path
         if path:
             loaded_feature = np.load(path)
-            loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+            if len(loaded_feature) == 1:
+                loaded_feature = loaded_feature["arr_0"]
+            else:
+                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
         else:
             loaded_feature = None
         features.append(loaded_feature)
