@@ -178,7 +178,7 @@ def build_data_from_files(
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )
-    n_molecules = len(zip(*smiss))
+    n_molecules = len(list(zip(*smiss)))
 
     X_fs = load_input_features(p_features, n_molecules)
     V_fss = load_input_features(p_atom_feats, n_molecules)
