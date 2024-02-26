@@ -199,7 +199,7 @@ def load_input_features(paths, n_molecules):
 
     features = []
     for mol_idx in range(n_molecules):
-        path = paths.get(mol_idx, None)
+        path = paths # TODO: currently only supports a single path
         if path:
             loaded_feature = np.load(path)
             loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
