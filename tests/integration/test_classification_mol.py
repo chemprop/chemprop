@@ -61,6 +61,8 @@ def test_overfit(classification_mpnn, dataloader):
     errors = []
     for batch in dataloader:
         bmg, _, _, targets, *_ = batch
+        if targets.isna().any():
+            continue
         preds = classification_mpnn(bmg)
         errors.append(preds - targets)
 
