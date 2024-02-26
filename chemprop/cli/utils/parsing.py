@@ -182,10 +182,10 @@ def build_data_from_files(
     )
     n_molecules = len(list(zip(*smiss)))
 
-    X_fs = load_input_features(p_features, n_molecules)
-    V_fss = load_input_features(p_atom_feats, n_molecules)
-    E_fss = load_input_features(p_bond_feats, n_molecules)
-    V_dss = load_input_features(p_atom_descs, n_molecules)
+    X_fs = load_input_features(p_features, n_molecules, feature="X_f")
+    V_fss = load_input_features(p_atom_feats, n_molecules, feature="V_f")
+    E_fss = load_input_features(p_bond_feats, n_molecules, feature="E_f")
+    V_dss = load_input_features(p_atom_descs, n_molecules, feature="V_d")
 
     mol_data, rxn_data = make_datapoints(
         smiss, rxnss, Y, weights, lt_mask, gt_mask, X_fs, V_fss, E_fss, V_dss, **featurization_kwargs
@@ -193,22 +193,28 @@ def build_data_from_files(
 
     return mol_data + rxn_data
 
-def load_input_features(paths, n_molecules):
+def load_input_features(paths, n_molecules, feature):
     if paths is None:
         return None
 
-    features = []
-    for mol_idx in range(n_molecules):
-        path = paths # TODO: currently only supports a single path
-        if path:
-            loaded_feature = np.load(path)
-            if len(loaded_feature) == 1:
+    match feature:
+        case "X_f":
+
+            features = []
+            for mol_idx in range(n_molecules):
+                path = paths # TODO: currently only supports a single path
+                loaded_feature = np.load(path)
                 loaded_feature = loaded_feature["arr_0"]
-            else:
+                features.append(loaded_feature)
+
+        case _:
+
+            features = []
+            for mol_idx in range(n_molecules):
+                path = paths # TODO: currently only supports a single path
+                loaded_feature = np.load(path)
                 loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
-        else:
-            loaded_feature = None
-        features.append(loaded_feature)
+                features.append(loaded_feature)
     return features
 
 def make_dataset(
