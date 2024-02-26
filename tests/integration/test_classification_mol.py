@@ -27,7 +27,6 @@ def data(mol_classification_data):
 @pytest.fixture
 def dataloader(data):
     dset = MoleculeDataset(data)
-    dset.normalize_targets()
 
     return DataLoader(dset, 32, collate_fn=collate_batch)
 
