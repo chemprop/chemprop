@@ -200,8 +200,7 @@ def load_input_features(paths, n_molecules):
         path = paths.get(mol_idx, None)
         if path:
             loaded_feature = np.load(path)
-            if isinstance(loaded_feature, np.lib.npyio.NpzFile):
-                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+            loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
         else:
             loaded_feature = None
         features.append(loaded_feature)
