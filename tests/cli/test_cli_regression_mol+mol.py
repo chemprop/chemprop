@@ -10,7 +10,7 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "mol+mol" / "mol+mol.csv")
+    return str(data_dir / "regression" / "mol+mol.csv")
 
 
 @pytest.fixture
