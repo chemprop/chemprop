@@ -677,7 +677,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
-            d_vd=train_dset.dataset.d_vd,
+            d_vd=train_dset.d_vd,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
