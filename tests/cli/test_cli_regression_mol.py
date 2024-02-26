@@ -69,7 +69,8 @@ def test_train_quick_features(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
-    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -77,11 +78,12 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
@@ -102,11 +104,12 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
 
 def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
@@ -133,11 +136,12 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "predict",
         "-i",
-        data_path,
+        input_path,
         "--model-path",
         model_path,
         "--output",
@@ -152,11 +156,13 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
