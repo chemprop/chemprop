@@ -57,16 +57,19 @@ def test_overfit(classification_mpnn, dataloader):
     )
     trainer.fit(classification_mpnn, dataloader)
 
-    errors = []
+    predss = []
+    targetss = []
+    masks = []
     for batch in dataloader:
         bmg, _, _, targets, *_ = batch
         preds = classification_mpnn(bmg)
         not_nan = ~targets.isnan()
-        preds = preds[not_nan]
-        targets = targets[not_nan]
-        errors.append(preds - targets)
+        predss.append(preds)
+        targetss.append(targets)
+        masks.append(not_nan)
 
-    errors = torch.cat(errors)
-    mse = errors.square().mean().item()
-
-    assert mse <= 0.05
+    preds = torch.cat(predss)
+    targets = torch.cat(targetss)
+    mask = torch.cat(masks)
+    auroc = torch.nn.F.auroc(preds[mask], targets[mask].long(), task="binary")
+    assert auroc >= 0.95
