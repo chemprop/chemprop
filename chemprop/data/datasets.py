@@ -233,17 +233,17 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if np.equal(self.V_fs, None).all() else self.V_fs[0].shape[1]
+        return 0 if all(np.equal(V_f, None).all() for V_f in self.V_fs) else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
         """the extra bond feature dimension, if any"""
-        return 0 if np.equal(self.E_fs, None).all() else self.E_fs[0].shape[1]
+        return 0 if all(np.equal(E_f, None).all() for E_f in self.E_fs) else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int:
         """the extra atom descriptor dimension, if any"""
-        return 0 if np.equal(self.V_ds, None).all() else self.V_ds[0].shape[1]
+        return 0 if all(np.equal(V_d, None).all() for V_d in self.V_ds) else self.V_ds[0].shape[1]
 
     def normalize_inputs(
         self, key: str | None = "X_f", scaler: StandardScaler | None = None
