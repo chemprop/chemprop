@@ -27,7 +27,7 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -742,10 +742,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
             if args.save_preds:
                 preds = trainer.predict(model, test_loader)
                 preds_list = [pred.flatten() for pred in np.rollaxis(torch.stack(preds).numpy(),-1)]
-                if args.smiles_columns and args.target_columns:
-                    columns = args.smiles_columns + args.target_columns
-                else:
-                    columns = ['SMILES'] + ['pred_' + str(i) for i in range(len(preds_list))]
+                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
                 df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds_list)), columns = columns)
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
