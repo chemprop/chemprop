@@ -26,6 +26,16 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    args = ["chemprop", "train", "-i", input_path, "--epochs", "1", "--num-workers", "0"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_quick_features(monkeypatch, data_path):
     (
         input_path,
         features_path,
