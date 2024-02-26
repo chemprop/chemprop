@@ -179,7 +179,11 @@ class MoleculeDatapoint:
     @property
     def mol(self) -> List[Union[Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]]:
         """Gets the corresponding list of RDKit molecules for the corresponding SMILES list."""
-        mol = make_mols(self.smiles, self.is_reaction_list, self.is_explicit_h_list, self.is_adding_hs_list, self.is_keeping_atom_map_list)
+        if self.atom_targets is not None or self.bond_targets is not None:
+            # When the original atom mapping is used, the explicit hydrogens specified in the input SMILES are used
+            mol = make_mols(self.smiles, self.is_reaction_list, self.is_keeping_atom_map_list, self.is_adding_hs_list, self.is_keeping_atom_map_list)
+        else:
+            mol = make_mols(self.smiles, self.is_reaction_list, self.is_explicit_h_list, self.is_adding_hs_list, self.is_keeping_atom_map_list)
         if cache_mol():
             for s, m in zip(self.smiles, mol):
                 SMILES_TO_MOL[s] = m
