@@ -514,7 +514,7 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
-        val_dset.normalize_inputs("V_fs", V_f_scaler)
+        val_dset.normalize_inputs("V_f", V_f_scaler)
         logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
