@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.insert(0, os.path.abspath('../../'))
+
+sys.path.insert(0, os.path.abspath("../.."))
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -30,11 +31,11 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = []
-autodoc_typehints = 'description'
+autodoc_typehints = "description"
 
 # -- AutoAPI configuration ---------------------------------------------------
 
-autoapi_dirs = ["../../chemprop"]
+autoapi_dirs = ["../.."]
 autoapi_ignore = ["*test*", "*cli*"]
 autoapi_file_patterns = ["*.py"]
 autoapi_options = [
@@ -49,7 +50,7 @@ autoapi_keep_files = True
 
 # -- bibtex configuration ---------------------------------------------------
 
-bibtex_bibfiles = ['refs.bib']
+bibtex_bibfiles = ["refs.bib"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
