@@ -60,10 +60,10 @@ def test_overfit(classification_mpnn, dataloader):
     errors = []
     for batch in dataloader:
         bmg, _, _, targets, *_ = batch
-        not_nan = ~targets.isnan()
-        bmg = bmg[not_nan]
-        targets = targets[not_nan]
         preds = classification_mpnn(bmg)
+        not_nan = ~targets.isnan()
+        preds = preds[not_nan]
+        targets = targets[not_nan]
         errors.append(preds - targets)
 
     errors = torch.cat(errors)
