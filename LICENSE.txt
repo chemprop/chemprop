@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2023 The Chemprop Development Team (Regina Barzilay, Jackson Burns, 
+Copyright (c) 2024 The Chemprop Development Team (Regina Barzilay, Jackson Burns, 
 Yunsie Chung, David Graff, William Green, Kevin Greenman, Yanfei Guan, 
 Esther Heid, Lior Hirschfeld, Tommi Jaakkola, Wengong Jin, Shih-Cheng Li, 
 Mengjie Liu, Charles McGill, Kyle Swanson, Allison Tam, Florence Vermeire, 
