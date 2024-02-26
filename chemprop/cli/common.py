@@ -102,22 +102,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation.",
     )
     featurization_args.add_argument(
-        "--overwrite-default-atom-features",
-        action="store_true",
-        help="Overwrites the default atom descriptors with the new ones instead of concatenating them. Can only be used if atom_descriptors are used as a feature.",
-    )
-    featurization_args.add_argument(
         "--bond-features-path",
         help="Path to the extra bond features. Used as bond features to featurize a given molecule.",
-    )
-    featurization_args.add_argument(
-        "--bond-descriptors-path",
-        help="Path to the extra bond descriptors. Used as descriptors and concatenated to the machine learned bond representation.",
-    )
-    featurization_args.add_argument(
-        "--overwrite-default-bond-features",
-        action="store_true",
-        help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
     # TODO: remove these caching arguments after checking that the v2 code doesn't try to cache.
     # parser.add_argument(
