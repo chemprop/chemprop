@@ -12,7 +12,7 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset, ReactionDataset
+from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset, ReactionDataset, MoleculeDataset
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
@@ -648,7 +648,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
-                d_vd=train_dset.datasets[i].d_vd,
+                d_vd=train_dset.datasets[i].d_vd if isinstance(train_dset.datasets[i], MoleculeDataset) else 0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
