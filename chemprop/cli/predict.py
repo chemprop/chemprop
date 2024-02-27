@@ -266,7 +266,7 @@ def main(args):
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
-    preds = torch.concat(predss, 1).numpy()
+    preds = torch.concat(predss, 0).numpy()
 
     if args.target_columns is not None:
         assert len(args.target_columns) == model.n_tasks, "Number of target columns must match the number of tasks."
