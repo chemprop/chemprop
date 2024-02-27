@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Chemprop"
-copyright = "2023, Chemprop developers"
+copyright = "2024, Chemprop developers"
 author = "Chemprop developers"
 release = "2.0.0b1"
 
