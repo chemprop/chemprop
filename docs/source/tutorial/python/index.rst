@@ -1,3 +1,5 @@
+.. _python usage:
+
 Python Usage
 ============
 

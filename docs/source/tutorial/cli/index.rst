@@ -44,3 +44,4 @@ The following features are not yet implemented, but will soon be included in a f
 
     train
     predict
+    convert

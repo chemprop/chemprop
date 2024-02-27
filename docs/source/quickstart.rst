@@ -35,7 +35,9 @@ Now we're ready to train a simple Chemprop model:
 
 .. code-block:: bash
 
-    chemprop train --data-path data/freesolv.csv --task-type regression --output-dir freesolv
+    chemprop train --data-path data/freesolv.csv \
+        --task-type regression \
+        --output-dir freesolv
 
 This will train a model on the FreeSolv dataset (``data/freesolv.csv``) and save the model and training logs in the ``freesolv`` directory. You should see some output printed to your terminal:
 
@@ -52,7 +54,7 @@ With our trained model in hand, we can now use it to predict the solvation free 
 
     chemprop predict data/freesolv.csv \
         --checkpoint-dir freesolv \
-        --preds_path freesolv/predictions.csv
+        --preds-path freesolv/predictions.csv
 
 This should output a file ``freesolv/predictions.csv`` containing the predicted solvation free energies for the molecules contained in ``data/freesolv.csv``.
 
@@ -69,20 +71,20 @@ Given that our test data is identical to our train data, it makes sense that the
 
 In the rest of this documentation, we'll go into more detail about how to:
 
-* Install Chemprop: :ref:`installation`
-* Customize model architecture and task type: :ref:`train`
-* Specify training parameters: split type, learning rate, batch size, loss function, etc.: :ref:`train`
-* Quantify prediction uncertainty: :ref:`predict`
+* :ref:`Install Chemprop<installation>`
+* :ref:`Customize model architecture and task type<train>`
+* :ref:`Specify training parameters: split type, learning rate, batch size, loss function, etc.<train>`
+* :ref:`Quantify prediction uncertainty<predict>`
+* :ref:`Use Chemprop as a Python package<python usage>`
 ..
      Optimize hyperparameters
-* Use Chemprop as a Python pacakge :ref:`python-usage`
 
 Summary
 -------
 
 * Install Chemprop with ``pip install chemprop``
-* Train a model with ``chemprop train INPUT dataset-type TYPE --output-dir DIR``
-* Use a saved model for prediction with ``chemprop predict INPUT --checkpoint-dir DIR --preds_path PATH``
+* Train a model with ``chemprop train INPUT --task-type TYPE --output-dir DIR``
+* Use a saved model for prediction with ``chemprop predict INPUT --checkpoint-dir DIR --preds-path PATH``
 
 .. _GitHub repository: https://github.com/chemprop/chemprop
 .. _FreeSolv dataset: https://pubmed.ncbi.nlm.nih.gov/24928188/
