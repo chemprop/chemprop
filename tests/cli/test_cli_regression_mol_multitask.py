@@ -53,16 +53,8 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         m.setattr("sys.argv", args)
         main()
 
-    args = [
-        "chemprop",
-        "predict",
-        "-i",
-        data_path,
-        "--model-path",
-        model_path,
-    ]
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
-
