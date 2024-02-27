@@ -162,21 +162,16 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def main(args):
-    match (args.smiles_columns, args.reaction_columns):
-        case [None, None]:
-            n_components = 1
-        case [_, None]:
-            n_components = len(args.smiles_columns)
-        case [None, _]:
-            n_components = len(args.reaction_columns)
-        case _:
-            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+def find_models(model_path: Path):
+    if model_path.suffix in [".ckpt", ".pt"]:
+        return [model_path]
+    elif model_path.is_dir():
+        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
 
-    multicomponent = n_components > 1
 
+def make_prediction_for_model(args: Namespace, model_path: Path, multicomponent: bool, output_dir: Path):
     model, input_scalers, output_scaler = load_model(
-        args.model_path, multicomponent
+        model_path, multicomponent
     )  # TODO: connect input_scalers and output_scaler to the model
 
     bounded = any(
@@ -272,6 +267,26 @@ def main(args):
         df_test.to_csv(args.output, index=False)
     logger.info(f"Predictions saved to '{args.output}'")
 
+
+def main(args):
+    match (args.smiles_columns, args.reaction_columns):
+        case [None, None]:
+            n_components = 1
+        case [_, None]:
+            n_components = len(args.smiles_columns)
+        case [None, _]:
+            n_components = len(args.reaction_columns)
+        case _:
+            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+
+    multicomponent = n_components > 1
+
+    model_paths = find_models(args.model_path)
+
+    for model_path in model_paths:
+        output_dir = args.output.parent / model_path.stem / args.output.stem
+        make_prediction_for_model(args, model_path, multicomponent, output_dir)
+        
 
 if __name__ == "__main__":
     parser = ArgumentParser()
