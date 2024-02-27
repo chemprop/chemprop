@@ -23,7 +23,7 @@ SUBCOMMANDS = [
 ]  # , FingerprintSubcommand, HyperoptSubcommand]
 
 
-def main():
+def construct_parser():
     parser = ArgumentParser()
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
 
@@ -41,6 +41,10 @@ def main():
     for subcommand in SUBCOMMANDS:
         subcommand.add(subparsers, parents)
 
+    return parser
+
+def main():
+    parser = construct_parser()
     args = parser.parse_args()
     logfile, verbose, mode, func = (
         pop_attr(args, attr) for attr in ["logfile", "verbose", "mode", "func"]
