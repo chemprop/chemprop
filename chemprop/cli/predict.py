@@ -274,7 +274,7 @@ def main(args):
     else:
         target_columns = [f"pred_{i}" for i in range(preds.shape[1])] # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test[target_columns] = preds.to_list()
+    df_test[target_columns] = preds
     if args.output.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(args.output)
