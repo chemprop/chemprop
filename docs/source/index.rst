@@ -1,7 +1,7 @@
 Chemprop
 ========
 
-Note: this site is several versions behind. An up-to-date version of our Read the Docs is forthcoming with the release of Chemprop v2.0 in early 2024. The `README <https://github.com/chemprop/chemprop/blob/master/README.md>`_ and `args.py <https://github.com/chemprop/chemprop/blob/master/chemprop/args.py>`_ files are currently the best sources for documentation on more recently-added features.
+.. warning:: This documentation site is several versions behind the codebase. An up-to-date version of our Read the Docs is forthcoming with the release of Chemprop v2.0 in early 2024. The `README <https://github.com/chemprop/chemprop/blob/master/README.md>`_ and `args.py <https://github.com/chemprop/chemprop/blob/master/chemprop/args.py>`_ files are currently the best sources for documentation on more recently-added features.
 
 `Chemprop <https://github.com/chemprop/chemprop>`_ is a message passing neural network for molecular property prediction.
 
