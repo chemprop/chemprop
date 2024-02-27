@@ -73,4 +73,4 @@ def test_overfit(classification_mpnn, dataloader):
     targets = torch.cat(targetss)
     mask = torch.cat(masks)
     auroc = F.auroc(preds[mask], targets[mask].long(), task="binary")
-    assert auroc >= 0.95
+    assert auroc >= 0.99
