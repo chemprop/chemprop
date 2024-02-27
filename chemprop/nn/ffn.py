@@ -27,9 +27,9 @@ class MLP(nn.Sequential, FFN):
         \right) \\
         \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{(l)} + \mathbf b^{(l)},
 
-    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{{l)}` is the learned weight matrix
-    for the :math:`l`-th layer, :math:`\mathbf b^{{l)}` is the bias vector for the :math:`l`-th layer,
-    :math:`\mathbf h^{{l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
+    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{(l)}` is the learned weight matrix
+    for the :math:`l`-th layer, :math:`\mathbf b^{(l)}` is the bias vector for the :math:`l`-th layer,
+    :math:`\mathbf h^{(l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
     activation function, and :math:`L` is the number of layers.
     """
 
