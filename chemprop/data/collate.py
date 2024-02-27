@@ -18,7 +18,7 @@ class BatchMolGraph:
     """
 
     mgs: InitVar[Sequence[MolGraph]]
-    """A list of individual :class:`MolGraph`s to be batched together"""
+    """A list of individual :class:`MolGraph`\s to be batched together"""
     V: Tensor = field(init=False)
     """the atom feature matrix"""
     E: Tensor = field(init=False)
