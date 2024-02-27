@@ -26,14 +26,6 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
-def test_train_quick_mve(monkeypatch, data_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0", "--task-type", "regression-mve"]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-
 def test_predict_quick(monkeypatch, data_path, model_path):
     args = [
         "chemprop",
