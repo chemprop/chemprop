@@ -30,7 +30,7 @@ __all__ = [
 
 class Predictor(nn.Module, HasHParams):
     r"""A :class:`Predictor` is a protocol that defines a differentiable function
-    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
+    :math:`f` : \mathbb R^d \mapsto \mathbb R^o"""
 
     input_dim: int
     """the input dimension"""
