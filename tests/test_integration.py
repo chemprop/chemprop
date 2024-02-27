@@ -1183,19 +1183,19 @@ class ChempropTests(TestCase):
         ["--conformal_alpha", "0.3"]
     ),
     (
-        0.903808,
+        0.902953,
         None,
-        "conformal_regression",
+        "conformal_quantile_regression",
         "conformal_coverage",
         ["--loss_function", "quantile_interval", "--quantile_loss_alpha", "0.1"],
         ["--conformal_alpha", "0.1"]
     ),
     (
-        0.703407,
+        0.702532,
         None,
-        "conformal_regression",
+        "conformal_quantile_regression",
         "conformal_coverage",
-        ["--loss_function", "quantile_interval", "--quantile_loss_alpha", "0.1"],
+        ["--loss_function", "quantile_interval", "--quantile_loss_alpha", "0.3"],
         ["--conformal_alpha", "0.3"]
     )
     ])
