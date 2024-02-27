@@ -23,8 +23,8 @@ def reshape_values(
              (data_size, num_tasks, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
-    num_tasks = natom_targets + nbond_targets
-    reshaped_values = np.empty([len(test_data), num_tasks], dtype=object)
+    num_atom_bond_tasks = natom_targets + nbond_targets
+    reshaped_values = np.empty([len(test_data), num_atom_bond_tasks], dtype=object)
 
     for i in range(natom_targets):
         atom_targets = values[i].reshape(-1,)
@@ -60,8 +60,8 @@ def reshape_individual_preds(
              (data_size, num_tasks, num_models, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
-    num_tasks = natom_targets + nbond_targets
-    individual_values = np.empty([len(test_data), num_tasks], dtype=object)
+    num_atom_bond_tasks = natom_targets + nbond_targets
+    individual_values = np.empty([len(test_data), num_atom_bond_tasks], dtype=object)
 
     for i in range(natom_targets):
         atom_targets = individual_preds[i].T.reshape(num_models, -1)
