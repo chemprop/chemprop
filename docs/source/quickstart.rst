@@ -3,11 +3,14 @@
 Quickstart
 ==========
 
-To get started with chemprop, first install the package from PyPI::
+To get started with Chemprop, first install the package from PyPI::
 
     pip install chemprop
 
 Next, download a tarball of datasets from from the `GitHub repository`_ and unpack it:
+
+.. warning:: 
+    The below code block should be updated to include the correct path in the v2 directory.
 
 .. code-block:: bash
 
@@ -32,7 +35,7 @@ Now we're ready to train a simple Chemprop model:
 
 .. code-block:: bash
 
-    chemprop train data/freesolv.csv --dataset-type regression --output-dir freesolv
+    chemprop train --data-path data/freesolv.csv --task-type regression --output-dir freesolv
 
 This will train a model on the FreeSolv dataset (``data/freesolv.csv``) and save the model and training logs in the ``freesolv`` directory. You should see some output printed to your terminal:
 
@@ -66,21 +69,18 @@ Given that our test data is identical to our train data, it makes sense that the
 
 In the rest of this documentation, we'll go into more detail about how to:
 
-* Install Chemprop
-* Customize model architecture and task type
-* Specify training parameters: split type, learning rate, batch size, loss function, etc.
-* Quantify prediction uncertainty
-* Optimize hyperparameters
-* Use Chemprop as a python pacakge
-
-.. note::
-
-    The above list should use hyperlinks to the relevant sections of the documentation.
+* Install Chemprop: :ref:`installation`
+* Customize model architecture and task type: :ref:`train`
+* Specify training parameters: split type, learning rate, batch size, loss function, etc.: :ref:`train`
+* Quantify prediction uncertainty: :ref:`predict`
+..
+     Optimize hyperparameters
+* Use Chemprop as a Python pacakge :ref:`python-usage`
 
 Summary
 -------
 
-* Install chemprop with ``pip install chemprop``
+* Install Chemprop with ``pip install chemprop``
 * Train a model with ``chemprop train INPUT dataset-type TYPE --output-dir DIR``
 * Use a saved model for prediction with ``chemprop predict INPUT --checkpoint-dir DIR --preds_path PATH``
 

@@ -11,8 +11,7 @@ where ``COMMAND`` is one of the following:
 
 * ``train``: Train a model.
 * ``predict``: Make predictions with a trained model.
-* ``hyperopt``: Perform hyperparameter optimization.
-* ``interpret``: Interpret model predictions.
+* ``convert``: Convert a trained Chemprop model from v1 to v2.
 
 and ``ARGS`` are command-specific arguments. To see the arguments for a specific command, run:
 
@@ -30,7 +29,14 @@ For more details on each command, see the corresponding section below:
 
 * :ref:`train`
 * :ref:`predict`
-* :ref:`interpret`
+* :ref:`convert`
+
+The following features are not yet implemented, but will soon be included in a future release:
+
+* ``hyperopt``: Perform hyperparameter optimization.
+* ``interpret``: Interpret model predictions.
+* ``fingerprint``: Use a trained model to compute a learned representation.
+
 
 .. toctree::
     :maxdepth: 1
@@ -38,4 +44,3 @@ For more details on each command, see the corresponding section below:
 
     train
     predict
-    interpret
