@@ -17,7 +17,7 @@ def datum_1():
     )
     return Datum(
         mol_graph1,
-        V_d=np.array([1.0, 2.0]),
+        V_d=np.array([[1.0], [2.0], [1.0]]),
         x_f=[3, 4],
         y=[6, 7],
         weight=[8.0],
@@ -36,7 +36,7 @@ def datum_2():
     )
     return Datum(
         mol_graph2,
-        V_d=np.array([5.0, 7.0]),
+        V_d=np.array([[5.0], [7.0]]),
         x_f=[8, 9],
         y=[6, 4],
         weight=[1.0],
