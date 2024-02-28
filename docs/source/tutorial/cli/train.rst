@@ -13,9 +13,9 @@ where ``<input_path>`` is the path to a CSV file containing a dataset, ``<type>`
 For example:
 
 .. code-block::
-    chemprop train --data-path data/tox21.csv \
-        --task-type classification \
-        --output-dir tox21_checkpoints
+   chemprop train --data-path data/tox21.csv \
+      --task-type classification \
+      --output-dir tox21_checkpoints
 
 A full list of available command-line arguments can be found in :ref:`cmd`.
 
@@ -68,33 +68,37 @@ Hyperparameters
 ----------
 
 Model performance is often highly dependent on the hyperparameters used. Below is a list of common hyperparameters (see :ref:`cmd` for a full list):
-* :code:`--batch-size` Batch size.
-* :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN
-* :code:`--depth <n>` Number of message-passing steps.
-* :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers.
-* :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`.
-* :code:`--epochs <n>`: How many epochs to train over.
-* :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2).
-* :code:`--init_lr <n>`: Initial learning rate (default 0.0001)
-* :code:`--max-lr <n>`: Maximum learning rate.
-* :code:`--final-lr <n>`: Final learning rate.
+
+ * :code:`--batch-size` Batch size.
+ * :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN
+ * :code:`--depth <n>` Number of message-passing steps.
+ * :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers.
+ * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`.
+ * :code:`--epochs <n>` How many epochs to train over.
+ * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2).
+ * :code:`--init_lr <n>` Initial learning rate (default 0.0001)
+ * :code:`--max-lr <n>` Maximum learning rate.
+ * :code:`--final-lr <n>` Final learning rate.
 
 
 Loss Functions
 --------------
+
 The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` includes:
-* :code:`mse`: Mean squared error
-* :code:`bounded-mse`: Bounded mean squared error
-* :code:`mve`: Mean-variance estimation
-* :code:`evidential`: Evidential (Soleimany et al., 2021). If used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
-* :code:`bce`: Binary cross-entropy
-* :code:`ce`: Cross-entropy
-* :code:`binary-mcc`: Binary Matthews correlation coefficient
-* :code:`multiclass-mcc`: Multiclass Matthews correlation coefficient 
-* :code:`binary-dirichlet`: Binary Dirichlet 
-* :code:`multiclass-dirichlet`: Multiclass Dirichlet
-* :code:`sid`: 
-* :code:`earthmovers` or :code:`wasserstein`: Earth mover's distance (also known as Wasserstein metric)
+
+ * :code:`mse` Mean squared error
+ * :code:`bounded-mse` Bounded mean squared error
+ * :code:`mve` Mean-variance estimation
+ * :code:`evidential` Evidential (Soleimany et al., 2021). If used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
+ * :code:`bce` Binary cross-entropy
+ * :code:`ce` Cross-entropy
+ * :code:`binary-mcc` Binary Matthews correlation coefficient
+ * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
+ * :code:`binary-dirichlet` Binary Dirichlet 
+ * :code:`multiclass-dirichlet` Multiclass Dirichlet
+ * :code:`sid`
+ * :code:`earthmovers` Earth mover's distance (also known as Wasserstein metric)
+ * :code:`wasserstein` See above.
 
 
 Advanced Training Methods
@@ -126,9 +130,9 @@ Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <htt
 
 Use the option :code:`--reaction` to enable this, which transforms the reactants and products to the corresponding condensed graph of reaction, and changes the initial atom and bond features depending on the argument provided to :code:`--reaction-mode`:
 
-* :code:`reac_diff`: from the reactant and the difference upon reaction (default)
-* :code:`reac_prod`: from both the reactant and product
-* :code:`prod_diff`: from the product and the difference upon reaction
+* :code:`reac_diff` Featurize with the reactant and the difference upon reaction (default)
+* :code:`reac_prod` Featurize with both the reactant and product
+* :code:`prod_diff` Featurize with the product and the difference upon reaction
 
 Each of these arguments can be modified to balance imbalanced reactions by appending "_balance", e.g. :code:`reac_diff_balance`. 
 
@@ -157,7 +161,7 @@ Additional Features
 While the model works very well on its own, especially after hyperparameter optimization, additional features may further improve performance on certain datasets. The additional features can be added at the atom-, bond, or molecule-level. Molecule-level features can be either automatically generated by RDKit or custom features provided by the user.
 
 Molecule-Level 2D Features
-""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Morgan fingerprints can be generated as molecular 2D features using :code:`--features-generators`:
 
@@ -165,7 +169,7 @@ Morgan fingerprints can be generated as molecular 2D features using :code:`--fea
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
 
 Molecule-Level Custom Features
-""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you install from source, you can modify the code to load custom features as follows:
 
@@ -173,7 +177,7 @@ If you install from source, you can modify the code to load custom features as f
 2. **Load features:** If you have features saved as a numpy :code:`.npy` file or as a :code:`.csv` file, you can load the features by using :code:`--features-path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Note that :code:`.csv` files must have a header row and the features should be comma-separated with one line per molecule.
 
 Atom-Level Features
-"""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^
 
 Similar to the additional molecular features described above, you can also provide additional atomic features via :code:`--atom-descriptors-path /path/to/features` with valid file formats:
 
@@ -188,7 +192,7 @@ The command line option :code:`--atom-descriptors-path /path/to/descriptors` con
 Similar to the molecule-level features, the atom-level descriptors and features are scaled by default. This can be disabled with the option :code:`--no-atom-descriptor-scaling`
 
 Bond-Level Features
-"""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^
 
 Bond-level features can be provided in the same format as the atom-level features, using the option :code:`--bond-features-path /path/to/features`. The order of the features for each molecule must match the bond ordering in the RDKit molecule object.
 
