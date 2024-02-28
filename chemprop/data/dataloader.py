@@ -1,3 +1,5 @@
+import warnings
+
 from torch.utils.data import DataLoader
 
 from chemprop.data.collate import collate_batch, collate_multicomponent
@@ -49,6 +51,15 @@ class MolGraphDataLoader(DataLoader):
         else:
             collate_fn = collate_batch
 
+        if len(dataset) % batch_size == 1:
+            warnings.warn(
+                f"Dropping last batch of size 1 to avoid issues with batch normalization \
+(dataset size = {len(dataset)}, batch_size = {batch_size})"
+                )
+            drop_last = True
+        else:
+            drop_last = False
+
         super().__init__(
             dataset,
             batch_size,
@@ -56,4 +67,5 @@ class MolGraphDataLoader(DataLoader):
             sampler,
             num_workers=num_workers,
             collate_fn=collate_fn,
+            drop_last=drop_last
         )
