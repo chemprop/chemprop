@@ -26,7 +26,7 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -737,6 +737,13 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
                 model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
+
+            if args.save_preds:
+                predss = trainer.predict(model, test_loader)
+                preds = torch.concat(predss, 0).numpy()
+                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         input_scalers = []
