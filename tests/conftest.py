@@ -85,7 +85,16 @@ def mol_mol_regression_data(data_dir):
 def rxn_mol_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/rxn+mol.csv")
     rxns = df["rxn_smiles"].to_list()
-    smis = df["solven_smiles"].to_list()
+    smis = df["solvent_smiles"].to_list()
     Y = df["target"].to_numpy().reshape(-1, 1)
 
     return rxns, smis, Y
+
+
+@pytest.fixture
+def mol_classification_data(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol.csv")
+    smis = df["smiles"].to_list()
+    Y = df["NR-AhR"].to_numpy().reshape(-1, 1)
+
+    return smis, Y

@@ -17,9 +17,17 @@ def mpnn(request):
 
 
 @pytest.fixture(scope="session")
+def classification_mpnn(request):
+    agg = nn.SumAggregation()
+    ffn = nn.BinaryClassificationFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
 def mcmpnn(request):
-    block, n_components = request.param
-    mcmp = nn.MulticomponentMessagePassing([block for _ in range(n_components)], n_components)
+    blocks, n_components, shared = request.param
+    mcmp = nn.MulticomponentMessagePassing(blocks, n_components, shared=shared)
     agg = nn.SumAggregation()
     ffn = nn.RegressionFFN(input_dim=mcmp.output_dim,)
 

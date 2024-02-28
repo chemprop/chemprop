@@ -187,7 +187,7 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = BCELoss()
-    # _default_metric = AUROCMetric()  # TODO: AUROCMetric default causes error
+    _default_metric = AUROCMetric(task="binary")
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -202,7 +202,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = BinaryDirichletLoss()
-    # _default_metric = AUROCMetric()  # TODO: AUROCMetric default causes error
+    _default_metric = AUROCMetric(task="binary")
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -297,3 +297,11 @@ class SpectralFFN(_FFNPredictorBase):
                 )
 
         self.ffn.add_module("spectral_activation", spectral_activation)
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        Y = self.ffn.spectral_activation(Y)
+        return Y / Y.sum(1, keepdim=True)
+
+    train_step = forward
+

@@ -89,7 +89,7 @@ def make_datapoints(
         a list of lists of :class:`MoleculeDatapoint`s of shape ``j x n``, where ``j`` is the
         number of molecule components per datapoint and ``n`` is the total number of datapoints
     list[list[ReactionDatapoint]]
-        a list of lists of :class:`MoleculeDatapoint`s of shape ``k x n``, where ``k`` is the
+        a list of lists of :class:`ReactionDatapoint`s of shape ``k x n``, where ``k`` is the
         number of reaction components per datapoint and ``n`` is the total number of datapoints
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
@@ -174,7 +174,7 @@ def build_data_from_files(
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
     **featurization_kwargs: Mapping,
-) -> list[MoleculeDatapoint] | list[ReactionDatapoint]:
+) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )
@@ -187,9 +187,7 @@ def build_data_from_files(
         smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs
     )
 
-    # NOTE: return only a single component for now with a preference for rxns
-    data = rxn_data if len(rxn_data) > 0 else mol_data
-    return data
+    return mol_data + rxn_data
 
 
 def make_dataset(
