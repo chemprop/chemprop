@@ -173,10 +173,6 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_f)
 
-        if isinstance(self.predictor, MveFFN):
-            mean, _ = torch.chunk(preds, self.predictor.n_targets, 1)
-            preds = mean
-
         return [
             metric(preds, targets, mask, None, None, lt_mask, gt_mask)
             for metric in self.metrics[:-1]
