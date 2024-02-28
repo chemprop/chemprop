@@ -23,7 +23,7 @@ If you use Chemprop to train or develop a model in your own work, we would appre
     tutorial/cli/index
     tutorial/python/index
     cmd
-    examples
+    notebooks
 
 Indices and tables
 ==================
