@@ -7,15 +7,9 @@ To get started with Chemprop, first install the package from PyPI::
 
     pip install chemprop
 
-Next, download a tarball of datasets from from the `GitHub repository`_ and unpack it:
-
-
-.. code-block:: bash
-
-    wget https://raw.githubusercontent.com/chemprop/chemprop/data.tar.gz
-    tar -xvzf data.tar.gz
-
 Let's use the solubility data that comes pre-packaged in the Chemprop directory:
+
+.. code-block:: text
 
     $ head tests/data/regression.csv
     smiles,logSolubility
@@ -28,6 +22,7 @@ Let's use the solubility data that comes pre-packaged in the Chemprop directory:
     Clc1cc(Cl)c(c(Cl)c1)c2c(Cl)cccc2Cl,-7.32
     CC12CCC3C(CCc4cc(O)ccc34)C2CCC1O,-5.03
     ClC4=C(Cl)C5(Cl)C3C1CC(C2OC12)C3C4(Cl)C5(Cl)Cl,-6.29
+    ...
 
 Now we're ready to train a simple Chemprop model:
 
