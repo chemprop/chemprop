@@ -26,7 +26,7 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -733,10 +733,17 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
 
         if test_loader is not None:
             if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
+
+            if args.save_preds:
+                predss = trainer.predict(model, test_loader)
+                preds = torch.concat(predss, 0).numpy()
+                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         input_scalers = []
@@ -785,6 +792,8 @@ def main(args):
             scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(scaler)
             logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        else:
+            scaler = None
 
         train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)

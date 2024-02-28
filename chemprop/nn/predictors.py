@@ -120,8 +120,8 @@ class RegressionFFN(_FFNPredictorBase):
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        self.register_buffer("loc", torch.tensor(loc).view(-1, 1))
-        self.register_buffer("scale", torch.tensor(scale).view(-1, 1))
+        self.register_buffer("loc", torch.tensor(loc).view(1, -1))
+        self.register_buffer("scale", torch.tensor(scale).view(1, -1))
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -187,7 +187,7 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
     _default_criterion = BCELoss()
-    # _default_metric = AUROCMetric()  # TODO: AUROCMetric default causes error
+    _default_metric = AUROCMetric(task="binary")
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -202,7 +202,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
     _default_criterion = BinaryDirichletLoss()
-    # _default_metric = AUROCMetric()  # TODO: AUROCMetric default causes error
+    _default_metric = AUROCMetric(task="binary")
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)

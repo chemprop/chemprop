@@ -260,9 +260,10 @@ def make_prediction_for_model(
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 1).numpy()
-    df_test[
-        "preds"
-    ] = preds.flatten()  # TODO: this will not work correctly for multi-target predictions
+    target_columns = [f"pred_{i}" for i in range(preds.shape[1])] # TODO: need to improve this
+    df_test[target_columns] = (
+        preds.flatten()
+    )  # TODO: this will not work correctly for multi-target predictions
     if args.output.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(args.output)
