@@ -27,7 +27,8 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinxcontrib.bibtex",
     "sphinx.ext.doctest",
-    "sphinxarg.ext"
+    "sphinxarg.ext",
+    "nbsphinx_link",
 ]
 
 templates_path = ["_templates"]
@@ -35,7 +36,7 @@ exclude_patterns = []
 autodoc_typehints = "description"
 
 # -- AutoAPI configuration ---------------------------------------------------
-
+nbsphinx_allow_errors = True
 autoapi_dirs = ["../.."]
 autoapi_ignore = ["*test*", "*cli*"]
 autoapi_file_patterns = ["*.py"]
