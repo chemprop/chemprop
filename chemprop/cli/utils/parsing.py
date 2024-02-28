@@ -62,6 +62,41 @@ def parse_csv(
 
     return smiss, rxnss, Y, weights, lt_mask, gt_mask
 
+def get_column_names(
+    path: PathLike,
+    smiles_cols: Sequence[str] | None,
+    rxn_cols: Sequence[str] | None,
+    target_cols: Sequence[str] | None,
+    ignore_cols: Sequence[str] | None,
+    no_header_row: bool = False,
+):
+    df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
+
+    input_cols = []
+    target_cols = []
+
+    if smiles_cols is not None:
+        input_cols.extend(smiles_cols)
+    if rxn_cols is not None:
+        input_cols.extend(rxn_cols)
+    if target_cols is not None:
+        target_cols.extend(target_cols)
+
+    if len(input_cols) == 0:
+        if no_header_row:
+            input_cols = ['SMILES']
+        else:
+            input_cols = [df.columns[0]]
+
+    if len(target_cols) == 0:
+        if no_header_row:
+            ignore_len = len(ignore_cols) if ignore_cols else 0
+            ['pred_' + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
+        else:
+            target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
+
+    cols = input_cols + target_cols
+    return cols
 
 def make_datapoints(
     smiss: list[list[str]] | None,
