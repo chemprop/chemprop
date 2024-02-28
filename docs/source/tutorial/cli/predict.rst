@@ -3,33 +3,32 @@
 Prediction
 ----------
 
+.. note:: 
+    This page is under construction.
+
 To load a trained model and make predictions, run ``chemprop predict`` and specify:
 
 * ``--test-path <path>`` Path to the data to predict on.
-* A checkpoint by using either:
+* ``--model-path <path>`` Path to the trained model.
 
-  #. ``--checkpoint-dir <dir>`` Directory where the model checkpoint(s) are saved (i.e. ``--save_dir`` during training). This will walk the directory, load all ``.pt`` files it finds, and treat the models as an ensemble.
-  #. ``--checkpoint-path <path>`` Path to a model checkpoint file (``.pt`` file).
-
+By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified:
 * ``--preds-path`` Path where a CSV file containing the predictions will be saved.
 
-Multiple checkpoints can also be specified using the keyword ``--checkpoint-paths``.
-
-For example:
+For example,
 
 .. code-block::
 
     chemprop predict --test-path data/tox21.csv \
-        --checkpoint-dir tox21_checkpoints \
+        --model-path tox21/model_0/model.pt \
         --preds-path tox21_preds.csv
 
-or
+Specifying Data to Parse
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block::
+By default, Chemprop will assume that the the 0th column in the data .csv will have the data. To use a separate column, specify:
+* ``--smiles-columns`` Text label of the column that includes the SMILES strings
 
-    chemprop predict --test-path data/tox21.csv \
-        --checkpoint-path tox21_checkpoints/fold_0/model_0/model.pt \
-        --preds-path tox21_preds.csv
+If atom-mapped reaction SMILES are desired, specify:
+* ``--reaction-columns`` Text labels of the columns that include the reaction SMILES
 
-.. warning:: 
-    This page is under construction.
+and if ``--reaction-mode`` was specified during training, those same flags must be specified for the prediction step.

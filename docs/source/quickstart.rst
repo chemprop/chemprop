@@ -39,21 +39,21 @@ Now we're ready to train a simple Chemprop model:
         --task-type regression \
         --output-dir freesolv
 
-This will train a model on the FreeSolv dataset (``data/freesolv.csv``) and save the model and training logs in the ``freesolv`` directory. You should see some output printed to your terminal:
+This will train a model on the FreeSolv dataset (``data/freesolv.csv``) and save the model and training logs in the ``freesolv`` directory. You should see some output printed to your terminal that shows the model architecture, number of parameters, and a progress bar for each epoch of training. At the end, you should see something like:
 
 .. code-block:: text
-
-    Training for property freesolv
-    Splitting data with seed 0
-    Training for 100 epochs...
-    | MSE: 0.00000, MAE: 0.00000, R^2: 1.00000
+───────────────────────────────────────────────────────
+       Test metric             DataLoader 0
+───────────────────────────────────────────────────────
+        test/mse             0.665085608777959
+───────────────────────────────────────────────────────
 
 With our trained model in hand, we can now use it to predict the solvation free energy of some new molecules:
 
 .. code-block:: bash
 
-    chemprop predict data/freesolv.csv \
-        --checkpoint-dir freesolv \
+    chemprop predict --test-path data/freesolv.csv \
+        --model-path freesolv/model_0/model.pt \
         --preds-path freesolv/predictions.csv
 
 This should output a file ``freesolv/predictions.csv`` containing the predicted solvation free energies for the molecules contained in ``data/freesolv.csv``.
@@ -61,13 +61,13 @@ This should output a file ``freesolv/predictions.csv`` containing the predicted 
 .. code-block:: text
 
     $ head freesolv/predictions.csv
-    smiles,prediction
-    CN(C)C(=O)c1ccc(cc1)OC,-11.01
-    CS(=O)(=O)Cl,-4.87
-    CC(C)C=C,1.83
+    smiles,freesolv,pred
+    CN(C)C(=O)c1ccc(cc1)OC,-11.01,...
+    CS(=O)(=O)Cl,-4.87,...
+    CC(C)C=C,1.83,...
     ...
 
-Given that our test data is identical to our train data, it makes sense that the predictions are nearly identical to the ground truth values.
+Given that our test data is identical to our train data, it makes sense that the predictions are similar to the ground truth values.
 
 In the rest of this documentation, we'll go into more detail about how to:
 
