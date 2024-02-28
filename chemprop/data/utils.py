@@ -146,9 +146,12 @@ def get_mixed_task_names(path: str,
             smiles = [row[c] for c in smiles_columns]
             for s in smiles:
                 if keep_atom_map:
-                    mol = make_mol(s, keep_atom_map, add_h, keep_atom_map)
+                    # When the original atom mapping is used, the explicit hydrogens specified in the input SMILES should be used
+                    # However, the explicit Hs can only be added for reactions with `--explicit_h` flag
+                    # To fix this, `keep_h` is set to True when `keep_atom_map` is also True
+                    mol = make_mol(s, keep_h=True, add_h=add_h, keep_atom_map=True)
                 else:
-                    mol = make_mol(s, keep_h, add_h, keep_atom_map)
+                    mol = make_mol(s, keep_h=keep_h, add_h=add_h, keep_atom_map=False)
                 if len(mol.GetAtoms()) != len(mol.GetBonds()):
                     break
 
