@@ -487,17 +487,14 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
             Conformal coverage for each task
         """
         uncertainties = np.array(uncertainties)
-        preds = np.array(preds)
         targets = np.array(targets)
         mask = np.array(mask)
         num_tasks = uncertainties.shape[1] // 2
         if self.is_atom_bond_targets:
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
-            preds = [np.concatenate(x) for x in zip(*preds)]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
             uncertainties = np.array(list(zip(*uncertainties)))
-            preds = np.array(list(zip(*preds)))
             targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
 

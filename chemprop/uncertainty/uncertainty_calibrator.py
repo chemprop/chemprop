@@ -4,7 +4,7 @@ from typing import Iterator, List
 import numpy as np
 from chemprop.data.data import MoleculeDataLoader
 from scipy.special import erfinv, softmax, logit, expit
-from scipy.optimize import least_squares, fmin
+from scipy.optimize import fmin
 from scipy.stats import t
 from sklearn.isotonic import IsotonicRegression
 
