@@ -37,9 +37,7 @@ By default, it is assumed that the SMILES are in the first column and the target
 
 Datasets from `MoleculeNet <http://moleculenet.ai/>`_ and a 450K subset of ChEMBL from `<http://www.bioinf.jku.at/research/lsc/index.html>`_ have been preprocessed and are available in `data.tar.gz <https://github.com/chemprop/chemprop/blob/master/data.tar.gz>`_. To uncompress them, run :code:`tar xvzf data.tar.gz`.
 
-Notes:
-
-* The default metric for classification is ROC and the default metric for regression is RMSE. Other metrics may be specified with ``--metrics METRIC``.
+Note that the default metric for classification is ROC and the default metric for regression is RMSE. Other metrics may be specified with ``--metrics METRIC``.
 
 Train/Validation/Test Splits
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,9 +64,95 @@ Ensembling
 
 To train an ensemble, specify the number of models in the ensemble with :code:`--ensemble-size <n>` (default 1).
 
+Hyperparameters
+----------
+
+Model performance is often highly dependent on the hyperparameters used. Below is a list of common hyperparameters (see :ref:`cmd` for a full list):
+* :code:`--batch-size` Batch size.
+* :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN
+* :code:`--depth <n>` Number of message-passing steps.
+* :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers.
+* :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`.
+* :code:`--epochs <n>`: How many epochs to train over.
+* :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2).
+* :code:`--init_lr <n>`: Initial learning rate (default 0.0001)
+* :code:`--max-lr <n>`: Maximum learning rate.
+* :code:`--final-lr <n>`: Final learning rate.
+
+
+Loss Functions
+--------------
+The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` includes:
+* :code:`mse`: Mean squared error
+* :code:`bounded-mse`: Bounded mean squared error
+* :code:`mve`: Mean-variance estimation
+* :code:`evidential`: Evidential (Soleimany et al., 2021). If used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
+* :code:`bce`: Binary cross-entropy
+* :code:`ce`: Cross-entropy
+* :code:`binary-mcc`: Binary Matthews correlation coefficient
+* :code:`multiclass-mcc`: Multiclass Matthews correlation coefficient 
+* :code:`binary-dirichlet`: Binary Dirichlet 
+* :code:`multiclass-dirichlet`: Multiclass Dirichlet
+* :code:`sid`: 
+* :code:`earthmovers` or :code:`wasserstein`: Earth mover's distance (also known as Wasserstein metric)
+
+
+Advanced Training Methods
+-------------------------
+
+Pretraining
+^^^^^^^^^^^
+
+An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
+
+ * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
+ * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
+when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
+
+.. note:: 
+    This section is under development.
+
+It is possible to freeze the weights of the model during training, such as for transfer learning applications. The following flags may be used:
+
+ * :code:`--frzn-ffn-layers <n>`  
+ * :code:`--model-frzn <path_to_checkpoint>`   
+ * :code:`--freeze-first-only`  
+
+
+Training on Reactions
+^^^^^^^^^^^^^^^^^^^^^
+
+Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html>`_ for details), which consist of three parts denoting reactants, agents, and products, each separated by ">". For exampel, an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: :code:`[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: :code:`[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
+
+Use the option :code:`--reaction` to enable this, which transforms the reactants and products to the corresponding condensed graph of reaction, and changes the initial atom and bond features depending on the argument provided to :code:`--reaction-mode`:
+
+* :code:`reac_diff`: from the reactant and the difference upon reaction (default)
+* :code:`reac_prod`: from both the reactant and product
+* :code:`prod_diff`: from the product and the difference upon reaction
+
+Each of these arguments can be modified to balance imbalanced reactions by appending "_balance", e.g. :code:`reac_diff_balance`. 
+
+In reaction mode, Chemprop concatenates information to each atomic and bond feature vector. For example, using :code:`--reaction-mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. 
+
+If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--keep-h`.
+
+For further details and benchmarking, as well as a citable reference, please see `DOI 10.33774/chemrxiv-2021-frfhz <https://doi.org/10.33774/chemrxiv-2021-frfhz>`_.
+
+
+Training with Solvents
+^^^^^^^^^^^^^^^^^^^^^^
+.. note:: 
+    This section is under development.
+
+
+Training on Spectra
+^^^^^^^^^^^^^^^^^^^
+.. note:: 
+    This section is under development.
+
 
 Additional Features
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 While the model works very well on its own, especially after hyperparameter optimization, additional features may further improve performance on certain datasets. The additional features can be added at the atom-, bond, or molecule-level. Molecule-level features can be either automatically generated by RDKit or custom features provided by the user.
 
@@ -112,50 +196,14 @@ The bond-level features are concatenated with the bond feature vectors before th
 
 Similar to molecule-, and atom-level features, the bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-descriptor-scaling`.
 
-Reaction
-^^^^^^^^
 
-Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html>`_ for details), which consist of three parts denoting reactants, agents, and products, each separated by ">". For exampel, an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: :code:`[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: :code:`[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
+..
+   Missing Target Values
+   ^^^^^^^^^^^^^^^^^^^^^
 
-Use the option :code:`--reaction` to enable this, which transforms the reactants and products to the corresponding condensed graph of reaction, and changes the initial atom and bond features depending on the argument provided to :code:`--reaction-mode`:
+   When training multitask models (models which predict more than one target simultaneously), sometimes not all target values are known for all molecules in the dataset. Chemprop automatically handles missing entries in the dataset by masking out the respective values in the loss function, so that partial data can be utilized. 
 
-* :code:`reac_diff`: from the reactant and the difference upon reaction (default)
-* :code:`reac_prod`: from both the reactant and product
-* :code:`prod_diff`: from the product and the difference upon reaction
-
-Each of these arguments can be modified to balance imbalanced reactions by appending "_balance", e.g. :code:`reac_diff_balance`. 
-
-In reaction mode, Chemprop concatenates information to each atomic and bond feature vector. For example, using :code:`--reaction-mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. 
-
-If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--keep-h`.
-
-For further details and benchmarking, as well as a citable reference, please see `DOI 10.33774/chemrxiv-2021-frfhz <https://doi.org/10.33774/chemrxiv-2021-frfhz>`_.
-
-Pretraining
-^^^^^^^^^^^
-
-An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
-
- * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
- * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
-when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
-
-.. note:: 
-    This section is under development.
-
-It is possible to freeze the weights of the model during training, such as for transfer learning applications. The following flags may be used:
-
- * :code:`--frzn-ffn-layers <n>`  
- * :code:`--model-frzn <path_to_checkpoint>`   
- * :code:`--freeze-first-only`  
-
-
-Missing target values
-^^^^^^^^^^^^^^^^^^^^^
-
-When training multitask models (models which predict more than one target simultaneously), sometimes not all target values are known for all molecules in the dataset. Chemprop automatically handles missing entries in the dataset by masking out the respective values in the loss function, so that partial data can be utilized. 
-
-The loss function is rescaled according to all non-missing values, and missing values do not contribute to validation or test errors. Training on partial data is therefore possible and encouraged (versus taking out datapoints with missing target entries). No keyword is needed for this behavior, it is the default.
+   The loss function is rescaled according to all non-missing values, and missing values do not contribute to validation or test errors. Training on partial data is therefore possible and encouraged (versus taking out datapoints with missing target entries). No keyword is needed for this behavior, it is the default.
 
 ..
    TensorBoard

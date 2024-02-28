@@ -35,11 +35,11 @@ Now we're ready to train a simple Chemprop model:
 This will train a model on the solubility dataset (``tests/data/regression.csv``) and save the model and training logs in the ``train_example`` directory. You should see some output printed to your terminal that shows the model architecture, number of parameters, and a progress bar for each epoch of training. At the end, you should see something like:
 
 .. code-block:: text
-───────────────────────────────────────────────────────
+    ───────────────────────────────────────────────────────
        Test metric             DataLoader 0
-───────────────────────────────────────────────────────
+    ───────────────────────────────────────────────────────
         test/mse             0.7716904154601469
-───────────────────────────────────────────────────────
+    ───────────────────────────────────────────────────────
 
 With our trained model in hand, we can now use it to predict solubilities of new molecules. In the absence of additional data, for demonstration purposes, let's just test on the same molecules that we trained on:
 
@@ -67,10 +67,10 @@ In the rest of this documentation, we'll go into more detail about how to:
 * :ref:`Install Chemprop<installation>`
 * :ref:`Customize model architecture and task type<train>`
 * :ref:`Specify training parameters: split type, learning rate, batch size, loss function, etc.<train>`
-* :ref:`Quantify prediction uncertainty<predict>`
 * :ref:`Use Chemprop as a Python package<python usage>`
 ..
      Optimize hyperparameters
+    * :ref:`Quantify prediction uncertainty<predict>`
 
 Summary
 -------
