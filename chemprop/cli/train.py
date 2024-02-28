@@ -363,8 +363,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
     )
     train_args.add_argument(
-        "--metric",
         "--metrics",
+        "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
@@ -684,7 +684,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         agg,
         predictor,
         True,
-        None,
+        args.metrics,
         args.task_weights,
         args.warmup_epochs,
         args.init_lr,
