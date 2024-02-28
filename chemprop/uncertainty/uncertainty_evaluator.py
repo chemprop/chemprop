@@ -577,9 +577,9 @@ class ConformalMultilabelEvaluator(UncertaintyEvaluator):
         """
         Args:
             targets: shape(data, tasks)
-            preds: shape(data, tasks, num_classes)
-            uncertainties: shape(data, tasks, num_classes)
-            mask: shape(data, tasks, num_classes)
+            preds: shape(data, tasks)
+            uncertainties: shape(data, tasks)
+            mask: shape(data, tasks)
 
         Returns:
             Conformal coverage for each task
