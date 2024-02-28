@@ -1035,10 +1035,12 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         """Fixed per class. Example is for multilabel conformal.
 
         Args:
-            preds: [num_examples, num_tasks]
-
+            uncal_preds (torch.Tensor): a tensor of shape `n x t`, where `n`
+            is the number of examples, and `t` the number of tasks,
+            containing the uncalibrated model predictions.
+        
         Returns:
-            scores: [num_examples, num_tasks]
+            scores (torch.Tensor): [num_examples, num_tasks]
         """
         return -uncal_preds
 
