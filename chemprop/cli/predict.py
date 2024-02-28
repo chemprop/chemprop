@@ -59,6 +59,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--model-path",
         required=True,
+        type=Path,
         help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
     )
 
