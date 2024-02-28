@@ -480,7 +480,7 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
         Args:
             targets: shape(data, tasks)
             preds: shape(data, tasks)
-            uncertainties: shape(data, 2*tasks)
+            uncertainties: shape(data, tasks)
             mask: shape(data, tasks)
 
         Returns:
@@ -488,22 +488,27 @@ class ConformalRegressionEvaluator(UncertaintyEvaluator):
         """
         uncertainties = np.array(uncertainties)
         targets = np.array(targets)
+        preds = np.array(preds)
         mask = np.array(mask)
-        num_tasks = uncertainties.shape[1] // 2
+        num_tasks = uncertainties.shape[1]
         if self.is_atom_bond_targets:
             uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
             targets = [np.concatenate(x) for x in zip(*targets)]
+            preds = [np.concatenate(x) for x in zip(*preds)]
         else:
             uncertainties = np.array(list(zip(*uncertainties)))
             targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
+            preds = np.array(list(zip(*preds)))
 
         results = []
         for i in range(num_tasks):
             task_mask = mask[i]
-            unc_task_lower = uncertainties[i][task_mask]
-            unc_task_upper = uncertainties[i + num_tasks][task_mask]
+            task_unc = uncertainties[i][task_mask]
             task_targets = targets[i][task_mask]
+            task_preds = preds[i][task_mask]
+            unc_task_lower = task_preds - task_unc
+            unc_task_upper = task_preds + task_unc
             task_results = np.logical_and(unc_task_lower <= task_targets, task_targets <= unc_task_upper)
             results.append(task_results.sum() / task_results.shape[0])
 

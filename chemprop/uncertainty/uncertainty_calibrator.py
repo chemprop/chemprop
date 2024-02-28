@@ -1121,15 +1121,18 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
             )
 
     def calibrate(self):
-        uncal_interval = np.array(self.calibration_predictor.get_uncal_output())  # shape(data, 2 * tasks)
-        targets = np.array(self.calibration_data.targets())  # shape(data, tasks)
+        uncal_preds = np.array(self.calibration_predictor.get_uncal_preds())  # shape(data, tasks)
+        uncal_interval = np.array(self.calibration_predictor.get_uncal_output())
+        targets = np.array(self.calibration_data.targets())
         mask = np.array(self.calibration_data.mask())
         num_data = uncal_interval.shape[0]
-        self.num_tasks = uncal_interval.shape[1] // 2
+        self.num_tasks = uncal_interval.shape[1]
         if self.calibration_data.is_atom_bond_targets:
+            uncal_preds = [np.concatenate(x) for x in zip(*uncal_preds)]
             uncal_interval = [np.concatenate(x) for x in zip(*uncal_interval)]
             targets = [np.concatenate(x) for x in zip(*targets)]
         else:
+            uncal_preds = np.array(list(zip(*uncal_preds)))
             uncal_interval = np.array(list(zip(*uncal_interval)))
             targets = targets.astype(float)
             targets = np.array(list(zip(*targets)))
@@ -1138,8 +1141,10 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
         for i in range(self.num_tasks):
             task_mask = mask[i]
             task_targets = targets[i][task_mask]
-            uncal_interval_lower = uncal_interval[i][task_mask]
-            uncal_interval_upper = uncal_interval[i + self.num_tasks][task_mask]
+            task_preds = uncal_preds[i][task_mask]
+            task_interval = uncal_interval[i][task_mask]
+            uncal_interval_lower = task_preds - task_interval
+            uncal_interval_upper = task_preds + task_interval
             calibration_scores = np.maximum(
                 uncal_interval_lower - task_targets, task_targets - uncal_interval_upper
             )
@@ -1149,15 +1154,9 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())  # shape(data, task)
-        uncal_interval = np.array(uncal_predictor.get_uncal_output())  # shape(data, 2*task)
-        num_data = uncal_interval.shape[0]
-        intervals = np.empty((num_data, 2 * self.num_tasks), dtype=object)
-        for i in range(self.num_tasks):
-            uncal_interval_lower = uncal_interval[:, i]
-            uncal_interval_upper = uncal_interval[:, i + self.num_tasks]
-            intervals[:, i] = uncal_interval_lower - self.qhats[i]
-            intervals[:, i + self.num_tasks] = uncal_interval_upper + self.qhats[i]
-        return uncal_preds, intervals
+        uncal_interval = np.array(uncal_predictor.get_uncal_output())  # shape(data, task)
+        cal_intervals = uncal_interval + self.qhats
+        return uncal_preds, cal_intervals
 
 
 def build_uncertainty_calibrator(

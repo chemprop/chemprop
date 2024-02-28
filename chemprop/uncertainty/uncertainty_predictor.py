@@ -273,7 +273,10 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
         """
         Make uncalibrated intervals from the uncalibrated predictions.
         """
-        return preds
+        num_data, num_tasks = preds.shape
+        intervals = abs(np.diff(preds.reshape(num_data, 2, num_tasks // 2), axis=1) / 2)
+        intervals = intervals.reshape(num_data, num_tasks // 2)
+        return intervals
 
     def calculate_predictions(self):
         for i, (model, scaler_list) in enumerate(
@@ -348,7 +351,7 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
             )
         else:
             uncal_preds = sum_preds / self.num_models
-            self.uncal_intervals = self.make_intervals(uncal_preds.T).T
+            self.uncal_intervals = self.make_intervals(uncal_preds)
             if self.individual_ensemble_predictions:
                 self.individual_preds = individual_preds.tolist()
             self.uncal_preds = self.reformat_preds(uncal_preds)
@@ -375,7 +378,7 @@ class ConformalRegressionPredictor(ConformalQuantileRegressionPredictor):
         """
         Make uncalibrated intervals from the uncalibrated predictions.
         """
-        intervals = np.concatenate((preds, preds))
+        intervals = np.zeros(preds.shape)
         return intervals
 
 
