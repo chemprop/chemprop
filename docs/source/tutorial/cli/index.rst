@@ -26,6 +26,7 @@ For example, to see the arguments for the ``train`` command, run:
     $ chemprop train --help
 
 To enable logging, specify ``--log <path/to/logfile>`` or ``--logfile <path/to/logfile>``, where ``<path/to/logfile>`` is the desired path to which the logfile should be written; if unspecified, the log will be written to ``chemprop_logs``.
+If more detailed debugging information is required, specify ``-v``, ``-vv``, or ``-vvv`` (in increasing order of detail).
 
 For more details on each command, see the corresponding section below:
 

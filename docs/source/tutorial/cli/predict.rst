@@ -3,16 +3,13 @@
 Prediction
 ----------
 
-.. note:: 
-    This page is under construction.
-
 To load a trained model and make predictions, run ``chemprop predict`` and specify:
 
-* ``--test-path <path>`` Path to the data to predict on.
-* ``--model-path <path>`` Path to the trained model.
+ * :code:`--test-path <path>` Path to the data to predict on.
+ * :code:`--model-path <path>` Path to the trained model.
 
 By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified:
-* ``--preds-path`` Path where a CSV file containing the predictions will be saved.
+ * :code:`--preds-path` Path where a CSV file containing the predictions will be saved.
 
 For example,
 
