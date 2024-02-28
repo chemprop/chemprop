@@ -1,9 +1,6 @@
 from collections import defaultdict
 import logging
 from typing import Dict, List
-import numpy as np
-
-import numpy as np
 
 import numpy as np
 
