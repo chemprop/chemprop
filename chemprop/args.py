@@ -974,6 +974,8 @@ class PredictArgs(CommonArgs):
         if self.regression_calibrator_metric is None:
             if self.calibration_method == 'zelikman_interval':
                 self.regression_calibrator_metric = 'interval'
+            elif self.calibration_method in ['conformal_regression', 'conformal_quantile_regression']:
+                self.regression_calibrator_metric = None
             else:
                 self.regression_calibrator_metric = 'stdev'
 
