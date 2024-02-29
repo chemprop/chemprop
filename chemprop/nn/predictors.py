@@ -115,18 +115,11 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        loc: float | Tensor = 0,
-        scale: float | Tensor = 1,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        self.register_buffer("loc", torch.tensor(loc).view(1, -1))
-        self.register_buffer("scale", torch.tensor(scale).view(1, -1))
-
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-
-        return self.scale * Y + self.loc
+        return super().forward(Z)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z)
