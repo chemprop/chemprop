@@ -126,10 +126,10 @@ class AUROCMetric(Metric):
         self.task = task
 
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.auroc(preds[mask], targets[mask].long(), task=self.task)
+        return self.forward(preds, targets, mask)
     
-    def forward(self, preds, targets, mask) -> Tensor:
-        return self.__call__(preds, targets, mask)
+    def forward(self, preds, targets, mask, *args) -> Tensor:
+        return F.auroc(preds[mask], targets[mask].long(), task=self.task)
 
 
 @MetricRegistry.register("prc")
