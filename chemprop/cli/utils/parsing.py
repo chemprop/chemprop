@@ -165,7 +165,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_d=X_d[i], # TODO: if X_d contains feature for both molecule and reaction, this is wrong
+                x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
                 V_f=V_fs[mol_idx][i],
@@ -186,7 +186,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_d=X_d[i], # TODO: if X_d contains feature for both molecule and reaction, this is wrong
+                x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
             )
