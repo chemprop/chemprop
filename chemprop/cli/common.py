@@ -82,7 +82,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
-        "--no-feature-scaling", action="store_true", help="Turn off feature scaling."
+        "--no-mol-feature-scaling", action="store_true", help="Turn off feature scaling."
     )
     featurization_args.add_argument(
         "--no-atom-feature-scaling", action="store_true", help="Turn off atom feature scaling."

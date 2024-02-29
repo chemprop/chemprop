@@ -507,7 +507,7 @@ def normalize_inputs(train_dset, val_dset, args):
         d_ef = train_dset.d_ef
         d_vd = train_dset.d_vd
 
-    if d_xf > 0 and not args.no_feature_scaling:
+    if d_xf > 0 and not args.no_mol_feature_scaling:
         X_f_scaler = train_dset.normalize_inputs("X_f")
         val_dset.normalize_inputs("X_f", X_f_scaler)
         logger.info(f"Features: loc = {X_f_scaler.mean_}, scale = {X_f_scaler.scale_}")
