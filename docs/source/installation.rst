@@ -57,10 +57,14 @@ Chemprop can also be installed with Docker, making it possible to isolate the Ch
 
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
-    docker build -t chemprop .
+    docker build --tag chemprop . --build-arg="CUDA=<cuda_arg>"
     docker run -it chemprop:latest
 
-Note that you will need to run the latter command with ``nvidia-docker`` if you are on a GPU machine in order to be able to access the GPUs. Alternatively, with ``docker >= 19.03``, you can specify the ``--gpus`` command line option instead.
 
-In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine. Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions. To set a specific CUDA toolkit version, add ``cudatoolkit=X.Y`` to ``environment.yml`` before building the Docker image.
+.. note:: 
+    In the docker build line, replace ``<cuda_arg>`` with ``cpu``, ``cu118``, or ``cu121`` depending on your version of PyTorch. If experiencing permission errors, prepend ``sudo`` to the Docker commands.
+
+    You will need to run the last command with ``nvidia-docker`` if you are on a GPU machine in order to be able to access the GPUs. Alternatively, with ``docker >= 19.03``, you can specify the ``--gpus`` command line option instead.
+
+    In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine. Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions. To set a specific CUDA toolkit version, add ``cudatoolkit=X.Y`` to ``environment.yml`` before building the Docker image.
 
