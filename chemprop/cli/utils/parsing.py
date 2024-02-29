@@ -165,7 +165,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[mol_idx][i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
+                x_f=X_f[i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
                 V_f=V_fs[mol_idx][i],
@@ -186,7 +186,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[rxn_idx][i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
+                x_f=X_f[i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
             )
@@ -236,12 +236,9 @@ def load_input_features(paths, n_molecules, feature):
     match feature:
         case "X_f":
 
-            features = []
-            for mol_idx in range(n_molecules):
-                path = paths # TODO: currently only supports a single path
-                loaded_feature = np.load(path)
-                loaded_feature = loaded_feature["arr_0"]
-                features.append(loaded_feature)
+            path = paths
+            loaded_feature = np.load(path)
+            features = loaded_feature["arr_0"]
 
         case _:
 
