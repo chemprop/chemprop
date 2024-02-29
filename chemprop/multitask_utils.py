@@ -9,7 +9,6 @@ def reshape_values(
     test_data: MoleculeDataset,
     natom_targets: int,
     nbond_targets: int,
-    num_tasks: int,
 ) -> List[List[List[float]]]:
     """
     Reshape the input from shape (num_tasks, number of atomic/bond properties for each task, 1)
@@ -20,12 +19,12 @@ def reshape_values(
     :param test_data: A :class:`~chemprop.data.MoleculeDataset` containing valid datapoints.
     :param natom_targets: The number of atomic targets.
     :param nbond_targets: The number of bond targets.
-    :param num_tasks: Number of tasks.
     :return: List of atomic/bond properties with shape
              (data_size, num_tasks, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
-    reshaped_values = np.empty([len(test_data), num_tasks], dtype=object)
+    num_atom_bond_tasks = natom_targets + nbond_targets
+    reshaped_values = np.empty([len(test_data), num_atom_bond_tasks], dtype=object)
 
     for i in range(natom_targets):
         atom_targets = values[i].reshape(-1,)
@@ -45,7 +44,6 @@ def reshape_individual_preds(
     test_data: MoleculeDataset,
     natom_targets: int,
     nbond_targets: int,
-    num_tasks: int,
     num_models: int,
 ) -> List[List[List[List[float]]]]:
     """
@@ -57,13 +55,13 @@ def reshape_individual_preds(
     :param test_data: A :class:`~chemprop.data.MoleculeDataset` containing valid datapoints.
     :param natom_targets: The number of atomic targets.
     :param nbond_targets: The number of bond targets.
-    :param num_tasks: Number of tasks.
     :param num_models: Number of models.
     :return: List of atomic/bond properties with shape
              (data_size, num_tasks, num_models, number of atomic/bond properties for this data in each task).
     """
     n_atoms, n_bonds = test_data.number_of_atoms, test_data.number_of_bonds
-    individual_values = np.empty([len(test_data), num_tasks], dtype=object)
+    num_atom_bond_tasks = natom_targets + nbond_targets
+    individual_values = np.empty([len(test_data), num_atom_bond_tasks], dtype=object)
 
     for i in range(natom_targets):
         atom_targets = individual_preds[i].T.reshape(num_models, -1)

@@ -569,7 +569,6 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
                 self.calibration_data,
                 natom_targets,
                 nbond_targets,
-                len(weighted_stdev),
             )
             return uncal_preds, weighted_stdev
         else:
