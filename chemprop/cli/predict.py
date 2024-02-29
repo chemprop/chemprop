@@ -171,7 +171,7 @@ def find_models(model_path: Path):
 
 
 def make_prediction_for_model(
-    args: Namespace, model_path: Path, multicomponent: bool, output_dir: Path
+    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
     model, input_scalers, output_scaler = load_model(
         model_path, multicomponent
@@ -264,12 +264,12 @@ def make_prediction_for_model(
     df_test[target_columns] = (
         preds.flatten()
     )  # TODO: this will not work correctly for multi-target predictions
-    if args.output.suffix == ".pkl":
+    if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
-        df_test.to_pickle(args.output)
+        df_test.to_pickle(output_path)
     else:
-        df_test.to_csv(args.output, index=False)
-    logger.info(f"Predictions saved to '{args.output}'")
+        df_test.to_csv(output_path, index=False)
+    logger.info(f"Predictions saved to '{output_path}'")
 
 
 def main(args):
@@ -288,8 +288,8 @@ def main(args):
     model_paths = find_models(args.model_path)
 
     for model_path in model_paths:
-        output_dir = args.output.parent / model_path.stem / args.output.stem
-        make_prediction_for_model(args, model_path, multicomponent, output_dir)
+        output_path = args.output.parent / model_path.stem / args.output.stem
+        make_prediction_for_model(args, model_path, multicomponent, output_path)
 
 
 if __name__ == "__main__":
