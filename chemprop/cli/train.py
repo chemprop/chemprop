@@ -705,6 +705,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
+        torch.manual_seed(args.pytorch_seed + model_idx)
+
         model = build_model(args, train_loader.dataset)
         logger.info(model)
 
