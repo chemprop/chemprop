@@ -122,8 +122,14 @@ class R2Metric(Metric):
 class AUROCMetric(Metric):
     minimize = False
 
+    def __init__(self, task: str) -> None:
+        self.task = task
+
     def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.auroc(preds[mask], targets[mask].long())
+        return self.forward(preds, targets, mask)
+    
+    def forward(self, preds, targets, mask, *args) -> Tensor:
+        return F.auroc(preds[mask], targets[mask].long(), task=self.task)
 
 
 @MetricRegistry.register("prc")
