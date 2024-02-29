@@ -33,7 +33,7 @@ Option 1: Installing from PyPI
 
     pip install torch
     pip install torch-scatter
-    pip install chemprop
+    pip install chemprop --pre
 
 
 Option 2: Installing from source
@@ -43,6 +43,7 @@ Option 2: Installing from source
 
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
+    git checkout v2/dev
     pip install torch
     pip install torch-scatter
     pip install .
@@ -57,6 +58,7 @@ Chemprop can also be installed with Docker, making it possible to isolate the Ch
 
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
+    git checkout v2/dev
     docker build --tag chemprop . --build-arg="CUDA=<cuda_arg>"
     docker run -it chemprop:latest
 
