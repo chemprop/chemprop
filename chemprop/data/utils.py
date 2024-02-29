@@ -150,7 +150,17 @@ def get_mixed_task_names(path: str,
         for row in reader:
             atom_target_names, bond_target_names, molecule_target_names = [], [], []
             smiles = [row[c] for c in smiles_columns]
-            mol = make_mol(smiles[0], keep_h, add_h, keep_atom_map)
+            for s in smiles:
+                if keep_atom_map:
+                    # When the original atom mapping is used, the explicit hydrogens specified in the input SMILES should be used
+                    # However, the explicit Hs can only be added for reactions with `--explicit_h` flag
+                    # To fix this, `keep_h` is set to True when `keep_atom_map` is also True
+                    mol = make_mol(s, keep_h=True, add_h=add_h, keep_atom_map=True)
+                else:
+                    mol = make_mol(s, keep_h=keep_h, add_h=add_h, keep_atom_map=False)
+                if len(mol.GetAtoms()) != len(mol.GetBonds()):
+                    break
+
             for column in target_names:
                 value = row[column]
                 value = value.replace('None', 'null')
@@ -160,16 +170,18 @@ def get_mixed_task_names(path: str,
                 if len(target.shape) == 0:
                     is_molecule_target = True
                 elif len(target.shape) == 1:
-                    if len(mol.GetAtoms()) == len(mol.GetBonds()):
-                        break
-                    elif len(target) == len(mol.GetAtoms()):  # Atom targets saved as 1D list
+                    if len(target) == len(mol.GetAtoms()):  # Atom targets saved as 1D list
                         is_atom_target = True
                     elif len(target) == len(mol.GetBonds()):  # Bond targets saved as 1D list
                         is_bond_target = True
+                    else:
+                        raise RuntimeError(f'Unrecognized targets of column {column} in {path}. '
+                                           'Expected targets should be either atomic or bond targets. '
+                                           'Please ensure the content is correct.')
                 elif len(target.shape) == 2:  # Bond targets saved as 2D list
                     is_bond_target = True
                 else:
-                    raise ValueError('Unrecognized targets of column {column} in {path}.')
+                    raise ValueError(f'Unrecognized targets of column {column} in {path}.')
                 
                 if is_atom_target:
                     atom_target_names.append(column)

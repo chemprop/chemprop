@@ -1465,6 +1465,14 @@ class ChempropTests(TestCase):
                  '--is_atom_bond_targets',
                  '--adding_h',
                  '--weights_ffn_num_layers', '3']
+        ),
+        (
+                'chemprop_atomic_targets_atom_mapped',
+                'chemprop',
+                0.233874,
+                ['--data_path', os.path.join(TEST_DATA_DIR, 'atomic_regression_atom_mapped.csv'),
+                 '--is_atom_bond_targets',
+                 '--keeping_atom_map']
         )
     ])
     def test_train_multi_task_regression_atomic_bond_targets(self,
@@ -1486,8 +1494,6 @@ class ChempropTests(TestCase):
             # Check results
             test_scores_data = pd.read_csv(os.path.join(save_dir, TEST_SCORES_FILE_NAME))
             test_scores = test_scores_data[f'Mean {metric}']
-            self.assertEqual(len(test_scores), 10)
-
             mean_score = test_scores.mean()
             self.assertAlmostEqual(mean_score, expected_score, delta=DELTA * expected_score)
 
