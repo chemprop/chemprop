@@ -48,19 +48,21 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
+        "--save-preds"
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "model.pt").exists()
-    assert (tmp_path / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "trainer_logs" / "version_0").exists()
+    assert (tmp_path / "model_0" / "model.pt").exists()
+    assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
+    assert (tmp_path / "model_0" / "test_predictions.csv").exists()
 
 
-def test_train_output_structure_cv(monkeypatch, data_path, tmp_path):
+def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
     args = [
         "chemprop",
         "train",
@@ -77,15 +79,17 @@ def test_train_output_structure_cv(monkeypatch, data_path, tmp_path):
         "cv",
         "--num-folds",
         "3",
+        "--ensemble-size",
+        "2",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "fold_2" / "model.pt").exists()
-    assert (tmp_path / "fold_2" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "fold_2" / "trainer_logs" / "version_0").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "model.pt").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
 
 
@@ -105,7 +109,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_0.csv").exists()
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
@@ -126,6 +130,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    checkpoint_path = tmp_path / "checkpoints" / "last.ckpt"
+    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)

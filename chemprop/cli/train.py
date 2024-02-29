@@ -26,7 +26,7 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -397,7 +397,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Maximum magnitude of gradient during training."
+        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
     )
     train_args.add_argument(
         "--class-balance",
@@ -547,7 +547,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             **format_kwargs,
             **featurization_kwargs,
         )
-        needs_test_data = False
+
         if args.separate_val_path is not None:
             val_data = build_data_from_files(
                 args.separate_val_path,
@@ -693,70 +693,24 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def main(args):
-    save_config(args)
+def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
+    for model_idx in range(args.ensemble_size):
+        model_output_dir = output_dir / f"model_{model_idx}"
+        model_output_dir.mkdir(exist_ok=True, parents=True)
 
-    format_kwargs = dict(
-        no_header_row=args.no_header_row,
-        smiles_cols=args.smiles_columns,
-        rxn_cols=args.reaction_columns,
-        target_cols=args.target_columns,
-        ignore_cols=args.ignore_columns,
-        weight_col=args.weight_column,
-        bounded=args.loss_function is not None and "bounded" in args.loss_function,
-    )
-    featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
-    )
-
-    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-
-    no_cv = args.num_folds == 1
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
-
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-
-        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
-
-        if no_cv:
-            output_dir = args.output_dir
-        else:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-            output_dir.mkdir(exist_ok=True, parents=True)
-
-        if args.save_smiles_splits:
-            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
-
-        if args.task_type == "regression":
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
-
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-        if test_dset is not None:
-            test_loader = MolGraphDataLoader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
-            )
-        else:
-            test_loader = None
-
-        model = build_model(args, train_dset)
+        model = build_model(args, train_loader.dataset)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
         logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
         try:
-            trainer_logger = TensorBoardLogger(output_dir, "trainer_logs")
+            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
         except ModuleNotFoundError:
-            trainer_logger = CSVLogger(output_dir, "trainer_logs")
+            trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         checkpointing = ModelCheckpoint(
-            output_dir / "checkpoints",
+            model_output_dir / "checkpoints",
             "{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -773,21 +727,84 @@ def main(args):
             devices=args.n_gpu if torch.cuda.is_available() else 1,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
+            gradient_clip_val=args.grad_clip,
         )
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
             if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
+                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1))
+                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
-        p_model = output_dir / "model.pt"
+            if args.save_preds:
+                predss = trainer.predict(model, test_loader)
+                preds = torch.concat(predss, 0).numpy()
+                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+
+        p_model = model_output_dir / "model.pt"
         input_scalers = []
         output_scaler = scaler
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
+
+
+def main(args):
+    save_config(args)
+
+    format_kwargs = dict(
+        no_header_row=args.no_header_row,
+        smiles_cols=args.smiles_columns,
+        rxn_cols=args.reaction_columns,
+        target_cols=args.target_columns,
+        ignore_cols=args.ignore_columns,
+        weight_col=args.weight_column,
+        bounded=args.loss_function is not None and "bounded" in args.loss_function,
+    )
+    featurization_kwargs = dict(
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+    )
+
+    no_cv = args.num_folds == 1
+    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
+
+    if no_cv:
+        splits = ([train_data], [val_data], [test_data])
+    else:
+        splits = (train_data, val_data, test_data)
+
+    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+        if not no_cv:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
+        else:
+            output_dir = args.output_dir
+
+        output_dir.mkdir(exist_ok=True, parents=True)
+
+        train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+        if args.save_smiles_splits:
+            save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
+
+        if args.task_type == "regression":
+            scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(scaler)
+            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        else:
+            scaler = None
+
+        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        if test_dset is not None:
+            test_loader = MolGraphDataLoader(
+                test_dset, args.batch_size, args.num_workers, shuffle=False
+            )
+        else:
+            test_loader = None
+
+        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
 
 
 if __name__ == "__main__":
