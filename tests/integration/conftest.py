@@ -25,6 +25,14 @@ def classification_mpnn(request):
 
 
 @pytest.fixture(scope="session")
+def classification_mpnn_multiclass(request):
+    agg = nn.SumAggregation()
+    ffn = nn.MulticlassClassificationFFN(n_classes=3)
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
 def mcmpnn(request):
     blocks, n_components, shared = request.param
     mcmp = nn.MulticomponentMessagePassing(blocks, n_components, shared=shared)
