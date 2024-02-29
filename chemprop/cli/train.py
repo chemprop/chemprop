@@ -786,7 +786,7 @@ def main(args):
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-        if args.task_type == "regression":
+        if "regression" in args.task_type:
             output_scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(output_scaler)
             if test_dset is not None:

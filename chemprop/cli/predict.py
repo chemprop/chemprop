@@ -62,6 +62,11 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
     )
+    parser.add_argument(
+        "--target-columns",
+        nargs="+",
+        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+    )
 
     # TODO: add uncertainty and calibration
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
@@ -264,7 +269,17 @@ def make_prediction_for_model(
         preds = output_scaler.inverse_transform(preds)
     if isinstance(model.predictor, MulticlassClassificationFFN):
         preds = torch.argmax(preds, dim=-1)
-    target_columns = [f"pred_{i}" for i in range(preds.shape[1])]  # TODO: need to improve this
+
+    if args.target_columns is not None:
+        assert (
+            len(args.target_columns) == model.n_tasks
+        ), "Number of target columns must match the number of tasks."
+        target_columns = args.target_columns
+    else:
+        target_columns = [
+            f"pred_{i}" for i in range(preds.shape[1])
+        ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+
     df_test[target_columns] = preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
