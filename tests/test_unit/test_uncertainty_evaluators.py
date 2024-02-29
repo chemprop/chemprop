@@ -176,16 +176,16 @@ def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spe
     "targets,preds,uncs,mask,coverage_exp",
     [
         (
-            np.full((100, 1), 0.5),
-            np.full((100, 1), 0.5),
-            np.ones((100, 2)),
+            np.arange(1, 101, 1).reshape(100, 1),
+            np.arange(100, 0, -1).reshape(100, 1),
+            np.full((100, 1), 70),
             np.full((1, 100), True, dtype=bool),
-            [0],
+            [0.7],
         ),
         (
             np.array([[0.5, 0.5, 0.5]]),
-            np.array([[0.5, 0.5, 0.5]]),
-            np.array([[0, 0, 1, 0, 1, 1]]),
+            np.array([[0, 0.3, 1]]),
+            np.array([[0.2, 0.3, 0.4]]),
             np.full((3, 1), True, dtype=bool),
             [0, 1, 0],
         ),
