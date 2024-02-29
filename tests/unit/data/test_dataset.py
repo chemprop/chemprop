@@ -23,7 +23,7 @@ def mols(smis):
 
 
 @pytest.fixture
-def X_f(mols):
+def X_d(mols):
     return [np.random.rand(1) for _ in mols]
 
 
@@ -43,15 +43,15 @@ def V_ds(mols):
 
 
 @pytest.mark.parametrize(
-    "X_f, V_fs, E_fs, V_ds",
-    [(None, None, None, None), ("X_f", "V_fs", "E_fs", "V_ds")],
+    "X_d, V_fs, E_fs, V_ds",
+    [(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")],
     indirect=True,
 )
 @pytest.fixture
-def data(mols, targets, X_f, V_fs, E_fs, V_ds):
+def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     return [
-        MoleculeDatapoint(mol=mol, y=target, x_f=x_f, V_f=V_f, E_f=E_f, V_d=V_d)
-        for mol, target, x_f, V_f, E_f, V_d in zip(mols, targets, X_f, V_fs, E_fs, V_ds)
+        MoleculeDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
+        for mol, target, x_d, V_f, E_f, V_d in zip(mols, targets, X_d, V_fs, E_fs, V_ds)
     ]
 
 
@@ -93,10 +93,10 @@ def test_num_tasks(dataset, targets):
 
 
 @pytest.mark.skipif(
-    not all([x is None for x in ["X_f", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
+    not all([x is None for x in ["X_d", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
 )
 def test_aux_nones(dataset: MoleculeDataset):
-    np.testing.assert_array_equal(dataset.X_f, None)
+    np.testing.assert_array_equal(dataset.X_d, None)
     np.testing.assert_array_equal(dataset.V_fs, None)
     np.testing.assert_array_equal(dataset.E_fs, None)
     np.testing.assert_array_equal(dataset.V_ds, None)
@@ -120,12 +120,12 @@ def test_normalize_targets(dataset):
 
 
 def test_normalize_inputs(dataset):
-    dset_scaler = dataset.normalize_inputs("X_f")
+    dset_scaler = dataset.normalize_inputs("X_d")
     scaler = StandardScaler()
-    scaler.fit(dataset._X_f)
-    X = scaler.transform(dataset._X_f)
+    scaler.fit(dataset._X_d)
+    X = scaler.transform(dataset._X_d)
 
-    np.testing.assert_array_equal(dataset.X_f, X)
+    np.testing.assert_array_equal(dataset.X_d, X)
     np.testing.assert_array_equal(dset_scaler.mean_, scaler.mean_)
     np.testing.assert_array_equal(dset_scaler.scale_, scaler.scale_)
 
