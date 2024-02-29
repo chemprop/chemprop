@@ -1,0 +1,9 @@
+batch_norm: true
+final_lr: 0.0001
+init_lr: 0.0001
+max_lr: 0.001
+metrics:
+- !!python/object:chemprop.nn.metrics.RMSEMetric {}
+- !!python/object:chemprop.nn.metrics.MAEMetric {}
+w_t: null
+warmup_epochs: 2
