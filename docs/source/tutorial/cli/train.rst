@@ -58,7 +58,7 @@ Our code supports several methods of splitting data into train, validation, and 
 
 **Separate val/test:** If you have separate data files you would like to use as the validation or test set, you can specify them with :code:`--separate_val_path <val_path>` and/or :code:`--separate_test_path <test_path>`.
 
-Note: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split_sizes <train_frac> <val_frac> <test_frac>`. For example, the default setting is :code:`--split_sizes 0.8 0.1 0.1`. Both also involve a random component and can be seeded with :code:`--seed <seed>`. The default setting is :code:`--seed 0`.
+Note: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split_sizes <train_frac> <val_frac> <test_frac>`. For example, the default setting is :code:`--split_sizes 0.8 0.1 0.1`. Both also involve a random component and can be seeded with :code:`--split-seed <seed>`. The default setting is :code:`--split-seed 0`.
 
 Cross validation
 ^^^^^^^^^^^^^^^^

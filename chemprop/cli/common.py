@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
-    data_args = parser.add_argument_group("input data common args")
+    data_args = parser.add_argument_group("shared input data args")
     data_args.add_argument(
         "-s",
         "--smiles-columns",
@@ -24,18 +24,20 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="The column names in the input CSV containing reaction SMILES in the format 'REACTANT>AGENT>PRODUCT'",
     )
     data_args.add_argument(
-        "--no-header-row", action="store_true", help="If specified, the first row in the input CSV will not be used as column names."
+        "--no-header-row",
+        action="store_true",
+        help="If specified, the first row in the input CSV will not be used as column names.",
     )
 
-    .add_argument(
+    dataloader_args = parser.add_argument_group("dataloader args")
+    dataloader_args.add_argument(
         "-n",
         "--num-workers",
         type=int,
         default=8,
         help="Number of workers for the parallel data loading (0 means sequential).",
     )
-    .add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
-    
+    dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
 
     # parser.add_argument(
     #     "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
@@ -64,9 +66,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether H's explicitly specified in input should be kept in the mol graph.",
     )
     featurization_args.add_argument(
-        "--add-h",
-        action="store_true",
-        help="Whether H's should be added to the mol graph.",
+        "--add-h", action="store_true", help="Whether H's should be added to the mol graph."
     )
     featurization_args.add_argument(
         "--features-generators",
@@ -75,13 +75,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        type=Path(), # TODO: compare with PR #635
+        type=Path(),  # TODO: compare with PR #635
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
-    featurization_args.add_argument(
-        "--phase-features-path",
-        help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
-    )
+    # TODO: Add in v2.1
+    # featurization_args.add_argument(
+    #     "--phase-features-path",
+    #     help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
+    # )
     featurization_args.add_argument(
         "--no-features-scaling", action="store_true", help="Turn off scaling of features."
     )
@@ -117,7 +118,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
-
+    # TODO: Add in v2.2
     # parser.add_argument(
     #     "--constraints-path",
     #     help="Path to constraints applied to atomic/bond properties prediction.",

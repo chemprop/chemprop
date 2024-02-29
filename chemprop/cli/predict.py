@@ -45,24 +45,19 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to an input CSV file containing SMILES.",
     )
     parser.add_argument(
+        "--model-path",
+        required=True,
+        help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
         help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds.csv'.",
     )
-    parser.add_argument(
-        "--drop-extra-columns",
-        action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
-    )
-    parser.add_argument(
-        "--model-path",
-        required=True,
-        help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
-    )
 
-    # TODO: add uncertainty and calibration
+    # TODO: add uncertainty and calibration in v2.1
     # unc_args = parser.add_argument_group("uncertainty and calibration args")
     # unc_args.add_argument("--cal-path")
     # unc_args.add_argument("--cal-features-path")
