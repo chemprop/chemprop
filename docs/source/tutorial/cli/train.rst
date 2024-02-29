@@ -104,8 +104,7 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`mve` Mean-variance estimation
  * :code:`evidential` Evidential; if used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
 
-
- **Classification**:
+**Classification**:
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
@@ -118,13 +117,11 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
  * :code:`multiclass-dirichlet` Multiclass Dirichlet
 
-
 **Spectral**:
 
  * :code:`sid` Spectral information divergence (default)
  * :code:`earthmovers` Earth mover's distance (or first-order Wasserstein distance)
  * :code:`wasserstein` See above.
-
 
 Evaluation Metrics
 ------------------
@@ -141,8 +138,7 @@ The following evaluation metrics are supported during training:
  * :code:`bounded-rmse` Bounded root mean squared error
  * :code:`r2` R squared metric 
 
-
- **Classification**:
+**Classification**:
 
  * :code:`roc` Receiver operating characteristic (default)
  * :code:`prc` Precision-recall curve
@@ -151,12 +147,10 @@ The following evaluation metrics are supported during training:
  * :code:`bce` Binary cross-entropy
  * :code:`binary-mcc` Binary Matthews correlation coefficient
 
-
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
-
 
 **Spectral**:
 
@@ -211,7 +205,7 @@ Chemprop can process a *reaction* in a solvent or a *reaction* and a molecule; t
 
 When using :code:`--reaction-solvent`, all options available for reactions such as  :code:`--reaction_mode` and :code:`--keep-h` can be used. The :code:`--add-h` option can be used for the solvent/molecule if explicit hydrogens are required. 
 
-Chemprop allows differently-sized MPNNs to be used for each reaction and solvent/molecule encoding. The following commands can be used to specify the solvent/molecule MPNN size if :code:`--reaction-solvent` is specified`:
+Chemprop allows differently-sized MPNNs to be used for each reaction and solvent/molecule encoding. The following commands can be used to specify the solvent/molecule MPNN size if :code:`--reaction-solvent` is specified:
 
  * :code:`--bias-solvent` Whether to add bias to the linear layers of the solvent/molecule (default :code:`false`)
  * :code:`--hidden-size-solvent <n>` The dimensionality of the hidden layers for the solvent/molecule (default 300)
