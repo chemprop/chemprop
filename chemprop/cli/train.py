@@ -693,7 +693,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
+def train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -738,13 +738,14 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
+                if args.task_type == "regression":
+                    unscaled_preds = output_scaler.inverse_transform(preds)
                 columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *unscaled_preds.T)), columns = columns)
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         input_scalers = []
-        output_scaler = scaler
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
 
@@ -786,11 +787,13 @@ def main(args):
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
         if args.task_type == "regression":
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+            output_scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(output_scaler)
+            if test_dset is not None:
+                test_dset.normalize_targets(output_scaler)
+            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
         else:
-            scaler = None
+            output_scaler = None
 
         train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
@@ -801,7 +804,7 @@ def main(args):
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
+        train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler)
 
 
 if __name__ == "__main__":
