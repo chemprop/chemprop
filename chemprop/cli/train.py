@@ -739,9 +739,9 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, output_
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
                 if args.task_type == "regression":
-                    unscaled_preds = output_scaler.inverse_transform(preds)
+                    preds = output_scaler.inverse_transform(preds)
                 columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *unscaled_preds.T)), columns = columns)
+                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
