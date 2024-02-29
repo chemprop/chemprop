@@ -31,6 +31,7 @@ extensions = [
     "nbsphinx_link",
 ]
 
+nbsphinx_execute = 'never'
 templates_path = ["_templates"]
 exclude_patterns = []
 autodoc_typehints = "description"
