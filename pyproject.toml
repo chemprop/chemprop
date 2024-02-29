@@ -40,7 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["black", "bumpversion", "flake8", "pytest", "pytest-cov"]
-docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme","nbsphinx-link"]
+docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme","nbsphinx-link","ipykernel"]
 test = ["parameterized > 0.8", "pytest >= 6.2", "pytest-cov"]
 
 [project.urls]
