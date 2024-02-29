@@ -80,15 +80,15 @@ Hyperparameters
 
 Model performance is often highly dependent on the hyperparameters used. Below is a list of common hyperparameters (see :ref:`cmd` for a full list):
 
- * :code:`--batch-size` Batch size.
- * :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN
- * :code:`--depth <n>` Number of message-passing steps.
- * :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers.
- * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`.
- * :code:`--epochs <n>` How many epochs to train over.
+ * :code:`--batch-size` Batch size. (default 64)
+ * :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN (default 300)
+ * :code:`--depth <n>` Number of message-passing steps. (default 3)
+ * :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers. (default 0)
+ * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default relu)
+ * :code:`--epochs <n>` How many epochs to train over. (default 50)
  * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2).
  * :code:`--init_lr <n>` Initial learning rate (default 0.0001)
- * :code:`--max-lr <n>` Maximum learning rate.
+ * :code:`--max-lr <n>` Maximum learning rate. (default 0.001)
  * :code:`--final-lr <n>` Final learning rate.
 
 
@@ -187,21 +187,21 @@ It is possible to freeze the weights of the model during training, such as for t
 Training on Reactions
 ^^^^^^^^^^^^^^^^^^^^^
 
-Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html>`_ for details), which consist of three parts denoting reactants, agents, and products, each separated by ">". For exampel, an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: :code:`[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: :code:`[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
+Chemprop can also process atom-mapped reaction SMILES (see `Daylight manual <https://www.daylight.com/meetings/summerschool01/course/basics/smirks.html>`_ for details), which consist of three parts denoting reactants, agents, and products, each separated by ">". For example, an atom-mapped reaction SMILES denoting the reaction of methanol to formaldehyde without hydrogens: :code:`[CH3:1][OH:2]>>[CH2:1]=[O:2]` and with hydrogens: :code:`[C:1]([H:3])([H:4])([H:5])[O:2][H:6]>>[C:1]([H:3])([H:4])=[O:2].[H:5][H:6]`. The reactions do not need to be balanced and can thus contain unmapped parts, for example leaving groups, if necessary.
 
-Use the option :code:`--reaction` to enable this, which transforms the reactants and products to the corresponding condensed graph of reaction, and changes the initial atom and bond features depending on the argument provided to :code:`--reaction-mode`:
+Use the option :code:`--reaction` to enable this, which transforms the reactants and products to the corresponding condensed graph of reaction, and changes the initial atom and bond features depending on the argument provided to :code:`--reaction-mode <feature_type>`:
 
-* :code:`reac_diff` Featurize with the reactant and the difference upon reaction (default)
-* :code:`reac_prod` Featurize with both the reactant and product
-* :code:`prod_diff` Featurize with the product and the difference upon reaction
+ * :code:`reac_diff` Featurize with the reactant and the difference upon reaction (default)
+ * :code:`reac_prod` Featurize with both the reactant and product
+ * :code:`prod_diff` Featurize with the product and the difference upon reaction
 
-Each of these arguments can be modified to balance imbalanced reactions by appending "_balance", e.g. :code:`reac_diff_balance`. 
+Each of these arguments can be modified to balance imbalanced reactions by appending :code:`_balance`, e.g. :code:`reac_diff_balance`. 
 
 In reaction mode, Chemprop concatenates information to each atomic and bond feature vector. For example, using :code:`--reaction-mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product. Agents are discarded. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. 
 
 If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--keep-h`.
 
-For further details and benchmarking, as well as a citable reference, please see `DOI 10.1021/acs.jcim.1c00975 <https://doi.org/10.1021/acs.jcim.1c00975>`.
+For further details and benchmarking, as well as a citable reference, please see `DOI 10.1021/acs.jcim.1c00975 <https://doi.org/10.1021/acs.jcim.1c00975>`_.
 
 
 Training Reactions with Molecules (e.g. Solvents, Reagents)
@@ -209,7 +209,7 @@ Training Reactions with Molecules (e.g. Solvents, Reagents)
 
 Chemprop can process a *reaction* in a solvent or a *reaction* and a molecule; the MPNN will take as input a reaction and a molecule. This can be specified using the :code:`--reaction-solvent`. While this option is originally built to model a reaction in a solvent, this option works for any reaction and a molecule where the molecule can represent anything, such as a solvent, a reagent, etc. This requires the input .csv file to include one column for atom-mapped reaction SMILES and another column for solvent (or other type of molecule) SMILES. 
 
-When using :code:`--reaction-solvent`, all options available for reactions such as  :code:`--reaction_mode` and `--keep-h` can be used. The `--add-h` option can be used for the solvent/molecule if explicit hydrogens are required. 
+When using :code:`--reaction-solvent`, all options available for reactions such as  :code:`--reaction_mode` and :code:`--keep-h` can be used. The :code:`--add-h` option can be used for the solvent/molecule if explicit hydrogens are required. 
 
 Chemprop allows differently-sized MPNNs to be used for each reaction and solvent/molecule encoding. The following commands can be used to specify the solvent/molecule MPNN size if :code:`--reaction-solvent` is specified`:
 
