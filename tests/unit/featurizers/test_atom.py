@@ -28,10 +28,7 @@ def mass_bit(atom):
 
 @pytest.fixture
 def atomic_num():
-    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-            20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
-            30, 31, 32, 33, 34, 35, 36, 53]
+    return list(range(1, 37)) + [53]
 
 @pytest.fixture
 def degree():
@@ -77,8 +74,7 @@ def featurizer(atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridizat
 @pytest.fixture
 def expected_len(atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
     return (
-        len(atomic_num)
-        + sum(len(xs) + 1 for xs in (degree, formal_charge, chiral_tag, num_Hs, hybridization))
+        + sum(len(xs) + 1 for xs in (atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization))
         + 2
     )
 
@@ -99,10 +95,13 @@ def test_none(featurizer):
 def test_atomic_num_bit(atom, x, atomic_num):
     n = atom.GetAtomicNum()
 
-    if n in atomic_num:
-        assert x[n] == 1
+    if n == 53: # special check for Iodine
+        assert x[len(atomic_num) - 1] == 1
     else:
-        assert x[0] == 1
+        if n in atomic_num:
+            assert x[n - 1] == 1
+        else:
+            assert x[len(atomic_num)] == 1
 
 
 def test_aromatic_bit(x, aromatic):
@@ -123,17 +122,15 @@ def test_mass_bit(x, mass_bit):
         list(Chem.MolFromSmiles("Fc1cccc(C2(c3nnc(Cc4cccc5ccccc45)o3)CCOCC2)c1").GetAtoms()),
         # fmt: off
         [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.18998],
-        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],    
-        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],      
-        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],      
-        ]
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.18998],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],    
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0.12011],]
         # fmt: on
     ),
 )
 def test_x_orig(a, x_v_orig):
     f = MultiHotAtomFeaturizer()
     x_v_calc = f(a)
-    print(x_v_calc)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

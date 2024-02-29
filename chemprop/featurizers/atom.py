@@ -58,10 +58,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     """
 
     # all elements in the first 4 rows of periodic talbe plus iodine and 0 padding for other elements
-    atomic_nums: Sequence[int] = field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 
-                                                                10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-                                                                20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
-                                                                30, 31, 32, 33, 34, 35, 36, 53])
+    atomic_nums: Sequence[int] = field(default_factory=lambda: list(range(1, 37)) + [53])
     degrees: Sequence[int] = field(default_factory=lambda: range(6))
     formal_charges: Sequence[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
     chiral_tags: Sequence[int] = field(default_factory=lambda: range(4))
@@ -95,7 +92,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             self.hybridizations,
         ]
         subfeat_sizes = [
-            len(self.atomic_nums),
+            1 + len(self.atomic_nums),
             1 + len(self.degrees),
             1 + len(self.formal_charges),
             1 + len(self.chiral_tags),
@@ -116,7 +113,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             return x
 
         feats = [
-            a.GetAtomicNum() if a.GetAtomicNum() in self.atomic_nums else 0,
+            a.GetAtomicNum(),
             a.GetTotalDegree(),
             a.GetFormalCharge(),
             int(a.GetChiralTag()),
@@ -124,15 +121,10 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             a.GetHybridization(),
         ]
         i = 0
-        pad = False
         for feat, choices in zip(feats, self._subfeats):
             j = choices.get(feat, len(choices))
             x[i + j] = 1
-            if not pad:
-                i += len(choices)
-                pad = True
-            else:
-                i += len(choices) + 1
+            i += len(choices) + 1
         x[i] = int(a.GetIsAromatic())
         x[i + 1] = 0.01 * a.GetMass()
 
