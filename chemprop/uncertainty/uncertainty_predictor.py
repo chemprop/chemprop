@@ -27,6 +27,7 @@ class UncertaintyPredictor(ABC):
         dataset_type: str,
         loss_function: str,
         uncertainty_dropout_p: float,
+        conformal_alpha: float,
         dropout_sampling_size: int,
         individual_ensemble_predictions: bool = False,
         spectra_phase_mask: List[List[bool]] = None,
@@ -38,10 +39,12 @@ class UncertaintyPredictor(ABC):
         self.loss_function = loss_function
         self.uncal_preds = None
         self.uncal_vars = None
+        self.uncal_intervals = None
         self.uncal_confidence = None
         self.individual_vars = None
         self.num_models = num_models
         self.uncertainty_dropout_p = uncertainty_dropout_p
+        self.conformal_alpha = conformal_alpha
         self.dropout_sampling_size = dropout_sampling_size
         self.individual_ensemble_predictions = individual_ensemble_predictions
         self.spectra_phase_mask = spectra_phase_mask
@@ -236,6 +239,147 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
     def get_uncal_output(self):
         return self.uncal_vars
+
+
+class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
+    """
+    This class is used for conformal quantile regression. The original targets of
+    the model are intervals. Here, we reformat the prediction results to be the
+    midpoint of intervals and use the intervals as the `uncal_output`.
+    """
+
+    @property
+    def label(self):
+        return "no_uncertainty_method"
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal quantile regression is only compatible with regression dataset types."
+            )
+
+    @staticmethod
+    def reformat_preds(preds):
+        """
+        Reformat predictions to the midpoint between the upper and lower quantiles.
+        """
+        num_data, num_tasks = preds.shape
+        reshaped_preds = preds.reshape(num_data, 2, num_tasks // 2).mean(axis=1)
+        return reshaped_preds
+
+    @staticmethod
+    def make_intervals(preds):
+        """
+        Make uncalibrated intervals from the uncalibrated predictions.
+        """
+        num_data, num_tasks = preds.shape
+        intervals = abs(np.diff(preds.reshape(num_data, 2, num_tasks // 2), axis=1) / 2)
+        intervals = intervals.reshape(num_data, num_tasks // 2)
+        return intervals
+
+    def calculate_predictions(self):
+        for i, (model, scaler_list) in enumerate(
+            tqdm(zip(self.models, self.scalers), total=self.num_models)
+        ):
+            (
+                scaler,
+                features_scaler,
+                atom_descriptor_scaler,
+                bond_descriptor_scaler,
+                atom_bond_scaler,
+            ) = scaler_list
+            if (
+                features_scaler is not None
+                or atom_descriptor_scaler is not None
+                or bond_descriptor_scaler is not None
+            ):
+                self.test_data.reset_features_and_targets()
+                if features_scaler is not None:
+                    self.test_data.normalize_features(features_scaler)
+                if atom_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        atom_descriptor_scaler, scale_atom_descriptors=True
+                    )
+                if bond_descriptor_scaler is not None:
+                    self.test_data.normalize_features(
+                        bond_descriptor_scaler, scale_bond_descriptors=True
+                    )
+
+            preds = predict(
+                model=model,
+                data_loader=self.test_data_loader,
+                scaler=scaler,
+                atom_bond_scaler=atom_bond_scaler,
+                return_unc_parameters=False,
+            )
+            if i == 0:
+                sum_preds = np.array(preds)
+                if self.individual_ensemble_predictions:
+                    if model.is_atom_bond_targets:
+                        n_atoms, n_bonds = (
+                            self.test_data.number_of_atoms,
+                            self.test_data.number_of_bonds,
+                        )
+                        individual_preds = []
+                        for _ in model.atom_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_atoms).sum(), 1, self.num_models))
+                            )
+                        for _ in model.bond_targets:
+                            individual_preds.append(
+                                np.zeros((np.array(n_bonds).sum(), 1, self.num_models))
+                            )
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.expand_dims(np.array(preds), axis=-1)
+            else:
+                sum_preds += np.array(preds)
+                if self.individual_ensemble_predictions:
+                    if model.is_atom_bond_targets:
+                        for j, pred in enumerate(preds):
+                            individual_preds[j][:, :, i] = pred
+                    else:
+                        individual_preds = np.append(
+                            individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                        )
+
+        if model.is_atom_bond_targets:
+            raise NotImplementedError(
+                f"Uncertainty predictor type ConformalQuantileRegressionPredictor and ConformalRegressionPredictor are not currently supported for atom and bond properties prediction."
+            )
+        else:
+            uncal_preds = sum_preds / self.num_models
+            self.uncal_intervals = self.make_intervals(uncal_preds)
+            if self.individual_ensemble_predictions:
+                self.individual_preds = individual_preds.tolist()
+            self.uncal_preds = self.reformat_preds(uncal_preds)
+
+    def get_uncal_output(self):
+        return self.uncal_intervals
+
+
+class ConformalRegressionPredictor(ConformalQuantileRegressionPredictor):
+    """
+    This class is used for basic conformal regression. The prediction outputs are midpoints
+    of intervals, while the uncalibrated intervals are reported as the `uncal_output`.
+    """
+
+    @staticmethod
+    def reformat_preds(preds):
+        """
+        Reformat predictions to the midpoint between the upper and lower quantiles.
+        """
+        return preds
+
+    @staticmethod
+    def make_intervals(preds):
+        """
+        Make uncalibrated intervals from the uncalibrated predictions.
+        """
+        intervals = np.zeros(preds.shape)
+        return intervals
 
 
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
@@ -1406,6 +1550,7 @@ def build_uncertainty_predictor(
     dataset_type: str,
     loss_function: str,
     uncertainty_dropout_p: float,
+    conformal_alpha: float,
     dropout_sampling_size: int,
     individual_ensemble_predictions: bool,
     spectra_phase_mask: List[List[bool]],
@@ -1426,6 +1571,8 @@ def build_uncertainty_predictor(
         "dropout": DropoutPredictor,
         "spectra_roundrobin": RoundRobinSpectraPredictor,
         "dirichlet":  DirichletPredictor,
+        "conformal_quantile_regression": ConformalQuantileRegressionPredictor,
+        "conformal_regression": ConformalRegressionPredictor,
     }
 
     predictor_class = supported_predictors.get(uncertainty_method, None)
@@ -1444,6 +1591,7 @@ def build_uncertainty_predictor(
             dataset_type=dataset_type,
             loss_function=loss_function,
             uncertainty_dropout_p=uncertainty_dropout_p,
+            conformal_alpha=conformal_alpha,
             dropout_sampling_size=dropout_sampling_size,
             individual_ensemble_predictions=individual_ensemble_predictions,
             spectra_phase_mask=spectra_phase_mask,

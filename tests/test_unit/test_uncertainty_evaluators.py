@@ -51,6 +51,24 @@ def miscal_regression_evaluator():
 def spearman_evaluator():
     return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None, False)
 
+@pytest.fixture
+def conformal_coverage_regression_evaluator():
+    return build_uncertainty_evaluator("conformal_coverage", None, None, "regression", "mse", None, False)
+
+
+@pytest.fixture
+def conformal_coverage_multiclass_evaluator():
+    return build_uncertainty_evaluator(
+        "conformal_coverage", None, None, "multiclass", "cross_entropy", None, False
+    )
+
+
+@pytest.fixture
+def conformal_coverage_multilabel_evaluator():
+    return build_uncertainty_evaluator(
+        "conformal_coverage", None, None, "classification", "auc", None, False
+    )
+
 
 # Tests
 def test_build_regression_metric(regression_metric):
@@ -152,3 +170,87 @@ def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spe
     area = spearman_evaluator.evaluate(targets, preds, uncs, mask)
 
     np.testing.assert_array_almost_equal(area, spearman_exp)
+
+
+@pytest.mark.parametrize(
+    "targets,preds,uncs,mask,coverage_exp",
+    [
+        (
+            np.arange(1, 101, 1).reshape(100, 1),
+            np.arange(100, 0, -1).reshape(100, 1),
+            np.full((100, 1), 70),
+            np.full((1, 100), True, dtype=bool),
+            [0.7],
+        ),
+        (
+            np.array([[0.5, 0.5, 0.5]]),
+            np.array([[0, 0.3, 1]]),
+            np.array([[0.2, 0.3, 0.4]]),
+            np.full((3, 1), True, dtype=bool),
+            [0, 1, 0],
+        ),
+    ],
+)
+def test_conformal_regression_coverage(
+    conformal_coverage_regression_evaluator, targets, preds, uncs, mask, coverage_exp
+):
+    """
+    Tests the result of the conformal_coverage for regression UncertaintyEvaluator.
+    """
+
+    coverage = conformal_coverage_regression_evaluator.evaluate(targets, preds, uncs, mask)
+
+    np.testing.assert_array_almost_equal(coverage, coverage_exp, decimal=3)
+
+
+@pytest.mark.parametrize(
+    "targets,preds,uncs,mask,coverage_exp",
+    [
+        (
+            np.array([0, 1, 1]).reshape(3, 1),
+            np.full((3, 1, 2), 0.5),
+            np.array([[1, 0], [0, 1], [1, 0]]).reshape(3, 1, 2),
+            np.full((1, 3), True, dtype=bool),
+            [0.6666],
+        ),
+        (
+            np.array([0, 1, 2]).reshape(3, 1),
+            np.full((3, 1, 3), 0.5),
+            np.array([[1, 0, 0], [1, 0, 0], [1, 0, 0]]).reshape(3, 1, 3),
+            np.full((1, 3), True, dtype=bool),
+            [0.3333],
+        ),
+    ],
+)
+def test_conformal_multiclass_coverage(
+    conformal_coverage_multiclass_evaluator, targets, preds, uncs, mask, coverage_exp
+):
+    """
+    Tests the result of the conformal_coverage for multiclass UncertaintyEvaluator.
+    """
+    coverage = conformal_coverage_multiclass_evaluator.evaluate(targets, preds, uncs, mask)
+
+    np.testing.assert_array_almost_equal(coverage, coverage_exp, decimal=3)
+
+
+@pytest.mark.parametrize(
+    "targets,preds,uncs,mask,coverage_exp",
+    [
+        (
+            np.array([[0, 0], [1, 0], [1, 1]]),
+            np.full((3, 2), 0.5),
+            np.array([[0, 0, 0, 0], [0, 1, 1, 1], [0, 0, 0, 0]]),
+            np.full((2, 3), True, dtype=bool),
+            [0.6666, 0.3333],
+        )
+    ],
+)
+def test_conformal_multilabel_coverage(
+    conformal_coverage_multilabel_evaluator, targets, preds, uncs, mask, coverage_exp
+):
+    """
+    Tests the result of the conformal_coverage for multilabel UncertaintyEvaluator.
+    """
+    coverage = conformal_coverage_multilabel_evaluator.evaluate(targets, preds, uncs, mask)
+
+    np.testing.assert_array_almost_equal(coverage, coverage_exp, decimal=3)

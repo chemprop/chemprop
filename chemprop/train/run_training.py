@@ -313,6 +313,7 @@ def run_training(args: TrainArgs,
                 metrics=args.metrics,
                 dataset_type=args.dataset_type,
                 scaler=scaler,
+                quantiles=args.quantiles,
                 atom_bond_scaler=atom_bond_scaler,
                 logger=logger
             )
@@ -367,6 +368,7 @@ def run_training(args: TrainArgs,
                 is_atom_bond_targets=args.is_atom_bond_targets,
                 gt_targets=test_data.gt_targets(),
                 lt_targets=test_data.lt_targets(),
+                quantiles=args.quantiles,
                 logger=logger
             )
 
@@ -406,7 +408,8 @@ def run_training(args: TrainArgs,
             is_atom_bond_targets=args.is_atom_bond_targets,
             gt_targets=test_data.gt_targets(),
             lt_targets=test_data.lt_targets(),
-            logger=logger
+            quantiles=args.quantiles,
+            logger=logger,
         )
 
     for metric, scores in ensemble_scores.items():

@@ -457,6 +457,161 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         return spearman_coeffs
 
 
+class ConformalRegressionEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal regression intervals.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "regression":
+            raise ValueError(
+                "Conformal Regression Evaluator is only for regression dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]],
+        preds: List[List[float]],
+        uncertainties: List[List[float]],
+        mask: List[List[bool]],
+    ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks)
+            uncertainties: shape(data, tasks)
+            mask: shape(data, tasks)
+
+        Returns:
+            Conformal coverage for each task
+        """
+        uncertainties = np.array(uncertainties)
+        targets = np.array(targets)
+        preds = np.array(preds)
+        mask = np.array(mask)
+        num_tasks = uncertainties.shape[1]
+        if self.is_atom_bond_targets:
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            targets = [np.concatenate(x) for x in zip(*targets)]
+            preds = [np.concatenate(x) for x in zip(*preds)]
+        else:
+            uncertainties = np.array(list(zip(*uncertainties)))
+            targets = targets.astype(float)
+            targets = np.array(list(zip(*targets)))
+            preds = np.array(list(zip(*preds)))
+
+        results = []
+        for i in range(num_tasks):
+            task_mask = mask[i]
+            task_unc = uncertainties[i][task_mask]
+            task_targets = targets[i][task_mask]
+            task_preds = preds[i][task_mask]
+            unc_task_lower = task_preds - task_unc
+            unc_task_upper = task_preds + task_unc
+            task_results = np.logical_and(unc_task_lower <= task_targets, task_targets <= unc_task_upper)
+            results.append(task_results.sum() / task_results.shape[0])
+
+        return results
+
+
+class ConformalMulticlassEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal prediction on multiclass datasets.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "multiclass":
+            raise ValueError(
+                "Conformal Multiclass Evaluator is only for multiclass dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]],
+        preds: List[List[float]],
+        uncertainties: List[List[float]],
+        mask: List[List[bool]],
+    ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks, num_classes)
+            uncertainties: shape(data, tasks, num_classes)
+            mask: shape(data, tasks)
+
+        Returns:
+            Conformal coverage for each task
+        """
+        targets = np.array(targets, dtype=float)
+        mask = np.array(mask, dtype=bool)
+        uncertainties = np.array(uncertainties)
+        num_tasks = targets.shape[1]
+        results = []
+
+        for i in range(num_tasks):
+            task_mask = mask[i]
+            task_results = np.take_along_axis(
+                uncertainties[task_mask, i], targets[task_mask, i].reshape(-1, 1).astype(int), axis=1
+            ).squeeze(1)
+            results.append(task_results.sum() / len(task_results))
+
+        return results
+
+
+class ConformalMultilabelEvaluator(UncertaintyEvaluator):
+    """
+    A class for evaluating the coverage of conformal prediction on multilabel datasets.
+    """
+
+    def raise_argument_errors(self):
+        super().raise_argument_errors()
+        if self.dataset_type != "classification":
+            raise ValueError(
+                "Conformal Multilabel Evaluator is only for classification dataset types."
+            )
+
+    def evaluate(
+        self,
+        targets: List[List[float]],
+        preds: List[List[float]],
+        uncertainties: List[List[float]],
+        mask: List[List[bool]],
+    ):
+        """
+        Args:
+            targets: shape(data, tasks)
+            preds: shape(data, tasks)
+            uncertainties: shape(data, tasks)
+            mask: shape(data, tasks)
+
+        Returns:
+            Conformal coverage for each task
+        """
+        targets = np.array(targets, dtype=float)
+        uncertainties = np.array(uncertainties)
+        mask = np.array(mask)
+        num_tasks = len(mask)
+        if self.is_atom_bond_targets:
+            uncertainties = [np.concatenate(x) for x in zip(*uncertainties)]
+            targets = [np.concatenate(x) for x in zip(*targets)]
+        else:
+            uncertainties = np.array(list(zip(*uncertainties)))
+            targets = targets.astype(float)
+            targets = np.array(list(zip(*targets)))
+        results = []
+        for i in range(num_tasks):
+            task_mask = mask[i]
+            task_targets = targets[i][task_mask]
+            task_unc_in = uncertainties[i][task_mask]
+            task_unc_out = uncertainties[i + num_tasks][task_mask]
+            task_results = np.logical_and(task_unc_in <= task_targets, task_targets <= task_unc_out)
+            results.append(task_results.sum() / task_results.shape[0])
+
+        return results
+
+
 def build_uncertainty_evaluator(
     evaluation_method: str,
     calibration_method: str,
@@ -480,6 +635,11 @@ def build_uncertainty_evaluator(
         "miscalibration_area": CalibrationAreaEvaluator,
         "ence": ExpectedNormalizedErrorEvaluator,
         "spearman": SpearmanEvaluator,
+        "conformal_coverage": {
+            "regression": ConformalRegressionEvaluator,
+            "multiclass": ConformalMulticlassEvaluator,
+            "classification": ConformalMultilabelEvaluator,
+        }[dataset_type],
     }
 
     classification_metrics = [

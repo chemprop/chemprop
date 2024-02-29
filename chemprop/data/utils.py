@@ -68,10 +68,13 @@ def preprocess_smiles_columns(path: str,
     return smiles_columns
 
 
-def get_task_names(path: str,
-                   smiles_columns: Union[str, List[str]] = None,
-                   target_columns: List[str] = None,
-                   ignore_columns: List[str] = None) -> List[str]:
+def get_task_names(
+    path: str,
+    smiles_columns: Union[str, List[str]] = None,
+    target_columns: List[str] = None,
+    ignore_columns: List[str] = None,
+    loss_function: str = None,
+) -> List[str]:
     """
     Gets the task names from a data CSV file.
     If :code:`target_columns` is provided, returns `target_columns`.
@@ -97,6 +100,9 @@ def get_task_names(path: str,
     ignore_columns = set(smiles_columns + ([] if ignore_columns is None else ignore_columns))
 
     target_names = [column for column in columns if column not in ignore_columns]
+
+    if loss_function == "quantile_interval":
+        target_names = target_names * 2
 
     return target_names
 
@@ -455,6 +461,7 @@ def get_data(path: str,
             smiles_columns=smiles_columns,
             target_columns=target_columns,
             ignore_columns=ignore_columns,
+            loss_function=loss_function,
         )
 
     # Find targets provided as inequalities

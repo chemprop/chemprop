@@ -22,6 +22,7 @@ def get_loss_func(args: TrainArgs) -> Callable:
             "bounded_mse": bounded_mse_loss,
             "mve": normal_mve,
             "evidential": evidential_loss,
+            "quantile_interval": quantile_loss,
         },
         "classification": {
             "binary_cross_entropy": nn.BCEWithLogitsLoss(reduction="none"),
@@ -367,3 +368,13 @@ def evidential_loss(pred_values, targets, lam: float = 0, epsilon: float = 1e-8,
     loss = L_NLL + lam * (L_REG - epsilon)
 
     return loss
+
+
+def quantile_loss(pred_values: torch.Tensor, targets: torch.Tensor, quantiles: torch.Tensor):
+    """
+    Batched pinball loss at desired quantiles.
+    """
+
+    error = pred_values - targets
+
+    return torch.max((1 - quantiles) * error, -quantiles * error)

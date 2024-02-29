@@ -12,6 +12,7 @@ from chemprop.train.loss_functions import (
     get_loss_func,
     mcc_multiclass_loss,
     normal_mve,
+    quantile_loss,
 )
 
 
@@ -21,7 +22,7 @@ def dataset_type(request):
     return request.param
 
 
-@pytest.fixture(params=["mse", "bounded_mse", "mve", "evidential"])
+@pytest.fixture(params=["mse", "bounded_mse", "mve", "evidential", "quantile_interval"])
 def regression_function(request):
     return request.param
 
@@ -217,6 +218,42 @@ def test_evidential_wrong_dimensions(alphas, targets):
     with pytest.raises(RuntimeError):
         evidential_loss(alphas, targets)
 
+
+@pytest.mark.parametrize(
+    "preds,targets,quantiles,expected_loss",
+    [
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 0, 0], dtype=float),
+            torch.tensor([0.25, 0.5, 0.75], dtype=float),
+            [0, 0.25, 0.25],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0.5, 0.5, 0.5], dtype=float),
+            torch.tensor([0, 1, 1], dtype=float),
+            [0, 0, 0],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0.5, 0.5, 0.5], dtype=float),
+            torch.tensor([1, 0, 0], dtype=float),
+            [0.5, 0, 0.5],
+        ),
+        (
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 0.5, 1], dtype=float),
+            torch.tensor([0, 1, 1], dtype=float),
+            [0, 0, 0],
+        ),
+    ],
+)
+def test_quantile(preds, targets, quantiles, expected_loss):
+    """
+    Test on the evidential loss function for regression.
+    """
+    loss = quantile_loss(preds, targets, quantiles)
+    np.testing.assert_array_almost_equal(loss, expected_loss, decimal=4)
 
 @pytest.mark.parametrize(
     "predictions,targets,data_weights,mask,expected_loss",
