@@ -115,8 +115,8 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        loc: float | Tensor = 0,
-        scale: float | Tensor = 1,
+        loc: float | Tensor = 0.,
+        scale: float | Tensor = 1.,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
