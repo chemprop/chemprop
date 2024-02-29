@@ -6,6 +6,7 @@ Training a Chemprop Model
 To train a model, run:
 
 .. code-block::
+   
    chemprop train --data-path <input_path> --task-type <type> --output-dir <dir>
 
 where ``<input_path>`` is the path to a CSV file containing a dataset, ``<type>`` is the type of modeling task (including "classification" and "regression", but also "spectral", "multiclass" and others), and ``<dir>`` is the directory where model checkpoints will be saved.
@@ -13,9 +14,10 @@ where ``<input_path>`` is the path to a CSV file containing a dataset, ``<type>`
 For example:
 
 .. code-block::
+
    chemprop train --data-path data/tox21.csv \
-      --task-type classification \
-      --output-dir tox21_checkpoints
+   --task-type classification \
+   --output-dir tox21_checkpoints
 
 A full list of available command-line arguments can be found in :ref:`cmd`.
 
@@ -28,6 +30,7 @@ In order to train a model, you must provide training data containing molecules (
 The data file must be be a **CSV file with a header row**. For example:
 
 .. code-block::
+   
    smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
    CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
    CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
