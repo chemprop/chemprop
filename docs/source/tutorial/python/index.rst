@@ -3,6 +3,10 @@
 Python Usage
 ============
 
+.. warning:: 
+    This page is deprecated. Please see Jupyter notebooks for up-to-date information on how to use Chemprop in Python scripts.
+
+
 An example of basic Chemprop model training and prediction in Python is given in the :code:`example.py` file. We describe the steps in more detail below:
 
 First, we must import the necessary modules:

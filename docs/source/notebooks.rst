@@ -1,3 +1,5 @@
+.. _notebooks:
+
 Jupyter Notebook Tutorials
 ==========================
 
@@ -6,7 +8,6 @@ Chemprop's usage within Python scripts is also illustrated by the following Jupy
 
 .. toctree::
     :maxdepth: 1
-    :hidden:
 
     training
     predicting 
