@@ -27,7 +27,7 @@ The following modeling tasks are supported:
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`
- * :code:`multiclass-dirichlet``
+ * :code:`multiclass-dirichlet`
  * :code:`spectral`
 
 A full list of available command-line arguments can be found in :ref:`cmd`.
@@ -49,7 +49,6 @@ The data file must be be a **CSV file with a header row**. For example:
 
 By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively. To simultaneously train multiple molecules (such as a solute and a solvent), supply two column headers in :code:`--smiles-columns <columns>`.
 
-Note that the default metric for classification is ROC and the default metric for regression is RMSE. Other metrics may be specified with ``--metrics METRIC``.
 
 Train/Validation/Test Splits
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +95,7 @@ Model performance is often highly dependent on the hyperparameters used. Below i
 Loss Functions
 --------------
 
-The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` includes the following depending on the task type:
+The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` is one of the following:
 
 **Regression**:
 
@@ -105,11 +104,13 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`mve` Mean-variance estimation
  * :code:`evidential` Evidential; if used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
 
+
  **Classification**:
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
  * :code:`binary-dirichlet` Binary Dirichlet 
+
 
 **Multiclass**:
 
@@ -117,11 +118,50 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
  * :code:`multiclass-dirichlet` Multiclass Dirichlet
 
+
 **Spectral**:
 
  * :code:`sid` Spectral information divergence (default)
  * :code:`earthmovers` Earth mover's distance (or first-order Wasserstein distance)
  * :code:`wasserstein` See above.
+
+
+Evaluation Metrics
+------------------
+
+The following evaluation metrics are supported during training:
+
+**Regression**:
+
+ * :code:`rmse` Root mean squared error (default)
+ * :code:`mae` Mean absolute error
+ * :code:`mse` Mean squared error
+ * :code:`bounded-mae` Bounded mean absolute error
+ * :code:`bounded-mse` Bounded mean squared error
+ * :code:`bounded-rmse` Bounded root mean squared error
+ * :code:`r2` R squared metric 
+
+
+ **Classification**:
+
+ * :code:`roc` Receiver operating characteristic (default)
+ * :code:`prc` Precision-recall curve
+ * :code:`accuracy` Accuracy
+ * :code:`f1` F1 score
+ * :code:`bce` Binary cross-entropy
+ * :code:`binary-mcc` Binary Matthews correlation coefficient
+
+
+**Multiclass**:
+
+ * :code:`ce` Cross-entropy (default)
+ * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
+
+
+**Spectral**:
+
+ * :code:`sid` Spectral information divergence (default)
+ * :code:`wasserstein` Earth mover's distance (or first-order Wasserstein distance)
 
 
 Advanced Training Methods
@@ -135,9 +175,6 @@ An existing model, for example from training on a larger, lower quality dataset,
  * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
  * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
 when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
-
-.. note:: 
-    This section's documentation is under development.
 
 It is possible to freeze the weights of the model during training, such as for transfer learning applications. To do so, specify :code:`--checkpoint-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
 

@@ -76,8 +76,8 @@ Summary
 -------
 
 * Install Chemprop with ``pip install chemprop``
-* Train a model with ``chemprop train INPUT --task-type TYPE --output-dir DIR``
-* Use a saved model for prediction with ``chemprop predict INPUT --checkpoint-dir DIR --preds-path PATH``
+* Train a model with ``chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>``
+* Use a saved model for prediction with ``chemprop predict --test-path <test_path> --checkpoint-dir DIR --preds-path PATH``
 
 .. _GitHub repository: https://github.com/chemprop/chemprop
 ..
