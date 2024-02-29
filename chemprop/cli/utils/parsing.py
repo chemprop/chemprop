@@ -105,7 +105,7 @@ def make_datapoints(
     weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
-    X_f: np.ndarray | None,
+    X_d: np.ndarray | None,
     V_fs: list[np.ndarray] | None,
     E_fs: list[np.ndarray] | None,
     V_ds: list[np.ndarray] | None,
@@ -150,7 +150,7 @@ def make_datapoints(
 
     n_mols = len(smiss)
     n_components = len(smiss) + len(rxnss)
-    X_f = [[None] * N] * n_components if X_f is None else X_f
+    X_d = [[None] * N] * n_components if X_d is None else X_d
     V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
     E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
     V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
@@ -165,7 +165,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
+                x_d=X_d[i], # TODO: if X_d contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
                 V_f=V_fs[mol_idx][i],
@@ -186,7 +186,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i], # TODO: if X_f contains feature for both molecule and reaction, this is wrong
+                x_d=X_d[i], # TODO: if X_d contains feature for both molecule and reaction, this is wrong
                 mfs=features_generators,
                 x_phase=None,
             )
@@ -218,13 +218,13 @@ def build_data_from_files(
     )
     n_molecules = len(list(zip(*smiss)))
 
-    X_fs = load_input_features(p_features, n_molecules, feature="X_f")
+    X_ds = load_input_features(p_features, n_molecules, feature="X_d")
     V_fss = load_input_features(p_atom_feats, n_molecules, feature="V_f")
     E_fss = load_input_features(p_bond_feats, n_molecules, feature="E_f")
     V_dss = load_input_features(p_atom_descs, n_molecules, feature="V_d")
 
     mol_data, rxn_data = make_datapoints(
-        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_fs, V_fss, E_fss, V_dss, **featurization_kwargs
+        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_ds, V_fss, E_fss, V_dss, **featurization_kwargs
     )
 
     return mol_data + rxn_data
@@ -234,7 +234,7 @@ def load_input_features(paths, n_molecules, feature):
         return None
 
     match feature:
-        case "X_f":
+        case "X_d":
 
             path = paths
             loaded_feature = np.load(path)
