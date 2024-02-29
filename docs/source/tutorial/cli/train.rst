@@ -164,7 +164,7 @@ In reaction mode, Chemprop concatenates information to each atomic and bond feat
 
 If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--keep-h`.
 
-For further details and benchmarking, as well as a citable reference, please see `DOI 10.33774/chemrxiv-2021-frfhz <https://doi.org/10.33774/chemrxiv-2021-frfhz>`_.
+For further details and benchmarking, as well as a citable reference, please see `DOI 10.1021/acs.jcim.1c00975 <https://doi.org/10.1021/acs.jcim.1c00975>`.
 
 
 Training Reactions with Molecules (e.g. Solvents, Reagents)
