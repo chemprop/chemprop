@@ -287,8 +287,9 @@ def main(args):
 
     model_paths = find_models(args.model_path)
 
-    for model_path in model_paths:
-        output_path = args.output.parent / model_path.stem / args.output.stem
+    for i, model_path in enumerate(model_paths):
+        logger.info(f"Predicting with model at '{model_path}'")
+        output_path = args.output.parent / args.output.stem + f"_{i}" + args.output.suffix
         make_prediction_for_model(args, model_path, multicomponent, output_path)
 
 
