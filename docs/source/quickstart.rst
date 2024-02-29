@@ -35,6 +35,7 @@ Now we're ready to train a simple Chemprop model:
 This will train a model on the solubility dataset (``tests/data/regression.csv``) and save the model and training logs in the ``train_example`` directory. You should see some output printed to your terminal that shows the model architecture, number of parameters, and a progress bar for each epoch of training. At the end, you should see something like:
 
 .. code-block:: text
+
     ───────────────────────────────────────────────────────
        Test metric             DataLoader 0
     ───────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ Summary
 
 * Install Chemprop with ``pip install chemprop``
 * Train a model with ``chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>``
-* Use a saved model for prediction with ``chemprop predict --test-path <test_path> --checkpoint-dir DIR --preds-path PATH``
+* Use a saved model for prediction with ``chemprop predict --test-path <test_path> --checkpoint-dir <dir> --preds-path <path>``
 
 .. _GitHub repository: https://github.com/chemprop/chemprop
 ..

@@ -217,7 +217,7 @@ Chemprop allows differently-sized MPNNs to be used for each reaction and solvent
  * :code:`--hidden-size-solvent <n>` The dimensionality of the hidden layers for the solvent/molecule (default 300)
  * :code:`--depth-solvent <n>` The number of message passing steps for the solvent/molecule (default 3)
 
-The reaction and molecule SMILES columns can be ordered in any way. However, the same column ordering as used in the training must be used for the prediction. Fore more information on atom-mapped reaction SMILES, please refer to :ref:`train-on-reactions`.
+The reaction and molecule SMILES columns can be ordered in any way. However, the same column ordering as used in the training must be used for the prediction. For more information on atom-mapped reaction SMILES, please refer to :ref:`train-on-reactions`.
 
 
 Training on Spectra
