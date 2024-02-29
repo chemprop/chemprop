@@ -461,7 +461,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
 
-    parser.add_argument(  # TODO: do we need this?
+    parser.add_argument(
         "--pytorch-seed",
         type=int,
         default=0,
