@@ -272,10 +272,14 @@ def main(args):
     preds = preds.to_numpy()
 
     if args.target_columns is not None:
-        assert len(args.target_columns) == model.n_tasks, "Number of target columns must match the number of tasks."
+        assert (
+            len(args.target_columns) == model.n_tasks
+        ), "Number of target columns must match the number of tasks."
         target_columns = args.target_columns
     else:
-        target_columns = [f"pred_{i}" for i in range(preds.shape[1])] # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+        target_columns = [
+            f"pred_{i}" for i in range(preds.shape[1])
+        ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test[target_columns] = preds
     if args.output.suffix == ".pkl":
