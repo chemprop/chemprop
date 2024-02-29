@@ -1,6 +1,5 @@
 from setuptools import find_packages, setup
 
-__version__ = "1.6.1"
 
 # Load README
 with open("README.md", encoding="utf-8") as f:
@@ -14,7 +13,6 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/chemprop/chemprop",
-    download_url=f"https://github.com/chemprop/chemprop/v_{__version__}.tar.gz",
     project_urls={
         "Documentation": "https://chemprop.readthedocs.io/en/latest/",
         "Source": "https://github.com/chemprop/chemprop",
