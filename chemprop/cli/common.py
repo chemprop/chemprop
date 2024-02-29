@@ -74,15 +74,15 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(
-        "--features-path",
-        help="Path to features to use in FFN (instead of features_generator).",
+        "--descriptors-path",
+        help="Path to extra descriptors to concatenate to learned representation.",
     )
     featurization_args.add_argument(
         "--phase-features-path",
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
-        "--no-mol-feature-scaling", action="store_true", help="Turn off feature scaling."
+        "--no-descriptor-scaling", action="store_true", help="Turn off extra descriptor scaling."
     )
     featurization_args.add_argument(
         "--no-atom-feature-scaling", action="store_true", help="Turn off atom feature scaling."
