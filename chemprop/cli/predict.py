@@ -269,7 +269,6 @@ def main(args):
     preds = torch.concat(predss, 0)
     if isinstance(model.predictor, MulticlassClassificationFFN):
         preds = torch.argmax(preds, dim=-1)
-    preds = preds.to_numpy()
 
     if args.target_columns is not None:
         assert (
