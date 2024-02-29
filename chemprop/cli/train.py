@@ -832,7 +832,7 @@ def main(args):
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-        if args.task_type == "regression":
+        if "regression" in args.task_type:
             scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(scaler)
             logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
