@@ -86,7 +86,6 @@ class ChempropTests(TestCase):
             '--is_triplet',
             '--is_pretrain_mask',
             '--no_cache_mol',
-            '--not_skip_invalid_smiles',
             '--large_mpn_encoder',
         ] + (['--model_type', model_type] if model_type not in ['chemprop', 'chemprop_DDP']  else []) + (flags if flags is not None else [])
 

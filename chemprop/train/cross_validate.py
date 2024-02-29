@@ -102,7 +102,6 @@ def cross_validate(args: TrainArgs,
         args=args,
         logger=logger,
         skip_none_targets=True,
-        skip_invalid_smiles=not (args.not_skip_invalid_smiles),
         data_weights_path=args.data_weights_path
     )
     validate_dataset_type(data, dataset_type=args.dataset_type)
