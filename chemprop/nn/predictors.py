@@ -115,18 +115,18 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        loc: float | Tensor = 0.0,
-        scale: float | Tensor = 1.0,
+        loc: float | Tensor = 0,
+        scale: float | Tensor = 1,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        if isinstance(loc, int): # for some reason the default is typed as integer
+        if isinstance(loc, float):
             loc = torch.ones(1, self.n_tasks) * loc
         else:
             loc = torch.tensor(loc).view(1, -1)
         self.register_buffer("loc", loc)
 
-        if isinstance(scale, int): # for some reason the default is typed as integer
+        if isinstance(scale, float):
             scale = torch.ones(1, self.n_tasks) * scale
         else:
             scale = torch.tensor(scale).view(1, -1)
