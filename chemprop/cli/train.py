@@ -92,13 +92,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--model-frzn",
         type=Path,
-        help="Path to model file or checkpoint file to be loaded for overwriting and freezing weights. If given, the fingerprinting layer is frozen. Parts of the ffn layer can be frozen using '--frzn-ffn-layers'.",
+        help="Path to model file (.pt) or checkpoint file (.ckpt) to be loaded for overwriting and freezing weights. If given, the fingerprinting layer is frozen. Parts of the ffn layer can be frozen using '--frzn-ffn-layers'.",
     )
     parser.add_argument(
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Overwrites weights for the first n layers of the ffn from '--model_frzn', where n is specified in the input.",
+        help="Overwrites weights for the first n layers of the ffn from '--model_frzn', where `n` is specified in the input.",
     )
     # parser.add_argument(
     #     "--freeze-first-only",
