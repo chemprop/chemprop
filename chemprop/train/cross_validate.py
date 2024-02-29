@@ -15,7 +15,10 @@ from chemprop.args import TrainArgs
 from chemprop.constants import TEST_SCORES_FILE_NAME, TRAIN_LOGGER_NAME
 from chemprop.data import get_data, get_task_names, MoleculeDataset, validate_dataset_type
 from chemprop.utils import create_logger, makedirs, timeit, multitask_mean
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_explicit_h, set_adding_hs, set_keeping_atom_map, set_reaction, reset_featurization_parameters
+from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_explicit_h, set_adding_hs, \
+    set_keeping_atom_map, set_reaction, reset_featurization_parameters
+import torch
+import torch.distributed as dist
 
 
 @timeit(logger_name=TRAIN_LOGGER_NAME)
@@ -45,21 +48,42 @@ def cross_validate(args: TrainArgs,
     args.task_names = get_task_names(path=args.data_path, smiles_columns=args.smiles_columns,
                                      target_columns=args.target_columns, ignore_columns=args.ignore_columns)
 
-    # Print command line
-    debug('Command line')
-    debug(f'python {" ".join(sys.argv)}')
+    if not args.DDP_training:
+        # Print command line
+        debug('Command line')
+        debug(f'python {" ".join(sys.argv)}')
 
-    # Print args
-    debug('Args')
-    debug(args)
+        # Print args
+        debug('Args')
+        debug(args)
 
-    # Save args
-    makedirs(args.save_dir)
-    try:
-        args.save(os.path.join(args.save_dir, 'args.json'))
-    except subprocess.CalledProcessError:
-        debug('Could not write the reproducibility section of the arguments to file, thus omitting this section.')
-        args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
+        # Save args
+        makedirs(args.save_dir)
+        try:
+            args.save(os.path.join(args.save_dir, 'args.json'))
+        except subprocess.CalledProcessError:
+            debug('Could not write the reproducibility section of the arguments to file, thus omitting this section.')
+            args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
+    else:
+        if args.DDP_rank == 0:
+            # Print command line
+            debug('Command line')
+            debug(f'python {" ".join(sys.argv)}')
+
+            # Print args
+            debug('Args')
+            debug(args)
+
+            # Save args
+            makedirs(args.save_dir)
+            try:
+                args.save(os.path.join(args.save_dir, 'args.json'))
+            except subprocess.CalledProcessError:
+                debug(
+                    'Could not write the reproducibility section of the arguments to file, thus omitting this section.')
+                args.save(os.path.join(args.save_dir, 'args.json'), with_reproducibility=False)
+
+        dist.barrier()
 
     # set explicit H option and reaction option
     reset_featurization_parameters(logger=logger)
@@ -70,7 +94,7 @@ def cross_validate(args: TrainArgs,
         set_reaction(args.reaction, args.reaction_mode)
     elif args.reaction_solvent:
         set_reaction(True, args.reaction_mode)
-    
+
     # Get data
     debug('Loading data')
     data = get_data(
@@ -97,7 +121,8 @@ def cross_validate(args: TrainArgs,
     debug(f'Number of tasks = {args.num_tasks}')
 
     if args.target_weights is not None and len(args.target_weights) != args.num_tasks:
-        raise ValueError('The number of provided target weights must match the number and order of the prediction tasks')
+        raise ValueError(
+            'The number of provided target weights must match the number and order of the prediction tasks')
 
     # Run training on different random seeds for each fold
     all_scores = defaultdict(list)
@@ -177,14 +202,14 @@ def cross_validate(args: TrainArgs,
                       [f'Fold {i} {metric}' for i in range(args.num_folds)]
         writer.writerow(header)
 
-        if args.dataset_type == 'spectra': # spectra data type has only one score to report
+        if args.dataset_type == 'spectra':  # spectra data type has only one score to report
             row = ['spectra']
             for metric, scores in all_scores.items():
-                task_scores = scores[:,0]
+                task_scores = scores[:, 0]
                 mean, std = np.mean(task_scores), np.std(task_scores)
                 row += [mean, std] + task_scores.tolist()
             writer.writerow(row)
-        else: # all other data types, separate scores by task
+        else:  # all other data types, separate scores by task
             for task_num, task_name in enumerate(args.task_names):
                 row = [task_name]
                 for metric, scores in all_scores.items():
@@ -204,7 +229,7 @@ def cross_validate(args: TrainArgs,
     # Optionally merge and save test preds
     if args.save_preds:
         all_preds = pd.concat([pd.read_csv(os.path.join(save_dir, f'fold_{fold_num}', 'test_preds.csv'))
-                                  for fold_num in range(args.num_folds)])
+                               for fold_num in range(args.num_folds)])
         all_preds.to_csv(os.path.join(save_dir, 'test_preds.csv'), index=False)
 
     return mean_score, std_score
@@ -216,3 +241,33 @@ def chemprop_train() -> None:
     This is the entry point for the command line command :code:`chemprop_train`.
     """
     cross_validate(args=TrainArgs().parse_args(), train_func=run_training)
+
+
+def ddp_cross_validate(rank, world_size, train_args_dict, train_func) -> None:
+    # Set up the device and initiate DDP environment
+
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+    device = torch.device(f"cuda:{rank}")
+    train_args = TrainArgs()
+    train_args.from_dict(train_args_dict, skip_unsettable=True)
+    train_args.DDP_rank = rank
+    train_args.device = rank
+    train_args.num_DDP_gpus = world_size
+
+    cross_validate(args=train_args, train_func=train_func)
+
+    # Clean up DDP environment
+    dist.destroy_process_group()
+
+
+def chemprop_DDP_train() -> None:
+    if 'OMP_NUM_THREADS' in os.environ: os.environ.pop('OMP_NUM_THREADS')
+    world_size = torch.cuda.device_count()
+    train_args = TrainArgs().parse_args()
+    train_args_dict = train_args.as_dict()
+    torch.multiprocessing.spawn(ddp_cross_validate, args=(world_size, train_args_dict, run_training), nprocs=world_size,
+                                join=True)

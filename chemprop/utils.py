@@ -112,6 +112,8 @@ def load_checkpoint(
     args = TrainArgs()
     args.from_dict(vars(state["args"]), skip_unsettable=True)
     loaded_state_dict = state["state_dict"]
+    if args.load_DDP:
+        loaded_state_dict = {k.replace('module.', ''): v for k, v in loaded_state_dict.items()}
 
     if device is not None:
         args.device = device
@@ -156,6 +158,72 @@ def load_checkpoint(
 
     return model
 
+def load_pretrain_checkpoint(
+    path: str, model_args: TrainArgs, device: torch.device = None, logger: logging.Logger = None,
+) -> MoleculeModel:
+    """
+    Loads a pretrain model checkpoint to a new model architecture
+
+    :param path: Path where checkpoint is saved.
+    :param model_args: The new model architecture args
+    :param device: Device where the model will be moved.
+    :param logger: A logger for recording output.
+    :return: The loaded :class:`~chemprop.models.model.MoleculeModel`.
+    """
+    if logger is not None:
+        debug, info = logger.debug, logger.info
+    else:
+        debug = info = print
+
+    # Load model and args
+    state = torch.load(path, map_location=lambda storage, loc: storage)
+    args = model_args
+    loaded_state_dict = state["state_dict"]
+    if args.load_DDP:
+        loaded_state_dict = {k.replace('module.', ''): v for k, v in loaded_state_dict.items()}
+
+    if device is not None:
+        args.device = device
+
+    # Build model
+    model = MoleculeModel(args)
+    model_state_dict = model.state_dict()
+
+    # Skip missing parameters and parameters of mismatched size
+    pretrained_state_dict = {}
+    for loaded_param_name in loaded_state_dict.keys():
+        # Backward compatibility for parameter names
+        if re.match(r"(encoder\.encoder\.)([Wc])", loaded_param_name) and not args.reaction_solvent:
+            param_name = loaded_param_name.replace("encoder.encoder", "encoder.encoder.0")
+        elif re.match(r"(^ffn)", loaded_param_name):
+            param_name = loaded_param_name.replace("ffn", "readout")
+        else:
+            param_name = loaded_param_name
+
+        # Load pretrained parameter, skipping unmatched parameters
+        if param_name not in model_state_dict:
+            info(
+                f'Warning: Pretrained parameter "{loaded_param_name}" cannot be found in model parameters.'
+            )
+        elif model_state_dict[param_name].shape != loaded_state_dict[loaded_param_name].shape:
+            info(
+                f'Warning: Pretrained parameter "{loaded_param_name}" '
+                f"of shape {loaded_state_dict[loaded_param_name].shape} does not match corresponding "
+                f"model parameter of shape {model_state_dict[param_name].shape}."
+            )
+        else:
+            debug(f'Loading pretrained parameter "{loaded_param_name}".')
+            pretrained_state_dict[param_name] = loaded_state_dict[loaded_param_name]
+
+    # Load pretrained weights
+    model_state_dict.update(pretrained_state_dict)
+    model.load_state_dict(model_state_dict)
+
+    if args.cuda:
+        debug("Moving model to cuda")
+    model = model.to(args.device)
+
+    return model
 
 def overwrite_state_dict(
     loaded_param_name: str,
@@ -212,6 +280,9 @@ def load_frzn_model(
     loaded_mpnn_model = torch.load(path, map_location=lambda storage, loc: storage)
     loaded_state_dict = loaded_mpnn_model["state_dict"]
     loaded_args = loaded_mpnn_model["args"]
+    if loaded_args.DDP_training:
+        loaded_state_dict = {k.replace('module.', ''): v for k, v in loaded_state_dict.items()}
+
 
     # Backward compatibility for parameter names
     loaded_state_dict_keys = list(loaded_state_dict.keys())
@@ -511,11 +582,16 @@ def build_lr_scheduler(
     :return: An initialized learning rate scheduler.
     """
     # Learning rate scheduler
+    if args.DDP_training:
+        steps_per_epoch_value = args.train_data_size // (args.batch_size * args.num_DDP_gpus)
+    else:
+        steps_per_epoch_value = args.train_data_size // args.batch_size
+
     return NoamLR(
         optimizer=optimizer,
         warmup_epochs=[args.warmup_epochs],
         total_epochs=total_epochs or [args.epochs] * args.num_lrs,
-        steps_per_epoch=args.train_data_size // args.batch_size,
+        steps_per_epoch=steps_per_epoch_value,
         init_lr=[args.init_lr],
         max_lr=[args.max_lr],
         final_lr=[args.final_lr],
@@ -863,6 +939,7 @@ def multitask_mean(
         "binary_cross_entropy", "sid", "wasserstein", "f1", "mcc", "recall", "precision", "balanced_accuracy", "confusion_matrix"
 
     ]
+    mean_fn = np.nanmean if ignore_nan_metrics else np.mean
 
     mean_fn = np.nanmean if ignore_nan_metrics else np.mean
 

@@ -24,6 +24,7 @@ class MoleculeModel(nn.Module):
         self.classification = args.dataset_type == "classification"
         self.multiclass = args.dataset_type == "multiclass"
         self.loss_function = args.loss_function
+        self.is_pretrain = args.is_pretrain
 
         if hasattr(args, "train_class_sizes"):
             self.train_class_sizes = args.train_class_sizes
@@ -37,6 +38,9 @@ class MoleculeModel(nn.Module):
                 "binary_cross_entropy",
             ]
 
+        if args.is_pretrain:
+            self.no_training_normalization = True
+
         self.is_atom_bond_targets = args.is_atom_bond_targets
 
         if self.is_atom_bond_targets:
@@ -48,6 +52,9 @@ class MoleculeModel(nn.Module):
             self.adding_bond_types = args.adding_bond_types
 
         self.relative_output_size = 1
+        if self.is_pretrain:
+            self.MA_prediction_output_size = self.relative_output_size * args.MA_vocab_num_classes
+            self.contrastive_output_size = args.contrastive_output_size
         if self.multiclass:
             self.relative_output_size *= args.multiclass_num_classes
         if self.loss_function == "mve":
@@ -66,6 +73,9 @@ class MoleculeModel(nn.Module):
 
         if self.multiclass:
             self.multiclass_softmax = nn.Softmax(dim=2)
+
+        if self.is_pretrain:
+            self.MA_softmax = nn.Softmax(dim=2)
 
         if self.loss_function in ["mve", "evidential", "dirichlet"]:
             self.softplus = nn.Softplus()
@@ -135,6 +145,32 @@ class MoleculeModel(nn.Module):
                 bond_constraints=args.bond_constraints,
                 shared_ffn=args.shared_atom_bond_ffn,
                 weights_ffn_num_layers=args.weights_ffn_num_layers,
+            )
+        elif self.is_pretrain:
+            '''
+            have two ffn for contrastive learning (global) and mask atom prediction (local) respectively 
+            Since the key is to pretrain the feature extraction part, normally the ffn should be quite shallow
+            args.ffn_num_layers = 1 shall be a good choice
+            '''
+            self.contra_readout = build_ffn(
+                first_linear_dim=atom_first_linear_dim,
+                hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
+                num_layers=args.ffn_num_layers,
+                output_size=self.contrastive_output_size,
+                dropout=args.dropout,
+                activation=args.activation,
+                dataset_type=args.dataset_type,
+                spectra_activation=args.spectra_activation,
+            )
+            self.MA_readout = build_ffn(
+                first_linear_dim=atom_first_linear_dim,
+                hidden_size=args.ffn_hidden_size + args.atom_descriptors_size,
+                num_layers=args.ffn_num_layers,
+                output_size=self.MA_prediction_output_size,
+                dropout=args.dropout,
+                activation=args.activation,
+                dataset_type=args.dataset_type,
+                spectra_activation=args.spectra_activation,
             )
         else:
             self.readout = build_ffn(
@@ -247,6 +283,7 @@ class MoleculeModel(nn.Module):
         bond_features_batch: List[np.ndarray] = None,
         constraints_batch: List[torch.Tensor] = None,
         bond_types_batch: List[torch.Tensor] = None,
+        is_MA_pretrain: bool = False,
     ) -> torch.Tensor:
         """
         Runs the :class:`MoleculeModel` on input.
@@ -262,6 +299,7 @@ class MoleculeModel(nn.Module):
         :param bond_features_batch: A list of numpy arrays containing additional bond features.
         :param constraints_batch: A list of PyTorch tensors which applies constraint on atomic/bond properties.
         :param bond_types_batch: A list of PyTorch tensors storing bond types of each bond determined by RDKit molecules.
+        :param is_MA_pretrain: A boolean indicates whether the mask atom prediction information is needed to be retrived.
         :return: The output of the :class:`MoleculeModel`, containing a list of property predictions.
         """
         if self.is_atom_bond_targets:
@@ -274,6 +312,30 @@ class MoleculeModel(nn.Module):
                 bond_features_batch,
             )
             output = self.readout(encodings, constraints_batch, bond_types_batch)
+        elif self.is_pretrain:
+            if is_MA_pretrain:
+                encodings = self.encoder(
+                    batch,
+                    features_batch,
+                    atom_descriptors_batch,
+                    atom_features_batch,
+                    bond_descriptors_batch,
+                    bond_features_batch,
+                    is_MA_pretrain = is_MA_pretrain,
+                )
+                output = self.MA_readout(encodings)
+
+            else:
+                encodings = self.encoder(
+                    batch,
+                    features_batch,
+                    atom_descriptors_batch,
+                    atom_features_batch,
+                    bond_descriptors_batch,
+                    bond_features_batch,
+                    is_MA_pretrain = is_MA_pretrain,
+                )
+                output = self.contra_readout(encodings)
         else:
             encodings = self.encoder(
                 batch,
@@ -306,6 +368,19 @@ class MoleculeModel(nn.Module):
                 output = self.multiclass_softmax(
                     output
                 )  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
+        if self.is_pretrain and is_MA_pretrain:
+            # output = output batch size  x num classes per target (since MA always have only 1 task, then to simplify the train.py retain only this shape is better)
+            if (
+                not (self.training and self.no_training_normalization)
+                and self.loss_function != "dirichlet"
+            ):
+                output = output.reshape(
+                    (output.shape[0], -1, self.num_classes)
+                )  # batch size x num targets x num classes per target (in order to match all the evaluation code)
+                output = self.MA_softmax(
+                    output
+                )  # to get probabilities during evaluation, but not during training when using CrossEntropyLoss
+
 
         # Modify multi-input loss functions
         if self.loss_function == "mve":

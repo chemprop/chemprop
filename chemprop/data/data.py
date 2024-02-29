@@ -9,15 +9,21 @@ from rdkit import Chem
 
 from .scaler import StandardScaler, AtomBondScaler
 from chemprop.features import get_features_generator
-from chemprop.features import BatchMolGraph, MolGraph
+from chemprop.features import BatchMolGraph, MolGraph, BatchMolGraphPretrain, MolGraphPretrain
 from chemprop.features import is_explicit_h, is_reaction, is_adding_hs, is_mol, is_keeping_atom_map
 from chemprop.rdkit import make_mol
+from torch.utils.data.distributed import DistributedSampler
 
 # Cache of graph featurizations
 CACHE_GRAPH = True
 SMILES_TO_GRAPH: Dict[str, MolGraph] = {}
 
+'''
+Important note: Pretraining generally will involve a large amount of data. 
+If data amount is more than 1M, suggest CACHE_MOL = False, CACHE_GRAPH = False
+Also in args, set no_cache_mol = True
 
+'''
 # Cache of RDKit molecules
 CACHE_MOL = True
 SMILES_TO_MOL: Dict[str, Union[Chem.Mol, Tuple[Chem.Mol, Chem.Mol]]] = {}
@@ -73,7 +79,11 @@ class MoleculeDatapoint:
                  raw_constraints: np.ndarray = None,
                  constraints: np.ndarray = None,
                  overwrite_default_atom_features: bool = False,
-                 overwrite_default_bond_features: bool = False):
+                 overwrite_default_bond_features: bool = False,
+                 is_pretrain: bool = False,
+                 mask_atom_pre_auto: bool = True,
+                 mask_bond_pre_auto: bool = True,
+                 ):
         """
         :param smiles: A list of the SMILES strings for the molecules.
         :param targets: A list of targets for the molecule (contains None for unknown target values).
@@ -92,7 +102,9 @@ class MoleculeDatapoint:
         :param constraints: A numpy array containing atom/bond-level constraints that are used in training. Param constraints is a subset of param raw_constraints.
         :param overwrite_default_atom_features: Boolean to overwrite default atom features by atom_features.
         :param overwrite_default_bond_features: Boolean to overwrite default bond features by bond_features.
-
+        :param is_pretrain: Boolean to state whether it is self-supervised pretrain mode.
+        :param mask_atom_pre_auto: Boolean to state whether the mask atom pretrain is done by auto masking with random.
+        :param mask_bond_pre_auto: Boolean to state whether the bond deletion  is done by auto delete with random.
         """
         self.smiles = smiles
         self.targets = targets
@@ -115,6 +127,10 @@ class MoleculeDatapoint:
         self.is_explicit_h_list = [is_explicit_h(x) for x in self.is_mol_list]
         self.is_adding_hs_list = [is_adding_hs(x) for x in self.is_mol_list]
         self.is_keeping_atom_map_list = [is_keeping_atom_map(x) for x in self.is_mol_list]
+        self.is_pretrain = is_pretrain
+        self.mask_atom_pre_auto = mask_atom_pre_auto
+        self.mask_bond_pre_auto = mask_bond_pre_auto
+
 
         if data_weight is not None:
             self.data_weight = data_weight
@@ -423,6 +439,102 @@ class MoleculeDataset(Dataset):
             self._batch_graph = [BatchMolGraph([g[i] for g in mol_graphs]) for i in range(len(mol_graphs[0]))]
 
         return self._batch_graph
+    def batch_graph_pretrain_MA(self,mask_atom_pre_percent) -> List[BatchMolGraphPretrain]:
+        r"""
+        Constructs a :class:`~chemprop.features.BatchMolGraphPretrain` with the graph featurization of all the molecules.
+        :param mask_atom_pre_percent: The percentage of the atom to mask if mask_atom_pre_auto = True
+        :return: A list of :class:`~chemprop.features.BatchMolGraphPretrain` containing the graph featurization of all the
+                 molecules in each :class:`MoleculeDatapoint`. An irreversible mask atom operation is applied.
+
+        Note: This function will not change the self._batch_graph varible, self._batch_graph will still be the original graph
+        """
+
+        mol_graphs_MA = []
+        for d in self._data:
+            mol_graphs_list_MA = []
+            for s, m in zip(d.smiles, d.mol):
+
+                mol_graph_pretrain = MolGraphPretrain(m, d.atom_features, d.bond_features,
+                                     overwrite_default_atom_features=d.overwrite_default_atom_features,
+                                     overwrite_default_bond_features=d.overwrite_default_bond_features,
+                                     mask_atom_pre_auto=d.mask_atom_pre_auto,
+                                     mask_atom_pre_percent=mask_atom_pre_percent,
+                                     mask_bond_pre_auto=d.mask_bond_pre_auto,
+                                     )
+                mol_graph_pretrain.masked_atom_pretraining()
+
+                mol_graphs_list_MA.append(mol_graph_pretrain)
+            mol_graphs_MA.append(mol_graphs_list_MA)
+
+        batch_graph_MA = [BatchMolGraphPretrain([g[i] for g in mol_graphs_MA]) for i in range(len(mol_graphs_MA[0]))]
+
+        return batch_graph_MA
+
+    def batch_graph_pretrain_BD(self,mask_bond_pre_percent) -> List[BatchMolGraphPretrain]:
+        r"""
+        Constructs a :class:`~chemprop.features.BatchMolGraphPretrain` with the graph featurization of all the molecules.
+
+        :param mask_bond_pre_percent: The percentage of the bond to mask if mask_bond_pre_auto = True
+        :return: A list of :class:`~chemprop.features.BatchMolGraphPretrain` containing the graph featurization of all the
+                 molecules in each :class:`MoleculeDatapoint`. An irreversible mask bond operation is applied.
+        Note: This function will not change the self._batch_graph varible, self._batch_graph will still be the original graph
+
+        """
+
+        mol_graphs_BD = []
+        for d in self._data:
+            mol_graphs_list_BD = []
+            for s, m in zip(d.smiles, d.mol):
+
+                mol_graph_pretrain = MolGraphPretrain(m, d.atom_features, d.bond_features,
+                                     overwrite_default_atom_features=d.overwrite_default_atom_features,
+                                     overwrite_default_bond_features=d.overwrite_default_bond_features,
+                                     mask_atom_pre_auto=d.mask_atom_pre_auto,
+                                     mask_bond_pre_auto=d.mask_bond_pre_auto,
+                                     mask_bond_pre_percent=mask_bond_pre_percent
+                                     )
+                mol_graph_pretrain.bond_deletion_complete()
+
+                mol_graphs_list_BD.append(mol_graph_pretrain)
+            mol_graphs_BD.append(mol_graphs_list_BD)
+
+        batch_graph_BD = [BatchMolGraphPretrain([g[i] for g in mol_graphs_BD]) for i in range(len(mol_graphs_BD[0]))]
+
+        return batch_graph_BD
+
+    def batch_graph_pretrain_SG(self, mask_subgraph_pre_percent,center_list) -> List[BatchMolGraphPretrain]:
+        r"""
+        Constructs a :class:`~chemprop.features.BatchMolGraphPretrain` with the graph featurization of all the molecules.
+
+        :param mask_subgraph_pre_percent: Float to state the percentage of subgraph to mask in subgraph deletion pretrain.
+        :param center_list: A list of int to state the start center atom in each molecule of subgraph to mask in subgraph deletion pretrain.
+        :return: A list of :class:`~chemprop.features.BatchMolGraphPretrain` containing the graph featurization of all the
+                 molecules in each :class:`MoleculeDatapoint`. An irreversible subgraph deletion operation is applied.
+        Note: This function will not change the self._batch_graph varible, self._batch_graph will still be the original graph
+
+        """
+        # Not quite suitable for a list of list of mols yet. Since the center list should have a different shape
+        # Now is good for current SSL pretrain setting.
+
+        mol_graphs_SG = []
+        for i, d in enumerate(self._data):
+            mol_graphs_list_SG = []
+            for s, m in zip(d.smiles, d.mol):
+                mol_graph_pretrain = MolGraphPretrain(m, d.atom_features, d.bond_features,
+                                                      overwrite_default_atom_features=d.overwrite_default_atom_features,
+                                                      overwrite_default_bond_features=d.overwrite_default_bond_features,
+                                                      mask_atom_pre_auto=d.mask_atom_pre_auto,
+                                                      mask_bond_pre_auto=d.mask_bond_pre_auto,
+                                                      mask_subgraph_pre_percent=mask_subgraph_pre_percent
+                                                      )
+                mol_graph_pretrain.subgraph_deletion(center_list[i])
+
+                mol_graphs_list_SG.append(mol_graph_pretrain)
+            mol_graphs_SG.append(mol_graphs_list_SG)
+
+        batch_graph_SG = [BatchMolGraphPretrain([g[i] for g in mol_graphs_SG]) for i in range(len(mol_graphs_SG[0]))]
+
+        return batch_graph_SG
 
     def features(self) -> List[np.ndarray]:
         """
@@ -858,7 +970,8 @@ class MoleculeDataLoader(DataLoader):
                  num_workers: int = 8,
                  class_balance: bool = False,
                  shuffle: bool = False,
-                 seed: int = 0):
+                 seed: int = 0,
+                 distributed: bool = False):
         """
         :param dataset: The :class:`MoleculeDataset` containing the molecules to load.
         :param batch_size: Batch size.
@@ -883,12 +996,17 @@ class MoleculeDataLoader(DataLoader):
             self._context = 'forkserver'  # In order to prevent a hanging
             self._timeout = 3600  # Just for sure that the DataLoader won't hang
 
-        self._sampler = MoleculeSampler(
-            dataset=self._dataset,
-            class_balance=self._class_balance,
-            shuffle=self._shuffle,
-            seed=self._seed
-        )
+        if distributed:  # Check if distributed training is enabled
+            if shuffle:
+                raise ValueError("Shuffle should be turned off when using DistributedSampler")
+            self._sampler = DistributedSampler(self._dataset)
+        else:
+            self._sampler = MoleculeSampler(
+                dataset=self._dataset,
+                class_balance=self._class_balance,
+                shuffle=self._shuffle,
+                seed=self._seed
+            )
 
         super(MoleculeDataLoader, self).__init__(
             dataset=self._dataset,

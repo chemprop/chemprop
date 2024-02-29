@@ -22,9 +22,10 @@ from chemprop.constants import MODEL_FILE_NAME
 from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data
 from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count, param_count_all
-from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
+from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, load_pretrain_checkpoint, \
     save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean
-
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 
 def run_training(args: TrainArgs,
                  data: MoleculeDataset,
@@ -49,7 +50,7 @@ def run_training(args: TrainArgs,
 
     # Split data
     debug(f'Splitting data with seed {args.seed}')
-    if args.separate_test_path:
+    if args.separate_test_path and not args.is_pretrain:
         test_data = get_data(path=args.separate_test_path,
                              args=args,
                              features_path=args.separate_test_features_path,
@@ -60,7 +61,7 @@ def run_training(args: TrainArgs,
                              smiles_columns=args.smiles_columns,
                              loss_function=args.loss_function,
                              logger=logger)
-    if args.separate_val_path:
+    if args.separate_val_path and not args.is_pretrain:
         val_data = get_data(path=args.separate_val_path,
                             args=args,
                             features_path=args.separate_val_features_path,
@@ -148,8 +149,15 @@ def run_training(args: TrainArgs,
 
     args.train_data_size = len(train_data)
 
-    debug(f'Total size = {len(data):,} | '
-          f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
+    if not args.DDP_training:
+
+        debug(f'Total size = {len(data):,} | '
+              f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
+    else:
+        if args.DDP_rank == 0:
+            debug(f'Total size = {len(data):,} | '
+                  f'train size = {len(train_data):,} | val size = {len(val_data):,} | test size = {len(test_data):,}')
+        dist.barrier()
 
     if len(val_data) == 0:
         raise ValueError('The validation data split is empty. During normal chemprop training (non-sklearn functions), \
@@ -197,6 +205,13 @@ def run_training(args: TrainArgs,
     # Get loss function
     loss_func = get_loss_func(args)
 
+    if args.is_pretrain:
+        loss_func_MA = get_loss_func(args)[0]
+
+        loss_func_contra = get_loss_func(args)[1]
+
+        loss_func_Triplet = get_loss_func(args)[2]
+
     # Set up test set evaluation
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
     if args.dataset_type == 'multiclass':
@@ -219,24 +234,46 @@ def run_training(args: TrainArgs,
         num_workers = args.num_workers
 
     # Create data loaders
-    train_data_loader = MoleculeDataLoader(
-        dataset=train_data,
-        batch_size=args.batch_size,
-        num_workers=num_workers,
-        class_balance=args.class_balance,
-        shuffle=True,
-        seed=args.seed
-    )
-    val_data_loader = MoleculeDataLoader(
-        dataset=val_data,
-        batch_size=args.batch_size,
-        num_workers=num_workers
-    )
-    test_data_loader = MoleculeDataLoader(
-        dataset=test_data,
-        batch_size=args.batch_size,
-        num_workers=num_workers
-    )
+    if not args.DDP_training:
+        train_data_loader = MoleculeDataLoader(
+            dataset=train_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers,
+            class_balance=args.class_balance,
+            shuffle=True,
+            seed=args.seed
+        )
+        val_data_loader = MoleculeDataLoader(
+            dataset=val_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers
+        )
+        test_data_loader = MoleculeDataLoader(
+            dataset=test_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers
+        )
+    else:
+        # only make use of DDP in training now
+        train_data_loader = MoleculeDataLoader(
+            dataset=train_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers,
+            class_balance=args.class_balance,
+            shuffle=False,
+            seed=args.seed,
+            distributed=True
+        )
+        val_data_loader = MoleculeDataLoader(
+            dataset=val_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers,
+        )
+        test_data_loader = MoleculeDataLoader(
+            dataset=test_data,
+            batch_size=args.batch_size,
+            num_workers=num_workers,
+        )
 
     if args.class_balance:
         debug(f'With class_balance, effective train size = {train_data_loader.iter_size:,}')
@@ -252,19 +289,31 @@ def run_training(args: TrainArgs,
             writer = SummaryWriter(logdir=save_dir)
 
         # Load/build model
-        if args.checkpoint_paths is not None:
+        if args.checkpoint_paths is not None and not args.is_whole_finetune_pretrain_checkpoint:
             debug(f'Loading model {model_idx} from {args.checkpoint_paths[model_idx]}')
             model = load_checkpoint(args.checkpoint_paths[model_idx], logger=logger)
+        elif args.checkpoint_paths is not None and args.is_whole_finetune_pretrain_checkpoint:
+            debug(f'Loading model {model_idx} from {args.checkpoint_paths[model_idx]}')
+            model = load_pretrain_checkpoint(args.checkpoint_paths[model_idx], model_args=args, logger=logger)
         else:
-            debug(f'Building model {model_idx}')
+            if not args.DDP_training:
+                debug(f'Building model {model_idx}')
+            else:
+                if args.DDP_rank == 0:
+                    debug(f'Building model {model_idx}')
+                dist.barrier()
             model = MoleculeModel(args)
 
         # Optionally, overwrite weights:
         if args.checkpoint_frzn is not None:
             debug(f'Loading and freezing parameters from {args.checkpoint_frzn}.')
             model = load_frzn_model(model=model, path=args.checkpoint_frzn, current_args=args, logger=logger)
-
-        debug(model)
+        if not args.DDP_training:
+            debug(model)
+        else:
+            if args.DDP_rank == 0:
+                debug(model)
+            dist.barrier()
 
         if args.checkpoint_frzn is not None:
             debug(f'Number of unfrozen parameters = {param_count(model):,}')
@@ -274,12 +323,28 @@ def run_training(args: TrainArgs,
 
         if args.cuda:
             debug('Moving model to cuda')
-        model = model.to(args.device)
+            model = model.to(args.device)
 
-        # Ensure that model is saved in correct location for evaluation if 0 epochs
-        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
-                        features_scaler, atom_descriptor_scaler, bond_descriptor_scaler,
-                        atom_bond_scaler, args)
+        if args.DDP_training:
+            debug('Moving model to DDP rank')
+            model = model.to(args.DDP_rank)
+            model = DDP(model, device_ids=[args.DDP_rank])
+
+        if not args.DDP_training:
+            # Ensure that model is saved in correct location for evaluation if 0 epochs
+            save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
+                            features_scaler, atom_descriptor_scaler, bond_descriptor_scaler,
+                            atom_bond_scaler, args)
+
+        else:
+            if args.DDP_rank == 0:
+                # All processes should see same parameters as they all start from same
+                # random parameters and gradients are synchronized in backward passes.
+                # Therefore, saving it in one process is sufficient.
+                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler,
+                                features_scaler, atom_descriptor_scaler, bond_descriptor_scaler,
+                                atom_bond_scaler, args)
+            dist.barrier()
 
         # Optimizers
         optimizer = build_optimizer(model, args)
@@ -291,31 +356,101 @@ def run_training(args: TrainArgs,
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch, n_iter = 0, 0
         for epoch in trange(args.epochs):
-            debug(f'Epoch {epoch}')
-            n_iter = train(
-                model=model,
-                data_loader=train_data_loader,
-                loss_func=loss_func,
-                optimizer=optimizer,
-                scheduler=scheduler,
-                args=args,
-                n_iter=n_iter,
-                atom_bond_scaler=atom_bond_scaler,
-                logger=logger,
-                writer=writer
-            )
-            if isinstance(scheduler, ExponentialLR):
-                scheduler.step()
-            val_scores = evaluate(
-                model=model,
-                data_loader=val_data_loader,
-                num_tasks=args.num_tasks,
-                metrics=args.metrics,
-                dataset_type=args.dataset_type,
-                scaler=scaler,
-                atom_bond_scaler=atom_bond_scaler,
-                logger=logger
-            )
+            if not args.DDP_training:
+                debug(f'Epoch {epoch}')
+            else:
+                if args.DDP_rank == 0:
+                    debug(f'Epoch {epoch}')
+                dist.barrier()
+            if args.is_pretrain:
+                n_iter = train(
+                    model=model,
+                    data_loader=train_data_loader,
+                    loss_func=loss_func,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    args=args,
+                    n_iter=n_iter,
+                    atom_bond_scaler=atom_bond_scaler,
+                    logger=logger,
+                    writer=writer,
+                    loss_func_contra=loss_func_contra,
+                    loss_func_MA=loss_func_MA,
+                    loss_func_Triplet=loss_func_Triplet)
+
+                if isinstance(scheduler, ExponentialLR):
+                    scheduler.step()
+
+                # Normally there will be a huge pretraining dataset, thus overfitting is never a problem for SSL_pretrain
+                # thus there will normally be no val set.
+                if epoch // args.pretrain_save_per_epoch == 0:
+                    if not args.DDP_training:
+                        save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
+                                        atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
+
+                    else:
+                        if args.DDP_rank == 0:
+                            # All processes should see same parameters as they all start from same
+                            # random parameters and gradients are synchronized in backward passes.
+                            # Therefore, saving it in one process is sufficient.
+                            save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
+                                            atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
+                        dist.barrier()
+
+            else:
+                n_iter = train(
+                    model=model,
+                    data_loader=train_data_loader,
+                    loss_func=loss_func,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    args=args,
+                    n_iter=n_iter,
+                    atom_bond_scaler=atom_bond_scaler,
+                    logger=logger,
+                    writer=writer
+                )
+                if isinstance(scheduler, ExponentialLR):
+                    scheduler.step()
+                val_scores = evaluate(
+                    model=model,
+                    data_loader=val_data_loader,
+                    num_tasks=args.num_tasks,
+                    metrics=args.metrics,
+                    dataset_type=args.dataset_type,
+                    scaler=scaler,
+                    atom_bond_scaler=atom_bond_scaler,
+                    logger=logger
+                )
+
+                for metric, scores in val_scores.items():
+                    # Average validation score\
+                    mean_val_score = multitask_mean(
+                        scores=scores,
+                        metric=metric,
+                        ignore_nan_metrics=args.ignore_nan_metrics
+                    )
+                    debug(f'Validation {metric} = {mean_val_score:.6f}')
+                    writer.add_scalar(f'validation_{metric}', mean_val_score, n_iter)
+
+                    if args.show_individual_scores:
+                        # Individual validation scores
+                        for task_name, val_score in zip(args.task_names, scores):
+                            debug(f'Validation {task_name} {metric} = {val_score:.6f}')
+                            writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
+
+                # Save model checkpoint if improved validation score
+                mean_val_score = multitask_mean(
+                    scores=val_scores[args.metric],
+                    metric=args.metric,
+                    ignore_nan_metrics=args.ignore_nan_metrics
+                )
+                if args.minimize_score and mean_val_score < best_score or \
+                        not args.minimize_score and mean_val_score > best_score:
+                    best_score, best_epoch = mean_val_score, epoch
+                    save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
+                                    atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
+
 
             for metric, scores in val_scores.items():
                 # Average validation score\
@@ -346,7 +481,12 @@ def run_training(args: TrainArgs,
                                 atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
 
         # Evaluate on test set using model with best validation score
-        info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
+        if not args.DDP_training:
+            info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
+        else:
+            if args.DDP_rank == 0:
+                info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
+            dist.barrier()
         model = load_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), device=args.device, logger=logger)
 
         if empty_test_set:
