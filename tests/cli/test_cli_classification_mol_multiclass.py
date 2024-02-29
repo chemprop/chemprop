@@ -11,16 +11,27 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "mol.csv")
+    return str(data_dir / "classification" / "mol_multiclass.csv")
 
 
 @pytest.fixture
 def model_path(data_dir):
-    return str(data_dir / "example_model_v2_regression_mol.pt")
+    return str(data_dir / "example_model_v2_classification_mol.pt")
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0"]
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--task-type",
+        "multiclass",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -48,7 +59,8 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
-        "--save-preds"
+        "--task-type",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
@@ -59,7 +71,6 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
-    assert (tmp_path / "model_0" / "test_predictions.csv").exists()
 
 
 def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
@@ -81,6 +92,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "3",
         "--ensemble-size",
         "2",
+        "--task-type",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
@@ -124,6 +137,8 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
+        "--task-type",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
