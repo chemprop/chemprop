@@ -67,7 +67,6 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
-        self.freeze = False
 
     @property
     def output_dim(self) -> int:

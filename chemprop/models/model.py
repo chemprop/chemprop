@@ -117,22 +117,10 @@ class MPNN(pl.LightningModule):
     def criterion(self) -> LossFunction:
         return self.predictor.criterion
 
-    def freeze_layers(self):
-        if self.message_passing.freeze:
-            self.message_passing.requires_grad_(False)
-            self.message_passing.eval()
-            self.bn.requires_grad_(False)
-        for idx in range(self.predictor.freeze):
-            self.predictor.ffn[idx * 3].requires_grad_(False)
-            self.predictor.ffn[idx * 3 + 2].eval()
-
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
-
-        self.freeze_layers()
-
         H_v = self.message_passing(bmg, V_d)
         H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
