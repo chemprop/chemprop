@@ -1,15 +1,15 @@
 .. _train:
 
-Training a Chemprop Model
+Training
 =========================
 
 To train a model, run:
 
 .. code-block::
    
-   chemprop train --data-path <input_path> --task-type <type> --output-dir <dir>
+   chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
 
-where ``<input_path>`` is the path to a CSV file containing a dataset, ``<type>`` is the type of modeling task (including "classification" and "regression", but also "spectral", "multiclass" and others), and ``<dir>`` is the directory where model checkpoints will be saved.
+where ``<input_path>`` is the path to a CSV file containing a dataset, ``<task>`` is the type of modeling task, and ``<dir>`` is the directory where model checkpoints will be saved.
 
 For example:
 
@@ -18,6 +18,17 @@ For example:
    chemprop train --data-path data/tox21.csv \
    --task-type classification \
    --output-dir tox21_checkpoints
+
+The following modeling tasks are supported:
+
+ * :code:`regression`
+ * :code:`regression-mve`
+ * :code:`regression-evidential`
+ * :code:`classification`
+ * :code:`classification-dirichlet`
+ * :code:`multiclass`
+ * :code:`multiclass-dirichlet``
+ * :code:`spectral`
 
 A full list of available command-line arguments can be found in :ref:`cmd`.
 
@@ -36,7 +47,7 @@ The data file must be be a **CSV file with a header row**. For example:
    CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
    ...
 
-By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively.
+By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively. To simultaneously train multiple molecules (such as a solute and a solvent), supply two column headers in :code:`--smiles-columns <columns>`.
 
 Note that the default metric for classification is ROC and the default metric for regression is RMSE. Other metrics may be specified with ``--metrics METRIC``.
 
@@ -85,20 +96,31 @@ Model performance is often highly dependent on the hyperparameters used. Below i
 Loss Functions
 --------------
 
-The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` includes:
+The loss function can be specified using the :code:`--loss-function <function>` keyword, where `<function>` includes the following depending on the task type:
 
- * :code:`mse` Mean squared error
+**Regression**:
+
+ * :code:`mse` Mean squared error (default)
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`mve` Mean-variance estimation
- * :code:`evidential` Evidential (Soleimany et al., 2021). If used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
- * :code:`bce` Binary cross-entropy
- * :code:`ce` Cross-entropy
+ * :code:`evidential` Evidential; if used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
+
+ **Classification**:
+
+ * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
  * :code:`binary-dirichlet` Binary Dirichlet 
+
+**Multiclass**:
+
+ * :code:`ce` Cross-entropy (default)
+ * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
  * :code:`multiclass-dirichlet` Multiclass Dirichlet
- * :code:`sid`
- * :code:`earthmovers` Earth mover's distance (also known as Wasserstein metric)
+
+**Spectral**:
+
+ * :code:`sid` Spectral information divergence (default)
+ * :code:`earthmovers` Earth mover's distance (or first-order Wasserstein distance)
  * :code:`wasserstein` See above.
 
 
@@ -115,14 +137,15 @@ An existing model, for example from training on a larger, lower quality dataset,
 when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
 
 .. note:: 
-    This section is under development.
+    This section's documentation is under development.
 
-It is possible to freeze the weights of the model during training, such as for transfer learning applications. The following flags may be used:
+It is possible to freeze the weights of the model during training, such as for transfer learning applications. To do so, specify :code:`--checkpoint-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
 
- * :code:`--frzn-ffn-layers <n>`  
- * :code:`--model-frzn <path_to_checkpoint>`   
- * :code:`--freeze-first-only`  
+ * :code:`--frzn-ffn-layers <n>` Overwrites weights for the first n layers of the FFN from the checkpoint (default 0)  
+ * :code:`--freeze-first-only` Determines whether to use the loaded checkpoint for just the first encoder. Only relevant if the number of molecules is greater than one, i.e. two SMILES columns are provided for training (default :code:`false`)
 
+
+.. _train-on-reactions:
 
 Training on Reactions
 ^^^^^^^^^^^^^^^^^^^^^
@@ -144,16 +167,28 @@ If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hyd
 For further details and benchmarking, as well as a citable reference, please see `DOI 10.33774/chemrxiv-2021-frfhz <https://doi.org/10.33774/chemrxiv-2021-frfhz>`_.
 
 
-Training with Solvents
-^^^^^^^^^^^^^^^^^^^^^^
-.. note:: 
-    This section is under development.
+Training Reactions with Molecules (e.g. Solvents, Reagents)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chemprop can process a *reaction* in a solvent or a *reaction* and a molecule; the MPNN will take as input a reaction and a molecule. This can be specified using the :code:`--reaction-solvent`. While this option is originally built to model a reaction in a solvent, this option works for any reaction and a molecule where the molecule can represent anything, such as a solvent, a reagent, etc. This requires the input .csv file to include one column for atom-mapped reaction SMILES and another column for solvent (or other type of molecule) SMILES. 
+
+When using :code:`--reaction-solvent`, all options available for reactions such as  :code:`--reaction_mode` and `--keep-h` can be used. The `--add-h` option can be used for the solvent/molecule if explicit hydrogens are required. 
+
+Chemprop allows differently-sized MPNNs to be used for each reaction and solvent/molecule encoding. The following commands can be used to specify the solvent/molecule MPNN size if :code:`--reaction-solvent` is specified`:
+
+ * :code:`--bias-solvent` Whether to add bias to the linear layers of the solvent/molecule (default :code:`false`)
+ * :code:`--hidden-size-solvent <n>` The dimensionality of the hidden layers for the solvent/molecule (default 300)
+ * :code:`--depth-solvent <n>` The number of message passing steps for the solvent/molecule (default 3)
+
+The reaction and molecule SMILES columns can be ordered in any way. However, the same column ordering as used in the training must be used for the prediction. Fore more information on atom-mapped reaction SMILES, please refer to :ref:`train-on-reactions`.
 
 
 Training on Spectra
 ^^^^^^^^^^^^^^^^^^^
-.. note:: 
-    This section is under development.
+
+Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. Activation to enforce positivity is an exponential function by default but can also be set as a Softplus function, according to the argument :code:`--spectral-activation <exp or softplus>`. Value positivity is enforced on input targets as well using a floor value that replaces negative or smaller target values with the floor value, customizable with the argument :code:`--spectra_target_floor <float>` (default 1e-8).
+
+In absorption spectra, sometimes the phase of collection will create regions in the spectrum where data collection or prediction would be unreliable. To exclude these regions, include paths to phase features for your data (:code:`--phase-features-path <path>`) and a mask indicating the spectrum regions that are supported (:code:`--spectra-phase-mask-path <path>`). The format for the mask file is a .csv file with columns for the spectrum positions and rows for the phases, with column and row labels in the same order as they appear in the targets and features files.
 
 
 Additional Features
