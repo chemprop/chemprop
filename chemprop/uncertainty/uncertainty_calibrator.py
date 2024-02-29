@@ -77,14 +77,21 @@ class UncertaintyCalibrator(ABC):
         Raise errors for incompatibilities between dataset type and uncertainty method, or similar.
         """
         if self.dataset_type == "spectra":
-            raise NotImplementedError(
+            raise ValueError(
                 "No uncertainty calibrators are implemented for the spectra dataset type."
             )
         if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in ["classification", "multiclass"]:
-            raise NotImplementedError(
+            raise ValueError(
                 "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
                     compatible with any implemented calibration methods for classification."
+            )
+        if self.uncertainty_method == "dirichlet":
+            raise ValueError(
+                "The Dirichlet uncertainty method returns an evidential uncertainty value rather than a \
+                    class confidence. It is not compatible with any implemented calibration methods. \
+                    To calibrate a model trained using the Dirichlet loss function, \
+                    use the classification uncertainty method."
             )
 
     @abstractmethod

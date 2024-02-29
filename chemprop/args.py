@@ -16,7 +16,8 @@ from chemprop.data import set_cache_mol, empty_cache
 from chemprop.features import get_available_features_generators
 
 
-Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse']
+Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy', 'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1', 'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse',
+                'recall', 'precision','balanced_accuracy']
 
 
 def get_checkpoint_paths(checkpoint_path: Optional[str] = None,
@@ -721,6 +722,10 @@ class TrainArgs(CommonArgs):
             self._atom_constraints = [False] * len(self.atom_targets)
         return self._atom_constraints
 
+    @atom_constraints.setter
+    def atom_constraints(self, atom_constraints: List[bool]) -> None:
+        self._atom_constraints = atom_constraints
+
     @property
     def bond_constraints(self) -> List[bool]:
         """
@@ -733,6 +738,10 @@ class TrainArgs(CommonArgs):
         else:
             self._bond_constraints = [False] * len(self.bond_targets)
         return self._bond_constraints
+
+    @bond_constraints.setter
+    def bond_constraints(self, bond_constraints: List[bool]) -> None:
+        self._bond_constraints = bond_constraints
 
     def process_args(self) -> None:
         super(TrainArgs, self).process_args()
@@ -825,7 +834,7 @@ class TrainArgs(CommonArgs):
                              f'Please only include it once.')
 
         for metric in self.metrics:
-            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc']),
+            if not any([(self.dataset_type == 'classification' and metric in ['auc', 'prc-auc', 'accuracy', 'binary_cross_entropy', 'f1', 'mcc', 'recall', 'precision', 'balanced_accuracy', 'confusion_matrix']),
                         (self.dataset_type == 'regression' and metric in ['rmse', 'mae', 'mse', 'r2', 'bounded_rmse', 'bounded_mae', 'bounded_mse']),
                         (self.dataset_type == 'multiclass' and metric in ['cross_entropy', 'accuracy', 'f1', 'mcc']),
                         (self.dataset_type == 'spectra' and metric in ['sid', 'wasserstein']),
@@ -1006,6 +1015,7 @@ class PredictArgs(CommonArgs):
         'classification',
         'dropout',
         'spectra_roundrobin',
+        'dirichlet',
     ] = None
     """The method of calculating uncertainty."""
     calibration_method: Literal['zscaling', 'tscaling', 'zelikman_interval', 'mve_weighting', 'platt', 'isotonic'] = None

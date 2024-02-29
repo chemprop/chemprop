@@ -452,6 +452,34 @@ def run_training(args: TrainArgs,
                                     atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
 
 
+            for metric, scores in val_scores.items():
+                # Average validation score\
+                mean_val_score = multitask_mean(
+                    scores=scores,
+                    metric=metric,
+                    ignore_nan_metrics=args.ignore_nan_metrics
+                )
+                debug(f'Validation {metric} = {mean_val_score:.6f}')
+                writer.add_scalar(f'validation_{metric}', mean_val_score, n_iter)
+
+                if args.show_individual_scores:
+                    # Individual validation scores
+                    for task_name, val_score in zip(args.task_names, scores):
+                        debug(f'Validation {task_name} {metric} = {val_score:.6f}')
+                        writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
+
+            # Save model checkpoint if improved validation score
+            mean_val_score = multitask_mean(
+                scores=val_scores[args.metric],
+                metric=args.metric,
+                ignore_nan_metrics=args.ignore_nan_metrics
+            )
+            if args.minimize_score and mean_val_score < best_score or \
+                    not args.minimize_score and mean_val_score > best_score:
+                best_score, best_epoch = mean_val_score, epoch
+                save_checkpoint(os.path.join(save_dir, MODEL_FILE_NAME), model, scaler, features_scaler,
+                                atom_descriptor_scaler, bond_descriptor_scaler, atom_bond_scaler, args)
+
         # Evaluate on test set using model with best validation score
         if not args.DDP_training:
             info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
