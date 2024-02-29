@@ -450,7 +450,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     # )
     split_args.add_argument(
-        "--split-seed",
+        "--data-seed",
         type=int,
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
@@ -532,7 +532,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     )
     multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.split_seed, num_folds=args.num_folds)
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
     split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
     if args.separate_val_path is None and args.separate_test_path is None:
@@ -795,7 +795,7 @@ def main(args):
         else:
             scaler = None
 
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers, seed=args.data_seed)
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = MolGraphDataLoader(
