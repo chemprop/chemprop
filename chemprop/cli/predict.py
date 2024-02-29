@@ -262,7 +262,7 @@ def make_prediction_for_model(
     preds = torch.concat(predss, 0)
     if isinstance(model.predictor, MulticlassClassificationFFN):
         preds = torch.argmax(preds, dim=-1)
-    target_columns = [f"pred_{i}" for i in range(preds.shape[1])] # TODO: need to improve this
+    target_columns = [f"pred_{i}" for i in range(preds.shape[1])]  # TODO: need to improve this
     df_test[target_columns] = preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
