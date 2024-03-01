@@ -129,8 +129,8 @@ class _MolGraphDatasetMixin:
         return scaler
 
     def reset(self):
-        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
-        initial, unnormalized values."""
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
         self.__Y = self._Y
         self.__X_d = self._X_d
 
