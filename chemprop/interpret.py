@@ -56,7 +56,7 @@ class ChempropModel:
         if self.train_args.bond_descriptor_scaling and self.args.bond_descriptors_size > 0:
             test_data.normalize_features(self.bond_descriptor_scaler, scale_bond_descriptors=True)
 
-        test_data_loader = MoleculeDataLoader(dataset=test_data, batch_size=batch_size)
+        test_data_loader = MoleculeDataLoader(dataset=test_data, batch_size=batch_size, num_workers=self.args.num_workers)
 
         sum_preds = []
         for model in self.checkpoints:
