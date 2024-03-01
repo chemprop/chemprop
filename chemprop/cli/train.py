@@ -300,7 +300,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
-        "--separate-val-descriptors-path", help="Path to file with extra descriptors for separate val set."
+        "--separate-val-descriptors-path",
+        help="Path to file with extra descriptors for separate val set.",
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
@@ -325,7 +326,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
     data_args.add_argument(
-        "--separate-test-descriptors-path", help="Path to file with extra descriptors for separate test set."
+        "--separate-test-descriptors-path",
+        help="Path to file with extra descriptors for separate test set.",
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
@@ -754,7 +756,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers):
+def train_model(
+    args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -858,7 +862,12 @@ def main(args):
         X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
             train_dset, val_dset, args
         )
-        input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+        input_scalers = InputScalers(
+            X_d_scaler=X_d_scaler,
+            V_f_scaler=V_f_scaler,
+            E_f_scaler=E_f_scaler,
+            V_d_scaler=V_d_scaler,
+        )
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
@@ -883,7 +892,9 @@ def main(args):
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers)
+        train_model(
+            args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+        )
 
 
 if __name__ == "__main__":
