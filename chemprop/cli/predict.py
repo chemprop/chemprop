@@ -204,7 +204,7 @@ def make_prediction_for_model(
     test_data = build_data_from_files(
         args.test_path,
         **format_kwargs,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
@@ -217,6 +217,20 @@ def make_prediction_for_model(
         test_dset = data.MulticomponentDataset(test_dsets)
     else:
         test_dset = test_dsets[0]
+
+    X_d_scaler = input_scalers.get("X_d", None) if input_scalers else None
+    V_f_scaler = input_scalers.get("V_f", None) if input_scalers else None
+    E_f_scaler = input_scalers.get("E_f", None) if input_scalers else None
+    V_d_scaler = input_scalers.get("V_d", None) if input_scalers else None
+
+    if X_d_scaler is not None:
+        test_dset.normalize_inputs("X_d", X_d_scaler)
+    if V_f_scaler is not None:
+        test_dset.normalize_inputs("V_f", V_f_scaler)
+    if E_f_scaler is not None:
+        test_dset.normalize_inputs("E_f", E_f_scaler)
+    if V_d_scaler is not None:
+        test_dset.normalize_inputs("V_d", V_d_scaler)
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:

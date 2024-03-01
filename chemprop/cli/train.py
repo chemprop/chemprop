@@ -12,7 +12,13 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
+from chemprop.data import (
+    MolGraphDataLoader,
+    MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDataset,
+    MoleculeDataset,
+)
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
@@ -294,7 +300,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
-        "--separate-val-features-path", help="Path to file with features for separate val set."
+        "--separate-val-descriptors-path", help="Path to file with extra descriptors for separate val set."
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
@@ -319,7 +325,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
     data_args.add_argument(
-        "--separate-test-features-path", help="Path to file with features for separate test set."
+        "--separate-test-descriptors-path", help="Path to file with extra descriptors for separate test set."
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
@@ -501,6 +507,49 @@ def validate_train_args(args):
     pass
 
 
+def normalize_inputs(train_dset, val_dset, args):
+    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
+
+    if isinstance(train_dset, MulticomponentDataset):
+        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
+        d_vf = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
+        )
+        d_ef = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
+        )
+        d_vd = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
+        )
+    else:
+        d_xd = train_dset.d_xd
+        d_vf = train_dset.d_vf
+        d_ef = train_dset.d_ef
+        d_vd = train_dset.d_vd
+
+    if d_xd > 0 and not args.no_descriptor_scaling:
+        X_d_scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", X_d_scaler)
+        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
+
+    if d_vf > 0 and not args.no_atom_feature_scaling:
+        V_f_scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_f", V_f_scaler)
+        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+
+    if d_ef > 0 and not args.no_bond_feature_scaling:
+        E_f_scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_f", E_f_scaler)
+        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+
+    if d_vd > 0 and not args.no_atom_descriptor_scaling:
+        V_d_scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", V_d_scaler)
+        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
+
+    return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
+
+
 def save_config(args: Namespace):
     command_config_path = args.output_dir / "config.json"
     with open(command_config_path, "w") as f:
@@ -531,7 +580,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
@@ -619,6 +668,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
+                d_vd=train_dset.datasets[i].d_vd
+                if isinstance(train_dset.datasets[i], MoleculeDataset)
+                else 0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -639,7 +691,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
@@ -647,13 +699,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
+            d_vd=train_dset.d_vd,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
         )
-        d_xf = train_dset.d_xf
+        d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
@@ -671,7 +724,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
     predictor = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xf,
+        input_dim=mp_block.output_dim + d_xd,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
@@ -701,7 +754,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler):
+def train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -764,7 +817,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, output_
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
-        input_scalers = InputScalers()
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
 
@@ -802,6 +854,12 @@ def main(args):
         output_dir.mkdir(exist_ok=True, parents=True)
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+
+        X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
+            train_dset, val_dset, args
+        )
+        input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
@@ -825,7 +883,7 @@ def main(args):
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler)
+        train_model(args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers)
 
 
 if __name__ == "__main__":

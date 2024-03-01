@@ -5,7 +5,12 @@ import pytest
 from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
-from chemprop.data import MoleculeDatapoint, MoleculeDataset, MulticomponentDataset, collate_multicomponent
+from chemprop.data import (
+    MoleculeDatapoint,
+    MoleculeDataset,
+    MulticomponentDataset,
+    collate_multicomponent,
+)
 from chemprop.models import MulticomponentMPNN, save_model
 
 
@@ -28,7 +33,10 @@ def model(checkpoint_path):
 @pytest.fixture
 def test_loader(mol_mol_regression_data):
     smis1, smis2, _ = mol_mol_regression_data
-    data = [[MoleculeDatapoint.from_smi(smi) for smi in smis1], [MoleculeDatapoint.from_smi(smi) for smi in smis2]]
+    data = [
+        [MoleculeDatapoint.from_smi(smi) for smi in smis1],
+        [MoleculeDatapoint.from_smi(smi) for smi in smis2],
+    ]
     dsets = [MoleculeDataset(d) for d in data]
     dset = MulticomponentDataset(dsets)
 
