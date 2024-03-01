@@ -229,7 +229,7 @@ def build_data_from_files(
 
     return mol_data + rxn_data
 
-def load_input_features(paths, n_molecules, feature):
+def load_input_feats_and_descs(paths, n_molecules, feat_desc):
     if paths is None:
         return None
 
