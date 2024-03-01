@@ -75,6 +75,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--descriptors-path",
+        type=Path,
         help="Path to extra descriptors to concatenate to learned representation.",
     )
     featurization_args.add_argument(
