@@ -502,7 +502,7 @@ def normalize_inputs(train_dset, val_dset, args):
         d_ef = sum(0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets)
         d_vd = sum(0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets)
     else:
-        d_xf = train_dset.d_xf
+        d_xd = train_dset.d_xd
         d_vf = train_dset.d_vf
         d_ef = train_dset.d_ef
         d_vd = train_dset.d_vd
