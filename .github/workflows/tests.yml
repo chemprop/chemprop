@@ -23,14 +23,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: mamba-org/setup-micromamba@main
         with:
-          environment-file: environment.yml
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          activate-environment: chemprop
-          use-mamba: true
-          python-version: ${{ matrix.python-version }}
+          environment-name: temp
+          condarc: |
+            channels:
+              - defaults
+              - conda-forge
+            channel_priority: flexible
+          create-args: |
+            python=${{ matrix.python-version }}
       - name: Install dependencies
         shell: bash -l {0}
         run: |
