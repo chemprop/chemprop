@@ -458,6 +458,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     # )
     split_args.add_argument(
+        "--save-smiles-splits",
+        action="store_true",
+        help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
+    split_args.add_argument(
         "--data-seed",
         type=int,
         default=0,
@@ -468,11 +473,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=0,
         help="Seed for PyTorch randomness (e.g., random initial weights).",
-    )
-    split_args.add_argument(
-        "--save-smiles-splits",
-        action="store_true",
-        help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
     parser.add_argument(
         "--patience",
