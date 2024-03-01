@@ -12,7 +12,9 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 pytestmark = [
     pytest.mark.parametrize(
-        "classification_mpnn_multiclass", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+        "classification_mpnn_multiclass",
+        [nn.BondMessagePassing(), nn.AtomMessagePassing()],
+        indirect=True,
     ),
     pytest.mark.integration,
 ]
@@ -69,6 +71,7 @@ def test_overfit(classification_mpnn_multiclass, dataloader):
 
     preds = torch.cat(predss)
     targets = torch.cat(targetss)
-    accuracy = torchmetrics.functional.accuracy(preds, targets.long(), task="multiclass", num_classes=3)
+    accuracy = torchmetrics.functional.accuracy(
+        preds, targets.long(), task="multiclass", num_classes=3
+    )
     assert accuracy > 0.99
-    
