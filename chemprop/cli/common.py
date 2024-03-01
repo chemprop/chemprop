@@ -1,9 +1,10 @@
-from argparse import ArgumentParser, Namespace
 import logging
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers import RxnMode, MoleculeFeaturizerRegistry
+from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode
 
 logger = logging.getLogger(__name__)
 
@@ -74,22 +75,31 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(
-        "--features-path",
-        type=list[str],  # TODO: why is this a list[str] instead of str?
-        help="Path(s) to features to use in FNN (instead of features_generator).",
+        "--descriptors-path",
+        type=Path,
+        help="Path to extra descriptors to concatenate to learned representation.",
     )
     featurization_args.add_argument(
         "--phase-features-path",
         help="Path to features used to indicate the phase of the data in one-hot vector form. Used in spectra datatype.",
     )
     featurization_args.add_argument(
-        "--no-features-scaling", action="store_true", help="Turn off scaling of features."
+        "--no-descriptor-scaling", action="store_true", help="Turn off extra descriptor scaling."
     )
     featurization_args.add_argument(
-        "--no-atom-descriptor-scaling", action="store_true", help="Turn off atom feature scaling."
+        "--no-atom-feature-scaling",
+        action="store_true",
+        help="Turn off extra atom feature scaling.",
     )
     featurization_args.add_argument(
-        "--no-bond-descriptor-scaling", action="store_true", help="Turn off bond feature scaling."
+        "--no-atom-descriptor-scaling",
+        action="store_true",
+        help="Turn off extra atom descriptor scaling.",
+    )
+    featurization_args.add_argument(
+        "--no-bond-feature-scaling",
+        action="store_true",
+        help="Turn off extra bond feature scaling.",
     )
     featurization_args.add_argument(
         "--atom-features-path",
@@ -100,22 +110,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to the extra atom descriptors. Used as descriptors and concatenated to the machine learned atomic representation.",
     )
     featurization_args.add_argument(
-        "--overwrite-default-atom-features",
-        action="store_true",
-        help="Overwrites the default atom descriptors with the new ones instead of concatenating them. Can only be used if atom_descriptors are used as a feature.",
-    )
-    featurization_args.add_argument(
         "--bond-features-path",
         help="Path to the extra bond features. Used as bond features to featurize a given molecule.",
-    )
-    featurization_args.add_argument(
-        "--bond-descriptors-path",
-        help="Path to the extra bond descriptors. Used as descriptors and concatenated to the machine learned bond representation.",
-    )
-    featurization_args.add_argument(
-        "--overwrite-default-bond-features",
-        action="store_true",
-        help="Overwrites the default bond descriptors with the new ones instead of concatenating them. Can only be used if bond_descriptors are used as a feature.",
     )
     # TODO: remove these caching arguments after checking that the v2 code doesn't try to cache.
     # parser.add_argument(
