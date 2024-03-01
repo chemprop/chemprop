@@ -37,7 +37,7 @@ class RxnMode(EnumMapping):
 
 class RxnMolGraphFeaturizer(ABC):
     """A :class:`RxnMolGraphFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant
-    and product molecules) into :class:`MolGraph`s"""
+    and product molecules) into :class:`MolGraph`\s"""
 
     @abstractmethod
     def __call__(
