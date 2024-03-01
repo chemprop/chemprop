@@ -3,9 +3,7 @@
 Quickstart
 ==========
 
-To get started with Chemprop, first install the package from PyPI::
-
-    pip install chemprop
+To get started with Chemprop, first install the package using the instructions in the :ref:`installation` section. Once you have Chemprop installed, you can train a model on your own data or use the pre-packaged solubility dataset to get a feel for how the package works.
 
 Let's use the solubility data that comes pre-packaged in the Chemprop directory:
 
@@ -50,15 +48,15 @@ With our trained model in hand, we can now use it to predict solubilities of new
         --model-path train_example/model_0/model.pt \
         --preds-path train_example/predictions.csv
 
-This should output a file ``train_example/predictions.csv`` containing the predicted log(solubility) values for the molecules contained in ``tests/data/regression.csv``.
+This should output a file ``train_example/predictions_0.csv`` containing the predicted log(solubility) values for the molecules contained in ``tests/data/regression.csv``.
 
 .. code-block:: text
 
-    $ head train_example/predictions.csv
-    smiles,logSolubility,pred
-    OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O,-0.77,...
-    Cc1occc1C(=O)Nc2ccccc2,-3.3,...
-    CC(C)=CCCC(C)=CC(=O),-2.06,...
+    $ head train_example/predictions_0.csv
+    smiles,logSolubility,pred_0
+    OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O,-0.77,-1.0349703
+    Cc1occc1C(=O)Nc2ccccc2,-3.3,-3.0304263
+    CC(C)=CCCC(C)=CC(=O),-2.06,-2.0320206
     ...
 
 Given that our test data is identical to our training data, it makes sense that the predictions are similar to the ground truth values.
@@ -76,7 +74,7 @@ In the rest of this documentation, we'll go into more detail about how to:
 Summary
 -------
 
-* Install Chemprop with ``pip install chemprop``
+* Install Chemprop using the instructions in the :ref:`installation` section
 * Train a model with ``chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>``
 * Use a saved model for prediction with ``chemprop predict --test-path <test_path> --checkpoint-dir <dir> --preds-path <path>``
 
