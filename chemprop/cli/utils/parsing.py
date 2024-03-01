@@ -245,7 +245,7 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
     if paths is None:
         return None
 
-    match feature:
+    match feat_desc:
         case "X_d":
             path = paths
             loaded_feature = np.load(path)
