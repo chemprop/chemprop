@@ -10,7 +10,7 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "rxn.csv")
+    return str(data_dir / "regression" / "rxn" / "rxn.csv"), str(data_dir / "regression" / "rxn" / "descriptors.npz")
 
 
 @pytest.fixture
@@ -19,17 +19,20 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
+    input_path, descriptors_path = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--reaction-columns",
         "smiles",
         "--epochs",
         "1",
         "--num-workers",
         "0",
+        "--descriptors-path",
+        descriptors_path,
     ]
 
     with monkeypatch.context() as m:
