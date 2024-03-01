@@ -28,6 +28,7 @@ from chemprop.cli.common import add_common_args, process_common_args, validate_c
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
 from chemprop.cli.utils.args import uppercase
+from chemprop.utils import InputScalers
 
 logger = logging.getLogger(__name__)
 
@@ -745,7 +746,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, output_
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
-        input_scalers = []
+        input_scalers = InputScalers()
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
 
