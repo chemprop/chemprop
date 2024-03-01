@@ -64,7 +64,7 @@ class _MolGraphDatasetMixin:
 
     @property
     def X_d(self) -> np.ndarray:
-        """the (scaled) molecule features of the dataset"""
+        """the (scaled) molecule descriptors of the dataset"""
         return self.__X_d
 
     @X_d.setter
