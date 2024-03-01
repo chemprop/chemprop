@@ -43,7 +43,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     #     "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
     # )
     # parser.add_argument("--gpu", type=int, help="Which GPU to use.")
-    # parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
+    parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
 
     featurization_args = parser.add_argument_group("featurization args")
     featurization_args.add_argument(
@@ -75,7 +75,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-path",
-        type=Path(),  # TODO: compare with PR #635
+        type=list[str], # TODO: why is this a list[str] instead of str?
         help="Path(s) to features to use in FNN (instead of features_generator).",
     )
     # TODO: Add in v2.1
