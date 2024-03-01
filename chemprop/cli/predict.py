@@ -45,11 +45,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to an input CSV file containing SMILES.",
     )
     parser.add_argument(
-        "--model-path",
-        required=True,
-        help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
-    )
-    parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
