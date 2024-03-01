@@ -197,7 +197,6 @@ class MPNN(pl.LightningModule):
             grouped. I.e., the first ``t`` elements are the first target for each task, the second
             ``t`` elements the second target, etc.
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
-
         """
         bmg, X_vd, X_f, *_ = batch
 
@@ -230,7 +229,8 @@ class MPNN(pl.LightningModule):
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor") if key not in kwargs
+            for key in ("message_passing", "agg", "predictor")
+            if key not in kwargs
         }
 
         return super().load_from_checkpoint(
@@ -256,4 +256,3 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
-
