@@ -3,11 +3,12 @@
 Jupyter Notebook Tutorials
 ==========================
 
-Chemprop's usage within Python scripts is also illustrated by the following Jupyter notebooks:
+Chemprop's usage within Python scripts is also illustrated by the Jupyter notebooks on the following pages.
 
 
 .. toctree::
     :maxdepth: 1
+    :hidden:
 
     training
     predicting 
