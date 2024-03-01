@@ -9,7 +9,7 @@ import torch
 from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
-from chemprop.nn.metrics import Metric
+from chemprop.nn.metrics import Metric, MetricRegistry
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -88,7 +88,7 @@ class MPNN(pl.LightningModule):
         self.predictor = predictor
 
         self.metrics = (
-            [*metrics, self.criterion]
+            [*[MetricRegistry[metric]() for metric in metrics], self.criterion]
             if metrics
             else [self.predictor._default_metric, self.criterion]
         )
