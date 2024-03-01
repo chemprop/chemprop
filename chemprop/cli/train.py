@@ -527,7 +527,7 @@ def normalize_inputs(train_dset, val_dset, args):
         val_dset.normalize_inputs("V_d", V_d_scaler)
         logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
 
-    return X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler
+    return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
 def save_config(args: Namespace):
