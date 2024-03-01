@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import Iterable, Union
+from typing import Any, Dict, Iterable, Union
 from sklearn.preprocessing import StandardScaler
 
 from lightning import pytorch as pl
@@ -12,6 +12,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
+from chemprop.utils import InputScalers
 
 
 class MPNN(pl.LightningModule):
@@ -70,6 +71,8 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        input_scalers: InputScalers | None = None,
+        output_scaler: StandardScaler | None = None,
     ):
         super().__init__()
 
@@ -100,6 +103,8 @@ class MPNN(pl.LightningModule):
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
+        self.input_scalers = input_scalers
+        self.output_scaler = output_scaler
 
     @property
     def output_dim(self) -> int:
@@ -220,6 +225,14 @@ class MPNN(pl.LightningModule):
         }
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+    
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        checkpoint["input_scalers"] = self.input_scalers.to_dict() if self.input_scalers is not None else None
+        checkpoint["output_scaler"] = self.output_scaler
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.input_scalers = InputScalers(**checkpoint["input_scalers"]) if checkpoint["input_scalers"] is not None else None
+        self.output_scaler = checkpoint["output_scaler"]
 
     @classmethod
     def load_from_checkpoint(
@@ -253,6 +266,9 @@ class MPNN(pl.LightningModule):
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
+        
+        model.input_scalers = InputScalers(**d["input_scalers"]) if d["input_scalers"] is not None else None
+        model.output_scaler = d["output_scaler"]
 
         return model
 
