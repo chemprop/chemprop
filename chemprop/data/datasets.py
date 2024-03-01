@@ -90,8 +90,8 @@ class _MolGraphDatasetMixin:
         return self.data[0].t if len(self.data) > 0 else None
 
     @property
-    def d_xf(self) -> int:
-        """the extra molecule feature dimension, if any"""
+    def d_xd(self) -> int:
+        """the extra molecule descriptor dimension, if any"""
         return 0 if np.equal(self.X_d, None).all() else self.X_d.shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
