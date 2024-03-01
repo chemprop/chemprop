@@ -454,8 +454,22 @@ def run_training(args: TrainArgs,
                 values = [list(v) for v in values]
                 test_preds_dataframe[bond_target] = values
         else:
-            for i, task_name in enumerate(args.task_names):
-                test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
+            if args.loss_function == "quantile_interval" and metric == "quantile":
+                num_tasks = len(args.task_names) // 2
+                task_names = args.task_names[:num_tasks]
+                avg_test_preds = np.array(avg_test_preds)
+                num_data = avg_test_preds.shape[0]
+                preds = avg_test_preds.reshape(num_data, 2, num_tasks).mean(axis=1)
+                intervals = abs(np.diff(avg_test_preds.reshape(num_data, 2, num_tasks), axis=1) / 2)
+                intervals = intervals.reshape(num_data, num_tasks)
+                for i, task_name in enumerate(task_names):
+                    test_preds_dataframe[task_name] = [pred[i] for pred in preds]
+                for i, task_name in enumerate(task_names):
+                    task_name = f"{task_name}_{args.quantile_loss_alpha}_half_interval"
+                    test_preds_dataframe[task_name] = [interval[i] for interval in intervals]
+            else:
+                for i, task_name in enumerate(task_names):
+                    test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
 
         test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
 
