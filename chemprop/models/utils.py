@@ -11,7 +11,7 @@ def save_model(path: PathLike, model: MPNN, input_scalers: InputScalers | None, 
         {
             "hyper_parameters": model.hparams,
             "state_dict": model.state_dict(),
-            "input_scalers": input_scalers.to_dict(),
+            "input_scalers": input_scalers.to_dict() if input_scalers is not None else None,
             "output_scaler": output_scaler,
         },
         path,
@@ -25,7 +25,7 @@ def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, InputScalers
         model = MPNN.load_from_file(path)
 
     d = torch.load(path)
-    input_scalers = d["input_scalers"]
+    input_scalers = d.get("input_scalers", None)
     output_scaler = d.get("output_scaler", None)
 
     return model, input_scalers, output_scaler
