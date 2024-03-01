@@ -243,7 +243,7 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
         case _:
 
             features = []
-            for mol_idx in range(n_molecules):
+            for _ in range(n_molecules):
                 path = paths # TODO: currently only supports a single path
                 loaded_feature = np.load(path)
                 loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
