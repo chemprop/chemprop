@@ -63,10 +63,10 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--keep-h",
         action="store_true",
-        help="Whether H's explicitly specified in input should be kept in the mol graph.",
+        help="Whether hydrogens explicitly specified in input should be kept in the mol graph.",
     )
     featurization_args.add_argument(
-        "--add-h", action="store_true", help="Whether H's should be added to the mol graph."
+        "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph."
     )
     featurization_args.add_argument(
         "--features-generators",
