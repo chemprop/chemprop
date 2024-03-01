@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
-    data_args = parser.add_argument_group("shared input data args")
+    data_args = parser.add_argument_group("Shared input data args")
     data_args.add_argument(
         "-s",
         "--smiles-columns",
@@ -29,7 +29,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="If specified, the first row in the input CSV will not be used as column names.",
     )
 
-    dataloader_args = parser.add_argument_group("dataloader args")
+    dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
         "-n",
         "--num-workers",
@@ -45,7 +45,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     # parser.add_argument("--gpu", type=int, help="Which GPU to use.")
     parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
 
-    featurization_args = parser.add_argument_group("featurization args")
+    featurization_args = parser.add_argument_group("Featurization args")
     featurization_args.add_argument(
         "--rxn-mode",
         "--reaction-mode",
