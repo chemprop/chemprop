@@ -86,13 +86,19 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--no-descriptor-scaling", action="store_true", help="Turn off extra descriptor scaling."
     )
     featurization_args.add_argument(
-        "--no-atom-feature-scaling", action="store_true", help="Turn off extra atom feature scaling."
+        "--no-atom-feature-scaling",
+        action="store_true",
+        help="Turn off extra atom feature scaling.",
     )
     featurization_args.add_argument(
-        "--no-atom-descriptor-scaling", action="store_true", help="Turn off extra atom descriptor scaling."
+        "--no-atom-descriptor-scaling",
+        action="store_true",
+        help="Turn off extra atom descriptor scaling.",
     )
     featurization_args.add_argument(
-        "--no-bond-feature-scaling", action="store_true", help="Turn off extra bond feature scaling."
+        "--no-bond-feature-scaling",
+        action="store_true",
+        help="Turn off extra bond feature scaling.",
     )
     featurization_args.add_argument(
         "--atom-features-path",

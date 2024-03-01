@@ -229,7 +229,8 @@ class MPNN(pl.LightningModule):
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor") if key not in kwargs
+            for key in ("message_passing", "agg", "predictor")
+            if key not in kwargs
         }
 
         return super().load_from_checkpoint(
@@ -255,4 +256,3 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
-

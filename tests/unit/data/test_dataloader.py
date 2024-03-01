@@ -53,7 +53,9 @@ def test_collate_batch_single_graph(datum_1):
 
     assert isinstance(result, tuple)
     assert isinstance(mgs, BatchMolGraph)
-    assert mgs.V.shape[0] == V_ds.shape[0] # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
+    assert (
+        mgs.V.shape[0] == V_ds.shape[0]
+    )  # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
     torch.testing.assert_close(V_ds, torch.tensor([[1.0], [2.0], [4.0]], dtype=torch.float32))
     torch.testing.assert_close(x_ds, torch.tensor([[3.0, 4.0]], dtype=torch.float32))
     torch.testing.assert_close(ys, torch.tensor([[6.0, 7.0]], dtype=torch.float32))
@@ -69,8 +71,12 @@ def test_collate_batch_multiple_graphs(datum_1, datum_2):
     mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(mgs, BatchMolGraph)
-    assert mgs.V.shape[0] == V_ds.shape[0] # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
-    torch.testing.assert_close(V_ds, torch.tensor([[1.0], [2.0], [4.0], [5.0], [7.0]], dtype=torch.float32))
+    assert (
+        mgs.V.shape[0] == V_ds.shape[0]
+    )  # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
+    torch.testing.assert_close(
+        V_ds, torch.tensor([[1.0], [2.0], [4.0], [5.0], [7.0]], dtype=torch.float32)
+    )
     torch.testing.assert_close(x_ds, torch.tensor([[3.0, 4.0], [8.0, 9.0]], dtype=torch.float32))
     torch.testing.assert_close(ys, torch.tensor([[6.0, 7.0], [6.0, 4.0]], dtype=torch.float32))
     torch.testing.assert_close(weights, torch.tensor([[[8.0]], [[1.0]]], dtype=torch.float32))

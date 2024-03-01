@@ -62,6 +62,7 @@ def parse_csv(
 
     return smiss, rxnss, Y, weights, lt_mask, gt_mask
 
+
 def get_column_names(
     path: PathLike,
     smiles_cols: Sequence[str] | None,
@@ -84,19 +85,20 @@ def get_column_names(
 
     if len(input_cols) == 0:
         if no_header_row:
-            input_cols = ['SMILES']
+            input_cols = ["SMILES"]
         else:
             input_cols = [df.columns[0]]
 
     if len(target_cols) == 0:
         if no_header_row:
             ignore_len = len(ignore_cols) if ignore_cols else 0
-            ['pred_' + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
+            ["pred_" + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
         else:
             target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
 
     cols = input_cols + target_cols
     return cols
+
 
 def make_datapoints(
     smiss: list[list[str]] | None,
@@ -223,10 +225,21 @@ def build_data_from_files(
     V_dss = load_input_features(p_atom_descs, n_molecules, feature="V_d")
 
     mol_data, rxn_data = make_datapoints(
-        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_ds, V_fss, E_fss, V_dss, **featurization_kwargs
+        smiss,
+        rxnss,
+        Y,
+        weights,
+        lt_mask,
+        gt_mask,
+        X_ds,
+        V_fss,
+        E_fss,
+        V_dss,
+        **featurization_kwargs,
     )
 
     return mol_data + rxn_data
+
 
 def load_input_feats_and_descs(paths, n_molecules, feat_desc):
     if paths is None:
@@ -234,20 +247,19 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
 
     match feature:
         case "X_d":
-
             path = paths
             loaded_feature = np.load(path)
             features = loaded_feature["arr_0"]
 
         case _:
-
             features = []
             for _ in range(n_molecules):
-                path = paths # TODO: currently only supports a single path
+                path = paths  # TODO: currently only supports a single path
                 loaded_feature = np.load(path)
                 loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
                 features.append(loaded_feature)
     return features
+
 
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str

@@ -105,6 +105,11 @@ def mol_classification_data_multiclass(data_dir):
     df = pd.read_csv(data_dir / "classification" / "mol_multiclass.csv")
     smis = df["smiles"].to_list()
     activities = df["activity"].unique()
-    Y = df["activity"].map({activity: i for i, activity in enumerate(activities)}).to_numpy().reshape(-1, 1)
+    Y = (
+        df["activity"]
+        .map({activity: i for i, activity in enumerate(activities)})
+        .to_numpy()
+        .reshape(-1, 1)
+    )
 
     return smis, Y

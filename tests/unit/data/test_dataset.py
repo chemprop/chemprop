@@ -59,7 +59,12 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds):
 def dataset(data):
     extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
     extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-    return MoleculeDataset(data, SimpleMoleculeMolGraphFeaturizer(extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim))
+    return MoleculeDataset(
+        data,
+        SimpleMoleculeMolGraphFeaturizer(
+            extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
+        ),
+    )
 
 
 def test_none():
@@ -113,7 +118,7 @@ def test_normalize_targets(dataset):
     scaler = StandardScaler()
     scaler.fit(dataset._Y)
     Y = scaler.transform(dataset._Y)
-    
+
     np.testing.assert_array_equal(dataset.Y, Y)
     np.testing.assert_array_equal(dset_scaler.mean_, scaler.mean_)
     np.testing.assert_array_equal(dset_scaler.scale_, scaler.scale_)
@@ -137,9 +142,8 @@ def test_normalize_inputs(dataset):
         X = np.concatenate(Xs, axis=0)
         scaler.fit(X)
         Xs = [scaler.transform(x) for x in Xs]
-        
+
         for X, dset_X in zip(Xs, getattr(dataset, f"{input_}s")):
             np.testing.assert_array_equal(X, dset_X)
         np.testing.assert_array_equal(getattr(dset_scaler, f"mean_"), scaler.mean_)
         np.testing.assert_array_equal(getattr(dset_scaler, f"scale_"), scaler.scale_)
-

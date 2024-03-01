@@ -12,7 +12,13 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset, ReactionDataset, MoleculeDataset
+from chemprop.data import (
+    MolGraphDataLoader,
+    MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDataset,
+    MoleculeDataset,
+)
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
@@ -26,7 +32,13 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
+from chemprop.cli.utils import (
+    Subcommand,
+    LookupAction,
+    build_data_from_files,
+    make_dataset,
+    get_column_names,
+)
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -397,7 +409,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
+        "--grad-clip",
+        type=float,
+        help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details.",
     )
     train_args.add_argument(
         "--class-balance",
@@ -498,9 +512,15 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xd = sum(dset.d_xd for dset in train_dset.datasets)
-        d_vf = sum(0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets)
-        d_ef = sum(0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets)
-        d_vd = sum(0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets)
+        d_vf = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
+        )
+        d_ef = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
+        )
+        d_vd = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
+        )
     else:
         d_xd = train_dset.d_xd
         d_vf = train_dset.d_vf
@@ -648,7 +668,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
-                d_vd=train_dset.datasets[i].d_vd if isinstance(train_dset.datasets[i], MoleculeDataset) else 0,
+                d_vd=train_dset.datasets[i].d_vd
+                if isinstance(train_dset.datasets[i], MoleculeDataset)
+                else 0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -780,8 +802,17 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
-                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                columns = get_column_names(
+                    args.data_path,
+                    args.smiles_columns,
+                    args.reaction_columns,
+                    args.target_columns,
+                    args.ignore_columns,
+                    args.no_header_row,
+                )
+                df_preds = pd.DataFrame(
+                    list(zip(test_loader.dataset.smiles, *preds.T)), columns=columns
+                )
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"

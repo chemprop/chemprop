@@ -155,9 +155,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizer = field(
-        default_factory=SimpleMoleculeMolGraphFeaturizer
-    )
+    featurizer: MoleculeMolGraphFeaturizer = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:
@@ -341,7 +339,7 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     @property
     def n_components(self) -> int:
         return len(self.datasets)
-    
+
     def __getitem__(self, idx: int) -> list[Datum]:
         return [dset[idx] for dset in self.datasets]
 
