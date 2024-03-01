@@ -21,7 +21,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-r",
         "--reaction-columns",
         nargs="+",
-        help="The column names in the input CSV containing reaction SMILES in the format 'REACTANT>AGENT>PRODUCT'",
+        help="The column names in the input CSV containing reaction SMILES in the format 'REACTANT>AGENT>PRODUCT', where 'AGENT' is optional.",
     )
     data_args.add_argument(
         "--no-header-row",
