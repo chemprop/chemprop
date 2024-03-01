@@ -12,7 +12,13 @@ from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
+from chemprop.data import (
+    MolGraphDataLoader,
+    MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDataset,
+    MoleculeDataset,
+)
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
@@ -26,7 +32,13 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
+from chemprop.cli.utils import (
+    Subcommand,
+    LookupAction,
+    build_data_from_files,
+    make_dataset,
+    get_column_names,
+)
 from chemprop.cli.utils.args import uppercase
 
 logger = logging.getLogger(__name__)
@@ -247,6 +259,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
     extra_mpnn_args.add_argument(
+        "--no-batch-norm",
+        action="store_true",
+        help="Don't use batch normalization after aggregation.",
+    )
+    extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
         type=int,
         default=3,
@@ -412,18 +429,18 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     # )
     split_args.add_argument(
-        "--data-seed",
-        type=int,
-        default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
-    )
-    split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
-
-    parser.add_argument(  # TODO: do we need this?
+    split_args.add_argument(
+        "--data-seed",
+        type=int,
+        default=0,
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+    )
+    
+    parser.add_argument(
         "--pytorch-seed",
         type=int,
         default=0,
@@ -447,6 +464,49 @@ def process_train_args(args: Namespace) -> Namespace:
 
 def validate_train_args(args):
     pass
+
+
+def normalize_inputs(train_dset, val_dset, args):
+    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
+
+    if isinstance(train_dset, MulticomponentDataset):
+        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
+        d_vf = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
+        )
+        d_ef = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
+        )
+        d_vd = sum(
+            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
+        )
+    else:
+        d_xd = train_dset.d_xd
+        d_vf = train_dset.d_vf
+        d_ef = train_dset.d_ef
+        d_vd = train_dset.d_vd
+
+    if d_xd > 0 and not args.no_descriptor_scaling:
+        X_d_scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", X_d_scaler)
+        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
+
+    if d_vf > 0 and not args.no_atom_feature_scaling:
+        V_f_scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_f", V_f_scaler)
+        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+
+    if d_ef > 0 and not args.no_bond_feature_scaling:
+        E_f_scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_f", E_f_scaler)
+        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+
+    if d_vd > 0 and not args.no_atom_descriptor_scaling:
+        V_d_scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", V_d_scaler)
+        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
+
+    return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
 def save_config(args: Namespace):
@@ -479,7 +539,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
@@ -567,6 +627,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
+                d_vd=train_dset.datasets[i].d_vd
+                if isinstance(train_dset.datasets[i], MoleculeDataset)
+                else 0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -587,7 +650,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
@@ -595,13 +658,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
+            d_vd=train_dset.d_vd,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
         )
-        d_xf = train_dset.d_xf
+        d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
@@ -619,7 +683,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
     predictor = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xf,
+        input_dim=mp_block.output_dim + d_xd,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
@@ -639,7 +703,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         mp_block,
         agg,
         predictor,
-        True,
+        not args.no_batch_norm,
         None,
         args.task_weights,
         args.warmup_epochs,
@@ -649,10 +713,12 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
+def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
+
+        torch.manual_seed(args.pytorch_seed + model_idx)
 
         model = build_model(args, train_loader.dataset)
         logger.info(model)
@@ -697,12 +763,20 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
-                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                columns = get_column_names(
+                    args.data_path,
+                    args.smiles_columns,
+                    args.reaction_columns,
+                    args.target_columns,
+                    args.ignore_columns,
+                    args.no_header_row,
+                )
+                df_preds = pd.DataFrame(
+                    list(zip(test_loader.dataset.smiles, *preds.T)), columns=columns
+                )
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
-        input_scalers = []
         output_scaler = scaler
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
@@ -741,6 +815,12 @@ def main(args):
         output_dir.mkdir(exist_ok=True, parents=True)
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+
+        X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
+            train_dset, val_dset, args
+        )
+        input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
@@ -751,7 +831,9 @@ def main(args):
         else:
             scaler = None
 
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        train_loader = MolGraphDataLoader(
+            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        )
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = MolGraphDataLoader(
@@ -760,7 +842,7 @@ def main(args):
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
+        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers)
 
 
 if __name__ == "__main__":
