@@ -26,7 +26,13 @@ from chemprop.nn.utils import Activation
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset, get_column_names
+from chemprop.cli.utils import (
+    Subcommand,
+    LookupAction,
+    build_data_from_files,
+    make_dataset,
+    get_column_names,
+)
 from chemprop.cli.utils.args import uppercase
 from chemprop.utils import InputScalers
 
@@ -398,7 +404,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
+        "--grad-clip",
+        type=float,
+        help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details.",
     )
     train_args.add_argument(
         "--class-balance",
@@ -451,18 +459,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     # )
     split_args.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
-    )
-    split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
-
-    parser.add_argument(  # TODO: do we need this?
+    split_args.add_argument(
+        "--data-seed",
+        type=int,
+        default=0,
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+    )
+    parser.add_argument(
         "--pytorch-seed",
         type=int,
         default=0,
@@ -533,7 +540,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     )
     multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
     split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
     if args.separate_val_path is None and args.separate_test_path is None:
@@ -699,6 +706,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, output_
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
+        torch.manual_seed(args.pytorch_seed + model_idx)
+
         model = build_model(args, train_loader.dataset)
         logger.info(model)
 
@@ -741,8 +750,17 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, output_
                 preds = torch.concat(predss, 0).numpy()
                 if args.task_type == "regression":
                     preds = output_scaler.inverse_transform(preds)
-                columns = get_column_names(args.data_path, args.smiles_columns, args.reaction_columns, args.target_columns, args.ignore_columns, args.no_header_row)
-                df_preds = pd.DataFrame(list(zip(test_loader.dataset.smiles, *preds.T)), columns = columns)
+                columns = get_column_names(
+                    args.data_path,
+                    args.smiles_columns,
+                    args.reaction_columns,
+                    args.target_columns,
+                    args.ignore_columns,
+                    args.no_header_row,
+                )
+                df_preds = pd.DataFrame(
+                    list(zip(test_loader.dataset.smiles, *preds.T)), columns=columns
+                )
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
@@ -796,7 +814,9 @@ def main(args):
         else:
             output_scaler = None
 
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        train_loader = MolGraphDataLoader(
+            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        )
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = MolGraphDataLoader(
