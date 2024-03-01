@@ -59,7 +59,7 @@ class _MolGraphDatasetMixin:
 
     @cached_property
     def _X_d(self) -> np.ndarray:
-        """the raw molecule features of the dataset"""
+        """the raw molecule descriptors of the dataset"""
         return np.array([d.x_d for d in self.data])
 
     @property
