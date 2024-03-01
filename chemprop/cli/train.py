@@ -253,6 +253,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     exta_mpnn_args = parser.add_argument_group("extra MPNN args")
     exta_mpnn_args.add_argument(
+        "--no-batch-norm",
+        action="store_true",
+        help="Don't use batch normalization after aggregation.",
+    )
+    exta_mpnn_args.add_argument(
         "--multiclass-num-classes",
         type=int,
         default=3,
@@ -746,7 +751,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         mp_block,
         agg,
         predictor,
-        True,
+        not args.no_batch_norm,
         None,
         args.task_weights,
         args.warmup_epochs,
