@@ -494,7 +494,7 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
+    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xf = sum(dset.d_xf for dset in train_dset.datasets)
