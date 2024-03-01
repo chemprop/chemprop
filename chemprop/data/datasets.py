@@ -59,17 +59,17 @@ class _MolGraphDatasetMixin:
 
     @cached_property
     def _X_d(self) -> np.ndarray:
-        """the raw molecule descriptors of the dataset"""
+        """the raw extra descriptors of the dataset"""
         return np.array([d.x_d for d in self.data])
 
     @property
     def X_d(self) -> np.ndarray:
-        """the (scaled) molecule descriptors of the dataset"""
+        """the (scaled) extra descriptors of the dataset"""
         return self.__X_d
 
     @X_d.setter
     def X_d(self, X_d: ArrayLike):
-        self._validate_attribute(X_d, "molecule descriptors")
+        self._validate_attribute(X_d, "extra descriptors")
 
         self.__X_d = np.array(X_d)
 

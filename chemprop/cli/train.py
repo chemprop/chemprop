@@ -299,7 +299,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
     data_args.add_argument(
-        "--separate-val-features-path", help="Path to file with features for separate val set."
+        "--separate-val-descriptors-path", help="Path to file with extra descriptors for separate val set."
     )
     data_args.add_argument(
         "--separate-val-phase-features-path",
@@ -324,7 +324,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
     data_args.add_argument(
-        "--separate-test-features-path", help="Path to file with features for separate test set."
+        "--separate-test-descriptors-path", help="Path to file with extra descriptors for separate test set."
     )
     data_args.add_argument(
         "--separate-test-phase-features-path",
@@ -580,7 +580,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,

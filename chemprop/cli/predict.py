@@ -204,7 +204,7 @@ def make_prediction_for_model(
     test_data = build_data_from_files(
         args.test_path,
         **format_kwargs,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,

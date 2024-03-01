@@ -13,7 +13,7 @@ pytestmark = pytest.mark.CLI
 def data_path(data_dir):
     return (
         str(data_dir / "regression" / "mol" / "mol.csv"),
-        str(data_dir / "regression" / "mol" / "features.npz"),
+        str(data_dir / "regression" / "mol" / "descriptors.npz"),
         str(data_dir / "regression" / "mol" / "atom_features.npz"),
         str(data_dir / "regression" / "mol" / "bond_features.npz"),
         str(data_dir / "regression" / "mol" / "atom_descriptors.npz"),
@@ -38,7 +38,7 @@ def test_train_quick(monkeypatch, data_path):
 def test_train_quick_features(monkeypatch, data_path):
     (
         input_path,
-        features_path,
+        descriptors_path,
         atom_features_path,
         bond_features_path,
         atom_descriptors_path,
@@ -53,8 +53,8 @@ def test_train_quick_features(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
-        "--features-path",
-        features_path,
+        "--descriptors-path",
+        descriptors_path,
         "--atom-features-path",
         atom_features_path,
         "--bond-features-path",
