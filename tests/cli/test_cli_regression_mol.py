@@ -48,6 +48,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
+        "--save-preds"
     ]
 
     with monkeypatch.context() as m:
@@ -58,6 +59,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
+    assert (tmp_path / "model_0" / "test_predictions.csv").exists()
 
 
 def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
@@ -107,7 +109,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_0.csv").exists()
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
