@@ -608,8 +608,9 @@ def save_smiles_splits(
     train_data: MoleculeDataset = None,
     val_data: MoleculeDataset = None,
     test_data: MoleculeDataset = None,
-    logger: logging.Logger = None,
     smiles_columns: List[str] = None,
+    loss_function: str = None,
+    logger: logging.Logger = None,
 ) -> None:
     """
     Saves a csv file with train/val/test splits of target data and additional features.
@@ -626,6 +627,7 @@ def save_smiles_splits(
     :param val_data: Validation :class:`~chemprop.data.data.MoleculeDataset`.
     :param test_data: Test :class:`~chemprop.data.data.MoleculeDataset`.
     :param smiles_columns: The name of the column containing SMILES. By default, uses the first column.
+    :param loss_function: The loss function to be used in training.
     :param logger: A logger for recording output.
     """
     makedirs(save_dir)
@@ -652,7 +654,15 @@ def save_smiles_splits(
             indices_by_smiles[smiles] = i
 
     if task_names is None:
-        task_names = get_task_names(path=data_path, smiles_columns=smiles_columns)
+        task_names = get_task_names(
+            path=data_path,
+            smiles_columns=smiles_columns,
+            loss_function=loss_function,
+            )
+
+    if loss_function == "quantile_interval":
+        num_tasks = len(task_names) // 2
+        task_names = task_names[:num_tasks]
 
     features_header = []
     if features_path is not None:
@@ -683,12 +693,14 @@ def save_smiles_splits(
             for smiles in dataset.smiles():
                 writer.writerow(smiles)
 
-        with open(os.path.join(save_dir, f"{name}_full.csv"), "w", newline="") as f:
+        with open(os.path.join(save_dir, f"{name}_full.csv"), "w", newline="") as f:            
             writer = csv.writer(f)
             writer.writerow(smiles_columns + task_names)
             dataset_targets = dataset.targets()
             for i, smiles in enumerate(dataset.smiles()):
                 targets = [x.tolist() if isinstance(x, np.ndarray) else x for x in dataset_targets[i]]
+                # correct the number of targets when running quantile regression
+                targets = targets[:len(task_names)]
                 writer.writerow(smiles + targets)
 
         if features_path is not None:
