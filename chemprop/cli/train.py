@@ -507,10 +507,10 @@ def normalize_inputs(train_dset, val_dset, args):
         d_ef = train_dset.d_ef
         d_vd = train_dset.d_vd
 
-    if d_xf > 0 and not args.no_mol_feature_scaling:
-        X_f_scaler = train_dset.normalize_inputs("X_f")
-        val_dset.normalize_inputs("X_f", X_f_scaler)
-        logger.info(f"Features: loc = {X_f_scaler.mean_}, scale = {X_f_scaler.scale_}")
+    if d_xd > 0 and not args.no_descriptor_scaling:
+        X_d_scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", X_d_scaler)
+        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
