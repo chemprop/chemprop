@@ -903,7 +903,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return "conformal"
+        return f"conformal_{self.conformal_alpha}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -973,7 +973,7 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
 
     @property
     def label(self):
-        return "conformal_adaptive"
+        return f"conformal_adaptive_{self.conformal_alpha}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -1011,7 +1011,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return f"conformal_{self.conformal_alpha}"
+        return f"conformal_multilabel"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -1099,7 +1099,7 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return f"conformal_regression_{self.conformal_alpha}"
+        return f"conformal_regression_{self.conformal_alpha}_half_interval"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()

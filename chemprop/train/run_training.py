@@ -330,8 +330,15 @@ def run_training(args: TrainArgs,
                 writer.add_scalar(f'validation_{metric}', mean_val_score, n_iter)
 
                 if args.show_individual_scores:
+                    if args.loss_function == "quantile_interval" and metric == "quantile":
+                        num_tasks = len(args.task_names) // 2
+                        task_names = args.task_names[:num_tasks]
+                        task_names = [f"{task_name} lower" for task_name in task_names] + [
+                                        f"{task_name} upper" for task_name in task_names]
+                    else:
+                        task_names = args.task_names
                     # Individual validation scores
-                    for task_name, val_score in zip(args.task_names, scores):
+                    for task_name, val_score in zip(task_names, scores):
                         debug(f'Validation {task_name} {metric} = {val_score:.6f}')
                         writer.add_scalar(f'validation_{task_name}_{metric}', val_score, n_iter)
 
@@ -387,7 +394,7 @@ def run_training(args: TrainArgs,
 
                 if args.show_individual_scores and args.dataset_type != 'spectra':
                     # Individual test scores
-                    for task_name, test_score in zip(args.task_names, scores):
+                    for task_name, test_score in zip(task_names, scores):
                         info(f'Model {model_idx} test {task_name} {metric} = {test_score:.6f}')
                         writer.add_scalar(f'test_{task_name}_{metric}', test_score, n_iter)
         writer.close()
@@ -424,7 +431,7 @@ def run_training(args: TrainArgs,
 
         # Individual ensemble scores
         if args.show_individual_scores:
-            for task_name, ensemble_score in zip(args.task_names, scores):
+            for task_name, ensemble_score in zip(task_names, scores):
                 info(f'Ensemble test {task_name} {metric} = {ensemble_score:.6f}')
 
     # Save scores

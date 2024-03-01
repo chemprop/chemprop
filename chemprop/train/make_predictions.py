@@ -297,12 +297,8 @@ def predict_and_save(
             # Add predictions columns
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
-            elif args.calibration_method == "conformal_regression":
-                unc_names = [f"{name}_{estimator.label}_interval" for name in task_names]
-            elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [f"{name}_{estimator.label}_quantile_interval" for name in task_names]
             elif args.uncertainty_method == "conformal_quantile_regression" and args.calibration_method is None:
-                unc_names = [f"{name}_conformal_regression_{args.conformal_alpha}_interval" for name in task_names]
+                unc_names = [f"{name}_{args.conformal_alpha}_half_interval" for name in task_names]
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
                 unc_names = [f"{name}_{estimator.label}_in_set" for name in task_names] + [
                     f"{name}_{estimator.label}_out_set" for name in task_names
