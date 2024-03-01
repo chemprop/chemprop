@@ -235,37 +235,33 @@ Morgan fingerprints can be generated as molecular 2D features using :code:`--fea
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
 
-Molecule-Level Custom Features
+Extra Descriptors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you install from source, you can modify the code to load custom features as follows:
 
 1. **Generate features:** If you want to generate features in code, you can write a custom features generator function in :code:`chemprop/features/features-generators.py`. Scroll down to the bottom of that file to see a features generator code template.
-2. **Load features:** If you have features saved as a numpy :code:`.npy` file or as a :code:`.csv` file, you can load the features by using :code:`--features-path /path/to/features`. Note that the features must be in the same order as the SMILES strings in your data file. Note that :code:`.csv` files must have a header row and the features should be comma-separated with one line per molecule.
+2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
 
-Atom-Level Features
+Atom-Level Features/Descriptors
 ^^^^^^^^^^^^^^^^^^^
 
-Similar to the additional molecular features described above, you can also provide additional atomic features via :code:`--atom-descriptors-path /path/to/features` with valid file formats:
+You can provide additional atom features via :code:`--atom-features-path /path/to/atom/features.npz` as a numpy :code:`.npz` file. This command concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing. This file can be saved using :code:`np.savez("atom_features.npz", *V_fs)`, where :code:`V_fs` is a list containing the atom features :code:`V_f` for each molecule, where :code:`V_f` is a 2D array with a shape of number of atoms by number of atom features in the exact same order as the SMILES strings in your data file.
 
-* :code:`.npz` file, where descriptors are saved as 2D array for each molecule in the exact same order as the SMILES strings in your data file.
-* :code:`.pkl` / :code:`.pckl` / :code:`.pickle` containing a pandas dataframe with smiles as index and numpy array of descriptors as columns.
-* :code:`.sdf` containing all mol blocks with descriptors as entries.
+Similarly, you can provide additional atom descriptors via :code:`--atom-descriptors-path /path/to/atom/descriptors.npz` as a numpy :code:`.npz` file. This command concatenates the new features to the embedded atomic features after the D-MPNN with an additional linear layer. This file can be saved using :code:`np.savez("atom_descriptors.npz", *V_ds)`, where :code:`V_ds` has the same format as :code:`V_fs` above.
 
-The order of the descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. 
+The order of the atom features and atom descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. 
 
-The command line option :code:`--atom-descriptors-path /path/to/descriptors` concatenates the new features to the embedded atomic features after the D-MPNN with an additional linear layer. The option :code:`--atom_descriptors feature` concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing. Alternatively, the user can overwrite the default atom features with the custom features using the option :code:`--overwrite-default-atom-features`.
-
-Similar to the molecule-level features, the atom-level descriptors and features are scaled by default. This can be disabled with the option :code:`--no-atom-descriptor-scaling`
+The atom-level features and descriptors are scaled by default. This can be disabled with the option :code:`--no-atom-feature-scaling` or :code:`--no-atom-descriptor-scaling`.
 
 Bond-Level Features
 ^^^^^^^^^^^^^^^^^^^
 
-Bond-level features can be provided in the same format as the atom-level features, using the option :code:`--bond-features-path /path/to/features`. The order of the features for each molecule must match the bond ordering in the RDKit molecule object.
+Bond-level features can be provided using the option :code:`--bond-features-path /path/to/bond/features.npz`. as a numpy :code:`.npz` file. This command concatenates the features to each bond feature vector before the D-MPNN, so that they are used during message-passing. This file can be saved using :code:`np.savez("bond_features.npz", *E_fs)`, where :code:`E_fs` is a list containing the bond features :code:`E_f` for each molecule, where :code:`E_f` is a 2D array with a shape of number of bonds by number of bond features in the exact same order as the SMILES strings in your data file.
 
-The bond-level features are concatenated with the bond feature vectors before the D-MPNN, such that they are used during message-passing. Alternatively, the user can overwrite the default bond features with the custom features using the option :code:`--overwrite-default-bond-features`.
+The order of the features for each molecule must match the bond ordering in the RDKit molecule object.
 
-Similar to molecule-, and atom-level features, the bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-descriptor-scaling`.
+The bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-descriptor-scaling`.
 
 
 ..
