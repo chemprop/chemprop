@@ -41,11 +41,12 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
+    input_path, _ = data_path
     args = [
         "chemprop",
         "predict",
         "-i",
-        data_path,
+        input_path,
         "--reaction-columns",
         "smiles",
         "--model-path",
