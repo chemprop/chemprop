@@ -824,7 +824,7 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        X_f_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
+        X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
             train_dset, val_dset, args
         )
         input_scalers = {"X_f": X_f_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
