@@ -105,7 +105,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     transfer_args = parser.add_argument_group("transfer learning args")
     transfer_args.add_argument(
-        "--checkpoint-frzn",
+        "--model-frzn",
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
     )
     transfer_args.add_argument(
@@ -551,40 +551,9 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
     split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
-    if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
-    elif args.separate_test_path is not None:
-        test_data = build_data_from_files(
-            args.separate_test_path,
-            p_features=args.separate_test_features_path,
-            p_atom_feats=args.separate_test_atom_features_path,
-            p_bond_feats=args.separate_test_bond_features_path,
-            p_atom_descs=args.separate_test_atom_descriptors_path,
-            **format_kwargs,
-            **featurization_kwargs,
-        )
-
-        if args.separate_val_path is not None:
-            val_data = build_data_from_files(
-                args.separate_val_path,
-                p_features=args.separate_val_features_path,
-                p_atom_feats=args.separate_val_atom_features_path,
-                p_bond_feats=args.separate_val_bond_features_path,
-                p_atom_descs=args.separate_val_atom_descriptors_path,
-                **format_kwargs,
-                **featurization_kwargs,
-            )
-            train_data = all_data
-        else:
-            train_data, val_data, _ = split_component(all_data, args.split, **split_kwargs)
-    else:
-        raise ArgumentError(
-            argument=None,
-            message="'--separate-test-path' must be specified if '--separate-val-path' is provided!",
-        )  # TODO: In v1 this wasn't the case?
+    train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
-
     logger.info(f"train/val/test sizes: {sizes}")
 
     return train_data, val_data, test_data
@@ -675,7 +644,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
             v_kl=args.v_kl,
-            threshold=args.threshold,
+            # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
         )
     else:
@@ -691,7 +660,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         activation=args.activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
-        spectral_activation=args.spectral_activation,
+        # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
 
     if args.loss_function is None:
