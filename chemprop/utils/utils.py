@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Iterable, Iterator
 
 from rdkit import Chem
+from sklearn.preprocessing import StandardScaler
 
 
 class EnumMapping(StrEnum):
@@ -74,7 +75,7 @@ def pretty_shape(shape: Iterable[int]) -> str:
     return " x ".join(map(str, shape))
 
 class InputScalers(object):
-    def __init__(self, X_d_scaler=None, V_f_scaler=None, V_d_scaler=None, E_f_scaler=None):
+    def __init__(self, X_d_scaler: StandardScaler | None=None, V_f_scaler: StandardScaler | None=None, V_d_scaler: StandardScaler | None=None, E_f_scaler: StandardScaler | None=None):
         self.X_d_scaler = X_d_scaler
         self.V_f_scaler = V_f_scaler
         self.V_d_scaler = V_d_scaler
