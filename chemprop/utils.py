@@ -693,7 +693,7 @@ def save_smiles_splits(
             for smiles in dataset.smiles():
                 writer.writerow(smiles)
 
-        with open(os.path.join(save_dir, f"{name}_full.csv"), "w", newline="") as f:            
+        with open(os.path.join(save_dir, f"{name}_full.csv"), "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(smiles_columns + task_names)
             dataset_targets = dataset.targets()
