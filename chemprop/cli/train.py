@@ -464,18 +464,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
     # )
     split_args.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
-    )
-    split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
-
-    parser.add_argument(  # TODO: do we need this?
+    split_args.add_argument(
+        "--data-seed",
+        type=int,
+        default=0,
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+    )
+    parser.add_argument(
         "--pytorch-seed",
         type=int,
         default=0,
@@ -589,7 +588,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     )
     multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
+    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
     split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
     if args.separate_val_path is None and args.separate_test_path is None:
@@ -759,6 +758,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
+        torch.manual_seed(args.pytorch_seed + model_idx)
+
         model = build_model(args, train_loader.dataset)
         logger.info(model)
 
@@ -870,7 +871,9 @@ def main(args):
         else:
             scaler = None
 
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
+        train_loader = MolGraphDataLoader(
+            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        )
         val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = MolGraphDataLoader(
