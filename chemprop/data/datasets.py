@@ -69,7 +69,7 @@ class _MolGraphDatasetMixin:
 
     @X_d.setter
     def X_d(self, X_d: ArrayLike):
-        self._validate_attribute(X_d, "molecule features")
+        self._validate_attribute(X_d, "molecule descriptors")
 
         self.__X_d = np.array(X_d)
 
