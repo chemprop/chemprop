@@ -1011,7 +1011,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
     @property
     def label(self):
-        return f"conformal_multilabel"
+        return f"conformal_multilabel_{self.conformal_alpha}"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
