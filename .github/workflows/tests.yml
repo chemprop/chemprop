@@ -37,6 +37,8 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install flake8 pytest parameterized nbmake
+          python -m pip install torch
+          python -m pip install torch-scatter
           python -m pip install -e ".[dev,docs,test]"
       - name: Test with pytest
         shell: bash -l {0}
