@@ -218,7 +218,7 @@ def build_data_from_files(
     )
     n_molecules = len(list(zip(*smiss)))
 
-    X_ds = load_input_features(p_features, n_molecules, feature="X_d")
+    X_ds = load_input_features(p_descs, n_molecules, feature="X_d")
     V_fss = load_input_features(p_atom_feats, n_molecules, feature="V_f")
     E_fss = load_input_features(p_bond_feats, n_molecules, feature="E_f")
     V_dss = load_input_features(p_atom_descs, n_molecules, feature="V_d")
