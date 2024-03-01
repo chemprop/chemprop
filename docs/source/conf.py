@@ -1,3 +1,7 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath("../.."))
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -7,7 +11,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Chemprop"
-copyright = "2023, Chemprop developers"
+copyright = "2024, Chemprop developers"
 author = "Chemprop developers"
 release = "2.0.0b1"
 
@@ -15,22 +19,28 @@ release = "2.0.0b1"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "autoapi.extension",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinxcontrib.bibtex",
+    "sphinx.ext.doctest",
+    "sphinxarg.ext",
+    "nbsphinx_link",
 ]
 
+nbsphinx_execute = 'never'
 templates_path = ["_templates"]
 exclude_patterns = []
 autodoc_typehints = "description"
 
 # -- AutoAPI configuration ---------------------------------------------------
-
-autoapi_dirs = ["../../chemprop/v2"]
+nbsphinx_allow_errors = True
+autoapi_dirs = ["../.."]
 autoapi_ignore = ["*test*", "*cli*"]
+autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",
     "undoc-members",
