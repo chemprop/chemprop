@@ -55,7 +55,7 @@ def mol(request):
 
 @pytest.fixture
 def mol_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mol.csv")
+    df = pd.read_csv(data_dir / "regression/mol/mol.csv")
     smis = df["smiles"].to_list()
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
@@ -96,5 +96,20 @@ def mol_classification_data(data_dir):
     df = pd.read_csv(data_dir / "classification" / "mol.csv")
     smis = df["smiles"].to_list()
     Y = df["NR-AhR"].to_numpy().reshape(-1, 1)
+
+    return smis, Y
+
+
+@pytest.fixture
+def mol_classification_data_multiclass(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol_multiclass.csv")
+    smis = df["smiles"].to_list()
+    activities = df["activity"].unique()
+    Y = (
+        df["activity"]
+        .map({activity: i for i, activity in enumerate(activities)})
+        .to_numpy()
+        .reshape(-1, 1)
+    )
 
     return smis, Y

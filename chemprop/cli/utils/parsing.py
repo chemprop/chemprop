@@ -63,6 +63,43 @@ def parse_csv(
     return smiss, rxnss, Y, weights, lt_mask, gt_mask
 
 
+def get_column_names(
+    path: PathLike,
+    smiles_cols: Sequence[str] | None,
+    rxn_cols: Sequence[str] | None,
+    target_cols: Sequence[str] | None,
+    ignore_cols: Sequence[str] | None,
+    no_header_row: bool = False,
+):
+    df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
+
+    input_cols = []
+    target_cols = []
+
+    if smiles_cols is not None:
+        input_cols.extend(smiles_cols)
+    if rxn_cols is not None:
+        input_cols.extend(rxn_cols)
+    if target_cols is not None:
+        target_cols.extend(target_cols)
+
+    if len(input_cols) == 0:
+        if no_header_row:
+            input_cols = ["SMILES"]
+        else:
+            input_cols = [df.columns[0]]
+
+    if len(target_cols) == 0:
+        if no_header_row:
+            ignore_len = len(ignore_cols) if ignore_cols else 0
+            ["pred_" + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
+        else:
+            target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
+
+    cols = input_cols + target_cols
+    return cols
+
+
 def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
@@ -70,7 +107,7 @@ def make_datapoints(
     weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
-    X_f: np.ndarray | None,
+    X_d: np.ndarray | None,
     V_fs: list[np.ndarray] | None,
     E_fs: list[np.ndarray] | None,
     V_ds: list[np.ndarray] | None,
@@ -112,10 +149,12 @@ def make_datapoints(
     weights = np.ones(N) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
-    X_f = [None] * N if X_f is None else X_f
-    V_fs = [None] * N if V_fs is None else V_fs
-    E_fs = [None] * N if E_fs is None else E_fs
-    V_ds = [None] * N if V_ds is None else V_ds
+
+    n_mols = len(smiss)
+    X_d = [None] * N if X_d is None else X_d
+    V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
+    E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
+    V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
 
     mol_data = [
         [
@@ -127,16 +166,16 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i],
+                x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
-                V_f=V_fs[i],
-                E_f=E_fs[i],
-                V_d=V_ds[i],
+                V_f=V_fs[mol_idx][i],
+                E_f=E_fs[mol_idx][i],
+                V_d=V_ds[mol_idx][i],
             )
             for i in range(N)
         ]
-        for smis in list(zip(*smiss))
+        for mol_idx, smis in enumerate(zip(*smiss))
     ]
     rxn_data = [
         [
@@ -148,13 +187,13 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_f=X_f[i],
+                x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
             )
             for i in range(N)
         ]
-        for rxns in list(zip(*rxnss))
+        for rxn_idx, rxns in enumerate(zip(*rxnss))
     ]
 
     return mol_data, rxn_data
@@ -169,7 +208,7 @@ def build_data_from_files(
     ignore_cols: Sequence[str] | None,
     weight_col: str | None,
     bounded: bool,
-    p_features: PathLike,
+    p_descriptors: PathLike,
     p_atom_feats: PathLike,
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
@@ -178,16 +217,48 @@ def build_data_from_files(
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )
-    X_f = np.load(p_features) if p_features else None
-    V_fs = np.load(p_atom_feats, allow_pickle=True) if p_atom_feats else None
-    E_fs = np.load(p_bond_feats, allow_pickle=True) if p_bond_feats else None
-    V_ds = np.load(p_atom_descs, allow_pickle=True) if p_atom_descs else None
+    n_molecules = len(list(zip(*smiss)))
+
+    X_ds = load_input_feats_and_descs(p_descriptors, n_molecules, feat_desc="X_d")
+    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, feat_desc="V_f")
+    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, feat_desc="E_f")
+    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, feat_desc="V_d")
 
     mol_data, rxn_data = make_datapoints(
-        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_f, V_fs, E_fs, V_ds, **featurization_kwargs
+        smiss,
+        rxnss,
+        Y,
+        weights,
+        lt_mask,
+        gt_mask,
+        X_ds,
+        V_fss,
+        E_fss,
+        V_dss,
+        **featurization_kwargs,
     )
 
     return mol_data + rxn_data
+
+
+def load_input_feats_and_descs(paths, n_molecules, feat_desc):
+    if paths is None:
+        return None
+
+    match feat_desc:
+        case "X_d":
+            path = paths
+            loaded_feature = np.load(path)
+            features = loaded_feature["arr_0"]
+
+        case _:
+            features = []
+            for _ in range(n_molecules):
+                path = paths  # TODO: currently only supports a single path
+                loaded_feature = np.load(path)
+                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+                features.append(loaded_feature)
+    return features
 
 
 def make_dataset(

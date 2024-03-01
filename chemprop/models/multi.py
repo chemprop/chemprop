@@ -41,14 +41,14 @@ class MulticomponentMPNN(MPNN):
         self,
         bmgs: Iterable[BatchMolGraph],
         V_ds: Iterable[Tensor | None],
-        X_f: Tensor | None = None,
+        X_d: Tensor | None = None,
     ) -> Tensor:
         H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
         Hs = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]
         H = torch.cat(Hs, 1)
         H = self.bn(H)
 
-        return H if X_f is None else torch.cat((H, X_f), 1)
+        return H if X_d is None else torch.cat((H, X_d), 1)
 
     @classmethod
     def load_from_checkpoint(

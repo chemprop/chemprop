@@ -97,7 +97,9 @@ def split_data(
             train, val, test = [], [], []
             random = np.random.default_rng(seed)
 
-            indices = np.tile(np.arange(num_folds), 1 + len(datapoints) // num_folds)[:len(datapoints)]
+            indices = np.tile(np.arange(num_folds), 1 + len(datapoints) // num_folds)[
+                : len(datapoints)
+            ]
             random.shuffle(indices)
 
             for fold_idx in range(num_folds):
@@ -146,9 +148,15 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs))
-            val = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs))
-            test = list(itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs))
+            train = list(
+                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)
+            )
+            val = list(
+                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)
+            )
+            test = list(
+                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)
+            )
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
@@ -212,7 +220,10 @@ def _unpack_astartes_result(
 
 
 def split_component(
-    datapointss: Sequence[Sequence[MoleculeDatapoint | MulticomponentDatapoint]], split: SplitType | str = "random", key_index: int = 0, **kwargs
+    datapointss: Sequence[Sequence[MoleculeDatapoint | MulticomponentDatapoint]],
+    split: SplitType | str = "random",
+    key_index: int = 0,
+    **kwargs,
 ):
     """Splits multicomponent data into training, validation, and test splits."""
 
@@ -222,9 +233,15 @@ def split_component(
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
             # convert indices to datapoints for each fold
-            train = [[[datapoints[i] for i in fold] for datapoints in datapointss] for fold in train_idxs]
-            val = [[[datapoints[i] for i in fold] for datapoints in datapointss] for fold in val_idxs]
-            test = [[[datapoints[i] for i in fold] for datapoints in datapointss] for fold in test_idxs]
+            train = [
+                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in train_idxs
+            ]
+            val = [
+                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in val_idxs
+            ]
+            test = [
+                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in test_idxs
+            ]
         case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
             # convert indices to datapoints
             train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]

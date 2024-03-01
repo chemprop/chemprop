@@ -115,13 +115,22 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        loc: float | Tensor = 0,
-        scale: float | Tensor = 1,
+        loc: float | Tensor = 0.0,
+        scale: float | Tensor = 1.0,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-        self.register_buffer("loc", torch.tensor(loc).view(-1, 1))
-        self.register_buffer("scale", torch.tensor(scale).view(-1, 1))
+        if isinstance(loc, float):
+            loc = torch.ones(1, self.n_tasks) * loc
+        else:
+            loc = torch.tensor(loc).view(1, -1)
+        self.register_buffer("loc", loc)
+
+        if isinstance(scale, float):
+            scale = torch.ones(1, self.n_tasks) * scale
+        else:
+            scale = torch.tensor(scale).view(1, -1)
+        self.register_buffer("scale", scale)
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -304,4 +313,3 @@ class SpectralFFN(_FFNPredictorBase):
         return Y / Y.sum(1, keepdim=True)
 
     train_step = forward
-

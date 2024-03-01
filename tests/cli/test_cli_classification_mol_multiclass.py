@@ -11,7 +11,7 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "classification" / "mol.csv")
+    return str(data_dir / "classification" / "mol_multiclass.csv")
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--task-type",
-        "classification",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
@@ -60,7 +60,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         str(tmp_path),
         "--save-smiles-splits",
         "--task-type",
-        "classification",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
@@ -93,7 +93,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--ensemble-size",
         "2",
         "--task-type",
-        "classification",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
@@ -138,7 +138,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--task-type",
-        "classification",
+        "multiclass",
     ]
 
     with monkeypatch.context() as m:
