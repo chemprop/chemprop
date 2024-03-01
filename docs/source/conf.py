@@ -20,12 +20,12 @@ extensions = [
     "autoapi.extension",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.bibtex"
+    "sphinxcontrib.bibtex",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = []
-autodoc_typehints = 'description'
+autodoc_typehints = "description"
 
 # -- AutoAPI configuration ---------------------------------------------------
 
@@ -43,7 +43,7 @@ autoapi_keep_files = True
 
 # -- bibtex configuration ---------------------------------------------------
 
-bibtex_bibfiles = ['refs.bib']
+bibtex_bibfiles = ["refs.bib"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
