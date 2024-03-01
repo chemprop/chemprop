@@ -24,8 +24,7 @@ class MessagePassing(nn.Module, HasHParams):
         V_d : Tensor | None, default=None
             an optional tensor of shape `V x d_vd` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase. NOTE: recall that `V` is equal to `num_atoms + 1`,
-            so if provided, this tensor must be 0-padded in the 0th row.
+            transformed before the readout phase.
 
         Returns
         -------
