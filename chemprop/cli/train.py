@@ -114,11 +114,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input. Automatically also freezes mpnn weights.",
     )
-    transfer_args.add_argument(
-        "--freeze-first-only",
-        action="store_true",
-        help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
-    )
+    # transfer_args.add_argument(
+    #     "--freeze-first-only",
+    #     action="store_true",
+    #     help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
+    # )
     parser.add_argument(
         "--save-preds",
         action="store_true",
@@ -698,6 +698,19 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         logger.info(
             f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
         )
+
+    if args.model_frzn is not None:
+        model = mpnn_cls.load_from_file(args.model_frzn)
+        model.message_passing.apply(lambda module: module.requires_grad_(False))
+        model.message_passing.apply(
+            lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
+        )
+        model.bn.apply(lambda module: module.requires_grad_(False))
+        for idx in range(args.frzn_ffn_layers):
+            model.predictor.ffn[idx * 3].requires_grad_(False)
+            setattr(model.predictor.ffn[idx * 3 + 2], "p", 0.0)
+
+        return model
 
     return mpnn_cls(
         mp_block,
