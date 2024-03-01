@@ -691,7 +691,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
@@ -706,7 +706,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             dropout=args.dropout,
             activation=args.activation,
         )
-        d_xf = train_dset.d_xf
+        d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
@@ -724,7 +724,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
     predictor = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xf,
+        input_dim=mp_block.output_dim + d_xd,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,

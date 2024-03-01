@@ -107,7 +107,7 @@ def test_aux_nones(dataset: MoleculeDataset):
     np.testing.assert_array_equal(dataset.V_ds, None)
     np.testing.assert_array_equal(dataset.gt_mask, None)
     np.testing.assert_array_equal(dataset.lt_mask, None)
-    assert dataset.d_xf == 0
+    assert dataset.d_xd == 0
     assert dataset.d_vf == 0
     assert dataset.d_ef == 0
     assert dataset.d_vd == 0
