@@ -259,7 +259,7 @@ Bond-Level Features
 
 Bond-level features can be provided using the option :code:`--bond-features-path /path/to/bond/features.npz`. as a numpy :code:`.npz` file. This command concatenates the features to each bond feature vector before the D-MPNN, so that they are used during message-passing. This file can be saved using :code:`np.savez("bond_features.npz", *E_fs)`, where :code:`E_fs` is a list containing the bond features :code:`E_f` for each molecule, where :code:`E_f` is a 2D array with a shape of number of bonds by number of bond features in the exact same order as the SMILES strings in your data file.
 
-The order of the features for each molecule must match the bond ordering in the RDKit molecule object.
+The order of the bond features for each molecule must match the bond ordering in the RDKit molecule object.
 
 The bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-descriptor-scaling`.
 
