@@ -37,6 +37,6 @@ def mcmpnn(request):
     blocks, n_components, shared = request.param
     mcmp = nn.MulticomponentMessagePassing(blocks, n_components, shared=shared)
     agg = nn.SumAggregation()
-    ffn = nn.RegressionFFN(input_dim=mcmp.output_dim,)
+    ffn = nn.RegressionFFN(input_dim=mcmp.output_dim)
 
     return multi.MulticomponentMPNN(mcmp, agg, ffn, True)

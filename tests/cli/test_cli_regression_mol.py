@@ -11,7 +11,13 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "mol.csv")
+    return (
+        str(data_dir / "regression" / "mol" / "mol.csv"),
+        str(data_dir / "regression" / "mol" / "descriptors.npz"),
+        str(data_dir / "regression" / "mol" / "atom_features.npz"),
+        str(data_dir / "regression" / "mol" / "bond_features.npz"),
+        str(data_dir / "regression" / "mol" / "atom_descriptors.npz"),
+    )
 
 
 @pytest.fixture
@@ -20,7 +26,42 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = ["chemprop", "train", "-i", data_path, "--epochs", "1", "--num-workers", "0"]
+    input_path, *_ = data_path
+
+    args = ["chemprop", "train", "-i", input_path, "--epochs", "1", "--num-workers", "0"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_quick_features(monkeypatch, data_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -28,7 +69,8 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
-    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -36,11 +78,12 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
@@ -48,7 +91,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
-        "--save-preds"
+        "--save-preds",
     ]
 
     with monkeypatch.context() as m:
@@ -63,11 +106,12 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 
 
 def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
@@ -94,11 +138,12 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "predict",
         "-i",
-        data_path,
+        input_path,
         "--model-path",
         model_path,
         "--output",
@@ -113,11 +158,13 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",
