@@ -3,6 +3,7 @@ from os import PathLike
 from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
+from sklearn.preprocessing import StandardScaler
 
 from chemprop.nn.metrics import MetricRegistry
 from chemprop.nn.agg import AggregationRegistry
@@ -105,10 +106,6 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         }
     )
 
-    if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["predictor"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
-        hyper_parameters_v2["predictor"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
-
     return hyper_parameters_v2
 
 
@@ -127,6 +124,12 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     model_v2_dict["lr_schedulers"] = None
     model_v2_dict["hparams_name"] = "kwargs"
     model_v2_dict["hyper_parameters"] = convert_hyper_parameters_v1_to_v2(model_v1_dict)
+    
+    args_v1 = model_v1_dict["args"]
+    if args_v1.dataset_type == "regression":
+        model_v2_dict["output_scaler"] = StandardScaler()
+        model_v2_dict["output_scaler"].mean_ = model_v1_dict["data_scaler"]["means"]
+        model_v2_dict["output_scaler"].scale_ = model_v1_dict["data_scaler"]["stds"]
 
     return model_v2_dict
 
