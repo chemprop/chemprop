@@ -219,10 +219,10 @@ def build_data_from_files(
     )
     n_molecules = len(list(zip(*smiss)))
 
-    X_ds = load_input_feats_and_descs(p_descriptors, n_molecules, feature="X_d")
-    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, feature="V_f")
-    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, feature="E_f")
-    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, feature="V_d")
+    X_ds = load_input_feats_and_descs(p_descriptors, n_molecules, feat_desc="X_d")
+    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, feat_desc="V_f")
+    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, feat_desc="E_f")
+    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, feat_desc="V_d")
 
     mol_data, rxn_data = make_datapoints(
         smiss,
