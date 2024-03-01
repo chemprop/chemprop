@@ -64,7 +64,7 @@ def mol_regression_data(data_dir):
 
 @pytest.fixture
 def rxn_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/rxn.csv")
+    df = pd.read_csv(data_dir / "regression/rxn/rxn.csv")
     smis = df["smiles"].to_list()
     Y = df["ea"].to_numpy().reshape(-1, 1)
 
