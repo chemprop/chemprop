@@ -126,6 +126,9 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "3",
         "--ensemble-size",
         "2",
+        "--metrics",
+        "mse",
+        "rmse",
     ]
 
     with monkeypatch.context() as m:
