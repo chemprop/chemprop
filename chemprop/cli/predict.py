@@ -9,7 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import MulticlassClassificationFFN, RegressionFFN
 from chemprop.models import load_model
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
@@ -279,6 +279,8 @@ def make_prediction_for_model(
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 0)
+    if isinstance(model.predictor, RegressionFFN):
+        preds = output_scaler.inverse_transform(preds)
     if isinstance(model.predictor, MulticlassClassificationFFN):
         preds = torch.argmax(preds, dim=-1)
 

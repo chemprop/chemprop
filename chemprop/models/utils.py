@@ -4,28 +4,21 @@ from sklearn.preprocessing import StandardScaler
 
 from chemprop.models.model import MPNN
 from chemprop.models.multi import MulticomponentMPNN
+from chemprop.utils import InputScalers
 
-
-def save_model(
-    path: PathLike,
-    model: MPNN,
-    input_scalers: dict[str, StandardScaler] | None,
-    output_scaler: StandardScaler | None,
-) -> None:
+def save_model(path: PathLike, model: MPNN, input_scalers: InputScalers | None, output_scaler: StandardScaler | None) -> None:
     torch.save(
         {
             "hyper_parameters": model.hparams,
             "state_dict": model.state_dict(),
-            "input_scalers": input_scalers,
+            "input_scalers": input_scalers.to_dict() if input_scalers is not None else None,
             "output_scaler": output_scaler,
         },
         path,
     )
 
 
-def load_model(
-    path: PathLike, multicomponent: bool
-) -> tuple[MPNN, dict[str, StandardScaler] | None, StandardScaler | None]:
+def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, InputScalers | None, StandardScaler | None]:
     if multicomponent:
         model = MulticomponentMPNN.load_from_file(path)
     else:
