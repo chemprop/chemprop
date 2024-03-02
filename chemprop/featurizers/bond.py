@@ -96,7 +96,8 @@ class MultiHotBondFeaturizer(BondFeaturizer):
 
     @classmethod
     def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """the index of ``x`` in ``xs``, if it exists. Otherwise, return ``len(xs) + 1``."""
+        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
+        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
         n = len(xs)
 
         return xs.index(x) if x in xs else n, n + 1
