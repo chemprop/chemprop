@@ -11,9 +11,8 @@ from torch.utils.data import Dataset
 
 from chemprop.featurizers import (
     MolGraph,
-    MoleculeMolGraphFeaturizer,
+    MolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
-    RxnMolGraphFeaturizer,
     CGRFeaturizer,
 )
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
@@ -155,7 +154,9 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizer = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+    featurizer: MolGraphFeaturizer[Chem.Mol] = field(
+        default_factory=SimpleMoleculeMolGraphFeaturizer
+    )
 
     def __post_init__(self):
         if self.data is None:
@@ -297,7 +298,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizer = field(default_factory=CGRFeaturizer)
+    featurizer: MolGraphFeaturizer[tuple[Chem.Mol, Chem.Mol]] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):
@@ -323,7 +324,8 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel
+    :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""
