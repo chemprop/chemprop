@@ -98,6 +98,13 @@ def get_column_names(
     cols = input_cols + target_cols
     return cols
 
+def get_smiles_list(dataloader : MoleculeDataset | ReactionDataset) -> list[list[str]]:
+    smiss = dataloader.dataset.smiles_as_str
+    if isinstance(smiss[0], str):
+        return [smiss]
+    else:
+        return list(zip(*smiss))
+
 def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,

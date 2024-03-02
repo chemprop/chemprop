@@ -176,6 +176,10 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [Chem.MolToSmiles(d.mol) for d in self.data]
 
     @property
+    def smiles_as_str(self) -> list[str]:
+        return [Chem.MolToSmiles(d.mol) for d in self.data]
+
+    @property
     def mols(self) -> list[Chem.Mol]:
         """the molecules associated with the dataset"""
         return [d.mol for d in self.data]
@@ -314,8 +318,12 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
 
     @property
-    def smiles(self) -> list[str]:
+    def smiles(self) -> list[tuple]:
         return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
+
+    @property
+    def smiles_as_str(self) -> list[str]:
+        return [">>".join([Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)]) for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
@@ -347,6 +355,10 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     @property
     def smiles(self) -> list[list[str]]:
         return list(zip(*[dset.smiles for dset in self.datasets]))
+
+    @property
+    def smiles_as_str(self) -> list[list[str]]:
+        return list(zip(*[dset.smiles_as_str for dset in self.datasets]))
 
     @property
     def mols(self) -> list[list[Chem.Mol]]:
