@@ -161,6 +161,8 @@ def test_normalize_inputs(dataset):
 
 @pytest.mark.parametrize("cache", [False, True])
 def test_cache(dataset: MoleculeDataset, cache):
+    """Test that cache attribute is being set appropriately and that the underlying cache is being
+    used correctly to load the molgraphs."""
     mg = MolGraph(None, None, None, None)
 
     dataset.cache = cache

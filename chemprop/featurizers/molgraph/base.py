@@ -1,5 +1,6 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
+from collections.abc import Callable
 
 import numpy as np
 from rdkit import Chem
@@ -9,7 +10,7 @@ from chemprop.featurizers.molgraph.molgraph import MolGraph
 T = TypeVar("T", Chem.Mol, tuple[Chem.Mol, Chem.Mol])
 
 
-class MolGraphFeaturizer(Generic[T]):
+class MolGraphFeaturizer(Generic[T], Callable):
     """A :class:`MolGraphFeaturizer` featurizes input molecules or reactions
     into :class:`MolGraph`\s"""
 
