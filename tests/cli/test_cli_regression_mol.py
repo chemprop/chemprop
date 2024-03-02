@@ -184,11 +184,12 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
 
 def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--epochs",
         "1",
         "--num-workers",

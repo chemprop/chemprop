@@ -19,7 +19,7 @@ class MPNN(pl.LightningModule):
     predictor routine.
 
     The first two modules calculate learned fingerprints from an input molecule
-    reaction graph, and the final module takes these leared fingerprints as input to calculate a
+    reaction graph, and the final module takes these learned fingerprints as input to calculate a
     final prediction. I.e., the following operation:
 
     .. math::
@@ -149,7 +149,7 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
-        self.log("train/loss", l, prog_bar=True)
+        self.log("train_loss", l, prog_bar=True)
 
         return l
 
