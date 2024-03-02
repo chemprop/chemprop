@@ -23,13 +23,13 @@ class MLP(nn.Sequential, FFN):
     .. math::
         \mathbf h_0 &= \mathbf x\,\mathbf W^{(0)} + \mathbf b^{(0)} \\
         \mathbf h_l &= \mathtt{dropout} \left(
-            \sigma \left(\,\mathbf h_{l-1}\,\mathbf W^{{l)} \right)
+            \sigma \left(\,\mathbf h_{l-1}\,\mathbf W^{(l)} \right)
         \right) \\
-        \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{{l)} + \mathbf b^{{l)},
+        \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{(l)} + \mathbf b^{(l)},
 
-    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{{l)}` is the learned weight matrix
-    for the :math:`l`-th layer, :math:`\mathbf b^{{l)}` is the bias vector for the :math:`l`-th layer,
-    :math:`\mathbf h^{{l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
+    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{(l)}` is the learned weight matrix
+    for the :math:`l`-th layer, :math:`\mathbf b^{(l)}` is the bias vector for the :math:`l`-th layer,
+    :math:`\mathbf h^{(l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
     activation function, and :math:`L` is the number of layers.
     """
 

@@ -144,7 +144,7 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`s
+    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`\s
 
     Parameters
     ----------
@@ -293,7 +293,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
@@ -323,7 +323,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`s"""
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""
