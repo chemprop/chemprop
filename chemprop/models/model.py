@@ -88,7 +88,7 @@ class MPNN(pl.LightningModule):
         self.predictor = predictor
 
         self.metrics = (
-            [*[MetricRegistry[metric]() for metric in metrics], self.criterion]
+            [*metrics, self.criterion]
             if metrics
             else [self.predictor._default_metric, self.criterion]
         )

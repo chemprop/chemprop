@@ -673,9 +673,11 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
-                d_vd=train_dset.datasets[i].d_vd
-                if isinstance(train_dset.datasets[i], MoleculeDataset)
-                else 0,
+                d_vd=(
+                    train_dset.datasets[i].d_vd
+                    if isinstance(train_dset.datasets[i], MoleculeDataset)
+                    else 0
+                ),
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -758,12 +760,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
         return model
 
+    metrics = [MetricRegistry[metric]() for metric in args.metrics]
+
     return mpnn_cls(
         mp_block,
         agg,
         predictor,
         not args.no_batch_norm,
-        args.metrics,
+        metrics,
         args.task_weights,
         args.warmup_epochs,
         args.init_lr,
