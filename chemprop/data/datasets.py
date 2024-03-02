@@ -1,13 +1,14 @@
 from abc import abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from functools import cached_property
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
+from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 
 from chemprop.featurizers import (
     MolGraph,
@@ -163,10 +164,22 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             raise ValueError("Data cannot be None!")
 
         self.reset()
+        self.cache = False
 
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+    
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self.mg_cache = (MolGraphCacheOnTheFly if cache else MolGraphCache)(
+            self.mols, self.V_fs, self.E_fs, self.featurizer
+        )
+    
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
+        mg = self.mg_cache[idx]
 
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
@@ -306,10 +319,23 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
             raise ValueError("Data cannot be None!")
 
         self.reset()
+        self.cache = False
+
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+    
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self.mg_cache = (MolGraphCacheOnTheFly if cache else MolGraphCache)(
+            self.mols, [None] * len(self), [None] * len(self), self.featurizer
+        )
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer((d.rct, d.pdt), None, None)
+        # mg = self.featurizer((d.rct, d.pdt), None, None)
+        mg = self.mg_cache[idx]
 
         return Datum(mg, None, d.x_d, d.y, d.weight, d.lt_mask, d.gt_mask)
 
@@ -318,7 +344,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
 
     @property
-    def mols(self) -> list[Chem.Mol]:
+    def mols(self) -> list[tuple[Chem.Mol, Chem.Mol]]:
         return [(d.rct, d.pdt) for d in self.data]
 
 
