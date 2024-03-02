@@ -9,7 +9,7 @@ import torch
 from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
-from chemprop.nn.metrics import Metric
+from chemprop.nn.metrics import Metric, MetricRegistry
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -19,7 +19,7 @@ class MPNN(pl.LightningModule):
     predictor routine.
 
     The first two modules calculate learned fingerprints from an input molecule
-    reaction graph, and the final module takes these leared fingerprints as input to calculate a
+    reaction graph, and the final module takes these learned fingerprints as input to calculate a
     final prediction. I.e., the following operation:
 
     .. math::
@@ -87,7 +87,6 @@ class MPNN(pl.LightningModule):
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
 
-        # NOTE(degraff): should think about how to handle no supplied metric
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
@@ -149,7 +148,7 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
 
-        self.log("train/loss", l, prog_bar=True)
+        self.log("train_loss", l, prog_bar=True)
 
         return l
 

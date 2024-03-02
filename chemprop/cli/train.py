@@ -381,8 +381,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
     )
     train_args.add_argument(
-        "--metric",
         "--metrics",
+        "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
@@ -528,9 +528,9 @@ def normalize_inputs(train_dset, val_dset, args):
         )
     else:
         d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf
-        d_ef = train_dset.d_ef
-        d_vd = train_dset.d_vd
+        d_vf = train_dset.d_vf if not isinstance(train_dset, ReactionDataset) else 0
+        d_ef = train_dset.d_ef if not isinstance(train_dset, ReactionDataset) else 0
+        d_vd = train_dset.d_vd if not isinstance(train_dset, ReactionDataset) else 0
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
@@ -673,9 +673,11 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
-                d_vd=train_dset.datasets[i].d_vd
-                if isinstance(train_dset.datasets[i], MoleculeDataset)
-                else 0,
+                d_vd=(
+                    train_dset.datasets[i].d_vd
+                    if isinstance(train_dset.datasets[i], MoleculeDataset)
+                    else 0
+                ),
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -704,7 +706,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
-            d_vd=train_dset.d_vd,
+            d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
@@ -758,12 +760,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
         return model
 
+    metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
+
     return mpnn_cls(
         mp_block,
         agg,
         predictor,
         not args.no_batch_norm,
-        None,
+        metrics,
         args.task_weights,
         args.warmup_epochs,
         args.init_lr,

@@ -182,13 +182,11 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
             in the batch. These will be concatenated to the learned atomic descriptors and
             transformed before the readout phase.
-            **NOTE**: recall that ``V`` is equal to ``num_atoms + 1``, so ``V_d`` must be 0-padded
-            in the 0th row.
 
         Returns
         -------
         Tensor
-            a tensor of shape ``b x d_h`` or ``b x (d_h + d_vd)`` containing the encoding of each
+            a tensor of shape ``V x d_h`` or ``V x (d_h + d_vd)`` containing the encoding of each
             molecule in the batch, depending on whether additional atom descriptors were provided
         """
         H_0 = self.initialize(bmg)
