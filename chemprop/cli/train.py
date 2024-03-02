@@ -760,7 +760,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
         return model
 
-    metrics = [MetricRegistry[metric]() for metric in args.metrics]
+    metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
         mp_block,
