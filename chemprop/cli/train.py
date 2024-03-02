@@ -79,16 +79,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
-    parser.add_argument(
-        "--checkpoint-dir",
-        help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
-    )
-    parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
-    parser.add_argument(
-        "--checkpoint-paths",
-        type=list[str],
-        help="List of paths to model checkpoints (:code:`.pt` files).",
-    )
     # TODO: Is this a prediction only argument?
     parser.add_argument(
         "--checkpoint",
