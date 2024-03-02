@@ -528,9 +528,9 @@ def normalize_inputs(train_dset, val_dset, args):
         )
     else:
         d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf
-        d_ef = train_dset.d_ef
-        d_vd = train_dset.d_vd
+        d_vf = train_dset.d_vf if not isinstance(train_dset, ReactionDataset) else 0
+        d_ef = train_dset.d_ef if not isinstance(train_dset, ReactionDataset) else 0
+        d_vd = train_dset.d_vd if not isinstance(train_dset, ReactionDataset) else 0
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
@@ -706,7 +706,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
-            d_vd=train_dset.d_vd,
+            d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
