@@ -15,9 +15,9 @@ For example:
 
 .. code-block::
 
-   chemprop train --data-path data/tox21.csv \
-   --task-type classification \
-   --output-dir tox21_checkpoints
+   chemprop train --data-path tests/data/regression.csv \
+   --task-type regression \
+   --output-dir solubility_checkpoints
 
 The following modeling tasks are supported:
 
