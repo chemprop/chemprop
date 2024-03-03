@@ -26,7 +26,7 @@ class ConvertSubcommand(Subcommand):
             "-o",
             "--output-path",
             type=Path,
-            help="The path to which the converted model will be saved. Defaults to 'PATH/TO/V1_MODEL_v2.ckpt'",
+            help="The path to which the converted model will be saved. Defaults to 'CURRENT_DIRECTORY/STEM_OF_INPUT_v2.ckpt'",
         )
         return parser
 
