@@ -10,6 +10,9 @@ Chemprop can either be installed from PyPi via pip_ or from source (i.e., direct
 .. _conda: https://docs.conda.io/en/latest/conda.html
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
+.. note:: 
+    We also plan to make chemprop installable using `Docker` or using an `environment.yml` file with `conda` before the release of v2.0.0.
+
 Start by setting up your virtual environment. We assume you are using ``conda`` or ``miniconda``, but you may adapt these steps use any virtual environment manager you like:
 
 .. code-block::
@@ -24,7 +27,7 @@ Start by setting up your virtual environment. We assume you are using ``conda`` 
 
         conda install pytorch cpuonly -c pytorch
 
-.. warning:: 
+.. note:: 
     We are aware that some users may experience issues during installation while trying to install `torch-scatter`. This is an issue with the `torch-scatter` package and not with Chemprop. We will resolve this issue before the release of v2.0.0, most likely by replacing our `torch-scatter` functions with native PyTorch functions and removing the `torch-scatter` dependency. You can follow along with this issue [here](https://github.com/chemprop/chemprop/issues/580).
 
 Option 1: Installing from PyPI
@@ -48,7 +51,6 @@ Option 2: Installing from source
     pip install torch
     pip install torch-scatter
     pip install .
-
 
 .. Option 3: Installing via Docker
 .. -------------------------------
