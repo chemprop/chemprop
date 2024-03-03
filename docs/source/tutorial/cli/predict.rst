@@ -15,9 +15,9 @@ For example:
 
 .. code-block::
   
-    chemprop predict --test-path data/tox21.csv \
-        --model-path tox21/model_0/model.pt \
-        --preds-path tox21_preds.csv
+    chemprop predict --test-path tests/data/smis.csv \
+        --model-path tests/data/example_model_v2_regression_mol.ckpt \
+        --preds-path preds.csv
 
 
 Specifying Data to Parse
