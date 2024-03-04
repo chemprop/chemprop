@@ -102,7 +102,7 @@ class NormAggregation(SumAggregation):
         self.hparams["norm"] = norm
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        return super().forward(H, batch, self.dim) / self.norm
+        return super().forward(H, batch) / self.norm
 
 
 class AttentiveAggregation(Aggregation):
