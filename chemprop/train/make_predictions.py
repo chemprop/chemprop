@@ -177,6 +177,9 @@ def predict_and_save(
         calibrator=calibrator
     )  # preds and unc are lists of shape(data,tasks)
 
+    if args.loss_function == "quantile_interval":
+        task_names = task_names[:len(task_names) // 2]
+
     if calibrator is not None and args.is_atom_bond_targets and args.calibration_method == "isotonic":
         unc = reshape_values(unc, test_data, len(args.atom_targets), len(args.bond_targets))
 
@@ -218,8 +221,6 @@ def predict_and_save(
 
     if evaluators is not None:
         evaluations = []
-        if args.loss_function == "quantile_interval":
-            task_names = task_names[:len(task_names) // 2]
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
@@ -297,12 +298,10 @@ def predict_and_save(
             # Add predictions columns
             if args.uncertainty_method == "spectra_roundrobin":
                 unc_names = [estimator.label]
-            elif args.calibration_method == "conformal_regression":
-                unc_names = [f"{name}_{estimator.label}_interval" for name in task_names]
-            elif args.calibration_method == "conformal_quantile_regression":
-                unc_names = [f"{name}_{estimator.label}_quantile_interval" for name in task_names]
             elif args.uncertainty_method == "conformal_quantile_regression" and args.calibration_method is None:
-                unc_names = [f"{name}_conformal_regression_{args.conformal_alpha}_interval" for name in task_names]
+                unc_names = [f"{name}_{args.conformal_alpha}_half_interval" for name in task_names]
+            elif args.calibration_method == "conformal_regression" and args.calibration_path is None:
+                unc_names = []
             elif args.calibration_method == "conformal" and args.dataset_type == "classification":
                 unc_names = [f"{name}_{estimator.label}_in_set" for name in task_names] + [
                     f"{name}_{estimator.label}_out_set" for name in task_names
@@ -423,8 +422,16 @@ def make_predictions(
         if args.dataset_type in ["classification", "multiclass"]:
             args.uncertainty_method = "classification"
         elif args.calibration_method == "conformal_regression":
+            if args.loss_function == "quantile_interval":
+                raise ValueError(
+                    "For a model trained on the `quantile_interval` loss function, the calibration method should be assigned as `conformal_quantile_regression` instead of `conformal_regression`."
+                    )
             args.uncertainty_method = "conformal_regression"
         elif args.calibration_method == "conformal_quantile_regression":
+            if args.loss_function != "quantile_interval":
+                raise ValueError(
+                    "The calibration method `conformal_quantile_regression` only supports regression models trained on the `quantile_interval` loss function."
+                    )
             args.uncertainty_method = "conformal_quantile_regression"
         else:
             raise ValueError(

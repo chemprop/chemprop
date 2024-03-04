@@ -146,7 +146,15 @@ def cross_validate(args: TrainArgs,
                  f'{multitask_mean(scores=scores[fold_num], metric=metric, ignore_nan_metrics=args.ignore_nan_metrics):.6f}')
 
             if args.show_individual_scores:
-                for task_name, score in zip(args.task_names, scores[fold_num]):
+                if args.loss_function == "quantile_interval" and metric == "quantile":
+                    num_tasks = len(args.task_names) // 2
+                    task_names = args.task_names[:num_tasks]
+                    task_names = [f"{task_name} lower" for task_name in task_names] + [
+                                  f"{task_name} upper" for task_name in task_names]
+                else:
+                    task_names = args.task_names
+
+                for task_name, score in zip(task_names, scores[fold_num]):
                     info(f'\t\tSeed {init_seed + fold_num} ==> test {task_name} {metric} = {score:.6f}')
                     if np.isnan(score):
                         contains_nan_scores = True
@@ -163,7 +171,7 @@ def cross_validate(args: TrainArgs,
         info(f'Overall test {metric} = {mean_score:.6f} +/- {std_score:.6f}')
 
         if args.show_individual_scores:
-            for task_num, task_name in enumerate(args.task_names):
+            for task_num, task_name in enumerate(task_names):
                 info(f'\tOverall test {task_name} {metric} = '
                      f'{np.mean(scores[:, task_num]):.6f} +/- {np.std(scores[:, task_num]):.6f}')
 
@@ -194,7 +202,15 @@ def cross_validate(args: TrainArgs,
                 row += [mean, std] + task_scores.tolist()
             writer.writerow(row)
         else: # all other data types, separate scores by task
-            for task_num, task_name in enumerate(args.task_names):
+            if args.loss_function == "quantile_interval" and metric == "quantile":
+                num_tasks = len(args.task_names) // 2
+                task_names = args.task_names[:num_tasks]
+                task_names = [f"{task_name} (lower quantile)" for task_name in task_names] + [
+                                f"{task_name} (upper quantile)" for task_name in task_names]
+            else:
+                task_names = args.task_names
+
+            for task_num, task_name in enumerate(task_names):
                 row = [task_name]
                 for metric, scores in all_scores.items():
                     task_scores = scores[:, task_num]
