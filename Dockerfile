@@ -28,10 +28,7 @@
 # Good luck!
 
 # Parent Image
-FROM ubuntu:latest
-
-# 'Install' Bash shell
-RUN ln -snf /bin/bash /bin/sh
+FROM continuumio/miniconda3:latest
 
 # Install system dependencies
 #
@@ -46,15 +43,6 @@ RUN apt-get update && \
     libxrender1 && \
     apt-get autoremove -y && \
     apt-get clean -y
-
-# Install conda
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    bash Miniconda3-latest-Linux-x86_64.sh -b -p /miniconda && \
-    rm Miniconda3-latest-Linux-x86_64.sh
-ENV PATH="$PATH:/miniconda/bin"
-
-# Set Bash as the default shell for following commands
-SHELL ["/bin/bash", "-c"]
 
 WORKDIR /opt/chemprop
 
