@@ -24,7 +24,7 @@ class Datum(NamedTuple):
 
     mg: MolGraph
     V_d: np.ndarray | None
-    x_f: np.ndarray | None
+    x_d: np.ndarray | None
     y: np.ndarray | None
     weight: float
     lt_mask: np.ndarray | None
@@ -58,20 +58,20 @@ class _MolGraphDatasetMixin:
         self.__Y = np.array(Y, float)
 
     @cached_property
-    def _X_f(self) -> np.ndarray:
-        """the raw molecule features of the dataset"""
-        return np.array([d.x_f for d in self.data])
+    def _X_d(self) -> np.ndarray:
+        """the raw extra descriptors of the dataset"""
+        return np.array([d.x_d for d in self.data])
 
     @property
-    def X_f(self) -> np.ndarray:
-        """the (scaled) molecule features of the dataset"""
-        return self.__X_f
+    def X_d(self) -> np.ndarray:
+        """the (scaled) extra descriptors of the dataset"""
+        return self.__X_d
 
-    @X_f.setter
-    def X_f(self, X_f: ArrayLike):
-        self._validate_attribute(X_f, "molecule features")
+    @X_d.setter
+    def X_d(self, X_d: ArrayLike):
+        self._validate_attribute(X_d, "extra descriptors")
 
-        self.__X_f = np.array(X_f)
+        self.__X_d = np.array(X_d)
 
     @property
     def weights(self) -> np.ndarray:
@@ -90,9 +90,9 @@ class _MolGraphDatasetMixin:
         return self.data[0].t if len(self.data) > 0 else None
 
     @property
-    def d_xf(self) -> int:
-        """the extra molecule feature dimension, if any"""
-        return 0 if np.equal(self.X_f, None).all() else self.X_f.shape[1]
+    def d_xd(self) -> int:
+        """the extra molecule descriptor dimension, if any"""
+        return 0 if np.equal(self.X_d, None).all() else self.X_d.shape[1]
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         """Normalizes the targets of this dataset using a :obj:`StandardScaler`
@@ -114,24 +114,25 @@ class _MolGraphDatasetMixin:
         return scaler
 
     def normalize_inputs(
-        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+        self, key: str | None = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_f", None}
+        VALID_KEYS = {"X_d", None}
         if key not in VALID_KEYS:
             raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
-        X = self.X_f
+        X = self.X_d
 
         if scaler is None:
-            scaler = StandardScaler().fit(X)
+            scaler = StandardScaler()
+            self.X_d = scaler.fit_transform(X)
 
         return scaler
 
     def reset(self):
-        """Reset the {atom, bond, molecule} features and targets of each datapoint to its
-        initial, unnormalized values."""
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
         self.__Y = self._Y
-        self.__X_f = self._X_f
+        self.__X_d = self._X_d
 
     def _validate_attribute(self, X: np.ndarray, label: str):
         if not len(self.data) == len(X):
@@ -143,7 +144,7 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`s
+    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`\s
 
     Parameters
     ----------
@@ -154,9 +155,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizer = field(
-        default_factory=SimpleMoleculeMolGraphFeaturizer
-    )
+    featurizer: MoleculeMolGraphFeaturizer = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:
@@ -168,7 +167,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         d = self.data[idx]
         mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
 
-        return Datum(mg, self.V_ds[idx], self.X_f[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[str]:
@@ -185,77 +184,77 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [d.mol for d in self.data]
 
     @property
-    def _V_fs(self) -> np.ndarray:
+    def _V_fs(self) -> list[np.ndarray]:
         """the raw atom features of the dataset"""
-        return np.array([d.V_f for d in self.data])
+        return [d.V_f for d in self.data]
 
     @property
-    def V_fs(self) -> np.ndarray:
+    def V_fs(self) -> list[np.ndarray]:
         """the (scaled) atom descriptors of the dataset"""
         return self.__V_fs
 
     @V_fs.setter
-    def V_fs(self, V_fs: np.ndarray):
+    def V_fs(self, V_fs: list[np.ndarray]):
         """the (scaled) atom features of the dataset"""
         self._validate_attribute(V_fs, "atom features")
 
-        self.__V_fs = np.array(V_fs)
+        self.__V_fs = V_fs
 
     @property
-    def _E_fs(self) -> np.ndarray:
+    def _E_fs(self) -> list[np.ndarray]:
         """the raw bond features of the dataset"""
-        return np.array([d.E_f for d in self.data])
+        return [d.E_f for d in self.data]
 
     @property
-    def E_fs(self) -> np.ndarray:
+    def E_fs(self) -> list[np.ndarray]:
         """the (scaled) bond features of the dataset"""
         return self.__E_fs
 
     @E_fs.setter
-    def E_fs(self, E_fs: np.ndarray):
+    def E_fs(self, E_fs: list[np.ndarray]):
         self._validate_attribute(E_fs, "bond features")
 
-        self.__E_fs = np.array(E_fs)
+        self.__E_fs = E_fs
 
     @property
-    def _V_ds(self) -> np.ndarray:
+    def _V_ds(self) -> list[np.ndarray]:
         """the raw atom descriptors of the dataset"""
-        return np.array([d.V_d for d in self.data])
+        return [d.V_d for d in self.data]
 
     @property
-    def V_ds(self) -> np.ndarray:
+    def V_ds(self) -> list[np.ndarray]:
         """the (scaled) atom descriptors of the dataset"""
         return self.__V_ds
 
     @V_ds.setter
-    def V_ds(self, V_ds: np.ndarray):
+    def V_ds(self, V_ds: list[np.ndarray]):
         self._validate_attribute(V_ds, "atom descriptors")
 
-        self.__V_ds = np.array(V_ds)
+        self.__V_ds = V_ds
 
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if np.equal(self.V_fs, None).all() else self.V_fs[0].shape[1]
+        return 0 if all(np.equal(V_f, None).all() for V_f in self.V_fs) else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
         """the extra bond feature dimension, if any"""
-        return 0 if np.equal(self.E_fs, None).all() else self.E_fs[0].shape[1]
+        return 0 if all(np.equal(E_f, None).all() for E_f in self.E_fs) else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int:
         """the extra atom descriptor dimension, if any"""
-        return 0 if np.equal(self.V_ds, None).all() else self.V_ds[0].shape[1]
+        return 0 if all(np.equal(V_d, None).all() for V_d in self.V_ds) else self.V_ds[0].shape[1]
 
     def normalize_inputs(
-        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+        self, key: str | None = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_f", "V_f", "E_f", "V_d", None}
+        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d", None}
 
         match key:
-            case "X_f":
-                X = None if np.all(self.X_f == None) else self.X_f
+            case "X_d":
+                X = None if np.all(self.X_d == None) else self.X_d
             case "V_f":
                 X = None if np.all(self.V_fs == None) else np.concatenate(self.V_fs, axis=0)
             case "E_f":
@@ -274,8 +273,8 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             scaler = StandardScaler().fit(X)
 
         match key:
-            case "X_f":
-                self.X_f = scaler.transform(X)
+            case "X_d":
+                self.X_d = scaler.transform(X)
             case "V_f":
                 self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs]
             case "E_f":
@@ -288,8 +287,8 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return scaler
 
     def reset(self):
-        """reset the {atom, bond, molecule} features and targets of each datapoint to its raw
-        value"""
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
         super().reset()
         self.__V_fs = self._V_fs
         self.__E_fs = self._E_fs
@@ -298,7 +297,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`s"""
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s"""
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
@@ -315,7 +314,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         d = self.data[idx]
         mg = self.featurizer((d.rct, d.pdt), None, None)
 
-        return Datum(mg, None, d.x_f, d.y, d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, None, d.x_d, d.y, d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[tuple]:
@@ -332,7 +331,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`s"""
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""
@@ -348,7 +347,7 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     @property
     def n_components(self) -> int:
         return len(self.datasets)
-    
+
     def __getitem__(self, idx: int) -> list[Datum]:
         return [dset[idx] for dset in self.datasets]
 
@@ -368,7 +367,7 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
         return self.datasets[0].normalize_targets(scaler)
 
     def normalize_inputs(
-        self, key: str | None = "X_f", scaler: StandardScaler | None = None
+        self, key: str | None = "X_d", scaler: StandardScaler | None = None
     ) -> list[StandardScaler]:
         return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
 

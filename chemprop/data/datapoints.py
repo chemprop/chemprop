@@ -21,7 +21,7 @@ class _DatapointMixin:
     """Indicates whether the targets are an inequality regression target of the form `<x`"""
     lt_mask: np.ndarray | None = None
     """Indicates whether the targets are an inequality regression target of the form `>x`"""
-    x_f: np.ndarray | None = None
+    x_d: np.ndarray | None = None
     """A vector of length ``d_f`` containing additional features (e.g., Morgan fingerprint) that
     will be concatenated to the global representation *after* aggregation"""
     mfs: InitVar[list[MoleculeFeaturizer] | None] = None
@@ -30,15 +30,15 @@ class _DatapointMixin:
     """A one-hot vector indicating the phase of the data, as used in spectra data."""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
-        if self.x_f is not None and mfs is not None:
+        if self.x_d is not None and mfs is not None:
             raise ValueError("Cannot provide both loaded features and molecular featurizers!")
 
         if mfs is not None:
-            self.x_f = self.calc_features(mfs)
+            self.x_d = self.calc_features(mfs)
 
         NAN_TOKEN = 0
-        if self.x_f is not None:
-            self.x_f[np.isnan(self.x_f)] = NAN_TOKEN
+        if self.x_d is not None:
+            self.x_d[np.isnan(self.x_d)] = NAN_TOKEN
 
     @property
     def t(self) -> int | None:
@@ -73,8 +73,8 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     concatenated to bond-level features *before* message passing"""
     V_d: np.ndarray | None = None
     """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vd`` is the number of additional features that will be concatenated to atom-level features
-    *after* message passing"""
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level 
+    descriptors *after* message passing"""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.mol is None:
@@ -150,10 +150,10 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
         return 2
 
     def calc_features(self, mfs: list[MoleculeFeaturizer]) -> np.ndarray:
-        x_fs = [
+        x_ds = [
             mf(mol) if mol.GetNumHeavyAtoms() > 0 else np.zeros(len(mf))
             for mf in mfs
             for mol in [self.rct, self.pdt]
         ]
 
-        return np.hstack(x_fs)
+        return np.hstack(x_ds)

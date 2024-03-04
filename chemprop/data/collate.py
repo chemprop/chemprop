@@ -11,14 +11,14 @@ from chemprop.featurizers import MolGraph
 
 @dataclass(repr=False, eq=False, slots=True)
 class BatchMolGraph:
-    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`s.
+    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`\s.
 
     It has all the attributes of a ``MolGraph`` with the addition of the ``batch`` attribute. This
-    class is intended for use with data loading, so it uses :obj:`~torch.Tensor`s to store data
+    class is intended for use with data loading, so it uses :obj:`~torch.Tensor`\s to store data
     """
 
     mgs: InitVar[Sequence[MolGraph]]
-    """A list of individual :class:`MolGraph`s to be batched together"""
+    """A list of individual :class:`MolGraph`\s to be batched together"""
     V: Tensor = field(init=False)
     """the atom feature matrix"""
     E: Tensor = field(init=False)
@@ -59,7 +59,7 @@ class BatchMolGraph:
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
 
     def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`s in this batch"""
+        """the number of individual :class:`MolGraph`\s in this batch"""
         return self.__size
 
     def to(self, device: str | torch.device):
@@ -73,7 +73,7 @@ class BatchMolGraph:
 class TrainingBatch(NamedTuple):
     bmg: BatchMolGraph
     V_d: Tensor | None
-    X_f: Tensor | None
+    X_d: Tensor | None
     Y: Tensor | None
     w: Tensor
     lt_mask: Tensor | None
@@ -81,12 +81,12 @@ class TrainingBatch(NamedTuple):
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    mgs, V_ds, x_fs, ys, weights, lt_masks, gt_masks = zip(*batch)
+    mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
 
     return TrainingBatch(
         BatchMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
-        None if x_fs[0] is None else torch.from_numpy(np.array(x_fs)).float(),
+        None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
         None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
         torch.tensor(weights).unsqueeze(1),
         None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
@@ -97,7 +97,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 class MulticomponentTrainingBatch(NamedTuple):
     bmgs: list[BatchMolGraph]
     V_ds: list[Tensor | None]
-    X_f: Tensor | None
+    X_d: Tensor | None
     Y: Tensor | None
     w: Tensor
     lt_mask: Tensor | None
@@ -110,7 +110,7 @@ def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> Multicomponent
     return MulticomponentTrainingBatch(
         [tb.bmg for tb in tbs],
         [tb.V_d for tb in tbs],
-        tbs[0].X_f,
+        tbs[0].X_d,
         tbs[0].Y,
         tbs[0].w,
         tbs[0].lt_mask,

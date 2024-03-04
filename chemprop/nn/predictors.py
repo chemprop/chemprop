@@ -30,7 +30,7 @@ __all__ = [
 
 class Predictor(nn.Module, HasHParams):
     r"""A :class:`Predictor` is a protocol that defines a differentiable function
-    :math:`f : \mathbb R^d \mapsto \mathbb R^o"""
+    :math:`f` : \mathbb R^d \mapsto \mathbb R^o"""
 
     input_dim: int
     """the input dimension"""
@@ -56,7 +56,7 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`s that use an
+    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
     underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
 
     _default_criterion: LossFunction
@@ -115,8 +115,8 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        loc: float | Tensor = 0.,
-        scale: float | Tensor = 1.,
+        loc: float | Tensor = 0.0,
+        scale: float | Tensor = 1.0,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
@@ -313,4 +313,3 @@ class SpectralFFN(_FFNPredictorBase):
         return Y / Y.sum(1, keepdim=True)
 
     train_step = forward
-
