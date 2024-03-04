@@ -68,8 +68,8 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
     )
 
-    # TODO: add uncertainty and calibration
-    # unc_args = parser.add_argument_group("uncertainty and calibration args")
+    # TODO: add uncertainty and calibration in v2.1
+    # unc_args = parser.add_argument_group("Uncertainty and calibration args")
     # unc_args.add_argument("--cal-path")
     # unc_args.add_argument("--cal-features-path")
     # unc_args.add_argument("--cal-atom-features-path")
