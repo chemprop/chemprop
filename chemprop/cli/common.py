@@ -40,11 +40,14 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
 
-    # parser.add_argument(
-    #     "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
-    # )
-    # parser.add_argument("--gpu", type=int, help="Which GPU to use.")
-    parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
+    parser.add_argument(
+        "--accelerator", default="auto", help="Passed directly to the lightning Trainer()."
+    )
+    parser.add_argument(
+        "--devices",
+        default="auto",
+        help="Passed directly to the lightning Trainer(). If specifying multiple devices, must be a single string of comma separated devices, e.g. '1, 2'.",
+    )
 
     featurization_args = parser.add_argument_group("Featurization args")
     featurization_args.add_argument(
