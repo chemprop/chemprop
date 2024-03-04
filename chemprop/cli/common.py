@@ -53,7 +53,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         choices=list(RxnMode.keys()),
         help="""Choices for construction of atom and bond features for reactions (case insensitive):
 - 'reac_prod': concatenates the reactants feature with the products feature.
-- 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products.
+- 'reac_diff': concatenates the reactants feature with the difference in features between reactants and products. (Default)
 - 'prod_diff': concatenates the products feature with the difference in features between reactants and products.
 - 'reac_prod_balance': concatenates the reactants feature with the products feature, balances imbalanced reactions.
 - 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
