@@ -209,8 +209,9 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
                 len(model.atom_targets),
                 len(model.bond_targets),
             )
-            uncal_vars = np.zeros_like(self.uncal_preds)
-            uncal_vars[:] = np.nan
+            uncal_vars = np.empty(len(sum_preds), dtype=object)
+            for i, pred in enumerate(sum_preds):
+                uncal_vars[i] = np.full(len(pred), np.nan)
             self.uncal_vars = reshape_values(
                 uncal_vars,
                 self.test_data,
