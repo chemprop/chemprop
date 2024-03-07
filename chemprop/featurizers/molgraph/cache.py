@@ -5,7 +5,7 @@ from typing import Generic, Iterable, TypeVar
 from rdkit import Chem
 import numpy as np
 
-from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
+from chemprop.featurizers.molgraph.base import MolGraphFeaturizer, T
 from chemprop.featurizers.molgraph.molgraph import MolGraph
 
 T = TypeVar("T", Chem.Mol, tuple[Chem.Mol, Chem.Mol])
