@@ -16,6 +16,7 @@ from .molecule import (
     CountFeaturizerMixin,
     MorganBinaryFeaturzer,
     MorganCountFeaturizer,
+    MoleculeFeaturizerRegistry,
 )
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "CGRFeaturizer",
     "RxnMode",
     "MoleculeFeaturizer",
+    "MoleculeFeaturizerRegistry",
     "MorganFeaturizerMixin",
     "BinaryFeaturizerMixin",
     "CountFeaturizerMixin",
