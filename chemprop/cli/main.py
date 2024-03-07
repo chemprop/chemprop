@@ -49,6 +49,7 @@ def construct_parser():
 
     return parser
 
+
 def main():
     parser = construct_parser()
     args = parser.parse_args()

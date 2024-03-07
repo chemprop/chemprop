@@ -2,7 +2,6 @@ import csv
 import pytest
 import numpy as np
 
-from pathlib import Path
 
 from lightning import pytorch as pl
 
