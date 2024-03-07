@@ -129,8 +129,8 @@ def test_mass_bit(x, mass_bit):
         # fmt: on
     ),
 )
-def test_x_orig(a, x_v_orig):
-    f = MultiHotAtomFeaturizer()
+def test_x_orig_organic(a, x_v_orig):
+    f = MultiHotAtomFeaturizer.organic()
     x_v_calc = f(a)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

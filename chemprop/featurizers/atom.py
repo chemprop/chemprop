@@ -20,8 +20,10 @@ class AtomFeaturizer(ABC):
 
 @dataclass(repr=False, eq=False, slots=True)
 class MultiHotAtomFeaturizer(AtomFeaturizer):
-    """An :class:`AtomFeaturizer` featurizes atoms based on the following attributes:
-
+    """An :class:`AtomFeaturizer` featurizes atoms using a multi-hot encoding scheme. Having specific implementations to customize certain features.
+    
+    The Chemprop default atom features are:
+    
     * atomic number
     * degree
     * formal charge
@@ -30,52 +32,15 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     * hybridization
     * aromaticity
     * mass
-
-    The feature vectors produced by this featurizer have the following (general) signature:
-
-    +---------------------+-----------------+--------------+
-    | slice [start, stop) | subfeature      | unknown pad? |
-    +=====================+=================+==============+
-    | 0-38                | atomic number   | Y            |
-    +---------------------+-----------------+--------------+
-    | 38-45               | degree          | Y            |
-    +---------------------+-----------------+--------------+
-    | 45-51               | formal charge   | Y            |
-    +---------------------+-----------------+--------------+
-    | 51-56               | chiral tag      | Y            |
-    +---------------------+-----------------+--------------+
-    | 56-62               | # Hs            | Y            |
-    +---------------------+-----------------+--------------+
-    | 62-71               | hybridization   | Y            |
-    +---------------------+-----------------+--------------+
-    | 71-72               | aromatic?       | N            |
-    +---------------------+-----------------+--------------+
-    | 72-73               | mass            | N            |
-    +---------------------+-----------------+--------------+
-
-    NOTE: the above signature only applies for the default arguments, as the each slice (save for
-    the final two) can increase in size depending on the input arguments.
     """
-
-    # all elements in the first 4 rows of periodic talbe plus iodine and 0 padding for other elements
-    atomic_nums: Sequence[int] = field(default_factory=lambda: list(range(1, 37)) + [53])
-    degrees: Sequence[int] = field(default_factory=lambda: range(6))
-    formal_charges: Sequence[int] = field(default_factory=lambda: [-1, -2, 1, 2, 0])
-    chiral_tags: Sequence[int] = field(default_factory=lambda: range(4))
-    num_Hs: Sequence[int] = field(default_factory=lambda: range(5))
-    hybridizations: Sequence[HybridizationType] = field(
-        default_factory=lambda: [
-            HybridizationType.S,
-            HybridizationType.SP,
-            HybridizationType.SP2,
-            HybridizationType.SP2D,
-            HybridizationType.SP3,
-            HybridizationType.SP3D,
-            HybridizationType.SP3D2,
-            HybridizationType.OTHER,
-        ]
-    )
-
+    
+    atomic_nums: Sequence[int] = field(default_factory=list)
+    degrees: Sequence[int] = field(default_factory=list)
+    formal_charges: Sequence[int] = field(default_factory=list)
+    chiral_tags: Sequence[int] = field(default_factory=list)
+    num_Hs: Sequence[int] = field(default_factory=list)
+    hybridizations: Sequence[HybridizationType] = field(default_factory=list)
+    
     def __post_init__(self):
         self.atomic_nums = {j: i for i, j in enumerate(self.atomic_nums)}
         self.degrees = {i: i for i in self.degrees}
@@ -141,3 +106,48 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         x[i] = 1
 
         return x
+    
+    @classmethod
+    def organic(cls):
+        """A specific implementation of MultiHotAtomFeaturizer that includes features only for atoms in common organic molecules. 
+        Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements.
+        This is the current default in Chemprop. 
+        
+        The feature vectors produced by this featurizer have the following signature:
+
+        +---------------------+-----------------+--------------+
+        | slice [start, stop) | subfeature      | unknown pad? |
+        +=====================+=================+==============+
+        | 0-38                | atomic number   | Y            |
+        +---------------------+-----------------+--------------+
+        | 38-45               | degree          | Y            |
+        +---------------------+-----------------+--------------+
+        | 45-51               | formal charge   | Y            |
+        +---------------------+-----------------+--------------+
+        | 51-56               | chiral tag      | Y            |
+        +---------------------+-----------------+--------------+
+        | 56-62               | # Hs            | Y            |
+        +---------------------+-----------------+--------------+
+        | 62-71               | hybridization   | Y            |
+        +---------------------+-----------------+--------------+
+        | 71-72               | aromatic?       | N            |
+        +---------------------+-----------------+--------------+
+        | 72-73               | mass            | N            |
+        +---------------------+-----------------+--------------+
+        """
+
+        return cls(atomic_nums = list(range(1, 37)) + [53],
+                   degrees = list(range(6)),
+                   formal_charges = [-1, -2, 1, 2, 0],
+                   chiral_tags = list(range(4)),
+                   num_Hs = list(range(5)),
+                   hybridizations = [
+                       HybridizationType.S,
+                       HybridizationType.SP,
+                       HybridizationType.SP2,
+                       HybridizationType.SP2D,
+                       HybridizationType.SP3,
+                       HybridizationType.SP3D,
+                       HybridizationType.SP3D2,
+                       HybridizationType.OTHER,
+                   ])
