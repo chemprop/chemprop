@@ -17,6 +17,7 @@ from chemprop.featurizers import (
     CGRFeaturizer,
 )
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.featurizers.molgraph.reaction import Rxn
 
 
 class Datum(NamedTuple):
@@ -166,22 +167,26 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.reset()
         self.cache = False
 
-    @property
-    def cache(self) -> bool:
-        return self.__cache
-    
-    @cache.setter
-    def cache(self, cache: bool = False):
-        self.__cache = cache
-        self.mg_cache = (MolGraphCacheOnTheFly if cache else MolGraphCache)(
-            self.mols, self.V_fs, self.E_fs, self.featurizer
-        )
-    
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
         mg = self.mg_cache[idx]
 
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self._init_cache()
+
+    def _init_cache(self):
+        """initialize the cache"""
+        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
+            self.mols, self.V_fs, self.E_fs, self.featurizer
+        )
 
     @property
     def smiles(self) -> list[str]:
@@ -209,6 +214,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self._validate_attribute(V_fs, "atom features")
 
         self.__V_fs = V_fs
+        self._init_cache()
 
     @property
     def _E_fs(self) -> list[np.ndarray]:
@@ -225,6 +231,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self._validate_attribute(E_fs, "bond features")
 
         self.__E_fs = E_fs
+        self._init_cache()
 
     @property
     def _V_ds(self) -> list[np.ndarray]:
@@ -311,7 +318,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: MolGraphFeaturizer[tuple[Chem.Mol, Chem.Mol]] = field(default_factory=CGRFeaturizer)
+    featurizer: MolGraphFeaturizer[Rxn] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):
@@ -324,7 +331,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def cache(self) -> bool:
         return self.__cache
-    
+
     @cache.setter
     def cache(self, cache: bool = False):
         self.__cache = cache
