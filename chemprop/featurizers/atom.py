@@ -108,8 +108,8 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         return x
     
     @classmethod
-    def organic(cls):
-        """A specific implementation of MultiHotAtomFeaturizer that includes features only for atoms in common organic molecules. 
+    def default(cls):
+        """A specific implementation of MultiHotAtomFeaturizer that includes features only for atoms in common molecules. 
         Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements.
         This is the current default in Chemprop. 
         
@@ -150,4 +150,100 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
                        HybridizationType.SP3D,
                        HybridizationType.SP3D2,
                        HybridizationType.OTHER,
+                   ])
+
+    @classmethod
+    def v1(cls, MAX_ATOMIC_NUM = 100):
+        """A specific implementation of MultiHotAtomFeaturizer that corresponds to the default in Chemprop v1. Ref. [1] & [2].
+        
+        The feature vectors produced by this featurizer have the following (general) signature:
+
+        +---------------------+-----------------+--------------+
+        | slice [start, stop) | subfeature      | unknown pad? |
+        +=====================+=================+==============+
+        | 0-101               | atomic number   | Y            |
+        +---------------------+-----------------+--------------+
+        | 101-108             | degree          | Y            |
+        +---------------------+-----------------+--------------+
+        | 108-114             | formal charge   | Y            |
+        +---------------------+-----------------+--------------+
+        | 114-119             | chiral tag      | Y            |
+        +---------------------+-----------------+--------------+
+        | 119-125             | # Hs            | Y            |
+        +---------------------+-----------------+--------------+
+        | 125-131             | hybridization   | Y            |
+        +---------------------+-----------------+--------------+
+        | 131-132             | aromatic?       | N            |
+        +---------------------+-----------------+--------------+
+        | 132-133             | mass            | N            |
+        +---------------------+-----------------+--------------+
+
+        NOTE: the above signature only applies for the default arguments, as the each slice (save for
+        the final two) can increase in size depending on the input arguments.
+        
+        Parameters
+        ----------
+        MAX_ATOMIC_NUM : int, default 100
+            The maximum atomic number to include in the feature vector. The default is 100.
+            
+        References
+        ----------
+        [1] J. Chem. Inf. Model. 2019, 59, 8, 3370–3388
+        [2] J. Chem. Inf. Model. 2024, 64, 1, 9–17
+        """
+
+        return cls(atomic_nums = list(range(MAX_ATOMIC_NUM)),
+                   degrees = list(range(6)),
+                   formal_charges = [-1, -2, 1, 2, 0],
+                   chiral_tags = list(range(4)),
+                   num_Hs = list(range(5)),
+                   hybridizations = [
+                       HybridizationType.SP,
+                       HybridizationType.SP2,
+                       HybridizationType.SP3,
+                       HybridizationType.SP3D,
+                       HybridizationType.SP3D2,
+                   ])
+        
+    @classmethod
+    def organic(cls):
+        """A specific implementation of MultiHotAtomFeaturizer that includes features only for atoms in common organic molecules. 
+        Includes H, B, C, N, O, F, Si, P, S, Cl, Br, I and an 0 padding for other elements.
+        Intended for use with organic molecules for drug research and development.
+        
+        The feature vectors produced by this featurizer have the following signature:
+
+        +---------------------+-----------------+--------------+
+        | slice [start, stop) | subfeature      | unknown pad? |
+        +=====================+=================+==============+
+        | 0-13                | atomic number   | Y            |
+        +---------------------+-----------------+--------------+
+        | 13-20               | degree          | Y            |
+        +---------------------+-----------------+--------------+
+        | 20-26               | formal charge   | Y            |
+        +---------------------+-----------------+--------------+
+        | 26-31               | chiral tag      | Y            |
+        +---------------------+-----------------+--------------+
+        | 31-37               | # Hs            | Y            |
+        +---------------------+-----------------+--------------+
+        | 37-44               | hybridization   | Y            |
+        +---------------------+-----------------+--------------+
+        | 44-45               | aromatic?       | N            |
+        +---------------------+-----------------+--------------+
+        | 45-46               | mass            | N            |
+        +---------------------+-----------------+--------------+
+        """
+        
+        return cls(atomic_nums = [1, 5, 6, 7, 8, 9, 14, 15, 16, 17, 35, 53],
+                   degrees = list(range(6)),
+                   formal_charges = [-1, -2, 1, 2, 0],
+                   chiral_tags = list(range(4)),
+                   num_Hs = list(range(5)),
+                   hybridizations = [
+                       HybridizationType.S,
+                       HybridizationType.SP,
+                       HybridizationType.SP2,
+                       HybridizationType.SP3,
+                       HybridizationType.SP3D,
+                       HybridizationType.SP3D2,
                    ])
