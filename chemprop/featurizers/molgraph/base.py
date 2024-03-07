@@ -25,7 +25,7 @@ class MolGraphFeaturizer(Generic[T], Callable):
 
         Parameters
         ----------
-        mol : T
+        input : T
             the input molecule or reaction
         atom_features_extra : np.ndarray | None, default=None
             Additional features to concatenate to the calculated atom features
