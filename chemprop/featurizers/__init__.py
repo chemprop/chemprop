@@ -14,7 +14,7 @@ from .molecule import (
     MorganFeaturizerMixin,
     BinaryFeaturizerMixin,
     CountFeaturizerMixin,
-    MorganBinaryFeaturzer,
+    MorganBinaryFeaturizer,
     MorganCountFeaturizer,
     MoleculeFeaturizerRegistry,
 )
@@ -36,6 +36,6 @@ __all__ = [
     "MorganFeaturizerMixin",
     "BinaryFeaturizerMixin",
     "CountFeaturizerMixin",
-    "MorganBinaryFeaturzer",
+    "MorganBinaryFeaturizer",
     "MorganCountFeaturizer",
 ]
