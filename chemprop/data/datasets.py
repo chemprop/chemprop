@@ -328,13 +328,12 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @cache.setter
     def cache(self, cache: bool = False):
         self.__cache = cache
-        self.mg_cache = (MolGraphCacheOnTheFly if cache else MolGraphCache)(
+        self.mg_cache = (MolGraphCache if cache else MolGraphCacheOnTheFly)(
             self.mols, [None] * len(self), [None] * len(self), self.featurizer
         )
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        # mg = self.featurizer((d.rct, d.pdt), None, None)
         mg = self.mg_cache[idx]
 
         return Datum(mg, None, d.x_d, d.y, d.weight, d.lt_mask, d.gt_mask)

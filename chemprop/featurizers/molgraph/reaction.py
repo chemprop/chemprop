@@ -39,7 +39,7 @@ class RxnMode(EnumMapping):
 
 @dataclass
 class CondensedGraphOfReactionFeaturizer(
-    _MolGraphFeaturizerMixin, MolGraphFeaturizer[tuple[Chem.Mol, Chem.Mol]]
+    _MolGraphFeaturizerMixin, MolGraphFeaturizer[Rxn]
 ):
     """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed
     reaction graph method utilized in [1]_
@@ -93,7 +93,7 @@ class CondensedGraphOfReactionFeaturizer(
 
         Parameters
         ----------
-        rxn : tuple[Chem.Mol, Chem.Mol]
+        rxn : Rxn
             a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
             1st element is the product
         atom_features_extra : np.ndarray | None, default=None
