@@ -145,8 +145,15 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`\s
+    """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
 
+    A :class:`MoleculeDataset` produces featurized data for input to a
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``MoleculeDataset.cache=True``.
+    
     Parameters
     ----------
     data : Iterable[MoleculeDatapoint]
@@ -314,7 +321,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s"""
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s
+    
+    .. note::
+        The featurized data provided by this class may be cached, simlar to a
+        :class:`MoleculeDataset`. To enable the cache, set ``ReactionDataset
+        cache=True``.
+    """
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
