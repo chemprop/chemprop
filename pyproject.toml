@@ -59,6 +59,7 @@ packages = ["chemprop"]
 line-length = 100
 target-version = ["py311"]
 skip-magic-trailing-comma = true
+required-version = "23"
 
 [tool.autopep8]
 in_place = true
