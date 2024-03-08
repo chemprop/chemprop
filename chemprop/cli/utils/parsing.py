@@ -12,6 +12,7 @@ from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 
 logger = logging.getLogger(__name__)
 
@@ -262,16 +263,29 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str
+    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint], reaction_mode: str, multi_hot_atom_featurizer_mode: str = "DEFAULT",
 ) -> MoleculeDataset | ReactionDataset:
+    
+    match multi_hot_atom_featurizer_mode:
+        case "DEFAULT":
+            atom_featurizer=MultiHotAtomFeaturizer.default()
+        
+        case "V1":
+            atom_featurizer=MultiHotAtomFeaturizer.v1()
+            
+        case "ORGANIC":
+            atom_featurizer=MultiHotAtomFeaturizer.organic()
+     
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
-            extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
+            atom_featurizer=atom_featurizer, 
+            extra_atom_fdim=extra_atom_fdim, 
+            extra_bond_fdim=extra_bond_fdim
         )
         return MoleculeDataset(data, featurizer)
 
-    featurizer = CondensedGraphOfReactionFeaturizer(mode_=reaction_mode)
+    featurizer = CondensedGraphOfReactionFeaturizer(mode_=reaction_mode, atom_featurizer=atom_featurizer)
 
     return ReactionDataset(data, featurizer)

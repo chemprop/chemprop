@@ -64,6 +64,17 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 - 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
 - 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
     )
+    #TODO: Update documenation for multi_hot_atom_featurizer_mode
+    featurization_args.add_argument(
+        "--multi_hot_atom_featurizer_mode",
+        type=uppercase,
+        default="DEFAULT",
+        choices=list(RxnMode.keys()),
+        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
+- 'default': Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements (default in Chemprop v2).
+- 'v1': Same implementation as Chemprop v1 default.
+- 'organic': Includes H, B, C, N, O, F, Si, P, S, Cl, Br, I and an 0 padding for other elements.""",
+    )
     featurization_args.add_argument(
         "--keep-h",
         action="store_true",
