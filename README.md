@@ -145,7 +145,7 @@ Run this command to download and run a given release version of Chemprop:
 where `X.Y.Z` is the version you want to download, i.e. `1.7.0`.
 
 > [!NOTE]
-> Not all versions of Chemprop are available from DockerHub - see the [DockerHub](https://hub.docker.com/repository/docker/chemprop/chemprop/general) page for a complete list of those available.
+> Not all versions of Chemprop are available from DockerHub - see the [DockerHub](https://hub.docker.com/r/chemprop/chemprop/tags) page for a complete list of those available.
 
 DockerHub also has a `latest` tag - this is _not_ the latest release of Chemprop, but rather the latest version of `master` which is _not necessarily fit for deployment_.
 Use this tag only for development or if you need to access a feature which has not yet been formally released!
