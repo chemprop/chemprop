@@ -126,20 +126,39 @@ Then proceed to either option below to complete the installation. If installing 
 
 ### Docker
 
-Chemprop can also be installed with Docker. Docker makes it possible to isolate the Chemprop code and environment. To install and run our code in a Docker container, follow these steps:
+Chemprop can also be installed with Docker.
+Docker makes it possible to isolate the Chemprop code and environment.
+You can either pull a pre-built image or build it locally.
+
+Note that regardless of installation method you will need to run the `docker run` command with the `--gpus` command line flag to access GPUs on your machine.
+
+In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine.
+Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions.
+To set a specific CUDA toolkit version, add `cudatoolkit=X.Y` to `environment.yml` before building the Docker image.
+
+#### Pull Pre-Built
+
+Run this command to download and run a given release version of Chemprop:
+
+`docker run -it chemprop/chemprop:X.Y.X`
+
+where `X.Y.Z` is the version you want to download, i.e. `1.7.0`.
+
+> [!NOTE]
+> Not all versions of Chemprop are available from DockerHub - see the [DockerHub](https://hub.docker.com/r/chemprop/chemprop/tags) page for a complete list of those available.
+
+DockerHub also has a `latest` tag - this is _not_ the latest release of Chemprop, but rather the latest version of `master` which is _not necessarily fit for deployment_.
+Use this tag only for development or if you need to access a feature which has not yet been formally released!
+
+#### Local Build
+
+To install and run our code in a Docker container, follow these steps:
 
 1. `git clone https://github.com/chemprop/chemprop.git`
 2. `cd chemprop`
 3. Install Docker from [https://docs.docker.com/install/](https://docs.docker.com/install/)
 4. `docker build -t chemprop .`
 5. `docker run -it chemprop:latest`
-
-Note that you will need to run the latter command with nvidia-docker if you are on a GPU machine in order to be able to access the GPUs.
-Alternatively, with Docker 19.03+, you can specify the `--gpus` command line option instead.
-
-In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine.
-Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions.
-To set a specific CUDA toolkit version, add `cudatoolkit=X.Y` to `environment.yml` before building the Docker image.
 
 ## Known Issues
 
