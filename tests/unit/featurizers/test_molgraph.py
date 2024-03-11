@@ -6,8 +6,8 @@ from chemprop.featurizers import (
     SimpleMoleculeMolGraphFeaturizer,
     MolGraph,
     MultiHotAtomFeaturizer,
+    MolGraphFeaturizer
 )
-from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
 
 
 @pytest.fixture(params=[0, 10, 100])

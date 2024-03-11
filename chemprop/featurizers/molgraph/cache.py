@@ -8,7 +8,6 @@ from chemprop.featurizers.molgraph.base import MolGraphFeaturizer, T
 from chemprop.featurizers.molgraph.molgraph import MolGraph
 
 
-
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[T]):
     """
     A :class:`MolGraphCacheFacade` provided an interface for caching
@@ -48,6 +47,7 @@ class MolGraphCache(MolGraphCacheFacade):
     A :class:`MolGraphCache` precomputes the corresponding
     :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s and caches them in memory.
     """
+
     def __init__(
         self,
         inputs: Iterable[T],

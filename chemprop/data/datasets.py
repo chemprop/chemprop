@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from functools import cached_property
-from typing import NamedTuple, TypeAlias
+from typing import NamedTuple
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -153,7 +153,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     DataLoader` class. However, for small datasets, it may be more efficient to
     featurize the data in advance and cache the results. This can be done by
     setting ``MoleculeDataset.cache=True``.
-    
+
     Parameters
     ----------
     data : Iterable[MoleculeDatapoint]
@@ -322,7 +322,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s
-    
+
     .. note::
         The featurized data provided by this class may be cached, simlar to a
         :class:`MoleculeDataset`. To enable the cache, set ``ReactionDataset
