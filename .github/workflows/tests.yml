@@ -11,17 +11,10 @@ on:
 
 jobs:
   build:
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]  # TODO: fix windows permissions issues and add windows-latest
         python-version: ['3.7', '3.8']
-        exclude:
-        # excludes node 8 on macOS
-          - os: macos-latest
-            python-version: '3.8'
-
     steps:
     - uses: actions/checkout@v2
     - name: Setup Python ${{ matrix.python-version }}
@@ -29,13 +22,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
-    - name: Set temp directories on Windows
-      shell: bash {0}
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "TMPDIR=$env:USERPROFILE\AppData\Local\Temp" >> $env:GITHUB_ENV
-        echo "TEMP=$env:USERPROFILE\AppData\Local\Temp" >> $env:GITHUB_ENV
-        echo "TMP=$env:USERPROFILE\AppData\Local\Temp" >> $env:GITHUB_ENV
     - name: Install dependencies
       shell: bash {0}
       run: |
