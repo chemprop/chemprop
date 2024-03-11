@@ -102,7 +102,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         if a is None:
             return x
 
-        i = self.atomic_nums.get(a.GetAtomicNum() - 1, len(self.atomic_nums))
+        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
         x[i] = 1
 
         return x
