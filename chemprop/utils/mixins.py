@@ -46,7 +46,7 @@ class ReprMixin:
         """
         name_to_value = {}
         for name in self._get_default_params.keys():
-            value = getattr(self, param_name)
+            value = getattr(self, name)
             name_to_value[name] = value
             if deep and hasattr(value, "get_params") and not isinstance(value, type):
                 _params = value.get_params()
