@@ -11,7 +11,7 @@ Chemprop can either be installed from PyPI via pip_ or from source (i.e., direct
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 .. note:: 
-    We also plan to make chemprop installable using an `environment.yml` file with `conda` before the release of v2.0.0.
+    We also plan to make chemprop installable using an ``environment.yml`` file with ``conda`` before the release of v2.0.0.
 
 Start by setting up your virtual environment. We assume you are using ``conda`` or ``miniconda``, but you may adapt these steps use any virtual environment manager you like:
 
@@ -76,8 +76,8 @@ Pull Official Images
     docker pull chemprop/chemprop:X.Y.ZrcN
     docker run -it chemprop/chemprop:X.Y.ZrcN
 
-Where `X`, `Y`, `Z`, and `N`, should be replaced with the version of Chemprop you wish to ``pull``.
-For example, to pull `chemprop-2.0.0rc1` run
+Where ``X``, ``Y``, ``Z``, and ``N``, should be replaced with the version of Chemprop you wish to ``pull``.
+For example, to pull ``chemprop-2.0.0rc1`` run
 
 .. code-block::
 
