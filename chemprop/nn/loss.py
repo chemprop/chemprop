@@ -299,18 +299,6 @@ class _ThresholdMixin:
     def get_params(
         self, deep: bool = True  # pylint: disable=unused-argument
     ) -> dict[str, float | None]:
-        """Get the parameters of the class.
-
-        Parameters
-        ----------
-        deep: bool, default=True
-            No effect on this method.
-
-        Returns
-        -------
-        dict[str, float | None]
-            The parameters of the class.
-        """
         return {"threshold": self.threshold}
 
 
