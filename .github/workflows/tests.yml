@@ -80,7 +80,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     # ensure we only run on pushes to main of chemprop (i.e. not forks, dev branches, etc.)
-    if: github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'
+    if: github.ref == 'refs/heads/master' && github.repository == 'chemprop/chemprop'
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
