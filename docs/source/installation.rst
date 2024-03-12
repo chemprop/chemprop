@@ -57,12 +57,12 @@ Option 3: Installing via Docker
  
 Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment.
 To install and run Chemprop in a Docker container, first install Docker from docker_.
-You may then either `pull` and use official Chemprop images or `build` the image yourself.
+You may then either ``pull`` and use official Chemprop images or ``build`` the image yourself.
 
 .. note:: 
     The Chemprop Dockerfile runs only on CPU and does not support GPU acceleration.
     Linux users with NVIDIA GPUs may install the `nvidia-container-toolkit`_ from NVIDIA and modify the installation instructions in the Dockerfile to install versions of `torch` and `torch-scatter` which are compatible with your system's GPUs and drivers.
-    Adding the `--gpus all` argument to `docker run` will then allow Chemprop to run on GPU from within the container.
+    Adding the ``--gpus all`` argument to ``docker run`` will then allow Chemprop to run on GPU from within the container.
     Users on other systems should install Chemprop from PyPI or source.
 
 .. _docker: https://www.docker.com/get-started/
@@ -73,18 +73,25 @@ Pull Official Images
 
 .. code-block::
 
-    docker pull chemprop/chemprop:X.Y.X.rcN
-    docker run -it chemprop/chemprop:X.Y.X.rcN
+    docker pull chemprop/chemprop:X.Y.ZrcN
+    docker run -it chemprop/chemprop:X.Y.ZrcN
 
-Where `X`, `Y`, `Z`, and `N`, should be replaced with the version of Chemprop you wish to `pull`.
-Note that not all versions of Chemprop are available as pre-built images - see the `Docker Hub`_ page for a list of those that are available.
+Where `X`, `Y`, `Z`, and `N`, should be replaced with the version of Chemprop you wish to ``pull``.
+For example, to pull `chemprop-2.0.0rc1` run
+
+.. code-block::
+
+    docker pull chemprop/chemprop:2.0.0rc1
+
+Note that not all versions of Chemprop are available as pre-built images.
+Visit the `Docker Hub`_ page for a list of those that are available.
 
 .. _`Docker Hub`: https://hub.docker.com/repository/docker/chemprop/chemprop/general
 
 Build Image Locally
 +++++++++++++++++++
 
-First follow the instructions in `Installing from Source` up to invoking `pip`, and then run the following:
+First follow the instructions in `Option 2: Installing from Source`_ up to invoking ``pip``, and then run the following:
 
 .. code-block::
 
