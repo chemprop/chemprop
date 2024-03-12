@@ -37,7 +37,12 @@ class ReprMixin:
         Returns
         -------
         dict[str, Any]
-            Parameter names mapped to their values.
+             The parameter names and respective values used to initialize this class.
+             That is, an identical initialization of this object can be achieved via:
+             ```python
+                o: ReprMixin
+                o_copy = type(o)(**o.get_params(deep=False))
+            ```
         """
         name_to_value = {}
         for name in self._get_default_params.keys():
