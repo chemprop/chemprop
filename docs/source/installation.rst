@@ -11,7 +11,7 @@ Chemprop can either be installed from PyPI via pip_ or from source (i.e., direct
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 .. note:: 
-    We also plan to make chemprop installable using `Docker` or using an `environment.yml` file with `conda` before the release of v2.0.0.
+    We also plan to make chemprop installable using an `environment.yml` file with `conda` before the release of v2.0.0.
 
 Start by setting up your virtual environment. We assume you are using ``conda`` or ``miniconda``, but you may adapt these steps use any virtual environment manager you like:
 
@@ -52,24 +52,41 @@ Option 2: Installing from source
     pip install torch-scatter
     pip install .
 
-.. Option 3: Installing via Docker
-.. -------------------------------
+Option 3: Installing via Docker
+-------------------------------
+ 
+Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment.
+To install and run Chemprop in a Docker container, first install Docker from docker_.
+You may then either `pull` and use official Chemprop images or `build` the image yourself.
 
-.. Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment. To install and run our code in a Docker container, first install docker from docker_. Then, run the following commands:
+.. note:: 
+    The Chemprop Dockerfile runs only on CPU and does not support GPU acceleration.
+    Linux users with NVIDIA GPUs may install the `nvidia-container-toolkit`_ from NVIDIA and modify the installation instructions in the Dockerfile to install versions of `torch` and `torch-scatter` which are compatible with your system's GPUs and drivers.
+    Adding the `--gpus all` argument to `docker run` will then allow Chemprop to run on GPU from within the container.
+    Users on other systems should install Chemprop from PyPI or source.
 
-.. .. code-block::
+.. _docker: https://www.docker.com/get-started/
+.. _`nvidia-container-toolkit`: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 
-..     git clone https://github.com/chemprop/chemprop.git
-..     cd chemprop
-..     git checkout v2/dev
-..     docker build --tag chemprop . --build-arg="CUDA=<cuda_arg>"
-..     docker run -it chemprop:latest
+Pull Official Images
+++++++++++++++++++++
 
+.. code-block::
 
-.. .. note:: 
-..     In the docker build line, replace ``<cuda_arg>`` with ``cpu``, ``cu118``, or ``cu121`` depending on your version of PyTorch. If experiencing permission errors, prepend ``sudo`` to the Docker commands.
+    docker pull chemprop/chemprop:X.Y.X.rcN
+    docker run -it chemprop/chemprop:X.Y.X.rcN
 
-..     You will need to run the last command with ``nvidia-docker`` if you are on a GPU machine in order to be able to access the GPUs. Alternatively, with ``docker >= 19.03``, you can specify the ``--gpus`` command line option instead.
+Where `X`, `Y`, `Z`, and `N`, should be replaced with the version of Chemprop you wish to `pull`.
+Note that not all versions of Chemprop are available as pre-built images - see the `Docker Hub`_ page for a list of those that are available.
 
-..     In addition, you will also need to ensure that the CUDA toolkit version in the Docker image is compatible with the CUDA driver on your host machine. Newer CUDA driver versions are backward-compatible with older CUDA toolkit versions. To set a specific CUDA toolkit version, add ``cudatoolkit=X.Y`` to ``environment.yml`` before building the Docker image.
+.. _`Docker Hub`: https://hub.docker.com/repository/docker/chemprop/chemprop/general
 
+Build Image Locally
++++++++++++++++++++
+
+First follow the instructions in `Installing from Source` up to invoking `pip`, and then run the following:
+
+.. code-block::
+
+    docker build --tag=chemprop .
+    docker run -it chemprop
