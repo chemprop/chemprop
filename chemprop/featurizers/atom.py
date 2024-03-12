@@ -192,7 +192,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         [2] J. Chem. Inf. Model. 2024, 64, 1, 9–17
         """
 
-        return cls(atomic_nums = list(range(MAX_ATOMIC_NUM)),
+        return cls(atomic_nums = list(range(1, MAX_ATOMIC_NUM + 1)),
                    degrees = list(range(6)),
                    formal_charges = [-1, -2, 1, 2, 0],
                    chiral_tags = list(range(4)),
