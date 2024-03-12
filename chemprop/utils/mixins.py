@@ -31,8 +31,8 @@ class ReprMixin:
         Parameters
         ----------
         deep : bool, default=True
-            If True, will return the parameters for this estimator and
-            contained subobjects that are estimators.
+            If True, will return the parameters for this object and all contained subobjects
+            which implement the `get_params` method.
 
         Returns
         -------
