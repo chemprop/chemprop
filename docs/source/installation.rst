@@ -3,11 +3,11 @@
 Installation
 ============
 
-Chemprop can either be installed from PyPI via pip_, from source (i.e., directly from the `git repo`_), or from docker_. The PyPI version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like.
+Chemprop can either be installed from PyPI via pip_, from source (i.e., directly from the `git repo`_), or from Docker_. The PyPI version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like.
 
 .. _pip: https://pypi.org/project/chemprop/
 .. _git repo: https://github.com/chemprop/chemprop.git
-.. _docker: https://docker.com
+.. _Docker: https://docker.com
 .. _conda: https://docs.conda.io/en/latest/conda.html
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
