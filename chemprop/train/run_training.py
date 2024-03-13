@@ -468,7 +468,7 @@ def run_training(args: TrainArgs,
                     task_name = f"{task_name}_{args.quantile_loss_alpha}_half_interval"
                     test_preds_dataframe[task_name] = [interval[i] for interval in intervals]
             else:
-                for i, task_name in enumerate(task_names):
+                for i, task_name in enumerate(args.task_names):
                     test_preds_dataframe[task_name] = [pred[i] for pred in avg_test_preds]
 
         test_preds_dataframe.to_csv(os.path.join(args.save_dir, 'test_preds.csv'), index=False)
