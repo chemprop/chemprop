@@ -66,13 +66,13 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     #TODO: Update documenation for multi_hot_atom_featurizer_mode
     featurization_args.add_argument(
-        "--multi_hot_atom_featurizer_mode",
+        "--multi-hot-atom-featurizer-mode",
         type=uppercase,
         default="DEFAULT",
-        choices=list(RxnMode.keys()),
+        choices=["DEFAULT", "V1", "ORGANIC"],
         help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
 - 'default': Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements (default in Chemprop v2).
-- 'v1': Same implementation as Chemprop v1 default.
+- 'v1': Includes the first 100 elements in the periodic table (same implementation as Chemprop v1 default). 
 - 'organic': Includes H, B, C, N, O, F, Si, P, S, Cl, Br, I and an 0 padding for other elements.""",
     )
     featurization_args.add_argument(

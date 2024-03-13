@@ -20,7 +20,7 @@ class AtomFeaturizer(ABC):
 
 @dataclass(repr=False, eq=False, slots=True)
 class MultiHotAtomFeaturizer(AtomFeaturizer):
-    """An :class:`AtomFeaturizer` featurizes atoms using a multi-hot encoding scheme. Having specific implementations to customize certain features.
+    """An :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
     
     The Chemprop default atom features are:
     
@@ -42,27 +42,27 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     hybridizations: Sequence[HybridizationType] = field(default_factory=list)
     
     def __post_init__(self):
-        self.atomic_nums = {j: i for i, j in enumerate(self.atomic_nums)}
-        self.degrees = {i: i for i in self.degrees}
-        self.formal_charges = {j: i for i, j in enumerate(self.formal_charges)}
-        self.chiral_tags = {i: i for i in self.chiral_tags}
-        self.num_Hs = {i: i for i in self.num_Hs}
-        self.hybridizations = {ht: i for i, ht in enumerate(self.hybridizations)}
+        self._atomic_nums = {j: i for i, j in enumerate(self.atomic_nums)}
+        self._degrees = {i: i for i in self.degrees}
+        self._formal_charges = {j: i for i, j in enumerate(self.formal_charges)}
+        self._chiral_tags = {i: i for i in self.chiral_tags}
+        self._num_Hs = {i: i for i in self.num_Hs}
+        self._hybridizations = {ht: i for i, ht in enumerate(self.hybridizations)}
         self._subfeats: list[dict] = [
-            self.atomic_nums,
-            self.degrees,
-            self.formal_charges,
-            self.chiral_tags,
-            self.num_Hs,
-            self.hybridizations,
+            self._atomic_nums,
+            self._degrees,
+            self._formal_charges,
+            self._chiral_tags,
+            self._num_Hs,
+            self._hybridizations,
         ]
         subfeat_sizes = [
-            1 + len(self.atomic_nums),
-            1 + len(self.degrees),
-            1 + len(self.formal_charges),
-            1 + len(self.chiral_tags),
-            1 + len(self.num_Hs),
-            1 + len(self.hybridizations),
+            1 + len(self._atomic_nums),
+            1 + len(self._degrees),
+            1 + len(self._formal_charges),
+            1 + len(self._chiral_tags),
+            1 + len(self._num_Hs),
+            1 + len(self._hybridizations),
             1,
             1,
         ]
@@ -102,16 +102,15 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         if a is None:
             return x
 
-        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
+        i = self._atomic_nums.get(a.GetAtomicNum(), len(self._atomic_nums))
         x[i] = 1
 
         return x
     
     @classmethod
     def default(cls):
-        """A specific implementation of MultiHotAtomFeaturizer that includes features only for atoms in common molecules. 
-        Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements.
-        This is the current default in Chemprop. 
+        """An implementation that includes features only for atoms in common molecules. 
+        Includes all elements in the first four rows of the periodic table plus iodine. This is the default in Chemprop V2. 
         
         The feature vectors produced by this featurizer have the following signature:
 
@@ -128,11 +127,11 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         +---------------------+-----------------+--------------+
         | 56-62               | # Hs            | Y            |
         +---------------------+-----------------+--------------+
-        | 62-71               | hybridization   | Y            |
+        | 62-70               | hybridization   | Y            |
         +---------------------+-----------------+--------------+
-        | 71-72               | aromatic?       | N            |
+        | 70-71               | aromatic?       | N            |
         +---------------------+-----------------+--------------+
-        | 72-73               | mass            | N            |
+        | 71-72               | mass            | N            |
         +---------------------+-----------------+--------------+
         """
 
@@ -149,12 +148,11 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
                        HybridizationType.SP3,
                        HybridizationType.SP3D,
                        HybridizationType.SP3D2,
-                       HybridizationType.OTHER,
                    ])
 
     @classmethod
-    def v1(cls, MAX_ATOMIC_NUM = 100):
-        """A specific implementation of MultiHotAtomFeaturizer that corresponds to the default in Chemprop v1. Ref. [1] & [2].
+    def v1(cls, max_atomic_num: int = 100):
+        """The original implementation used in Chemprop V1 [1]_, [2]_.
         
         The feature vectors produced by this featurizer have the following (general) signature:
 
@@ -178,21 +176,22 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         | 132-133             | mass            | N            |
         +---------------------+-----------------+--------------+
 
-        NOTE: the above signature only applies for the default arguments, as the each slice (save for
+        .. note:: 
+        the above signature only applies for the default arguments, as the each slice (save for
         the final two) can increase in size depending on the input arguments.
         
         Parameters
         ----------
-        MAX_ATOMIC_NUM : int, default 100
+        max_atomic_num : int, default 100
             The maximum atomic number to include in the feature vector. The default is 100.
             
         References
         ----------
-        [1] J. Chem. Inf. Model. 2019, 59, 8, 3370–3388
-        [2] J. Chem. Inf. Model. 2024, 64, 1, 9–17
+        .. [1] J. Chem. Inf. Model. 2019, 59, 8, 3370–3388
+        .. [2] J. Chem. Inf. Model. 2024, 64, 1, 9–17
         """
 
-        return cls(atomic_nums = list(range(1, MAX_ATOMIC_NUM + 1)),
+        return cls(atomic_nums = list(range(1, max_atomic_num + 1)),
                    degrees = list(range(6)),
                    formal_charges = [-1, -2, 1, 2, 0],
                    chiral_tags = list(range(4)),
@@ -226,11 +225,11 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         +---------------------+-----------------+--------------+
         | 31-37               | # Hs            | Y            |
         +---------------------+-----------------+--------------+
-        | 37-44               | hybridization   | Y            |
+        | 37-43               | hybridization   | Y            |
         +---------------------+-----------------+--------------+
-        | 44-45               | aromatic?       | N            |
+        | 43-44               | aromatic?       | N            |
         +---------------------+-----------------+--------------+
-        | 45-46               | mass            | N            |
+        | 44-45               | mass            | N            |
         +---------------------+-----------------+--------------+
         """
         
@@ -244,6 +243,4 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
                        HybridizationType.SP,
                        HybridizationType.SP2,
                        HybridizationType.SP3,
-                       HybridizationType.SP3D,
-                       HybridizationType.SP3D2,
                    ])
