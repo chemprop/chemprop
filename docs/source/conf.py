@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "Chemprop"
 copyright = "2024, Chemprop developers"
 author = "Chemprop developers"
-release = "2.0.0b1"
+release = "2.0.0-rc.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -31,7 +31,7 @@ extensions = [
     "nbsphinx_link",
 ]
 
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
 templates_path = ["_templates"]
 exclude_patterns = []
 autodoc_typehints = "description"
