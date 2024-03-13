@@ -3,11 +3,11 @@
 Installation
 ============
 
-Chemprop can either be installed from PyPI via pip_, from source (i.e., directly from the `git repo`_), or from docker_. The PyPI version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like.
+Chemprop can either be installed from PyPI via pip_, from source (i.e., directly from the `git repo`_), or from `Docker`_. The PyPI version includes a vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like.
 
 .. _pip: https://pypi.org/project/chemprop/
 .. _git repo: https://github.com/chemprop/chemprop.git
-.. _docker: https://docker.com
+.. _`Docker`: https://www.docker.com/get-started/
 .. _conda: https://docs.conda.io/en/latest/conda.html
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
@@ -57,7 +57,7 @@ Option 3: Installing via Docker
 -------------------------------
  
 Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment.
-To install and run Chemprop in a Docker container, first install Docker from docker_.
+To install and run Chemprop in a Docker container, first install `Docker`_.
 You may then either ``pull`` and use official Chemprop images or ``build`` the image yourself.
 
 .. note:: 
@@ -66,7 +66,6 @@ You may then either ``pull`` and use official Chemprop images or ``build`` the i
     Adding the ``--gpus all`` argument to ``docker run`` will then allow Chemprop to run on GPU from within the container.
     Users on other systems should install Chemprop from PyPI or source.
 
-.. _docker: https://www.docker.com/get-started/
 .. _`nvidia-container-toolkit`: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 
 Pull Official Images
