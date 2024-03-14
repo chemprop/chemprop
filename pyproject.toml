@@ -27,7 +27,7 @@ keywords = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "lightning >= 2.0, < 1000",
+    "lightning >= 2.0",
     "numpy",
     "pandas",
     "rdkit",
