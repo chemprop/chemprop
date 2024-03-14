@@ -27,7 +27,7 @@ keywords = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "lightning >= 2.0",
+    "lightning >= 2.0, < 1000",
     "numpy",
     "pandas",
     "rdkit",
@@ -54,6 +54,9 @@ chemprop = "chemprop.cli.main:main"
 
 [tool.setuptools]
 packages = ["chemprop"]
+
+[tool.setuptools.package-data]
+chemprop = ["py.typed"]
 
 [tool.black]
 line-length = 100
