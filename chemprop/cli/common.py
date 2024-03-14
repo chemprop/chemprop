@@ -64,16 +64,16 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 - 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
 - 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
     )
-    #TODO: Update documenation for multi_hot_atom_featurizer_mode
+    # TODO: Update documenation for multi_hot_atom_featurizer_mode
     featurization_args.add_argument(
         "--multi-hot-atom-featurizer-mode",
         type=uppercase,
         default="DEFAULT",
         choices=["DEFAULT", "V1", "ORGANIC"],
         help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
-- 'default': Includes all elements in the first 4 rows of the periodic talbe plus iodine and an 0 padding for other elements (default in Chemprop v2).
-- 'v1': Includes the first 100 elements in the periodic table (same implementation as Chemprop v1 default). 
-- 'organic': Includes H, B, C, N, O, F, Si, P, S, Cl, Br, I and an 0 padding for other elements.""",
+- `DEFAULT`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
+- `V1`: Corresponds to the original configuration employed in the Chemprop V1.
+- `ORGANIC`: Designed specifically for use with organic molecules for drug research and development, this configuration includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
     )
     featurization_args.add_argument(
         "--keep-h",

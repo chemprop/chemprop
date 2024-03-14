@@ -21,8 +21,12 @@ class AtomFeaturizer(ABC):
 class MultiHotAtomFeaturizer(AtomFeaturizer):
     """An :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
-    The Chemprop default atom features are:
+    This featurizer provides three configurations:
+    * default
+    * v1
+    * organic
 
+    The generated atom features are ordered as follows:
     * atomic number
     * degree
     * formal charge
@@ -32,87 +36,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     * aromaticity
     * mass
 
-    This featurizer provides three configurations tailored to different chemical informatics needs:
-
-    1. `default`: Tailored for a broad range of molecules, this configuration encompasses all elements
-    in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
-    2. `v1`: Corresponds to the original configuration employed in the Chemprop V1 [1]_, [2]_.
-    3. `organic`: Designed specifically for use with organic molecules for drug research and development,
-    this configuration includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.
-
-    
-    Feature vector specifications for each configuration are detailed as follows:
-
-    `default` configuration produces feature vectors with the following schema:
-
-    +---------------------+-----------------+--------------+
-    | slice [start, stop) | subfeature      | unknown pad? |
-    +=====================+=================+==============+
-    | 0-38                | atomic number   | Y            |
-    +---------------------+-----------------+--------------+
-    | 38-45               | degree          | Y            |
-    +---------------------+-----------------+--------------+
-    | 45-51               | formal charge   | Y            |
-    +---------------------+-----------------+--------------+
-    | 51-56               | chiral tag      | Y            |
-    +---------------------+-----------------+--------------+
-    | 56-62               | # Hs            | Y            |
-    +---------------------+-----------------+--------------+
-    | 62-70               | hybridization   | Y            |
-    +---------------------+-----------------+--------------+
-    | 70-71               | aromatic?       | N            |
-    +---------------------+-----------------+--------------+
-    | 71-72               | mass            | N            |
-    +---------------------+-----------------+--------------+
-
-
-    `v1` configuration produces feature vectors with the following schema:
-
-    +---------------------+-----------------+--------------+
-    | slice [start, stop) | subfeature      | unknown pad? |
-    +=====================+=================+==============+
-    | 0-101               | atomic number   | Y            |
-    +---------------------+-----------------+--------------+
-    | 101-108             | degree          | Y            |
-    +---------------------+-----------------+--------------+
-    | 108-114             | formal charge   | Y            |
-    +---------------------+-----------------+--------------+
-    | 114-119             | chiral tag      | Y            |
-    +---------------------+-----------------+--------------+
-    | 119-125             | # Hs            | Y            |
-    +---------------------+-----------------+--------------+
-    | 125-131             | hybridization   | Y            |
-    +---------------------+-----------------+--------------+
-    | 131-132             | aromatic?       | N            |
-    +---------------------+-----------------+--------------+
-    | 132-133             | mass            | N            |
-    +---------------------+-----------------+--------------+
-
-    **NOTE**: the above schema only applies for the default arguments, as the each slice (save for
-    the final two) can increase in size depending on the input arguments.
-
-
-    `organic` configuration produces feature vectors with the following schema:
-
-    +---------------------+-----------------+--------------+
-    | slice [start, stop) | subfeature      | unknown pad? |
-    +=====================+=================+==============+
-    | 0-13                | atomic number   | Y            |
-    +---------------------+-----------------+--------------+
-    | 13-20               | degree          | Y            |
-    +---------------------+-----------------+--------------+
-    | 20-26               | formal charge   | Y            |
-    +---------------------+-----------------+--------------+
-    | 26-31               | chiral tag      | Y            |
-    +---------------------+-----------------+--------------+
-    | 31-37               | # Hs            | Y            |
-    +---------------------+-----------------+--------------+
-    | 37-43               | hybridization   | Y            |
-    +---------------------+-----------------+--------------+
-    | 43-44               | aromatic?       | N            |
-    +---------------------+-----------------+--------------+
-    | 44-45               | mass            | N            |
-    +---------------------+-----------------+--------------+
+    **NOTE**: All the features, except for aromaticity and mass, are padded with an 0 for unknown values.
 
     Parameters
     ----------
@@ -128,15 +52,6 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         number of bonded hydrogen atoms
     hybridizations : Sequence[int] | None, default=None
         type of atom’s hybridization (ex. sp, sp2, sp3, sp3d, or sp3d2)
-
-    References
-    ----------
-    .. [1] Yang, K.; Swanson, K.; Jin, W.; Coley, C.; Eiden, P.; Gao, H.; Guzman-Perez, A.; Hopper, T.;
-        Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
-        J. Chem. Inf. Model. 2019, 59, 8, 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
-    .. [2] Heid, E.; Greenman, K.P.; Chung, Y.; Li, S.C., Graff, D.E.; Vermeire, F.H.; Wu, H.; Green, W.H.; McGill,
-        C.J., 2023. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
-        64, 1, 9–17. https://doi.org/10.1021/acs.jcim.3c01250
     """
 
     def __init__(
@@ -253,12 +168,21 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
-        """The original implementation used in Chemprop V1.
+        """The original implementation used in Chemprop V1 [1]_, [2]_.
 
         Parameters
         ----------
-        max_atomic_num : int, default 100
-            The maximum atomic number to include in the feature vector. The default is 100.
+        max_atomic_num : int, default=100
+            Include a bit for all atomic numbers in the interval `[1, max_atomic_num]`
+
+        References
+        -----------
+        .. [1] Yang, K.; Swanson, K.; Jin, W.; Coley, C.; Eiden, P.; Gao, H.; Guzman-Perez, A.; Hopper, T.;
+        Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
+        J. Chem. Inf. Model. 2019, 59 (8), 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
+        .. [2] Heid, E.; Greenman, K.P.; Chung, Y.; Li, S.C.; Graff, D.E.; Vermeire, F.H.; Wu, H.; Green, W.H.; McGill,
+        C.J. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
+        64 (1), 9–17. https://doi.org/10.1021/acs.jcim.3c01250
         """
 
         return cls(
@@ -278,9 +202,11 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     @classmethod
     def organic(cls):
-        """A specific implementation that includes features only for atoms in common organic molecules.
-        Includes H, B, C, N, O, F, Si, P, S, Cl, Br, and I.
-        Intended for use with organic molecules for drug research and development.
+        r"""A specific parameterization intended for use with organic or drug-like molecules.
+
+        This parameterization features:
+            1. includes an atomic number bit only for H, B, C, N, O, F, Si, P, S, Cl, Br, and I atoms
+            2. a hybridization bit for :math:`s, sp, sp^2` and :math:`sp^3` hybridizations.
         """
 
         return cls(
