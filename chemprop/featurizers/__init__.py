@@ -4,6 +4,7 @@ from .atom import (
     MultiHotAtomFeaturizerDefault,
     MultiHotAtomFeaturizerV1,
     MultiHotAtomFeaturizerOrganic,
+    get_MultiHotAtomFeaturizer,
 )
 from .bond import MultiHotBondFeaturizer, BondFeaturizer
 from .molgraph import (

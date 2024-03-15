@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Sequence
+from enum import auto
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
+
+from chemprop.utils.utils import EnumMapping
 
 
 class AtomFeaturizer(ABC):
@@ -205,3 +208,35 @@ class MultiHotAtomFeaturizerOrganic(MultiHotAtomFeaturizer):
                 HybridizationType.SP3,
             ],
         )
+
+
+class AtomFeatureMode(EnumMapping):
+    """The mode by which a atom should be featurized into a `MolGraph`"""
+
+    DEFAULT = auto()
+    V1 = auto()
+    ORGANIC = auto()
+
+
+def get_MultiHotAtomFeaturizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
+    """Gets an multi-hot atom featurizer given the name of the `AtomFeatureMode`.
+
+    Parameters
+    ----------
+    mode : str | AtomFeatureMode
+        The name of the multi-hot atom featurization scheme.
+
+    Returns
+    -------
+    MultiHotAtomFeaturizer
+        The multi-hot atom featurizer module.
+    """
+    match AtomFeatureMode.get(mode):
+        case AtomFeatureMode.DEFAULT:
+            return MultiHotAtomFeaturizerDefault()
+        case AtomFeatureMode.V1:
+            return MultiHotAtomFeaturizerV1()
+        case AtomFeatureMode.ORGANIC:
+            return MultiHotAtomFeaturizerOrganic()
+        case _:
+            raise RuntimeError(f"Invalid AtomFeatureMode: {mode}")
