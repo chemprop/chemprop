@@ -6,7 +6,7 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 
-from chemprop.featurizers import MultiHotAtomFeaturizerDefault, MultiHotAtomFeaturizer
+from chemprop.featurizers import MultiHotAtomFeaturizer
 
 
 SMI = "Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O"
@@ -135,7 +135,7 @@ def test_mass_bit(x, mass_bit):
     ),
 )
 def test_x_orig_default(a, x_v_orig):
-    f = MultiHotAtomFeaturizerDefault()
+    f = MultiHotAtomFeaturizer()
     x_v_calc = f(a)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

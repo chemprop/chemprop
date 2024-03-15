@@ -6,7 +6,7 @@ from chemprop.featurizers import (
     MoleculeMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
     MolGraph,
-    MultiHotAtomFeaturizerV1,
+    MultiHotAtomFeaturizer,
 )
 
 
@@ -77,8 +77,8 @@ def test_x2y_len(mol: Chem.Mol, mg: MolGraph):
 
 
 def test_composability(mol):
-    mf1 = SimpleMoleculeMolGraphFeaturizer(MultiHotAtomFeaturizerV1(50))
-    mf2 = SimpleMoleculeMolGraphFeaturizer(MultiHotAtomFeaturizerV1(100))
+    mf1 = SimpleMoleculeMolGraphFeaturizer(MultiHotAtomFeaturizer.v1(50))
+    mf2 = SimpleMoleculeMolGraphFeaturizer(MultiHotAtomFeaturizer.v1(100))
 
     assert mf1(mol).V.shape != mf2(mol).V.shape
 
