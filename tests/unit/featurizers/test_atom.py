@@ -1,11 +1,12 @@
 """NOTE: these tests make a lot of assumptions about the internal mechanics of the AtomFeaturizer,
 so they'll need to be reworked if something ever changes about that."""
+
 import numpy as np
 import pytest
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType
 
-from chemprop.featurizers import MultiHotAtomFeaturizer
+from chemprop.featurizers import MultiHotAtomFeaturizerDefault, MultiHotAtomFeaturizer
 
 
 SMI = "Cn1nc(CC(=O)Nc2ccc3oc4ccccc4c3c2)c2ccccc2c1=O"
@@ -29,6 +30,7 @@ def mass_bit(atom):
 @pytest.fixture
 def atomic_num():
     return list(range(1, 37)) + [53]
+
 
 @pytest.fixture
 def degree():
@@ -74,7 +76,10 @@ def featurizer(atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridizat
 @pytest.fixture
 def expected_len(atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization):
     return (
-        + sum(len(xs) + 1 for xs in (atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization))
+        +sum(
+            len(xs) + 1
+            for xs in (atomic_num, degree, formal_charge, chiral_tag, num_Hs, hybridization)
+        )
         + 2
     )
 
@@ -95,7 +100,7 @@ def test_none(featurizer):
 def test_atomic_num_bit(atom, x, atomic_num):
     n = atom.GetAtomicNum()
 
-    if n == 53: # special check for Iodine
+    if n == 53:  # special check for Iodine
         assert x[len(atomic_num) - 1] == 1
     else:
         if n in atomic_num:
@@ -130,7 +135,7 @@ def test_mass_bit(x, mass_bit):
     ),
 )
 def test_x_orig_default(a, x_v_orig):
-    f = MultiHotAtomFeaturizer.default()
+    f = MultiHotAtomFeaturizerDefault()
     x_v_calc = f(a)
 
     np.testing.assert_array_almost_equal(x_v_calc, x_v_orig)

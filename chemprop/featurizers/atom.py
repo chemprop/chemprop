@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from dataclasses import InitVar, dataclass, field
 from typing import Sequence
 
 import numpy as np
@@ -20,11 +19,6 @@ class AtomFeaturizer(ABC):
 
 class MultiHotAtomFeaturizer(AtomFeaturizer):
     """An :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
-
-    This featurizer provides three configurations:
-    * default
-    * v1
-    * organic
 
     The generated atom features are ordered as follows:
     * atomic number
@@ -56,33 +50,19 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     def __init__(
         self,
-        atomic_nums: Sequence[int] | None = None,
-        degrees: Sequence[int] | None = None,
-        formal_charges: Sequence[int] | None = None,
-        chiral_tags: Sequence[int] | None = None,
-        num_Hs: Sequence[int] | None = None,
-        hybridizations: Sequence[int] | None = None,
+        atomic_nums: Sequence[int],
+        degrees: Sequence[int],
+        formal_charges: Sequence[int],
+        chiral_tags: Sequence[int],
+        num_Hs: Sequence[int],
+        hybridizations: Sequence[int],
     ):
-        if all(
-            arg is None
-            for arg in [atomic_nums, degrees, formal_charges, chiral_tags, num_Hs, hybridizations]
-        ):
-            # No custom parameters provided, use default settings
-            default_settings = self.default()
-            self.atomic_nums = default_settings.atomic_nums
-            self.degrees = default_settings.degrees
-            self.formal_charges = default_settings.formal_charges
-            self.chiral_tags = default_settings.chiral_tags
-            self.num_Hs = default_settings.num_Hs
-            self.hybridizations = default_settings.hybridizations
-        else:
-            # Custom parameters provided, initialize accordingly
-            self.atomic_nums = {j: i for i, j in enumerate(atomic_nums or [])}
-            self.degrees = {i: i for i in degrees or []}
-            self.formal_charges = {j: i for i, j in enumerate(formal_charges or [])}
-            self.chiral_tags = {i: i for i in chiral_tags or []}
-            self.num_Hs = {i: i for i in num_Hs or []}
-            self.hybridizations = {ht: i for i, ht in enumerate(hybridizations or [])}
+        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
+        self.degrees = {i: i for i in degrees}
+        self.formal_charges = {j: i for i, j in enumerate(formal_charges)}
+        self.chiral_tags = {i: i for i in chiral_tags}
+        self.num_Hs = {i: i for i in num_Hs}
+        self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
 
         self._subfeats: list[dict] = [
             self.atomic_nums,
@@ -143,13 +123,14 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
         return x
 
-    @classmethod
-    def default(cls):
-        """An implementation that includes features only for atoms in common molecules.
-        Includes all elements in the first four rows of the periodic table plus iodine. This is the default in Chemprop V2.
-        """
 
-        return cls(
+class MultiHotAtomFeaturizerDefault(MultiHotAtomFeaturizer):
+    """An implementation that includes features only for atoms in common molecules.
+    Includes all elements in the first four rows of the periodic table plus iodine. This is the default in Chemprop V2.
+    """
+
+    def __init__(self):
+        super().__init__(
             atomic_nums=list(range(1, 37)) + [53],
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
@@ -166,26 +147,27 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             ],
         )
 
-    @classmethod
-    def v1(cls, max_atomic_num: int = 100):
-        """The original implementation used in Chemprop V1 [1]_, [2]_.
 
-        Parameters
-        ----------
-        max_atomic_num : int, default=100
-            Include a bit for all atomic numbers in the interval `[1, max_atomic_num]`
+class MultiHotAtomFeaturizerV1(MultiHotAtomFeaturizer):
+    """The original implementation used in Chemprop V1 [1]_, [2]_.
 
-        References
-        -----------
-        .. [1] Yang, K.; Swanson, K.; Jin, W.; Coley, C.; Eiden, P.; Gao, H.; Guzman-Perez, A.; Hopper, T.;
-        Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
-        J. Chem. Inf. Model. 2019, 59 (8), 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
-        .. [2] Heid, E.; Greenman, K.P.; Chung, Y.; Li, S.C.; Graff, D.E.; Vermeire, F.H.; Wu, H.; Green, W.H.; McGill,
-        C.J. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
-        64 (1), 9–17. https://doi.org/10.1021/acs.jcim.3c01250
-        """
+    Parameters
+    ----------
+    max_atomic_num : int, default=100
+        Include a bit for all atomic numbers in the interval `[1, max_atomic_num]`
 
-        return cls(
+    References
+    -----------
+    .. [1] Yang, K.; Swanson, K.; Jin, W.; Coley, C.; Eiden, P.; Gao, H.; Guzman-Perez, A.; Hopper, T.;
+    Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
+    J. Chem. Inf. Model. 2019, 59 (8), 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
+    .. [2] Heid, E.; Greenman, K.P.; Chung, Y.; Li, S.C.; Graff, D.E.; Vermeire, F.H.; Wu, H.; Green, W.H.; McGill,
+    C.J. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
+    64 (1), 9–17. https://doi.org/10.1021/acs.jcim.3c01250
+    """
+
+    def __init__(self, max_atomic_num: int = 100):
+        super().__init__(
             atomic_nums=list(range(1, max_atomic_num + 1)),
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
@@ -200,16 +182,17 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
             ],
         )
 
-    @classmethod
-    def organic(cls):
-        r"""A specific parameterization intended for use with organic or drug-like molecules.
 
-        This parameterization features:
-            1. includes an atomic number bit only for H, B, C, N, O, F, Si, P, S, Cl, Br, and I atoms
-            2. a hybridization bit for :math:`s, sp, sp^2` and :math:`sp^3` hybridizations.
-        """
+class MultiHotAtomFeaturizerOrganic(MultiHotAtomFeaturizer):
+    r"""A specific parameterization intended for use with organic or drug-like molecules.
 
-        return cls(
+    This parameterization features:
+        1. includes an atomic number bit only for H, B, C, N, O, F, Si, P, S, Cl, Br, and I atoms
+        2. a hybridization bit for :math:`s, sp, sp^2` and :math:`sp^3` hybridizations.
+    """
+
+    def __init__(self):
+        super().__init__(
             atomic_nums=[1, 5, 6, 7, 8, 9, 14, 15, 16, 17, 35, 53],
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
