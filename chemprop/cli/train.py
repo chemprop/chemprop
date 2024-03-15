@@ -38,7 +38,7 @@ from chemprop.cli.utils import (
     build_data_from_files,
     make_dataset,
     get_column_names,
-    get_smiles_list,
+    get_names_list,
 )
 from chemprop.cli.utils.args import uppercase
 
@@ -758,9 +758,9 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     args.ignore_columns,
                     args.no_header_row,
                 )
-                smiss = get_smiles_list(test_loader)
+                namess = get_names_list(test_loader)
                 df_preds = pd.DataFrame(
-                    list(zip(*smiss, *preds.T)), columns=columns
+                    list(zip(*namess, *preds.T)), columns=columns
                 )
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
