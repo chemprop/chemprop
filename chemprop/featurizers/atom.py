@@ -23,10 +23,10 @@ class AtomFeaturizer(ABC):
 class MultiHotAtomFeaturizer(AtomFeaturizer):
     """An :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
-    This featurizer provides three configurations:
-    * default
-    * v1
-    * organic
+    Three classmethods are provided:
+    * default: see :meth:`MultiHotAtomFeaturizer.default`
+    * v1: see :meth:`MultiHotAtomFeaturizer.v1`
+    * organic: see :meth:`MultiHotAtomFeaturizer.organic`
 
     The generated atom features are ordered as follows:
     * atomic number
@@ -60,27 +60,19 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     def __init__(
         self,
-        atomic_nums: Sequence[int] = list(range(1, 37)) + [53],
-        degrees: Sequence[int] = list(range(6)),
-        formal_charges: Sequence[int] = [-1, -2, 1, 2, 0],
-        chiral_tags: Sequence[int] = list(range(4)),
-        num_Hs: Sequence[int] = list(range(5)),
-        hybridizations: Sequence[int] = [
-            HybridizationType.S,
-            HybridizationType.SP,
-            HybridizationType.SP2,
-            HybridizationType.SP2D,
-            HybridizationType.SP3,
-            HybridizationType.SP3D,
-            HybridizationType.SP3D2,
-        ],
+        atomic_nums: Sequence[int],
+        degrees: Sequence[int],
+        formal_charges: Sequence[int],
+        chiral_tags: Sequence[int],
+        num_Hs: Sequence[int],
+        hybridizations: Sequence[int],
     ):
-        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums or [])}
-        self.degrees = {i: i for i in degrees or []}
-        self.formal_charges = {j: i for i, j in enumerate(formal_charges or [])}
-        self.chiral_tags = {i: i for i in chiral_tags or []}
-        self.num_Hs = {i: i for i in num_Hs or []}
-        self.hybridizations = {ht: i for i, ht in enumerate(hybridizations or [])}
+        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
+        self.degrees = {i: i for i in degrees}
+        self.formal_charges = {j: i for i, j in enumerate(formal_charges)}
+        self.chiral_tags = {i: i for i in chiral_tags}
+        self.num_Hs = {i: i for i in num_Hs}
+        self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
 
         self._subfeats: list[dict] = [
             self.atomic_nums,
@@ -223,7 +215,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
 
 class AtomFeatureMode(EnumMapping):
-    """The mode by which a atom should be featurized into a `MolGraph`"""
+    """The mode of an atom is used for featurization into a `MolGraph`"""
 
     DEFAULT = auto()
     V1 = auto()
