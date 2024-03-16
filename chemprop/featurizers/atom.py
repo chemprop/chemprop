@@ -222,17 +222,8 @@ class AtomFeatureMode(EnumMapping):
     ORGANIC = auto()
 
 
-def get_MultiHotAtomFeaturizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
-    """Gets an multi-hot atom featurizer given the name of the `AtomFeatureMode`.
-    Parameters
-    ----------
-    mode : str | AtomFeatureMode
-        The name of the multi-hot atom featurization scheme.
-    Returns
-    -------
-    MultiHotAtomFeaturizer
-        The multi-hot atom featurizer module.
-    """
+def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
+    """Build the corresponding multi-hot atom featurizer."""
     match AtomFeatureMode.get(mode):
         case AtomFeatureMode.DEFAULT:
             return MultiHotAtomFeaturizer.default()
