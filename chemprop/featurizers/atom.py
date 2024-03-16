@@ -21,7 +21,7 @@ class AtomFeaturizer(ABC):
 
 
 class MultiHotAtomFeaturizer(AtomFeaturizer):
-    """An :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
+    """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     Three classmethods are provided:
     * default: see :meth:`MultiHotAtomFeaturizer.default`
@@ -38,7 +38,8 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     * aromaticity
     * mass
 
-    **NOTE**: All the features, except for aromaticity and mass, are padded with an 0 for unknown values.
+    .. important::
+        Each feature, except for aromaticity and mass, includes a pad for unknown values.
 
     Parameters
     ----------
