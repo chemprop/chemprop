@@ -241,4 +241,4 @@ def get_MultiHotAtomFeaturizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeatu
         case AtomFeatureMode.ORGANIC:
             return MultiHotAtomFeaturizer.organic()
         case _:
-            raise RuntimeError(f"Invalid AtomFeatureMode: {mode}")
+            raise RuntimeError("unreachable code reached!")
