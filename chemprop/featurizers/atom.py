@@ -24,8 +24,8 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     Three classmethods are provided:
-    * default: see :meth:`MultiHotAtomFeaturizer.default`
     * v1: see :meth:`MultiHotAtomFeaturizer.v1`
+    * v2: see :meth:`MultiHotAtomFeaturizer.v2`
     * organic: see :meth:`MultiHotAtomFeaturizer.organic`
 
     The generated atom features are ordered as follows:
@@ -43,19 +43,17 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     Parameters
     ----------
-    atomic_nums : Sequence[int], default=list(range(1, 37)) + [53]
+    atomic_nums : Sequence[int],
         type of atom (ex. C, N, O), by atomic number
-    degree : Sequence[int], default=list(range(6))
+    degree : Sequence[int],
         number of bonds the atom is involved in
-    formal_charges : Sequence[int], default=[-1, -2, 1, 2, 0]
+    formal_charges : Sequence[int],
         integer electronic charge assigned to atom
-    chiral_tags : Sequence[int], default=list(range(4))
+    chiral_tags : Sequence[int],
         unspecified, tetrahedral CW/CCW, or other
-    num_Hs : Sequence[int], default=list(range(5))
+    num_Hs : Sequence[int],
         number of bonded hydrogen atoms
-    hybridizations : Sequence[int], default=[HybridizationType.S,
-    HybridizationType.SP, HybridizationType.SP2, HybridizationType.SP2D,
-    HybridizationType.SP3, HybridizationType.SP3D, HybridizationType.SP3D2]
+    hybridizations : Sequence[int],
         type of atom’s hybridization (ex. sp, sp2, sp3, sp3d, or sp3d2)
     """
 
@@ -135,29 +133,6 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         return x
 
     @classmethod
-    def default(cls):
-        """An implementation that includes features only for atoms in common molecules.
-        Includes all elements in the first four rows of the periodic table plus iodine. This is the default in Chemprop V2.
-        """
-
-        return cls(
-            atomic_nums=list(range(1, 37)) + [53],
-            degrees=list(range(6)),
-            formal_charges=[-1, -2, 1, 2, 0],
-            chiral_tags=list(range(4)),
-            num_Hs=list(range(5)),
-            hybridizations=[
-                HybridizationType.S,
-                HybridizationType.SP,
-                HybridizationType.SP2,
-                HybridizationType.SP2D,
-                HybridizationType.SP3,
-                HybridizationType.SP3D,
-                HybridizationType.SP3D2,
-            ],
-        )
-
-    @classmethod
     def v1(cls, max_atomic_num: int = 100):
         """The original implementation used in Chemprop V1 [1]_, [2]_.
 
@@ -192,6 +167,27 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         )
 
     @classmethod
+    def v2(cls):
+        """An implementation that includes an atom type bit for all elements in the first four rows of the periodic table plus iodine."""
+
+        return cls(
+            atomic_nums=list(range(1, 37)) + [53],
+            degrees=list(range(6)),
+            formal_charges=[-1, -2, 1, 2, 0],
+            chiral_tags=list(range(4)),
+            num_Hs=list(range(5)),
+            hybridizations=[
+                HybridizationType.S,
+                HybridizationType.SP,
+                HybridizationType.SP2,
+                HybridizationType.SP2D,
+                HybridizationType.SP3,
+                HybridizationType.SP3D,
+                HybridizationType.SP3D2,
+            ],
+        )
+
+    @classmethod
     def organic(cls):
         r"""A specific parameterization intended for use with organic or drug-like molecules.
 
@@ -218,18 +214,18 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 class AtomFeatureMode(EnumMapping):
     """The mode of an atom is used for featurization into a `MolGraph`"""
 
-    DEFAULT = auto()
     V1 = auto()
+    V2 = auto()
     ORGANIC = auto()
 
 
 def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
     """Build the corresponding multi-hot atom featurizer."""
     match AtomFeatureMode.get(mode):
-        case AtomFeatureMode.DEFAULT:
-            return MultiHotAtomFeaturizer.default()
         case AtomFeatureMode.V1:
             return MultiHotAtomFeaturizer.v1()
+        case AtomFeatureMode.V2:
+            return MultiHotAtomFeaturizer.v2()
         case AtomFeatureMode.ORGANIC:
             return MultiHotAtomFeaturizer.organic()
         case _:

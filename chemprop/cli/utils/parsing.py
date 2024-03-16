@@ -265,7 +265,7 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
     reaction_mode: str,
-    multi_hot_atom_featurizer_mode: str = "DEFAULT",
+    multi_hot_atom_featurizer_mode: str = "V2",
 ) -> MoleculeDataset | ReactionDataset:
 
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)

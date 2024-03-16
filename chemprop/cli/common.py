@@ -68,11 +68,11 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     featurization_args.add_argument(
         "--multi-hot-atom-featurizer-mode",
         type=uppercase,
-        default="DEFAULT",
-        choices=["DEFAULT", "V1", "ORGANIC"],
+        default="V2",
+        choices=["V1", "V2", "ORGANIC"],
         help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
-- `DEFAULT`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
 - `V1`: Corresponds to the original configuration employed in the Chemprop V1.
+- `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
 - `ORGANIC`: Designed specifically for use with organic molecules for drug research and development, this configuration includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
     )
     featurization_args.add_argument(
