@@ -40,7 +40,6 @@ from chemprop.cli.utils import (
     get_column_names,
 )
 from chemprop.cli.utils.args import uppercase
-from chemprop.utils import InputScalers
 
 logger = logging.getLogger(__name__)
 
@@ -806,12 +805,13 @@ def main(args):
         X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
             train_dset, val_dset, args
         )
-        input_scalers = InputScalers(
-            X_d_scaler=X_d_scaler,
-            V_f_scaler=V_f_scaler,
-            E_f_scaler=E_f_scaler,
-            V_d_scaler=V_d_scaler,
-        )
+        
+        input_scalers = {
+            "X_d_scaler": X_d_scaler,
+            "V_f_scaler": V_f_scaler,
+            "E_f_scaler": E_f_scaler,
+            "V_d_scaler": V_d_scaler,
+        }
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)

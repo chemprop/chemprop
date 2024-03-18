@@ -73,18 +73,3 @@ def pretty_shape(shape: Iterable[int]) -> str:
     '10 x 4'
     """
     return " x ".join(map(str, shape))
-
-class InputScalers(object):
-    def __init__(self, X_d_scaler: StandardScaler | None=None, V_f_scaler: StandardScaler | None=None, V_d_scaler: StandardScaler | None=None, E_f_scaler: StandardScaler | None=None):
-        self.X_d_scaler = X_d_scaler
-        self.V_f_scaler = V_f_scaler
-        self.V_d_scaler = V_d_scaler
-        self.E_f_scaler = E_f_scaler
-    
-    def to_dict(self):
-        return {
-            "X_d_scaler": self.X_d_scaler,
-            "V_f_scaler": self.V_f_scaler,
-            "V_d_scaler": self.V_d_scaler,
-            "E_f_scaler": self.E_f_scaler
-        }
