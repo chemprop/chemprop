@@ -14,7 +14,7 @@ pytestmark = pytest.mark.CLI
 def data_path(data_dir):
     return (
         str(data_dir / "regression" / "mol" / "mol.csv"),
-        ("0", str(data_dir / "regression" / "mol" / "features.npz")),
+        str(data_dir / "regression" / "mol" / "descriptors.npz"),
         ("0", str(data_dir / "regression" / "mol" / "atom_features.npz")),
         ("0", str(data_dir / "regression" / "mol" / "bond_features.npz")),
         ("0", str(data_dir / "regression" / "mol" / "atom_descriptors.npz")),
