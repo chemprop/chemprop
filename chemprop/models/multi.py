@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
-from chemprop.models.model import MPNN
+from chemprop.models.model import MPNN, OutputTransform
 from chemprop.nn.metrics import Metric
 
 
@@ -16,6 +16,7 @@ class MulticomponentMPNN(MPNN):
         message_passing: MulticomponentMessagePassing,
         agg: Aggregation,
         predictor: Predictor,
+        output_transform: OutputTransform | None = None,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -30,6 +31,7 @@ class MulticomponentMPNN(MPNN):
             message_passing,
             agg,
             predictor,
+            output_transform,
             batch_norm,
             metrics,
             w_t,
