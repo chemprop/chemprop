@@ -699,7 +699,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers):
+def train_model(
+    args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -740,15 +742,14 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
+                if args.task_type == "regression":
+                    preds = output_scaler.inverse_transform(preds)
                 columns = get_column_names(
                     args.data_path,
                     args.smiles_columns,
@@ -763,7 +764,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
-        output_scaler = scaler
         save_model(p_model, model, input_scalers, output_scaler)
         logger.info(f"Model saved to '{p_model}'")
 
@@ -805,17 +805,23 @@ def main(args):
         X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
             train_dset, val_dset, args
         )
-        input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+        
+        input_scalers = {
+            "X_d_scaler": X_d_scaler,
+            "V_f_scaler": V_f_scaler,
+            "E_f_scaler": E_f_scaler,
+            "V_d_scaler": V_d_scaler,
+        }
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
         if "regression" in args.task_type:
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+            output_scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(output_scaler)
+            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
         else:
-            scaler = None
+            output_scaler = None
 
         train_loader = MolGraphDataLoader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -828,7 +834,9 @@ def main(args):
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers)
+        train_model(
+            args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+        )
 
 
 if __name__ == "__main__":

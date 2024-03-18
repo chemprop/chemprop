@@ -2,6 +2,7 @@ from typing import Iterable
 
 import torch
 from torch import Tensor
+from sklearn.preprocessing import StandardScaler
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
@@ -22,6 +23,8 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        input_scalers: list[dict[str, StandardScaler]] | None = None,
+        output_scaler: StandardScaler | None = None,
     ):
         super().__init__(
             message_passing,
@@ -34,6 +37,8 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
+            input_scalers,
+            output_scaler,
         )
         self.message_passing: MulticomponentMessagePassing
 
@@ -89,5 +94,8 @@ class MulticomponentMPNN(MPNN):
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
+
+        model.input_scalers = d["input_scalers"]
+        model.output_scaler = d["output_scaler"]
 
         return model

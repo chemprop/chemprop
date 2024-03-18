@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import Iterable, Union
+from typing import Any, Dict, Iterable, Union
 from sklearn.preprocessing import StandardScaler
 
 from lightning import pytorch as pl
@@ -63,6 +63,7 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
+        output_transform: OutputTransform | None = None,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -86,6 +87,7 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
+        self.output_transform = output_transform or OutputTransform()
 
         self.metrics = (
             [*metrics, self.criterion]
@@ -160,17 +162,20 @@ class MPNN(pl.LightningModule):
         self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
+        losses = self._evaluate_batch(batch, test=True)
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
-    def _evaluate_batch(self, batch) -> list[Tensor]:
+    def _evaluate_batch(self, batch, test=False) -> list[Tensor]:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
+
+        if test:
+            preds = self.output_transform(preds)
 
         return [
             metric(preds, targets, mask, None, None, lt_mask, gt_mask)
@@ -219,6 +224,14 @@ class MPNN(pl.LightningModule):
         }
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+    
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        checkpoint["input_scalers"] = self.input_scalers
+        checkpoint["output_scaler"] = self.output_scaler
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.input_scalers = checkpoint["input_scalers"]
+        self.output_scaler = checkpoint["output_scaler"]
 
     @classmethod
     def load_from_checkpoint(
@@ -253,5 +266,20 @@ class MPNN(pl.LightningModule):
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
+        
+        model.input_scalers = d["input_scalers"]
+        model.output_scaler = d["output_scaler"]
 
         return model
+
+
+class OutputTransform(object):
+
+    def __init__(self, output_scaler: StandardScaler | None=None):
+        self.output_scaler = output_scaler
+
+    def __call__(self, outputs):
+        if self.output_scaler is not None:
+            outputs = self.output_scaler.inverse_transform(outputs)
+
+        return outputs
