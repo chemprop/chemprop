@@ -12,7 +12,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric, MetricRegistry
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
-from chemprop.utils import InputScalers
+from chemprop.models.utils import OutputTransform
 
 
 class MPNN(pl.LightningModule):
@@ -64,6 +64,7 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
+        output_transform: OutputTransform | None = None,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -71,8 +72,6 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        input_scalers: InputScalers | None = None,
-        output_scaler: StandardScaler | None = None,
     ):
         super().__init__()
 
@@ -89,6 +88,7 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
+        self.output_transform = output_transform or OutputTransform()
 
         self.metrics = (
             [*metrics, self.criterion]
@@ -102,8 +102,6 @@ class MPNN(pl.LightningModule):
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
-        self.input_scalers = input_scalers
-        self.output_scaler = output_scaler
 
     @property
     def output_dim(self) -> int:
@@ -165,17 +163,20 @@ class MPNN(pl.LightningModule):
         self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
+        losses = self._evaluate_batch(batch, test=True)
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
-    def _evaluate_batch(self, batch) -> list[Tensor]:
+    def _evaluate_batch(self, batch, test=False) -> list[Tensor]:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
+
+        if test:
+            preds = self.output_transform(preds)
 
         return [
             metric(preds, targets, mask, None, None, lt_mask, gt_mask)
@@ -226,11 +227,11 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
     
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        checkpoint["input_scalers"] = self.input_scalers.to_dict() if self.input_scalers is not None else None
+        checkpoint["input_scalers"] = self.input_scalers
         checkpoint["output_scaler"] = self.output_scaler
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        self.input_scalers = InputScalers(**checkpoint["input_scalers"]) if checkpoint["input_scalers"] is not None else None
+        self.input_scalers = checkpoint["input_scalers"]
         self.output_scaler = checkpoint["output_scaler"]
 
     @classmethod
@@ -267,7 +268,7 @@ class MPNN(pl.LightningModule):
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
         
-        model.input_scalers = InputScalers(**d["input_scalers"]) if d["input_scalers"] is not None else None
+        model.input_scalers = d["input_scalers"]
         model.output_scaler = d["output_scaler"]
 
         return model
