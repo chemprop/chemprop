@@ -12,7 +12,11 @@ from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
 
 SHAPE = CondensedGraphOfReactionFeaturizer().shape
 pytestmark = pytest.mark.parametrize(
-    "mpnn", [nn.BondMessagePassing(*SHAPE), nn.AtomMessagePassing(*SHAPE)], indirect=True
+    "mpnn", [
+            (nn.BondMessagePassing(*SHAPE), nn.MeanAggregation()),
+            (nn.AtomMessagePassing(*SHAPE), nn.SumAggregation()),
+            (nn.BondMessagePassing(*SHAPE), nn.NormAggregation()),
+        ], indirect=True
 )
 
 
