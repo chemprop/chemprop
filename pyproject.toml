@@ -35,6 +35,7 @@ dependencies = [
     "scipy",
     "torch >= 2.1",
     "astartes[molecules]",
+    "ray[tune]"
 ]
 
 [project.optional-dependencies]
