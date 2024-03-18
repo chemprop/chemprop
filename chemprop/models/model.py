@@ -12,7 +12,6 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric, MetricRegistry
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
-from chemprop.models.utils import OutputTransform
 
 
 class MPNN(pl.LightningModule):
@@ -272,3 +271,15 @@ class MPNN(pl.LightningModule):
         model.output_scaler = d["output_scaler"]
 
         return model
+
+
+class OutputTransform(object):
+
+    def __init__(self, output_scaler: StandardScaler | None=None):
+        self.output_scaler = output_scaler
+
+    def __call__(self, outputs):
+        if self.output_scaler is not None:
+            outputs = self.output_scaler.inverse_transform(outputs)
+
+        return outputs

@@ -8,7 +8,6 @@ from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
 from chemprop.models.model import MPNN
 from chemprop.nn.metrics import Metric
-from chemprop.utils import InputScalers
 
 
 class MulticomponentMPNN(MPNN):

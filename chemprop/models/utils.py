@@ -29,14 +29,3 @@ def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, dict | None,
 
     return model, input_scalers, output_scaler
 
-
-class OutputTransform(object):
-
-    def __init__(self, output_scaler: StandardScaler | None=None):
-        self.output_scaler = output_scaler
-
-    def __call__(self, outputs):
-        if self.output_scaler is not None:
-            outputs = self.output_scaler.inverse_transform(outputs)
-
-        return outputs
