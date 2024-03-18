@@ -129,6 +129,15 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_common_args(args: Namespace) -> Namespace:
+
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        inds_paths = getattr(args, key)
+        ind_path_dict = {}
+        if inds_paths:
+            for ind, path in inds_paths:
+                ind_path_dict[int(ind)] = Path(path)
+            setattr(args, key, ind_path_dict)
+
     return args
 
 
