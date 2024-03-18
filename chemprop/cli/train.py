@@ -819,8 +819,6 @@ def main(args):
         if "regression" in args.task_type:
             output_scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(output_scaler)
-            if test_dset is not None:
-                test_dset.normalize_targets(output_scaler)
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
         else:
             output_scaler = None
