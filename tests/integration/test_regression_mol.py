@@ -11,7 +11,13 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 pytestmark = [
     pytest.mark.parametrize(
-        "mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+        "mpnn",
+        [
+            (nn.BondMessagePassing(), nn.MeanAggregation()),
+            (nn.AtomMessagePassing(), nn.SumAggregation()),
+            (nn.BondMessagePassing(), nn.NormAggregation()),
+        ],
+        indirect=True,
     ),
     pytest.mark.integration,
 ]

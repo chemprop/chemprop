@@ -64,7 +64,7 @@ def mol_regression_data(data_dir):
 
 @pytest.fixture
 def rxn_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/rxn.csv")
+    df = pd.read_csv(data_dir / "regression/rxn/rxn.csv")
     smis = df["smiles"].to_list()
     Y = df["ea"].to_numpy().reshape(-1, 1)
 
@@ -89,3 +89,27 @@ def rxn_mol_regression_data(data_dir):
     Y = df["target"].to_numpy().reshape(-1, 1)
 
     return rxns, smis, Y
+
+
+@pytest.fixture
+def mol_classification_data(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol.csv")
+    smis = df["smiles"].to_list()
+    Y = df["NR-AhR"].to_numpy().reshape(-1, 1)
+
+    return smis, Y
+
+
+@pytest.fixture
+def mol_classification_data_multiclass(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol_multiclass.csv")
+    smis = df["smiles"].to_list()
+    activities = df["activity"].unique()
+    Y = (
+        df["activity"]
+        .map({activity: i for i, activity in enumerate(activities)})
+        .to_numpy()
+        .reshape(-1, 1)
+    )
+
+    return smis, Y
