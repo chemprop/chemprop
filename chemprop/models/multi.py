@@ -23,7 +23,7 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        input_scalers: list[InputScalers] | None = None,
+        input_scalers: list[dict[str, StandardScaler]] | None = None,
         output_scaler: StandardScaler | None = None,
     ):
         super().__init__(
@@ -95,7 +95,7 @@ class MulticomponentMPNN(MPNN):
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
 
-        model.input_scalers = [InputScalers(**d["input_scalers"])] if d["input_scalers"] is not None else None
+        model.input_scalers = d["input_scalers"]
         model.output_scaler = d["output_scaler"]
 
         return model
