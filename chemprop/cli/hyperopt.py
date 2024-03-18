@@ -7,8 +7,10 @@ import torch
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 from ray import tune
+from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
                                  RayTrainReportCallback, prepare_trainer)
+from ray.train.torch import TorchTrainer
 from ray.tune import ASHAScheduler
 
 from chemprop.cli.common import (add_common_args, process_common_args,
@@ -49,7 +51,7 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--num-samples",
         type=int,
         default=10,
-        help="Number of hyperparameter samples to try",
+        help="Number of hyperparameter optimization samples to run",
     )
 
     hyperopt_args.add_argument(
@@ -104,6 +106,27 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     """,
     )
 
+    hyperopt_args.add_argument(
+        "--n-cpu-per-worker",
+        type=int,
+        default=1,
+        help="Number of CPUs to allocate for each trial",
+    )
+
+    hyperopt_args.add_argument(
+        "--n-gpu-per-worker",
+        type=int,
+        default=1,
+        help="Number of GPUs to allocate for each trial",
+    )
+
+    hyperopt_args.add_argument(
+        "--num-checkpoints-to-keep",
+        type=int,
+        default=1,
+        help="Number of checkpoints to keep for each trial",
+    )
+
     return parser
 
 def get_available_spaces(train_epochs: int) -> dict:
@@ -136,7 +159,14 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
 
     return {param: AVAILABLE_SPACES[param] for param in search_parameters}
 
-def train_model(args, train_loader, val_loader, test_loader, model_output_dir, scaler, input_scalers):
+def update_args_with_config(args: Namespace, config: dict) -> Namespace:
+    for key, value in config.items():
+        setattr(args, key, value)
+    return args
+
+def train_model(config, args, train_loader, val_loader, logger):
+
+    update_args_with_config(args, config)
 
     model = build_model(args, train_loader.dataset)
     logger.info(model)
@@ -154,6 +184,51 @@ def train_model(args, train_loader, val_loader, test_loader, model_output_dir, s
     )
     train_loader = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
+
+def tune_model(args, train_loader, val_loader, logger, monitor_mode):
+
+    scheduler = ASHAScheduler(
+        max_t=args.epochs,
+        grace_period=1,
+        reduction_factor=2,
+    )
+
+    scaling_config = ScalingConfig(
+        num_workers=args.num_workers,
+        use_gpu=args.n_gpu > 0,
+        resources_per_worker={"cpu": args.n_cpus_per_worker, "gpu": args.n_gpu_per_worker},
+    )
+
+    checkpoint_config = CheckpointConfig(
+        num_to_keep=args.num_checkpoints_to_keep,
+        checkpoint_score_attribute="val_loss",
+        checkpoint_score_order=monitor_mode,
+    )
+
+    run_config = RunConfig(
+        checkpoint_config=checkpoint_config,
+    )
+
+    ray_trainer = TorchTrainer(
+        lambda config: train_model(config, args, train_loader, val_loader, logger),
+        scaling_config=scaling_config,
+        run_config=run_config,
+    )
+
+    tune_config = tune.TuneConfig(
+        metric="val_loss",
+        mode=monitor_mode,
+        num_samples=args.num_samples,
+        scheduler=scheduler,
+    )
+
+    tuner = tune.Tuner(
+        ray_trainer,
+        param_space={"train_loop_config": build_search_space(args.search_parameter_keywords, args.epochs)},
+        tune_config=tune_config,
+    )
+
+    return tuner.fit()
 
 def main(args: Namespace):
 
@@ -201,7 +276,16 @@ def main(args: Namespace):
 
     torch.manual_seed(args.pytorch_seed)
 
-    train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers)
+    model = build_model(args, train_loader.dataset)
+    monitor_mode = "min" if model.metrics[0].minimize else "max"
+
+    results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
+
+    results.get_best_result(metric="val_loss", mode=monitor_mode)
+
+    logger.info(f"Best hyperparameter configuration: {results.best_config}")
+
+
 
 if __name__ == "__main__":
     # TODO: update this old code or remove it.
