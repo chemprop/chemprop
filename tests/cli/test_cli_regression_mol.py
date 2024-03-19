@@ -54,7 +54,7 @@ def test_train_quick_features(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
-        "--features-path",
+        "--descriptors-path",
         *descriptors_path,
         "--atom-features-path",
         *atom_features_path,
