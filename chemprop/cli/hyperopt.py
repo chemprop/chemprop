@@ -23,7 +23,43 @@ from chemprop.data import MolGraphDataLoader
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.utils import Activation
 
+
 logger = logging.getLogger(__name__)
+
+AVAILABLE_SPACES = {
+    "activation": tune.choice(list(Activation.keys())),
+    "aggregation": tune.choice(list(AggregationRegistry.keys())),
+    "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
+    "batch_size": tune.quniform(lower=5, upper=200, q=5),
+    "depth": tune.randint(lower=2, upper=6, q=1),
+    "dropout": tune.choice(
+        [
+            tune.choice([0.]),
+            tune.quniform(lower=0.05, upper=0.4, q=0.05),
+        ],
+    ),
+    "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+    "ffn_num_layers": tune.randint(lower=2, upper=6),
+    "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
+    "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+    "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
+    "linked_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+    "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
+    "warmup_epochs": None
+}
+
+SEARCH_PARAM_KEYWORDS_MAP = {
+    "basic": ["depth", "ffn_num_layers", "dropout", "linked_hidden_size"],
+    "linked_hidden_size": ["hidden_size", "ffn_hidden_size"],
+    "learning_rate": ["max_lr", "init_lr", "final_lr", "warmup_epochs"],
+    "all": list(AVAILABLE_SPACES.keys()),
+}
+
+def get_available_spaces(train_epochs: int) -> dict:
+
+    AVAILABLE_SPACES["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
+
+    return AVAILABLE_SPACES
 
 class HyperoptSubcommand(Subcommand):
     COMMAND = "hyperopt"
@@ -39,6 +75,7 @@ class HyperoptSubcommand(Subcommand):
     def func(cls, args: Namespace):
         args = process_common_args(args)
         args = process_train_args(args)
+        args = process_hyperopt_args(args)
         validate_common_args(args)
         validate_train_args(args)
         main(args)
@@ -90,6 +127,7 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--search-parameter-keywords",
         type=str,
         nargs="+",
+        default=["basic"],
         help=f"""The model parameters over which to search for an optimal hyperparameter configuration.
     Some options are bundles of parameters or otherwise special parameter operations.
 
@@ -129,30 +167,26 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
 
     return parser
 
-def get_available_spaces(train_epochs: int) -> dict:
+def process_hyperopt_args(args: Namespace) -> Namespace:
+    if args.startup_random_iters is None:
+        args.startup_random_iters = args.num_samples // 2
 
-    AVAILABLE_SPACES = {
-        "activation": tune.choice(list(Activation.keys())),
-        "aggregation": tune.choice(list(AggregationRegistry.keys())),
-        "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-        "batch_size": tune.quniform(lower=5, upper=200, q=5),
-        "depth": tune.quniform(lower=2, upper=6, q=1),
-        "dropout": tune.choice(
-            [
-                tune.choice([0.]),
-                tune.quniform(lower=0.05, upper=0.4, q=0.05),
-            ],
-        ),
-        "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
-        "ffn_num_layers": tune.quniform(lower=2, upper=6, q=1),
-        "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
-        "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
-        "warmup_epochs": tune.quniform(lower=1, upper=train_epochs // 2, q=1)
-    }
+    if args.config_save_path is None:
+        args.config_save_path = Path(f"chemprop_hyperopt/{args.data_path.stem}/best_config.json")
 
-    return AVAILABLE_SPACES
+    args.config_save_path.parent.mkdir(exist_ok=True, parents=True)
+
+    search_parameters = set()
+
+    for keyword in args.search_parameter_keywords:
+        if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in AVAILABLE_SPACES:
+            raise ValueError(f"Invalid search parameter keyword: {keyword}")
+        
+        search_parameters.update(SEARCH_PARAM_KEYWORDS_MAP[keyword] if keyword in SEARCH_PARAM_KEYWORDS_MAP else [keyword])
+
+    args.search_parameter_keywords = list(search_parameters)
+
+    return args
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
     AVAILABLE_SPACES = get_available_spaces(train_epochs)
@@ -196,7 +230,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scaling_config = ScalingConfig(
         num_workers=args.num_workers,
         use_gpu=args.n_gpu > 0,
-        resources_per_worker={"cpu": args.n_cpu_per_worker, "gpu": args.n_gpu_per_worker},
+        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker},
     )
 
     checkpoint_config = CheckpointConfig(
