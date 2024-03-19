@@ -43,13 +43,13 @@ def test_train_quick(monkeypatch, data_path):
         "--descriptors-path",
         desc_path,
         "--atom-features-path",
-        "0", atom_feat_path_0,
+        *atom_feat_path_0,
         "--atom-features-path",
-        "1", atom_feat_path_1,
+        *atom_feat_path_1,
         "--bond-features-path",
-        "0", bond_feat_path_0,
+        *bond_feat_path_0,
         "--atom-descriptors-path",
-        "1", atom_desc_path_1,
+        *atom_desc_path_1,
     ]
 
     with monkeypatch.context() as m:
@@ -58,11 +58,13 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
+    input_path, _, _, _, _, _ = data_path
+
     args = [
         "chemprop",
         "predict",
         "-i",
-        data_path,
+        input_path,
         "--smiles-columns",
         "smiles",
         "solvent",
@@ -76,11 +78,13 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
+    input_path, _, _, _, _, _ = data_path
+
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--smiles-columns",
         "smiles",
         "solvent",
