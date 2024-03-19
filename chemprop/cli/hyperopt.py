@@ -31,7 +31,7 @@ AVAILABLE_SPACES = {
     "aggregation": tune.choice(list(AggregationRegistry.keys())),
     "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
     "batch_size": tune.quniform(lower=5, upper=200, q=5),
-    "depth": tune.randint(lower=2, upper=6, q=1),
+    "depth": tune.randint(lower=2, upper=6),
     "dropout": tune.choice(
         [
             tune.choice([0.]),
