@@ -502,7 +502,8 @@ def normalize_inputs(train_dset, val_dset, args):
         V_f_scaler = [V_f_scaler] if not isinstance(V_f_scaler, list) else V_f_scaler
 
         for i, scaler in enumerate(V_f_scaler):
-            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            if scaler is not None:
+                logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
@@ -511,7 +512,8 @@ def normalize_inputs(train_dset, val_dset, args):
         E_f_scaler = [E_f_scaler] if not isinstance(E_f_scaler, list) else E_f_scaler
 
         for i, scaler in enumerate(E_f_scaler):
-            logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            if scaler is not None:
+                logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
@@ -520,7 +522,8 @@ def normalize_inputs(train_dset, val_dset, args):
         V_d_scaler = [V_d_scaler] if not isinstance(V_d_scaler, list) else V_d_scaler
 
         for i, scaler in enumerate(V_d_scaler):
-            logger.info(f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            if scaler is not None:
+                logger.info(f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
