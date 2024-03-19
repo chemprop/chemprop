@@ -220,7 +220,7 @@ def build_data_from_files(
     n_molecules = len(list(zip(*smiss))) if smiss is not None else 0
     n_datapoints = len(Y)
 
-    X_ds = load_input_feats_and_descs(p_descriptors, None, feat_desc="X_d")
+    X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
@@ -242,7 +242,7 @@ def build_data_from_files(
     return mol_data + rxn_data
 
 
-def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecules: int, n_datapoints: int, feat_desc: str):
+def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecules: int | None, n_datapoints: int | None, feat_desc: str):
     if paths is None:
         return None
 
