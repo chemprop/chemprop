@@ -11,7 +11,7 @@ from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
                                  RayTrainReportCallback, prepare_trainer)
 from ray.train.torch import TorchTrainer
-from ray.tune import ASHAScheduler
+from ray.tune.schedulers import ASHAScheduler
 
 from chemprop.cli.common import (add_common_args, process_common_args,
                                  validate_common_args)
