@@ -355,9 +355,9 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
         return self.datasets[0].normalize_targets(scaler)
 
     def normalize_inputs(
-        self, key: str | None = "X_d", scaler: StandardScaler | None = None
+        self, key: str | None = "X_d", scaler: list[StandardScaler] | None = None
     ) -> list[StandardScaler]:
-        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+        return [dset.normalize_inputs(key, scaler) for dset, scaler in zip(self.datasets, scaler)] if scaler is not None else [dset.normalize_inputs(key) for dset in self.datasets]
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
