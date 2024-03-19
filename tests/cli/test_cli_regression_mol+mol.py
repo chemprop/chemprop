@@ -11,12 +11,12 @@ pytestmark = pytest.mark.CLI
 @pytest.fixture
 def data_path(data_dir):
     return (
-        str(data_dir / "regression" / "mol+mol.csv"), 
-        str(data_dir / "regression" / "mol" / "descriptors.npz"),
-        ("0", str(data_dir / "regression" / "mol" / "atom_features.npz")),
-        ("1", str(data_dir / "regression" / "mol" / "atom_features.npz")),
-        ("0", str(data_dir / "regression" / "mol" / "bond_features.npz")),
-        ("1", str(data_dir / "regression" / "mol" / "atom_descriptors.npz")),
+        str(data_dir / "regression" / "mol+mol" / "mol+mol.csv"), 
+        str(data_dir / "regression" / "mol+mol" / "descriptors.npz"),
+        ("0", str(data_dir / "regression" / "mol+mol" / "atom_features_0.npz")),
+        ("1", str(data_dir / "regression" / "mol+mol" / "atom_features_1.npz")),
+        ("0", str(data_dir / "regression" / "mol+mol" / "bond_features_0.npz")),
+        ("1", str(data_dir / "regression" / "mol+mol" / "atom_descriptors_1.npz")),
     )
 
 
