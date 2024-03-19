@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 from argparse import ArgumentParser, Namespace
@@ -6,6 +7,7 @@ from pathlib import Path
 import torch
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
@@ -99,9 +101,9 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     hyperopt_args.add_argument(
-        "--config-save-path",
+        "--hyperopt-save-dir",
         type=Path,
-        help="Path to save the best hyperparameter configuration",
+        help="Directory to save the hyperparameter optimization results",
     )
 
     hyperopt_args.add_argument(
@@ -147,22 +149,22 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     hyperopt_args.add_argument(
         "--n-cpu-per-worker",
         type=int,
-        default=1,
-        help="Number of CPUs to allocate for each trial",
+        default=0,
+        help="Number of CPUs to allocate for each worker",
     )
 
     hyperopt_args.add_argument(
         "--n-gpu-per-worker",
         type=int,
-        default=1,
-        help="Number of GPUs to allocate for each trial",
+        default=0,
+        help="Number of GPUs to allocate for each worker",
     )
 
     hyperopt_args.add_argument(
         "--num-checkpoints-to-keep",
         type=int,
         default=1,
-        help="Number of checkpoints to keep for each trial",
+        help="Number of checkpoints to keep",
     )
 
     return parser
@@ -171,10 +173,10 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
     if args.startup_random_iters is None:
         args.startup_random_iters = args.num_samples // 2
 
-    if args.config_save_path is None:
-        args.config_save_path = Path(f"chemprop_hyperopt/{args.data_path.stem}/best_config.json")
+    if args.hyperopt_save_dir is None:
+        args.hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
 
-    args.config_save_path.parent.mkdir(exist_ok=True, parents=True)
+    args.hyperopt_save_dir.parent.mkdir(exist_ok=True, parents=True)
 
     search_parameters = set()
 
@@ -195,7 +197,22 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
 
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     for key, value in config.items():
-        setattr(args, key, value)
+
+        match key:
+
+            case "linked_hidden_size":
+                setattr(args, "hidden_size", value)
+                setattr(args, "ffn_hidden_size", value)
+
+            case "final_lr_ratio":
+                setattr(args, "final_lr", value * args.max_lr)
+
+            case "init_lr_ratio":
+                setattr(args, "init_lr", value * args.max_lr)
+
+            case _:
+                setattr(args, key, value)
+
     return args
 
 def train_model(config, args, train_loader, val_loader, logger):
@@ -211,12 +228,12 @@ def train_model(config, args, train_loader, val_loader, logger):
     trainer = pl.Trainer(
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
-        strategy=RayDDPStrategy(),
+        strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
         gradient_clip_val=args.grad_clip,
     )
-    train_loader = prepare_trainer(trainer)
+    trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
 
 def tune_model(args, train_loader, val_loader, logger, monitor_mode):
@@ -229,8 +246,8 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
     scaling_config = ScalingConfig(
         num_workers=args.num_workers,
-        use_gpu=args.n_gpu > 0,
-        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker},
+        use_gpu=torch.cuda.is_available() and args.n_gpu > 0,
+        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker} if args.n_cpu_per_worker > 0 or args.n_gpu_per_worker > 0 else None,
     )
 
     checkpoint_config = CheckpointConfig(
@@ -317,9 +334,15 @@ def main(args: Namespace):
 
     results.get_best_result(metric="val_loss", mode=monitor_mode)
 
-    logger.info(f"Best hyperparameter configuration: {results.best_config}")
+    best_result = results.get_best_result()
+    best_config = best_result.config
+    best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
+    best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
 
+    logger.info(f"Best hyperparameter configuration: {best_config}")
 
+    with open(args.hyperopt_save_dir / "config.json", "w") as f:
+        json.dump(best_config, f)
 
 if __name__ == "__main__":
     # TODO: update this old code or remove it.
