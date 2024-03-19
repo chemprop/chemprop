@@ -176,7 +176,7 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
     if args.hyperopt_save_dir is None:
         args.hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
 
-    args.hyperopt_save_dir.parent.mkdir(exist_ok=True, parents=True)
+    args.hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
 
     search_parameters = set()
 
@@ -331,8 +331,6 @@ def main(args: Namespace):
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
     results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
-
-    results.get_best_result(metric="val_loss", mode=monitor_mode)
 
     best_result = results.get_best_result()
     best_config = best_result.config
