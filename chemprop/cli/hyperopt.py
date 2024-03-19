@@ -196,7 +196,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scaling_config = ScalingConfig(
         num_workers=args.num_workers,
         use_gpu=args.n_gpu > 0,
-        resources_per_worker={"cpu": args.n_cpus_per_worker, "gpu": args.n_gpu_per_worker},
+        resources_per_worker={"cpu": args.n_cpu_per_worker, "gpu": args.n_gpu_per_worker},
     )
 
     checkpoint_config = CheckpointConfig(
