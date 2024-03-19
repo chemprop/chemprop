@@ -489,22 +489,38 @@ def normalize_inputs(train_dset, val_dset, args):
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
-        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
+        
+        X_d_scaler = [X_d_scaler] if not isinstance(X_d_scaler, list) else X_d_scaler
+
+        for i, scaler in enumerate(X_d_scaler):
+            logger.info(f"Features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", V_f_scaler)
-        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+
+        V_f_scaler = [V_f_scaler] if not isinstance(V_f_scaler, list) else V_f_scaler
+
+        for i, scaler in enumerate(V_f_scaler):
+            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", E_f_scaler)
-        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+
+        E_f_scaler = [E_f_scaler] if not isinstance(E_f_scaler, list) else E_f_scaler
+
+        for i, scaler in enumerate(E_f_scaler):
+            logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", V_d_scaler)
-        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
+
+        V_d_scaler = [V_d_scaler] if not isinstance(V_d_scaler, list) else V_d_scaler
+
+        for i, scaler in enumerate(V_d_scaler):
+            logger.info(f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
