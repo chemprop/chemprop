@@ -175,7 +175,7 @@ def make_datapoints(
             )
             for i in range(N)
         ]
-        for mol_idx, smis in enumerate(list(zip(*smiss)))
+        for mol_idx, smis in enumerate(zip(*smiss))
     ]
     rxn_data = [
         [
