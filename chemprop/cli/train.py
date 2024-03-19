@@ -516,6 +516,12 @@ def save_config(args: Namespace):
         for key in config:
             if isinstance(config[key], Path):
                 config[key] = str(config[key])
+
+        for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+            if config[key] is not None:
+                for ind, path in config[key].items():
+                    config[key][ind] = str(path)
+
         json.dump(config, f, indent=4)
 
 
