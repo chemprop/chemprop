@@ -139,8 +139,8 @@ def get_available_spaces(train_epochs: int) -> dict:
         "depth": tune.quniform(lower=2, upper=6, q=1),
         "dropout": tune.choice(
             [
-                tune.choices([0.]),
-                tune.quniform(lower=0.05, high=0.4, q=0.05),
+                tune.choice([0.]),
+                tune.quniform(lower=0.05, upper=0.4, q=0.05),
             ],
         ),
         "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
