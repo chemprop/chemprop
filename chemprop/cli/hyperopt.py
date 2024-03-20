@@ -337,7 +337,7 @@ def main(args: Namespace):
     logger.info(f"Best hyperparameter configuration: {best_config}")
 
     with open(args.hyperopt_save_dir / "config.json", "w") as f:
-        json.dump(best_config, f)
+        json.dump(best_config, f, indent=4)
 
 if __name__ == "__main__":
     # TODO: update this old code or remove it.
