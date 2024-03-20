@@ -52,7 +52,6 @@ AVAILABLE_SPACES = {
 
 SEARCH_PARAM_KEYWORDS_MAP = {
     "basic": ["depth", "ffn_num_layers", "dropout", "linked_hidden_size"],
-    "linked_hidden_size": ["hidden_size", "ffn_hidden_size"],
     "learning_rate": ["max_lr", "init_lr", "final_lr", "warmup_epochs"],
     "all": list(AVAILABLE_SPACES.keys()),
 }
