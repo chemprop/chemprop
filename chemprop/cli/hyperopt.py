@@ -296,9 +296,6 @@ def main(args: Namespace):
         features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    output_dir = args.output_dir
-    output_dir.mkdir(exist_ok=True, parents=True)
-
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
