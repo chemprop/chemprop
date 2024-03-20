@@ -73,7 +73,7 @@ def rxn_regression_data(data_dir):
 
 @pytest.fixture
 def mol_mol_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mol+mol.csv")
+    df = pd.read_csv(data_dir / "regression/mol+mol/mol+mol.csv")
     smis1 = df["smiles"].to_list()
     smis2 = df["solvent"].to_list()
     Y = df["peakwavs_max"].to_numpy().reshape(-1, 1)
