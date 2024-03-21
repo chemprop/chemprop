@@ -1,5 +1,5 @@
 import copy
-import itertools
+from itertools import chain
 import logging
 from enum import auto
 from typing import Sequence, Union
@@ -50,9 +50,9 @@ def split_data(
 
     Returns
     -------
-    tuple[list[int], list[int], list[int]] | tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
-        A tuple of list of indices corresponding to the train, validation, and test splits of the data.
-        If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of indices corresponding to the train, validation, and test splits of each fold.
+    tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
+        A tuple of lists of lists of indices corresponding to the train, validation, and test splits
+        of the data for each splitting scheme (for example, in crossfold validation).
             NOTE: validation may or may not be present
 
     Raises
@@ -150,15 +150,13 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)
-            )
-            val = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)
-            )
-            test = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)
-            )
+            train = [
+                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs[0]))
+            ]
+            val = [list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs[0]))]
+            test = [
+                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs[0]))
+            ]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
@@ -194,7 +192,7 @@ def split_data(
 
 def _unpack_astartes_result(
     result: tuple, include_val: bool
-) -> tuple[list[int], list[int], list[int]]:
+) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
     """Helper function to partition input data based on output of astartes sampler
 
     Parameters
@@ -206,10 +204,10 @@ def _unpack_astartes_result(
 
     Returns
     ---------
-    train: list[int]
-    val: list[int]
+    train: list[list[int]]
+    val: list[list[int]]
         NOTE: possibly empty
-    test: list[int]
+    test: list[list[int]]
     """
     train_idxs, val_idxs, test_idxs = [], [], []
     # astartes returns a set of lists containing the data, clusters (if applicable)
@@ -218,7 +216,7 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
         train_idxs, test_idxs = result[-2], result[-1]
-    return list(train_idxs), list(val_idxs), list(test_idxs)
+    return [list(train_idxs)], [list(val_idxs)], [list(test_idxs)]
 
 
 def split_component(
@@ -230,27 +228,19 @@ def split_component(
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
-    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, split=split, **kwargs)
+    train_idxss, val_idxss, test_idxss = split_data(key_datapoints, split=split, **kwargs)
 
-    match SplitType.get(split):
-        case SplitType.CV_NO_VAL | SplitType.CV:
-            # convert indices to datapoints for each fold
-            train = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in train_idxs
-            ]
-            val = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in val_idxs
-            ]
-            test = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in test_idxs
-            ]
-        case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
-            # convert indices to datapoints
-            train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
-            val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
-            test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
-        case _:
-            raise RuntimeError("Unreachable code reached!")
+    train = [
+        [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
+        for train_idxs in train_idxss
+    ]
+    val = [
+        [[datapoints[i] for i in val_idxs] for datapoints in datapointss] for val_idxs in val_idxss
+    ]
+    test = [
+        [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+        for test_idxs in test_idxss
+    ]
 
     return train, val, test
 

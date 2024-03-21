@@ -789,19 +789,13 @@ def main(args):
         features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    no_cv = args.num_folds == 1
-    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
+    splits = build_splits(args, format_kwargs, featurization_kwargs)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if not no_cv:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-        else:
+        if args.num_folds == 1:
             output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 
