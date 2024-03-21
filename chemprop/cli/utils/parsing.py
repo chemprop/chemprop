@@ -182,7 +182,7 @@ def make_datapoints(
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
-    n_mols = len(smiss)
+    n_mols = len(smiss[0])
     X_d = [None] * N if X_d is None else X_d
     V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
     E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
