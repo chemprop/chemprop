@@ -81,9 +81,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install flake8 pytest parameterized nbmake
-          python -m pip install torch==2.2.0
-          python -m pip install torch-scatter -f https://data.pyg.org/whl/torch-2.2.0+cpu.html
-          python -m pip install -e ".[dev,docs,test]"
+          python -m pip install ".[dev,docs,test]"
       - name: Test with pytest
         shell: bash -l {0}
         run: |

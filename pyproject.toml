@@ -34,7 +34,6 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "torch >= 2.1",
-    "torch_scatter",
     "astartes[molecules]",
 ]
 
