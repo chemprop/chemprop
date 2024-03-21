@@ -653,8 +653,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     else:
         criterion = None
     if args.metrics is not None:
-        # TODO: AUROCMetric takes `task` as an argument, but we don't expose that through the command line. Should we?
-        metrics = [Factory.build(MetricRegistry[metric], task=None) for metric in args.metrics]
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
     else:
         metrics = None
 
