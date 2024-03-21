@@ -2,14 +2,15 @@ import copy
 import itertools
 import logging
 from enum import auto
-from typing import Sequence
-from random import Random
+from typing import Sequence, Union
+from pathlib import Path
+import tomllib
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 from rdkit import Chem
 
-from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
@@ -250,4 +251,45 @@ def split_component(
         case _:
             raise RuntimeError("Unreachable code reached!")
 
+    return train, val, test
+
+
+def splits_from_file(
+    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
+    splits_file: Path,
+):
+    """Splits multicomponent data into training, validation, and test splits."""
+
+    with open(splits_file, "rb") as toml_file:
+        split_idxss = tomllib.load(toml_file)
+
+    def parse_indices(idxs):
+        if isinstance(idxs, str):
+            indices = []
+            for idx in idxs.split(","):
+                if "-" in idx:
+                    start, end = map(int, idx.split("-"))
+                    indices.extend(range(start, end + 1))
+                else:
+                    indices.append(int(idx))
+            return indices
+        return idxs
+
+    split_idxss = {
+        splitting_scheme: {split: parse_indices(idxs) for split, idxs in splits_dict.items()}
+        for splitting_scheme, splits_dict in split_idxss.items()
+    }
+
+    train = [
+        [[datapoints[i] for i in split_idxs["train"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
+    val = [
+        [[datapoints[i] for i in split_idxs["val"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
+    test = [
+        [[datapoints[i] for i in split_idxs["test"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
     return train, val, test

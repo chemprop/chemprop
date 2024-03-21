@@ -19,7 +19,7 @@ from chemprop.data import (
     ReactionDataset,
     MoleculeDataset,
 )
-from chemprop.data import SplitType, split_component
+from chemprop.data import SplitType, split_component, splits_from_file
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -413,26 +413,15 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    # TODO: Add in v2.1
-    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    # split_args.add_argument(
-    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-dir",
-    #     help="Directory in which to find cross validation index files.",
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-file",
-    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    # )
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
+    split_args.add_argument(
+        "--splits-file",
+        type=Path,
+        help="Path to a TOML file containing pre-defined splits for the input data.",
     )
     split_args.add_argument(
         "--data-seed",
@@ -440,7 +429,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
     )
-    
+
     parser.add_argument(
         "--pytorch-seed",
         type=int,
@@ -547,12 +536,15 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-    multicomponent = len(all_data) > 1
+    if args.splits_file is not None:
+        train_data, val_data, test_data = splits_from_file(all_data, args.splits_file)
+    else:
+        multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
-    split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
+        split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
+        split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
-    train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
+        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
     logger.info(f"train/val/test sizes: {sizes}")

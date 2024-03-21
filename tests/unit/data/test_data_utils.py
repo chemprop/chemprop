@@ -1,11 +1,10 @@
-"""Chemprop unit tests for chemprop/data/utils.py"""
 import pytest
 import numpy as np
 from astartes import train_val_test_split
 from astartes.utils.warnings import NormalizationWarning
 
 from chemprop.data.datapoints import MoleculeDatapoint
-from chemprop.data.splitting import split_data, _unpack_astartes_result
+from chemprop.data.splitting import split_data, _unpack_astartes_result, splits_from_file
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])
@@ -156,4 +155,15 @@ def test_scaffold(molecule_dataset_with_rings):
         datapoints=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split=split_type
     )
 
-    assert train == [0, 1, 2]
+
+
+def test_splits_from_file(mol_data, data_dir):
+    """
+    Testing if splits_from_file yields expected results.
+    """
+    splits_file = data_dir / "example_splits_file.toml"
+    train, val, test = splits_from_file(datapointss=[mol_data], splits_file=splits_file)
+
+    expected_result = [[[mol_data[idx] for idx in [0, 1, 2, 4]]]]
+
+    assert train == expected_result
