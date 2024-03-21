@@ -14,7 +14,6 @@ from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
-MulticomponentDatapoint = Sequence[MoleculeDatapoint]
 
 
 class SplitType(EnumMapping):
@@ -88,10 +87,12 @@ def split_data(
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
-            if not (2 <= num_folds <= len(datapoints)):
-                min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
+            min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
+            if not (min_folds <= num_folds <= len(datapoints)):
                 raise ValueError(
-                    f"invalid number of folds requested! got: {num_folds}, but expected between {min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, for split type: {repr(split)}"
+                    f"invalid number of folds requested! got: {num_folds}, but expected between "
+                    f"{min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, "
+                    f"for split type: {repr(split)}"
                 )
 
             # returns nested lists of indices
@@ -221,7 +222,7 @@ def _unpack_astartes_result(
 
 
 def split_component(
-    datapointss: Sequence[Sequence[MoleculeDatapoint | MulticomponentDatapoint]],
+    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
     split: SplitType | str = "random",
     key_index: int = 0,
     **kwargs,
