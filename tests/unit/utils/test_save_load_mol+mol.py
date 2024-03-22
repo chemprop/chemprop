@@ -12,6 +12,10 @@ from chemprop.data import (
     collate_multicomponent,
 )
 from chemprop.models import MulticomponentMPNN, save_model
+from chemprop.models.model import PY_SUBVERSION_IS_311, LOADING_ADMONITION
+
+if not PY_SUBVERSION_IS_311:
+    pytest.skip(reason=LOADING_ADMONITION, allow_module_level=True)
 
 
 @pytest.fixture

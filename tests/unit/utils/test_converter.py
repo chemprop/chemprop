@@ -7,7 +7,7 @@ from lightning import pytorch as pl
 
 from chemprop import data
 from chemprop import featurizers
-from chemprop.models.model import MPNN
+from chemprop.models.model import MPNN, PY_SUBVERSION_IS_311, LOADING_ADMONITION
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 
@@ -35,6 +35,7 @@ def example_model_v1_prediction(data_dir):
     return ys, test_loader
 
 
+@pytest.mark.skipif(not PY_SUBVERSION_IS_311, reason=LOADING_ADMONITION)
 def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction):
     directory = tmp_path / "test_converter"
     directory.mkdir()

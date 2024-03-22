@@ -4,7 +4,7 @@
 import pytest
 
 from chemprop.cli.main import main
-from chemprop.models.model import MPNN
+from chemprop.models.model import MPNN, PY_SUBVERSION_IS_311, LOADING_ADMONITION
 
 pytestmark = pytest.mark.CLI
 
@@ -125,6 +125,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
     assert (tmp_path / "preds_0.csv").exists()
 
 
+@pytest.mark.skipif(not PY_SUBVERSION_IS_311, reason=LOADING_ADMONITION)
 def test_train_outputs(monkeypatch, data_path, tmp_path):
     args = [
         "chemprop",
