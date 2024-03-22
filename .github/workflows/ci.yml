@@ -41,7 +41,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      # clone the repo, run black and autopep8 on it
+      # clone the repo, run black and flake8 on it
       - uses: actions/checkout@v4
       - run: python -m pip install black==23.* flake8
       - run: black --check .
