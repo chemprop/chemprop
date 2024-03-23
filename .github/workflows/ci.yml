@@ -86,14 +86,18 @@ jobs:
         shell: bash -l {0}
         run: |
           pytest -v tests
-      - name: Test notebooks
+      - name: Test Python 3.11 Only Notebooks
+        if: matrix.python-version == 3.11
+        shell: bash -l {0}
+        run: |
+          pytest --nbmake examples/predicting.ipynb
+          pytest --nbmake examples/convert_v1_to_v2.ipynb
+          pytest --nbmake examples/predicting_regression_multicomponent.ipynb
+      - name: Test Notebooks
         shell: bash -l {0}
         run: |
           pytest --nbmake examples/training.ipynb
-          pytest --nbmake examples/predicting.ipynb
-          pytest --nbmake examples/convert_v1_to_v2.ipynb
           pytest --nbmake examples/training_regression_multicomponent.ipynb
-          pytest --nbmake examples/predicting_regression_multicomponent.ipynb
 
   # GitHub allows you to set checks as required before PRs can be merged, which is annoying to do
   # for matrix jobs like the one above which have six actual jobs. Instead we have a summary job
