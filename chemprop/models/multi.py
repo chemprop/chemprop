@@ -51,23 +51,6 @@ class MulticomponentMPNN(MPNN):
         return H if X_d is None else torch.cat((H, X_d), 1)
 
     @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
-
-        mp_hparams = hparams["message_passing"]
-        mp_hparams["blocks"] = [
-            block_hparams.pop("cls")(**block_hparams) for block_hparams in mp_hparams["blocks"]
-        ]
-        message_passing = mp_hparams.pop("cls")(**mp_hparams)
-        kwargs["message_passing"] = message_passing
-
-        return super().load_from_checkpoint(
-            checkpoint_path, map_location, hparams_file, strict, **kwargs
-        )
-
-    @classmethod
     def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
         d = torch.load(model_path, map_location=map_location)
 

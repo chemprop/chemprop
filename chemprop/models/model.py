@@ -224,14 +224,7 @@ class MPNN(pl.LightningModule):
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
-
-        kwargs |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-            if key not in kwargs
-        }
-
+        kwargs = load_submodules(checkpoint_path, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
@@ -255,3 +248,22 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
+
+
+def load_submodules(checkpoint_path, **kwargs):
+    hparams = torch.load(checkpoint_path)["hyper_parameters"]
+
+    if "blocks" in hparams["message_passing"]:
+        mp_hparams = hparams["message_passing"]
+        mp_hparams["blocks"] = [
+            block_hparams.pop("cls")(**block_hparams) for block_hparams in mp_hparams["blocks"]
+        ]
+        message_passing = mp_hparams.pop("cls")(**mp_hparams)
+        kwargs["message_passing"] = message_passing
+
+    kwargs |= {
+        key: hparams[key].pop("cls")(**hparams[key])
+        for key in ("message_passing", "agg", "predictor")
+        if key not in kwargs
+    }
+    return kwargs
