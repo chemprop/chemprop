@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from typing import Sequence
 
@@ -6,18 +5,6 @@ import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
 from chemprop.featurizers.base import VectorFeaturizer
-
-
-# class AtomFeaturizer(ABC):
-#     """An :class:`AtomFeaturizer` calculates feature vectors of RDKit atoms."""
-
-#     @abstractmethod
-#     def __len__(self) -> int:
-#         """the length of an atomic feature vector"""
-
-#     @abstractmethod
-#     def __call__(self, a: Atom) -> np.ndarray:
-#         """featurize the atom ``a``"""
 
 
 @dataclass(repr=False, eq=False, slots=True)
