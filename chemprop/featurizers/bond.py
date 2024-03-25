@@ -4,20 +4,22 @@ from typing import Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-
-class BondFeaturizer(ABC):
-    """A :class:`BondFeaturizer` calculates feature vectors of RDKit bonds"""
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """the length of a bond feature vector"""
-
-    @abstractmethod
-    def __call__(self, b: Bond) -> np.ndarray:
-        """featurize the bond ``b``"""
+from chemprop.featurizers.base import VectorFeaturizer
 
 
-class MultiHotBondFeaturizer(BondFeaturizer):
+# class BondFeaturizer(ABC):
+#     """A :class:`BondFeaturizer` calculates feature vectors of RDKit bonds"""
+
+#     @abstractmethod
+#     def __len__(self) -> int:
+#         """the length of a bond feature vector"""
+
+#     @abstractmethod
+#     def __call__(self, b: Bond) -> np.ndarray:
+#         """featurize the bond ``b``"""
+
+
+class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     """A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
 
     * ``null``-ity (i.e., is the bond ``None``?)
