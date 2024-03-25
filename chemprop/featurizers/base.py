@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from collections.abc import Callable
 from typing import Generic, Sized, TypeVar
 
 import numpy as np
