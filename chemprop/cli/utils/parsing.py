@@ -4,10 +4,11 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from rdkit.Chem import Mol
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
-from chemprop.featurizers.molecule import MoleculeFeaturizer
+from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
@@ -111,7 +112,7 @@ def make_datapoints(
     V_fs: list[np.ndarray] | None,
     E_fs: list[np.ndarray] | None,
     V_ds: list[np.ndarray] | None,
-    features_generators: list[MoleculeFeaturizer] | None,
+    features_generators: list[VectorFeaturizer[Mol]] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:

@@ -6,18 +6,19 @@ from typing import NamedTuple
 import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
+from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
-from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 
-from chemprop.featurizers import (
-    MolGraph,
-    MolGraphFeaturizer,
+from chemprop.types import Rxn
+from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import Featurizer
+from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
+from chemprop.featurizers.molgraph import (
     SimpleMoleculeMolGraphFeaturizer,
     CGRFeaturizer,
 )
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.featurizers.molgraph.reaction import Rxn
 
 
 class Datum(NamedTuple):
@@ -163,7 +164,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MolGraphFeaturizer[Chem.Mol] = field(
+    featurizer: Featurizer[Mol, MolGraph] = field(
         default_factory=SimpleMoleculeMolGraphFeaturizer
     )
 
@@ -331,7 +332,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: MolGraphFeaturizer[Rxn] = field(default_factory=CGRFeaturizer)
+    featurizer: Featurizer[Rxn, MolGraph] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):

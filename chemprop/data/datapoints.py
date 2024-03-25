@@ -5,9 +5,10 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
-from chemprop.featurizers import MoleculeFeaturizer
+from chemprop.featurizers import Featurizer
 from chemprop.utils import make_mol
 
+MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
 
 @dataclass(slots=True)
 class _DatapointMixin:
