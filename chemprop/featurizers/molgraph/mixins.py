@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-import numpy  as np
+import numpy as np
 from rdkit.Chem.rdchem import Atom, Bond
 
 from chemprop.featurizers.base import Featurizer

@@ -15,10 +15,7 @@ from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
-from chemprop.featurizers.molgraph import (
-    SimpleMoleculeMolGraphFeaturizer,
-    CGRFeaturizer,
-)
+from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer, CGRFeaturizer
 
 
 class Datum(NamedTuple):
@@ -164,9 +161,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: Featurizer[Mol, MolGraph] = field(
-        default_factory=SimpleMoleculeMolGraphFeaturizer
-    )
+    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:

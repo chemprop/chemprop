@@ -37,8 +37,7 @@ class RxnMode(EnumMapping):
 
 
 @dataclass
-class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, Featurizer[Rxn, MolGraph]
-):
+class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, Featurizer[Rxn, MolGraph]):
     """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed
     reaction graph method utilized in [1]_
 

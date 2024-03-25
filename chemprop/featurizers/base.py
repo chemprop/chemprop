@@ -30,4 +30,5 @@ class VectorFeaturizer(Featurizer[S, np.ndarray], Sized):
 class GraphFeaturizer(Featurizer[S, MolGraph]):
     @property
     @abstractmethod
-    def shape(self) -> tuple[int, int]: ...
+    def shape(self) -> tuple[int, int]:
+        ...

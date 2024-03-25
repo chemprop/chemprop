@@ -10,6 +10,7 @@ from chemprop.utils import make_mol
 
 MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
 
+
 @dataclass(slots=True)
 class _DatapointMixin:
     """A mixin class for both molecule- and reaction- and multicomponent-type data"""
