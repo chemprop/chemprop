@@ -4,11 +4,11 @@ from typing import Generic, Iterable
 
 import numpy as np
 
-from chemprop.featurizers.molgraph.base import MolGraphFeaturizer, T
-from chemprop.featurizers.molgraph.molgraph import MolGraph
+from chemprop.featurizers.base import S, Featurizer
+from chemprop.data.molgraph import MolGraph
 
 
-class MolGraphCacheFacade(Sequence[MolGraph], Generic[T]):
+class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
     """
     A :class:`MolGraphCacheFacade` provided an interface for caching
     :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s.
@@ -20,13 +20,13 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[T]):
 
     Parameters
     ----------
-    inputs : Iterable[T]
+    inputs : Iterable[S]
         The inputs to be featurized.
     V_fs : Iterable[np.ndarray]
         The node features for each input.
     E_fs : Iterable[np.ndarray]
         The edge features for each input.
-    featurizer : MolGraphFeaturizer[T]
+    featurizer : MolGraphFeaturizer[S]
         The featurizer with which to generate the
         :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s.
     """
@@ -34,10 +34,10 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[T]):
     @abstractmethod
     def __init__(
         self,
-        inputs: Iterable[T],
+        inputs: Iterable[S],
         V_fs: Iterable[np.ndarray],
         E_fs: Iterable[np.ndarray],
-        featurizer: MolGraphFeaturizer[T],
+        featurizer: Featurizer[S, MolGraph],
     ):
         pass
 
@@ -50,10 +50,10 @@ class MolGraphCache(MolGraphCacheFacade):
 
     def __init__(
         self,
-        inputs: Iterable[T],
+        inputs: Iterable[S],
         V_fs: Iterable[np.ndarray | None],
         E_fs: Iterable[np.ndarray | None],
-        featurizer: MolGraphFeaturizer[T],
+        featurizer: Featurizer[S, MolGraph],
     ):
         self._mgs = [featurizer(input, V_f, E_f) for input, V_f, E_f in zip(inputs, V_fs, E_fs)]
 
@@ -72,10 +72,10 @@ class MolGraphCacheOnTheFly(MolGraphCacheFacade):
 
     def __init__(
         self,
-        inputs: Iterable[T],
+        inputs: Iterable[S],
         V_fs: Iterable[np.ndarray | None],
         E_fs: Iterable[np.ndarray | None],
-        featurizer: MolGraphFeaturizer[T],
+        featurizer: Featurizer[S, MolGraph],
     ):
         self._inputs = list(inputs)
         self._V_fs = list(V_fs)

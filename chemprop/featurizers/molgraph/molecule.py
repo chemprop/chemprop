@@ -1,16 +1,17 @@
-from abc import ABC, abstractmethod
+# from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import Mol
 
-from chemprop.featurizers.molgraph import MolGraph
-from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
+from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
 @dataclass
-class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeaturizer[Chem.Mol]):
+class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
     """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
     :class:`MoleculeMolGraphFeaturizer`
 

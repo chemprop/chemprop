@@ -6,13 +6,12 @@ import warnings
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
-from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
+from chemprop.featurizers.base import Featurizer
 
-from chemprop.featurizers.molgraph.molgraph import MolGraph
+from chemprop.types import Rxn
+from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.utils.utils import EnumMapping
-
-Rxn = tuple[Chem.Mol, Chem.Mol]
 
 
 class RxnMode(EnumMapping):
@@ -38,7 +37,8 @@ class RxnMode(EnumMapping):
 
 
 @dataclass
-class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeaturizer[Rxn]):
+class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, Featurizer[Rxn, MolGraph]
+):
     """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed
     reaction graph method utilized in [1]_
 
