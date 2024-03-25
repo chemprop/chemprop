@@ -1,7 +1,6 @@
-from abc import abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -30,10 +29,7 @@ class Datum(NamedTuple):
     gt_mask: np.ndarray | None
 
 
-class MolGraphDataset(Dataset):
-    @abstractmethod
-    def __getitem__(self, idx) -> Datum:
-        pass
+MolGraphDataset: TypeAlias = Dataset[Datum]
 
 
 class _MolGraphDatasetMixin:

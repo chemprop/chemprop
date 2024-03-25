@@ -1,17 +1,16 @@
 from dataclasses import dataclass, field
 
-import numpy as np
 from rdkit.Chem.rdchem import Atom, Bond
 
-from chemprop.featurizers.base import Featurizer
+from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer
 
 
 @dataclass
 class _MolGraphFeaturizerMixin:
-    atom_featurizer: Featurizer[Atom, np.ndarray] = field(default_factory=MultiHotAtomFeaturizer)
-    bond_featurizer: Featurizer[Bond, np.ndarray] = field(default_factory=MultiHotBondFeaturizer)
+    atom_featurizer: VectorFeaturizer[Atom] = field(default_factory=MultiHotAtomFeaturizer)
+    bond_featurizer: VectorFeaturizer[Bond] = field(default_factory=MultiHotBondFeaturizer)
 
     def __post_init__(self):
         self.atom_fdim = len(self.atom_featurizer)
