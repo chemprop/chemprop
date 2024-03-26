@@ -105,7 +105,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--atom-features-path",
         nargs=2,
         action="append",
-        help="A two-tuple of component index and path to additional atom features to supply before message passing (instead of features_generator). E.g., `--atom-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-features-path [...] --atom-features-path [...]`.",
+        help="A two-tuple of component index and path to additional atom features to supply before message passing. E.g., `--atom-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-features-path [...] --atom-features-path [...]`.",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
@@ -117,7 +117,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--bond-features-path",
         nargs=2,
         action="append",
-        help="A two-tuple of component index and path to additional bond features to supply before message passing (instead of features_generator). E.g., `--bond-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--bond-features-path [...] --bond-features-path [...]`.",
+        help="A two-tuple of component index and path to additional bond features to supply before message passing. E.g., `--bond-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--bond-features-path [...] --bond-features-path [...]`.",
     )
     # TODO: Add in v2.2
     # parser.add_argument(
