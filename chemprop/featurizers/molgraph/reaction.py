@@ -1,16 +1,18 @@
-from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import auto
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, TypeAlias
 import warnings
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
+from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
 
 from chemprop.featurizers.molgraph.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.utils.utils import EnumMapping
+
+Rxn = tuple[Chem.Mol, Chem.Mol]
 
 
 class RxnMode(EnumMapping):
@@ -35,41 +37,10 @@ class RxnMode(EnumMapping):
     products and balances imbalanced reactions"""
 
 
-class RxnMolGraphFeaturizer(ABC):
-    """A :class:`RxnMolGraphFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant
-    and product molecules) into :class:`MolGraph`\s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        rxn: tuple[Chem.Mol, Chem.Mol],
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        """Featurize the input reaction into a molecular graph
-
-        Parameters
-        ----------
-        rxn : tuple[Chem.Mol, Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-            1st element is the product
-        atom_features_extra : np.ndarray | None, default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-        bond_features_extra : np.ndarray | None, default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the reaction
-        """
-
-
 @dataclass
-class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFeaturizer):
-    """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
+class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeaturizer[Rxn]):
+    """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed
+    reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizer` instance. This is because
     it requries the :meth:`num_only()` method, which is only implemented in the concrete
@@ -116,6 +87,26 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        rxn : Rxn
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
+
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
@@ -336,4 +327,4 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         return r2p_idx_map, pdt_idxs, rct_idxs
 
 
-CGRFeaturizer = CondensedGraphOfReactionFeaturizer
+CGRFeaturizer: TypeAlias = CondensedGraphOfReactionFeaturizer

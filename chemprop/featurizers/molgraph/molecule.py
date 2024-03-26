@@ -5,40 +5,12 @@ import numpy as np
 from rdkit import Chem
 
 from chemprop.featurizers.molgraph import MolGraph
+from chemprop.featurizers.molgraph.base import MolGraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
-class MoleculeMolGraphFeaturizer(ABC):
-    """A :class:`MoleculeMolGraphFeaturizer` featurizes RDKit molecules into
-    :class:`MolGraph`\s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        """Featurize the input molecule into a molecular graph
-
-        Parameters
-        ----------
-        mol : Chem.Mol
-            the input molecule
-        atom_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated atom features
-        bond_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated bond features
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the molecule
-        """
-
-
 @dataclass
-class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizer):
+class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeaturizer[Chem.Mol]):
     """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
     :class:`MoleculeMolGraphFeaturizer`
 
