@@ -277,7 +277,7 @@ When a multitask model is used, the metric score used for evaluation at each epo
 
 Cross-validation can be run by specifying `--num_folds <k>`. The default is `--num_folds 1`. Each trained model will have different train/val/test splits, determined according to the specified split type argument and split sizes argument but using a different random seed to perform the splitting. The reported test score will be the average of the metrics from each fold. To use a strict k-fold cross-validation where each datapoint will appear in fold test sets exactly once, the argument `--split_type cv` must be used.
 
-To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`. Each trained model within the ensemble will share data splits. The reported test score for one ensemble is the metric applied to the averaged prediction across the models. Ensembling and cros-validation can be used at the same time.
+To train an ensemble, specify the number of models in the ensemble with `--ensemble_size <n>`. The default is `--ensemble_size 1`. Each trained model within the ensemble will share data splits. The reported test score for one ensemble is the metric applied to the averaged prediction across the models. Ensembling and cross-validation can be used at the same time.
 
 ### Aggregation
 
