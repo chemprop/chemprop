@@ -357,7 +357,12 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     def normalize_inputs(
         self, key: str | None = "X_d", scaler: list[StandardScaler] | None = None
     ) -> list[StandardScaler]:
-        return [dset.normalize_inputs(key, scaler) for dset, scaler in zip(self.datasets, scaler)] if scaler is not None else [dset.normalize_inputs(key) for dset in self.datasets]
+        RXN_VALID_KEYS = {"X_d", None}
+        match scaler:
+            case None:
+                return [dset.normalize_inputs(key) if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS else None for dset in self.datasets]
+            case _:
+                return [dset.normalize_inputs(key, s) if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS else None for dset, s in zip(self.datasets, scaler)]
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
