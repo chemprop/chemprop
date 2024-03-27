@@ -272,11 +272,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case "X_d":
                 self.X_d = scaler.transform(X)
             case "V_f":
-                self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs if V_f.size > 0 else V_f]
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
             case "E_f":
-                self.E_fs = [scaler.transform(E_f) for E_f in self.E_fs if E_f.size > 0 else E_f]
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
             case "V_d":
-                self.V_ds = [scaler.transform(V_d) for V_d in self.V_ds if V_d.size > 0 else V_d]
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
             case _:
                 raise RuntimeError("unreachable code reached!")
 
