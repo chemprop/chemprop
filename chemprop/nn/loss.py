@@ -152,8 +152,8 @@ class EvidentialLoss(LossFunction):
 
         return L_nll + self.v_kl * (L_reg - self.eps)
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("v_kl", self.v_kl), ("eps", self.eps)]
+    def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
+        return {"v_kl": self.v_kl, "eps": self.eps}
 
 
 @LossFunctionRegistry.register("bce")
@@ -270,8 +270,10 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("v_kl", self.v_kl)]
+    def get_params(
+            self, deep: bool = True  # pylint: disable=unused-argument
+    ) -> dict[str, float]:
+        return {"v_kl": self.v_kl}
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
@@ -297,8 +299,10 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 class _ThresholdMixin:
     threshold: float | None = None
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("threshold", self.threshold)]
+    def get_params(
+        self, deep: bool = True  # pylint: disable=unused-argument
+    ) -> dict[str, float | None]:
+        return {"threshold": self.threshold}
 
 
 @LossFunctionRegistry.register("sid")
