@@ -13,9 +13,9 @@ def data_path(data_dir):
     return (
         str(data_dir / "regression" / "rxn+mol" / "rxn+mol.csv"),
         str(data_dir / "regression" / "rxn+mol" / "descriptors.npz"),
-        ("1", str(data_dir / "regression" / "rxn+mol" / "atom_features.npz")),
-        ("1", str(data_dir / "regression" / "rxn+mol" / "bond_features.npz")),
-        ("1", str(data_dir / "regression" / "rxn+mol" / "atom_descriptors.npz")),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "atom_features.npz")),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "bond_features.npz")),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "atom_descriptors.npz")),
     )
 
 
