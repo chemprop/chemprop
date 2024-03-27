@@ -3,7 +3,6 @@ from abc import abstractmethod
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
 from torch import Tensor, nn
-from torch_scatter import scatter_sum
 
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.exceptions import InvalidShapeError
@@ -199,7 +198,10 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             M = self.message(H, bmg)
             H = self.update(M, H_0)
 
-        M = scatter_sum(H, bmg.edge_index[1], 0, dim_size=len(bmg.V))
+        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
+        M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            0, index_torch, H, reduce="sum", include_self=False
+        )
         return self.finalize(M, bmg.V, V_d)
 
 
@@ -245,7 +247,10 @@ class BondMessagePassing(_MessagePassingBase):
         return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        M_all = scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
+        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
+        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            0, index_torch, H, reduce="sum", include_self=False
+        )[bmg.edge_index[0]]
         M_rev = H[bmg.rev_edge_index]
 
         return M_all - M_rev
@@ -293,5 +298,7 @@ class AtomMessagePassing(_MessagePassingBase):
 
     def message(self, H: Tensor, bmg: BatchMolGraph):
         H = torch.cat((H, bmg.E), dim=1)
-
-        return scatter_sum(H, bmg.edge_index[1], 0)[bmg.edge_index[0]]
+        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
+        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            0, index_torch, H, reduce="sum", include_self=False
+        )[bmg.edge_index[0]]

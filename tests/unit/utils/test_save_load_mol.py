@@ -7,7 +7,12 @@ from torch.utils.data import DataLoader
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
+from chemprop.models.model import PY_SUBVERSION_IS_311, LOADING_ADMONITION
 from chemprop.models.utils import save_model
+
+
+if not PY_SUBVERSION_IS_311:
+    pytest.skip(reason=LOADING_ADMONITION, allow_module_level=True)
 
 
 @pytest.fixture

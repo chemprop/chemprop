@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from chemprop.cli.main import main
-from chemprop.models.model import MPNN
+from chemprop.models.model import MPNN, PY_SUBVERSION_IS_311, LOADING_ADMONITION
 
 pytestmark = pytest.mark.CLI
 
@@ -161,6 +161,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
     assert (tmp_path / "preds_0.csv").exists()
 
 
+@pytest.mark.skipif(not PY_SUBVERSION_IS_311, reason=LOADING_ADMONITION)
 def test_train_outputs(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
@@ -184,8 +185,10 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
+    assert model is not None
 
 
+@pytest.mark.skipif(not PY_SUBVERSION_IS_311, reason=LOADING_ADMONITION)
 def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     input_path, *_ = data_path
     args = [
@@ -213,7 +216,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
 
     trained_model = MPNN.load_from_checkpoint(checkpoint_path)
     frzn_model = MPNN.load_from_file(model_path)
-    
+
     assert torch.equal(
         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
     )

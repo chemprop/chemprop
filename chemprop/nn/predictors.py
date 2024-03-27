@@ -5,8 +5,18 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-from chemprop.nn.loss import *
-from chemprop.nn.metrics import *
+from chemprop.nn.loss import (
+    BCELoss,
+    BinaryDirichletLoss,
+    CrossEntropyLoss,
+    EvidentialLoss,
+    LossFunction,
+    MSELoss,
+    MVELoss,
+    MulticlassDirichletLoss,
+    SIDLoss,
+)
+from chemprop.nn.metrics import AUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
 from chemprop.nn.ffn import MLP
 
 from chemprop.nn.hparams import HasHParams
@@ -57,7 +67,8 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
     """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
-    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output."""
+    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output.
+    """
 
     _default_criterion: LossFunction
     _default_metric: Metric

@@ -1,17 +1,23 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import Iterable, Union
-from sklearn.preprocessing import StandardScaler
+import platform
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
-from chemprop.nn.metrics import Metric, MetricRegistry
+from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
+
+PY_SUBVERSION_IS_311 = platform.python_version_tuple()[1] == "11"
+LOADING_ADMONITION = (
+    "Loading a model from a checkpoint file is known to be broken in Python versions "
+    "other than 3.11. Downgrade your version of Python to 3.11 to enable this feature. "
+    "See github.com/chemprop/chemprop/issues/738 for status updates."
+)
 
 
 class MPNN(pl.LightningModule):
@@ -224,6 +230,8 @@ class MPNN(pl.LightningModule):
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
+        if not PY_SUBVERSION_IS_311:
+            raise RuntimeError(LOADING_ADMONITION)
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
         kwargs |= {

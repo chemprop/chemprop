@@ -5,7 +5,6 @@ import sys
 import json
 from copy import deepcopy
 import pandas as pd
-from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -439,7 +438,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
     )
-    
+
     parser.add_argument(
         "--pytorch-seed",
         type=int,

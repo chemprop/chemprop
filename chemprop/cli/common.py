@@ -34,8 +34,9 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-n",
         "--num-workers",
         type=int,
-        default=8,
-        help="Number of workers for the parallel data loading (0 means sequential).",
+        default=0,
+        help="""Number of workers for parallel data loading (0 means sequential).
+Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
 

@@ -3,7 +3,6 @@ import itertools
 import logging
 from enum import auto
 from typing import Sequence
-from random import Random
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules

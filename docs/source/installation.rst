@@ -28,16 +28,11 @@ Start by setting up your virtual environment. We assume you are using ``conda`` 
 
         conda install pytorch cpuonly -c pytorch
 
-.. note:: 
-    We are aware that some users may experience issues during installation while trying to install `torch-scatter`. This is an issue with the `torch-scatter` package and not with Chemprop. We will resolve this issue before the release of v2.0.0, most likely by replacing our `torch-scatter` functions with native PyTorch functions and removing the `torch-scatter` dependency. You can follow along with this issue here: https://github.com/chemprop/chemprop/issues/580.
-
 Option 1: Installing from PyPI
 ------------------------------
 
 .. code-block::
 
-    pip install torch
-    pip install torch-scatter
     pip install chemprop --pre
 
 
@@ -49,8 +44,6 @@ Option 2: Installing from source
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
     git checkout v2/dev
-    pip install torch
-    pip install torch-scatter
     pip install .
 
 Option 3: Installing via Docker
