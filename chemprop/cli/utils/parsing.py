@@ -99,6 +99,12 @@ def get_column_names(
     cols = input_cols + target_cols
     return cols
 
+def get_names_list(dataloader : MoleculeDataset | ReactionDataset) -> list[list[str]]:
+    namess = dataloader.dataset.names
+    if isinstance(namess[0], str):
+        return [namess]
+    else:
+        return list(zip(*namess))
 
 def make_datapoints(
     smiss: list[list[str]] | None,
