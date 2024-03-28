@@ -3,7 +3,7 @@ from itertools import chain
 import logging
 from enum import auto
 from typing import Sequence
-from pathlib import Path
+from os import PathLike
 import json
 import numpy as np
 from astartes import train_test_split, train_val_test_split
@@ -247,26 +247,40 @@ def split_component(
     return train, val, test
 
 
+def parse_indices(idxs):
+    """Parses a string of indices into a list of integers. e.g. '0,1,2-4' -> [0, 1, 2, 3, 4]"""
+    if isinstance(idxs, str):
+        indices = []
+        for idx in idxs.split(","):
+            if "-" in idx:
+                start, end = map(int, idx.split("-"))
+                indices.extend(range(start, end + 1))
+            else:
+                indices.append(int(idx))
+        return indices
+    return idxs
+
+
 def splits_from_file(
-    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
-    splits_file: Path,
+    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]],
+    splits_file: PathLike,
 ):
-    """Splits multicomponent data into training, validation, and test splits."""
+    """Splits data into training, validation, and test based on splits in a file.
 
-    with open(splits_file, "rb") as toml_file:
-        split_idxss = tomllib.load(toml_file)
+    Parameters
+    -----------
+    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]
+    splits_file: PathLike
+        A json file with the splits. It is a list of dictionaries, where each dictionary has the
+        keys "train", "val", and "test" with values that are the indices. The indices can either be
+        a list of integers or a string with comma-separated integers and ranges (e.g. "0,1,2-4").
 
-    def parse_indices(idxs):
-        if isinstance(idxs, str):
-            indices = []
-            for idx in idxs.split(","):
-                if "-" in idx:
-                    start, end = map(int, idx.split("-"))
-                    indices.extend(range(start, end + 1))
-                else:
-                    indices.append(int(idx))
-            return indices
-        return idxs
+    Returns
+    ---------
+    train: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
+    val: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
+    test: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
+    """
 
     with open(splits_file, "rb") as json_file:
         split_idxss = json.load(json_file)
