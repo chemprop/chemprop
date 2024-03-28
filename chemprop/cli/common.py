@@ -70,6 +70,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--features-generators",
+        nargs="+",
         action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )

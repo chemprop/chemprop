@@ -1,6 +1,6 @@
 import logging
 from os import PathLike
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -117,8 +117,41 @@ def make_datapoints(
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
+    
     Parameters
     ----------
+    smiss : list[list[str]] | None
+        a list of lists of SMILES strings of shape ``n x j``, where ``j`` is the number of molecule
+        components per datapoint and ``n`` is the total number of datapoints
+    rxnss : list[list[str]] | None
+        a list of lists of reaction SMILES strings of shape ``n x k``, where ``k`` is the number of
+        reaction components per datapoint and ``n`` is the total number of datapoints
+    Y : np.ndarray
+        the target values of shape ``n x m``, where ``m`` is the number of targets
+    weights : np.ndarray | None
+        the weights of shape ``n``
+    lt_mask : np.ndarray | None
+        a boolean mask of shape ``n x m`` indicating whether the targets are less than inequality
+        targets
+    gt_mask : np.ndarray | None
+        a boolean mask of shape ``n x m`` indicating whether the targets are greater than inequality
+        targets
+    X_d : np.ndarray | None
+        the extra descriptors of shape ``n x p``, where ``p`` is the number of extra descriptors
+    V_fs : list[np.ndarray] | None
+        a list of ``j`` np.ndarrays each of shape ``n x q``, where ``q`` is the number of extra 
+        atom features
+    E_fs : list[np.ndarray] | None
+        a list of ``j`` np.ndarrays each of shape ``n x r``, where ``r`` is the number of extra
+        bond features
+    V_ds : list[np.ndarray] | None
+        a list of ``j`` np.ndarrays each of shape ``n x s``, where ``s`` is the number of extra
+        atom descriptors
+    features_generators : list[MoleculeFeaturizer] | None
+        a list of :class:`MoleculeFeaturizer` instances to generate additional molecule features to
+        use as extra descriptors
+    keep_h : bool
+    add_h : bool
 
     Returns
     -------
@@ -150,7 +183,7 @@ def make_datapoints(
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
-    n_mols = len(smiss)
+    n_mols = len(smiss[0]) if smiss else 0
     X_d = [None] * N if X_d is None else X_d
     V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
     E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
@@ -213,7 +246,7 @@ def build_data_from_files(
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
     **featurization_kwargs: Mapping,
-) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
+) -> list[Union[list[MoleculeDatapoint], list[ReactionDatapoint]]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )

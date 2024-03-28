@@ -19,7 +19,7 @@ from chemprop.data import (
     ReactionDataset,
     MoleculeDataset,
 )
-from chemprop.data import SplitType, split_component
+from chemprop.data import SplitType, split_component, splits_from_file
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -40,6 +40,7 @@ from chemprop.cli.utils import (
     get_column_names,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.featurizers import MoleculeFeaturizerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -412,26 +413,15 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    # TODO: Add in v2.1
-    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    # split_args.add_argument(
-    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-dir",
-    #     help="Directory in which to find cross validation index files.",
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-file",
-    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    # )
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
+    split_args.add_argument(
+        "--splits-file",
+        type=Path,
+        help="Path to a TOML file containing pre-defined splits for the input data.",
     )
     split_args.add_argument(
         "--data-seed",
@@ -439,7 +429,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
     )
-    
+
     parser.add_argument(
         "--pytorch-seed",
         type=int,
@@ -546,12 +536,15 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-    multicomponent = len(all_data) > 1
+    if args.splits_file is not None:
+        train_data, val_data, test_data = splits_from_file(all_data, args.splits_file)
+    else:
+        multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
-    split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
+        split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
+        split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
 
-    train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
+        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
 
     sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
     logger.info(f"train/val/test sizes: {sizes}")
@@ -651,6 +644,11 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         )
     else:
         criterion = None
+    if args.metrics is not None:
+        # TODO: AUROCMetric takes `task` as an argument, but we don't expose that through the command line. Should we?
+        metrics = [Factory.build(MetricRegistry[metric], task=None) for metric in args.metrics]
+    else:
+        metrics = None
 
     predictor = Factory.build(
         predictor_cls,
@@ -682,8 +680,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             setattr(model.predictor.ffn[idx * 3 + 2], "p", 0.0)
 
         return model
-
-    metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
         mp_block,
@@ -780,23 +776,26 @@ def main(args):
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
+    if args.features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
+        features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in args.features_generators
+        ]
+    else:
+        features_generators = None
+
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    no_cv = args.num_folds == 1
-    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
+    splits = build_splits(args, format_kwargs, featurization_kwargs)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if not no_cv:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-        else:
+        if args.num_folds == 1:
             output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 

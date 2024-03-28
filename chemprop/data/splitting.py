@@ -1,19 +1,19 @@
 import copy
-import itertools
+from itertools import chain
 import logging
 from enum import auto
-from typing import Sequence
-from random import Random
+from typing import Sequence, Union
+from pathlib import Path
+import tomllib
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
 from rdkit import Chem
 
-from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
-MulticomponentDatapoint = Sequence[MoleculeDatapoint]
 
 
 class SplitType(EnumMapping):
@@ -50,10 +50,11 @@ def split_data(
 
     Returns
     -------
-    tuple[list[int], list[int], list[int]] | tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
-        A tuple of list of indices corresponding to the train, validation, and test splits of the data.
-        If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of indices corresponding to the train, validation, and test splits of each fold.
-            NOTE: validation may or may not be present
+    tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
+        A tuple of lists of lists of indices corresponding to the train, validation, and test splits
+        of the data for each splitting scheme (for example, in crossfold validation).
+            .. important::
+                validation may or may not be present
 
     Raises
     ------
@@ -87,10 +88,12 @@ def split_data(
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
-            if not (2 <= num_folds <= len(datapoints)):
-                min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
+            min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
+            if not (min_folds <= num_folds <= len(datapoints)):
                 raise ValueError(
-                    f"invalid number of folds requested! got: {num_folds}, but expected between {min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, for split type: {repr(split)}"
+                    f"invalid number of folds requested! got: {num_folds}, but expected between "
+                    f"{min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, "
+                    f"for split type: {repr(split)}"
                 )
 
             # returns nested lists of indices
@@ -148,15 +151,13 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs)
-            )
-            val = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs)
-            )
-            test = list(
-                itertools.chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs)
-            )
+            train = [
+                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs[0]))
+            ]
+            val = [list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs[0]))]
+            test = [
+                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs[0]))
+            ]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
@@ -192,7 +193,7 @@ def split_data(
 
 def _unpack_astartes_result(
     result: tuple, include_val: bool
-) -> tuple[list[int], list[int], list[int]]:
+) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
     """Helper function to partition input data based on output of astartes sampler
 
     Parameters
@@ -204,10 +205,10 @@ def _unpack_astartes_result(
 
     Returns
     ---------
-    train: list[int]
-    val: list[int]
+    train: list[list[int]]
+    val: list[list[int]]
         NOTE: possibly empty
-    test: list[int]
+    test: list[list[int]]
     """
     train_idxs, val_idxs, test_idxs = [], [], []
     # astartes returns a set of lists containing the data, clusters (if applicable)
@@ -216,11 +217,11 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
         train_idxs, test_idxs = result[-2], result[-1]
-    return list(train_idxs), list(val_idxs), list(test_idxs)
+    return [list(train_idxs)], [list(val_idxs)], [list(test_idxs)]
 
 
 def split_component(
-    datapointss: Sequence[Sequence[MoleculeDatapoint | MulticomponentDatapoint]],
+    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
     split: SplitType | str = "random",
     key_index: int = 0,
     **kwargs,
@@ -228,26 +229,59 @@ def split_component(
     """Splits multicomponent data into training, validation, and test splits."""
 
     key_datapoints = datapointss[key_index]
-    train_idxs, val_idxs, test_idxs = split_data(key_datapoints, split=split, **kwargs)
+    train_idxss, val_idxss, test_idxss = split_data(key_datapoints, split=split, **kwargs)
 
-    match SplitType.get(split):
-        case SplitType.CV_NO_VAL | SplitType.CV:
-            # convert indices to datapoints for each fold
-            train = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in train_idxs
-            ]
-            val = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in val_idxs
-            ]
-            test = [
-                [[datapoints[i] for i in fold] for datapoints in datapointss] for fold in test_idxs
-            ]
-        case SplitType.SCAFFOLD_BALANCED | SplitType.RANDOM_WITH_REPEATED_SMILES | SplitType.RANDOM | SplitType.KENNARD_STONE | SplitType.KMEANS:
-            # convert indices to datapoints
-            train = [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
-            val = [[datapoints[i] for i in val_idxs] for datapoints in datapointss]
-            test = [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
-        case _:
-            raise RuntimeError("Unreachable code reached!")
+    train = [
+        [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
+        for train_idxs in train_idxss
+    ]
+    val = [
+        [[datapoints[i] for i in val_idxs] for datapoints in datapointss] for val_idxs in val_idxss
+    ]
+    test = [
+        [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
+        for test_idxs in test_idxss
+    ]
 
+    return train, val, test
+
+
+def splits_from_file(
+    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
+    splits_file: Path,
+):
+    """Splits multicomponent data into training, validation, and test splits."""
+
+    with open(splits_file, "rb") as toml_file:
+        split_idxss = tomllib.load(toml_file)
+
+    def parse_indices(idxs):
+        if isinstance(idxs, str):
+            indices = []
+            for idx in idxs.split(","):
+                if "-" in idx:
+                    start, end = map(int, idx.split("-"))
+                    indices.extend(range(start, end + 1))
+                else:
+                    indices.append(int(idx))
+            return indices
+        return idxs
+
+    split_idxss = {
+        splitting_scheme: {split: parse_indices(idxs) for split, idxs in splits_dict.items()}
+        for splitting_scheme, splits_dict in split_idxss.items()
+    }
+
+    train = [
+        [[datapoints[i] for i in split_idxs["train"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
+    val = [
+        [[datapoints[i] for i in split_idxs["val"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
+    test = [
+        [[datapoints[i] for i in split_idxs["test"]] for datapoints in datapointss]
+        for split_idxs in split_idxss.values()
+    ]
     return train, val, test
