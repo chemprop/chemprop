@@ -4,7 +4,7 @@ import logging
 from enum import auto
 from typing import Sequence
 from pathlib import Path
-import tomllib
+import json
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
@@ -268,21 +268,24 @@ def splits_from_file(
             return indices
         return idxs
 
-    split_idxss = {
-        splitting_scheme: {split: parse_indices(idxs) for split, idxs in splits_dict.items()}
-        for splitting_scheme, splits_dict in split_idxss.items()
-    }
+    with open(splits_file, "rb") as json_file:
+        split_idxss = json.load(json_file)
+
+    split_idxss = [
+        {split: parse_indices(idxs) for split, idxs in splits_dict.items()}
+        for splits_dict in split_idxss
+    ]
 
     train = [
         [[datapoints[i] for i in split_idxs["train"]] for datapoints in datapointss]
-        for split_idxs in split_idxss.values()
+        for split_idxs in split_idxss
     ]
     val = [
         [[datapoints[i] for i in split_idxs["val"]] for datapoints in datapointss]
-        for split_idxs in split_idxss.values()
+        for split_idxs in split_idxss
     ]
     test = [
         [[datapoints[i] for i in split_idxs["test"]] for datapoints in datapointss]
-        for split_idxs in split_idxss.values()
+        for split_idxs in split_idxss
     ]
     return train, val, test
