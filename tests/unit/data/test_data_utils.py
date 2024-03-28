@@ -4,7 +4,7 @@ from astartes import train_val_test_split
 from astartes.utils.warnings import NormalizationWarning
 
 from chemprop.data.datapoints import MoleculeDatapoint
-from chemprop.data.splitting import split_data, _unpack_astartes_result, splits_from_file
+from chemprop.data.splitting import split_data, _unpack_astartes_result, parse_indices
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])
@@ -158,13 +158,12 @@ def test_scaffold(molecule_dataset_with_rings):
     assert train[0] == [0, 1, 2]
 
 
-def test_splits_from_file(mol_data, data_dir):
+def test_parse_indices():
     """
-    Testing if splits_from_file yields expected results.
+    Testing if parse_indices yields expected results.
     """
-    splits_file = data_dir / "example_splits_file.toml"
-    train, val, test = splits_from_file(datapointss=[mol_data], splits_file=splits_file)
+    splits = {"train": [0, 1, 2, 4], "val": [3, 5, 6], "test": [7, 8, 9]}
+    split_idxs = {"train": "0-2, 4", "val": "3,5-6", "test": [7, 8, 9]}
+    split_idxs = {split: parse_indices(idxs) for split, idxs in split_idxs.items()}
 
-    expected_result = [[[mol_data[idx] for idx in [0, 1, 2, 4]]]]
-
-    assert train == expected_result
+    assert split_idxs == splits
