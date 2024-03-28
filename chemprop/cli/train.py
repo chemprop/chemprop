@@ -471,20 +471,14 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xd = sum(dset.d_xd for dset in train_dset.datasets)
-        d_vf = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
-        )
-        d_ef = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
-        )
-        d_vd = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
-        )
+        d_vf = sum(dset.d_vf for dset in train_dset.datasets)
+        d_ef = sum(dset.d_ef for dset in train_dset.datasets)
+        d_vd = sum(dset.d_vd for dset in train_dset.datasets)
     else:
         d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf if not isinstance(train_dset, ReactionDataset) else 0
-        d_ef = train_dset.d_ef if not isinstance(train_dset, ReactionDataset) else 0
-        d_vd = train_dset.d_vd if not isinstance(train_dset, ReactionDataset) else 0
+        d_vf = train_dset.d_vf
+        d_ef = train_dset.d_ef
+        d_vd = train_dset.d_vd
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
