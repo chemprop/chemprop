@@ -53,7 +53,8 @@ def split_data(
     tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
         A tuple of lists of lists of indices corresponding to the train, validation, and test splits
         of the data for each splitting scheme (for example, in crossfold validation).
-            NOTE: validation may or may not be present
+            .. important::
+                validation may or may not be present
 
     Raises
     ------
