@@ -29,6 +29,7 @@ class _DatapointMixin:
     x_phase: list[float] = None
     """A one-hot vector indicating the phase of the data, as used in spectra data."""
     name: str | None = None
+    """A string identifier for the datapoint."""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.x_d is not None and mfs is not None:
@@ -57,7 +58,9 @@ class _MoleculeDatapointMixin:
     ) -> _MoleculeDatapointMixin:
         mol = make_mol(smi, keep_h, add_h)
 
-        return cls(mol, *args, name=smi, **kwargs)
+        kwargs['name'] = smi if 'name' not in kwargs else kwargs['name']
+
+        return cls(mol, *args, **kwargs)
 
 
 @dataclass
@@ -134,7 +137,9 @@ class _ReactionDatapointMixin:
         rct = make_mol(rct_smi, keep_h, add_h)
         pdt = make_mol(pdt_smi, keep_h, add_h)
 
-        return cls(rct, pdt, *args, name=name, **kwargs)
+        kwargs['name'] = name if 'name' not in kwargs else kwargs['name']
+
+        return cls(rct, pdt, *args, **kwargs)
 
 
 @dataclass
