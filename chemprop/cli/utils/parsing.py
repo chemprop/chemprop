@@ -1,6 +1,6 @@
 import logging
 from os import PathLike
-from typing import Mapping, Sequence, Union
+from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -117,7 +117,7 @@ def make_datapoints(
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
-    
+
     Parameters
     ----------
     smiss : list[list[str]] | None
@@ -246,7 +246,7 @@ def build_data_from_files(
     p_bond_feats: PathLike,
     p_atom_descs: PathLike,
     **featurization_kwargs: Mapping,
-) -> list[Union[list[MoleculeDatapoint], list[ReactionDatapoint]]]:
+) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
     )

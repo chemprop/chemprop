@@ -2,7 +2,7 @@ import copy
 from itertools import chain
 import logging
 from enum import auto
-from typing import Sequence, Union
+from typing import Sequence
 from pathlib import Path
 import tomllib
 import numpy as np
@@ -207,7 +207,8 @@ def _unpack_astartes_result(
     ---------
     train: list[list[int]]
     val: list[list[int]]
-        NOTE: possibly empty
+    .. important::
+        validation possibly empty
     test: list[list[int]]
     """
     train_idxs, val_idxs, test_idxs = [], [], []
@@ -221,7 +222,7 @@ def _unpack_astartes_result(
 
 
 def split_component(
-    datapointss: Sequence[Union[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]],
+    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]],
     split: SplitType | str = "random",
     key_index: int = 0,
     **kwargs,
