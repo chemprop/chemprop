@@ -490,10 +490,9 @@ def normalize_inputs(train_dset, val_dset, args):
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
         
-        X_d_scaler = [X_d_scaler] if not isinstance(X_d_scaler, list) else X_d_scaler
+        X_d_scaler = X_d_scaler[0] if isinstance(X_d_scaler, list) else X_d_scaler
 
-        for i, scaler in enumerate(X_d_scaler):
-            logger.info(f"Features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+        logger.info(f"Descriptors: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
