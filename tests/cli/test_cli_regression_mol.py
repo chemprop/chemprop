@@ -15,9 +15,9 @@ def data_path(data_dir):
     return (
         str(data_dir / "regression" / "mol" / "mol.csv"),
         str(data_dir / "regression" / "mol" / "descriptors.npz"),
-        str(data_dir / "regression" / "mol" / "atom_features.npz"),
-        str(data_dir / "regression" / "mol" / "bond_features.npz"),
-        str(data_dir / "regression" / "mol" / "atom_descriptors.npz"),
+        ("0", str(data_dir / "regression" / "mol" / "atom_features.npz")),
+        ("0", str(data_dir / "regression" / "mol" / "bond_features.npz")),
+        ("0", str(data_dir / "regression" / "mol" / "atom_descriptors.npz")),
     )
 
 
@@ -57,11 +57,11 @@ def test_train_quick_features(monkeypatch, data_path):
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
-        atom_features_path,
+        *atom_features_path,
         "--bond-features-path",
-        bond_features_path,
+        *bond_features_path,
         "--atom-descriptors-path",
-        atom_descriptors_path,
+        *atom_descriptors_path,
     ]
 
     with monkeypatch.context() as m:
@@ -213,7 +213,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
 
     trained_model = MPNN.load_from_checkpoint(checkpoint_path)
     frzn_model = MPNN.load_from_file(model_path)
-    
+
     assert torch.equal(
         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
     )

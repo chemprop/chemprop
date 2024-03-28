@@ -9,7 +9,7 @@ from chemprop.models.multi import MulticomponentMPNN
 def save_model(
     path: PathLike,
     model: MPNN,
-    input_scalers: dict[str, StandardScaler] | None,
+    input_scalers: dict[str, list[StandardScaler]] | None,
     output_scaler: StandardScaler | None,
 ) -> None:
     torch.save(

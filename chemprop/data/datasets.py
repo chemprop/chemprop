@@ -252,11 +252,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case "X_d":
                 X = None if np.all(self.X_d == None) else self.X_d
             case "V_f":
-                X = None if np.all(self.V_fs == None) else np.concatenate(self.V_fs, axis=0)
+                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
             case "E_f":
-                X = None if np.all(self.E_fs == None) else np.concatenate(self.E_fs, axis=0)
+                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
             case "V_d":
-                X = None if np.all(self.V_ds == None) else np.concatenate(self.V_ds, axis=0)
+                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
             case None:
                 return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
             case _:
@@ -272,11 +272,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case "X_d":
                 self.X_d = scaler.transform(X)
             case "V_f":
-                self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs]
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
             case "E_f":
-                self.E_fs = [scaler.transform(E_f) for E_f in self.E_fs]
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
             case "V_d":
-                self.V_ds = [scaler.transform(V_d) for V_d in self.V_ds]
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
             case _:
                 raise RuntimeError("unreachable code reached!")
 
@@ -320,6 +320,18 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct, d.pdt) for d in self.data]
 
+    @property
+    def d_vf(self) -> int:
+        return 0
+
+    @property
+    def d_ef(self) -> int:
+        return 0
+
+    @property
+    def d_vd(self) -> int:
+        return 0
+
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
@@ -355,9 +367,14 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
         return self.datasets[0].normalize_targets(scaler)
 
     def normalize_inputs(
-        self, key: str | None = "X_d", scaler: StandardScaler | None = None
+        self, key: str | None = "X_d", scaler: list[StandardScaler] | None = None
     ) -> list[StandardScaler]:
-        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+        RXN_VALID_KEYS = {"X_d", None}
+        match scaler:
+            case None:
+                return [dset.normalize_inputs(key) if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS else None for dset in self.datasets]
+            case _:
+                return [dset.normalize_inputs(key, s) if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS else None for dset, s in zip(self.datasets, scaler)]
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
