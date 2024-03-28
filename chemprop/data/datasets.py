@@ -320,6 +320,18 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def mols(self) -> list[Chem.Mol]:
         return [(d.rct, d.pdt) for d in self.data]
 
+    @property
+    def d_vf(self) -> int:
+        return 0
+
+    @property
+    def d_ef(self) -> int:
+        return 0
+
+    @property
+    def d_vd(self) -> int:
+        return 0
+
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
