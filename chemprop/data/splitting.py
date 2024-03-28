@@ -1,5 +1,4 @@
 import copy
-from itertools import chain
 import logging
 from enum import auto
 from typing import Sequence
@@ -151,13 +150,10 @@ def split_data(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = [
-                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in train_idxs[0]))
-            ]
-            val = [list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in val_idxs[0]))]
-            test = [
-                list(chain.from_iterable(smiles_indices[unique_smiles[i]] for i in test_idxs[0]))
-            ]
+            train = sum((smiles_indices[unique_smiles[i]] for i in train_idxs[0]), [])
+            val = sum((smiles_indices[unique_smiles[j]] for j in val_idxs[0]), [])
+            test = sum((smiles_indices[unique_smiles[k]] for k in test_idxs[0]), [])
+            train, val, test = [train], [val], [test]
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
