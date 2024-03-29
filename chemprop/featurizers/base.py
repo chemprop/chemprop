@@ -13,9 +13,6 @@ class Featurizer(Generic[S, T]):
     """An :class:`Featurizer` featurizes inputs type ``S`` into outputs of
     type ``T``."""
 
-    # @abstractmethod
-    # def __len__(self) -> int:
-    #     """the length of an atomic feature vector"""
 
     @abstractmethod
     def __call__(self, input: S, *args, **kwargs) -> T:

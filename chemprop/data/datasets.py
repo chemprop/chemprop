@@ -355,7 +355,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
 
     @property
-    def mols(self) -> list[tuple[Chem.Mol, Chem.Mol]]:
+    def mols(self) -> list[Rxn]:
         return [(d.rct, d.pdt) for d in self.data]
 
 
