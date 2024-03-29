@@ -4,8 +4,7 @@ from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.featurizers.molgraph.reaction import RxnMode
+from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode
 
 logger = logging.getLogger(__name__)
 
