@@ -4,7 +4,7 @@ from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode
+from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode, AtomFeatureMode
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
         "--multi-hot-atom-featurizer-mode",
         type=uppercase,
         default="V2",
-        choices=["V1", "V2", "ORGANIC"],
+        choices=list(AtomFeatureMode.keys()),
         help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
 - `V1`: Corresponds to the original configuration employed in the Chemprop V1.
 - `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
