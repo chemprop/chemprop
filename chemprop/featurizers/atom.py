@@ -23,10 +23,12 @@ class AtomFeaturizer(ABC):
 class MultiHotAtomFeaturizer(AtomFeaturizer):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
-    Three classmethods are provided:
-    * v1: see :meth:`MultiHotAtomFeaturizer.v1`
-    * v2: see :meth:`MultiHotAtomFeaturizer.v2`
-    * organic: see :meth:`MultiHotAtomFeaturizer.organic`
+    .. seealso::
+        The class provides three default parameterization schemes:
+        
+        * :meth:`MultiHotAtomFeaturizer.v1`
+        * :meth:`MultiHotAtomFeaturizer.v2`
+        * :meth:`MultiHotAtomFeaturizer.organic`
 
     The generated atom features are ordered as follows:
     * atomic number
@@ -43,18 +45,18 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     Parameters
     ----------
-    atomic_nums : Sequence[int],
-        type of atom (ex. C, N, O), by atomic number
-    degree : Sequence[int],
-        number of bonds the atom is involved in
-    formal_charges : Sequence[int],
-        integer electronic charge assigned to atom
-    chiral_tags : Sequence[int],
-        unspecified, tetrahedral CW/CCW, or other
-    num_Hs : Sequence[int],
-        number of bonded hydrogen atoms
-    hybridizations : Sequence[int],
-        type of atom’s hybridization (ex. sp, sp2, sp3, sp3d, or sp3d2)
+    atomic_nums : Sequence[int]
+        the choices for atom type denoted by atomic number. Ex: ``[4, 5, 6]`` for C, N and O.
+    degrees : Sequence[int]
+        the choices for number of bonds an atom is engaged in.
+    formal_charges : Sequence[int]
+        the choices for integer electronic charge assigned to an atom.
+    chiral_tags : Sequence[int]
+        the choices for an atom's chiral tag. See :class:`rdkit.Chem.rdchem.ChiralType` for possible integer values.
+    num_Hs : Sequence[int]
+        the choices for number of bonded hydrogen atoms.
+    hybridizations : Sequence[int]
+        the choices for an atom’s hybridization type. See :class:`rdkit.Chem.rdchem.HybridizationType` for possible integer values.
     """
 
     def __init__(
@@ -139,7 +141,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
         Parameters
         ----------
         max_atomic_num : int, default=100
-            Include a bit for all atomic numbers in the interval `[1, max_atomic_num]`
+            Include a bit for all atomic numbers in the interval :math:`[1, \mathtt{max_atomic_num}]`
 
         References
         -----------
