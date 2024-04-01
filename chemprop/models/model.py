@@ -87,7 +87,7 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
-        self.output_transform = output_transform or OutputTransform()
+        self.output_transform = output_transform
 
         self.metrics = (
             [*metrics, self.criterion]
@@ -174,7 +174,7 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
 
-        if test:
+        if test and self.output_transform is not None:
             preds = self.output_transform(preds)
 
         return [
@@ -275,11 +275,10 @@ class MPNN(pl.LightningModule):
 
 class OutputTransform(object):
 
-    def __init__(self, output_scaler: StandardScaler | None=None):
+    def __init__(self, output_scaler: StandardScaler):
         self.output_scaler = output_scaler
 
     def __call__(self, outputs):
-        if self.output_scaler is not None:
-            outputs = self.output_scaler.inverse_transform(outputs)
+        outputs = self.output_scaler.inverse_transform(outputs)
 
         return outputs

@@ -4,7 +4,6 @@ from enum import StrEnum
 from typing import Iterable, Iterator
 
 from rdkit import Chem
-from sklearn.preprocessing import StandardScaler
 
 
 class EnumMapping(StrEnum):
