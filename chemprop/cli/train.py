@@ -761,9 +761,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     namess = [names]
                 else:
                     namess = list(zip(*names))
-                df_preds = pd.DataFrame(
-                    list(zip(*namess, *preds.T)), columns=columns
-                )
+                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"

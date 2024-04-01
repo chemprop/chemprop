@@ -58,7 +58,7 @@ class _MoleculeDatapointMixin:
     ) -> _MoleculeDatapointMixin:
         mol = make_mol(smi, keep_h, add_h)
 
-        kwargs['name'] = smi if 'name' not in kwargs else kwargs['name']
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
         return cls(mol, *args, **kwargs)
 
@@ -137,7 +137,7 @@ class _ReactionDatapointMixin:
         rct = make_mol(rct_smi, keep_h, add_h)
         pdt = make_mol(pdt_smi, keep_h, add_h)
 
-        kwargs['name'] = name if 'name' not in kwargs else kwargs['name']
+        kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
         return cls(rct, pdt, *args, **kwargs)
 
