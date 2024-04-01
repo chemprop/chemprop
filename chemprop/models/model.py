@@ -273,9 +273,6 @@ class MPNN(pl.LightningModule):
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
-        
-        model.input_scalers = InputTransform(d["input_scalers"])
-        model.output_transform = OutputTransform(d["output_scaler"])
 
         return model
 

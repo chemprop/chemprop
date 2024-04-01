@@ -93,7 +93,4 @@ class MulticomponentMPNN(MPNN):
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
 
-        model.input_scalers = d["input_scalers"]
-        model.output_transform = d["output_scaler"]
-
         return model
