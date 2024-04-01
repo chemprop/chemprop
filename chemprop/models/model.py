@@ -237,9 +237,7 @@ class MPNN(pl.LightningModule):
         self.output_transform = OutputTransform(checkpoint["output_scaler"])
 
     @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
+    def load_submodules(cls, checkpoint_path, **kwargs):
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
         kwargs |= {
@@ -247,7 +245,13 @@ class MPNN(pl.LightningModule):
             for key in ("message_passing", "agg", "predictor")
             if key not in kwargs
         }
+        return kwargs
 
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
