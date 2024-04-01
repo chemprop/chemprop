@@ -289,8 +289,13 @@ class OutputTransform(object):
 
 class InputTransform(object):
 
-    def __init__(self, input_scalers: dict[str, StandardScaler]):
+    def __init__(self, input_scalers: dict[str, StandardScaler] | None = None):
         self.input_scalers = input_scalers
 
-    def __call__(self):
-        pass
+    def __call__(self, dataset):
+        KEYS = {"X_d", "V_f", "E_f", "V_d"}
+
+        for key in KEYS:
+            scaler = self.input_scalers.get(key, None) if self.input_scalers else None
+            if scaler is not None:
+                dataset.normalize_inputs(key, scaler)
