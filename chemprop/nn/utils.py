@@ -1,5 +1,5 @@
 from enum import auto
-
+from sklearn.preprocessing import StandardScaler
 from torch import nn
 
 from chemprop.utils.utils import EnumMapping
@@ -44,3 +44,16 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
             return nn.ELU()
         case _:
             raise RuntimeError("unreachable code reached!")
+
+
+class OutputTransform:
+
+    def __init__(self, output_scaler: StandardScaler):
+        self.output_scaler = output_scaler
+
+    def __call__(self, outputs):
+
+        if self.output_scaler is not None:
+            outputs = self.output_scaler.inverse_transform(outputs)
+
+        return outputs

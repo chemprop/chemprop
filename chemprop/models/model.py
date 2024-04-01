@@ -10,6 +10,7 @@ from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric, MetricRegistry
+from chemprop.nn.utils import OutputTransform
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -275,19 +276,7 @@ class MPNN(pl.LightningModule):
         return model
 
 
-class OutputTransform(object):
-
-    def __init__(self, output_scaler: StandardScaler):
-        self.output_scaler = output_scaler
-
-    def __call__(self, outputs):
-
-        if self.output_scaler is not None:
-            outputs = self.output_scaler.inverse_transform(outputs)
-
-        return outputs
-
-class InputTransform(object):
+class InputTransform:
 
     def __init__(self, input_scalers: dict[str, StandardScaler] | None = None):
         self.input_scalers = input_scalers
