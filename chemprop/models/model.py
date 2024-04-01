@@ -170,6 +170,16 @@ class MPNN(pl.LightningModule):
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
+    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+
+        bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+        preds = self(bmg, V_d, X_d)
+
+        return self.predictor.output_transform(preds)
+
     def _evaluate_batch(self, batch, test=False) -> list[Tensor]:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
