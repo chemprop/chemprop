@@ -155,8 +155,8 @@ def test_normalize_inputs(dataset):
 
         for X, dset_X in zip(Xs, getattr(dataset, f"{input_}s")):
             np.testing.assert_array_equal(X, dset_X)
-        np.testing.assert_array_equal(getattr(dset_scaler, f"mean_"), scaler.mean_)
-        np.testing.assert_array_equal(getattr(dset_scaler, f"scale_"), scaler.scale_)
+        np.testing.assert_array_equal(getattr(dset_scaler, "mean_"), scaler.mean_)
+        np.testing.assert_array_equal(getattr(dset_scaler, "scale_"), scaler.scale_)
 
 
 @pytest.mark.parametrize("cache", [False, True])

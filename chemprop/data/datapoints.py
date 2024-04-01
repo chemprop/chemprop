@@ -73,7 +73,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     concatenated to bond-level features *before* message passing"""
     V_d: np.ndarray | None = None
     """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level 
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
