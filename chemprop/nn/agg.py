@@ -120,10 +120,13 @@ class AttentiveAggregation(Aggregation):
         self.W = nn.Linear(output_size, 1)
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
         dim_size = batch.max().int() + 1
-        H_exp = H.exp()
-        Z = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            self.dim, index_torch, H_exp, reduce="sum", include_self=False
+        attention_logits = self.W(H).exp()
+        Z = torch.zeros(dim_size, 1, dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, batch.unsqueeze(1), attention_logits, reduce="sum", include_self=False
         )
-        return H_exp / Z[batch]
+        alphas = attention_logits / Z[batch]
+        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, alphas * H, reduce="sum", include_self=False
+        )
