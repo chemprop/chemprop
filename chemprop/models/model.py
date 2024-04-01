@@ -257,4 +257,3 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
-
