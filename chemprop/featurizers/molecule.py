@@ -47,7 +47,7 @@ class CountFeaturizerMixin:
 
 
 @MoleculeFeaturizerRegistry("morgan_binary")
-class MorganBinaryFeaturzer(MorganFeaturizerMixin, BinaryFeaturizerMixin, MoleculeFeaturizer):
+class MorganBinaryFeaturizer(MorganFeaturizerMixin, BinaryFeaturizerMixin, MoleculeFeaturizer):
     pass
 
 

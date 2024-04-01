@@ -11,11 +11,6 @@ build:
   tools:
     python: "3.11"
   jobs:
-    # We need to install torch and torch-scatter separately as a pre-install step
-    # due to an issue with torch-scatter
-    pre_install:
-      - python -m pip install --upgrade --no-cache-dir torch
-      - python -m pip install --upgrade --no-cache-dir torch-scatter
     post_install:
       - python -m pip install --upgrade --upgrade-strategy only-if-needed --no-cache-dir ".[docs]"
     
