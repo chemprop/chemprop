@@ -250,13 +250,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
         match key:
             case "X_d":
-                X = None if np.all(self.X_d == None) else self.X_d
+                X = None if all(i is None for i in self.X_d) else self.X_d
             case "V_f":
-                X = None if np.all(self.V_fs == None) else np.concatenate(self.V_fs, axis=0)
+                X = None if all(i is None for i in self.V_fs) else np.concatenate(self.V_fs, axis=0)
             case "E_f":
-                X = None if np.all(self.E_fs == None) else np.concatenate(self.E_fs, axis=0)
+                X = None if all(i is None for i in self.E_fs) else np.concatenate(self.E_fs, axis=0)
             case "V_d":
-                X = None if np.all(self.V_ds == None) else np.concatenate(self.V_ds, axis=0)
+                X = None if all(i is None for i in self.V_ds) else np.concatenate(self.V_ds, axis=0)
             case None:
                 return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
             case _:

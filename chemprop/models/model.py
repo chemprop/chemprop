@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import Iterable, Union
-from sklearn.preprocessing import StandardScaler
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
-from chemprop.nn.metrics import Metric, MetricRegistry
+from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -259,4 +257,3 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
-
