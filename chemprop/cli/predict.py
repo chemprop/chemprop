@@ -264,8 +264,8 @@ def make_prediction_for_model(
         trainer = pl.Trainer(
             logger=False,
             enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            accelerator=args.accelerator,
+            devices=args.devices,
         )
 
         predss = trainer.predict(model, test_loader)

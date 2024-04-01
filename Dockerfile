@@ -36,13 +36,11 @@ RUN conda create --name chemprop_env python=3.11* && \
 # in a Dockerfile build script)
 SHELL ["conda", "run", "--no-capture-output", "-n", "chemprop_env", "/bin/bash", "-c"]
 
-# Follow the installation instructions (but with fixed versions, for stability of this image) then clear the cache
+# Follow the installation instructions then clear the cache
 ADD chemprop chemprop
 ENV PYTHONPATH /opt/chemprop
 ADD LICENSE.txt pyproject.toml README.md .
-RUN python -m pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu && \
-    python -m pip install torch-scatter -f https://data.pyg.org/whl/torch-2.2.0+cpu.html && \
-    python -m pip install . && \
+RUN python -m pip install . && \
     python -m pip cache purge
 
 # when running this image, open an interactive bash terminal inside the conda environment

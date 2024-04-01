@@ -10,7 +10,9 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "rxn" / "rxn.csv"), str(data_dir / "regression" / "rxn" / "descriptors.npz")
+    return str(data_dir / "regression" / "rxn" / "rxn.csv"), str(
+        data_dir / "regression" / "rxn" / "descriptors.npz"
+    )
 
 
 @pytest.fixture
