@@ -44,6 +44,7 @@ class Predictor(nn.Module, HasHParams):
     criterion: LossFunction
     """the loss function to use for training"""
     output_transform: OutputTransform
+    """the output transform to use for predictions"""
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
@@ -73,6 +74,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        output_transform: OutputTransform = OutputTransform(),
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -82,6 +84,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
+        self.output_transform = output_transform
 
     @property
     def input_dim(self) -> int:
@@ -117,8 +120,9 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        output_transform: OutputTransform = OutputTransform(),
     ):
-        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
+        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform)
 
 
 @PredictorRegistry.register("regression-mve")
@@ -221,9 +225,10 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        output_transform: OutputTransform = OutputTransform(),
     ):
         super().__init__(
-            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
+            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform
         )
 
         self.n_classes = n_classes

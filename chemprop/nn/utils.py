@@ -48,7 +48,7 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
 
 class OutputTransform:
 
-    def __init__(self, output_scaler: StandardScaler):
+    def __init__(self, output_scaler: StandardScaler | None = None):
         self.output_scaler = output_scaler
 
     def __call__(self, outputs):
@@ -60,3 +60,18 @@ class OutputTransform:
         transformed_outputs = torch.from_numpy(self.output_scaler.inverse_transform(outputs))
 
         return transformed_outputs
+
+
+class InputTransform:
+
+    def __init__(self, input_scalers: dict[str, StandardScaler] | None = None):
+        self.input_scalers = input_scalers
+
+    def __call__(self, dataset):
+        KEYS = {"X_d", "V_f", "E_f", "V_d"}
+
+        for key in KEYS:
+            scaler = self.input_scalers.get(key, None) if self.input_scalers else None
+            if scaler is not None:
+                dataset.normalize_inputs(key, scaler)
+

@@ -10,7 +10,7 @@ from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric, MetricRegistry
-from chemprop.nn.utils import OutputTransform
+from chemprop.nn.utils import OutputTransform, InputTransform
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -188,7 +188,7 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
 
         if test:
-            preds = self.output_transform(preds)
+            preds = self.predictor.output_transform(preds)
 
         return [
             metric(preds, targets, mask, None, None, lt_mask, gt_mask)
@@ -237,14 +237,6 @@ class MPNN(pl.LightningModule):
         }
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
-    
-    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        checkpoint["input_scalers"] = self.input_transform.input_scalers
-        checkpoint["output_scaler"] = self.output_transform.output_scaler
-
-    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        self.input_scalers = InputTransform(checkpoint["input_scalers"])
-        self.output_transform = OutputTransform(checkpoint["output_scaler"])
 
     @classmethod
     def load_submodules(cls, checkpoint_path, **kwargs):
@@ -286,16 +278,3 @@ class MPNN(pl.LightningModule):
 
         return model
 
-
-class InputTransform:
-
-    def __init__(self, input_scalers: dict[str, StandardScaler] | None = None):
-        self.input_scalers = input_scalers
-
-    def __call__(self, dataset):
-        KEYS = {"X_d", "V_f", "E_f", "V_d"}
-
-        for key in KEYS:
-            scaler = self.input_scalers.get(key, None) if self.input_scalers else None
-            if scaler is not None:
-                dataset.normalize_inputs(key, scaler)
