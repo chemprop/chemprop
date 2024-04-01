@@ -8,6 +8,7 @@ from torch.nn import functional as F
 from chemprop.nn.loss import *
 from chemprop.nn.metrics import *
 from chemprop.nn.ffn import MLP
+from chemprop.nn.utils import OutputTransform
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
@@ -42,6 +43,7 @@ class Predictor(nn.Module, HasHParams):
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
     """the loss function to use for training"""
+    output_transform: OutputTransform
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:

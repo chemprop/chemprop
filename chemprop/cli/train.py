@@ -652,6 +652,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
     else:
         criterion = None
 
+    output_transform = OutputTransform(output_scaler)
     predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xd,
@@ -662,6 +663,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
         activation=args.activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
+        output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
 
@@ -684,7 +686,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
         return model
 
     input_transform = InputTransform(input_scalers)
-    output_transform = OutputTransform(output_scaler)
     metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
