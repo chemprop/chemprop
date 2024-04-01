@@ -118,12 +118,6 @@ class RegressionFFN(_FFNPredictorBase):
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
 
-    def forward(self, Z: Tensor) -> Tensor:
-        return super().forward(Z)
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z)
-
 
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
