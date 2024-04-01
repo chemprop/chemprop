@@ -63,7 +63,8 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        output_transform: OutputTransform | None = None,
+        input_transform: InputTransform,
+        output_transform: OutputTransform,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -87,6 +88,7 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
+        self.input_transform = input_transform
         self.output_transform = output_transform
 
         self.metrics = (
@@ -226,11 +228,11 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
     
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        checkpoint["input_scalers"] = self.input_scalers
+        checkpoint["input_scalers"] = self.input_transform.input_scalers
         checkpoint["output_scaler"] = self.output_transform.output_scaler
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        self.input_scalers = checkpoint["input_scalers"]
+        self.input_scalers = InputTransform(checkpoint["input_scalers"])
         self.output_transform = OutputTransform(checkpoint["output_scaler"])
 
     @classmethod
@@ -267,7 +269,7 @@ class MPNN(pl.LightningModule):
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
         
-        model.input_scalers = d["input_scalers"]
+        model.input_scalers = InputTransform(d["input_scalers"])
         model.output_transform = OutputTransform(d["output_scaler"])
 
         return model
@@ -284,3 +286,11 @@ class OutputTransform(object):
             outputs = self.output_scaler.inverse_transform(outputs)
 
         return outputs
+
+class InputTransform(object):
+
+    def __init__(self, input_scalers: dict[str, StandardScaler]):
+        self.input_scalers = input_scalers
+
+    def __call__(self):
+        pass
