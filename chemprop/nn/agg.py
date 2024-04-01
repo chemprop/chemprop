@@ -1,6 +1,6 @@
 from abc import abstractmethod
+import torch
 from torch import Tensor, nn
-from torch_scatter import scatter, scatter_softmax
 
 from chemprop.utils import ClassRegistry
 from chemprop.nn.hparams import HasHParams
@@ -71,7 +71,11 @@ class MeanAggregation(Aggregation):
     """
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        return scatter(H, batch, self.dim, reduce="mean")
+        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+        dim_size = batch.max().int() + 1
+        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, H, reduce="mean", include_self=False
+        )
 
 
 @AggregationRegistry.register("sum")
@@ -84,7 +88,11 @@ class SumAggregation(Aggregation):
     """
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        return scatter(H, batch, self.dim, reduce="sum")
+        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+        dim_size = batch.max().int() + 1
+        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, H, reduce="sum", include_self=False
+        )
 
 
 @AggregationRegistry.register("norm")
@@ -112,6 +120,13 @@ class AttentiveAggregation(Aggregation):
         self.W = nn.Linear(output_size, 1)
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        alphas = scatter_softmax(self.W(H), batch, self.dim)
-
-        return scatter(alphas * H, batch, self.dim, reduce="sum")
+        dim_size = batch.max().int() + 1
+        attention_logits = self.W(H).exp()
+        Z = torch.zeros(dim_size, 1, dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, batch.unsqueeze(1), attention_logits, reduce="sum", include_self=False
+        )
+        alphas = attention_logits / Z[batch]
+        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, alphas * H, reduce="sum", include_self=False
+        )

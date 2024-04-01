@@ -34,14 +34,13 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "torch >= 2.1",
-    "torch_scatter",
     "astartes[molecules]",
 ]
 
 [project.optional-dependencies]
 dev = ["black", "bumpversion", "flake8", "pytest", "pytest-cov"]
 docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme","nbsphinx-link","ipykernel"]
-test = ["parameterized > 0.8", "pytest >= 6.2", "pytest-cov"]
+test = ["pytest >= 6.2", "pytest-cov"]
 notebooks = ["ipykernel"]
 
 [project.urls]
@@ -59,9 +58,9 @@ packages = ["chemprop"]
 line-length = 100
 target-version = ["py311"]
 skip-magic-trailing-comma = true
+required-version = "23"
 
 [tool.autopep8]
-select = ["E262", "W293"]
 in_place = true
 recursive = true
 aggressive = 2

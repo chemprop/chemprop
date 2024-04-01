@@ -250,7 +250,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
         match key:
             case "X_d":
-                X = None if np.all(self.X_d == None) else self.X_d
+                X = None if all(i is None for i in self.X_d) else self.X_d
             case "V_f":
                 X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
             case "E_f":
