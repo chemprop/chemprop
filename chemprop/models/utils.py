@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from chemprop.models.model import MPNN, OutputTransform
 from chemprop.models.multi import MulticomponentMPNN
 
-def save_model(path: PathLike, model: MPNN, input_scalers: dict | None, output_scaler: StandardScaler | None) -> None:
+def save_model(path: PathLike, model: MPNN, input_scalers: dict[str, StandardScaler] | None, output_scaler: StandardScaler | None) -> None:
     torch.save(
         {
             "hyper_parameters": model.hparams,
