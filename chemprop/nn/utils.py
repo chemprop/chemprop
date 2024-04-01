@@ -1,7 +1,7 @@
 from enum import auto
 from sklearn.preprocessing import StandardScaler
 from torch import nn
-
+import torch
 from chemprop.utils.utils import EnumMapping
 
 
@@ -53,7 +53,10 @@ class OutputTransform:
 
     def __call__(self, outputs):
 
-        if self.output_scaler is not None:
-            outputs = self.output_scaler.inverse_transform(outputs)
+        if self.output_scaler is None:
+            return outputs
+        
 
-        return outputs
+        transformed_outputs = torch.from_numpy(self.output_scaler.inverse_transform(outputs))
+
+        return transformed_outputs
