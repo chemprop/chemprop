@@ -51,9 +51,6 @@ PyPi = "https://pypi.org/project/chemprop/"
 [project.scripts]
 chemprop = "chemprop.cli.main:main"
 
-[tool.setuptools]
-packages = ["chemprop"]
-
 [tool.black]
 line-length = 100
 target-version = ["py311"]
