@@ -27,7 +27,7 @@ def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, dict | None,
     input_scalers = d.get("input_scalers", None)
     output_scaler = d.get("output_scaler", None)
     model.input_scalers = input_scalers
-    model.output_transform = OutputTransform(output_scaler) if output_scaler is not None else None
+    model.output_transform = OutputTransform(output_scaler)
 
     return model
 

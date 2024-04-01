@@ -174,7 +174,7 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
 
-        if test and self.output_transform is not None:
+        if test:
             preds = self.output_transform(preds)
 
         return [
@@ -227,11 +227,11 @@ class MPNN(pl.LightningModule):
     
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         checkpoint["input_scalers"] = self.input_scalers
-        checkpoint["output_scaler"] = self.output_transform.output_scaler if self.output_transform else None
+        checkpoint["output_scaler"] = self.output_transform.output_scaler
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.input_scalers = checkpoint["input_scalers"]
-        self.output_transform = OutputTransform(checkpoint["output_scaler"]) if checkpoint["output_scaler"] else None
+        self.output_transform = OutputTransform(checkpoint["output_scaler"])
 
     @classmethod
     def load_from_checkpoint(
@@ -268,7 +268,7 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
         
         model.input_scalers = d["input_scalers"]
-        model.output_transform = OutputTransform(d["output_scaler"]) if d["output_scaler"] else None
+        model.output_transform = OutputTransform(d["output_scaler"])
 
         return model
 
@@ -279,6 +279,8 @@ class OutputTransform(object):
         self.output_scaler = output_scaler
 
     def __call__(self, outputs):
-        outputs = self.output_scaler.inverse_transform(outputs)
+
+        if self.output_scaler is not None:
+            outputs = self.output_scaler.inverse_transform(outputs)
 
         return outputs
