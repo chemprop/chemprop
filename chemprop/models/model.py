@@ -64,8 +64,6 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        input_transform: InputTransform,
-        output_transform: OutputTransform,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
         w_t: Tensor | None = None,
@@ -73,6 +71,8 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        input_transform: InputTransform = InputTransform(),
+        output_transform: OutputTransform = OutputTransform(),
     ):
         super().__init__()
 

@@ -692,8 +692,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
         mp_block,
         agg,
         predictor,
-        input_transform,
-        output_transform,
         not args.no_batch_norm,
         metrics,
         args.task_weights,
@@ -701,6 +699,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
         args.init_lr,
         args.max_lr,
         args.final_lr,
+        input_transform,
+        output_transform,
     )
 
 
