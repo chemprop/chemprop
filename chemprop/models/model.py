@@ -227,11 +227,11 @@ class MPNN(pl.LightningModule):
     
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         checkpoint["input_scalers"] = self.input_scalers
-        checkpoint["output_scaler"] = self.output_scaler
+        checkpoint["output_scaler"] = self.output_transform.output_scaler if self.output_transform else None
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.input_scalers = checkpoint["input_scalers"]
-        self.output_scaler = checkpoint["output_scaler"]
+        self.output_transform = OutputTransform(checkpoint["output_scaler"]) if checkpoint["output_scaler"] else None
 
     @classmethod
     def load_from_checkpoint(
@@ -268,7 +268,7 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
         
         model.input_scalers = d["input_scalers"]
-        model.output_scaler = d["output_scaler"]
+        model.output_transform = OutputTransform(d["output_scaler"]) if d["output_scaler"] else None
 
         return model
 
