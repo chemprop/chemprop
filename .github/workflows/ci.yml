@@ -1,10 +1,9 @@
 # ci.yml
 #
-# Continuous Integration for Chemprop - checks build, code formatting, and 
-# runs tests for all proposed changes and on a regular schedule
+# Continuous Integration for Chemprop - checks build, code formatting, and runs tests for all
+# proposed changes and on a regular schedule
 #
-# Note: this file contains extensive inline documentation to aid with
-# knowledge transfer.
+# Note: this file contains extensive inline documentation to aid with knowledge transfer.
 
 name: Continuous Integration
 
@@ -98,7 +97,8 @@ jobs:
   # GitHub allows you to set checks as required before PRs can be merged, which is annoying to do
   # for matrix jobs like the one above which have six actual jobs. Instead we have a summary job
   # like this, which we mark as required.
-  # Copied in part from: https://github.com/orgs/community/discussions/26822#discussioncomment-3305794
+  # Copied in part from:
+  # https://github.com/orgs/community/discussions/26822#discussioncomment-3305794
   ci-report-status:
     name: report CI status
     needs: test
