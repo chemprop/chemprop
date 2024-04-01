@@ -143,7 +143,7 @@ def split_data(
             # save a mapping of smiles -> all the indices that it appeared at
             smiles_indices = {}
             for smiles in unique_smiles:
-                smiles_indices[smiles] = np.where(all_smiles == smiles)[0]
+                smiles_indices[smiles] = np.where(all_smiles == smiles)[0].tolist()
 
             # randomly split the unique smiles
             result = split_fun(np.arange(len(unique_smiles)), sampler="random", **astartes_kwargs)
