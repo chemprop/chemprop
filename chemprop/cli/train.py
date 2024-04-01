@@ -21,7 +21,7 @@ from chemprop.data import (
 )
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
-from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.models import MPNN, MulticomponentMPNN, save_model, InputTransform, OutputTransform
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     BondMessagePassing,
@@ -587,7 +587,7 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
-def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MPNN:
+def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, output_scaler, input_scalers) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     if isinstance(train_dset, MulticomponentDataset):
@@ -683,12 +683,16 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
 
         return model
 
+    input_transform = InputTransform(input_scalers)
+    output_transform = OutputTransform(output_scaler)
     metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
         mp_block,
         agg,
         predictor,
+        input_transform,
+        output_transform,
         not args.no_batch_norm,
         metrics,
         args.task_weights,
@@ -708,7 +712,7 @@ def train_model(
 
         torch.manual_seed(args.pytorch_seed + model_idx)
 
-        model = build_model(args, train_loader.dataset)
+        model = build_model(args, train_loader.dataset, output_scaler, input_scalers)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -764,7 +768,7 @@ def train_model(
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
-        save_model(p_model, model, input_scalers, output_scaler)
+        save_model(p_model, model)
         logger.info(f"Model saved to '{p_model}'")
 
 
