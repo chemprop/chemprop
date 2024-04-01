@@ -30,8 +30,6 @@ class MulticomponentMPNN(MPNN):
             message_passing,
             agg,
             predictor,
-            input_transform,
-            output_transform,
             batch_norm,
             metrics,
             w_t,
@@ -39,6 +37,8 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
+            input_transform,
+            output_transform,
         )
         self.message_passing: MulticomponentMessagePassing
 
