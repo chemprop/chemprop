@@ -6,8 +6,9 @@ from sklearn.preprocessing import StandardScaler
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
-from chemprop.models.model import MPNN, OutputTransform, InputTransform
+from chemprop.models.model import MPNN
 from chemprop.nn.metrics import Metric
+from chemprop.nn.transforms import OutputTransform
 
 
 class MulticomponentMPNN(MPNN):
@@ -23,8 +24,7 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        input_transform: InputTransform = InputTransform(),
-        output_transform: OutputTransform = OutputTransform(),
+        input_scalers: dict[str, StandardScaler] | None = None,
     ):
         super().__init__(
             message_passing,
@@ -37,8 +37,7 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
-            input_transform,
-            output_transform,
+            input_scalers,
         )
         self.message_passing: MulticomponentMessagePassing
 

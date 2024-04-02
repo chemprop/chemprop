@@ -71,8 +71,7 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        input_transform: InputTransform = InputTransform(),
-        output_transform: OutputTransform = OutputTransform(),
+        input_scalers: dict[str, StandardScaler] | None = None,
     ):
         super().__init__()
 
@@ -89,8 +88,7 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
-        self.input_transform = input_transform
-        self.output_transform = output_transform
+        self.input_scalers = input_scalers
 
         self.metrics = (
             [*metrics, self.criterion]
