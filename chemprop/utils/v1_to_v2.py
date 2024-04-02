@@ -33,6 +33,11 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
         state_dict_v2[f"predictor.ffn.{i*3}.weight"] = state_dict_v1[f"readout.{i*3+1}.weight"]
         state_dict_v2[f"predictor.ffn.{i*3}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
 
+    if args_v1.dataset_type == "regression":
+        state_dict_v2["predictor.output_transform.mean"] = torch.tensor(model_v1_dict["data_scaler"]["means"], dtype=torch.float32)
+        state_dict_v2["predictor.output_transform.scale"] = torch.tensor(model_v1_dict["data_scaler"]["stds"], dtype=torch.float32)
+
+
     return state_dict_v2
 
 
@@ -116,12 +121,6 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     model_v2_dict["lr_schedulers"] = None
     model_v2_dict["hparams_name"] = "kwargs"
     model_v2_dict["hyper_parameters"] = convert_hyper_parameters_v1_to_v2(model_v1_dict)
-    
-    args_v1 = model_v1_dict["args"]
-    if args_v1.dataset_type == "regression":
-        model_v2_dict["output_scaler"] = StandardScaler()
-        model_v2_dict["output_scaler"].mean_ = model_v1_dict["data_scaler"]["means"]
-        model_v2_dict["output_scaler"].scale_ = model_v1_dict["data_scaler"]["stds"]
 
     return model_v2_dict
 
