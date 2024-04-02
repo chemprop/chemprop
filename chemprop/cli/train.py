@@ -22,7 +22,8 @@ from chemprop.data import (
 )
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
-from chemprop.models import MPNN, MulticomponentMPNN, save_model, InputTransform, OutputTransform
+from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.nn.transforms import OutputTransform
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     BondMessagePassing,
