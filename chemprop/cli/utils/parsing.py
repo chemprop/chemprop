@@ -267,7 +267,6 @@ def make_dataset(
     reaction_mode: str,
     multi_hot_atom_featurizer_mode: str = "V2",
 ) -> MoleculeDataset | ReactionDataset:
-
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
 
     if isinstance(data[0], MoleculeDatapoint):

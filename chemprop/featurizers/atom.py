@@ -25,7 +25,7 @@ class MultiHotAtomFeaturizer(AtomFeaturizer):
 
     .. seealso::
         The class provides three default parameterization schemes:
-        
+
         * :meth:`MultiHotAtomFeaturizer.v1`
         * :meth:`MultiHotAtomFeaturizer.v2`
         * :meth:`MultiHotAtomFeaturizer.organic`
