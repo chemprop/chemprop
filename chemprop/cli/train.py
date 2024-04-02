@@ -601,7 +601,12 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
-def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, output_scaler: StandardScaler, input_scalers: list[StandardScaler]) -> MPNN:
+def build_model(
+    args,
+    train_dset: MolGraphDataset | MulticomponentDataset,
+    output_scaler: StandardScaler,
+    input_scalers: list[StandardScaler],
+) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     if isinstance(train_dset, MulticomponentDataset):
@@ -666,7 +671,9 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
     else:
         criterion = None
 
-    output_transform = OutputTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+    output_transform = (
+        OutputTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+    )
     predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xd,
@@ -819,9 +826,7 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        input_scalers = normalize_inputs(
-            train_dset, val_dset, args
-        )
+        input_scalers = normalize_inputs(train_dset, val_dset, args)
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)

@@ -9,6 +9,7 @@ from chemprop.nn.utils import get_activation_function
 class FFN(nn.Module):
     r"""A :class:`FFN` is a differentiable function
     :math:`f_\theta : \mathbb R^i \mapsto \mathbb R^o`"""
+
     input_dim: int
     output_dim: int
 

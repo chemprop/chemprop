@@ -43,4 +43,3 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
             return nn.ELU()
         case _:
             raise RuntimeError("unreachable code reached!")
-

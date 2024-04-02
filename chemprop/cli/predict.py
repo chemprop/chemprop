@@ -178,9 +178,7 @@ def find_models(model_path: Path):
 def make_prediction_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
-    model = load_model(
-        model_path, multicomponent
-    )
+    model = load_model(model_path, multicomponent)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])

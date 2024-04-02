@@ -170,9 +170,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeatu
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
-                    if a.GetIdx() not in reac_idxs
-                    else self.atom_featurizer.num_only(a)
+                    (
+                        self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                        if a.GetIdx() not in reac_idxs
+                        else self.atom_featurizer.num_only(a)
+                    )
                     for a in rct.GetAtoms()
                 ]
             )
@@ -189,9 +191,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, MolGraphFeatu
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
-                    if a.GetIdx() not in reac_idxs
-                    else self.atom_featurizer(a)
+                    (
+                        self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                        if a.GetIdx() not in reac_idxs
+                        else self.atom_featurizer(a)
+                    )
                     for a in rct.GetAtoms()
                 ]
             )

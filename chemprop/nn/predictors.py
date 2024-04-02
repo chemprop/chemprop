@@ -125,18 +125,8 @@ class RegressionFFN(_FFNPredictorBase):
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
 
-    def __init__(
-        self,
-        n_tasks: int = 1,
-        input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0,
-        activation: str = "relu",
-        criterion: LossFunction | None = None,
-        output_transform: OutputTransform = None,
-    ):
-        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 @PredictorRegistry.register("regression-mve")
@@ -242,7 +232,14 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         output_transform: OutputTransform | None = None,
     ):
         super().__init__(
-            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform
+            n_tasks * n_classes,
+            input_dim,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            criterion,
+            output_transform,
         )
 
         self.n_classes = n_classes
