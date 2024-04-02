@@ -13,8 +13,8 @@ class OutputTransform(nn.Module):
     def __init__(self, mean: ArrayLike, scale: ArrayLike):
         super().__init__()
         
-        self.register_buffer('mean', torch.tensor(mean, dtype=torch.float32))
-        self.register_buffer('scale', torch.tensor(scale, dtype=torch.float32))
+        self.register_buffer('mean', torch.tensor(mean, dtype=torch.float))
+        self.register_buffer('scale', torch.tensor(scale, dtype=torch.float))
 
     def forward(self, Y: Tensor) -> Tensor:
         return Y if self.training else Y * self.scale + self.mean
