@@ -1,10 +1,12 @@
+from unittest.mock import MagicMock, call
+
 import numpy as np
 import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
 from chemprop.data import MoleculeDataset, MoleculeDatapoint
-from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer, MolGraph
 
 
 @pytest.fixture(params=[1, 5, 10])
@@ -55,16 +57,25 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     ]
 
 
+@pytest.fixture(params=[False, True])
+def cache(request):
+    return request.param
+
+
 @pytest.fixture
-def dataset(data):
+def dataset(data, cache):
     extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
     extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
-    return MoleculeDataset(
+
+    dset = MoleculeDataset(
         data,
         SimpleMoleculeMolGraphFeaturizer(
             extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
         ),
     )
+    dset.cache = cache
+
+    return dset
 
 
 def test_none():
@@ -147,3 +158,22 @@ def test_normalize_inputs(dataset):
             np.testing.assert_array_equal(X, dset_X)
         np.testing.assert_array_equal(getattr(dset_scaler, "mean_"), scaler.mean_)
         np.testing.assert_array_equal(getattr(dset_scaler, "scale_"), scaler.scale_)
+
+
+@pytest.mark.parametrize("cache", [False, True])
+def test_cache(dataset: MoleculeDataset, cache):
+    """Test that cache attribute is being set appropriately and that the underlying cache is being
+    used correctly to load the molgraphs."""
+    mg = MolGraph(None, None, None, None)
+
+    dataset.cache = cache
+    assert dataset.cache == cache
+    dataset.mg_cache = MagicMock()
+    dataset.mg_cache.__getitem__.side_effect = lambda i: mg
+
+    calls = []
+    for i in range(len(dataset)):
+        assert dataset[i].mg is mg
+        calls.append(call(i))
+
+    dataset.mg_cache.__getitem__.assert_has_calls(calls)
