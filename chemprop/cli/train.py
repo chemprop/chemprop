@@ -776,7 +776,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     save_config(args)

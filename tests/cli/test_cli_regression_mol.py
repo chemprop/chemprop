@@ -220,10 +220,22 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     )
     assert torch.equal(trained_model.predictor.ffn[0].weight, frzn_model.predictor.ffn[0].weight)
 
+
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
-    args = ["chemprop", "hyperopt", "-i", input_path, "--epochs", "1", "--num-samples", "2", "--hyperopt-save-dir", str(tmp_path)]
+    args = [
+        "chemprop",
+        "hyperopt",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-samples",
+        "2",
+        "--hyperopt-save-dir",
+        str(tmp_path),
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

@@ -6,20 +6,27 @@ from pathlib import Path
 
 import torch
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
-from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
-                                 RayTrainReportCallback, prepare_trainer)
+from ray.train.lightning import (
+    RayDDPStrategy,
+    RayLightningEnvironment,
+    RayTrainReportCallback,
+    prepare_trainer,
+)
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
 
-from chemprop.cli.common import (add_common_args, process_common_args,
-                                 validate_common_args)
-from chemprop.cli.train import (add_train_args, build_datasets, build_model,
-                                build_splits, normalize_inputs,
-                                process_train_args, validate_train_args)
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.train import (
+    add_train_args,
+    build_datasets,
+    build_model,
+    build_splits,
+    normalize_inputs,
+    process_train_args,
+    validate_train_args,
+)
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import MolGraphDataLoader
 from chemprop.nn import AggregationRegistry
@@ -34,12 +41,7 @@ AVAILABLE_SPACES = {
     "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
     "batch_size": tune.quniform(lower=5, upper=200, q=5),
     "depth": tune.randint(lower=2, upper=6),
-    "dropout": tune.choice(
-        [
-            tune.choice([0.]),
-            tune.quniform(lower=0.05, upper=0.4, q=0.05),
-        ],
-    ),
+    "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
     "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
     "ffn_num_layers": tune.randint(lower=2, upper=6),
     "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
@@ -47,7 +49,7 @@ AVAILABLE_SPACES = {
     "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
     "linked_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
     "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
-    "warmup_epochs": None
+    "warmup_epochs": None,
 }
 
 SEARCH_PARAM_KEYWORDS_MAP = {
@@ -56,11 +58,12 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "all": list(AVAILABLE_SPACES.keys()),
 }
 
-def get_available_spaces(train_epochs: int) -> dict:
 
+def get_available_spaces(train_epochs: int) -> dict:
     AVAILABLE_SPACES["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
 
     return AVAILABLE_SPACES
+
 
 class HyperoptSubcommand(Subcommand):
     COMMAND = "hyperopt"
@@ -81,8 +84,8 @@ class HyperoptSubcommand(Subcommand):
         validate_train_args(args)
         main(args)
 
-def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
 
+def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     hyperopt_args = parser.add_argument_group("Hyperparameter optimization arguments")
 
     hyperopt_args.add_argument(
@@ -108,7 +111,7 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     hyperopt_args.add_argument(
         "--hyperopt-checkpoint",
         type=Path,
-        help="Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted. Can also be used to run multiple instances in parallel if they share the same checkpoint directory."
+        help="Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted. Can also be used to run multiple instances in parallel if they share the same checkpoint directory.",
     )
 
     hyperopt_args.add_argument(
@@ -146,27 +149,19 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     hyperopt_args.add_argument(
-        "--n-cpu-per-worker",
-        type=int,
-        default=0,
-        help="Number of CPUs to allocate for each worker",
+        "--n-cpu-per-worker", type=int, default=0, help="Number of CPUs to allocate for each worker"
     )
 
     hyperopt_args.add_argument(
-        "--n-gpu-per-worker",
-        type=int,
-        default=0,
-        help="Number of GPUs to allocate for each worker",
+        "--n-gpu-per-worker", type=int, default=0, help="Number of GPUs to allocate for each worker"
     )
 
     hyperopt_args.add_argument(
-        "--num-checkpoints-to-keep",
-        type=int,
-        default=1,
-        help="Number of checkpoints to keep",
+        "--num-checkpoints-to-keep", type=int, default=1, help="Number of checkpoints to keep"
     )
 
     return parser
+
 
 def process_hyperopt_args(args: Namespace) -> Namespace:
     if args.startup_random_iters is None:
@@ -182,23 +177,27 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
     for keyword in args.search_parameter_keywords:
         if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in AVAILABLE_SPACES:
             raise ValueError(f"Invalid search parameter keyword: {keyword}")
-        
-        search_parameters.update(SEARCH_PARAM_KEYWORDS_MAP[keyword] if keyword in SEARCH_PARAM_KEYWORDS_MAP else [keyword])
+
+        search_parameters.update(
+            SEARCH_PARAM_KEYWORDS_MAP[keyword]
+            if keyword in SEARCH_PARAM_KEYWORDS_MAP
+            else [keyword]
+        )
 
     args.search_parameter_keywords = list(search_parameters)
 
     return args
+
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
     AVAILABLE_SPACES = get_available_spaces(train_epochs)
 
     return {param: AVAILABLE_SPACES[param] for param in search_parameters}
 
+
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     for key, value in config.items():
-
         match key:
-
             case "linked_hidden_size":
                 setattr(args, "hidden_size", value)
                 setattr(args, "ffn_hidden_size", value)
@@ -214,8 +213,8 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
     return args
 
-def train_model(config, args, train_loader, val_loader, logger):
 
+def train_model(config, args, train_loader, val_loader, logger):
     update_args_with_config(args, config)
 
     model = build_model(args, train_loader.dataset)
@@ -235,18 +234,16 @@ def train_model(config, args, train_loader, val_loader, logger):
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
 
-def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
-    scheduler = ASHAScheduler(
-        max_t=args.epochs,
-        grace_period=1,
-        reduction_factor=2,
-    )
+def tune_model(args, train_loader, val_loader, logger, monitor_mode):
+    scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
         num_workers=args.num_workers,
         use_gpu=torch.cuda.is_available() and args.n_gpu > 0,
-        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker} if args.n_cpu_per_worker > 0 or args.n_gpu_per_worker > 0 else None,
+        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker}
+        if args.n_cpu_per_worker > 0 or args.n_gpu_per_worker > 0
+        else None,
     )
 
     checkpoint_config = CheckpointConfig(
@@ -255,9 +252,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         checkpoint_score_order=monitor_mode,
     )
 
-    run_config = RunConfig(
-        checkpoint_config=checkpoint_config,
-    )
+    run_config = RunConfig(checkpoint_config=checkpoint_config)
 
     ray_trainer = TorchTrainer(
         lambda config: train_model(config, args, train_loader, val_loader, logger),
@@ -266,22 +261,21 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     tune_config = tune.TuneConfig(
-        metric="val_loss",
-        mode=monitor_mode,
-        num_samples=args.num_samples,
-        scheduler=scheduler,
+        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler
     )
 
     tuner = tune.Tuner(
         ray_trainer,
-        param_space={"train_loop_config": build_search_space(args.search_parameter_keywords, args.epochs)},
+        param_space={
+            "train_loop_config": build_search_space(args.search_parameter_keywords, args.epochs)
+        },
         tune_config=tune_config,
     )
 
     return tuner.fit()
 
-def main(args: Namespace):
 
+def main(args: Namespace):
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
@@ -298,10 +292,8 @@ def main(args: Namespace):
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
-        train_dset, val_dset, args
-    )
-    input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(train_dset, val_dset, args)
+    # input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
 
     if "regression" in args.task_type:
         scaler = train_dset.normalize_targets()
@@ -314,12 +306,12 @@ def main(args: Namespace):
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
     val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-    if test_dset is not None:
-        test_loader = MolGraphDataLoader(
-            test_dset, args.batch_size, args.num_workers, shuffle=False
-        )
-    else:
-        test_loader = None
+    # if test_dset is not None:
+    #     test_loader = MolGraphDataLoader(
+    #         test_dset, args.batch_size, args.num_workers, shuffle=False
+    #     )
+    # else:
+    #     test_loader = None
 
     torch.manual_seed(args.pytorch_seed)
 
@@ -330,13 +322,14 @@ def main(args: Namespace):
 
     best_result = results.get_best_result()
     best_config = best_result.config
-    best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
-    best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
+    # best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
+    # best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
 
     logger.info(f"Best hyperparameter configuration: {best_config}")
 
     with open(args.hyperopt_save_dir / "config.json", "w") as f:
         json.dump(best_config, f, indent=4)
+
 
 if __name__ == "__main__":
     # TODO: update this old code or remove it.
