@@ -218,7 +218,8 @@ def make_prediction_for_model(
     else:
         test_dset = test_dsets[0]
 
-    model.input_transform(test_dset)
+    for feature, scaler in model.input_scalers.items():
+        test_dset.normalize_inputs(feature, scaler)
 
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
