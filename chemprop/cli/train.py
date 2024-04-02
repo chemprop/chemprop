@@ -691,7 +691,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
 
         return model
 
-    input_transform = InputTransform(input_scalers)
     metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
@@ -705,8 +704,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, outpu
         args.init_lr,
         args.max_lr,
         args.final_lr,
-        input_transform,
-        output_transform,
+        input_scalers,
     )
 
 
