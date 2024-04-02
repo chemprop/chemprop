@@ -97,7 +97,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.criterion = criterion or self._default_criterion
 
         if output_transform is None:
-            output_transform = OutputTransform([0] * n_tasks, [1] * n_tasks)
+            output_transform = nn.Identity()
         self.output_transform = output_transform
 
     @property
