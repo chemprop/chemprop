@@ -16,7 +16,7 @@ def data_path(data_dir):
 
 @pytest.fixture
 def model_path(data_dir):
-    return str(data_dir / "example_model_v2_classification_mol.pt")
+    return str(data_dir / "example_model_v2_classification_mol_multiclass.pt")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -148,3 +148,4 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
+    assert model is not None
