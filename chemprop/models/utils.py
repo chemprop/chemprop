@@ -2,7 +2,7 @@ from os import PathLike
 import torch
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.models.model import MPNN, OutputTransform, InputTransform
+from chemprop.models.model import MPNN
 from chemprop.models.multi import MulticomponentMPNN
 
 def save_model(path: PathLike, model: MPNN) -> None:
@@ -15,7 +15,7 @@ def save_model(path: PathLike, model: MPNN) -> None:
     )
 
 
-def load_model(path: PathLike, multicomponent: bool) -> tuple[MPNN, dict | None, StandardScaler | None]:
+def load_model(path: PathLike, multicomponent: bool) -> MPNN:
     if multicomponent:
         model = MulticomponentMPNN.load_from_file(path)
     else:
