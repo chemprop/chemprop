@@ -811,16 +811,9 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
+        input_scalers = normalize_inputs(
             train_dset, val_dset, args
         )
-        
-        input_scalers = {
-            "X_d_scaler": X_d_scaler,
-            "V_f_scaler": V_f_scaler,
-            "E_f_scaler": E_f_scaler,
-            "V_d_scaler": V_d_scaler,
-        }
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
