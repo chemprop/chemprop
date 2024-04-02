@@ -2,7 +2,6 @@ import csv
 import pytest
 import numpy as np
 
-from pathlib import Path
 
 from lightning import pytorch as pl
 
@@ -10,6 +9,7 @@ from chemprop.data.dataloader import MolGraphDataLoader
 from chemprop.data.datapoints import MoleculeDatapoint
 from chemprop.data.datasets import MoleculeDataset
 from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.models.model import MPNN
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
@@ -28,7 +28,7 @@ def example_model_v1_prediction(data_dir):
         next(reader)
         smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
 
-    featurizer = SimpleMoleculeMolGraphFeaturizer()
+    featurizer = SimpleMoleculeMolGraphFeaturizer(atom_featurizer=MultiHotAtomFeaturizer.v1())
 
     ys = np.array(ys).reshape(-1, 1)
     test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]

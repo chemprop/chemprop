@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
-from chemprop.featurizers.base import Featurizer
+from chemprop.featurizers.base import GraphFeaturizer
 
 from chemprop.types import Rxn
 from chemprop.data.molgraph import MolGraph
@@ -69,7 +69,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         super().__post_init__()
 
         self.mode = mode_
-        self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
+        self.atom_fdim += len(self.atom_featurizer) - len(self.atom_featurizer.atomic_nums) - 1
         self.bond_fdim *= 2
 
     @property
@@ -201,13 +201,13 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         m = min(len(X_v_r), len(X_v_p))
 
         if self.mode in [RxnMode.REAC_PROD, RxnMode.REAC_PROD_BALANCE]:
-            X_v = np.hstack((X_v_r[:m], X_v_p[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+            X_v = np.hstack((X_v_r[:m], X_v_p[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
         else:
             X_v_d = X_v_p[:m] - X_v_r[:m]
             if self.mode in [RxnMode.REAC_DIFF, RxnMode.REAC_DIFF_BALANCE]:
-                X_v = np.hstack((X_v_r[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+                X_v = np.hstack((X_v_r[:m], X_v_d[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
             else:
-                X_v = np.hstack((X_v_p[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+                X_v = np.hstack((X_v_p[:m], X_v_d[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
 
         return X_v
 

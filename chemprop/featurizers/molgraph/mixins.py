@@ -9,7 +9,7 @@ from chemprop.featurizers.bond import MultiHotBondFeaturizer
 
 @dataclass
 class _MolGraphFeaturizerMixin:
-    atom_featurizer: VectorFeaturizer[Atom] = field(default_factory=MultiHotAtomFeaturizer)
+    atom_featurizer: VectorFeaturizer[Atom] = field(default_factory=MultiHotAtomFeaturizer.v2)
     bond_featurizer: VectorFeaturizer[Bond] = field(default_factory=MultiHotBondFeaturizer)
 
     def __post_init__(self):

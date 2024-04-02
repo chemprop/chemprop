@@ -83,8 +83,10 @@ def test_checkpoint_is_valid(checkpoint_path, test_loader, trainer, ys):
 
 
 def test_checkpoint_roundtrip(checkpoint_path, file_path, trainer, test_loader):
-    model_from_checkpoint = MulticomponentMPNN.load_from_checkpoint(checkpoint_path)
-    model_from_file = MulticomponentMPNN.load_from_file(file_path)
+    model_from_checkpoint = MulticomponentMPNN.load_from_checkpoint(
+        checkpoint_path, map_location="cpu"
+    )
+    model_from_file = MulticomponentMPNN.load_from_file(file_path, map_location="cpu")
 
     predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
