@@ -161,12 +161,12 @@ class MPNN(pl.LightningModule):
         self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch, test=True)
+        losses = self._evaluate_batch(batch)
         metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
-    def _evaluate_batch(self, batch, test=False) -> list[Tensor]:
+    def _evaluate_batch(self, batch) -> list[Tensor]:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
