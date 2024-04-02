@@ -45,8 +45,6 @@ def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction)
     convert_model_file_v1_to_v2(example_model_v1_path, model_v2_save_path)
     assert model_v2_save_path.exists()
 
-    d = torch.load(model_v2_save_path)
-    output_scaler = d["output_scaler"]
     mpnn = MPNN.load_from_checkpoint(model_v2_save_path)
 
     ys_v1, test_loader = example_model_v1_prediction
@@ -54,5 +52,4 @@ def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction)
     trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
     predss = trainer.predict(mpnn, test_loader)
     ys_v2 = np.vstack(predss)
-    ys_v2 = output_scaler.inverse_transform(ys_v2)
     assert np.allclose(ys_v2, ys_v1, atol=1e-6)
