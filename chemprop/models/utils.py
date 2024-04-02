@@ -1,6 +1,5 @@
 from os import PathLike
 import torch
-from sklearn.preprocessing import StandardScaler
 
 from chemprop.models.model import MPNN
 from chemprop.models.multi import MulticomponentMPNN

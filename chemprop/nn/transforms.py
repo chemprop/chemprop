@@ -2,9 +2,6 @@ from sklearn.preprocessing import StandardScaler
 import torch
 from torch import nn, Tensor
 from numpy.typing import ArrayLike
-from lightning.pytorch.core.mixins import HyperparametersMixin
-
-from chemprop.nn.hparams import HasHParams
 
 class OutputTransform(nn.Module):
     mean: Tensor

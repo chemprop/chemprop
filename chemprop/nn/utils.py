@@ -1,7 +1,6 @@
 from enum import auto
-from sklearn.preprocessing import StandardScaler
 from torch import nn
-import torch
+
 from chemprop.utils.utils import EnumMapping
 
 
