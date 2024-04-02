@@ -77,6 +77,7 @@ def dataset(data, cache):
 
     return dset
 
+
 def test_none():
     with pytest.raises(ValueError):
         MoleculeDataset(None, SimpleMoleculeMolGraphFeaturizer())
@@ -176,4 +177,3 @@ def test_cache(dataset: MoleculeDataset, cache):
         calls.append(call(i))
 
     dataset.mg_cache.__getitem__.assert_has_calls(calls)
-

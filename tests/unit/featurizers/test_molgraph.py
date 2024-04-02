@@ -6,7 +6,7 @@ from chemprop.featurizers import (
     SimpleMoleculeMolGraphFeaturizer,
     MolGraph,
     MultiHotAtomFeaturizer,
-    MolGraphFeaturizer
+    MolGraphFeaturizer,
 )
 
 
