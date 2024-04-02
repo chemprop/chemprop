@@ -1,7 +1,6 @@
 import csv
 import pytest
 import numpy as np
-import torch
 
 
 from lightning import pytorch as pl

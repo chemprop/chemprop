@@ -9,7 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN, RegressionFFN
+from chemprop.nn.predictors import MulticlassClassificationFFN
 from chemprop.models import load_model
 
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
