@@ -468,7 +468,7 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
+    input_scalers = {}
 
     if isinstance(train_dset, MulticomponentDataset):
         d_xd = sum(dset.d_xd for dset in train_dset.datasets)
@@ -491,23 +491,27 @@ def normalize_inputs(train_dset, val_dset, args):
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
         logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
+        input_scalers["X_d"] = X_d_scaler
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", V_f_scaler)
         logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+        input_scalers["V_f"] = V_f_scaler
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", E_f_scaler)
         logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+        input_scalers["E_f"] = E_f_scaler
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", V_d_scaler)
         logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
+        input_scalers["V_d"] = V_d_scaler
 
-    return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
+    return input_scalers
 
 
 def save_config(args: Namespace):
