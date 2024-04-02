@@ -8,7 +8,7 @@ from torch.nn import functional as F
 from chemprop.nn.loss import *
 from chemprop.nn.metrics import *
 from chemprop.nn.ffn import MLP
-from chemprop.nn.utils import OutputTransform
+from chemprop.nn.transforms import OutputTransform
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
@@ -74,16 +74,19 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        output_transform: OutputTransform = OutputTransform(),
+        output_transform: OutputTransform | None = None,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["output_transform"])
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
+
+        if output_transform is None:
+            output_transform = OutputTransform([0] * n_tasks, [1] * n_tasks)
         self.output_transform = output_transform
 
     @property
@@ -99,7 +102,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.output_dim // self.n_targets
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
+        return self.output_transform(self.ffn(Z))
 
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
@@ -120,7 +123,7 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        output_transform: OutputTransform = OutputTransform(),
+        output_transform: OutputTransform = None,
     ):
         super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform)
 
@@ -225,7 +228,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        output_transform: OutputTransform = OutputTransform(),
+        output_transform: OutputTransform | None = None,
     ):
         super().__init__(
             n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion, output_transform
