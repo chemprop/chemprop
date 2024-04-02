@@ -6,6 +6,7 @@ import json
 from copy import deepcopy
 import pandas as pd
 from rdkit import Chem
+from sklearn.preprocessing import StandardScaler
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -587,7 +588,7 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
-def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, output_scaler, input_scalers) -> MPNN:
+def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset, output_scaler: StandardScaler, input_scalers: list[StandardScaler]) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     if isinstance(train_dset, MulticomponentDataset):
