@@ -308,3 +308,17 @@ def make_dataset(
     featurizer = CondensedGraphOfReactionFeaturizer(mode_=reaction_mode)
 
     return ReactionDataset(data, featurizer)
+
+
+def parse_indices(idxs):
+    """Parses a string of indices into a list of integers. e.g. '0,1,2-4' -> [0, 1, 2, 3, 4]"""
+    if isinstance(idxs, str):
+        indices = []
+        for idx in idxs.split(","):
+            if "-" in idx:
+                start, end = map(int, idx.split("-"))
+                indices.extend(range(start, end + 1))
+            else:
+                indices.append(int(idx))
+        return indices
+    return idxs
