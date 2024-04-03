@@ -11,7 +11,7 @@ from chemprop.data.molgraph import MolGraph
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
     """
     A :class:`MolGraphCacheFacade` provided an interface for caching
-    :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s.
+    :class:`~chemprop.data.molgraph.MolGraph`\s.
 
     .. note::
         This class only provides a facade for a cached dataset, but it does **not** guarantee
