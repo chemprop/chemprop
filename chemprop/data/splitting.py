@@ -29,7 +29,7 @@ class SplitType(EnumMapping):
 
 
 def make_split_idxss(
-    datapoints: Sequence[MoleculeDatapoint],
+    mols: Sequence[Chem.Mol],
     split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
@@ -39,12 +39,13 @@ def make_split_idxss(
 
     Parameters
     ----------
-    datapoints : Sequence[MoleculeDatapoint]
-        Sequence of chemprop.data.MoleculeDatapoint.
+    mols : Sequence[Chem.Mol]
+        Sequence of RDKit molecules to use for structure based splitting
     split : SplitType | str, optional
         Split type, one of ~chemprop.data.utils.SplitType, by default "random"
     sizes : tuple[float, float, float], optional
-        3-tuple with the proportions of data in the train, validation, and test sets, by default (0.8, 0.1, 0.1)
+        3-tuple with the proportions of data in the train, validation, and test sets, by default
+        (0.8, 0.1, 0.1). Set the middle value to 0 for a two way split.
     seed : int, optional
         The random seed passed to astartes, by default 0
     num_folds : int, optional
@@ -52,9 +53,10 @@ def make_split_idxss(
 
     Returns
     -------
-    tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
-        A tuple of lists of lists of indices corresponding to the train, validation, and test splits
-        of the data for each splitting scheme (for example, in crossfold validation).
+    tuple[list[int], list[int], list[int]] | tuple[list[list[int], ...], list[list[int], ...], list[list[int], ...]]
+        A tuple of list of indices corresponding to the train, validation, and test splits of the
+        data. If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of
+        indices corresponding to the train, validation, and test splits of each fold.
             .. important::
                 validation may or may not be present
 
@@ -87,14 +89,15 @@ def make_split_idxss(
     else:
         astartes_kwargs["val_size"] = sizes[1]
 
+    n_datapoints = len(mols)
     train, val, test = None, None, None
     match SplitType.get(split):
         case SplitType.CV_NO_VAL | SplitType.CV:
             min_folds = 2 if SplitType.get(split) == SplitType.CV_NO_VAL else 3
-            if not (min_folds <= num_folds <= len(datapoints)):
+            if not (min_folds <= num_folds <= n_datapoints):
                 raise ValueError(
                     f"invalid number of folds requested! got: {num_folds}, but expected between "
-                    f"{min_folds} and {len(datapoints)} (i.e., number of datapoints), inclusive, "
+                    f"{min_folds} and {n_datapoints} (i.e., number of datapoints), inclusive, "
                     f"for split type: {repr(split)}"
                 )
 
@@ -102,9 +105,7 @@ def make_split_idxss(
             train, val, test = [], [], []
             random = np.random.default_rng(seed)
 
-            indices = np.tile(np.arange(num_folds), 1 + len(datapoints) // num_folds)[
-                : len(datapoints)
-            ]
+            indices = np.tile(np.arange(num_folds), 1 + n_datapoints // num_folds)[:n_datapoints]
             random.shuffle(indices)
 
             for fold_idx in range(num_folds):
@@ -126,8 +127,7 @@ def make_split_idxss(
 
         case SplitType.SCAFFOLD_BALANCED:
             mols_without_atommaps = []
-            for d in datapoints:
-                mol = d.mol
+            for mol in mols:
                 copied_mol = copy.deepcopy(mol)
                 for atom in copied_mol.GetAtoms():
                     atom.SetAtomMapNum(0)
@@ -140,7 +140,7 @@ def make_split_idxss(
         # Use to constrain data with the same smiles go in the same split.
         case SplitType.RANDOM_WITH_REPEATED_SMILES:
             # get two arrays: one of all the smiles strings, one of just the unique
-            all_smiles = np.array([Chem.MolToSmiles(d.mol) for d in datapoints])
+            all_smiles = np.array([Chem.MolToSmiles(mol) for mol in mols])
             unique_smiles = np.unique(all_smiles)
 
             # save a mapping of smiles -> all the indices that it appeared at
@@ -159,12 +159,12 @@ def make_split_idxss(
             train, val, test = [train], [val], [test]
 
         case SplitType.RANDOM:
-            result = split_fun(np.arange(len(datapoints)), sampler="random", **astartes_kwargs)
+            result = split_fun(np.arange(n_datapoints), sampler="random", **astartes_kwargs)
             train, val, test = _unpack_astartes_result(result, include_val)
 
         case SplitType.KENNARD_STONE:
             result = mol_split_fun(
-                np.array([d.mol for d in datapoints]),
+                np.array(mols),
                 sampler="kennard_stone",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
@@ -175,7 +175,7 @@ def make_split_idxss(
 
         case SplitType.KMEANS:
             result = mol_split_fun(
-                np.array([d.mol for d in datapoints]),
+                np.array(mols),
                 sampler="kmeans",
                 hopts=dict(metric="jaccard"),
                 fingerprint="morgan_fingerprint",
