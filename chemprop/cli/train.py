@@ -19,7 +19,7 @@ from chemprop.data import (
     ReactionDataset,
     MoleculeDataset,
 )
-from chemprop.data import SplitType, split_component, splits_from_file
+from chemprop.data import SplitType, make_split_idxss, split_data_by_indices
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry

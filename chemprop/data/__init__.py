@@ -9,4 +9,4 @@ from .datasets import (
     MolGraphDataset,
 )
 from .samplers import ClassBalanceSampler, SeededSampler
-from .splitting import split_component, splits_from_file, SplitType
+from .splitting import make_split_idxss, SplitType, split_data_by_indices

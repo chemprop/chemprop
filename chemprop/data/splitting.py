@@ -14,6 +14,9 @@ from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
 
+Datapoints = Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]
+MulticomponentDatapoints = Sequence[Datapoints]
+
 
 class SplitType(EnumMapping):
     CV_NO_VAL = auto()
@@ -25,7 +28,7 @@ class SplitType(EnumMapping):
     KMEANS = auto()
 
 
-def split_data(
+def make_split_idxss(
     datapoints: Sequence[MoleculeDatapoint],
     split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
@@ -217,85 +220,41 @@ def _unpack_astartes_result(
     return [list(train_idxs)], [list(val_idxs)], [list(test_idxs)]
 
 
-def split_component(
-    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]],
-    split: SplitType | str = "random",
-    key_index: int = 0,
-    **kwargs,
+def split_data_by_indices(
+    data: Datapoints | MulticomponentDatapoints,
+    train_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
+    val_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
+    test_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
 ):
-    """Splits multicomponent data into training, validation, and test splits."""
+    """Splits data into training, validation, and test groups based on split indices given."""
 
-    key_datapoints = datapointss[key_index]
-    train_idxss, val_idxss, test_idxss = split_data(key_datapoints, split=split, **kwargs)
+    train_data = _splitter_helper(data, train_indices) if train_indices is not None else None
+    val_data = _splitter_helper(data, val_indices) if val_indices is not None else None
+    test_data = _splitter_helper(data, test_indices) if test_indices is not None else None
 
-    train = [
-        [[datapoints[i] for i in train_idxs] for datapoints in datapointss]
-        for train_idxs in train_idxss
-    ]
-    val = [
-        [[datapoints[i] for i in val_idxs] for datapoints in datapointss] for val_idxs in val_idxss
-    ]
-    test = [
-        [[datapoints[i] for i in test_idxs] for datapoints in datapointss]
-        for test_idxs in test_idxss
-    ]
-
-    return train, val, test
+    return train_data, val_data, test_data
 
 
-def parse_indices(idxs):
-    """Parses a string of indices into a list of integers. e.g. '0,1,2-4' -> [0, 1, 2, 3, 4]"""
-    if isinstance(idxs, str):
-        indices = []
-        for idx in idxs.split(","):
-            if "-" in idx:
-                start, end = map(int, idx.split("-"))
-                indices.extend(range(start, end + 1))
-            else:
-                indices.append(int(idx))
-        return indices
-    return idxs
+def _splitter_helper(data, indices):
+    nested_component = not isinstance(data[0], (MoleculeDatapoint, ReactionDatapoint))
+    nested_split = not isinstance(indices[0], int)
 
-
-def splits_from_file(
-    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]],
-    splits_file: PathLike,
-):
-    """Splits data into training, validation, and test based on splits in a file.
-
-    Parameters
-    -----------
-    datapointss: Sequence[Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint]]
-    splits_file: PathLike
-        A json file with the splits. It is a list of dictionaries, where each dictionary has the
-        keys "train", "val", and "test" with values that are the indices. The indices can either be
-        a list of integers or a string with comma-separated integers and ranges (e.g. "0,1,2-4").
-
-    Returns
-    ---------
-    train: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
-    val: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
-    test: list[list[list[MoleculeDatapoint] | list[ReactionDatapoint]]]
-    """
-
-    with open(splits_file, "rb") as json_file:
-        split_idxss = json.load(json_file)
-
-    split_idxss = [
-        {split: parse_indices(idxs) for split, idxs in splits_dict.items()}
-        for splits_dict in split_idxss
-    ]
-
-    train = [
-        [[datapoints[i] for i in split_idxs["train"]] for datapoints in datapointss]
-        for split_idxs in split_idxss
-    ]
-    val = [
-        [[datapoints[i] for i in split_idxs["val"]] for datapoints in datapointss]
-        for split_idxs in split_idxss
-    ]
-    test = [
-        [[datapoints[i] for i in split_idxs["test"]] for datapoints in datapointss]
-        for split_idxs in split_idxss
-    ]
-    return train, val, test
+    match (nested_component, nested_split):
+        case (False, False):
+            datapoints = data
+            idxs = indices
+            return [datapoints[idx] for idx in idxs]
+        case (False, True):
+            datapoints = data
+            idxss = indices
+            return [[datapoints[idx] for idx in idxs] for idxs in idxss]
+        case (True, False):
+            datapointss = data
+            idxs = indices
+            return [[datapoints[idx] for idx in idxs] for datapoints in datapointss]
+        case (True, True):
+            datapointss = data
+            idxss = indices
+            return [
+                [[datapoints[idx] for idx in idxs] for datapoints in datapointss] for idxs in idxss
+            ]
