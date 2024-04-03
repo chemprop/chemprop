@@ -7,7 +7,7 @@ from chemprop.featurizers.base import VectorFeaturizer
 
 
 class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
-    """A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
+    """A :class:`MultiHotBondFeaturizer` feauturizes bonds based on the following attributes:
 
     * ``null``-ity (i.e., is the bond ``None``?)
     * bond type
