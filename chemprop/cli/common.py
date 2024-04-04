@@ -4,7 +4,7 @@ from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode
+from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode, AtomFeatureMode
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +34,20 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-n",
         "--num-workers",
         type=int,
-        default=8,
-        help="Number of workers for the parallel data loading (0 means sequential).",
+        default=0,
+        help="""Number of workers for parallel data loading (0 means sequential).
+Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
 
-    # parser.add_argument(
-    #     "--no-cuda", action="store_true", help="Turn off cuda (i.e., use CPU instead of GPU)."
-    # )
-    # parser.add_argument("--gpu", type=int, help="Which GPU to use.")
-    parser.add_argument("-g", "--n-gpu", type=int, default=1, help="the number of GPU(s) to use")
+    parser.add_argument(
+        "--accelerator", default="auto", help="Passed directly to the lightning Trainer()."
+    )
+    parser.add_argument(
+        "--devices",
+        default="auto",
+        help="Passed directly to the lightning Trainer(). If specifying multiple devices, must be a single string of comma separated devices, e.g. '1, 2'.",
+    )
 
     featurization_args = parser.add_argument_group("Featurization args")
     featurization_args.add_argument(
@@ -59,6 +63,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 - 'reac_prod_balance': concatenates the reactants feature with the products feature, balances imbalanced reactions.
 - 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
 - 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
+    )
+    # TODO: Update documenation for multi_hot_atom_featurizer_mode
+    featurization_args.add_argument(
+        "--multi-hot-atom-featurizer-mode",
+        type=uppercase,
+        default="V2",
+        choices=list(AtomFeatureMode.keys()),
+        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
+- `V1`: Corresponds to the original configuration employed in the Chemprop V1.
+- `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
+- `ORGANIC`: Designed specifically for use with organic molecules for drug research and development, this configuration includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
     )
     featurization_args.add_argument(
         "--keep-h",

@@ -4,5 +4,5 @@ max-line-length = 100
 max-complexity = 18
 per-file-ignores =
     __init__.py: F401
-    chemprop/v2/nn/predictors.py: F405
-    chemprop/v2/metrics.py: F405
+    chemprop/nn/predictors.py: F405
+    chemprop/nn/metrics.py: F405

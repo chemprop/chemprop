@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 
 from chemprop.data.datasets import Datum
-from chemprop.featurizers import MolGraph
+from chemprop.data.molgraph import MolGraph
 
 
 @dataclass(repr=False, eq=False, slots=True)

@@ -5,7 +5,6 @@ import sys
 import json
 from copy import deepcopy
 import pandas as pd
-from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -588,12 +587,21 @@ def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
     multicomponent = len(train_data) > 1
     if multicomponent:
-        train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
-        val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
+        train_dsets = [
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            for data in train_data
+        ]
+        val_dsets = [
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            for data in val_data
+        ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
-            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dsets = [
+                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                for data in test_data
+            ]
             test_dset = MulticomponentDataset(test_dsets)
         else:
             test_dset = None
@@ -602,10 +610,10 @@ def build_datasets(args, train_data, val_data, test_data):
         val_data = val_data[0]
         test_data = test_data[0]
 
-        train_dset = make_dataset(train_data, args.rxn_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode)
+        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode)
+            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
 
@@ -759,8 +767,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer = pl.Trainer(
             logger=trainer_logger,
             enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            accelerator=args.accelerator,
+            devices=args.devices,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
             gradient_clip_val=args.grad_clip,

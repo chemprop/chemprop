@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import Iterable, Union
-from sklearn.preprocessing import StandardScaler
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
 from torch import nn, Tensor, optim
 
 from chemprop.data import TrainingBatch, BatchMolGraph
-from chemprop.nn.metrics import Metric, MetricRegistry
+from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
 
@@ -221,9 +219,7 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
+    def load_submodules(cls, checkpoint_path, **kwargs):
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
         kwargs |= {
@@ -231,7 +227,13 @@ class MPNN(pl.LightningModule):
             for key in ("message_passing", "agg", "predictor")
             if key not in kwargs
         }
+        return kwargs
 
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
