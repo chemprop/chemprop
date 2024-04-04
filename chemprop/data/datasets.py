@@ -95,6 +95,10 @@ class _MolGraphDatasetMixin:
         """the extra molecule descriptor dimension, if any"""
         return 0 if np.equal(self.X_d, None).all() else self.X_d.shape[1]
 
+    @property
+    def names(self) -> list[str]:
+        return [d.name for d in self.data]
+
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         """Normalizes the targets of this dataset using a :obj:`StandardScaler`
 
@@ -199,10 +203,6 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def smiles(self) -> list[str]:
         """the SMILES strings associated with the dataset"""
         return [Chem.MolToSmiles(d.mol) for d in self.data]
-
-    @property
-    def names(self) -> list[str]:
-        return [d.name for d in self.data]
 
     @property
     def mols(self) -> list[Chem.Mol]:
@@ -365,10 +365,6 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def smiles(self) -> list[tuple]:
         return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
-
-    @property
-    def names(self) -> list[str]:
-        return [d.name for d in self.data]
 
     @property
     def mols(self) -> list[tuple[Chem.Mol, Chem.Mol]]:
