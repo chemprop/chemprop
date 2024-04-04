@@ -35,6 +35,7 @@ def test_train_quick(monkeypatch, data_path):
         "0",
         "--descriptors-path",
         descriptors_path,
+        "--save-preds",
     ]
 
     with monkeypatch.context() as m:
