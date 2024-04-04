@@ -4,7 +4,7 @@ import numpy as np
 
 from chemprop.data.collate import BatchMolGraph, collate_batch
 from chemprop.data.datasets import Datum
-from chemprop.featurizers.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph
 
 
 @pytest.fixture

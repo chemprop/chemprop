@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import Sequence
 from enum import auto
 
@@ -6,21 +5,10 @@ import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
 from chemprop.utils.utils import EnumMapping
+from chemprop.featurizers.base import VectorFeaturizer
 
 
-class AtomFeaturizer(ABC):
-    """An :class:`AtomFeaturizer` calculates feature vectors of RDKit atoms."""
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """the length of an atomic feature vector"""
-
-    @abstractmethod
-    def __call__(self, a: Atom) -> np.ndarray:
-        """featurize the atom ``a``"""
-
-
-class MultiHotAtomFeaturizer(AtomFeaturizer):
+class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     .. seealso::

@@ -8,6 +8,7 @@ from .datasets import (
     MulticomponentDataset,
     MolGraphDataset,
 )
+from .molgraph import MolGraph
 from .samplers import ClassBalanceSampler, SeededSampler
 from .splitting import split_component, SplitType
 
@@ -24,6 +25,7 @@ __all__ = [
     "Datum",
     "MulticomponentDataset",
     "MolGraphDataset",
+    "MolGraph",
     "ClassBalanceSampler",
     "SeededSampler",
     "split_component",

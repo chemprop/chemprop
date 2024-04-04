@@ -1,23 +1,20 @@
-from abc import abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
+from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
-from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 
-from chemprop.featurizers import (
-    MolGraph,
-    MolGraphFeaturizer,
-    SimpleMoleculeMolGraphFeaturizer,
-    CGRFeaturizer,
-)
+from chemprop.types import Rxn
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.featurizers.molgraph.reaction import Rxn
+from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import Featurizer
+from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
+from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer, CGRFeaturizer
 
 
 class Datum(NamedTuple):
@@ -32,10 +29,7 @@ class Datum(NamedTuple):
     gt_mask: np.ndarray | None
 
 
-class MolGraphDataset(Dataset):
-    @abstractmethod
-    def __getitem__(self, idx) -> Datum:
-        pass
+MolGraphDataset: TypeAlias = Dataset[Datum]
 
 
 class _MolGraphDatasetMixin:
@@ -163,9 +157,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MolGraphFeaturizer[Chem.Mol] = field(
-        default_factory=SimpleMoleculeMolGraphFeaturizer
-    )
+    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:
@@ -331,7 +323,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: MolGraphFeaturizer[Rxn] = field(default_factory=CGRFeaturizer)
+    featurizer: Featurizer[Rxn, MolGraph] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):
@@ -363,7 +355,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [(Chem.MolToSmiles(d.rct), Chem.MolToSmiles(d.pdt)) for d in self.data]
 
     @property
-    def mols(self) -> list[tuple[Chem.Mol, Chem.Mol]]:
+    def mols(self) -> list[Rxn]:
         return [(d.rct, d.pdt) for d in self.data]
 
 
