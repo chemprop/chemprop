@@ -8,15 +8,16 @@ from numpy.typing import ArrayLike
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
+from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 
 from chemprop.featurizers import (
     MolGraph,
-    MoleculeMolGraphFeaturizer,
+    MolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
-    RxnMolGraphFeaturizer,
     CGRFeaturizer,
 )
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.featurizers.molgraph.reaction import Rxn
 
 
 class Datum(NamedTuple):
@@ -144,7 +145,14 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MolgraphDataset` composed of :class:`MoleculeDatapoint`\s
+    """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
+
+    A :class:`MoleculeDataset` produces featurized data for input to a
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``MoleculeDataset.cache=True``.
 
     Parameters
     ----------
@@ -155,19 +163,37 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
-    featurizer: MoleculeMolGraphFeaturizer = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+    featurizer: MolGraphFeaturizer[Chem.Mol] = field(
+        default_factory=SimpleMoleculeMolGraphFeaturizer
+    )
 
     def __post_init__(self):
         if self.data is None:
             raise ValueError("Data cannot be None!")
 
         self.reset()
+        self.cache = False
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer(d.mol, self.V_fs[idx], self.E_fs[idx])
+        mg = self.mg_cache[idx]
 
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self._init_cache()
+
+    def _init_cache(self):
+        """initialize the cache"""
+        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
+            self.mols, self.V_fs, self.E_fs, self.featurizer
+        )
 
     @property
     def smiles(self) -> list[str]:
@@ -199,6 +225,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self._validate_attribute(V_fs, "atom features")
 
         self.__V_fs = V_fs
+        self._init_cache()
 
     @property
     def _E_fs(self) -> list[np.ndarray]:
@@ -215,6 +242,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self._validate_attribute(E_fs, "bond features")
 
         self.__E_fs = E_fs
+        self._init_cache()
 
     @property
     def _V_ds(self) -> list[np.ndarray]:
@@ -297,11 +325,17 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s"""
+    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s
+
+    .. note::
+        The featurized data provided by this class may be cached, simlar to a
+        :class:`MoleculeDataset`. To enable the cache, set ``ReactionDataset
+        cache=True``.
+    """
 
     data: list[ReactionDatapoint]
     """the dataset from which to load"""
-    featurizer: RxnMolGraphFeaturizer = field(default_factory=CGRFeaturizer)
+    featurizer: MolGraphFeaturizer[Rxn] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
 
     def __post_init__(self):
@@ -309,10 +343,22 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
             raise ValueError("Data cannot be None!")
 
         self.reset()
+        self.cache = False
+
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self.mg_cache = (MolGraphCache if cache else MolGraphCacheOnTheFly)(
+            self.mols, [None] * len(self), [None] * len(self), self.featurizer
+        )
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        mg = self.featurizer((d.rct, d.pdt), None, None)
+        mg = self.mg_cache[idx]
 
         return Datum(mg, None, d.x_d, d.y, d.weight, d.lt_mask, d.gt_mask)
 
@@ -325,13 +371,14 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [d.name for d in self.data]
 
     @property
-    def mols(self) -> list[Chem.Mol]:
+    def mols(self) -> list[tuple[Chem.Mol, Chem.Mol]]:
         return [(d.rct, d.pdt) for d in self.data]
 
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
+    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel
+    :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""

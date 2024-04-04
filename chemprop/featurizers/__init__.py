@@ -1,10 +1,17 @@
-from .atom import MultiHotAtomFeaturizer, AtomFeaturizer
+from .atom import (
+    MultiHotAtomFeaturizer,
+    AtomFeaturizer,
+    AtomFeatureMode,
+    get_multi_hot_atom_featurizer,
+)
 from .bond import MultiHotBondFeaturizer, BondFeaturizer
 from .molgraph import (
+    MolGraphFeaturizer,
+    MolGraphCacheFacade,
+    MolGraphCache,
+    MolGraphCacheOnTheFly,
     MolGraph,
-    MoleculeMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
-    RxnMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
     CGRFeaturizer,
     RxnMode,
@@ -24,10 +31,12 @@ __all__ = [
     "AtomFeaturizer",
     "MultiHotBondFeaturizer",
     "BondFeaturizer",
+    "MolGraphFeaturizer",
+    "MolGraphCacheFacade",
+    "MolGraphCache",
+    "MolGraphCacheOnTheFly",
     "MolGraph",
-    "MoleculeMolGraphFeaturizer",
     "SimpleMoleculeMolGraphFeaturizer",
-    "RxnMolGraphFeaturizer",
     "CondensedGraphOfReactionFeaturizer",
     "CGRFeaturizer",
     "RxnMode",
