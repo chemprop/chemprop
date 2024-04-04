@@ -19,7 +19,7 @@ from chemprop.data import (
     MoleculeDataset,
     ReactionDatapoint,
 )
-from chemprop.data import SplitType, make_split_idxss, split_data_by_indices
+from chemprop.data import SplitType, make_split_indices, split_data_by_indices
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -560,7 +560,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             splitting_mols = [datapoint.rct for datapoint in splitting_data]
         else:
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
-        train_indices, val_indices, test_indices = make_split_idxss(
+        train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
         )
         if not (

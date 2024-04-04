@@ -26,7 +26,7 @@ class SplitType(EnumMapping):
     KMEANS = auto()
 
 
-def make_split_idxss(
+def make_split_indices(
     mols: Sequence[Chem.Mol],
     split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
