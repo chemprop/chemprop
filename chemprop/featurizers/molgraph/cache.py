@@ -14,7 +14,7 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
     :class:`~chemprop.data.molgraph.MolGraph`\s.
 
     .. note::
-        This class only provides a facade for a cached dataset, but it does **not** guarantee
+        This class only provides a facade for a cached dataset, but it _does not guarantee_
         whether the underlying data is truly cached.
 
 
@@ -26,9 +26,9 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
         The node features for each input.
     E_fs : Iterable[np.ndarray]
         The edge features for each input.
-    featurizer : MolGraphFeaturizer[S]
+    featurizer : Featurizer[S, MolGraph]
         The featurizer with which to generate the
-        :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s.
+        :class:`~chemprop.data.molgraph.MolGraph`\s.
     """
 
     @abstractmethod
@@ -45,7 +45,7 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
 class MolGraphCache(MolGraphCacheFacade):
     """
     A :class:`MolGraphCache` precomputes the corresponding
-    :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s and caches them in memory.
+    :class:`~chemprop.data.molgraph.MolGraph`\s and caches them in memory.
     """
 
     def __init__(
@@ -67,7 +67,7 @@ class MolGraphCache(MolGraphCacheFacade):
 class MolGraphCacheOnTheFly(MolGraphCacheFacade):
     """
     A :class:`MolGraphCacheOnTheFly` computes the corresponding
-    :class:`~chemprop.featurizers.molgraph.molgraph.MolGraph`\s as they are requested.
+    :class:`~chemprop.data.molgraph.MolGraph`\s as they are requested.
     """
 
     def __init__(
