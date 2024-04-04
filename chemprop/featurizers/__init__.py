@@ -1,23 +1,16 @@
-from .atom import (
-    MultiHotAtomFeaturizer,
-    AtomFeaturizer,
-    AtomFeatureMode,
-    get_multi_hot_atom_featurizer,
-)
-from .bond import MultiHotBondFeaturizer, BondFeaturizer
+from .base import Featurizer, S, T, VectorFeaturizer, GraphFeaturizer
+from .atom import MultiHotAtomFeaturizer, AtomFeatureMode, get_multi_hot_atom_featurizer
+from .bond import MultiHotBondFeaturizer
 from .molgraph import (
-    MolGraphFeaturizer,
     MolGraphCacheFacade,
     MolGraphCache,
     MolGraphCacheOnTheFly,
-    MolGraph,
     SimpleMoleculeMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
     CGRFeaturizer,
     RxnMode,
 )
 from .molecule import (
-    MoleculeFeaturizer,
     MorganFeaturizerMixin,
     BinaryFeaturizerMixin,
     CountFeaturizerMixin,
@@ -27,24 +20,27 @@ from .molecule import (
 )
 
 __all__ = [
+    "Featurizer",
+    "S",
+    "T",
+    "VectorFeaturizer",
+    "GraphFeaturizer",
     "MultiHotAtomFeaturizer",
-    "AtomFeaturizer",
+    "AtomFeatureMode",
+    "get_multi_hot_atom_featurizer",
     "MultiHotBondFeaturizer",
-    "BondFeaturizer",
-    "MolGraphFeaturizer",
     "MolGraphCacheFacade",
     "MolGraphCache",
     "MolGraphCacheOnTheFly",
-    "MolGraph",
     "SimpleMoleculeMolGraphFeaturizer",
     "CondensedGraphOfReactionFeaturizer",
     "CGRFeaturizer",
     "RxnMode",
     "MoleculeFeaturizer",
-    "MoleculeFeaturizerRegistry",
     "MorganFeaturizerMixin",
     "BinaryFeaturizerMixin",
     "CountFeaturizerMixin",
     "MorganBinaryFeaturizer",
     "MorganCountFeaturizer",
+    "MoleculeFeaturizerRegistry",
 ]
