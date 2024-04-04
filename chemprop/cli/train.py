@@ -18,6 +18,7 @@ from chemprop.data import (
     MulticomponentDataset,
     ReactionDataset,
     MoleculeDataset,
+    ReactionDatapoint,
 )
 from chemprop.data import SplitType, make_split_idxss, split_data_by_indices
 from chemprop.utils import Factory
@@ -38,6 +39,7 @@ from chemprop.cli.utils import (
     build_data_from_files,
     make_dataset,
     get_column_names,
+    parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import MoleculeFeaturizerRegistry
@@ -536,18 +538,48 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-    if args.splits_file is not None:
-        train_data, val_data, test_data = splits_from_file(all_data, args.splits_file)
+
+    df = pd.read_csv(args.data_path, index_col=False)
+    split_col = next((col for col in df.columns if "split" in col), None)
+    if split_col is not None:
+        grouped = df.groupby(df[split_col].str.lower())
+        train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+        val_indices = grouped.groups.get("val", pd.Index([])).tolist()
+        test_indices = grouped.groups.get("test", pd.Index([])).tolist()
+        train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
+
+    elif args.splits_file is not None:
+        with open(args.splits_file, "rb") as json_file:
+            split_idxss = json.load(json_file)
+        train_indices = [parse_indices(d["train"]) for d in split_idxss]
+        val_indices = [parse_indices(d["val"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+
     else:
-        multicomponent = len(all_data) > 1
+        splitting_data = all_data[args.split_key_molecule]
+        if isinstance(splitting_data[0], ReactionDatapoint):
+            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        else:
+            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+        train_indices, val_indices, test_indices = make_split_idxss(
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
+        )
+        if not (
+            SplitType.get(args.split) == SplitType.CV_NO_VAL
+            or SplitType.get(args.split) == SplitType.CV
+        ):
+            train_indices, val_indices, test_indices = (
+                [train_indices],
+                [val_indices],
+                [test_indices],
+            )
 
-        split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
-        split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
-
-        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
-
-    sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
-    logger.info(f"train/val/test sizes: {sizes}")
+    train_data, val_data, test_data = split_data_by_indices(
+        all_data, train_indices, val_indices, test_indices
+    )
+    for i_split in range(len(train_data)):
+        sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
+        logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
 
