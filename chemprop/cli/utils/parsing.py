@@ -121,32 +121,38 @@ def make_datapoints(
     Parameters
     ----------
     smiss : list[list[str]] | None
-        a list of lists of SMILES strings of shape ``n x j``, where ``j`` is the number of molecule
-        components per datapoint and ``n`` is the total number of datapoints
+        a list of ``n`` lists of ``j`` SMILES strings, where ``n`` is the number of datapoints and
+        ``j`` is the number of molecules per datapoint. If ``None``, the corresponding list of
+        :class:`MoleculeDatapoint`\s will be empty.
     rxnss : list[list[str]] | None
-        a list of lists of reaction SMILES strings of shape ``n x k``, where ``k`` is the number of
-        reaction components per datapoint and ``n`` is the total number of datapoints
+        a list of ``n`` lists of ``k`` reaction SMILES strings, where ``k`` is the number of
+        reactions per datapoint. If ``None``, the corresponding list of :class:`ReactionDatapoint`\s
+        will be empty.
     Y : np.ndarray
         the target values of shape ``n x m``, where ``m`` is the number of targets
     weights : np.ndarray | None
-        the weights of shape ``n``
+        the weights of the datapoints to use in the loss function of shape ``n x m``. If ``None``,
+        the weights all default to 1.
     lt_mask : np.ndarray | None
         a boolean mask of shape ``n x m`` indicating whether the targets are less than inequality
-        targets
+        targets. If ``None``, ``lt_mask`` for all datapoints will be ``None``.
     gt_mask : np.ndarray | None
         a boolean mask of shape ``n x m`` indicating whether the targets are greater than inequality
-        targets
+        targets. If ``None``, ``gt_mask`` for all datapoints will be ``None``.
     X_d : np.ndarray | None
-        the extra descriptors of shape ``n x p``, where ``p`` is the number of extra descriptors
+        the extra descriptors of shape ``n x p``, where ``p`` is the number of extra descriptors. If
+        ``None``, ``x_d`` for all datapoints will be ``None``.
     V_fs : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``n x q``, where ``q`` is the number of extra 
-        atom features
+        a list of ``j`` np.ndarrays each of shape ``v_j x q``, where ``v_j`` is the number of atoms
+        in the j-th molecule and ``q`` is the number of extra atom features. If ``None``, ``V_f``
+        for all datapoints will be ``None``.
     E_fs : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``n x r``, where ``r`` is the number of extra
-        bond features
+        a list of ``j`` np.ndarrays each of shape ``e_j x r``, where ``e_j`` is the number of bonds
+        in the j-th molecule and ``r`` is the number of extra bond features. If ``None``, ``E_f``
+        for all datapoints will be ``None``.
     V_ds : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``n x s``, where ``s`` is the number of extra
-        atom descriptors
+        a list of ``j`` np.ndarrays each of shape ``v_j x s``, where ``s`` is the number of extra
+        atom descriptors. If ``None``, ``V_d`` for all datapoints will be ``None``.
     features_generators : list[MoleculeFeaturizer] | None
         a list of :class:`MoleculeFeaturizer` instances to generate additional molecule features to
         use as extra descriptors
@@ -156,13 +162,17 @@ def make_datapoints(
     Returns
     -------
     list[list[MoleculeDatapoint]]
-        a list of lists of :class:`MoleculeDatapoint`s of shape ``j x n``, where ``j`` is the
-        number of molecule components per datapoint and ``n`` is the total number of datapoints
+        a list of ``j`` lists of ``n`` :class:`MoleculeDatapoint`\s
     list[list[ReactionDatapoint]]
-        a list of lists of :class:`ReactionDatapoint`s of shape ``k x n``, where ``k`` is the
-        number of reaction components per datapoint and ``n`` is the total number of datapoints
+        a list of ``k`` lists of ``n`` :class:`ReactionDatapoint`\s
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
+
+    Raises
+    ------
+    ValueError
+        if both ``smiss`` and ``rxnss`` are ``None``.
+        if ``smiss`` and ``rxnss`` are both given and have different lengths.
     """
     if smiss is None and rxnss is None:
         raise ValueError("args 'smiss' and 'rnxss' were both `None`!")
