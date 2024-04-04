@@ -69,7 +69,7 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
         Returns
         -------
         list[Tensor]
-            a list of tensors of shape `V x d_i` containing the respective encodings of the `i`\th 
+            a list of tensors of shape `V x d_i` containing the respective encodings of the `i`\th
             component, where `d_i` is the output dimension of the `i`\th encoder
         """
         if V_ds is None:

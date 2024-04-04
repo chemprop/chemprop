@@ -2,7 +2,6 @@ import csv
 import pytest
 import numpy as np
 
-from pathlib import Path
 
 from lightning import pytorch as pl
 
@@ -26,7 +25,9 @@ def example_model_v1_prediction(data_dir):
         next(reader)
         smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
 
-    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
+    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer(
+        atom_featurizer=featurizers.MultiHotAtomFeaturizer.v1()
+    )
 
     ys = np.array(ys).reshape(-1, 1)
     test_data = [data.MoleculeDatapoint.from_smi(smi, None) for smi in smis]

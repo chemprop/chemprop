@@ -211,7 +211,9 @@ def make_prediction_for_model(
         **featurization_kwargs,
     )
     logger.info(f"test size: {len(test_data[0])}")
-    test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
+    test_dsets = [
+        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+    ]
 
     if multicomponent:
         test_dset = data.MulticomponentDataset(test_dsets)
@@ -264,8 +266,8 @@ def make_prediction_for_model(
         trainer = pl.Trainer(
             logger=False,
             enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            accelerator=args.accelerator,
+            devices=args.devices,
         )
 
         predss = trainer.predict(model, test_loader)
