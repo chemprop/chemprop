@@ -236,7 +236,7 @@ def split_data_by_indices(
 
 def _splitter_helper(data, indices):
     nested_component = not isinstance(data[0], (MoleculeDatapoint, ReactionDatapoint))
-    nested_split = not isinstance(indices[0], int)
+    nested_split = not hasattr(indices[0], '__index__')
 
     match (nested_component, nested_split):
         case (False, False):
