@@ -125,8 +125,6 @@ class RegressionFFN(_FFNPredictorBase):
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
 
 @PredictorRegistry.register("regression-mve")
