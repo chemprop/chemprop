@@ -32,6 +32,8 @@ def test_train_quick(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
+        "--split-key-molecule",
+        "1",
     ]
 
     with monkeypatch.context() as m:

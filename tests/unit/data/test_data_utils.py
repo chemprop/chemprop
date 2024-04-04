@@ -1,79 +1,79 @@
 import pytest
 import numpy as np
+from rdkit import Chem
 from astartes import train_val_test_split
 from astartes.utils.warnings import NormalizationWarning
 
-from chemprop.data.datapoints import MoleculeDatapoint
-from chemprop.data.splitting import split_data, _unpack_astartes_result, parse_indices
+from chemprop.data.splitting import make_split_idxss, _unpack_astartes_result
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])
 def mol_data(request):
     """A dataset with single molecules"""
-    return [MoleculeDatapoint.from_smi(s) for s in request.param]
+    return [Chem.MolFromSmiles(smi) for smi in request.param]
 
 
 @pytest.fixture(params=[["C", "CC", "CN", "CN", "CO", "C"]])
 def mol_data_with_repeated_mols(request):
     """A dataset with repeated single molecules"""
-    return [MoleculeDatapoint.from_smi(s) for s in request.param]
+    return [Chem.MolFromSmiles(smi) for smi in request.param]
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "C1CC1", "C1CCC1"]])
 def molecule_dataset_with_rings(request):
     """A dataset with rings (for scaffold splitting)"""
-    return [MoleculeDatapoint.from_smi(s) for s in request.param]
+    return [Chem.MolFromSmiles(smi) for smi in request.param]
 
 
 def test_splits_sum1_warning(mol_data):
     """Testing that the splits are normalized to 1, for overspecified case."""
     with pytest.warns(NormalizationWarning):
-        split_data(datapoints=mol_data, sizes=(0.4, 0.6, 0.2))
+        make_split_idxss(mols=mol_data, sizes=(0.4, 0.6, 0.2))
 
 
 def test_splits_sum2_warning(mol_data):
     """Testing that the splits are normalized to 1, for underspecified case."""
     with pytest.warns(NormalizationWarning):
-        split_data(datapoints=mol_data, sizes=(0.1, 0.1, 0.1))
+        make_split_idxss(mols=mol_data, sizes=(0.1, 0.1, 0.1))
 
 
 def test_three_splits_provided(mol_data):
     """Testing that three splits are provided"""
     with pytest.raises(ValueError):
-        split_data(datapoints=mol_data, sizes=(0.8, 0.2))
+        make_split_idxss(mols=mol_data, sizes=(0.8, 0.2))
 
 
 def test_seed0(mol_data):
     """
-    Testing that split_data can get expected output using astartes as backend for random split with seed 0.
+    Testing that make_split_idxss can get expected output using astartes as backend for random split with seed 0.
     Note: the behaviour of randomness for data splitting is not controlled by chemprop but by the chosen backend.
     """
-    train, val, test = split_data(datapoints=mol_data, seed=0)
+    train, val, test = make_split_idxss(mols=mol_data, seed=0)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
         train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=0), True
     )
-    assert set(train[0]) == set(train_astartes[0])
-    assert set(val[0]) == set(val_astartes[0])
-    assert set(test[0]) == set(test_astartes[0])
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_seed100(mol_data):
     """
-    Testing that split_data can get expected output using astartes as backend for random split with seed 100.
+    Testing that make_split_idxss can get expected output using astartes as backend for random split with seed 100.
     Note: the behaviour of randomness for data splitting is not controlled by chemprop but by the chosen backend.
     """
-    train, val, test = split_data(datapoints=mol_data, seed=100)
+    train, val, test = make_split_idxss(mols=mol_data, seed=100)
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
         train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=100), True
     )
-    assert set(train[0]) == set(train_astartes[0])
-    assert set(val[0]) == set(val_astartes[0])
-    assert set(test[0]) == set(test_astartes[0])
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_split_4_4_2(mol_data):
     """Testing the random split with changed sizes"""
-    train, val, test = split_data(datapoints=mol_data, sizes=(0.4, 0.4, 0.2))
+    train, val, test = make_split_idxss(mols=mol_data, sizes=(0.4, 0.4, 0.2))
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
         train_val_test_split(
             np.arange(len(mol_data)),
@@ -85,15 +85,15 @@ def test_split_4_4_2(mol_data):
         ),
         True,
     )
-    assert set(train[0]) == set(train_astartes[0])
-    assert set(val[0]) == set(val_astartes[0])
-    assert set(test[0]) == set(test_astartes[0])
+    assert set(train) == set(train_astartes)
+    assert set(val) == set(val_astartes)
+    assert set(test) == set(test_astartes)
 
 
 def test_split_empty_validation_set(mol_data):
     """Testing the random split with an empty validation set"""
-    train, val, test = split_data(datapoints=mol_data, sizes=(0.4, 0, 0.6))
-    assert set(val[0]) == set([])
+    train, val, test = make_split_idxss(mols=mol_data, sizes=(0.4, 0, 0.6))
+    assert set(val) == set([])
 
 
 def test_random_split(mol_data_with_repeated_mols):
@@ -102,11 +102,11 @@ def test_random_split(mol_data_with_repeated_mols):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "random"
-    train, val, test = split_data(
-        datapoints=mol_data_with_repeated_mols, sizes=(0.4, 0.4, 0.2), split=split_type
+    train, val, test = make_split_idxss(
+        mols=mol_data_with_repeated_mols, sizes=(0.4, 0.4, 0.2), split=split_type
     )
 
-    assert train[0] == [2, 1]
+    assert train == [2, 1]
 
 
 def test_repeated_smiles(mol_data_with_repeated_mols):
@@ -115,12 +115,12 @@ def test_repeated_smiles(mol_data_with_repeated_mols):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "random_with_repeated_smiles"
-    train, val, test = split_data(
-        datapoints=mol_data_with_repeated_mols, sizes=(0.8, 0.0, 0.2), split=split_type
+    train, val, test = make_split_idxss(
+        mols=mol_data_with_repeated_mols, sizes=(0.8, 0.0, 0.2), split=split_type
     )
 
-    assert train[0] == [4, 1, 0, 5]
-    assert test[0] == [2, 3]
+    assert train == [4, 1, 0, 5]
+    assert test == [2, 3]
 
 
 def test_kennard_stone(mol_data):
@@ -129,9 +129,9 @@ def test_kennard_stone(mol_data):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "kennard_stone"
-    train, val, test = split_data(datapoints=mol_data, sizes=(0.4, 0.4, 0.2), split=split_type)
+    train, val, test = make_split_idxss(mols=mol_data, sizes=(0.4, 0.4, 0.2), split=split_type)
 
-    assert set(test[0]) == set([9, 5])
+    assert set(test) == set([9, 5])
 
 
 def test_kmeans(mol_data):
@@ -140,9 +140,9 @@ def test_kmeans(mol_data):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "kmeans"
-    train, val, test = split_data(datapoints=mol_data, sizes=(0.5, 0.0, 0.5), split=split_type)
+    train, val, test = make_split_idxss(mols=mol_data, sizes=(0.5, 0.0, 0.5), split=split_type)
 
-    assert train[0] == [0, 1, 2, 3, 7, 8, 9]
+    assert train == [0, 1, 2, 3, 7, 8, 9]
 
 
 def test_scaffold(molecule_dataset_with_rings):
@@ -151,19 +151,8 @@ def test_scaffold(molecule_dataset_with_rings):
     Note: This test mainly serves as a red flag. Test failure strongly indicates unexpected change of data splitting backend that needs attention.
     """
     split_type = "scaffold_balanced"
-    train, val, test = split_data(
-        datapoints=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split=split_type
+    train, val, test = make_split_idxss(
+        mols=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split=split_type
     )
 
-    assert train[0] == [0, 1, 2]
-
-
-def test_parse_indices():
-    """
-    Testing if parse_indices yields expected results.
-    """
-    splits = {"train": [0, 1, 2, 4], "val": [3, 5, 6], "test": [7, 8, 9]}
-    split_idxs = {"train": "0-2, 4", "val": "3,5-6", "test": [7, 8, 9]}
-    split_idxs = {split: parse_indices(idxs) for split, idxs in split_idxs.items()}
-
-    assert split_idxs == splits
+    assert train == [0, 1, 2]

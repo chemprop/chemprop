@@ -153,10 +153,9 @@ def make_split_idxss(
             train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
 
             # convert these to the 'actual' indices from the original list using the dict we made
-            train = sum((smiles_indices[unique_smiles[i]] for i in train_idxs[0]), [])
-            val = sum((smiles_indices[unique_smiles[j]] for j in val_idxs[0]), [])
-            test = sum((smiles_indices[unique_smiles[k]] for k in test_idxs[0]), [])
-            train, val, test = [train], [val], [test]
+            train = sum((smiles_indices[unique_smiles[i]] for i in train_idxs), [])
+            val = sum((smiles_indices[unique_smiles[j]] for j in val_idxs), [])
+            test = sum((smiles_indices[unique_smiles[k]] for k in test_idxs), [])
 
         case SplitType.RANDOM:
             result = split_fun(np.arange(n_datapoints), sampler="random", **astartes_kwargs)
@@ -204,11 +203,11 @@ def _unpack_astartes_result(
 
     Returns
     ---------
-    train: list[list[int]]
-    val: list[list[int]]
+    train: list[int]
+    val: list[int]
     .. important::
         validation possibly empty
-    test: list[list[int]]
+    test: list[int]
     """
     train_idxs, val_idxs, test_idxs = [], [], []
     # astartes returns a set of lists containing the data, clusters (if applicable)
@@ -217,7 +216,7 @@ def _unpack_astartes_result(
         train_idxs, val_idxs, test_idxs = result[-3], result[-2], result[-1]
     else:
         train_idxs, test_idxs = result[-2], result[-1]
-    return [list(train_idxs)], [list(val_idxs)], [list(test_idxs)]
+    return list(train_idxs), list(val_idxs), list(test_idxs)
 
 
 def split_data_by_indices(
