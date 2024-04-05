@@ -33,8 +33,9 @@ class MLP(nn.Sequential, FFN):
     activation function, and :math:`L` is the number of layers.
     """
 
-    def __init__(
-        self,
+    @classmethod
+    def build(
+        cls,
         input_dim: int,
         output_dim: int,
         hidden_dim: int = 300,
@@ -42,16 +43,24 @@ class MLP(nn.Sequential, FFN):
         dropout: float = 0.0,
         activation: str = "relu",
     ):
-        super().__init__()
-
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
+        dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
+        blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
+        if len(dims) > 2:
+            blocks.extend(
+                [
+                    nn.Sequential(act, dropout, nn.Linear(d1, d2))
+                    for d1, d2 in zip(dims[1:-1], dims[2:])
+                ]
+            )
 
-        dims = [input_dim, *([hidden_dim] * n_layers), output_dim]
-        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(dims[:-1], dims[1:]))
-        layers = list(chain(*blocks))
+        return cls(*blocks)
 
-        super().__init__(*layers[1:-1])
+    @property
+    def input_dim(self) -> int:
+        return self[0][-1].in_features
 
-        self.input_dim = self[0].in_features
-        self.output_dim = self[-1].out_features
+    @property
+    def output_dim(self) -> int:
+        return self[-1][-1].out_features
