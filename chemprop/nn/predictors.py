@@ -61,10 +61,6 @@ class Predictor(nn.Module, HasHParams):
     def train_step(self, Z: Tensor) -> Tensor:
         pass
 
-    @abstractmethod
-    def encode(self, Z: Tensor) -> Tensor:
-        pass
-
 
 PredictorRegistry = ClassRegistry[Predictor]()
 
