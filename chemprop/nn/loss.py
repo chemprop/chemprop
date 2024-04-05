@@ -270,9 +270,7 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
-    def get_params(
-            self, deep: bool = True  # pylint: disable=unused-argument
-    ) -> dict[str, float]:
+    def get_params(self, deep: bool = True) -> dict[str, float]:  # pylint: disable=unused-argument
         return {"v_kl": self.v_kl}
 
 
