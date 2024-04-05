@@ -30,6 +30,8 @@ class _DatapointMixin:
     """A list of molecule featurizers to use"""
     x_phase: list[float] = None
     """A one-hot vector indicating the phase of the data, as used in spectra data."""
+    name: str | None = None
+    """A string identifier for the datapoint."""
 
     def __post_init__(self, mfs: list[MoleculeFeaturizer] | None):
         if self.x_d is not None and mfs is not None:
@@ -57,6 +59,8 @@ class _MoleculeDatapointMixin:
         cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
     ) -> _MoleculeDatapointMixin:
         mol = make_mol(smi, keep_h, add_h)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
         return cls(mol, *args, **kwargs)
 
@@ -123,8 +127,10 @@ class _ReactionDatapointMixin:
             case str():
                 rct_smi, agt_smi, pdt_smi = rxn_or_smis.split(">")
                 rct_smi = f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi
+                name = rxn_or_smis
             case tuple():
                 rct_smi, pdt_smi = rxn_or_smis
+                name = ">>".join(rxn_or_smis)
             case _:
                 raise TypeError(
                     "Must provide either a reaction SMARTS string or a tuple of reactant and product SMILES strings!"
@@ -132,6 +138,8 @@ class _ReactionDatapointMixin:
 
         rct = make_mol(rct_smi, keep_h, add_h)
         pdt = make_mol(pdt_smi, keep_h, add_h)
+
+        kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
         return cls(rct, pdt, *args, **kwargs)
 

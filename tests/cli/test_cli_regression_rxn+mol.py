@@ -34,6 +34,7 @@ def test_train_quick(monkeypatch, data_path):
         "0",
         "--split-key-molecule",
         "1",
+        "--save-preds",
     ]
 
     with monkeypatch.context() as m:
