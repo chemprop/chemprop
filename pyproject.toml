@@ -35,10 +35,10 @@ dependencies = [
     "scipy",
     "torch >= 2.1",
     "astartes[molecules]",
-    "ray[tune]"
 ]
 
 [project.optional-dependencies]
+hyperopt = ["ray[tune]", "hyperopt"]
 dev = ["black", "bumpversion", "flake8", "pytest", "pytest-cov"]
 docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme","nbsphinx-link","ipykernel"]
 test = ["pytest >= 6.2", "pytest-cov"]
