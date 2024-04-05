@@ -20,16 +20,13 @@ class MLP(nn.Sequential, FFN):
     r"""An :class:`MLP` is an FFN that implements the following function:
 
     .. math::
-        \mathbf h_0 &= \mathbf x\,\mathbf W^{(0)} + \mathbf b^{(0)} \\
-        \mathbf h_l &= \mathtt{dropout} \left(
-            \sigma \left(\,\mathbf h_{l-1}\,\mathbf W^{(l)} \right)
-        \right) \\
-        \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{(l)} + \mathbf b^{(l)},
+        \mathbf h_0 &= \mathbf W_0 \mathbf x \,+ \mathbf b_{0} \\
+        \mathbf h_l &= \mathbf W_l \left( \mathtt{dropout} \left( \sigma ( \,\mathbf h_{l-1}\, ) \right) \right) + \mathbf b_l\\
 
-    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{(l)}` is the learned weight matrix
-    for the :math:`l`-th layer, :math:`\mathbf b^{(l)}` is the bias vector for the :math:`l`-th layer,
-    :math:`\mathbf h^{(l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
-    activation function, and :math:`L` is the number of layers.
+    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W_l` and :math:`\mathbf b_l`
+    are the learned weight matrix and bias, respectively, of the :math:`l`-th layer,
+    :math:`\mathbf h_l` is the hidden representation after layer :math:`l`, and :math:`\sigma`
+    is the activation function.
     """
 
     @classmethod
