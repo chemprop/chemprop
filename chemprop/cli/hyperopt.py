@@ -35,11 +35,11 @@ from chemprop.nn.utils import Activation
 
 logger = logging.getLogger(__name__)
 
-AVAILABLE_SPACES = {
-    "activation": tune.choice(list(Activation.keys())),
-    "aggregation": tune.choice(list(AggregationRegistry.keys())),
+DEFAULT_SEARCH_SPACE = {
+    "activation": tune.choice(categories=list(Activation.keys())),
+    "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
     "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-    "batch_size": tune.quniform(lower=5, upper=200, q=5),
+    "batch_size": tune.loguniform(lower=16, upper=256, base=2),
     "depth": tune.randint(lower=2, upper=6),
     "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
     "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
@@ -47,23 +47,37 @@ AVAILABLE_SPACES = {
     "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
     "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
     "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-    "linked_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
     "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
     "warmup_epochs": None,
 }
 
+SEARCH_SPACE = DEFAULT_SEARCH_SPACE
+
 SEARCH_PARAM_KEYWORDS_MAP = {
-    "basic": ["depth", "ffn_num_layers", "dropout", "linked_hidden_size"],
+    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_size", "hidden_size"],
     "learning_rate": ["max_lr", "init_lr", "final_lr", "warmup_epochs"],
-    "all": list(AVAILABLE_SPACES.keys()),
+    "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
 
+DISTRIBUTIONS = {
+    "uniform": tune.uniform,
+    "quniform": tune.quniform,
+    "loguniform": tune.loguniform,
+    "qloguniform": tune.qloguniform,
+    "randn": tune.randn,
+    "qrandn": tune.qrandn,
+    "randint": tune.randint,
+    "qrandint": tune.qrandint,
+    "lograndint": tune.lograndint,
+    "qlograndint": tune.qlograndint,
+    "choice": tune.choice,
+    "grid": tune.grid_search,
+}
 
-def get_available_spaces(train_epochs: int) -> dict:
-    AVAILABLE_SPACES["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
-
-    return AVAILABLE_SPACES
-
+SEARCH_ALGS = {
+    "hyperopt": tune.search.hyperopt.HyperOptSearch,
+    "optuna": tune.search.optuna.OptunaSearch,
+}
 
 class HyperoptSubcommand(Subcommand):
     COMMAND = "hyperopt"
@@ -96,13 +110,6 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     hyperopt_args.add_argument(
-        "--hyperopt-seed",
-        type=int,
-        default=0,
-        help="The initial seed used for choosing parameters in hyperparameter optimization trials. In each trial, the seed will be increased by one, skipping seeds previously used.",
-    )
-
-    hyperopt_args.add_argument(
         "--hyperopt-save-dir",
         type=Path,
         help="Directory to save the hyperparameter optimization results",
@@ -121,13 +128,6 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     hyperopt_args.add_argument(
-        "--manual-trial-dirs",
-        type=Path,
-        nargs="+",
-        help="Paths to save directories for manually trained models in the same search space as the hyperparameter search. Results will be considered as part of the trial history of the hyperparameter search.",
-    )
-
-    hyperopt_args.add_argument(
         "--search-parameter-keywords",
         type=str,
         nargs="+",
@@ -136,15 +136,13 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     Some options are bundles of parameters or otherwise special parameter operations.
 
     Special keywords:
-        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, and linked_hidden_size.
-        linked_hidden_size - search for hidden_size and ffn_hidden_size, but constrained for them to have the same value.
-            If either of the component words are entered in separately, both are searched independently.
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, hidden_size, and ffn_hidden_size.
         learning_rate - search for max_lr, init_lr, final_lr, and warmup_epochs. The search for init_lr and final_lr values
             are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
         all - include search for all 13 inidividual keyword options
 
     Individual supported parameters:
-        {get_available_spaces(0).keys()}
+        {DEFAULT_SEARCH_SPACE.keys()}
     """,
     )
 
@@ -160,7 +158,43 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--num-checkpoints-to-keep", type=int, default=1, help="Number of checkpoints to keep"
     )
 
+    hyperopt_args.add_argument(
+        "--search-space-config", type=Path, default=None, help="Path to a JSON file containing the search space config",
+    )
+
+    hyperopt_args.add_argument(
+        "--search-algorithm", choices=["hyperopt", "optuna"], default="hyperopt", help="The search algorithm to use. Default to hyperopt.",
+    )
+
     return parser
+
+
+def process_search_space_config(args: Namespace) -> dict:
+    with open(args.search_space_config, "r") as f:
+            search_space_config = json.load(f)
+
+    if not all(key in DISTRIBUTIONS for key in search_space_config.values()):
+        raise ValueError(f"Invalid distribution in search space config. Must be one of: {DISTRIBUTIONS.keys()}.")
+    
+    config = search_space_config.get("aggregation", None)
+    if config:
+        assert config["distribution"] == "choice"
+        assert set(config["params"]).issubset(AggregationRegistry.keys())
+
+    config = search_space_config.get("activation", None)
+    if config:
+        assert config["distribution"] == "choice"
+        assert set(config["params"]).issubset(Activation.keys())
+
+    for key in {"aggregation_norm", "depth", "ffn_num_layers"}:
+        config = search_space_config.get(key, None)
+        if config:
+            assert config["distribution"] in {"randint", "quniform", "choice", "qrandint"}
+            assert config["params"]["lower"] > 0
+
+    search_space = {key: DISTRIBUTIONS[config["distribution"]](**config["params"]) for key, config in search_space_config.items()}
+
+    return search_space
 
 
 def process_hyperopt_args(args: Namespace) -> Namespace:
@@ -172,11 +206,15 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
     args.hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
 
+    if args.search_space_config is not None:
+
+        SEARCH_SPACE = process_search_space_config(args)
+
     search_parameters = set()
 
     for keyword in args.search_parameter_keywords:
-        if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in AVAILABLE_SPACES:
-            raise ValueError(f"Invalid search parameter keyword: {keyword}")
+        if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in SEARCH_SPACE:
+            raise ValueError(f"Search parameter keyword: {keyword} not in available options: {SEARCH_SPACE.keys()}.")
 
         search_parameters.update(
             SEARCH_PARAM_KEYWORDS_MAP[keyword]
@@ -190,18 +228,19 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
-    AVAILABLE_SPACES = get_available_spaces(train_epochs)
 
-    return {param: AVAILABLE_SPACES[param] for param in search_parameters}
+    if "warmup_epochs" not in SEARCH_SPACE and "warmup_epochs" in search_parameters:
+        SEARCH_SPACE["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
+
+    return {param: SEARCH_SPACE[param] for param in search_parameters}
 
 
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
+
+    args = args.copy()
+
     for key, value in config.items():
         match key:
-            case "linked_hidden_size":
-                setattr(args, "hidden_size", value)
-                setattr(args, "ffn_hidden_size", value)
-
             case "final_lr_ratio":
                 setattr(args, "final_lr", value * args.max_lr)
 
@@ -226,7 +265,7 @@ def train_model(config, args, train_loader, val_loader, logger):
     trainer = pl.Trainer(
         accelerator="auto",
         devices=args.n_gpu if torch.cuda.is_available() else 1,
-        strategy=RayDDPStrategy(find_unused_parameters=True),
+        strategy=RayDDPStrategy(),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
         gradient_clip_val=args.grad_clip,
@@ -261,7 +300,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     tune_config = tune.TuneConfig(
-        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler
+        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler, search_alg=SEARCH_ALGS[args.search_algorithm]
     )
 
     tuner = tune.Tuner(
@@ -327,7 +366,7 @@ def main(args: Namespace):
 
     logger.info(f"Best hyperparameter configuration: {best_config}")
 
-    with open(args.hyperopt_save_dir / "config.json", "w") as f:
+    with open(args.hyperopt_save_dir / "best_config.json", "w") as f:
         json.dump(best_config, f, indent=4)
 
 
