@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-
+import inspect
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 
-from chemprop.utils import ClassRegistry, ReprMixin
+from chemprop.utils import ClassRegistry
 
 
 __all__ = [
@@ -23,13 +22,12 @@ __all__ = [
     "DirichletMixin",
     "BinaryDirichletLoss",
     "MulticlassDirichletLoss",
-    "_ThresholdMixin",
     "SIDLoss",
     "WassersteinLoss",
 ]
 
 
-class LossFunction(ABC, ReprMixin):
+class LossFunction(ABC, nn.Module):
     def __call__(
         self,
         preds: Tensor,
@@ -74,6 +72,13 @@ class LossFunction(ABC, ReprMixin):
     @abstractmethod
     def forward(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
+
+    def extra_repr(self) -> str:
+        sig_params = inspect.signature(self.__class__).parameters
+        obj_params = self.__dict__.items()
+        items = [(k, v) for k, v in obj_params if (k in sig_params and v != sig_params[k].default)]
+
+        return ", ".join(f"{k}={repr(v)}" for k, v in items)
 
 
 LossFunctionRegistry = ClassRegistry[LossFunction]()
@@ -131,6 +136,7 @@ class EvidentialLoss(LossFunction):
     """
 
     def __init__(self, v_kl: float = 0.2, eps: float = 1e-8):
+        super().__init__()
         self.v_kl = v_kl
         self.eps = eps
 
@@ -151,9 +157,6 @@ class EvidentialLoss(LossFunction):
         L_reg = (2 * v + alpha) * residuals.abs()
 
         return L_nll + self.v_kl * (L_reg - self.eps)
-
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("v_kl", self.v_kl), ("eps", self.eps)]
 
 
 @LossFunctionRegistry.register("bce")
@@ -244,6 +247,7 @@ class DirichletMixin:
     """
 
     def __init__(self, v_kl: float = 0.2):
+        super().__init__()
         self.v_kl = v_kl
 
     def forward(self, preds, targets, *args) -> Tensor:
@@ -270,9 +274,6 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("v_kl", self.v_kl)]
-
 
 @LossFunctionRegistry.register("binary-dirichlet")
 class BinaryDirichletLoss(DirichletMixin, LossFunction):
@@ -293,16 +294,12 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
         return super().forward(preds, y_one_hot, mask)
 
 
-@dataclass
-class _ThresholdMixin:
-    threshold: float | None = None
-
-    def get_params(self) -> list[tuple[str, float]]:
-        return [("threshold", self.threshold)]
-
-
 @LossFunctionRegistry.register("sid")
-class SIDLoss(LossFunction, _ThresholdMixin):
+class SIDLoss(LossFunction):
+    def __init__(self, threshold: float | None = None):
+        super().__init__()
+        self.threshold = threshold
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
@@ -316,7 +313,11 @@ class SIDLoss(LossFunction, _ThresholdMixin):
 
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
-class WassersteinLoss(LossFunction, _ThresholdMixin):
+class WassersteinLoss(LossFunction):
+    def __init__(self, threshold: float | None = None):
+        super().__init__()
+        self.threshold = threshold
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
