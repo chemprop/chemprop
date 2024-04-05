@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Collection
+from typing import Any
 
 
 class ReprMixin:
