@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from itertools import chain
 
 from torch import nn, Tensor
 
