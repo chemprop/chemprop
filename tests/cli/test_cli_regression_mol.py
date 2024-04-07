@@ -171,7 +171,10 @@ def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
 def test_train_splits_file(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     splits_file = str(tmp_path / "splits.json")
-    splits = [{"train": [1, 2], "val": "3-5", "test": "6,7"}]
+    splits = [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
 
     with open(splits_file, "w") as f:
         json.dump(splits, f)
