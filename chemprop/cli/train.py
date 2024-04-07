@@ -422,7 +422,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--splits-file",
         type=Path,
-        help="Path to a TOML file containing pre-defined splits for the input data.",
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys 'train', 'val', and 'test' and values as lists of indices or strings formatted like '0-2,4'. See documentation for more details.",
+    )
+    train_data_args.add_argument(
+        "--splits-column",
+        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
     )
     split_args.add_argument(
         "--data-seed",
@@ -538,10 +542,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **featurization_kwargs,
     )
 
-    df = pd.read_csv(args.data_path, index_col=False)
-    split_col = next((col for col in df.columns if "split" in col), None)
-    if split_col is not None:
-        grouped = df.groupby(df[split_col].str.lower())
+    if args.splits_column is not None:
+        df = pd.read_csv(
+            args.data_path, header=None if args.no_header_row else "infer", index_col=False
+        )
+        grouped = df.groupby(df[args.splits_columnsplit_col].str.lower())
         train_indices = grouped.groups.get("train", pd.Index([])).tolist()
         val_indices = grouped.groups.get("val", pd.Index([])).tolist()
         test_indices = grouped.groups.get("test", pd.Index([])).tolist()
@@ -809,13 +814,14 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 def main(args):
     save_config(args)
-
+    print(args.splits_column)
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
+        splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )

@@ -24,6 +24,7 @@ def parse_csv(
     rxn_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
+    splits_col: str | None,
     weight_col: str | None,
     bounded: bool = False,
     no_header_row: bool = False,
@@ -48,7 +49,9 @@ def parse_csv(
         input_cols = [df.columns[0]]
 
     if target_cols is None:
-        target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
+        target_cols = list(
+            set(df.columns) - set(input_cols) - set(ignore_cols or []) - set(splits_col or [])
+        )
 
     Y = df[target_cols]
     weights = None if weight_col is None else df[weight_col].to_numpy()
@@ -251,6 +254,7 @@ def build_data_from_files(
     rxn_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
+    splits_col: str | None,
     weight_col: str | None,
     bounded: bool,
     p_descriptors: PathLike,
@@ -260,7 +264,15 @@ def build_data_from_files(
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
-        p_data, smiles_cols, rxn_cols, target_cols, ignore_cols, weight_col, bounded, no_header_row
+        p_data,
+        smiles_cols,
+        rxn_cols,
+        target_cols,
+        ignore_cols,
+        splits_col,
+        weight_col,
+        bounded,
+        no_header_row,
     )
     n_molecules = len(list(zip(*smiss))) if smiss is not None else 0
 
