@@ -8,15 +8,17 @@ from torch.utils.data import DataLoader
 
 from chemprop import nn
 from chemprop.data import ReactionDatapoint, ReactionDataset, collate_batch
-from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
+from chemprop.featurizers.molgraph import CondensedGraphOfReactionFeaturizer
 
 SHAPE = CondensedGraphOfReactionFeaturizer().shape
 pytestmark = pytest.mark.parametrize(
-    "mpnn", [
-            (nn.BondMessagePassing(*SHAPE), nn.MeanAggregation()),
-            (nn.AtomMessagePassing(*SHAPE), nn.SumAggregation()),
-            (nn.BondMessagePassing(*SHAPE), nn.NormAggregation()),
-        ], indirect=True
+    "mpnn",
+    [
+        (nn.BondMessagePassing(*SHAPE), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(*SHAPE), nn.SumAggregation()),
+        (nn.BondMessagePassing(*SHAPE), nn.NormAggregation()),
+    ],
+    indirect=True,
 )
 
 
