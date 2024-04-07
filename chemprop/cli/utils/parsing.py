@@ -51,14 +51,14 @@ def parse_csv(
         target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
 
     Y = df[target_cols]
-    weights = None if weight_col is None else df[weight_col].to_numpy()
+    weights = None if weight_col is None else df[weight_col].astype(np.float32).to_numpy()
 
     if bounded:
         lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
         gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
-        Y = Y.applymap(lambda x: x.strip("<").strip(">")).astype(float).to_numpy()
+        Y = Y.applymap(lambda x: x.strip("<").strip(">")).astype(np.float32).to_numpy()
     else:
-        Y = Y.to_numpy()
+        Y = Y.astype(np.float32).to_numpy()
         lt_mask = None
         gt_mask = None
 
@@ -148,7 +148,7 @@ def make_datapoints(
     else:
         N = len(smiss)
 
-    weights = np.ones(N) if weights is None else weights
+    weights = np.ones(N, dtype=np.float32) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
