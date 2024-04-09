@@ -91,7 +91,7 @@ class MPNN(pl.LightningModule):
             else [self.predictor._default_metric, self.criterion]
         )
         w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
-        self.w_t = self.register_buffer("w_t", w_t.unsqueeze(0), persistent=False)
+        self.register_buffer("w_t", w_t.unsqueeze(0), persistent=False)
 
         self.warmup_epochs = warmup_epochs
         self.init_lr = init_lr
