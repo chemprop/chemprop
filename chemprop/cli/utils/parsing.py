@@ -108,9 +108,9 @@ def make_datapoints(
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
     X_d: np.ndarray | None,
-    V_fs: list[np.ndarray] | None,
-    E_fs: list[np.ndarray] | None,
-    V_ds: list[np.ndarray] | None,
+    V_fss: list[list[np.ndarray]] | None,
+    E_fss: list[list[np.ndarray]] | None,
+    V_dss: list[list[np.ndarray]] | None,
     features_generators: list[MoleculeFeaturizer] | None,
     keep_h: bool,
     add_h: bool,
@@ -152,9 +152,9 @@ def make_datapoints(
 
     n_mols = len(smiss)
     X_d = [None] * N if X_d is None else X_d
-    V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
-    E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
-    V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
+    V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
+    E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
+    V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
 
     mol_data = [
         [
@@ -169,9 +169,9 @@ def make_datapoints(
                 x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
-                V_f=V_fs[mol_idx][i],
-                E_f=E_fs[mol_idx][i],
-                V_d=V_ds[mol_idx][i],
+                V_f=V_fss[mol_idx][i],
+                E_f=E_fss[mol_idx][i],
+                V_d=V_dss[mol_idx][i],
             )
             for i in range(N)
         ]
