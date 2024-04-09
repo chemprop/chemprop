@@ -1,3 +1,17 @@
+from chemprop.nn.utils import Activation
+from chemprop.nn import AggregationRegistry
+from chemprop.data import MolGraphDataLoader
+from chemprop.cli.utils.command import Subcommand
+from chemprop.cli.train import (
+    add_train_args,
+    build_datasets,
+    build_model,
+    build_splits,
+    normalize_inputs,
+    process_train_args,
+    validate_train_args,
+)
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 import json
 import logging
 import sys
@@ -29,21 +43,6 @@ try:
     from ray.tune.search.optuna import OptunaSearch
 except ImportError:
     NO_OPTUNA = True
-
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.train import (
-    add_train_args,
-    build_datasets,
-    build_model,
-    build_splits,
-    normalize_inputs,
-    process_train_args,
-    validate_train_args,
-)
-from chemprop.cli.utils.command import Subcommand
-from chemprop.data import MolGraphDataLoader
-from chemprop.nn import AggregationRegistry
-from chemprop.nn.utils import Activation
 
 
 logger = logging.getLogger(__name__)
