@@ -253,8 +253,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
-        num_workers=args.raytune_num_workers,
-        use_gpu=args.raytune_use_gpu,
+        num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
     )
 
     checkpoint_config = CheckpointConfig(
