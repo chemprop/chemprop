@@ -129,6 +129,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--metrics",
         "mse",
         "rmse",
+        "--features-generators",
+        "morgan_count",
     ]
 
     with monkeypatch.context() as m:
@@ -218,7 +220,9 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     assert torch.equal(
         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
     )
-    assert torch.equal(trained_model.predictor.ffn[0].weight, frzn_model.predictor.ffn[0].weight)
+    assert torch.equal(
+        trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
+    )
 
 
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
@@ -242,3 +246,4 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "config.json").exists()
+
