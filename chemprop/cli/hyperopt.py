@@ -3,6 +3,7 @@ import logging
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from copy import deepcopy
 
 import torch
 from lightning import pytorch as pl
@@ -197,7 +198,7 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
 
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
-    args = args.copy()
+    args = deepcopy(args)
 
     for key, value in config.items():
         match key:
