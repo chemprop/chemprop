@@ -469,7 +469,7 @@ def normalize_inputs(train_dset, val_dset, args):
     X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
 
     if isinstance(train_dset, MulticomponentDataset):
-        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
+        d_xd = train_dset.datasets[0].d_xd
         d_vf = sum(dset.d_vf for dset in train_dset.datasets)
         d_ef = sum(dset.d_ef for dset in train_dset.datasets)
         d_vd = sum(dset.d_vd for dset in train_dset.datasets)
