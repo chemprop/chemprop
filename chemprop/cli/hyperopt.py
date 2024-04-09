@@ -91,34 +91,9 @@ class HyperoptSubcommand(Subcommand):
 
 
 def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
-    hyperopt_args = parser.add_argument_group("Hyperparameter optimization arguments")
+    chemprop_hyperopt_args = parser.add_argument_group("Chemprop hyperparameter optimization arguments")
 
-    hyperopt_args.add_argument(
-        "--num-samples",
-        type=int,
-        default=10,
-        help="Number of hyperparameter optimization samples to run",
-    )
-
-    hyperopt_args.add_argument(
-        "--hyperopt-save-dir",
-        type=Path,
-        help="Directory to save the hyperparameter optimization results",
-    )
-
-    hyperopt_args.add_argument(
-        "--hyperopt-checkpoint",
-        type=Path,
-        help="Path to a directory where hyperopt completed trial data is stored. Hyperopt job will include these trials if restarted. Can also be used to run multiple instances in parallel if they share the same checkpoint directory.",
-    )
-
-    hyperopt_args.add_argument(
-        "--startup-random-iters",
-        type=int,
-        help="The initial number of trials that will be randomly specified before TPE algorithm is used to select the rest. By default will be half the total number of trials.",
-    )
-
-    hyperopt_args.add_argument(
+    chemprop_hyperopt_args.add_argument(
         "--search-parameter-keywords",
         type=str,
         nargs="+",
@@ -137,32 +112,52 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     """,
     )
 
-    hyperopt_args.add_argument(
-        "--n-cpu-per-worker", type=int, default=0, help="Number of CPUs to allocate for each worker"
+    chemprop_hyperopt_args.add_argument(
+        "--chemprop-hyperopt-save-dir",
+        type=Path,
+        help="Directory to save the hyperparameter optimization results",
     )
 
-    hyperopt_args.add_argument(
-        "--n-gpu-per-worker", type=int, default=0, help="Number of GPUs to allocate for each worker"
+    raytune_args = parser.add_argument_group("Ray Tune arguments")
+
+    raytune_args.add_argument(
+        "--raytune-num-samples",
+        type=int,
+        default=10,
+        help="Passed directly to Ray Tune TuneConfig to control number of trials to run",
     )
 
-    hyperopt_args.add_argument(
-        "--num-checkpoints-to-keep", type=int, default=1, help="Number of checkpoints to keep"
+    raytune_args.add_argument(
+        "--search-algorithm", choices=["random", "hyperopt", "optuna"], default="hyperopt", help="Passed to Ray Tune TuneConfig to control search algorithm",
     )
 
-    hyperopt_args.add_argument(
-        "--search-space-config", type=Path, default=None, help="Path to a JSON file containing the search space config",
+    raytune_args.add_argument(
+        "--raytune-num-workers",
+        type=int,
+        default=1,
+        help="Passed directly to Ray Tune ScalingConfig to control number of workers to use",
     )
 
-    hyperopt_args.add_argument(
-        "--search-algorithm", choices=["random", "hyperopt", "optuna"], default="hyperopt", help="The search algorithm to use. Default to use hyperopt algorithm.",
+    raytune_args.add_argument(
+        "--raytune-use-gpu", action="store_true", help="Passed directly to Ray Tune ScalingConfig to control whether to use GPUs",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-n-cpu-per-worker", type=int, default=None, help="Passed directly to Ray Tune ScalingConfig to control number of CPUs to allocate for each worker",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-n-gpu-per-worker", type=int, default=None, help="Passed directly to Ray Tune ScalingConfig to control number of GPUs to allocate for each worker",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-num-checkpoints-to-keep", type=int, default=1, help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
     )
 
     return parser
 
 
 def process_hyperopt_args(args: Namespace) -> Namespace:
-    if args.startup_random_iters is None:
-        args.startup_random_iters = args.num_samples // 2
 
     if args.hyperopt_save_dir is None:
         args.hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
@@ -238,11 +233,9 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
-        num_workers=args.num_workers + 1,
-        use_gpu=torch.cuda.is_available(),
-        resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker}
-        if args.n_cpu_per_worker > 0 or args.n_gpu_per_worker > 0
-        else None,
+        num_workers=args.raytune_num_workers,
+        use_gpu=args.raytune_use_gpu,
+        resources_per_worker={"CPU": args.raytune_n_cpu_per_worker, "GPU": args.raytune_n_gpu_per_worker},
     )
 
     checkpoint_config = CheckpointConfig(
@@ -270,7 +263,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
             search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
-        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler, search_alg=search_alg
+        metric="val_loss", mode=monitor_mode, num_samples=args.raytune_num_samples, scheduler=scheduler, search_alg=search_alg
     )
 
     tuner = tune.Tuner(
