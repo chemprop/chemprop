@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-mamba activate <chemprop_env>
+conda activate <chemprop_env>
 
 CHEMPROP_PATH=<chemprop_path>
 
