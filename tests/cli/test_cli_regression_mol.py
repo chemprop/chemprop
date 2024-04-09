@@ -78,6 +78,25 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
+@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--repr-type",
+        repr_type,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     args = [
@@ -161,6 +180,29 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         main()
 
     assert (tmp_path / "preds_0.csv").exists()
+
+
+@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
+def test_fingerprint_output_structure(monkeypatch, data_path, model_path, tmp_path, repr_type):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--output",
+        str(tmp_path / "fps.csv"),
+        "--repr-type",
+        repr_type,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "fps_0.csv").exists()
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):

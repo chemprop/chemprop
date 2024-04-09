@@ -68,3 +68,21 @@ def test_predict_quick(monkeypatch, data_path, model_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path,
+        "--repr-type",
+        repr_type,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
