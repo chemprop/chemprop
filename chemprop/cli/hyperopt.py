@@ -238,8 +238,8 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
-        num_workers=args.num_workers,
-        use_gpu=torch.cuda.is_available() and args.n_gpu > 0,
+        num_workers=args.num_workers + 1,
+        use_gpu=torch.cuda.is_available(),
         resources_per_worker={"CPU": args.n_cpu_per_worker, "GPU": args.n_gpu_per_worker}
         if args.n_cpu_per_worker > 0 or args.n_gpu_per_worker > 0
         else None,
