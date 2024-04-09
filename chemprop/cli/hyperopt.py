@@ -191,10 +191,10 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_hyperopt_args(args: Namespace) -> Namespace:
-    if args.hyperopt_save_dir is None:
-        args.hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
+    if args.chemprop_hyperopt_save_dir is None:
+        args.chemprop_hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
 
-    args.hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
+    args.chemprop_hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
 
     search_parameters = set()
 
@@ -281,7 +281,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
     run_config = RunConfig(
         checkpoint_config=checkpoint_config,
-        storage_path=args.hyperopt_save_dir.absolute() / "ray_results",
+        storage_path=args.chemprop_hyperopt_save_dir.absolute() / "ray_results",
     )
 
     ray_trainer = TorchTrainer(
@@ -380,18 +380,18 @@ def main(args: Namespace):
 
     logger.info(f"Saving best hyperparameter parameters: {best_config}")
 
-    with open(args.hyperopt_save_dir / "best_params.json", "w") as f:
+    with open(args.chemprop_hyperopt_save_dir / "best_params.json", "w") as f:
         json.dump(best_config, f, indent=4)
 
     logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
 
-    torch.save(best_checkpoint, args.hyperopt_save_dir / "best_checkpoint.ckpt")
+    torch.save(best_checkpoint, args.chemprop_hyperopt_save_dir / "best_checkpoint.ckpt")
 
     result_df = results.get_dataframe()
 
     logger.info(f"Saving hyperparameter optimization results: {result_df}")
 
-    result_df.to_csv(args.hyperopt_save_dir / "all_progress.csv", index=False)
+    result_df.to_csv(args.chemprop_hyperopt_save_dir / "all_progress.csv", index=False)
 
 
 if __name__ == "__main__":
