@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-class LossFunction(ABC, nn.Module):
+class LossFunction(nn.Module):
     def __call__(
         self,
         preds: Tensor,
@@ -298,6 +298,7 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 class SIDLoss(LossFunction):
     def __init__(self, threshold: float | None = None):
         super().__init__()
+
         self.threshold = threshold
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
@@ -316,6 +317,7 @@ class SIDLoss(LossFunction):
 class WassersteinLoss(LossFunction):
     def __init__(self, threshold: float | None = None):
         super().__init__()
+        
         self.threshold = threshold
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
