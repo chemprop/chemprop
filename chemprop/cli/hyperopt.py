@@ -17,6 +17,16 @@ from ray.train.lightning import (
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
 
+try:
+    from ray.tune.search.hyperopt import HyperOptSearch
+except ImportError:
+    NO_HYPEROPT = True
+
+try:
+    from ray.tune.search.optuna import OptunaSearch
+except ImportError:
+    NO_OPTUNA = True
+
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
     add_train_args,
@@ -57,11 +67,6 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_size", "hidden_size"],
     "learning_rate": ["max_lr", "init_lr", "final_lr", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
-}
-
-SEARCH_ALGS = {
-    "hyperopt": tune.search.hyperopt.HyperOptSearch,
-    "optuna": tune.search.optuna.OptunaSearch,
 }
 
 class HyperoptSubcommand(Subcommand):
@@ -148,7 +153,7 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     hyperopt_args.add_argument(
-        "--search-algorithm", choices=["hyperopt", "optuna"], default="hyperopt", help="The search algorithm to use. Default to hyperopt.",
+        "--search-algorithm", choices=["random", "hyperopt", "optuna"], default="hyperopt", help="The search algorithm to use. Default to use hyperopt algorithm.",
     )
 
     return parser
@@ -246,7 +251,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         checkpoint_score_order=monitor_mode,
     )
 
-    run_config = RunConfig(checkpoint_config=checkpoint_config)
+    run_config = RunConfig(checkpoint_config=checkpoint_config, storage_path=args.hyperopt_save_dir)
 
     ray_trainer = TorchTrainer(
         lambda config: train_model(config, args, train_loader, val_loader, logger),
@@ -254,8 +259,18 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         run_config=run_config,
     )
 
+    match args.search_algorithm:
+        case "random":
+            search_alg = None
+        case "hyperopt":
+            search_alg = HyperOptSearch()
+        case "optuna":
+            if NO_OPTUNA:
+                raise ImportError("OptunaSearch requires optuna to be installed.")
+            search_alg = OptunaSearch()
+
     tune_config = tune.TuneConfig(
-        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler, search_alg=SEARCH_ALGS[args.search_algorithm]
+        metric="val_loss", mode=monitor_mode, num_samples=args.num_samples, scheduler=scheduler, search_alg=search_alg
     )
 
     tuner = tune.Tuner(
