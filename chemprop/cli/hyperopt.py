@@ -169,8 +169,6 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
     args.hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
 
-    SEARCH_SPACE = DEFAULT_SEARCH_SPACE
-
     search_parameters = set()
 
     for keyword in args.search_parameter_keywords:
