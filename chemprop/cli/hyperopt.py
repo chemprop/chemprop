@@ -18,11 +18,13 @@ from ray.train.lightning import (
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
 
+NO_HYPEROPT = False
 try:
     from ray.tune.search.hyperopt import HyperOptSearch
 except ImportError:
     NO_HYPEROPT = True
 
+NO_OPTUNA = False
 try:
     from ray.tune.search.optuna import OptunaSearch
 except ImportError:
@@ -256,7 +258,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     checkpoint_config = CheckpointConfig(
-        num_to_keep=args.num_checkpoints_to_keep,
+        num_to_keep=args.raytune_num_checkpoints_to_keep,
         checkpoint_score_attribute="val_loss",
         checkpoint_score_order=monitor_mode,
     )
@@ -272,7 +274,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         run_config=run_config,
     )
 
-    match args.search_algorithm:
+    match args.raytune_search_algorithm:
         case "random":
             search_alg = None
         case "hyperopt":
