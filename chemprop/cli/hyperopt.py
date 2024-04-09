@@ -222,12 +222,13 @@ def train_model(config, args, train_loader, val_loader, logger):
     logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
     trainer = pl.Trainer(
-        accelerator="auto",
-        devices=args.n_gpu if torch.cuda.is_available() else 1,
-        strategy=RayDDPStrategy(),
+        accelerator=args.accelerator,
+        devices=args.devices,
+        max_epochs=args.epochs,
+        gradient_clip_val=args.grad_clip,
+        strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
-        gradient_clip_val=args.grad_clip,
     )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
