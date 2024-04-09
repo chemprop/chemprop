@@ -235,9 +235,9 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         input_path,
         "--epochs",
         "1",
-        "--num-samples",
+        "--raytune-num-samples",
         "2",
-        "--hyperopt-save-dir",
+        "--chemprop-hyperopt-save-dir",
         str(tmp_path),
     ]
 
@@ -245,4 +245,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "config.json").exists()
+    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_checkpoint.ckpt").exists()
+    assert (tmp_path / "all_process.csv").exists()
+    assert (tmp_path / "ray_results").exists()
