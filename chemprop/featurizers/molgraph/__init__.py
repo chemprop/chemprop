@@ -1,17 +1,12 @@
-from .molgraph import MolGraph
-from .molecule import MoleculeMolGraphFeaturizer, SimpleMoleculeMolGraphFeaturizer
-from .reaction import (
-    RxnMolGraphFeaturizer,
-    CondensedGraphOfReactionFeaturizer,
-    CGRFeaturizer,
-    RxnMode,
-)
+from .cache import MolGraphCacheFacade, MolGraphCache, MolGraphCacheOnTheFly
+from .molecule import SimpleMoleculeMolGraphFeaturizer
+from .reaction import CondensedGraphOfReactionFeaturizer, CGRFeaturizer, RxnMode
 
 __all__ = [
-    "MolGraph",
-    "MoleculeMolGraphFeaturizer",
+    "MolGraphCacheFacade",
+    "MolGraphCache",
+    "MolGraphCacheOnTheFly",
     "SimpleMoleculeMolGraphFeaturizer",
-    "RxnMolGraphFeaturizer",
     "CondensedGraphOfReactionFeaturizer",
     "CGRFeaturizer",
     "RxnMode",

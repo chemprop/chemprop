@@ -4,7 +4,7 @@ from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode
+from chemprop.featurizers import MoleculeFeaturizerRegistry, RxnMode, AtomFeatureMode
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,17 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 - 'reac_diff_balance': concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions.
 - 'prod_diff_balance': concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions.""",
     )
+    # TODO: Update documenation for multi_hot_atom_featurizer_mode
+    featurization_args.add_argument(
+        "--multi-hot-atom-featurizer-mode",
+        type=uppercase,
+        default="V2",
+        choices=list(AtomFeatureMode.keys()),
+        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
+- `V1`: Corresponds to the original configuration employed in the Chemprop V1.
+- `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
+- `ORGANIC`: Designed specifically for use with organic molecules for drug research and development, this configuration includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
+    )
     featurization_args.add_argument(
         "--keep-h",
         action="store_true",
@@ -74,6 +85,7 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     featurization_args.add_argument(
         "--features-generators",
+        nargs="+",
         action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )

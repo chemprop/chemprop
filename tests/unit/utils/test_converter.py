@@ -5,8 +5,11 @@ import numpy as np
 
 from lightning import pytorch as pl
 
-from chemprop import data
-from chemprop import featurizers
+from chemprop.data.dataloader import MolGraphDataLoader
+from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.datasets import MoleculeDataset
+from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.models.model import MPNN
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
@@ -25,13 +28,13 @@ def example_model_v1_prediction(data_dir):
         next(reader)
         smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
 
-    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
+    featurizer = SimpleMoleculeMolGraphFeaturizer(atom_featurizer=MultiHotAtomFeaturizer.v1())
 
     ys = np.array(ys).reshape(-1, 1)
-    test_data = [data.MoleculeDatapoint.from_smi(smi, None) for smi in smis]
-    test_dset = data.MoleculeDataset(test_data, featurizer)
+    test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
+    test_dset = MoleculeDataset(test_data, featurizer)
 
-    test_loader = data.MolGraphDataLoader(test_dset)
+    test_loader = MolGraphDataLoader(test_dset)
     return ys, test_loader
 
 
