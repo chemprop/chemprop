@@ -331,20 +331,21 @@ def main(args: Namespace):
     best_result = results.get_best_result()
     best_config = best_result.config
     best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
-    best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
 
-    logger.info(f"Saving best hyperparameter configuration: {best_config}")
+    logger.info(f"Saving best hyperparameter parameters: {best_config}")
 
-    with open(args.hyperopt_save_dir / "best_config.json", "w") as f:
+    with open(args.hyperopt_save_dir / "best_params.json", "w") as f:
         json.dump(best_config, f, indent=4)
 
     logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
 
-    torch.save(best_checkpoint, args.hyperopt_save_dir / "best_checkpoint.pt")
+    torch.save(best_checkpoint, args.hyperopt_save_dir / "best_checkpoint.ckpt")
 
-    logger.info(f"Saving hyperparameter optimization results: {best_result_df}")
+    result_df = results.get_dataframe()
 
-    best_result_df.to_csv(args.hyperopt_save_dir / "best_result.csv", index=False)
+    logger.info(f"Saving hyperparameter optimization results: {result_df}")
+
+    result_df.to_csv(args.hyperopt_save_dir / "all_progress.csv", index=False)
 
 
 if __name__ == "__main__":
