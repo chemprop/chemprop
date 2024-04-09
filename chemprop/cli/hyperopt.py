@@ -343,7 +343,7 @@ def main(args: Namespace):
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-    input_scalers = normalize_inputs(train_dset, val_dset, args)
+    _ = normalize_inputs(train_dset, val_dset, args)
 
     if "regression" in args.task_type:
         scaler = train_dset.normalize_targets()

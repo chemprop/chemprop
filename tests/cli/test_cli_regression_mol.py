@@ -246,4 +246,3 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "config.json").exists()
-
