@@ -85,6 +85,7 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     featurization_args.add_argument(
         "--features-generators",
+        nargs="+",
         action=LookupAction(MoleculeFeaturizerRegistry),
         help="Method(s) of generating additional features.",
     )

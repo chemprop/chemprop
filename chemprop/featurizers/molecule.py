@@ -30,7 +30,7 @@ class BinaryFeaturizerMixin:
 
 class CountFeaturizerMixin:
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
-        return self.F.GetCountFingerprintAsNumPy(mol)
+        return self.F.GetCountFingerprintAsNumPy(mol).astype(np.int32)
 
 
 @MoleculeFeaturizerRegistry("morgan_binary")
