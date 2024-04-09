@@ -113,7 +113,7 @@ def make_datapoints(
     V_fss: list[list[np.ndarray]] | None,
     E_fss: list[list[np.ndarray]] | None,
     V_dss: list[list[np.ndarray]] | None,
-    features_generators: list[MoleculeFeaturizer] | None,
+    features_generators: list[VectorFeaturizer[Mol]] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
