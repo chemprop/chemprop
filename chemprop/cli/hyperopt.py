@@ -70,6 +70,7 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
 
+
 class HyperoptSubcommand(Subcommand):
     COMMAND = "hyperopt"
     HELP = "perform hyperparameter optimization on the given task"
@@ -91,7 +92,9 @@ class HyperoptSubcommand(Subcommand):
 
 
 def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
-    chemprop_hyperopt_args = parser.add_argument_group("Chemprop hyperparameter optimization arguments")
+    chemprop_hyperopt_args = parser.add_argument_group(
+        "Chemprop hyperparameter optimization arguments"
+    )
 
     chemprop_hyperopt_args.add_argument(
         "--search-parameter-keywords",
@@ -128,7 +131,10 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     raytune_args.add_argument(
-        "--search-algorithm", choices=["random", "hyperopt", "optuna"], default="hyperopt", help="Passed to Ray Tune TuneConfig to control search algorithm",
+        "--search-algorithm",
+        choices=["random", "hyperopt", "optuna"],
+        default="hyperopt",
+        help="Passed to Ray Tune TuneConfig to control search algorithm",
     )
 
     raytune_args.add_argument(
@@ -139,26 +145,36 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     raytune_args.add_argument(
-        "--raytune-use-gpu", action="store_true", help="Passed directly to Ray Tune ScalingConfig to control whether to use GPUs",
+        "--raytune-use-gpu",
+        action="store_true",
+        help="Passed directly to Ray Tune ScalingConfig to control whether to use GPUs",
     )
 
     raytune_args.add_argument(
-        "--raytune-n-cpu-per-worker", type=int, default=None, help="Passed directly to Ray Tune ScalingConfig to control number of CPUs to allocate for each worker",
+        "--raytune-n-cpu-per-worker",
+        type=int,
+        default=None,
+        help="Passed directly to Ray Tune ScalingConfig to control number of CPUs to allocate for each worker",
     )
 
     raytune_args.add_argument(
-        "--raytune-n-gpu-per-worker", type=int, default=None, help="Passed directly to Ray Tune ScalingConfig to control number of GPUs to allocate for each worker",
+        "--raytune-n-gpu-per-worker",
+        type=int,
+        default=None,
+        help="Passed directly to Ray Tune ScalingConfig to control number of GPUs to allocate for each worker",
     )
 
     raytune_args.add_argument(
-        "--raytune-num-checkpoints-to-keep", type=int, default=1, help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
+        "--raytune-num-checkpoints-to-keep",
+        type=int,
+        default=1,
+        help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
     )
 
     return parser
 
 
 def process_hyperopt_args(args: Namespace) -> Namespace:
-
     if args.hyperopt_save_dir is None:
         args.hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
 
@@ -168,7 +184,9 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
     for keyword in args.search_parameter_keywords:
         if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in SEARCH_SPACE:
-            raise ValueError(f"Search parameter keyword: {keyword} not in available options: {SEARCH_SPACE.keys()}.")
+            raise ValueError(
+                f"Search parameter keyword: {keyword} not in available options: {SEARCH_SPACE.keys()}."
+            )
 
         search_parameters.update(
             SEARCH_PARAM_KEYWORDS_MAP[keyword]
@@ -182,7 +200,6 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
-
     if "warmup_epochs" not in SEARCH_SPACE and "warmup_epochs" in search_parameters:
         SEARCH_SPACE["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
 
@@ -190,7 +207,6 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
 
 
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
-
     args = deepcopy(args)
 
     for key, value in config.items():
@@ -235,7 +251,10 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers,
         use_gpu=args.raytune_use_gpu,
-        resources_per_worker={"CPU": args.raytune_n_cpu_per_worker, "GPU": args.raytune_n_gpu_per_worker},
+        resources_per_worker={
+            "CPU": args.raytune_n_cpu_per_worker,
+            "GPU": args.raytune_n_gpu_per_worker,
+        },
     )
 
     checkpoint_config = CheckpointConfig(
@@ -244,7 +263,10 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         checkpoint_score_order=monitor_mode,
     )
 
-    run_config = RunConfig(checkpoint_config=checkpoint_config, storage_path=args.hyperopt_save_dir.absolute() / "ray_results")
+    run_config = RunConfig(
+        checkpoint_config=checkpoint_config,
+        storage_path=args.hyperopt_save_dir.absolute() / "ray_results",
+    )
 
     ray_trainer = TorchTrainer(
         lambda config: train_model(config, args, train_loader, val_loader, logger),
@@ -263,7 +285,11 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
             search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
-        metric="val_loss", mode=monitor_mode, num_samples=args.raytune_num_samples, scheduler=scheduler, search_alg=search_alg
+        metric="val_loss",
+        mode=monitor_mode,
+        num_samples=args.raytune_num_samples,
+        scheduler=scheduler,
+        search_alg=search_alg,
     )
 
     tuner = tune.Tuner(
