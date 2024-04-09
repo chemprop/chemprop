@@ -253,6 +253,12 @@ def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecule
             features = loaded_feature["arr_0"]
 
         case _:
+
+            if len(paths) > 0 and n_molecules == 0:
+                raise ValueError(
+                    f"Atom features, bond features, and/or atom descriptors are provided, but no molecules are found in the dataset."
+                )
+
             features = []
             for idx in range(n_molecules):
                 path = paths.get(idx, None)
