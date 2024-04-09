@@ -153,10 +153,10 @@ def make_fingerprint_for_model(
 
     match RepresentationType.get(args.repr_type):
         case RepresentationType.FINGERPRINT:
-            predictor = model.fingerprint
+            func = model.fingerprint
             fingerprint_length = model.message_passing.output_dim
         case RepresentationType.ENCODING:
-            predictor = model.encoding
+            func = model.encoding
             fingerprint_length = model.predictor.ffn[-2][-1].out_features
         case _:
             raise RuntimeError("unreachable code reached!")
@@ -164,15 +164,9 @@ def make_fingerprint_for_model(
     fingerprints = torch.Tensor()
     with torch.no_grad():
         if multicomponent:
-            encodings = [
-                predictor(batch.bmgs, batch.V_ds, batch.X_d)
-                for batch in test_loader
-            ]
+            encodings = [func(batch.bmgs, batch.V_ds, batch.X_d) for batch in test_loader]
         else:
-            encodings = [
-                predictor(batch.bmg, batch.V_d, batch.X_d)
-                for batch in test_loader
-            ]
+            encodings = [func(batch.bmg, batch.V_d, batch.X_d) for batch in test_loader]
         H = torch.cat(encodings, 0)
 
     fingerprint_columns = [f"fp_{i}" for i in range(fingerprint_length)]
