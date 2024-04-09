@@ -17,7 +17,7 @@ class _DatapointMixin:
 
     y: np.ndarray | None = None
     """the targets for the molecule with unknown targets indicated by `nan`s"""
-    weight: float = 1.
+    weight: float = 1.0
     """the weight of this datapoint for the loss calculation."""
     gt_mask: np.ndarray | None = None
     """Indicates whether the targets are an inequality regression target of the form `<x`"""
