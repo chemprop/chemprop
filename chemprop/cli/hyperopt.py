@@ -171,6 +171,22 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
         help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
     )
 
+    hyperopt_args = parser.add_argument_group("Hyperopt arguments")
+
+    hyperopt_args.add_argument(
+        "--hyperopt-n-initial-points",
+        type=int,
+        default=20,
+        help="Passed directly to HyperOptSearch to control number of initial points to sample",
+    )
+
+    hyperopt_args.add_argument(
+        "--hyperopt-random-state-seed",
+        type=int,
+        default=None,
+        help="Passed directly to HyperOptSearch to control random state seed",
+    )
+
     return parser
 
 
@@ -278,10 +294,17 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         case "random":
             search_alg = None
         case "hyperopt":
-            search_alg = HyperOptSearch()
+            if NO_HYPEROPT:
+                raise ImportError("HyperOptSearch requires hyperopt to be installed. Use 'pip -U install hyperopt' to install.")
+
+            search_alg = HyperOptSearch(
+                n_initial_points=args.hyperopt_n_initial_points,
+                random_state_seed=args.hyperopt_random_state_seed,
+            )
         case "optuna":
             if NO_OPTUNA:
-                raise ImportError("OptunaSearch requires optuna to be installed.")
+                raise ImportError("OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install.")
+
             search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
