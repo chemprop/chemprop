@@ -251,7 +251,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
         checkpoint_score_order=monitor_mode,
     )
 
-    run_config = RunConfig(checkpoint_config=checkpoint_config, storage_path=args.hyperopt_save_dir)
+    run_config = RunConfig(checkpoint_config=checkpoint_config, storage_path=args.hyperopt_save_dir.absolute() / "ray_results")
 
     ray_trainer = TorchTrainer(
         lambda config: train_model(config, args, train_loader, val_loader, logger),
