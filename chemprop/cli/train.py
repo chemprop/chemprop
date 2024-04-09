@@ -5,7 +5,6 @@ import sys
 import json
 from copy import deepcopy
 import pandas as pd
-from rdkit import Chem
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -750,8 +749,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer = pl.Trainer(
             logger=trainer_logger,
             enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            accelerator=args.accelerator,
+            devices=args.devices,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
             gradient_clip_val=args.grad_clip,
