@@ -151,20 +151,6 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     raytune_args.add_argument(
-        "--raytune-n-cpu-per-worker",
-        type=int,
-        default=None,
-        help="Passed directly to Ray Tune ScalingConfig to control number of CPUs to allocate for each worker",
-    )
-
-    raytune_args.add_argument(
-        "--raytune-n-gpu-per-worker",
-        type=int,
-        default=None,
-        help="Passed directly to Ray Tune ScalingConfig to control number of GPUs to allocate for each worker",
-    )
-
-    raytune_args.add_argument(
         "--raytune-num-checkpoints-to-keep",
         type=int,
         default=1,
@@ -267,10 +253,6 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers,
         use_gpu=args.raytune_use_gpu,
-        resources_per_worker={
-            "CPU": args.raytune_n_cpu_per_worker,
-            "GPU": args.raytune_n_gpu_per_worker,
-        },
     )
 
     checkpoint_config = CheckpointConfig(
