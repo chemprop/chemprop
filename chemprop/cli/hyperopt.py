@@ -295,7 +295,9 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
             search_alg = None
         case "hyperopt":
             if NO_HYPEROPT:
-                raise ImportError("HyperOptSearch requires hyperopt to be installed. Use 'pip -U install hyperopt' to install.")
+                raise ImportError(
+                    "HyperOptSearch requires hyperopt to be installed. Use 'pip -U install hyperopt' to install."
+                )
 
             search_alg = HyperOptSearch(
                 n_initial_points=args.hyperopt_n_initial_points,
@@ -303,7 +305,9 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
             )
         case "optuna":
             if NO_OPTUNA:
-                raise ImportError("OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install.")
+                raise ImportError(
+                    "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
+                )
 
             search_alg = OptunaSearch()
 
