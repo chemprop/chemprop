@@ -315,17 +315,24 @@ def main(args: Namespace):
 
     best_result = results.get_best_result()
     best_config = best_result.config
-    # best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
-    # best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
+    best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
+    best_result_df = best_result.metrics_dataframe  # Get best result as pandas dataframe
 
-    logger.info(f"Best hyperparameter configuration: {best_config}")
+    logger.info(f"Saving best hyperparameter configuration: {best_config}")
 
     with open(args.hyperopt_save_dir / "best_config.json", "w") as f:
         json.dump(best_config, f, indent=4)
 
+    logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
+
+    torch.save(best_checkpoint, args.hyperopt_save_dir / "best_checkpoint.pt")
+
+    logger.info(f"Saving hyperparameter optimization results: {best_result_df}")
+
+    best_result_df.to_csv(args.hyperopt_save_dir / "best_result.csv", index=False)
+
 
 if __name__ == "__main__":
-    # TODO: update this old code or remove it.
     parser = ArgumentParser()
     parser = HyperoptSubcommand.add_args(parser)
 
