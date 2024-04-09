@@ -59,21 +59,6 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
 
-DISTRIBUTIONS = {
-    "uniform": tune.uniform,
-    "quniform": tune.quniform,
-    "loguniform": tune.loguniform,
-    "qloguniform": tune.qloguniform,
-    "randn": tune.randn,
-    "qrandn": tune.qrandn,
-    "randint": tune.randint,
-    "qrandint": tune.qrandint,
-    "lograndint": tune.lograndint,
-    "qlograndint": tune.qlograndint,
-    "choice": tune.choice,
-    "grid": tune.grid_search,
-}
-
 SEARCH_ALGS = {
     "hyperopt": tune.search.hyperopt.HyperOptSearch,
     "optuna": tune.search.optuna.OptunaSearch,
@@ -169,34 +154,6 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def process_search_space_config(args: Namespace) -> dict:
-    with open(args.search_space_config, "r") as f:
-            search_space_config = json.load(f)
-
-    if not all(key in DISTRIBUTIONS for key in search_space_config.values()):
-        raise ValueError(f"Invalid distribution in search space config. Must be one of: {DISTRIBUTIONS.keys()}.")
-    
-    config = search_space_config.get("aggregation", None)
-    if config:
-        assert config["distribution"] == "choice"
-        assert set(config["params"]).issubset(AggregationRegistry.keys())
-
-    config = search_space_config.get("activation", None)
-    if config:
-        assert config["distribution"] == "choice"
-        assert set(config["params"]).issubset(Activation.keys())
-
-    for key in {"aggregation_norm", "depth", "ffn_num_layers"}:
-        config = search_space_config.get(key, None)
-        if config:
-            assert config["distribution"] in {"randint", "quniform", "choice", "qrandint"}
-            assert config["params"]["lower"] > 0
-
-    search_space = {key: DISTRIBUTIONS[config["distribution"]](**config["params"]) for key, config in search_space_config.items()}
-
-    return search_space
-
-
 def process_hyperopt_args(args: Namespace) -> Namespace:
     if args.startup_random_iters is None:
         args.startup_random_iters = args.num_samples // 2
@@ -206,9 +163,7 @@ def process_hyperopt_args(args: Namespace) -> Namespace:
 
     args.hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
 
-    if args.search_space_config is not None:
-
-        SEARCH_SPACE = process_search_space_config(args)
+    SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
     search_parameters = set()
 
