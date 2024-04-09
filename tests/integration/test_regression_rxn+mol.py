@@ -16,7 +16,7 @@ from chemprop.data import (
     MulticomponentDataset,
     collate_multicomponent,
 )
-from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
+from chemprop.featurizers.molgraph import CondensedGraphOfReactionFeaturizer
 
 N_COMPONENTS = 2
 SHAPE = CondensedGraphOfReactionFeaturizer().shape

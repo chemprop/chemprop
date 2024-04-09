@@ -131,7 +131,7 @@ class MPNN(pl.LightningModule):
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
         """the final hidden representations for the input molecules"""
-        return self.predictor[:-1](self.fingerprint(bmg, V_d, X_d))
+        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d))
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None

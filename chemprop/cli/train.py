@@ -41,6 +41,7 @@ from chemprop.cli.utils import (
     get_column_names,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.featurizers import MoleculeFeaturizerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -670,6 +671,10 @@ def build_model(
         )
     else:
         criterion = None
+    if args.metrics is not None:
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+    else:
+        metrics = None
 
     output_transform = (
         OutputTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
@@ -701,12 +706,10 @@ def build_model(
         )
         model.bn.apply(lambda module: module.requires_grad_(False))
         for idx in range(args.frzn_ffn_layers):
-            model.predictor.ffn[idx * 3].requires_grad_(False)
-            setattr(model.predictor.ffn[idx * 3 + 2], "p", 0.0)
+            model.predictor.ffn[idx].requires_grad_(False)
+            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
 
         return model
-
-    metrics = [MetricRegistry[metric]() for metric in args.metrics] if args.metrics else None
 
     return mpnn_cls(
         mp_block,
@@ -782,9 +785,12 @@ def train_model(
                     args.ignore_columns,
                     args.no_header_row,
                 )
-                df_preds = pd.DataFrame(
-                    list(zip(test_loader.dataset.smiles, *preds.T)), columns=columns
-                )
+                names = test_loader.dataset.names
+                if not isinstance(test_loader.dataset, MulticomponentDataset):
+                    namess = [names]
+                else:
+                    namess = list(zip(*names))
+                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
                 df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
@@ -804,8 +810,17 @@ def main(args):
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
+    if args.features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
+        features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in args.features_generators
+        ]
+    else:
+        features_generators = None
+
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     no_cv = args.num_folds == 1
