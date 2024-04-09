@@ -57,11 +57,11 @@ def test_train_quick_features(monkeypatch, data_path):
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
-        *atom_features_path,
+        atom_features_path,
         "--bond-features-path",
-        *bond_features_path,
+        bond_features_path,
         "--atom-descriptors-path",
-        *atom_descriptors_path,
+        atom_descriptors_path,
     ]
 
     with monkeypatch.context() as m:
