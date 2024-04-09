@@ -15,7 +15,6 @@ from chemprop.data import (
     MolGraphDataLoader,
     MolGraphDataset,
     MulticomponentDataset,
-    ReactionDataset,
     MoleculeDataset,
 )
 from chemprop.data import SplitType, split_component
@@ -482,7 +481,7 @@ def normalize_inputs(train_dset, val_dset, args):
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
-        
+
         X_d_scaler = [X_d_scaler] if not isinstance(X_d_scaler, list) else X_d_scaler
 
         scaler = X_d_scaler[0]
@@ -496,7 +495,9 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(V_f_scaler):
             if scaler is not None:
-                logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+                logger.info(
+                    f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
@@ -506,7 +507,9 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(E_f_scaler):
             if scaler is not None:
-                logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+                logger.info(
+                    f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
@@ -516,7 +519,9 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(V_d_scaler):
             if scaler is not None:
-                logger.info(f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+                logger.info(
+                    f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 

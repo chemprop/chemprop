@@ -25,7 +25,13 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    input_path, descriptors_path, atom_features_path, bond_features_path, atom_descriptors_path = data_path
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
     args = [
         "chemprop",
         "train",

@@ -107,21 +107,21 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
     )
     featurization_args.add_argument(
         "--atom-features-path",
-        nargs=2,
+        nargs="+",
         action="append",
-        help="A two-tuple of molecule index and path to additional atom features to supply before message passing. E.g., `--atom-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-features-path [...] --atom-features-path [...]`.",
+        help="If a single path is given, it's assumed to correspond to the 0-th molecule. Or, it can be a two-tuple of molecule index and path to additional atom features to supply before message passing. E.g., `--atom-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-features-path [...] --atom-features-path [...]`.",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
-        nargs=2,
+        nargs="+",
         action="append",
-        help="A two-tuple of molecule index and path to additional atom descriptors to supply after message passing. E.g., `--atom-descriptors-path 0 /path/to/descriptors_0.npz` indicates that the descriptors at the given path should be supplied to the 0-th component. To supply additional descriptors for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-descriptors-path [...] --atom-descriptors-path [...]`.",
+        help="If a single path is given, it's assumed to correspond to the 0-th molecule. Or, it can be a two-tuple of molecule index and path to additional atom descriptors to supply after message passing. E.g., `--atom-descriptors-path 0 /path/to/descriptors_0.npz` indicates that the descriptors at the given path should be supplied to the 0-th component. To supply additional descriptors for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--atom-descriptors-path [...] --atom-descriptors-path [...]`.",
     )
     featurization_args.add_argument(
         "--bond-features-path",
-        nargs=2,
+        nargs="+",
         action="append",
-        help="A two-tuple of molecule index and path to additional bond features to supply before message passing. E.g., `--bond-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--bond-features-path [...] --bond-features-path [...]`.",
+        help="If a single path is given, it's assumed to correspond to the 0-th molecule. Or, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing. E.g., `--bond-features-path 0 /path/to/features_0.npz` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values, e.g., `--bond-features-path [...] --bond-features-path [...]`.",
     )
     # TODO: Add in v2.2
     # parser.add_argument(
@@ -133,13 +133,19 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 
 
 def process_common_args(args: Namespace) -> Namespace:
-
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)
         ind_path_dict = {}
         if inds_paths:
-            for ind, path in inds_paths:
+            for ind_path in inds_paths:
+                if len(ind_path) == 1:
+                    ind = 0
+                    path = ind_path[0]
+                else:
+                    ind, path = ind_path
+
                 ind_path_dict[int(ind)] = Path(path)
+
             setattr(args, key, ind_path_dict)
 
     return args

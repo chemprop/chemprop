@@ -242,7 +242,12 @@ def build_data_from_files(
     return mol_data + rxn_data
 
 
-def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecules: int | None, n_datapoints: int | None, feat_desc: str):
+def load_input_feats_and_descs(
+    paths: dict[int, PathLike] | PathLike,
+    n_molecules: int | None,
+    n_datapoints: int | None,
+    feat_desc: str,
+):
     if paths is None:
         return None
 
@@ -253,10 +258,9 @@ def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecule
             features = loaded_feature["arr_0"]
 
         case _:
-
             if len(paths) > 0 and n_molecules == 0:
                 raise ValueError(
-                    f"Atom features, bond features, and/or atom descriptors are provided, but no molecules are found in the dataset."
+                    "Atom features, bond features, and/or atom descriptors are provided, but no molecules are found in the dataset."
                 )
 
             features = []
@@ -265,7 +269,9 @@ def load_input_feats_and_descs(paths: dict[int, PathLike] | PathLike, n_molecule
 
                 if path is not None:
                     loaded_feature = np.load(path)
-                    loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+                    loaded_feature = [
+                        loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))
+                    ]
                 else:
                     loaded_feature = [None] * n_datapoints
 
