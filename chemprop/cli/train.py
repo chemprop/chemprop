@@ -691,8 +691,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         )
         model.bn.apply(lambda module: module.requires_grad_(False))
         for idx in range(args.frzn_ffn_layers):
-            model.predictor.ffn[idx * 3].requires_grad_(False)
-            setattr(model.predictor.ffn[idx * 3 + 2], "p", 0.0)
+            model.predictor.ffn[idx].requires_grad_(False)
+            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
 
         return model
 

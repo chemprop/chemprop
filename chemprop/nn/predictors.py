@@ -61,6 +61,10 @@ class Predictor(nn.Module, HasHParams):
     def train_step(self, Z: Tensor) -> Tensor:
         pass
 
+    @abstractmethod
+    def encode(self, Z: Tensor) -> Tensor:
+        pass
+
 
 PredictorRegistry = ClassRegistry[Predictor]()
 
@@ -87,7 +91,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.save_hyperparameters()
         self.hparams["cls"] = self.__class__
 
-        self.ffn = MLP(
+        self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
@@ -109,6 +113,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
 
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
+
+    def encode(self, Z: Tensor) -> Tensor:
+        return self.ffn[:-1](Z)
 
 
 @PredictorRegistry.register("regression")
