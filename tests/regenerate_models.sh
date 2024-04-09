@@ -1,8 +1,14 @@
 #!/bin/bash -l
 
-conda activate <chemprop_env>
+CHEMPROP_ENV=$1
+CHEMPROP_PATH=$2
 
-CHEMPROP_PATH=<chemprop_path>
+if [ -z "${CHEMPROP_ENV}" ] || [ -z "${CHEMPROP_PATH}" ]; then
+    echo "Usage: regenerate_models.sh <CHEMPROP_ENV> <CHEMPROP_PATH>"
+    exit 1
+fi
+
+conda activate $CHEMPROP_ENV
 
 # test_cli_classification_mol
 
