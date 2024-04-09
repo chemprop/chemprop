@@ -162,16 +162,18 @@ def make_fingerprint_for_model(
             raise RuntimeError("unreachable code reached!")
 
     fingerprints = torch.Tensor()
-    for batch in test_loader:
-        with torch.no_grad():
-            if multicomponent:
-                fingerprints = torch.cat(
-                    (fingerprints, predictor(batch.bmgs, batch.V_ds, batch.X_d)), 0
-                )
-            else:
-                fingerprints = torch.cat(
-                    (fingerprints, predictor(batch.bmg, batch.V_d, batch.X_d)), 0
-                )
+    with torch.no_grad():
+        if multicomponent:
+            encodings = [
+                predictor(batch.bmgs, batch.V_ds, batch.X_d)
+                for batch in test_loader
+            ]
+        else:
+            encodings = [
+                predictor(batch.bmg, batch.V_d, batch.X_d)
+                for batch in test_loader
+            ]
+        H = torch.cat(encodings, 0)
 
     fingerprint_columns = [f"fp_{i}" for i in range(fingerprint_length)]
     df_fingerprints = pd.DataFrame(fingerprints, columns=fingerprint_columns)
@@ -196,9 +198,7 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    model_paths = find_models(args.model_path)
-
-    for i, model_path in enumerate(model_paths):
+    for i, model_path in enumerate(find_models(args.model_path)):
         logger.info(f"Fingerprints with model at '{model_path}'")
         output_path = args.output.parent / Path(
             str(args.output.stem) + f"_{i}" + str(args.output.suffix)
