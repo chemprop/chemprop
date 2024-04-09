@@ -78,7 +78,7 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
-    input_path, _, _, _, _, _ = data_path
+    input_path, *_ = data_path
 
     args = [
         "chemprop",
