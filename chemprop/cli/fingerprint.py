@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import pandas as pd
 import torch
+import pickle
 
 from chemprop import data
 from chemprop.nn.loss import LossFunctionRegistry
@@ -71,9 +72,9 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
         )
     if args.output is None:
         args.output = args.test_path.parent / (args.test_path.stem + "_fps.csv")
-    if args.output.suffix not in [".csv", ".pkl"]:
+    if args.output.suffix not in [".csv", ".pkl", ".pckl", ".pickle"]:
         raise ArgumentError(
-            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}"
+            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}."
         )
     return args
 
@@ -161,7 +162,6 @@ def make_fingerprint_for_model(
         case _:
             raise RuntimeError("unreachable code reached!")
 
-    fingerprints = torch.Tensor()
     with torch.no_grad():
         if multicomponent:
             encodings = [func(batch.bmgs, batch.V_ds, batch.X_d) for batch in test_loader]
@@ -169,13 +169,17 @@ def make_fingerprint_for_model(
             encodings = [func(batch.bmg, batch.V_d, batch.X_d) for batch in test_loader]
         H = torch.cat(encodings, 0)
 
-    fingerprint_columns = [f"fp_{i}" for i in range(fingerprint_length)]
-    df_fingerprints = pd.DataFrame(fingerprints, columns=fingerprint_columns)
-    if output_path.suffix == ".pkl":
-        df_fingerprints = df_fingerprints.reset_index(drop=True)
-        df_fingerprints.to_pickle(output_path)
-    else:
+    if output_path.suffix in [".pkl", ".pckl", ".pickle"]:
+        with open(output_path, "wb") as f:
+            pickle.dump(H, f)
+    elif output_path.suffix == ".csv":
+        fingerprint_columns = [f"fp_{i}" for i in range(fingerprint_length)]
+        df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
         df_fingerprints.to_csv(output_path, index=False)
+    else:
+        raise ArgumentError(
+            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}."
+        )
     logger.info(f"Fingerprints saved to '{output_path}'")
 
 
