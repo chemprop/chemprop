@@ -103,7 +103,7 @@ class NormAggregation(SumAggregation):
         \mathbf h = \frac{1}{c} \sum_{v \in V} \mathbf h_v
     """
 
-    def __init__(self, dim: int = 0, *args, norm: float = 100, **kwargs):
+    def __init__(self, dim: int = 0, *args, norm: float = 100., **kwargs):
         super().__init__(dim, **kwargs)
 
         self.norm = norm
