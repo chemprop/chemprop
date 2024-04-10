@@ -151,13 +151,7 @@ class EvidentialLoss(LossFunction):
         return L_nll + self.v_kl * (L_reg - self.eps)
 
     def extra_repr(self) -> str:
-        if self.v_kl != 0.2 and self.eps != 1e-8:
-            return f"v_kl={self.v_kl}, eps={self.eps}"
-        elif self.v_kl != 0.2:
-            return f"v_kl={self.v_kl}"
-        elif self.eps != 1e-8:
-            return f"eps={self.eps}"
-        return ""
+       return f"v_kl={self.v_kl}, eps={self.eps}"
 
 
 @LossFunctionRegistry.register("bce")
@@ -276,9 +270,7 @@ class DirichletMixin:
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
     def extra_repr(self) -> str:
-        if self.v_kl != 0.2:
-            return f"v_kl={self.v_kl}"
-        return ""
+        return f"v_kl={self.v_kl}"
 
 
 @LossFunctionRegistry.register("binary-dirichlet")
@@ -319,9 +311,7 @@ class SIDLoss(LossFunction):
         return (preds_norm / targets).log() * preds_norm + (targets / preds_norm).log() * targets
 
     def extra_repr(self) -> str:
-        if self.threshold is not None:
-            return f"threshold={self.threshold}"
-        return ""
+        return f"threshold={self.threshold}"
 
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
@@ -340,6 +330,5 @@ class WassersteinLoss(LossFunction):
         return (targets.cumsum(1) - preds_norm.cumsum(1)).abs()
 
     def extra_repr(self) -> str:
-        if self.threshold is not None:
-            return f"threshold={self.threshold}"
-        return ""
+        return f"threshold={self.threshold}"
+
