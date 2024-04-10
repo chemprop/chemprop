@@ -155,6 +155,8 @@ def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
         "smiles",
         "--target-columns",
         "lipo",
+        "--splits-column",
+        "split",
         "--epochs",
         "1",
         "--num-workers",
