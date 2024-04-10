@@ -113,9 +113,9 @@ def make_datapoints(
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
     X_d: np.ndarray | None,
-    V_fs: list[np.ndarray] | None,
-    E_fs: list[np.ndarray] | None,
-    V_ds: list[np.ndarray] | None,
+    V_fss: list[list[np.ndarray] | list[None]] | None,
+    E_fss: list[list[np.ndarray] | list[None]] | None,
+    V_dss: list[list[np.ndarray] | list[None]] | None,
     features_generators: list[VectorFeaturizer[Mol]] | None,
     keep_h: bool,
     add_h: bool,
@@ -147,17 +147,23 @@ def make_datapoints(
     X_d : np.ndarray | None
         the extra descriptors of shape ``n x p``, where ``p`` is the number of extra descriptors. If
         ``None``, ``x_d`` for all datapoints will be ``None``.
-    V_fs : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``v_j x q``, where ``v_j`` is the number of atoms
-        in the j-th molecule and ``q`` is the number of extra atom features. If ``None``, ``V_f``
-        for all datapoints will be ``None``.
-    E_fs : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``e_j x r``, where ``e_j`` is the number of bonds
-        in the j-th molecule and ``r`` is the number of extra bond features. If ``None``, ``E_f``
-        for all datapoints will be ``None``.
-    V_ds : list[np.ndarray] | None
-        a list of ``j`` np.ndarrays each of shape ``v_j x s``, where ``s`` is the number of extra
-        atom descriptors. If ``None``, ``V_d`` for all datapoints will be ``None``.
+    V_fss : list[list[np.ndarray] | list[None]] | None
+        a list of ``j`` lists of ``n`` np.ndarrays each of shape ``v_jn x q_j``, where ``v_jn`` is
+        the number of atoms in the j-th molecule of the n-th datapoint and ``q_j`` is the number of
+        extra atom features used for the j-th molecules. Any of the ``j`` lists can be a list of
+        None values if the corresponding component does not use extra atom features. If ``None``,
+        ``V_f`` for all datapoints will be ``None``.
+    E_fss : list[list[np.ndarray] | list[None]] | None
+        a list of ``j`` lists of ``n`` np.ndarrays each of shape ``e_jn x r_j``, where ``e_jn`` is
+        the number of bonds in the j-th molecule of the n-th datapoint and ``r_j`` is the number of
+        extra bond features used for the j-th molecules. Any of the ``j`` lists can be a list of
+        None values if the corresponding component does not use extra bond features. If ``None``,
+        ``E_f`` for all datapoints will be ``None``.
+    V_dss : list[list[np.ndarray] | list[None]] | None
+        a list of ``j`` lists of ``n`` np.ndarrays each of shape ``v_jn x s_j``, where ``s_j`` is
+        the number of extra atom descriptors used for the j-th molecules. Any of the ``j`` lists can
+        be a list of None values if the corresponding component does not use extra atom features. If
+        ``None``, ``V_d`` for all datapoints will be ``None``.
     features_generators : list[MoleculeFeaturizer] | None
         a list of :class:`MoleculeFeaturizer` instances to generate additional molecule features to
         use as extra descriptors
@@ -200,9 +206,9 @@ def make_datapoints(
 
     n_mols = len(smiss[0]) if smiss else 0
     X_d = [None] * N if X_d is None else X_d
-    V_fs = [[None] * N] * n_mols if V_fs is None else V_fs
-    E_fs = [[None] * N] * n_mols if E_fs is None else E_fs
-    V_ds = [[None] * N] * n_mols if V_ds is None else V_ds
+    V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
+    E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
+    V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
 
     mol_data = [
         [
@@ -217,9 +223,9 @@ def make_datapoints(
                 x_d=X_d[i],
                 mfs=features_generators,
                 x_phase=None,
-                V_f=V_fs[mol_idx][i],
-                E_f=E_fs[mol_idx][i],
-                V_d=V_ds[mol_idx][i],
+                V_f=V_fss[mol_idx][i],
+                E_f=E_fss[mol_idx][i],
+                V_d=V_dss[mol_idx][i],
             )
             for i in range(N)
         ]
