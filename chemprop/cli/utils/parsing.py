@@ -51,14 +51,14 @@ def parse_csv(
         target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
 
     Y = df[target_cols]
-    weights = None if weight_col is None else df[weight_col].astype(np.float32).to_numpy()
+    weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
 
     if bounded:
         lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
         gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
-        Y = Y.applymap(lambda x: x.strip("<").strip(">")).astype(np.float32).to_numpy()
+        Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
     else:
-        Y = Y.astype(np.float32).to_numpy()
+        Y = Y.to_numpy(np.single)
         lt_mask = None
         gt_mask = None
 

@@ -60,9 +60,9 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             )
 
         if n_atoms == 0:
-            V = np.zeros((1, self.atom_fdim)).astype(np.float32)
+            V = np.zeros((1, self.atom_fdim), dtype=np.single)
         else:
-            V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()]).astype(np.float32)
+            V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
 
