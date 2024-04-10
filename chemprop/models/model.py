@@ -131,10 +131,7 @@ class MPNN(pl.LightningModule):
         X_d: Tensor | None = None,
         index: int = None,
     ) -> Tensor:
-        """the hidden representations of the output for the i-th block in the predictor for the input
-        molecules. An index of 0 denotes the post-aggregation representation through a 0-layer MLP,
-        while an index of 1 represents the output from the first linear layer in the FFN, and so forth.
-        """
+        """the final hidden representations for the input molecules"""
         return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), index)
 
     def forward(

@@ -63,6 +63,26 @@ class Predictor(nn.Module, HasHParams):
 
     @abstractmethod
     def encode(self, Z: Tensor, indxe: int) -> Tensor:
+        """
+        Retrieves the hidden representations of the output for the i-th block in the predictor for the given input molecules.
+
+        Parameters
+        ----------
+        Z : Tensor
+            a tensor for a batch of given input molecules
+        index : int
+            an integer index indicates which linear layer returns the encoding in the FFN.
+            An index of 0 denotes the post-aggregation representation through a 0-layer MLP,
+            while an index of 1 represents the output from the first linear layer in the FFN,
+            and so forth.
+        .. important::
+            If `index` is larger than `n_layers` in the FFN. It would alwasy return the output of the FFN.
+
+        Returns
+        -------
+        Tensor
+            a tensor of varying shape depending on the batch size and hidden size.
+        """
         pass
 
 
