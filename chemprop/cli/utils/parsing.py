@@ -32,19 +32,19 @@ def parse_csv(
     df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
     if smiles_cols is not None and rxn_cols is not None:
-        smiss = df[smiles_cols].values.tolist()
-        rxnss = df[rxn_cols].values.tolist()
+        smiss = df[smiles_cols].T.values.tolist()
+        rxnss = df[rxn_cols].T.values.tolist()
         input_cols = [*smiles_cols, *rxn_cols]
     elif smiles_cols is not None and rxn_cols is None:
-        smiss = df[smiles_cols].values.tolist()
+        smiss = df[smiles_cols].T.values.tolist()
         rxnss = None
         input_cols = smiles_cols
     elif smiles_cols is None and rxn_cols is not None:
         smiss = None
-        rxnss = df[rxn_cols].values.tolist()
+        rxnss = df[rxn_cols].T.values.tolist()
         input_cols = rxn_cols
     else:
-        smiss = df.iloc[:, [0]].values.tolist()
+        smiss = df.iloc[:, [0]].T.values.tolist()
         rxnss = None
         input_cols = [df.columns[0]]
 
@@ -126,11 +126,11 @@ def make_datapoints(
     Parameters
     ----------
     smiss : list[list[str]] | None
-        a list of ``n`` lists of ``j`` SMILES strings, where ``n`` is the number of datapoints and
-        ``j`` is the number of molecules per datapoint. If ``None``, the corresponding list of
+        a list of ``j`` lists of ``n`` SMILES strings, where ``j`` is the number of molecules per
+        datapoint and ``n`` is the number of datapoints. If ``None``, the corresponding list of
         :class:`MoleculeDatapoint`\s will be empty.
     rxnss : list[list[str]] | None
-        a list of ``n`` lists of ``k`` reaction SMILES strings, where ``k`` is the number of
+        a list of ``k`` lists of ``n`` reaction SMILES strings, where ``k`` is the number of
         reactions per datapoint. If ``None``, the corresponding list of :class:`ReactionDatapoint`\s
         will be empty.
     Y : np.ndarray
@@ -229,7 +229,7 @@ def make_datapoints(
             )
             for i in range(N)
         ]
-        for mol_idx, smis in enumerate(zip(*smiss))
+        for mol_idx, smis in enumerate(smiss)
     ]
     rxn_data = [
         [
@@ -247,7 +247,7 @@ def make_datapoints(
             )
             for i in range(N)
         ]
-        for rxn_idx, rxns in enumerate(zip(*rxnss))
+        for rxn_idx, rxns in enumerate(rxnss)
     ]
 
     return mol_data, rxn_data
