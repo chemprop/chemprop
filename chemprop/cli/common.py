@@ -146,7 +146,6 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 
 
 def process_common_args(args: Namespace) -> Namespace:
-
     if args.config_path is None:
         return args
 
