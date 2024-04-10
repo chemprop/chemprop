@@ -1,3 +1,4 @@
+import json
 import logging
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -10,6 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
+    parser.add_argument(
+        "--config-path",
+        type=Path,
+        help="Path to a configuration file. If specified, overrides all other arguments.",
+    )
+
     data_args = parser.add_argument_group("Shared input data args")
     data_args.add_argument(
         "-s",
@@ -139,6 +146,28 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 
 
 def process_common_args(args: Namespace) -> Namespace:
+
+    if args.config_path is None:
+        return args
+
+    with open(args.config_path, "r") as f:
+        config_args = json.load(f)
+
+    for key, value in config_args.items():
+        setattr(args, key, value)
+
+    if isinstance(args.config_path, str):
+        args.config_path = Path(args.config_path)
+
+    if isinstance(args.descriptors_path, str):
+        args.descriptors_path = Path(args.descriptors_path)
+
+    if isinstance(args.data_path, str):
+        args.data_path = Path(args.data_path)
+
+    if isinstance(args.output_dir, str):
+        args.output_dir = Path(args.output_dir)
+
     return args
 
 
