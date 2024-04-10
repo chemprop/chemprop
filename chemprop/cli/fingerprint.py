@@ -196,9 +196,7 @@ def main(args):
 
     for i, model_path in enumerate(find_models(args.model_path)):
         logger.info(f"Fingerprints with model at '{model_path}'")
-        output_path = args.output.parent / Path(
-            str(args.output.stem) + f"_{i}" + str(args.output.suffix)
-        )
+        output_path = args.output.parent / Path(f"{args.output.stem}_{i}{args.output.suffix}")
         make_fingerprint_for_model(args, model_path, multicomponent, output_path)
 
 

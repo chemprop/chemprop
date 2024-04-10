@@ -115,9 +115,6 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.ffn(Z)
 
     def encode(self, Z: Tensor, index: int) -> Tensor:
-        n_layers = len(self.ffn) - 1
-        if index > n_layers:
-            raise ValueError(f"The index should not be larger then the `n_layers` of {n_layers}.")
         return self.ffn[:index](Z)
 
 
