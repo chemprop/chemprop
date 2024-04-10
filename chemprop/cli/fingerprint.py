@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 import sys
 import pandas as pd
+import numpy as np
 import torch
 import pickle
 
@@ -35,7 +36,7 @@ class FingerprintSubcommand(Subcommand):
             "--output",
             "--preds-path",
             type=Path,
-            help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
+            help="Path to which predictions will be saved. If the file extension is .pkl or .npz, they will be saved as a pickle or npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
         )
         parser.add_argument(
             "--model-path",
@@ -68,9 +69,9 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
         )
     if args.output is None:
         args.output = args.test_path.parent / (args.test_path.stem + "_fps.csv")
-    if args.output.suffix not in [".csv", ".pkl", ".pckl", ".pickle"]:
+    if args.output.suffix not in [".csv", ".pkl", ".pckl", ".pickle", ".npz"]:
         raise ArgumentError(
-            argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}."
+            argument=None, message=f"Output must be a CSV, Pickle, or npz file. Got {args.output}."
         )
     return args
 
@@ -170,6 +171,9 @@ def make_fingerprint_for_model(
     if output_path.suffix in [".pkl", ".pckl", ".pickle"]:
         with open(output_path, "wb") as f:
             pickle.dump(H, f)
+    if output_path.suffix in [".npz"]:
+        with open(output_path, "wb") as f:
+            np.savez(output_path, H)
     elif output_path.suffix == ".csv":
         fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
         df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
