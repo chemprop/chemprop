@@ -546,7 +546,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         df = pd.read_csv(
             args.data_path, header=None if args.no_header_row else "infer", index_col=False
         )
-        grouped = df.groupby(df[args.splits_columnsplit_col].str.lower())
+        grouped = df.groupby(df[args.splits_column].str.lower())
         train_indices = grouped.groups.get("train", pd.Index([])).tolist()
         val_indices = grouped.groups.get("val", pd.Index([])).tolist()
         test_indices = grouped.groups.get("test", pd.Index([])).tolist()
@@ -814,7 +814,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 def main(args):
     save_config(args)
-    print(args.splits_column)
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
