@@ -151,7 +151,7 @@ class EvidentialLoss(LossFunction):
         return L_nll + self.v_kl * (L_reg - self.eps)
 
     def extra_repr(self) -> str:
-       return f"v_kl={self.v_kl}, eps={self.eps}"
+        return f"v_kl={self.v_kl}, eps={self.eps}"
 
 
 @LossFunctionRegistry.register("bce")
@@ -331,4 +331,3 @@ class WassersteinLoss(LossFunction):
 
     def extra_repr(self) -> str:
         return f"threshold={self.threshold}"
-
