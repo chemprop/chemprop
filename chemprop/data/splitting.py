@@ -1,7 +1,7 @@
 import copy
 import logging
 from enum import auto
-from typing import Sequence
+from collections.abc import Sequence, Iterable
 import numpy as np
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
@@ -219,9 +219,9 @@ def _unpack_astartes_result(
 
 def split_data_by_indices(
     data: Datapoints | MulticomponentDatapoints,
-    train_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
-    val_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
-    test_indices: Sequence[Sequence[int]] | Sequence[int] | None = None,
+    train_indices: Iterable[Iterable[int]] | Iterable[int] | None = None,
+    val_indices: Iterable[Iterable[int]] | Iterable[int] | None = None,
+    test_indices: Iterable[Iterable[int]] | Iterable[int] | None = None,
 ):
     """Splits data into training, validation, and test groups based on split indices given."""
 
@@ -234,11 +234,7 @@ def split_data_by_indices(
 
 def _splitter_helper(data, indices):
     nested_component = not isinstance(data[0], (MoleculeDatapoint, ReactionDatapoint))
-    try:
-        indices[0].__index__()
-        nested_split = False
-    except (AttributeError, TypeError):
-        nested_split = True
+    nested_split = isinstance(indices[0], Iterable)
 
     match (nested_component, nested_split):
         case (False, False):
