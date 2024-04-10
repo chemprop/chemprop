@@ -690,8 +690,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     else:
         criterion = None
     if args.metrics is not None:
-        # TODO: AUROCMetric takes `task` as an argument, but we don't expose that through the command line. Should we?
-        metrics = [Factory.build(MetricRegistry[metric], task=None) for metric in args.metrics]
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
     else:
         metrics = None
 
@@ -721,8 +720,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         )
         model.bn.apply(lambda module: module.requires_grad_(False))
         for idx in range(args.frzn_ffn_layers):
-            model.predictor.ffn[idx * 3].requires_grad_(False)
-            setattr(model.predictor.ffn[idx * 3 + 2], "p", 0.0)
+            model.predictor.ffn[idx].requires_grad_(False)
+            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
 
         return model
 
@@ -782,8 +781,12 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
         if test_loader is not None:
             if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(1, -1))
+                model.predictor.register_buffer(
+                    "loc", torch.tensor(scaler.mean_).view(1, -1).float()
+                )
+                model.predictor.register_buffer(
+                    "scale", torch.tensor(scaler.scale_).view(1, -1).float()
+                )
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 

@@ -61,6 +61,10 @@ class Predictor(nn.Module, HasHParams):
     def train_step(self, Z: Tensor) -> Tensor:
         pass
 
+    @abstractmethod
+    def encode(self, Z: Tensor) -> Tensor:
+        pass
+
 
 PredictorRegistry = ClassRegistry[Predictor]()
 
@@ -79,7 +83,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):
@@ -87,7 +91,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.save_hyperparameters()
         self.hparams["cls"] = self.__class__
 
-        self.ffn = MLP(
+        self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
@@ -110,6 +114,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
 
+    def encode(self, Z: Tensor) -> Tensor:
+        return self.ffn[:-1](Z)
+
 
 @PredictorRegistry.register("regression")
 class RegressionFFN(_FFNPredictorBase):
@@ -123,7 +130,7 @@ class RegressionFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
         loc: float | Tensor = 0.0,
@@ -249,7 +256,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):
