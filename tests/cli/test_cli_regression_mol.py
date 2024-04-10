@@ -30,6 +30,7 @@ def model_path(data_dir):
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.json")
 
+
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
@@ -39,13 +40,14 @@ def test_train_quick(monkeypatch, data_path):
         m.setattr("sys.argv", args)
         main()
 
-def test_train_config(monkeypatch, config_path):
 
+def test_train_config(monkeypatch, config_path):
     args = ["chemprop", "train", "--config-path", config_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
 
 def test_train_quick_features(monkeypatch, data_path):
     (
