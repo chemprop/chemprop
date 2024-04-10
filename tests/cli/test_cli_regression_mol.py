@@ -78,8 +78,8 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
-@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
-def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
     input_path, *_ = data_path
     args = [
         "chemprop",
@@ -88,8 +88,8 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
         input_path,
         "--model-path",
         model_path,
-        "--repr-type",
-        repr_type,
+        "--ffn-block-index",
+        ffn_block_index,
     ]
 
     with monkeypatch.context() as m:
@@ -182,8 +182,10 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
     assert (tmp_path / "preds_0.csv").exists()
 
 
-@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
-def test_fingerprint_output_structure(monkeypatch, data_path, model_path, tmp_path, repr_type):
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_output_structure(
+    monkeypatch, data_path, model_path, tmp_path, ffn_block_index
+):
     input_path, *_ = data_path
     args = [
         "chemprop",
@@ -194,8 +196,8 @@ def test_fingerprint_output_structure(monkeypatch, data_path, model_path, tmp_pa
         model_path,
         "--output",
         str(tmp_path / "fps.csv"),
-        "--repr-type",
-        repr_type,
+        "--ffn-block-index",
+        ffn_block_index,
     ]
 
     with monkeypatch.context() as m:

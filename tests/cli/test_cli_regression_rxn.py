@@ -61,8 +61,8 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
-@pytest.mark.parametrize("repr_type", ["FINGERPRINT", "ENCODING"])
-def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
     input_path, _ = data_path
     args = [
         "chemprop",
@@ -73,8 +73,8 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, repr_type):
         "smiles",
         "--model-path",
         model_path,
-        "--repr-type",
-        repr_type,
+        "--ffn-block-index",
+        ffn_block_index,
     ]
 
     with monkeypatch.context() as m:
