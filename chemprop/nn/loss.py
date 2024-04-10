@@ -1,5 +1,4 @@
 from abc import abstractmethod
-import inspect
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
@@ -72,13 +71,6 @@ class LossFunction(nn.Module):
     @abstractmethod
     def _calc_unreduced_loss(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
-
-    def extra_repr(self) -> str:
-        sig_params = inspect.signature(self.__class__).parameters
-        obj_params = self.__dict__.items()
-        items = [(k, v) for k, v in obj_params if (k in sig_params and v != sig_params[k].default)]
-
-        return ", ".join(f"{k}={repr(v)}" for k, v in items)
 
 
 LossFunctionRegistry = ClassRegistry[LossFunction]()
@@ -157,6 +149,15 @@ class EvidentialLoss(LossFunction):
         L_reg = (2 * v + alpha) * residuals.abs()
 
         return L_nll + self.v_kl * (L_reg - self.eps)
+
+    def extra_repr(self) -> str:
+        if self.v_kl != 0.2 and self.eps != 1e-8:
+            return f"v_kl={self.v_kl}, eps={self.eps}"
+        elif self.v_kl != 0.2:
+            return f"v_kl={self.v_kl}"
+        elif self.eps != 1e-8:
+            return f"eps={self.eps}"
+        return ""
 
 
 @LossFunctionRegistry.register("bce")
@@ -274,6 +275,11 @@ class DirichletMixin:
 
         return (L_mse + self.v_kl * L_kl).mean(-1)
 
+    def extra_repr(self) -> str:
+        if self.v_kl != 0.2:
+            return f"v_kl={self.v_kl}"
+        return ""
+
 
 @LossFunctionRegistry.register("binary-dirichlet")
 class BinaryDirichletLoss(DirichletMixin, LossFunction):
@@ -312,6 +318,11 @@ class SIDLoss(LossFunction):
 
         return (preds_norm / targets).log() * preds_norm + (targets / preds_norm).log() * targets
 
+    def extra_repr(self) -> str:
+        if self.threshold is not None:
+            return f"threshold={self.threshold}"
+        return ""
+
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
@@ -327,3 +338,8 @@ class WassersteinLoss(LossFunction):
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
         return (targets.cumsum(1) - preds_norm.cumsum(1)).abs()
+
+    def extra_repr(self) -> str:
+        if self.threshold is not None:
+            return f"threshold={self.threshold}"
+        return ""

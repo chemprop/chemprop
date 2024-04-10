@@ -93,7 +93,9 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
+        return (
+            super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
+        )
 
 
 class BoundedMixin:
@@ -140,6 +142,9 @@ class AUROCMetric(Metric):
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task=self.task)
+
+    def extra_repr(self) -> str:
+        return f"task={self.task}"
 
 
 @MetricRegistry.register("prc")
