@@ -83,7 +83,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):
@@ -130,7 +130,7 @@ class RegressionFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
         loc: float | Tensor = 0.0,
@@ -256,7 +256,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):
