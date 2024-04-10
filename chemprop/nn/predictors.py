@@ -62,7 +62,7 @@ class Predictor(nn.Module, HasHParams):
         pass
 
     @abstractmethod
-    def encode(self, Z: Tensor) -> Tensor:
+    def encode(self, Z: Tensor, indxe: int) -> Tensor:
         pass
 
 
@@ -114,8 +114,11 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
 
-    def encode(self, Z: Tensor) -> Tensor:
-        return self.ffn[:-1](Z)
+    def encode(self, Z: Tensor, index: int) -> Tensor:
+        n_layers = len(self.ffn) - 1
+        if index > n_layers:
+            raise ValueError(f"The index should not be larger then the `n_layers` of {n_layers}.")
+        return self.ffn[:index](Z)
 
 
 @PredictorRegistry.register("regression")

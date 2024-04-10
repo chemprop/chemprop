@@ -125,10 +125,17 @@ class MPNN(pl.LightningModule):
         return H if X_d is None else torch.cat((H, X_d), 1)
 
     def encoding(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
+        self,
+        bmg: BatchMolGraph,
+        V_d: Tensor | None = None,
+        X_d: Tensor | None = None,
+        index: int = None,
     ) -> Tensor:
-        """the final hidden representations for the input molecules"""
-        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d))
+        """the hidden representations of the output for the i-th block in the predictor for the input
+        molecules. An index of 0 denotes the post-aggregation representation through a 0-layer MLP,
+        while an index of 1 represents the output from the first linear layer in the FFN, and so forth.
+        """
+        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), index)
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None

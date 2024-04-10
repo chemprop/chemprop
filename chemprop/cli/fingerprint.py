@@ -19,11 +19,6 @@ from chemprop.utils.utils import EnumMapping
 logger = logging.getLogger(__name__)
 
 
-class RepresentationType(EnumMapping):
-    FINGERPRINT = auto()
-    ENCODING = auto()
-
-
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
     HELP = "use a pretrained chemprop model for to calculate learned representations"
@@ -52,7 +47,11 @@ class FingerprintSubcommand(Subcommand):
             help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
         )
         parser.add_argument(
-            "--repr-type", required=True, type=uppercase, choices=list(RepresentationType.keys())
+            "--ffn-block-index",
+            required=True,
+            type=int,
+            default=0,
+            help="The index indicates which linear layer returns the encoding in the FFN. An index of 0 denotes the post-aggregation representation through a 0-layer MLP, while an index of 1 represents the output from the first linear layer in the FFN, and so forth.",
         )
 
         return parser
@@ -152,28 +151,30 @@ def make_fingerprint_for_model(
 
     logger.info(model)
 
-    match RepresentationType.get(args.repr_type):
-        case RepresentationType.FINGERPRINT:
-            func = model.fingerprint
-            fingerprint_length = model.message_passing.output_dim
-        case RepresentationType.ENCODING:
-            func = model.encoding
-            fingerprint_length = model.predictor.ffn[-2][-1].out_features
-        case _:
-            raise RuntimeError("unreachable code reached!")
+    n_layers = len(model.predictor.ffn) - 1
+    if args.ffn_block_index > n_layers:
+        raise ValueError(
+            f"The argument of `ffn_block_index` should not be larger then the `n_layers` of {n_layers} in predictor."
+        )
 
     with torch.no_grad():
         if multicomponent:
-            encodings = [func(batch.bmgs, batch.V_ds, batch.X_d) for batch in test_loader]
+            encodings = [
+                model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
+                for batch in test_loader
+            ]
         else:
-            encodings = [func(batch.bmg, batch.V_d, batch.X_d) for batch in test_loader]
+            encodings = [
+                model.encoding(batch.bmg, batch.V_d, batch.X_d, args.ffn_block_index)
+                for batch in test_loader
+            ]
         H = torch.cat(encodings, 0)
 
     if output_path.suffix in [".pkl", ".pckl", ".pickle"]:
         with open(output_path, "wb") as f:
             pickle.dump(H, f)
     elif output_path.suffix == ".csv":
-        fingerprint_columns = [f"fp_{i}" for i in range(fingerprint_length)]
+        fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
         df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
         df_fingerprints.to_csv(output_path, index=False)
     else:
