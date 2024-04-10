@@ -66,7 +66,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "-i",
         "--data-path",
-        required=True,
         type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
@@ -451,6 +450,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+
+    if args.config_path is None and args.data_path is None:
+        raise ArgumentError(argument=None, message="Must provide either a data path or a config path.")
+
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
