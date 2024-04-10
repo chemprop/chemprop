@@ -155,17 +155,9 @@ def process_common_args(args: Namespace) -> Namespace:
     for key, value in config_args.items():
         setattr(args, key, value)
 
-    if isinstance(args.config_path, str):
-        args.config_path = Path(args.config_path)
-
-    if isinstance(args.descriptors_path, str):
-        args.descriptors_path = Path(args.descriptors_path)
-
-    if isinstance(args.data_path, str):
-        args.data_path = Path(args.data_path)
-
-    if isinstance(args.output_dir, str):
-        args.output_dir = Path(args.output_dir)
+    for path_attr in ["config_path", "descriptors_path", "data_path", "output_dir"]:
+        if hasattr(args, path_attr) and isinstance(getattr(args, path_attr), str):
+            setattr(args, path_attr, Path(getattr(args, path_attr)))
 
     return args
 
