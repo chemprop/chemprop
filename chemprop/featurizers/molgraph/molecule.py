@@ -79,7 +79,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
                 x_e = self.bond_featurizer(bond)
                 if bond_features_extra is not None:
                     x_e = np.concatenate(
-                        (x_e, bond_features_extra[bond.GetIdx()]), dtype=np.float32
+                        (x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single
                     )
 
                 E[i : i + 2] = x_e

@@ -148,7 +148,7 @@ def make_datapoints(
     else:
         N = len(smiss)
 
-    weights = np.ones(N, dtype=np.float32) if weights is None else weights
+    weights = np.ones(N, dtype=np.single) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
