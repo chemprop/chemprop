@@ -1,4 +1,3 @@
-import json
 import logging
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -11,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
-
     data_args = parser.add_argument_group("Shared input data args")
     data_args.add_argument(
         "-s",
