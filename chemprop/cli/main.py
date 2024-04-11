@@ -46,7 +46,7 @@ def construct_parser():
     parent.add_argument(
         "--config-path",
         type=Path,
-        help="Path to a configuration file. If argument specified both in a config file and through the command line interface, the command line interface overrides.",
+        help="Path to a configuration file. Command line arguments override values in the configuration file.",
     )
 
     args = parent.parse_known_args()[0]
