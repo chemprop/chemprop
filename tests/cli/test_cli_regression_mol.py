@@ -6,6 +6,7 @@ import torch
 
 from chemprop.cli.main import main
 from chemprop.models.model import MPNN
+from chemprop.chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 
@@ -224,7 +225,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
 
-
+@pytest.mark.skipif(NO_HYPEROPT, reason="Hpopt dependencies not installed")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
