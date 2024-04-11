@@ -188,23 +188,23 @@ def make_datapoints(
     if smiss is None and rxnss is None:
         raise ValueError("args 'smiss' and 'rnxss' were both `None`!")
     elif rxnss is None:
-        N = len(smiss)
+        N = len(smiss[0])
         rxnss = []
     elif smiss is None:
-        N = len(rxnss)
+        N = len(rxnss[0])
         smiss = []
-    elif len(smiss) != len(rxnss):
+    elif len(smiss[0]) != len(rxnss[0]):
         raise ValueError(
-            f"args 'smiss' and 'rxnss' must have same length! got {len(smiss)} and {len(rxnss)}"
+            f"args 'smiss' and 'rxnss' must have same length! got {len(smiss[0])} and {len(rxnss[0])}"
         )
     else:
-        N = len(smiss)
+        N = len(smiss[0])
 
     weights = np.ones(N, dtype=np.single) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
-    n_mols = len(smiss[0]) if smiss else 0
+    n_mols = len(smiss) if smiss else 0
     X_d = [None] * N if X_d is None else X_d
     V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
     E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
@@ -280,7 +280,7 @@ def build_data_from_files(
         bounded,
         no_header_row,
     )
-    n_molecules = len(list(zip(*smiss))) if smiss is not None else 0
+    n_molecules = len(smiss) if smiss is not None else 0
 
     X_ds = load_input_feats_and_descs(p_descriptors, None, feat_desc="X_d")
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, feat_desc="V_f")
