@@ -224,7 +224,8 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
 
-
+import platform
+@pytest.mark.skipif(platform.python_version_tuple()[1] != '11', reason="ray does not support python 3.12+")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
