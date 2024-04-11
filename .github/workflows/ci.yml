@@ -81,6 +81,7 @@ jobs:
         run: |
           python -m pip install nbmake
           python -m pip install ".[dev,docs,test,hpopt]"
+          python -m pip install optuna
       - name: Test with pytest
         shell: bash -l {0}
         run: |

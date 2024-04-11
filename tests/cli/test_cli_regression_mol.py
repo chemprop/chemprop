@@ -225,21 +225,53 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
 
-@pytest.mark.skipif(NO_HYPEROPT, reason="Hpopt dependencies not installed")
+
+@pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
+def test_optuna_quick(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "hpopt",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--hpopt-save-dir",
+        str(tmp_path),
+        "--raytune-num-samples",
+        "2",
+        "--raytune-algorithm",
+        "optuna",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_checkpoint.ckpt").exists()
+    assert (tmp_path / "all_progress.csv").exists()
+    assert (tmp_path / "ray_results").exists()
+
+
+@pytest.mark.skipif(NO_HYPEROPT, reason="Hyperopt not installed")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
     args = [
         "chemprop",
-        "hyperopt",
+        "hpopt",
         "-i",
         input_path,
         "--epochs",
         "1",
+        "--hpopt-save-dir",
+        str(tmp_path),
         "--raytune-num-samples",
         "2",
-        "--chemprop-hyperopt-save-dir",
-        str(tmp_path),
+        "--raytune-algorithm",
+        "hyperopt",
     ]
 
     with monkeypatch.context() as m:

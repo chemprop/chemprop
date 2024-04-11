@@ -93,9 +93,7 @@ class HpoptSubcommand(Subcommand):
 
 
 def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
-    hpopt_args = parser.add_argument_group(
-        "Chemprop hyperparameter optimization arguments"
-    )
+    hpopt_args = parser.add_argument_group("Chemprop hyperparameter optimization arguments")
 
     hpopt_args.add_argument(
         "--search-parameter-keywords",
@@ -382,4 +380,4 @@ if __name__ == "__main__":
 
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
-    HypoptSubcommand.func(args)
+    HpoptSubcommand.func(args)
