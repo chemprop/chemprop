@@ -11,11 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def add_common_args(parser: ArgumentParser) -> ArgumentParser:
-    parser.add_argument(
-        "--config-path",
-        type=Path,
-        help="Path to a configuration file. If specified, overrides all other arguments.",
-    )
 
     data_args = parser.add_argument_group("Shared input data args")
     data_args.add_argument(
@@ -146,19 +141,6 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 
 
 def process_common_args(args: Namespace) -> Namespace:
-    if args.config_path is None:
-        return args
-
-    with open(args.config_path, "r") as f:
-        config_args = json.load(f)
-
-    for key, value in config_args.items():
-        setattr(args, key, value)
-
-    for path_attr in ["config_path", "descriptors_path", "data_path", "output_dir"]:
-        if hasattr(args, path_attr) and isinstance(getattr(args, path_attr), str):
-            setattr(args, path_attr, Path(getattr(args, path_attr)))
-
     return args
 
 

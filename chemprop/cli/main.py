@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 import logging
 import sys
@@ -42,10 +43,22 @@ def construct_parser():
         default=0,
         help="The verbosity level, specify the flag multiple times to increase verbosity.",
     )
+    parent.add_argument(
+        "--config-path",
+        type=Path,
+        help="Path to a configuration file. If argument specified both in a config file and through the command line interface, the command line interface overrides.",
+    )
+
+    args = parent.parse_known_args()[0]
+
+    config = {}
+    if args.config_path:
+        with open(args.config_path, "r") as f:
+            config = json.load(f)
 
     parents = [parent]
     for subcommand in SUBCOMMANDS:
-        subcommand.add(subparsers, parents)
+        subcommand.add(subparsers, parents, config)
 
     return parser
 
