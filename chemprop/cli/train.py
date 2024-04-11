@@ -452,7 +452,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 def process_train_args(args: Namespace) -> Namespace:
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(
-            argument=None, message="Must provide either a data path or a config path."
+            argument=None, message="Data path must be provided for training."
         )
 
     if args.data_path.suffix not in [".csv"]:
