@@ -72,32 +72,32 @@ SEARCH_PARAM_KEYWORDS_MAP = {
 }
 
 
-class HyperoptSubcommand(Subcommand):
-    COMMAND = "hyperopt"
+class HpoptSubcommand(Subcommand):
+    COMMAND = "hpopt"
     HELP = "perform hyperparameter optimization on the given task"
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = add_common_args(parser)
         parser = add_train_args(parser)
-        return add_hyperopt_args(parser)
+        return add_hpopt_args(parser)
 
     @classmethod
     def func(cls, args: Namespace):
         args = process_common_args(args)
         args = process_train_args(args)
-        args = process_hyperopt_args(args)
+        args = process_hpopt_args(args)
         validate_common_args(args)
         validate_train_args(args)
         main(args)
 
 
-def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
-    chemprop_hyperopt_args = parser.add_argument_group(
+def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
+    hpopt_args = parser.add_argument_group(
         "Chemprop hyperparameter optimization arguments"
     )
 
-    chemprop_hyperopt_args.add_argument(
+    hpopt_args.add_argument(
         "--search-parameter-keywords",
         type=str,
         nargs="+",
@@ -116,8 +116,8 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     """,
     )
 
-    chemprop_hyperopt_args.add_argument(
-        "--chemprop-hyperopt-save-dir",
+    hpopt_args.add_argument(
+        "--hpopt-save-dir",
         type=Path,
         help="Directory to save the hyperparameter optimization results",
     )
@@ -177,11 +177,11 @@ def add_hyperopt_args(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def process_hyperopt_args(args: Namespace) -> Namespace:
-    if args.chemprop_hyperopt_save_dir is None:
-        args.chemprop_hyperopt_save_dir = Path(f"chemprop_hyperopt/{args.data_path.stem}")
+def process_hpopt_args(args: Namespace) -> Namespace:
+    if args.hpopt_save_dir is None:
+        args.hpopt_save_dir = Path(f"chemprop_hpopt/{args.data_path.stem}")
 
-    args.chemprop_hyperopt_save_dir.mkdir(exist_ok=True, parents=True)
+    args.hpopt_save_dir.mkdir(exist_ok=True, parents=True)
 
     search_parameters = set()
 
@@ -263,7 +263,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
     run_config = RunConfig(
         checkpoint_config=checkpoint_config,
-        storage_path=args.chemprop_hyperopt_save_dir.absolute() / "ray_results",
+        storage_path=args.hpopt_save_dir.absolute() / "ray_results",
     )
 
     ray_trainer = TorchTrainer(
@@ -362,24 +362,24 @@ def main(args: Namespace):
 
     logger.info(f"Saving best hyperparameter parameters: {best_config}")
 
-    with open(args.chemprop_hyperopt_save_dir / "best_params.json", "w") as f:
+    with open(args.hpopt_save_dir / "best_params.json", "w") as f:
         json.dump(best_config, f, indent=4)
 
     logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
 
-    torch.save(best_checkpoint, args.chemprop_hyperopt_save_dir / "best_checkpoint.ckpt")
+    torch.save(best_checkpoint, args.hpopt_save_dir / "best_checkpoint.ckpt")
 
     result_df = results.get_dataframe()
 
     logger.info(f"Saving hyperparameter optimization results: {result_df}")
 
-    result_df.to_csv(args.chemprop_hyperopt_save_dir / "all_progress.csv", index=False)
+    result_df.to_csv(args.hpopt_save_dir / "all_progress.csv", index=False)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser = HyperoptSubcommand.add_args(parser)
+    parser = HpoptSubcommand.add_args(parser)
 
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
-    HyperoptSubcommand.func(args)
+    HypoptSubcommand.func(args)

@@ -9,7 +9,7 @@ from chemprop.cli.convert import ConvertSubcommand
 
 # TODO: add subcommands for Fingerprint and Hyperopt
 # from chemprop.cli.fingerprint import FingerprintSubcommand
-from chemprop.cli.hyperopt import HyperoptSubcommand
+from chemprop.cli.hpopt import HpoptSubcommand
 
 from chemprop.cli.utils import pop_attr
 from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
@@ -20,8 +20,8 @@ SUBCOMMANDS = [
     TrainSubcommand,
     PredictSubcommand,
     ConvertSubcommand,
-    HyperoptSubcommand,
-]  # , FingerprintSubcommand, HyperoptSubcommand]
+    HpoptSubcommand,
+]  # , FingerprintSubcommand]
 
 
 def construct_parser():
