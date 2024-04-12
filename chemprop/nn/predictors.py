@@ -85,7 +85,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
         output_transform: TensorUntransform | None = None,
@@ -130,8 +130,6 @@ class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
-
-
 
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
@@ -230,7 +228,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
         output_transform: TensorUntransform | None = None,

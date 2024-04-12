@@ -87,7 +87,7 @@ class _MolGraphDatasetMixin:
     @property
     def d_xd(self) -> int:
         """the extra molecule descriptor dimension, if any"""
-        return 0 if np.equal(self.X_d, None).all() else self.X_d.shape[1]
+        return 0 if self.X_d[0] is None else self.X_d.shape[1]
 
     @property
     def names(self) -> list[str]:
@@ -104,26 +104,31 @@ class _MolGraphDatasetMixin:
         StandardScaler
             a scaler fit to the targets.
         """
+
         if scaler is None:
             scaler = StandardScaler()
-            self.Y = scaler.fit_transform(self._Y)
-        else:
-            self.Y = scaler.transform(self._Y)
+            scaler = StandardScaler().fit(self._Y)
+
+        self.Y = scaler.transform(self._Y)
 
         return scaler
 
     def normalize_inputs(
-        self, key: str | None = "X_d", scaler: StandardScaler | None = None
+        self, key: str = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_d", None}
+        VALID_KEYS = {"X_d"}
         if key not in VALID_KEYS:
             raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
-        X = self.X_d
+        X = self.X_d if self.X_d[0] is not None else None
+
+        if X is None:
+            return scaler
 
         if scaler is None:
-            scaler = StandardScaler()
-            self.X_d = scaler.fit_transform(X)
+            scaler = StandardScaler().fit(X)
+
+        self.X_d = scaler.transform(X)
 
         return scaler
 
@@ -255,22 +260,22 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if all(np.equal(V_f, None).all() for V_f in self.V_fs) else self.V_fs[0].shape[1]
+        return 0 if self.V_ds[0] is None else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
         """the extra bond feature dimension, if any"""
-        return 0 if all(np.equal(E_f, None).all() for E_f in self.E_fs) else self.E_fs[0].shape[1]
+        return 0 if self.E_fs[0] is None else self.E_fs[0].shape[1]
 
     @property
     def d_vd(self) -> int:
         """the extra atom descriptor dimension, if any"""
-        return 0 if all(np.equal(V_d, None).all() for V_d in self.V_ds) else self.V_ds[0].shape[1]
+        return 0 if self.V_ds[0] is None else self.V_ds[0].shape[1]
 
     def normalize_inputs(
-        self, key: str | None = "X_d", scaler: StandardScaler | None = None
+        self, key: str = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d", None}
+        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d"}
 
         match key:
             case "X_d":
@@ -281,8 +286,6 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
                 X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
             case "V_d":
                 X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
-            case None:
-                return [self.normalize_inputs(k, scaler) for k in VALID_KEYS - {None}]
             case _:
                 raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
@@ -296,11 +299,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case "X_d":
                 self.X_d = scaler.transform(X)
             case "V_f":
-                self.V_fs = [scaler.transform(V_f) for V_f in self.V_fs]
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
             case "E_f":
-                self.E_fs = [scaler.transform(E_f) for E_f in self.E_fs]
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
             case "V_d":
-                self.V_ds = [scaler.transform(V_d) for V_d in self.V_ds]
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
             case _:
                 raise RuntimeError("unreachable code reached!")
 
@@ -362,6 +365,18 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def mols(self) -> list[Rxn]:
         return [(d.rct, d.pdt) for d in self.data]
 
+    @property
+    def d_vf(self) -> int:
+        return 0
+
+    @property
+    def d_ef(self) -> int:
+        return 0
+
+    @property
+    def d_vd(self) -> int:
+        return 0
+
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
@@ -402,16 +417,35 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
         return self.datasets[0].normalize_targets(scaler)
 
     def normalize_inputs(
-        self, key: str | None = "X_d", scaler: StandardScaler | None = None
+        self, key: str = "X_d", scaler: list[StandardScaler] | None = None
     ) -> list[StandardScaler]:
-        return [dset.normalize_inputs(key, scaler) for dset in self.datasets]
+        RXN_VALID_KEYS = {"X_d"}
+        match scaler:
+            case None:
+                return [
+                    dset.normalize_inputs(key)
+                    if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS
+                    else None
+                    for dset in self.datasets
+                ]
+            case _:
+                assert len(scaler) == len(
+                    self.datasets
+                ), "Number of scalers must match number of datasets!"
+
+                return [
+                    dset.normalize_inputs(key, s)
+                    if isinstance(dset, MoleculeDataset) or key in RXN_VALID_KEYS
+                    else None
+                    for dset, s in zip(self.datasets, scaler)
+                ]
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
     
     @property
     def d_xd(self) -> list[int]:
-        return sum(dset.d_xd for dset in self.datasets)
+        return dset.d_xd
     
     @property
     def d_vf(self) -> list[int]:

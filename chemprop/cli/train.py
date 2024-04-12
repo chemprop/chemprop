@@ -16,7 +16,6 @@ from chemprop.data import (
     MolGraphDataLoader,
     MolGraphDataset,
     MulticomponentDataset,
-    ReactionDataset,
     MoleculeDataset,
 )
 from chemprop.data import SplitType, split_component
@@ -459,7 +458,6 @@ def process_train_args(args: Namespace) -> Namespace:
         )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
-    args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
 
@@ -469,7 +467,7 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    X_d_transform, V_f_transform, E_f_transform, V_d_transform = None, None, None, None
+    X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms = [], [], [], []
 
     d_xd = train_dset.d_xd
     d_vf = train_dset.d_vf
@@ -477,30 +475,63 @@ def normalize_inputs(train_dset, val_dset, args):
     d_vd = train_dset.d_vd
 
     if d_xd > 0 and not args.no_descriptor_scaling:
-        X_d_scaler = train_dset.normalize_inputs("X_d")
-        val_dset.normalize_inputs("X_d", X_d_scaler)
-        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
-        X_d_transform = TensorTransform.from_standard_scaler(X_d_scaler)
+        scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", scaler)
+
+        scaler = scaler if not isinstance(scaler, list) else scaler[0]
+        logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
+        X_d_transform = TensorTransform.from_standard_scaler(scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
-        V_f_scaler = train_dset.normalize_inputs("V_f")
-        val_dset.normalize_inputs("V_f", V_f_scaler)
-        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
-        V_f_transform = GraphTransform.from_standard_scaler(V_f_scaler, "V", d_vd)
+        scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_f", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                V_f_transforms.append(None)
+
+            logger.info(
+                f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+            )
+            transform = GraphTransform.from_standard_scaler(scaler, "V", d_vf)
+            V_f_transforms.append(transform)
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
-        E_f_scaler = train_dset.normalize_inputs("E_f")
-        val_dset.normalize_inputs("E_f", E_f_scaler)
-        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
-        E_f_transform = GraphTransform.from_standard_scaler(E_f_scaler, "E", d_ef)
+        scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_f", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                E_f_transforms.append(None)
+
+            logger.info(
+                f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+            )
+            transform = GraphTransform.from_standard_scaler(scaler, "E", d_ef)
+            E_f_transforms.append(transform)
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
-        V_d_scaler = train_dset.normalize_inputs("V_d")
-        val_dset.normalize_inputs("V_d", V_d_scaler)
-        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
-        V_d_transform = TensorTransform.from_standard_scaler(V_d_scaler)
+        scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", scaler)
 
-    return X_d_transform, V_f_transform, E_f_transform, V_d_transform
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                V_d_transforms.append(None)
+
+            
+            logger.info(
+                f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+            )
+            transform = TensorTransform.from_standard_scaler(scaler)
+            V_d_transforms.append(transform)
+
+    return X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms
 
 
 def save_config(args: Namespace):
@@ -510,6 +541,12 @@ def save_config(args: Namespace):
         for key in config:
             if isinstance(config[key], Path):
                 config[key] = str(config[key])
+
+        for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+            if config[key] is not None:
+                for ind, path in config[key].items():
+                    config[key][ind] = str(path)
+
         json.dump(config, f, indent=4)
 
 
@@ -632,7 +669,7 @@ def build_model(
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
+        d_xd = train_dset.datasets[0].d_xd
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
@@ -793,6 +830,8 @@ def train_model(
 
 
 def main(args):
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+
     save_config(args)
 
     format_kwargs = dict(

@@ -31,7 +31,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         the number of message passing iterations
     undirected : bool, default=False
         if `True`, pass messages on undirected edges
-    dropout : float, default=0
+    dropout : float, default=0.0
         the dropout probability
     activation : str, default="relu"
         the activation function to use
@@ -52,7 +52,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_h: int = DEFAULT_HIDDEN_DIM,
         bias: bool = False,
         depth: int = 3,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,

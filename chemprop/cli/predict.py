@@ -249,15 +249,11 @@ def make_prediction_for_model(
 
     logger.info(model)
 
-    with torch.inference_mode():
-        trainer = pl.Trainer(
-            logger=False,
-            enable_progress_bar=True,
-            accelerator=args.accelerator,
-            devices=args.devices,
-        )
+    trainer = pl.Trainer(
+        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+    )
 
-        predss = trainer.predict(model, test_loader)
+    predss = trainer.predict(model, test_loader)
 
     # TODO: add uncertainty and calibration
     # if cal_dset is not None:
