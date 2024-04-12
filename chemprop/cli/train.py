@@ -15,7 +15,6 @@ from chemprop.data import (
     MolGraphDataLoader,
     MolGraphDataset,
     MulticomponentDataset,
-    ReactionDataset,
     MoleculeDataset,
 )
 from chemprop.data import SplitType, split_component
@@ -63,13 +62,7 @@ class TrainSubcommand(Subcommand):
         args = process_train_args(args)
         validate_train_args(args)
 
-        config_args = deepcopy(args)
-        for key, value in config_args.__dict__.items():
-            if isinstance(value, Path):
-                config_args.__dict__[key] = str(value)
-
-        config_path = str(args.output_dir / "config.toml")
-        cls.parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
+        save_config(cls.parser, args)
 
         main(args)
 
@@ -490,53 +483,77 @@ def normalize_inputs(train_dset, val_dset, args):
     X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
 
     if isinstance(train_dset, MulticomponentDataset):
-        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
-        d_vf = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
-        )
-        d_ef = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
-        )
-        d_vd = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
-        )
+        d_xd = train_dset.datasets[0].d_xd
+        d_vf = sum(dset.d_vf for dset in train_dset.datasets)
+        d_ef = sum(dset.d_ef for dset in train_dset.datasets)
+        d_vd = sum(dset.d_vd for dset in train_dset.datasets)
     else:
         d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf if not isinstance(train_dset, ReactionDataset) else 0
-        d_ef = train_dset.d_ef if not isinstance(train_dset, ReactionDataset) else 0
-        d_vd = train_dset.d_vd if not isinstance(train_dset, ReactionDataset) else 0
+        d_vf = train_dset.d_vf
+        d_ef = train_dset.d_ef
+        d_vd = train_dset.d_vd
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
-        logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
+
+        X_d_scaler = [X_d_scaler] if not isinstance(X_d_scaler, list) else X_d_scaler
+
+        scaler = X_d_scaler[0]
+        logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", V_f_scaler)
-        logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
+
+        V_f_scaler = [V_f_scaler] if not isinstance(V_f_scaler, list) else V_f_scaler
+
+        for i, scaler in enumerate(V_f_scaler):
+            if scaler is not None:
+                logger.info(
+                    f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", E_f_scaler)
-        logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
+
+        E_f_scaler = [E_f_scaler] if not isinstance(E_f_scaler, list) else E_f_scaler
+
+        for i, scaler in enumerate(E_f_scaler):
+            if scaler is not None:
+                logger.info(
+                    f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", V_d_scaler)
-        logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
+
+        V_d_scaler = [V_d_scaler] if not isinstance(V_d_scaler, list) else V_d_scaler
+
+        for i, scaler in enumerate(V_d_scaler):
+            if scaler is not None:
+                logger.info(
+                    f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                )
 
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
-def save_config(args: Namespace):
-    command_config_path = args.output_dir / "config.toml"
-    with open(command_config_path, "w") as f:
-        keys = ["--" + key.replace("_", "-") for key in vars(args)]
-        # keys = vars(args).keys()
-        values = [str(value) if isinstance(value, Path) else value for value in vars(args).values()]
-        config = dict(zip(keys, values))
-        toml.dump(config, f)
+def save_config(parser: ArgumentParser, args: Namespace):
+    config_args = deepcopy(args)
+    for key, value in config_args.__dict__.items():
+        if isinstance(value, Path):
+            config_args.__dict__[key] = str(value)
+
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if config_args.__dict__[key] is not None:
+            for ind, path in config_args.__dict__[key].items():
+                config_args.__dict__[key][ind] = str(path)
+
+    config_path = str(args.output_dir / "config.toml")
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -650,7 +667,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
+        d_xd = train_dset.datasets[0].d_xd
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
