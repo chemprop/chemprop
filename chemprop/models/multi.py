@@ -2,7 +2,6 @@ from typing import Iterable
 
 import torch
 from torch import Tensor
-from sklearn.preprocessing import StandardScaler
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor

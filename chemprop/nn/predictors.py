@@ -131,6 +131,7 @@ class RegressionFFN(_FFNPredictorBase):
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
 
+
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2

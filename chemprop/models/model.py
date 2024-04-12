@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Iterable
-from sklearn.preprocessing import StandardScaler
 
 from lightning import pytorch as pl
 import torch
@@ -11,7 +10,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
-from chemprop.nn.transforms import GraphTransform, TensorTransform, TensorUntransform
+from chemprop.nn.transforms import GraphTransform, TensorTransform
 
 
 class MPNN(pl.LightningModule):

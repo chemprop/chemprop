@@ -482,10 +482,8 @@ def validate_train_args(args):
 def normalize_inputs(train_dset, val_dset, args):
     X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms = [], [], [], []
 
-    d_xd = train_dset.d_xd
     d_vf = train_dset.d_vf
     d_ef = train_dset.d_ef
-    d_vd = train_dset.d_vd
 
     if not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
@@ -508,9 +506,7 @@ def normalize_inputs(train_dset, val_dset, args):
                 V_f_transforms.append(None)
                 continue
 
-            logger.info(
-                f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
-            )
+            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
             transform = GraphTransform.from_standard_scaler(scaler, "V", d_vf)
             V_f_transforms.append(transform)
 
@@ -525,9 +521,7 @@ def normalize_inputs(train_dset, val_dset, args):
                 E_f_transforms.append(None)
                 continue
 
-            logger.info(
-                f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
-            )
+            logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
             transform = GraphTransform.from_standard_scaler(scaler, "E", d_ef)
             E_f_transforms.append(transform)
 
@@ -541,7 +535,7 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 V_d_transforms.append(None)
                 continue
-            
+
             logger.info(
                 f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
             )
@@ -647,7 +641,7 @@ def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
     output_scaler: StandardScaler,
-    input_transforms: tuple[TensorTransform, GraphTransform, GraphTransform, TensorTransform]
+    input_transforms: tuple[TensorTransform, GraphTransform, GraphTransform, TensorTransform],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 

@@ -442,19 +442,19 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
-    
+
     @property
     def d_xd(self) -> list[int]:
         return self.datasets[0].d_xd
-    
+
     @property
     def d_vf(self) -> list[int]:
         return sum(dset.d_vf for dset in self.datasets)
-    
+
     @property
     def d_ef(self) -> list[int]:
         return sum(dset.d_ef for dset in self.datasets)
-    
+
     @property
     def d_vd(self) -> list[int]:
         return sum(dset.d_vd for dset in self.datasets)
