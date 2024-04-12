@@ -822,7 +822,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
