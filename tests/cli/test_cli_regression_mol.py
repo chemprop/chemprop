@@ -5,7 +5,9 @@ import pytest
 import torch
 
 from chemprop.cli.main import main
+from chemprop.cli.train import TrainSubcommand
 from chemprop.models.model import MPNN
+from chemprop.cli.hpopt import NO_RAY, NO_HYPEROPT  # , NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 
@@ -26,6 +28,11 @@ def model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
 
+@pytest.fixture
+def config_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "config.toml")
+
+
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
@@ -34,6 +41,37 @@ def test_train_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_train_config(monkeypatch, config_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        config_path,
+        "--epochs",
+        "2",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    new_config_path = tmp_path / "config.toml"
+    parser = TrainSubcommand.parser
+
+    new_args = parser.parse_args(["--config-path", str(new_config_path)])
+    old_args = parser.parse_args(["--config-path", str(config_path)])
+
+    for key, value in old_args.__dict__.items():
+        if key not in ["config_path", "output_dir", "epochs"]:
+            assert getattr(new_args, key) == value
+
+    assert new_args.epochs == 2
 
 
 def test_train_quick_features(monkeypatch, data_path):
@@ -223,3 +261,61 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     assert torch.equal(
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
+
+
+# @pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
+# def test_optuna_quick(monkeypatch, data_path, tmp_path):
+#     input_path, *_ = data_path
+
+#     args = [
+#         "chemprop",
+#         "hpopt",
+#         "-i",
+#         input_path,
+#         "--epochs",
+#         "1",
+#         "--hpopt-save-dir",
+#         str(tmp_path),
+#         "--raytune-num-samples",
+#         "2",
+#         "--raytune-search-algorithm",
+#         "optuna",
+#     ]
+
+#     with monkeypatch.context() as m:
+#         m.setattr("sys.argv", args)
+#         main()
+
+#     assert (tmp_path / "best_params.json").exists()
+#     assert (tmp_path / "best_checkpoint.ckpt").exists()
+#     assert (tmp_path / "all_progress.csv").exists()
+#     assert (tmp_path / "ray_results").exists()
+
+
+@pytest.mark.skipif(NO_RAY and NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "hpopt",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--hpopt-save-dir",
+        str(tmp_path),
+        "--raytune-num-samples",
+        "2",
+        "--raytune-search-algorithm",
+        "hyperopt",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_checkpoint.ckpt").exists()
+    assert (tmp_path / "all_progress.csv").exists()
+    assert (tmp_path / "ray_results").exists()
