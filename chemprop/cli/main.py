@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from configargparse import ArgumentParser
 import logging
 import sys
 from pathlib import Path
