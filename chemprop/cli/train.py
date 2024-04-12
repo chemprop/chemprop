@@ -456,7 +456,6 @@ def process_train_args(args: Namespace) -> Namespace:
         )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
-    args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
 
@@ -811,6 +810,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+
     save_config(args)
 
     format_kwargs = dict(
