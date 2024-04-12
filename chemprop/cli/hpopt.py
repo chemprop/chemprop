@@ -116,7 +116,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         all - include search for all 13 inidividual keyword options
 
     Individual supported parameters:
-        {DEFAULT_SEARCH_SPACE.keys()}
+        {list(DEFAULT_SEARCH_SPACE.keys())}
     """,
     )
 
@@ -192,7 +192,7 @@ def process_hpopt_args(args: Namespace) -> Namespace:
     for keyword in args.search_parameter_keywords:
         if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in SEARCH_SPACE:
             raise ValueError(
-                f"Search parameter keyword: {keyword} not in available options: {SEARCH_SPACE.keys()}."
+                f"Search parameter keyword: {keyword} not in available options: {list(SEARCH_PARAM_KEYWORDS_MAP.keys()) + list(SEARCH_SPACE.keys())}."
             )
 
         search_parameters.update(
@@ -351,12 +351,6 @@ def main(args: Namespace):
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
     val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-    # if test_dset is not None:
-    #     test_loader = MolGraphDataLoader(
-    #         test_dset, args.batch_size, args.num_workers, shuffle=False
-    #     )
-    # else:
-    #     test_loader = None
 
     torch.manual_seed(args.pytorch_seed)
 
