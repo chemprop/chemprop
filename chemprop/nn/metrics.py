@@ -43,6 +43,12 @@ __all__ = [
 
 
 class Metric(LossFunction):
+    """
+    .. note::
+        This class inherits from :class:`LossFunction`, which requires task_weights. These
+        task_weights are not used in Metric and can be set to any Tensor.
+    """
+
     minimize: bool = True
 
     def forward(

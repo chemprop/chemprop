@@ -27,17 +27,15 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
-    def __init__(self, task_weights: Tensor | None = None):
+    def __init__(self, task_weights: Tensor):
         """
         Parameters
         ----------
         task_weights : Tensor
-            a tensor of shape `t` or `1 x t` containing the per-task weight. `None` option is for
-            when the function is used as a metric.
+            a tensor of shape `t` or `1 x t` containing the per-task weight.
         """
         super().__init__()
-        if task_weights is not None:
-            self.register_buffer("task_weights", task_weights)
+        self.register_buffer("task_weights", task_weights)
 
     def forward(
         self,

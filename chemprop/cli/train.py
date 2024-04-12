@@ -662,7 +662,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     else:
         criterion = None
     if args.metrics is not None:
-        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+        metrics = [
+            Factory.build(MetricRegistry[metric], task_weights=torch.Tensor([1]))
+            for metric in args.metrics
+        ]
     else:
         metrics = None
 

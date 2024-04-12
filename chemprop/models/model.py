@@ -85,7 +85,7 @@ class MPNN(pl.LightningModule):
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
-            else [self.predictor._default_metric(), self.criterion]
+            else [self.predictor._default_metric(torch.Tensor([1])), self.criterion]
         )
 
         self.warmup_epochs = warmup_epochs
