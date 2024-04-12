@@ -474,15 +474,17 @@ def normalize_inputs(train_dset, val_dset, args):
     d_ef = train_dset.d_ef
     d_vd = train_dset.d_vd
 
-    if d_xd > 0 and not args.no_descriptor_scaling:
+    if not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", scaler)
 
         scaler = scaler if not isinstance(scaler, list) else scaler[0]
-        logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
-        X_d_transform = TensorTransform.from_standard_scaler(scaler)
 
-    if d_vf > 0 and not args.no_atom_feature_scaling:
+        if scaler is not None:
+            logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            X_d_transform = TensorTransform.from_standard_scaler(scaler)
+
+    if not args.no_atom_feature_scaling:
         scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", scaler)
 
@@ -491,6 +493,7 @@ def normalize_inputs(train_dset, val_dset, args):
         for i, scaler in enumerate(scalers):
             if scaler is None:
                 V_f_transforms.append(None)
+                continue
 
             logger.info(
                 f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
@@ -498,7 +501,7 @@ def normalize_inputs(train_dset, val_dset, args):
             transform = GraphTransform.from_standard_scaler(scaler, "V", d_vf)
             V_f_transforms.append(transform)
 
-    if d_ef > 0 and not args.no_bond_feature_scaling:
+    if not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", scaler)
 
@@ -507,6 +510,7 @@ def normalize_inputs(train_dset, val_dset, args):
         for i, scaler in enumerate(scalers):
             if scaler is None:
                 E_f_transforms.append(None)
+                continue
 
             logger.info(
                 f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
@@ -514,7 +518,7 @@ def normalize_inputs(train_dset, val_dset, args):
             transform = GraphTransform.from_standard_scaler(scaler, "E", d_ef)
             E_f_transforms.append(transform)
 
-    if d_vd > 0 and not args.no_atom_descriptor_scaling:
+    if not args.no_atom_descriptor_scaling:
         scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", scaler)
 
@@ -523,7 +527,7 @@ def normalize_inputs(train_dset, val_dset, args):
         for i, scaler in enumerate(scalers):
             if scaler is None:
                 V_d_transforms.append(None)
-
+                continue
             
             logger.info(
                 f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
@@ -635,7 +639,7 @@ def build_model(
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
-    X_d_transform, V_f_transform, E_f_transform, V_d_transform = input_transforms
+    X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms = input_transforms
 
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -653,7 +657,7 @@ def build_model(
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
-                V_d_transform=V_d_transform,
+                V_d_transform=V_d_transforms[i],
             )
             for i in range(train_dset.n_components)
         ]
@@ -683,7 +687,7 @@ def build_model(
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
-            V_d_transform=V_d_transform,
+            V_d_transform=V_d_transforms[0],
         )
         d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
@@ -740,6 +744,8 @@ def build_model(
 
         return model
 
+    V_f_transform = V_f_transforms[0] if mpnn_cls == MPNN else V_f_transforms
+    E_f_transform = E_f_transforms[0] if mpnn_cls == MPNN else E_f_transforms
     return mpnn_cls(
         mp_block,
         agg,
