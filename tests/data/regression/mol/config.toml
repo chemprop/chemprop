@@ -1,4 +1,4 @@
-data-path = /home/hwpang/Projects/chemprop_v2_dev/chemprop/tests/data/regression.csv
+data-path = tests/data/regression.csv
 output-dir = trained_model
 epochs = 1
 num-workers = 0
