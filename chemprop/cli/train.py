@@ -547,7 +547,7 @@ def save_config(parser: ArgumentParser, args: Namespace):
             setattr(config_args, key, str(value))
 
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
-        if getattr(config_arg, key) is not None:
+        if getattr(config_args, key) is not None:
             for index, path in getattr(config_args, key).items():
                 getattr(config_args, key)[index] = str(path)
 
