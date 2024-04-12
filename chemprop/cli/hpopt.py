@@ -317,7 +317,6 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
 
 def main(args: Namespace):
-
     if NO_RAY:
         raise ImportError(
             "Ray Tune requires ray to be installed. Use 'pip -U install ray[tune]' to install."
