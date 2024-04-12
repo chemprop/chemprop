@@ -41,12 +41,29 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
-def test_train_config(monkeypatch, config_path):
-    args = ["chemprop", "train", "--config-path", config_path]
+def test_train_config(monkeypatch, config_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        config_path,
+        "--epochs",
+        "2",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+    new_config_path = tmp_path / "config.json"
+    with open(new_config_path, "r") as f:
+        new_config = f.read()
+
+    assert new_config["epochs"] == 2
 
 
 def test_train_quick_features(monkeypatch, data_path):
