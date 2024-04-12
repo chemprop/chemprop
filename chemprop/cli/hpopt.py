@@ -23,6 +23,7 @@ import torch
 from lightning import pytorch as pl
 
 NO_RAY = False
+DEFAULT_SEARCH_SPACE = {}
 try:
     from ray import tune
     from ray.train import CheckpointConfig, RunConfig, ScalingConfig
@@ -316,6 +317,12 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
 
 
 def main(args: Namespace):
+
+    if NO_RAY:
+        raise ImportError(
+            "Ray Tune requires ray to be installed. Use 'pip -U install ray[tune]' to install."
+        )
+
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
