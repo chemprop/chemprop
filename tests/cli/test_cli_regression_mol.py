@@ -2,7 +2,6 @@
 """
 
 import pytest
-import toml
 import torch
 
 from chemprop.cli.main import main

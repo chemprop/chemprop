@@ -62,15 +62,15 @@ class TrainSubcommand(Subcommand):
         validate_common_args(args)
         args = process_train_args(args)
         validate_train_args(args)
-        
+
         config_args = deepcopy(args)
         for key, value in config_args.__dict__.items():
             if isinstance(value, Path):
                 config_args.__dict__[key] = str(value)
-        
+
         config_path = str(args.output_dir / "config.toml")
         cls.parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
-        
+
         main(args)
 
 
@@ -807,7 +807,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,

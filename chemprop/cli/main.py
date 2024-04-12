@@ -1,5 +1,5 @@
-import json
-from configargparse import ArgumentParser, Namespace
+
+from configargparse import ArgumentParser
 import logging
 import sys
 from pathlib import Path
