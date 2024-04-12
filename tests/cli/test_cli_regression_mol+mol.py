@@ -127,11 +127,13 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
     with open(splits_file, "w") as f:
         json.dump(splits, f)
 
+    input_path, *_ = data_path
+
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--smiles-columns",
         "smiles",
         "solvent",
