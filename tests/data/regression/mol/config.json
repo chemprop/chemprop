@@ -20,7 +20,7 @@
     "atom_features_path": null,
     "atom_descriptors_path": null,
     "bond_features_path": null,
-    "data_path": "/home/hwpang/Projects/chemprop_v2_dev/chemprop/tests/data/regression.csv",
+    "data_path": "chemprop/tests/data/regression.csv",
     "output_dir": "trained_model",
     "model_frzn": null,
     "frzn_ffn_layers": 0,
