@@ -34,6 +34,22 @@ try:
     )
     from ray.train.torch import TorchTrainer
     from ray.tune.schedulers import ASHAScheduler
+
+    DEFAULT_SEARCH_SPACE = {
+        "activation": tune.choice(categories=list(Activation.keys())),
+        "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
+        "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
+        "batch_size": tune.loguniform(lower=16, upper=256, base=2),
+        "depth": tune.randint(lower=2, upper=6),
+        "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
+        "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+        "ffn_num_layers": tune.randint(lower=2, upper=6),
+        "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
+        "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+        "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
+        "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
+        "warmup_epochs": None,
+    }
 except ImportError:
     NO_RAY = True
 
@@ -51,22 +67,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_SEARCH_SPACE = {
-    "activation": tune.choice(categories=list(Activation.keys())),
-    "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
-    "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-    "batch_size": tune.loguniform(lower=16, upper=256, base=2),
-    "depth": tune.randint(lower=2, upper=6),
-    "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
-    "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
-    "ffn_num_layers": tune.randint(lower=2, upper=6),
-    "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-    "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
-    "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-    "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
-    "warmup_epochs": None,
-}
 
 SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
