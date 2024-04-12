@@ -45,6 +45,8 @@ def test_train_quick(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
+        "--split-key-molecule",
+        "1",
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
