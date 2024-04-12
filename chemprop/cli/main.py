@@ -1,4 +1,3 @@
-
 from configargparse import ArgumentParser
 import logging
 import sys
