@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from chemprop.cli.main import main
+from chemprop.cli.train import TrainSubcommand
 from chemprop.models.model import MPNN
 
 pytestmark = pytest.mark.CLI
@@ -58,6 +59,18 @@ def test_train_config(monkeypatch, config_path, tmp_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+    new_config_path = tmp_path / "config.toml"
+    parser = TrainSubcommand.parser
+
+    new_args = parser.parse_args(["--config-path", str(new_config_path)])
+    old_args = parser.parse_args(["--config-path", str(config_path)])
+
+    for key, value in old_args.__dict__.items():
+        if key not in ["config_path", "output_dir", "epochs"]:
+            assert getattr(new_args, key) == value
+
+    assert new_args.epochs == 2
 
 
 def test_train_quick_features(monkeypatch, data_path):
