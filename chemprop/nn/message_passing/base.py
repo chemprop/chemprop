@@ -9,6 +9,7 @@ from chemprop.exceptions import InvalidShapeError
 from chemprop.data import BatchMolGraph
 from chemprop.nn.utils import Activation, get_activation_function
 from chemprop.nn.message_passing.proto import MessagePassing
+from chemprop.nn.transforms import TensorTransform
 
 
 class _MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -55,6 +56,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
+        V_d_transform: TensorTransform | None = None,
         # layers_per_message: int = 1,
     ):
         super().__init__()
@@ -66,6 +68,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
+        self.V_d_transform = V_d_transform if V_d_transform is not None else nn.Identity()
 
     @property
     def output_dim(self) -> int:
@@ -162,6 +165,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         H = self.dropout(H)
 
         if V_d is not None:
+            V_d = self.V_d_transform(V_d)
             try:
                 H = self.W_d(torch.cat((H, V_d), dim=1))  # V x (d_o + d_vd)
                 H = self.dropout(H)

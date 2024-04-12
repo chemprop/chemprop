@@ -22,7 +22,7 @@ from chemprop.data import (
 from chemprop.data import SplitType, split_component
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
-from chemprop.nn.transforms import OutputTransform
+from chemprop.nn.transforms import GraphTransform, TensorTransform, TensorUntransform
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     BondMessagePassing,
@@ -469,50 +469,38 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    input_scalers = {}
+    X_d_transform, V_f_transform, E_f_transform, V_d_transform = None, None, None, None
 
-    if isinstance(train_dset, MulticomponentDataset):
-        d_xd = sum(dset.d_xd for dset in train_dset.datasets)
-        d_vf = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vf for dset in train_dset.datasets
-        )
-        d_ef = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_ef for dset in train_dset.datasets
-        )
-        d_vd = sum(
-            0 if isinstance(dset, ReactionDataset) else dset.d_vd for dset in train_dset.datasets
-        )
-    else:
-        d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf if not isinstance(train_dset, ReactionDataset) else 0
-        d_ef = train_dset.d_ef if not isinstance(train_dset, ReactionDataset) else 0
-        d_vd = train_dset.d_vd if not isinstance(train_dset, ReactionDataset) else 0
+    d_xd = train_dset.d_xd
+    d_vf = train_dset.d_vf
+    d_ef = train_dset.d_ef
+    d_vd = train_dset.d_vd
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         X_d_scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", X_d_scaler)
         logger.info(f"Features: loc = {X_d_scaler.mean_}, scale = {X_d_scaler.scale_}")
-        input_scalers["X_d"] = X_d_scaler
+        X_d_transform = TensorTransform.from_standard_scaler(X_d_scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         V_f_scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", V_f_scaler)
         logger.info(f"Atom features: loc = {V_f_scaler.mean_}, scale = {V_f_scaler.scale_}")
-        input_scalers["V_f"] = V_f_scaler
+        V_f_transform = GraphTransform.from_standard_scaler(V_f_scaler, "V", d_vd)
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         E_f_scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", E_f_scaler)
         logger.info(f"Bond features: loc = {E_f_scaler.mean_}, scale = {E_f_scaler.scale_}")
-        input_scalers["E_f"] = E_f_scaler
+        E_f_transform = GraphTransform.from_standard_scaler(E_f_scaler, "E", d_ef)
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         V_d_scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", V_d_scaler)
         logger.info(f"Atom descriptors: loc = {V_d_scaler.mean_}, scale = {V_d_scaler.scale_}")
-        input_scalers["V_d"] = V_d_scaler
+        V_d_transform = TensorTransform.from_standard_scaler(V_d_scaler)
 
-    return input_scalers
+    return X_d_transform, V_f_transform, E_f_transform, V_d_transform
 
 
 def save_config(args: Namespace):
@@ -606,9 +594,11 @@ def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
     output_scaler: StandardScaler,
-    input_scalers: list[StandardScaler],
+    input_transforms: tuple[TensorTransform, GraphTransform, GraphTransform, TensorTransform]
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+
+    X_d_transform, V_f_transform, E_f_transform, V_d_transform = input_transforms
 
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -626,6 +616,7 @@ def build_model(
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
+                V_d_transform=V_d_transform,
             )
             for i in range(train_dset.n_components)
         ]
@@ -655,6 +646,7 @@ def build_model(
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
+            V_d_transform=V_d_transform,
         )
         d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
@@ -677,7 +669,7 @@ def build_model(
         metrics = None
 
     output_transform = (
-        OutputTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+        TensorUntransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
     )
     predictor = Factory.build(
         predictor_cls,
@@ -722,7 +714,9 @@ def build_model(
         args.init_lr,
         args.max_lr,
         args.final_lr,
-        input_scalers,
+        X_d_transform=X_d_transform,
+        V_f_transform=V_f_transform,
+        E_f_transform=E_f_transform,
     )
 
 
