@@ -147,20 +147,19 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 def process_common_args(args: Namespace) -> Namespace:
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)
-        
+
         if not inds_paths:
             continue
 
         ind_path_dict = {}
-        
-        for ind_path in inds_paths:
 
+        for ind_path in inds_paths:
             if len(ind_path) > 2:
                 raise ArgumentError(
                     argument=None,
                     message="Too many arguments given for atom features/descriptors or bond features. It can be either a two-tupoe of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
                 )
-            
+
             if len(ind_path) == 1:
                 ind = 0
                 path = ind_path[0]
@@ -172,7 +171,7 @@ def process_common_args(args: Namespace) -> Namespace:
                     argument=None,
                     message=f"Duplicate atom features/descriptors or bond features given for molcule index {ind}.",
                 )
-                
+
             ind_path_dict[int(ind)] = Path(path)
 
         setattr(args, key, ind_path_dict)
