@@ -147,18 +147,22 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 def process_common_args(args: Namespace) -> Namespace:
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)
+        
+        if not inds_paths:
+            continue
+
         ind_path_dict = {}
-        if inds_paths:
-            for ind_path in inds_paths:
-                if len(ind_path) == 1:
-                    ind = 0
-                    path = ind_path[0]
-                else:
-                    ind, path = ind_path
+        
+        for ind_path in inds_paths:
+            if len(ind_path) == 1:
+                ind = 0
+                path = ind_path[0]
+            else:
+                ind, path = ind_path
 
-                ind_path_dict[int(ind)] = Path(path)
+            ind_path_dict[int(ind)] = Path(path)
 
-            setattr(args, key, ind_path_dict)
+        setattr(args, key, ind_path_dict)
 
     return args
 
