@@ -22,7 +22,7 @@ copyright = '2024, The Chemprop Development Team'
 author = 'The Chemprop Development Team'
 
 # The full version, including alpha/beta/rc tags
-release = '1.7.0'
+release = '1.7.1'
 
 
 # -- General configuration ---------------------------------------------------
