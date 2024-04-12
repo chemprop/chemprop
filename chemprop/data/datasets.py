@@ -260,7 +260,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if self.V_ds[0] is None else self.V_fs[0].shape[1]
+        return 0 if self.V_fs[0] is None else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
@@ -445,7 +445,7 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     
     @property
     def d_xd(self) -> list[int]:
-        return dset.d_xd
+        return self.datasets[0].d_xd
     
     @property
     def d_vf(self) -> list[int]:
