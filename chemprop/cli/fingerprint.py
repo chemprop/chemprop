@@ -128,10 +128,13 @@ def make_fingerprint_for_model(
     else:
         test_dset = test_dsets[0]
 
-    X_d_scaler = input_scalers.get("X_d", None) if input_scalers else None
-    V_f_scaler = input_scalers.get("V_f", None) if input_scalers else None
-    E_f_scaler = input_scalers.get("E_f", None) if input_scalers else None
-    V_d_scaler = input_scalers.get("V_d", None) if input_scalers else None
+    if input_scalers:
+        X_d_scaler = input_scalers.get("X_d")
+        V_f_scaler = input_scalers.get("V_f")
+        E_f_scaler = input_scalers.get("E_f")
+        V_d_scaler = input_scalers.get("V_d")
+    else:
+        X_d_scaler = V_f_scaler = E_f_scaler = V_d_scaler = None
 
     if X_d_scaler is not None:
         test_dset.normalize_inputs("X_d", X_d_scaler)
