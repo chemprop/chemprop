@@ -88,15 +88,17 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
 
     # convert the predictor block
     if args_v1.target_weights is not None:
-        w_t = torch.tensor(args_v1.target_weights).unsqueeze(0)
+        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
     else:
-        w_t = torch.ones(args_v1.num_tasks).unsqueeze(0)
+        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
 
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
             "activation": args_v1.activation,
             "cls": PredictorRegistry[args_v1.dataset_type],
-            "criterion": Factory.build(LossFunctionRegistry[args_v1.loss_function], w_t=w_t),
+            "criterion": Factory.build(
+                LossFunctionRegistry[args_v1.loss_function], task_weights=task_weights
+            ),
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
             "input_dim": args_v1.hidden_size,

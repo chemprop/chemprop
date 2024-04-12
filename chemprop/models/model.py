@@ -132,14 +132,14 @@ class MPNN(pl.LightningModule):
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
-        bmg, V_d, X_d, targets, w_s, lt_mask, gt_mask = batch
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
         Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
-        l = self.criterion(preds, targets, mask, w_s, lt_mask, gt_mask)
+        l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
         self.log("train_loss", l, prog_bar=True)
 

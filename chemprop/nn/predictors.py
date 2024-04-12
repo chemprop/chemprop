@@ -94,7 +94,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
-        self.criterion = criterion or self._default_criterion(w_t=torch.ones(self.n_tasks))
+        self.criterion = criterion or self._default_criterion(task_weights=torch.ones(self.n_tasks))
 
     @property
     def input_dim(self) -> int:

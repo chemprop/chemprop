@@ -50,7 +50,7 @@ class Metric(LossFunction):
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
-        w_s: Tensor,
+        weights: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -87,7 +87,7 @@ class RMSEMetric(MSEMetric):
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
-        w_s: Tensor,
+        weights: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
