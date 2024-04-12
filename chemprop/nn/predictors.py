@@ -68,13 +68,14 @@ class Predictor(nn.Module, HasHParams):
         Parameters
         ----------
         Z : Tensor
-            a tensor of shape `n x d` containing the input data to encode.
+            a tensor of shape `n x d` containing the input data to encode, where `d` is the
+            input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
             layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
             value, and the behavior of this function is dependent on the underlying list
             slicing behavior. For example:
-            
+
             * ``i=0``: use a 0-layer MLP (i.e., a no-op)
             * ``i=1``: use only the first block
             * ``i=-1``: use _up to_ the final block
@@ -82,7 +83,8 @@ class Predictor(nn.Module, HasHParams):
         Returns
         -------
         Tensor
-            a tensor of varying shape depending on the batch size and hidden size.
+            a tensor of shape `n x h` containing the :attr:`i`-th hidden representation, where
+            `h` is the output size of ``MLP[:i]``.
         """
         pass
 

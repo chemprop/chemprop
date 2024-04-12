@@ -129,10 +129,10 @@ class MPNN(pl.LightningModule):
         bmg: BatchMolGraph,
         V_d: Tensor | None = None,
         X_d: Tensor | None = None,
-        index: int = None,
+        i: int = None,
     ) -> Tensor:
-        """the final hidden representations for the input molecules"""
-        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), index)
+        """Calculate the :attr:`i`-th hidden representation"""
+        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), i)
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
