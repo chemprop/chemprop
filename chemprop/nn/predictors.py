@@ -62,21 +62,22 @@ class Predictor(nn.Module, HasHParams):
         pass
 
     @abstractmethod
-    def encode(self, Z: Tensor, indxe: int) -> Tensor:
-        """
-        Retrieves the hidden representations of the output for the i-th block in the predictor for the given input molecules.
+    def encode(self, Z: Tensor, i: int) -> Tensor:
+        """Calculate the :attr:`i`-th hidden representation
 
         Parameters
         ----------
         Z : Tensor
-            a tensor for a batch of given input molecules
-        index : int
-            an integer index indicates which linear layer returns the encoding in the FFN.
-            An index of 0 denotes the post-aggregation representation through a 0-layer MLP,
-            while an index of 1 represents the output from the first linear layer in the FFN,
-            and so forth.
-        .. important::
-            If `index` is larger than `n_layers` in the FFN. It would alwasy return the output of the FFN.
+            a tensor of shape `n x d` containing the input data to encode.
+        i : int
+            The stop index of slice of the MLP used to encode the input. That is, use all
+            layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
+            value, and the behavior of this function is dependent on the underlying list
+            slicing behavior. For example:
+            
+            * ``i=0``: use a 0-layer MLP (i.e., a no-op)
+            * ``i=1``: use only the first block
+            * ``i=-1``: use _up to_ the final block
 
         Returns
         -------

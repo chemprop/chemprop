@@ -166,14 +166,13 @@ def make_fingerprint_for_model(
                 model.encoding(batch.bmg, batch.V_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
             ]
-        H = torch.cat(encodings, 0)
+        H = torch.cat(encodings, 0).numpy()
 
     if output_path.suffix in [".pkl", ".pckl", ".pickle"]:
         with open(output_path, "wb") as f:
             pickle.dump(H, f)
     if output_path.suffix in [".npz"]:
-        with open(output_path, "wb") as f:
-            np.savez(output_path, H)
+        np.savez(output_path, H=H)
     elif output_path.suffix == ".csv":
         fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
         df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
