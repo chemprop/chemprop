@@ -1,6 +1,8 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
+import json
+
 import pytest
 import torch
 
@@ -61,7 +63,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
 
     new_config_path = tmp_path / "config.json"
     with open(new_config_path, "r") as f:
-        new_config = f.read()
+        new_config = json.load(f)
 
     assert new_config["epochs"] == 2
 
