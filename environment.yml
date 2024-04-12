@@ -3,14 +3,14 @@ channels:
   - pytorch
   - conda-forge
 dependencies:
-  - python=3.11
+  - python>=3.11
   - pytorch::pytorch>=2.1
   - pytorch::torchaudio
   - pytorch::torchvision
   - astartes[molecules]
   - aimsim
-  - lightning
-  - numpy
+  - lightning>=2.0
+  - numpy<2.0
   - pandas
   - rdkit
   - scikit-learn
