@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from copy import deepcopy
 import pandas as pd
+import numpy as np
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -794,11 +795,25 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     "scale", torch.tensor(scaler.scale_).view(1, -1).float()
                 )
             results = trainer.test(model, test_loader)[0]
-            logger.info(f"Test results: {results}")
+            logger.info(f"Batch Averaged Test results: {results}")
 
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
+                targets = test_loader.dataset.Y
+                mask = torch.from_numpy(np.isfinite(targets))
+                targets = np.nan_to_num(targets, nan=0.0)
+                w_s = torch.from_numpy(test_loader.dataset.weights)
+                w_t = model.w_t
+                lt_mask = torch.from_numpy(test_loader.dataset.lt_mask) if test_loader.dataset.lt_mask[0] else None
+                gt_mask = torch.from_numpy(test_loader.dataset.gt_mask) if test_loader.dataset.gt_mask[0] else None
+                preds_losses = [
+                metric(torch.from_numpy(preds), torch.from_numpy(targets), mask, w_s, w_t, lt_mask, gt_mask)
+                for metric in model.metrics
+                ]
+                preds_metrics = {f"Entire Test Set/{m.alias}": l for m, l in zip(model.metrics, preds_losses)}
+                logger.info(preds_metrics)
+
                 columns = get_column_names(
                     args.data_path,
                     args.smiles_columns,
