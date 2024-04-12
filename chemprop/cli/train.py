@@ -835,13 +835,31 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 targets = np.nan_to_num(targets, nan=0.0)
                 w_s = torch.from_numpy(test_loader.dataset.weights)
                 w_t = model.w_t
-                lt_mask = torch.from_numpy(test_loader.dataset.lt_mask) if test_loader.dataset.lt_mask[0] else None
-                gt_mask = torch.from_numpy(test_loader.dataset.gt_mask) if test_loader.dataset.gt_mask[0] else None
+                lt_mask = (
+                    torch.from_numpy(test_loader.dataset.lt_mask)
+                    if test_loader.dataset.lt_mask[0]
+                    else None
+                )
+                gt_mask = (
+                    torch.from_numpy(test_loader.dataset.gt_mask)
+                    if test_loader.dataset.gt_mask[0]
+                    else None
+                )
                 preds_losses = [
-                metric(torch.from_numpy(preds), torch.from_numpy(targets), mask, w_s, w_t, lt_mask, gt_mask)
-                for metric in model.metrics
+                    metric(
+                        torch.from_numpy(preds),
+                        torch.from_numpy(targets),
+                        mask,
+                        w_s,
+                        w_t,
+                        lt_mask,
+                        gt_mask,
+                    )
+                    for metric in model.metrics
                 ]
-                preds_metrics = {f"Entire Test Set/{m.alias}": l for m, l in zip(model.metrics, preds_losses)}
+                preds_metrics = {
+                    f"Entire Test Set/{m.alias}": l for m, l in zip(model.metrics, preds_losses)
+                }
                 logger.info(preds_metrics)
 
                 columns = get_column_names(
