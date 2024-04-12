@@ -1,10 +1,10 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from configargparse import ArgumentParser, Namespace, ArgumentError
 import logging
 from pathlib import Path
 import sys
-import json
 from copy import deepcopy
 import pandas as pd
+import json
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -16,8 +16,9 @@ from chemprop.data import (
     MolGraphDataset,
     MulticomponentDataset,
     MoleculeDataset,
+    ReactionDatapoint,
 )
-from chemprop.data import SplitType, split_component
+from chemprop.data import SplitType, make_split_indices, split_data_by_indices
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -36,6 +37,7 @@ from chemprop.cli.utils import (
     build_data_from_files,
     make_dataset,
     get_column_names,
+    parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import MoleculeFeaturizerRegistry
@@ -46,11 +48,14 @@ logger = logging.getLogger(__name__)
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "train a chemprop model"
+    parser = None
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = add_common_args(parser)
-        return add_train_args(parser)
+        parser = add_train_args(parser)
+        cls.parser = parser
+        return parser
 
     @classmethod
     def func(cls, args: Namespace):
@@ -58,14 +63,22 @@ class TrainSubcommand(Subcommand):
         validate_common_args(args)
         args = process_train_args(args)
         validate_train_args(args)
+
+        args.output_dir.mkdir(exist_ok=True, parents=True)
+        save_config(cls.parser, args)
         main(args)
 
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
+        "--config-path",
+        type=Path,
+        is_config_file=True,
+        help="Path to a configuration file. Command line arguments override values in the configuration file.",
+    )
+    parser.add_argument(
         "-i",
         "--data-path",
-        required=True,
         type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
@@ -411,26 +424,19 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    # TODO: Add in v2.1
-    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    # split_args.add_argument(
-    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-dir",
-    #     help="Directory in which to find cross validation index files.",
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-file",
-    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    # )
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
+    )
+    split_args.add_argument(
+        "--splits-file",
+        type=Path,
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys 'train', 'val', and 'test' and values as lists of indices or strings formatted like '0-2,4'. See documentation for more details.",
+    )
+    train_data_args.add_argument(
+        "--splits-column",
+        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
     )
     split_args.add_argument(
         "--data-seed",
@@ -450,6 +456,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.config_path is None and args.data_path is None:
+        raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
@@ -526,20 +535,19 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
-def save_config(args: Namespace):
-    command_config_path = args.output_dir / "config.json"
-    with open(command_config_path, "w") as f:
-        config = deepcopy(vars(args))
-        for key in config:
-            if isinstance(config[key], Path):
-                config[key] = str(config[key])
+def save_config(parser: ArgumentParser, args: Namespace):
+    config_args = deepcopy(args)
+    for key, value in vars(config_args).items():
+        if isinstance(value, Path):
+            setattr(config_args, key, str(value))
 
-        for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
-            if config[key] is not None:
-                for ind, path in config[key].items():
-                    config[key][ind] = str(path)
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if getattr(config_args, key) is not None:
+            for index, path in getattr(config_args, key).items():
+                getattr(config_args, key)[index] = str(path)
 
-        json.dump(config, f, indent=4)
+    config_path = str(args.output_dir / "config.toml")
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -569,15 +577,49 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-    multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.data_seed, num_folds=args.num_folds)
-    split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
+    if args.splits_column is not None:
+        df = pd.read_csv(
+            args.data_path, header=None if args.no_header_row else "infer", index_col=False
+        )
+        grouped = df.groupby(df[args.splits_column].str.lower())
+        train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+        val_indices = grouped.groups.get("val", pd.Index([])).tolist()
+        test_indices = grouped.groups.get("test", pd.Index([])).tolist()
+        train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
 
-    train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
+    elif args.splits_file is not None:
+        with open(args.splits_file, "rb") as json_file:
+            split_idxss = json.load(json_file)
+        train_indices = [parse_indices(d["train"]) for d in split_idxss]
+        val_indices = [parse_indices(d["val"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) for d in split_idxss]
 
-    sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
-    logger.info(f"train/val/test sizes: {sizes}")
+    else:
+        splitting_data = all_data[args.split_key_molecule]
+        if isinstance(splitting_data[0], ReactionDatapoint):
+            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        else:
+            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+        train_indices, val_indices, test_indices = make_split_indices(
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
+        )
+        if not (
+            SplitType.get(args.split) == SplitType.CV_NO_VAL
+            or SplitType.get(args.split) == SplitType.CV
+        ):
+            train_indices, val_indices, test_indices = (
+                [train_indices],
+                [val_indices],
+                [test_indices],
+            )
+
+    train_data, val_data, test_data = split_data_by_indices(
+        all_data, train_indices, val_indices, test_indices
+    )
+    for i_split in range(len(train_data)):
+        sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
+        logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
 
@@ -810,16 +852,13 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-    args.output_dir.mkdir(exist_ok=True, parents=True)
-
-    save_config(args)
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
+        splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
@@ -836,19 +875,13 @@ def main(args):
         features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    no_cv = args.num_folds == 1
-    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
+    splits = build_splits(args, format_kwargs, featurization_kwargs)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if not no_cv:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-        else:
+        if args.num_folds == 1:
             output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 
