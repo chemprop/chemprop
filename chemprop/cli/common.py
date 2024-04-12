@@ -158,7 +158,7 @@ def process_common_args(args: Namespace) -> Namespace:
             if len(ind_path) > 2:
                 raise ArgumentError(
                     argument=None,
-                    message="Too many arguments given for atom features/descriptors or bond features. It can be a two-tupoe of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
+                    message="Too many arguments given for atom features/descriptors or bond features. It can be either a two-tupoe of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
                 )
             
             if len(ind_path) == 1:
@@ -167,6 +167,12 @@ def process_common_args(args: Namespace) -> Namespace:
             else:
                 ind, path = ind_path
 
+            if ind_path_dict.get(int(ind), None):
+                raise ArgumentError(
+                    argument=None,
+                    message=f"Duplicate atom features/descriptors or bond features given for molcule index {ind}.",
+                )
+                
             ind_path_dict[int(ind)] = Path(path)
 
         setattr(args, key, ind_path_dict)
