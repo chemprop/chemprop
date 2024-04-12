@@ -226,33 +226,33 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     )
 
 
-@pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
-def test_optuna_quick(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
+# @pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
+# def test_optuna_quick(monkeypatch, data_path, tmp_path):
+#     input_path, *_ = data_path
 
-    args = [
-        "chemprop",
-        "hpopt",
-        "-i",
-        input_path,
-        "--epochs",
-        "1",
-        "--hpopt-save-dir",
-        str(tmp_path),
-        "--raytune-num-samples",
-        "2",
-        "--raytune-search-algorithm",
-        "optuna",
-    ]
+#     args = [
+#         "chemprop",
+#         "hpopt",
+#         "-i",
+#         input_path,
+#         "--epochs",
+#         "1",
+#         "--hpopt-save-dir",
+#         str(tmp_path),
+#         "--raytune-num-samples",
+#         "2",
+#         "--raytune-search-algorithm",
+#         "optuna",
+#     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+#     with monkeypatch.context() as m:
+#         m.setattr("sys.argv", args)
+#         main()
 
-    assert (tmp_path / "best_params.json").exists()
-    assert (tmp_path / "best_checkpoint.ckpt").exists()
-    assert (tmp_path / "all_progress.csv").exists()
-    assert (tmp_path / "ray_results").exists()
+#     assert (tmp_path / "best_params.json").exists()
+#     assert (tmp_path / "best_checkpoint.ckpt").exists()
+#     assert (tmp_path / "all_progress.csv").exists()
+#     assert (tmp_path / "ray_results").exists()
 
 
 @pytest.mark.skipif(NO_HYPEROPT, reason="Hyperopt not installed")

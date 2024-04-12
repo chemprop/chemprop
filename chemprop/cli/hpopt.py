@@ -38,11 +38,11 @@ try:
 except ImportError:
     NO_HYPEROPT = True
 
-NO_OPTUNA = False
-try:
-    from ray.tune.search.optuna import OptunaSearch
-except ImportError:
-    NO_OPTUNA = True
+# NO_OPTUNA = False
+# try:
+#     from ray.tune.search.optuna import OptunaSearch
+# except ImportError:
+#     NO_OPTUNA = True
 
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
     raytune_args.add_argument(
         "--raytune-search-algorithm",
-        choices=["random", "hyperopt", "optuna"],
+        choices=["random", "hyperopt"] #, "optuna"],
         default="hyperopt",
         help="Passed to Ray Tune TuneConfig to control search algorithm",
     )
@@ -283,13 +283,13 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
                 n_initial_points=args.hyperopt_n_initial_points,
                 random_state_seed=args.hyperopt_random_state_seed,
             )
-        case "optuna":
-            if NO_OPTUNA:
-                raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
-                )
+        # case "optuna":
+        #     if NO_OPTUNA:
+        #         raise ImportError(
+        #             "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
+        #         )
 
-            search_alg = OptunaSearch()
+        #     search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
         metric="val_loss",
