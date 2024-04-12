@@ -654,6 +654,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     if args.loss_function is not None:
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
+            w_t=args.task_weights,
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
@@ -702,7 +703,6 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         predictor,
         not args.no_batch_norm,
         metrics,
-        args.task_weights,
         args.warmup_epochs,
         args.init_lr,
         args.max_lr,

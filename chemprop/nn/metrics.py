@@ -29,7 +29,7 @@ __all__ = [
     "BoundedMSEMetric",
     "BoundedRMSEMetric",
     "R2Metric",
-    "AUROCMetric",
+    "BinaryAUROCMetric",
     "AUPRCMetric",
     "AccuracyMetric",
     "F1Metric",
@@ -51,7 +51,6 @@ class Metric(LossFunction):
         targets: Tensor,
         mask: Tensor,
         w_s: Tensor,
-        w_t: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -89,7 +88,6 @@ class RMSEMetric(MSEMetric):
         targets: Tensor,
         mask: Tensor,
         w_s: Tensor,
-        w_t: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -130,21 +128,14 @@ class R2Metric(Metric):
 
 
 @MetricRegistry.register("roc")
-class AUROCMetric(Metric):
+class BinaryAUROCMetric(Metric):
     minimize = False
-
-    def __init__(self, task: str) -> None:
-        super().__init__()
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
-        return F.auroc(preds[mask], targets[mask].long(), task=self.task)
-
-    def extra_repr(self) -> str:
-        return f"task={self.task}"
+        return F.auroc(preds[mask], targets[mask].long(), task="binary")
 
 
 @MetricRegistry.register("prc")

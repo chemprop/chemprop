@@ -16,7 +16,7 @@ from chemprop.nn.loss import (
     MulticlassDirichletLoss,
     SIDLoss,
 )
-from chemprop.nn.metrics import AUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
+from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
 from chemprop.nn.ffn import MLP
 
 from chemprop.nn.hparams import HasHParams
@@ -94,7 +94,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
-        self.criterion = criterion or self._default_criterion
+        self.criterion = criterion or self._default_criterion(w_t=torch.ones(self.n_tasks))
 
     @property
     def input_dim(self) -> int:
@@ -121,8 +121,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
 @PredictorRegistry.register("regression")
 class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = MSELoss()
-    _default_metric = MSEMetric()
+    _default_criterion = MSELoss
+    _default_metric = MSEMetric
 
     def __init__(
         self,
@@ -162,7 +162,7 @@ class RegressionFFN(_FFNPredictorBase):
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
-    _default_criterion = MVELoss()
+    _default_criterion = MVELoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -184,7 +184,7 @@ class MveFFN(RegressionFFN):
 @PredictorRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
-    _default_criterion = EvidentialLoss()
+    _default_criterion = EvidentialLoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -213,8 +213,8 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 @PredictorRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
-    _default_criterion = BCELoss()
-    _default_metric = AUROCMetric(task="binary")
+    _default_criterion = BCELoss
+    _default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -228,8 +228,8 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _default_criterion = BinaryDirichletLoss()
-    _default_metric = AUROCMetric(task="binary")
+    _default_criterion = BinaryDirichletLoss
+    _default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -246,8 +246,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("multiclass")
 class MulticlassClassificationFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = CrossEntropyLoss()
-    _default_metric = CrossEntropyMetric()
+    _default_criterion = CrossEntropyLoss
+    _default_metric = CrossEntropyMetric
 
     def __init__(
         self,
@@ -278,8 +278,8 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _default_criterion = MulticlassDirichletLoss()
-    _default_metric = CrossEntropyMetric()
+    _default_criterion = MulticlassDirichletLoss
+    _default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -306,8 +306,8 @@ class _Exp(nn.Module):
 @PredictorRegistry.register("spectral")
 class SpectralFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = SIDLoss()
-    _default_metric = SIDMetric()
+    _default_criterion = SIDLoss
+    _default_metric = SIDMetric
 
     def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
         super().__init__(*args, **kwargs)

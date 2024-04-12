@@ -38,8 +38,6 @@ class MPNN(pl.LightningModule):
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
         the metrics to use to evaluate the model during training and evaluation
-    w_t : Tensor | None, default=None
-        the weights to use for each task during training. If `None`, use uniform weights
     warmup_epochs : int, default=2
         the number of epochs to use for the learning rate warmup
     init_lr : int, default=1e-4
@@ -63,7 +61,6 @@ class MPNN(pl.LightningModule):
         predictor: Predictor,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
-        w_t: Tensor | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -88,10 +85,8 @@ class MPNN(pl.LightningModule):
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
-            else [self.predictor._default_metric, self.criterion]
+            else [self.predictor._default_metric(), self.criterion]
         )
-        w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
-        self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 
         self.warmup_epochs = warmup_epochs
         self.init_lr = init_lr
@@ -144,7 +139,7 @@ class MPNN(pl.LightningModule):
 
         Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
-        l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
+        l = self.criterion(preds, targets, mask, w_s, lt_mask, gt_mask)
 
         self.log("train_loss", l, prog_bar=True)
 
@@ -171,8 +166,7 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
 
         return [
-            metric(preds, targets, mask, None, None, lt_mask, gt_mask)
-            for metric in self.metrics[:-1]
+            metric(preds, targets, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:

@@ -27,13 +27,23 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
+    def __init__(self, w_t: Tensor | None = None):
+        """
+        Parameters
+        ----------
+        w_t : Tensor
+            a tensor of shape `t` or `1 x t` containing the per-task weight. `None` option is for
+            when the function is used as a metric.
+        """
+        super().__init__()
+        self.w_t = torch.tensor(w_t) if w_t is not None else None
+
     def forward(
         self,
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
         w_s: Tensor,
-        w_t: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -53,8 +63,6 @@ class LossFunction(nn.Module):
             included in the loss calculation
         w_s : Tensor
             a tensor of shape `b` or `b x 1` containing the per-sample weight
-        w_t : Tensor
-            a tensor of shape `t` or `1 x t` containing the per-task weight
         lt_mask: Tensor
         gt_mask: Tensor
 
@@ -63,13 +71,13 @@ class LossFunction(nn.Module):
         Tensor
             a scalar containing the fully reduced loss
         """
-        L = self._calc_unreduced_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-        L = L * w_s.view(-1, 1) * w_t.view(1, -1) * mask
+        L = self._calc_unreduced_loss(preds, targets, mask, w_s, lt_mask, gt_mask)
+        L = L * w_s.view(-1, 1) * self.w_t.view(1, -1) * mask
 
         return L.sum() / mask.sum()
 
     @abstractmethod
-    def _calc_unreduced_loss(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, w_s, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
 
 
@@ -85,7 +93,7 @@ class MSELoss(LossFunction):
 @LossFunctionRegistry.register("bounded-mse")
 class BoundedMSELoss(MSELoss):
     def _calc_unreduced_loss(
-        self, preds: Tensor, targets: Tensor, mask, w_s, w_t, lt_mask: Tensor, gt_mask: Tensor
+        self, preds: Tensor, targets: Tensor, mask, w_s, lt_mask: Tensor, gt_mask: Tensor
     ) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
@@ -127,8 +135,8 @@ class EvidentialLoss(LossFunction):
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
-    def __init__(self, v_kl: float = 0.2, eps: float = 1e-8):
-        super().__init__()
+    def __init__(self, w_t: Tensor | None = None, v_kl: float = 0.2, eps: float = 1e-8):
+        super().__init__(w_t)
         self.v_kl = v_kl
         self.eps = eps
 
@@ -179,14 +187,12 @@ class MccMixin:
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, w_s: Tensor, w_t: Tensor, *args
-    ):
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, w_s: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
         L = self._calc_unreduced_loss(preds, targets.long(), mask, w_s, *args)
-        L = L * w_t
+        L = L * self.w_t
 
         return L.mean()
 
@@ -241,8 +247,8 @@ class DirichletMixin:
     .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
-    def __init__(self, v_kl: float = 0.2):
-        super().__init__()
+    def __init__(self, w_t: Tensor | None = None, v_kl: float = 0.2):
+        super().__init__(w_t)
         self.v_kl = v_kl
 
     def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
@@ -294,8 +300,8 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 
 @LossFunctionRegistry.register("sid")
 class SIDLoss(LossFunction):
-    def __init__(self, threshold: float | None = None):
-        super().__init__()
+    def __init__(self, w_t: Tensor | None = None, threshold: float | None = None):
+        super().__init__(w_t)
 
         self.threshold = threshold
 
@@ -316,8 +322,8 @@ class SIDLoss(LossFunction):
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
-    def __init__(self, threshold: float | None = None):
-        super().__init__()
+    def __init__(self, w_t: Tensor | None = None, threshold: float | None = None):
+        super().__init__(w_t)
 
         self.threshold = threshold
 
