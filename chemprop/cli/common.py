@@ -1,5 +1,5 @@
 import logging
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, ArgumentError
 from pathlib import Path
 
 from chemprop.cli.utils import LookupAction
@@ -154,6 +154,13 @@ def process_common_args(args: Namespace) -> Namespace:
         ind_path_dict = {}
         
         for ind_path in inds_paths:
+
+            if len(ind_path) > 2:
+                raise ArgumentError(
+                    argument=None,
+                    message="Too many arguments given for atom features/descriptors or bond features. It can be a two-tupoe of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
+                )
+            
             if len(ind_path) == 1:
                 ind = 0
                 path = ind_path[0]
