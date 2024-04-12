@@ -61,8 +61,8 @@ class TrainSubcommand(Subcommand):
         args = process_train_args(args)
         validate_train_args(args)
 
+        args.output_dir.mkdir(exist_ok=True, parents=True)
         save_config(cls.parser, args)
-
         main(args)
 
 
@@ -822,7 +822,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-    args.output_dir.mkdir(exist_ok=True, parents=True)
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
