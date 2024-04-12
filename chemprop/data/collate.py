@@ -42,15 +42,17 @@ class BatchMolGraph:
         rev_edge_indexes = []
         batch_indexes = []
 
-        offset = 0
+        Voffset = 0
+        Eoffset = 0
         for i, mg in enumerate(mgs):
             Vs.append(mg.V)
             Es.append(mg.E)
-            edge_indexes.append(mg.edge_index + offset)
-            rev_edge_indexes.append(mg.rev_edge_index + offset)
+            edge_indexes.append(mg.edge_index + Voffset)
+            rev_edge_indexes.append(mg.rev_edge_index + Eoffset)
             batch_indexes.append([i] * len(mg.V))
 
-            offset += len(mg.V)
+            Voffset += len(mg.V)
+            Eoffset += len(mg.E)
 
         self.V = torch.from_numpy(np.concatenate(Vs)).float()
         self.E = torch.from_numpy(np.concatenate(Es)).float()
