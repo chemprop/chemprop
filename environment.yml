@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - pytorch::pytorch
+  - pytorch::pytorch>=2.1
   - pytorch::torchaudio
   - pytorch::torchvision
   - astartes[molecules]
