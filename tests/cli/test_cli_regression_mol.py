@@ -6,7 +6,7 @@ import torch
 
 from chemprop.cli.main import main
 from chemprop.models.model import MPNN
-from chemprop.chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA
+from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 
@@ -241,7 +241,7 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         str(tmp_path),
         "--raytune-num-samples",
         "2",
-        "--raytune-algorithm",
+        "--raytune-search-algorithm",
         "optuna",
     ]
 
@@ -270,7 +270,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         str(tmp_path),
         "--raytune-num-samples",
         "2",
-        "--raytune-algorithm",
+        "--raytune-search-algorithm",
         "hyperopt",
     ]
 
