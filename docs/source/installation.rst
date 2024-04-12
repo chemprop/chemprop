@@ -43,7 +43,6 @@ Option 2: Installing from source
 
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
-    git checkout v2/dev
     pip install .
 
 Option 3: Installing via Docker
