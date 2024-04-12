@@ -36,7 +36,8 @@ class LossFunction(nn.Module):
             when the function is used as a metric.
         """
         super().__init__()
-        self.w_t = torch.tensor(w_t) if w_t is not None else None
+        if w_t is not None:
+            self.register_buffer("w_t", w_t)
 
     def forward(
         self,
