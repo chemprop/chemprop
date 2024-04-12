@@ -21,16 +21,20 @@ from copy import deepcopy
 
 import torch
 from lightning import pytorch as pl
-from ray import tune
-from ray.train import CheckpointConfig, RunConfig, ScalingConfig
-from ray.train.lightning import (
-    RayDDPStrategy,
-    RayLightningEnvironment,
-    RayTrainReportCallback,
-    prepare_trainer,
-)
-from ray.train.torch import TorchTrainer
-from ray.tune.schedulers import ASHAScheduler
+
+try:
+    from ray import tune
+    from ray.train import CheckpointConfig, RunConfig, ScalingConfig
+    from ray.train.lightning import (
+        RayDDPStrategy,
+        RayLightningEnvironment,
+        RayTrainReportCallback,
+        prepare_trainer,
+    )
+    from ray.train.torch import TorchTrainer
+    from ray.tune.schedulers import ASHAScheduler
+except ImportError:
+    NO_RAY = True
 
 NO_HYPEROPT = False
 try:

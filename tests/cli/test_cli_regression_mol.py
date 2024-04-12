@@ -6,7 +6,7 @@ import torch
 
 from chemprop.cli.main import main
 from chemprop.models.model import MPNN
-from chemprop.cli.hpopt import NO_HYPEROPT  # , NO_OPTUNA
+from chemprop.cli.hpopt import NO_RAY, NO_HYPEROPT  # , NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 
@@ -255,7 +255,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
 #     assert (tmp_path / "ray_results").exists()
 
 
-@pytest.mark.skipif(NO_HYPEROPT, reason="Hyperopt not installed")
+@pytest.mark.skipif(NO_RAY and NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
