@@ -1,5 +1,5 @@
 import json
-from argparse import ArgumentParser
+from configargparse import ArgumentParser, Namespace
 import logging
 import sys
 from pathlib import Path
@@ -43,22 +43,10 @@ def construct_parser():
         default=0,
         help="The verbosity level, specify the flag multiple times to increase verbosity.",
     )
-    parent.add_argument(
-        "--config-path",
-        type=Path,
-        help="Path to a configuration file. Command line arguments override values in the configuration file.",
-    )
-
-    args = parent.parse_known_args()[0]
-
-    config = {}
-    if args.config_path:
-        with open(args.config_path, "r") as f:
-            config = json.load(f)
 
     parents = [parent]
     for subcommand in SUBCOMMANDS:
-        subcommand.add(subparsers, parents, config)
+        subcommand.add(subparsers, parents)
 
     return parser
 

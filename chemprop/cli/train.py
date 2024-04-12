@@ -1,8 +1,8 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from configargparse import ArgumentParser, Namespace, ArgumentError
 import logging
 from pathlib import Path
 import sys
-import json
+import toml
 from copy import deepcopy
 import pandas as pd
 
@@ -47,11 +47,14 @@ logger = logging.getLogger(__name__)
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "train a chemprop model"
+    parser = None
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = add_common_args(parser)
-        return add_train_args(parser)
+        parser = add_train_args(parser)
+        cls.parser = parser
+        return parser
 
     @classmethod
     def func(cls, args: Namespace):
@@ -59,10 +62,25 @@ class TrainSubcommand(Subcommand):
         validate_common_args(args)
         args = process_train_args(args)
         validate_train_args(args)
+        
+        config_args = deepcopy(args)
+        for key, value in config_args.__dict__.items():
+            if isinstance(value, Path):
+                config_args.__dict__[key] = str(value)
+        
+        config_path = str(args.output_dir / "config.toml")
+        cls.parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
+        
         main(args)
 
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
+    parser.add_argument(
+        "--config-path",
+        type=Path,
+        is_config_file=True,
+        help="Path to a configuration file. Command line arguments override values in the configuration file.",
+    )
     parser.add_argument(
         "-i",
         "--data-path",
@@ -512,13 +530,13 @@ def normalize_inputs(train_dset, val_dset, args):
 
 
 def save_config(args: Namespace):
-    command_config_path = args.output_dir / "config.json"
+    command_config_path = args.output_dir / "config.toml"
     with open(command_config_path, "w") as f:
-        config = deepcopy(vars(args))
-        for key in config:
-            if isinstance(config[key], Path):
-                config[key] = str(config[key])
-        json.dump(config, f, indent=4)
+        keys = ["--" + key.replace("_", "-") for key in vars(args)]
+        # keys = vars(args).keys()
+        values = [str(value) if isinstance(value, Path) else value for value in vars(args).values()]
+        config = dict(zip(keys, values))
+        toml.dump(config, f)
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -789,7 +807,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-    save_config(args)
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,

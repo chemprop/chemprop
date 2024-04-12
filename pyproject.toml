@@ -35,6 +35,8 @@ dependencies = [
     "scipy",
     "torch >= 2.1",
     "astartes[molecules]",
+    "ConfigArgParse",
+    "toml",
 ]
 
 [project.optional-dependencies]

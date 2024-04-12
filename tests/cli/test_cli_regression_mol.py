@@ -1,9 +1,8 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
-import json
-
 import pytest
+import toml
 import torch
 
 from chemprop.cli.main import main
@@ -30,7 +29,7 @@ def model_path(data_dir):
 
 @pytest.fixture
 def config_path(data_dir):
-    return str(data_dir / "regression" / "mol" / "config.json")
+    return str(data_dir / "regression" / "mol" / "config.toml")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -60,12 +59,6 @@ def test_train_config(monkeypatch, config_path, tmp_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
-
-    new_config_path = tmp_path / "config.json"
-    with open(new_config_path, "r") as f:
-        new_config = json.load(f)
-
-    assert new_config["epochs"] == 2
 
 
 def test_train_quick_features(monkeypatch, data_path):

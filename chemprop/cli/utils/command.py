@@ -7,9 +7,9 @@ class Subcommand(ABC):
     HELP: str | None = None
 
     @classmethod
-    def add(cls, subparsers: _SubParsersAction, parents, config: dict) -> ArgumentParser:
+    def add(cls, subparsers: _SubParsersAction, parents) -> ArgumentParser:
         parser = subparsers.add_parser(cls.COMMAND, help=cls.HELP, parents=parents)
-        cls.add_args(parser).set_defaults(func=cls.func, **config)
+        cls.add_args(parser).set_defaults(func=cls.func)
 
         return parser
 
