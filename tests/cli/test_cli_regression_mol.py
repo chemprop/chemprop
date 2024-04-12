@@ -6,7 +6,7 @@ import torch
 
 from chemprop.cli.main import main
 from chemprop.models.model import MPNN
-from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA
+from chemprop.cli.hpopt import NO_HYPEROPT  # , NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 

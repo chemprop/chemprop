@@ -131,7 +131,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
     raytune_args.add_argument(
         "--raytune-search-algorithm",
-        choices=["random", "hyperopt"] #, "optuna"],
+        choices=["random", "hyperopt"],  # , "optuna"],
         default="hyperopt",
         help="Passed to Ray Tune TuneConfig to control search algorithm",
     )
