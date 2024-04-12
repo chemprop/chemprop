@@ -264,9 +264,9 @@ def build_data_from_files(
     weight_col: str | None,
     bounded: bool,
     p_descriptors: PathLike,
-    p_atom_feats: PathLike,
-    p_bond_feats: PathLike,
-    p_atom_descs: PathLike,
+    p_atom_feats: dict[int, PathLike],
+    p_bond_feats: dict[int, PathLike],
+    p_atom_descs: dict[int, PathLike],
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
@@ -281,11 +281,12 @@ def build_data_from_files(
         no_header_row,
     )
     n_molecules = len(smiss) if smiss is not None else 0
+    n_datapoints = len(Y)
 
-    X_ds = load_input_feats_and_descs(p_descriptors, None, feat_desc="X_d")
-    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, feat_desc="V_f")
-    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, feat_desc="E_f")
-    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, feat_desc="V_d")
+    X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
+    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
+    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
+    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
 
     mol_data, rxn_data = make_datapoints(
         smiss,
@@ -304,7 +305,12 @@ def build_data_from_files(
     return mol_data + rxn_data
 
 
-def load_input_feats_and_descs(paths, n_molecules, feat_desc):
+def load_input_feats_and_descs(
+    paths: dict[int, PathLike] | PathLike,
+    n_molecules: int | None,
+    n_datapoints: int | None,
+    feat_desc: str,
+):
     if paths is None:
         return None
 
@@ -315,11 +321,24 @@ def load_input_feats_and_descs(paths, n_molecules, feat_desc):
             features = loaded_feature["arr_0"]
 
         case _:
+            for index in paths:
+                if index >= n_molecules:
+                    raise ValueError(
+                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be specified for indices 0-{n_molecules - 1}! Got index {index}."
+                    )
+
             features = []
-            for _ in range(n_molecules):
-                path = paths  # TODO: currently only supports a single path
-                loaded_feature = np.load(path)
-                loaded_feature = [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+            for idx in range(n_molecules):
+                path = paths.get(idx, None)
+
+                if path is not None:
+                    loaded_feature = np.load(path)
+                    loaded_feature = [
+                        loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))
+                    ]
+                else:
+                    loaded_feature = [None] * n_datapoints
+
                 features.append(loaded_feature)
     return features
 
