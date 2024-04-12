@@ -1,7 +1,7 @@
 ---
-name: Question
-about: Have a question about how to use Chemprop?
-title: "[QUESTION]: "
+name: v2 Question
+about: Have a question about how to use Chemprop v2?
+title: "[v2 QUESTION]: "
 labels: question
 assignees: ''
 
