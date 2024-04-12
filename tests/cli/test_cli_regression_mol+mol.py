@@ -86,11 +86,12 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
 def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
+    input_path, _, _, _, _, _ = data_path
     args = [
         "chemprop",
         "fingerprint",
         "-i",
-        data_path,
+        input_path,
         "--smiles-columns",
         "smiles",
         "solvent",
@@ -141,11 +142,12 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
 def test_fingerprint_output_structure(
     monkeypatch, data_path, model_path, tmp_path, ffn_block_index
 ):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "fingerprint",
         "-i",
-        data_path,
+        input_path,
         "--smiles-columns",
         "smiles",
         "solvent",
