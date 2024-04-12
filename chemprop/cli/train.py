@@ -1,8 +1,7 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from configargparse import ArgumentParser, Namespace, ArgumentError
 import logging
 from pathlib import Path
 import sys
-import json
 from copy import deepcopy
 import pandas as pd
 
@@ -48,11 +47,14 @@ logger = logging.getLogger(__name__)
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "train a chemprop model"
+    parser = None
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = add_common_args(parser)
-        return add_train_args(parser)
+        parser = add_train_args(parser)
+        cls.parser = parser
+        return parser
 
     @classmethod
     def func(cls, args: Namespace):
@@ -60,14 +62,22 @@ class TrainSubcommand(Subcommand):
         validate_common_args(args)
         args = process_train_args(args)
         validate_train_args(args)
+
+        args.output_dir.mkdir(exist_ok=True, parents=True)
+        save_config(cls.parser, args)
         main(args)
 
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
+        "--config-path",
+        type=Path,
+        is_config_file=True,
+        help="Path to a configuration file. Command line arguments override values in the configuration file.",
+    )
+    parser.add_argument(
         "-i",
         "--data-path",
-        required=True,
         type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
@@ -445,6 +455,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.config_path is None and args.data_path is None:
+        raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
@@ -521,20 +534,19 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
 
 
-def save_config(args: Namespace):
-    command_config_path = args.output_dir / "config.json"
-    with open(command_config_path, "w") as f:
-        config = deepcopy(vars(args))
-        for key in config:
-            if isinstance(config[key], Path):
-                config[key] = str(config[key])
+def save_config(parser: ArgumentParser, args: Namespace):
+    config_args = deepcopy(args)
+    for key, value in vars(config_args).items():
+        if isinstance(value, Path):
+            setattr(config_args, key, str(value))
 
-        for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
-            if config[key] is not None:
-                for ind, path in config[key].items():
-                    config[key][ind] = str(path)
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if getattr(config_args, key) is not None:
+            for index, path in getattr(config_args, key).items():
+                getattr(config_args, key)[index] = str(path)
 
-        json.dump(config, f, indent=4)
+    config_path = str(args.output_dir / "config.toml")
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -839,9 +851,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
 
 def main(args):
-    args.output_dir.mkdir(exist_ok=True, parents=True)
-
-    save_config(args)
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
