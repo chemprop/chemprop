@@ -52,6 +52,8 @@ class Predictor(nn.Module, HasHParams):
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
     """the loss function to use for training"""
+    task_weights: Tensor
+    """the weights to apply to each task when calculating the loss"""
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
@@ -86,6 +88,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        task_weights: Tensor | None = None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -94,7 +97,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
-        self.criterion = criterion or self._default_criterion(task_weights=torch.ones(self.n_tasks))
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
+        self.criterion = criterion or self._default_criterion(task_weights=task_weights)
 
     @property
     def input_dim(self) -> int:
@@ -133,10 +137,13 @@ class RegressionFFN(_FFNPredictorBase):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        task_weights: Tensor | None = None,
         loc: float | Tensor = 0.0,
         scale: float | Tensor = 1.0,
     ):
-        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
+        super().__init__(
+            n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion, task_weights
+        )
 
         if isinstance(loc, float):
             loc = torch.ones(1, self.n_tasks) * loc
