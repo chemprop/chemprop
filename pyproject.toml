@@ -40,7 +40,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["black", "bumpversion", "flake8", "pytest", "pytest-cov"]
+hpopt = ["ray[tune]", "hyperopt"]
+dev = ["black == 23.*", "bumpversion", "autopep8", "flake8", "pytest", "pytest-cov"]
 docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme","nbsphinx-link","ipykernel"]
 test = ["pytest >= 6.2", "pytest-cov"]
 notebooks = ["ipykernel"]
