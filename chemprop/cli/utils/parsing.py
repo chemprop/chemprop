@@ -260,10 +260,11 @@ def load_input_feats_and_descs(
             features = loaded_feature["arr_0"]
 
         case _:
-            if len(paths) > 0 and n_molecules == 0:
-                raise ValueError(
-                    "Atom features, bond features, and/or atom descriptors are provided, but no molecules are found in the dataset."
-                )
+            for index in paths:
+                if index >= n_molecules:
+                    raise ValueError(
+                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be specified for indices 0-{n_molecules - 1}! Got index {index}."
+                    )
 
             features = []
             for idx in range(n_molecules):
