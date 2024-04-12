@@ -22,6 +22,7 @@ from copy import deepcopy
 import torch
 from lightning import pytorch as pl
 
+NO_RAY = False
 try:
     from ray import tune
     from ray.train import CheckpointConfig, RunConfig, ScalingConfig
