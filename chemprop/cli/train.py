@@ -830,21 +830,17 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
-                targets = test_loader.dataset.Y
+                if isinstance(test_loader.dataset, MulticomponentDataset):
+                    test_dset = test_loader.dataset[0]
+                else:
+                    test_dset = test_loader.dataset
+                targets = test_dset.Y
                 mask = torch.from_numpy(np.isfinite(targets))
                 targets = np.nan_to_num(targets, nan=0.0)
-                w_s = torch.from_numpy(test_loader.dataset.weights)
+                w_s = torch.from_numpy(test_dset.weights)
                 w_t = model.w_t
-                lt_mask = (
-                    torch.from_numpy(test_loader.dataset.lt_mask)
-                    if test_loader.dataset.lt_mask[0]
-                    else None
-                )
-                gt_mask = (
-                    torch.from_numpy(test_loader.dataset.gt_mask)
-                    if test_loader.dataset.gt_mask[0]
-                    else None
-                )
+                lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] else None
+                gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] else None
                 preds_losses = [
                     metric(
                         torch.from_numpy(preds),
