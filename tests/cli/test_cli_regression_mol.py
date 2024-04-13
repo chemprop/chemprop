@@ -3,6 +3,7 @@
 
 import pytest
 import torch
+import json
 
 from chemprop.cli.main import main
 from chemprop.cli.train import TrainSubcommand
@@ -198,6 +199,63 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
+
+
+def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
+    input_path = str(data_dir / "regression" / "mol" / "mol_with_splits.csv")
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_splits_file(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+    splits_file = str(tmp_path / "splits.json")
+    splits = [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+    with open(splits_file, "w") as f:
+        json.dump(splits, f)
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--splits-file",
+        splits_file,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
 
 
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):

@@ -45,7 +45,7 @@ __all__ = [
 class Metric(LossFunction):
     minimize: bool = True
 
-    def __call__(
+    def forward(
         self,
         preds: Tensor,
         targets: Tensor,
@@ -55,10 +55,10 @@ class Metric(LossFunction):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return self.forward(preds, targets, mask, lt_mask, gt_mask)[mask].mean()
+        return self._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean()
 
     @abstractmethod
-    def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
         pass
 
 
@@ -72,7 +72,7 @@ class ThresholdedMixin:
 
 @MetricRegistry.register("mae")
 class MAEMetric(Metric):
-    def forward(self, preds, targets, *args) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
         return (preds - targets).abs()
 
 
@@ -83,7 +83,7 @@ class MSEMetric(MSELoss, Metric):
 
 @MetricRegistry.register("rmse")
 class RMSEMetric(MSEMetric):
-    def __call__(
+    def forward(
         self,
         preds: Tensor,
         targets: Tensor,
@@ -93,15 +93,17 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return super().forward(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
+        return (
+            super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
+        )
 
 
 class BoundedMixin:
-    def forward(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
 
-        return super().forward(preds, targets, mask, lt_mask, gt_mask)
+        return super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
 
 
 @MetricRegistry.register("bounded-mae")
@@ -123,7 +125,7 @@ class BoundedRMSEMetric(RMSEMetric, BoundedMixin):
 class R2Metric(Metric):
     minimize = False
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.r2_score(preds[mask], targets[mask])
 
 
@@ -132,20 +134,24 @@ class AUROCMetric(Metric):
     minimize = False
 
     def __init__(self, task: str) -> None:
+        super().__init__()
         self.task = task
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return self.forward(preds, targets, mask)
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        return self._calc_unreduced_loss(preds, targets, mask)
 
-    def forward(self, preds, targets, mask, *args) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task=self.task)
+
+    def extra_repr(self) -> str:
+        return f"task={self.task}"
 
 
 @MetricRegistry.register("prc")
 class AUPRCMetric(Metric):
     minimize = False
 
-    def __call__(self, preds: Tensor, targets: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
         p, r, _ = F.precision_recall(preds, targets.long())
 
         return F.auc(r, p)
@@ -155,7 +161,7 @@ class AUPRCMetric(Metric):
 class AccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 
@@ -163,7 +169,7 @@ class AccuracyMetric(Metric, ThresholdedMixin):
 class F1Metric(Metric):
     minimize = False
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
 
 

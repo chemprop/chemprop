@@ -102,6 +102,7 @@ def make_fingerprint_for_model(
         rxn_cols=args.reaction_columns,
         target_cols=None,
         ignore_cols=None,
+        splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
