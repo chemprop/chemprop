@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from torchmetrics import functional as F
+from torchmetrics.functional.classification import average_precision
 
 from chemprop.utils.registry import ClassRegistry
 from chemprop.nn.loss import (
@@ -151,10 +152,12 @@ class AUROCMetric(Metric):
 class AUPRCMetric(Metric):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
-        p, r, _ = F.precision_recall(preds, targets.long())
+    def __init__(self, task: str) -> None:
+        super().__init__()
+        self.task = task
 
-        return F.auc(r, p)
+    def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
+        return average_precision(preds, targets.long(), task=self.task)
 
 
 @MetricRegistry.register("accuracy")
