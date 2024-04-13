@@ -239,6 +239,11 @@ def train_model(config, args, train_loader, val_loader, logger):
     monitor_mode = "min" if model.metrics[0].minimize else "max"
     logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
+    if args.pytorch_seed is None:
+        deterministic = False
+    else:
+        deterministic = True
+
     trainer = pl.Trainer(
         accelerator=args.accelerator,
         devices=args.devices,
@@ -247,6 +252,7 @@ def train_model(config, args, train_loader, val_loader, logger):
         strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
+        deterministic=deterministic,
     )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
@@ -353,7 +359,12 @@ def main(args: Namespace):
     )
     val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
-    torch.manual_seed(args.pytorch_seed)
+    if args.pytorch_seed is None:
+        seed = torch.seed()
+    else:
+        seed = args.pytorch_seed
+
+    torch.manual_seed(seed)
 
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
