@@ -831,7 +831,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
                 if isinstance(test_loader.dataset, MulticomponentDataset):
-                    test_dset = test_loader.dataset[0]
+                    test_dset = test_loader.dataset.datasets[0]
                 else:
                     test_dset = test_loader.dataset
                 targets = test_dset.Y
