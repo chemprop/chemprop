@@ -854,9 +854,9 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     for metric in model.metrics
                 ]
                 preds_metrics = {
-                    f"Entire Test Set/{m.alias}": l for m, l in zip(model.metrics, preds_losses)
+                    f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
                 }
-                logger.info(preds_metrics)
+                logger.info(f"Entire Test Set results: {preds_metrics}")
 
                 columns = get_column_names(
                     args.data_path,

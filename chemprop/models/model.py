@@ -159,7 +159,7 @@ class MPNN(pl.LightningModule):
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
-        metric2loss = {f"batch averaged test/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        metric2loss = {f"batch_averaged_test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
