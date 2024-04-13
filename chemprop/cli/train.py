@@ -726,7 +726,14 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     else:
         criterion = None
     if args.metrics is not None:
-        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+        if args.task_type == "classification":
+            task = "binary"
+        elif args.task_type == "multiclass":
+            task = "multiclass"
+        else:
+            task = None
+
+        metrics = [Factory.build(MetricRegistry[metric], task=task) for metric in args.metrics]
     else:
         metrics = None
 
