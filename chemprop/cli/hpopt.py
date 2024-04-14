@@ -43,10 +43,10 @@ try:
         "batch_size": tune.loguniform(lower=16, upper=256, base=2),
         "depth": tune.randint(lower=2, upper=6),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
-        "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+        "ffn_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "ffn_num_layers": tune.randint(lower=1, upper=3),
         "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+        "hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
         "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
         "warmup_epochs": None,
@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
 SEARCH_PARAM_KEYWORDS_MAP = {
-    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_size", "hidden_size"],
+    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "hidden_dim"],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
@@ -110,7 +110,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     Some options are bundles of parameters or otherwise special parameter operations.
 
     Special keywords:
-        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, hidden_size, and ffn_hidden_size.
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, hidden_dim, and ffn_hidden_dim.
         learning_rate - search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
             are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
         all - include search for all 13 inidividual keyword options
