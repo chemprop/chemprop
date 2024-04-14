@@ -44,7 +44,7 @@ try:
         "depth": tune.randint(lower=2, upper=6),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
         "ffn_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
-        "ffn_num_layers": tune.randint(lower=1, upper=4),
+        "ffn_num_layers": tune.quniform(lower=1, upper=3, q=1),
         "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
         "hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
