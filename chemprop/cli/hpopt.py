@@ -46,7 +46,7 @@ try:
         "ffn_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "ffn_num_layers": tune.quniform(lower=1, upper=3, q=1),
         "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
+        "message_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
         "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
         "warmup_epochs": None,
@@ -162,6 +162,20 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
     )
 
+    raytune_args.add_argument(
+        "--raytune-grace-period",
+        type=int,
+        default=1,
+        help="Passed directly to Ray Tune ASHAScheduler to control grace period",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-reduction-factor",
+        type=int,
+        default=2,
+        help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
+    )
+
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
 
     hyperopt_args.add_argument(
@@ -254,7 +268,7 @@ def train_model(config, args, train_loader, val_loader, logger):
 
 
 def tune_model(args, train_loader, val_loader, logger, monitor_mode):
-    scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
+    scheduler = ASHAScheduler(max_t=args.epochs, grace_period=args.grace_preriod, reduction_factor=args.reduction_factor)
 
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
