@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
 SEARCH_PARAM_KEYWORDS_MAP = {
-    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "hidden_dim"],
+    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "message_hidden_dim"],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
