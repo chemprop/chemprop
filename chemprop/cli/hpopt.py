@@ -225,6 +225,7 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
                 setattr(args, "init_lr", value * args.max_lr)
 
             case _:
+                assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
 
     return args
