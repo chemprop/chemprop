@@ -1,38 +1,31 @@
-from chemprop.nn.utils import Activation
-from chemprop.nn import AggregationRegistry
-from chemprop.data import MolGraphDataLoader
-from chemprop.cli.utils.command import Subcommand
-from chemprop.cli.train import (
-    add_train_args,
-    build_datasets,
-    build_model,
-    build_splits,
-    normalize_inputs,
-    process_train_args,
-    validate_train_args,
-)
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 import json
 import logging
 import sys
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import torch
 from lightning import pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+
+from chemprop.cli.common import (add_common_args, process_common_args,
+                                 validate_common_args)
+from chemprop.cli.train import (add_train_args, build_datasets, build_model,
+                                build_splits, normalize_inputs,
+                                process_train_args, validate_train_args)
+from chemprop.cli.utils.command import Subcommand
+from chemprop.data import MolGraphDataLoader
+from chemprop.nn import AggregationRegistry
+from chemprop.nn.utils import Activation
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
 try:
     from ray import tune
     from ray.train import CheckpointConfig, RunConfig, ScalingConfig
-    from ray.train.lightning import (
-        RayDDPStrategy,
-        RayLightningEnvironment,
-        RayTrainReportCallback,
-        prepare_trainer,
-    )
+    from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
+                                     RayTrainReportCallback, prepare_trainer)
     from ray.train.torch import TorchTrainer
     from ray.tune.schedulers import ASHAScheduler
 
@@ -254,13 +247,16 @@ def train_model(config, args, train_loader, val_loader, logger):
     monitor_mode = "min" if model.metrics[0].minimize else "max"
     logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
 
+    patience = args.patience if args.patience is not None else args.epochs
+    early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+
     trainer = pl.Trainer(
         accelerator=args.accelerator,
         devices=args.devices,
         max_epochs=args.epochs,
         gradient_clip_val=args.grad_clip,
         strategy=RayDDPStrategy(find_unused_parameters=True),
-        callbacks=[RayTrainReportCallback()],
+        callbacks=[RayTrainReportCallback(), early_stopping],
         plugins=[RayLightningEnvironment()],
     )
     trainer = prepare_trainer(trainer)
@@ -376,6 +372,9 @@ def main(args: Namespace):
 
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
+
+    import ray
+    ray.init(num_cpus=1)
 
     results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
 
