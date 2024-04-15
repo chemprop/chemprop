@@ -247,7 +247,7 @@ def train_model(config, args, train_loader, val_loader, logger):
         strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
-        deterministic=True if args.pytorch_seed is not None else False,
+        deterministic=args.pytorch_seed is not None,
     )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
