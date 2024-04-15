@@ -9,6 +9,7 @@ dependencies:
   - pytorch::torchvision
   - astartes[molecules]
   - aimsim
+  - configargparse
   - lightning>=2.0
   - numpy<2.0
   - pandas
