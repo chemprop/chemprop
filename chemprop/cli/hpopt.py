@@ -247,6 +247,7 @@ def train_model(config, args, train_loader, val_loader, logger):
         strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
+        deterministic=args.pytorch_seed is not None,
     )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
@@ -328,6 +329,7 @@ def main(args: Namespace):
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
+        splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
@@ -336,7 +338,7 @@ def main(args: Namespace):
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-    train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+    train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
 
     _ = normalize_inputs(train_dset, val_dset, args)
 
@@ -352,7 +354,9 @@ def main(args: Namespace):
     )
     val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
-    torch.manual_seed(args.pytorch_seed)
+    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
+
+    torch.manual_seed(seed)
 
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
