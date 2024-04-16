@@ -85,6 +85,28 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
+    input_path, _, _, _, _, _ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--model-path",
+        model_path,
+        "--ffn-block-index",
+        ffn_block_index,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_train_output_structure(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
@@ -115,6 +137,34 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
     assert (tmp_path / "model_0" / "test_predictions.csv").exists()
+
+
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_output_structure(
+    monkeypatch, data_path, model_path, tmp_path, ffn_block_index
+):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--model-path",
+        model_path,
+        "--output",
+        str(tmp_path / "fps.csv"),
+        "--ffn-block-index",
+        ffn_block_index,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "fps_0.csv").exists()
 
 
 def test_train_splits_file(monkeypatch, data_path, tmp_path):
