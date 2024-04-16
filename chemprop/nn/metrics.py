@@ -73,6 +73,7 @@ class ThresholdedMixin:
     def extra_repr(self) -> str:
         return f"threshold={self.threshold}"
 
+
 @dataclass
 class TaskedMixin:
     task: str
