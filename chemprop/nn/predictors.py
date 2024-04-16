@@ -68,7 +68,7 @@ class Predictor(nn.Module, HasHParams):
         Parameters
         ----------
         Z : Tensor
-            a tensor of shape `n x d` containing the input data to encode, where `d` is the
+            a tensor of shape ``n x d`` containing the input data to encode, where `d` is the
             input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
@@ -83,8 +83,8 @@ class Predictor(nn.Module, HasHParams):
         Returns
         -------
         Tensor
-            a tensor of shape `n x h` containing the :attr:`i`-th hidden representation, where
-            `h` is the output size of ``MLP[:i]``.
+            a tensor of shape ``n x h`` containing the :attr:`i`-th hidden representation, where
+            ``h`` is the number of neurons in the :attr:`i`-th hidden layer.
         """
         pass
 
@@ -137,8 +137,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
 
-    def encode(self, Z: Tensor, index: int) -> Tensor:
-        return self.ffn[:index](Z)
+    def encode(self, Z: Tensor, i: int) -> Tensor:
+        return self.ffn[:i](Z)
 
 
 @PredictorRegistry.register("regression")
