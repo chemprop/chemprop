@@ -2,6 +2,7 @@
 """
 
 import pytest
+import json
 
 from chemprop.cli.main import main
 
@@ -114,3 +115,38 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
     assert (tmp_path / "model_0" / "test_predictions.csv").exists()
+
+
+def test_train_splits_file(monkeypatch, data_path, tmp_path):
+    splits_file = str(tmp_path / "splits.json")
+    splits = [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+    with open(splits_file, "w") as f:
+        json.dump(splits, f)
+
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--splits-file",
+        splits_file,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
