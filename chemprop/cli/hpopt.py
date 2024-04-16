@@ -247,6 +247,7 @@ def train_model(config, args, train_loader, val_loader, logger):
         strategy=RayDDPStrategy(find_unused_parameters=True),
         callbacks=[RayTrainReportCallback()],
         plugins=[RayLightningEnvironment()],
+        deterministic=args.pytorch_seed is not None,
     )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
@@ -353,7 +354,9 @@ def main(args: Namespace):
     )
     val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
-    torch.manual_seed(args.pytorch_seed)
+    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
+
+    torch.manual_seed(seed)
 
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
