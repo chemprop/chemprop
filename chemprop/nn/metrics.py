@@ -74,14 +74,6 @@ class ThresholdedMixin:
         return f"threshold={self.threshold}"
 
 
-@dataclass
-class TaskedMixin:
-    task: str
-
-    def extra_repr(self) -> str:
-        return f"task={self.task}"
-
-
 @MetricRegistry.register("mae")
 class MAEMetric(Metric):
     def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
@@ -142,43 +134,71 @@ class R2Metric(Metric):
 
 
 @MetricRegistry.register("roc")
-class AUROCMetric(TaskedMixin, Metric):
+class AUROCMetric(Metric):
     minimize = False
 
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
+    
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task=self.task)
+    
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("prc")
-class AUPRCMetric(TaskedMixin, Metric):
+class AUPRCMetric(Metric):
     minimize = False
 
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
+
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
-        p, r, _ = F.precision_recall_curve(preds, targets.long())
+        p, r, _ = F.precision_recall_curve(preds, targets.long(), task=self.task)
         return auc(r, p)
+    
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("accuracy")
-class AccuracyMetric(TaskedMixin, ThresholdedMixin, Metric):
+class AccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
+
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.accuracy(
             preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
         )
+    
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("f1")
-class F1Metric(TaskedMixin, ThresholdedMixin, Metric):
+class F1Metric(Metric, ThresholdedMixin):
     minimize = False
+
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.f1_score(
             preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
         )
+    
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("bce")
