@@ -44,9 +44,15 @@ __all__ = [
 
 class Metric(LossFunction):
     """
-    .. note::
-        This class inherits from :class:`LossFunction`, which requires task_weights. These
-        task_weights are not used in Metric and can be set to any Tensor.
+        __init__(self, task_weights: Tensor):
+
+        Parameters
+        ----------
+        task_weights : Tensor
+            a tensor of shape `t` or `1 x t` containing the per-task weight.
+        .. note::
+            This class inherits from :class:`LossFunction`, which requires task_weights. These
+            task_weights are not used in Metric and can be set to any Tensor, e.g. tensor([1.])
     """
 
     minimize: bool = True
@@ -97,9 +103,9 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return (
-            super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
-        )
+        squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
+        
+        return squared_errors[mask].mean().sqrt()
 
 
 class BoundedMixin:
