@@ -275,7 +275,7 @@ def train_model(config, args, train_loader, val_loader, logger):
 def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     scheduler = ASHAScheduler(
         max_t=args.epochs,
-        grace_period=args.raytune_grace_period,
+        grace_period=min(args.raytune_grace_period, args.epochs),
         reduction_factor=args.raytune_reduction_factor,
     )
 
