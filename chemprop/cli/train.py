@@ -814,6 +814,14 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         patience = args.patience if args.patience is not None else args.epochs
         early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
+        if args.task_type == "regression":
+            model.predictor.register_buffer(
+                "loc", torch.tensor(scaler.mean_).view(1, -1).float()
+            )
+            model.predictor.register_buffer(
+                "scale", torch.tensor(scaler.scale_).view(1, -1).float()
+            )
+
         trainer = pl.Trainer(
             logger=trainer_logger,
             enable_progress_bar=True,
@@ -827,13 +835,6 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            if args.task_type == "regression":
-                model.predictor.register_buffer(
-                    "loc", torch.tensor(scaler.mean_).view(1, -1).float()
-                )
-                model.predictor.register_buffer(
-                    "scale", torch.tensor(scaler.scale_).view(1, -1).float()
-                )
             results = trainer.test(model, test_loader)[0]
             logger.info(f"Test results: {results}")
 
