@@ -143,6 +143,9 @@ class BinaryAUROCMetric(Metric):
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task="binary")
 
+    def extra_repr(self) -> str:
+        return f"task={self.task}"
+
 
 @MetricRegistry.register("prc")
 class AUPRCMetric(Metric):

@@ -10,7 +10,13 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return str(data_dir / "regression" / "rxn+mol.csv")
+    return (
+        str(data_dir / "regression" / "rxn+mol" / "rxn+mol.csv"),
+        str(data_dir / "regression" / "rxn+mol" / "descriptors.npz"),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "atom_features.npz")),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "bond_features.npz")),
+        ("0", str(data_dir / "regression" / "rxn+mol" / "atom_descriptors.npz")),
+    )
 
 
 @pytest.fixture
@@ -19,11 +25,18 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        data_path,
+        input_path,
         "--reaction-columns",
         "rxn_smiles",
         "--smiles-columns",
@@ -32,6 +45,16 @@ def test_train_quick(monkeypatch, data_path):
         "1",
         "--num-workers",
         "0",
+        "--split-key-molecule",
+        "1",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        *atom_features_path,
+        "--bond-features-path",
+        *bond_features_path,
+        "--atom-descriptors-path",
+        *atom_descriptors_path,
         "--save-preds",
     ]
 
@@ -41,11 +64,12 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "predict",
         "-i",
-        data_path,
+        input_path,
         "--reaction-columns",
         "rxn_smiles",
         "--smiles-columns",
