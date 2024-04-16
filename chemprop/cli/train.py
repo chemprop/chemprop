@@ -480,12 +480,17 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms = [], [], [], []
+    X_d_transform = None
+    V_f_transforms = [None] * len(train_dset)
+    E_f_transforms = [None] * len(train_dset)
+    V_d_transforms = [None] * len(train_dset)
 
+    d_xd = train_dset.d_xd
     d_vf = train_dset.d_vf
     d_ef = train_dset.d_ef
+    d_vd = train_dset.d_vd
 
-    if not args.no_descriptor_scaling:
+    if d_xd > 0 and not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
         val_dset.normalize_inputs("X_d", scaler)
 
@@ -495,7 +500,7 @@ def normalize_inputs(train_dset, val_dset, args):
             logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
             X_d_transform = TensorTransform.from_standard_scaler(scaler)
 
-    if not args.no_atom_feature_scaling:
+    if d_vf > 0 and not args.no_atom_feature_scaling:
         scaler = train_dset.normalize_inputs("V_f")
         val_dset.normalize_inputs("V_f", scaler)
 
@@ -503,14 +508,13 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
-                V_f_transforms.append(None)
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
             transform = GraphTransform.from_standard_scaler(scaler, "V", d_vf)
-            V_f_transforms.append(transform)
+            V_f_transforms[i] = transform
 
-    if not args.no_bond_feature_scaling:
+    if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
         val_dset.normalize_inputs("E_f", scaler)
 
@@ -518,14 +522,13 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
-                E_f_transforms.append(None)
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
             transform = GraphTransform.from_standard_scaler(scaler, "E", d_ef)
-            E_f_transforms.append(transform)
+            E_f_transforms[i] = transform
 
-    if not args.no_atom_descriptor_scaling:
+    if d_vd > 0 and not args.no_atom_descriptor_scaling:
         scaler = train_dset.normalize_inputs("V_d")
         val_dset.normalize_inputs("V_d", scaler)
 
@@ -533,14 +536,13 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
-                V_d_transforms.append(None)
                 continue
 
             logger.info(
                 f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
             )
             transform = TensorTransform.from_standard_scaler(scaler)
-            V_d_transforms.append(transform)
+            V_d_transforms[i] = transform
 
     return X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms
 
@@ -693,7 +695,7 @@ def build_model(
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
-            V_d_transform=V_d_transforms[0],
+            V_d_transform=V_d_transforms[0] if len(V_d_transforms) > 0 else None,
         )
         d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
@@ -750,8 +752,13 @@ def build_model(
 
         return model
 
-    V_f_transform = V_f_transforms[0] if mpnn_cls == MPNN else V_f_transforms
-    E_f_transform = E_f_transforms[0] if mpnn_cls == MPNN else E_f_transforms
+    if mpnn_cls == MPNN:
+        V_f_transform = V_f_transforms[0] if len(V_f_transforms) > 0 else None
+        E_f_transform = E_f_transforms[0] if len(E_f_transforms) > 0 else None
+    else:
+        V_f_transform = V_f_transforms
+        E_f_transform = E_f_transforms
+
     return mpnn_cls(
         mp_block,
         agg,
