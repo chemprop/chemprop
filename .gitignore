@@ -175,3 +175,5 @@ chemprop/_version.py
 *.ipynb
 
 !tests/data/*
+
+config.toml
