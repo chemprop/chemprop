@@ -140,13 +140,13 @@ class AUROCMetric(Metric):
     def __init__(self, task: str, **kwargs):
         super().__init__(**kwargs)
         self.task = task
-    
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task=self.task)
-    
+
     def extra_repr(self) -> str:
         return f"task='{self.task}'"
 
@@ -162,7 +162,7 @@ class AUPRCMetric(Metric):
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
         p, r, _ = F.precision_recall_curve(preds, targets.long(), task=self.task)
         return auc(r, p)
-    
+
     def extra_repr(self) -> str:
         return f"task='{self.task}'"
 
@@ -179,7 +179,7 @@ class AccuracyMetric(Metric, ThresholdedMixin):
         return F.accuracy(
             preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
         )
-    
+
     def extra_repr(self) -> str:
         return f"task='{self.task}'"
 
@@ -196,7 +196,7 @@ class F1Metric(Metric, ThresholdedMixin):
         return F.f1_score(
             preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
         )
-    
+
     def extra_repr(self) -> str:
         return f"task='{self.task}'"
 
