@@ -70,6 +70,7 @@ MetricRegistry = ClassRegistry[Metric]()
 class ThresholdedMixin:
     threshold: float | None = 0.5
 
+
 @dataclass
 class TaskMixin:
     task: str
@@ -162,7 +163,9 @@ class AccuracyMetric(Metric, ThresholdedMixin, TaskMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task)
+        return F.accuracy(
+            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+        )
 
 
 @MetricRegistry.register("f1")
@@ -170,7 +173,9 @@ class F1Metric(Metric, ThresholdedMixin, TaskMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task)
+        return F.f1_score(
+            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+        )
 
 
 @MetricRegistry.register("bce")
