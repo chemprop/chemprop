@@ -167,7 +167,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     raytune_args.add_argument(
         "--raytune-grace-period",
         type=int,
-        default=1,
+        default=10,
         help="Passed directly to Ray Tune ASHAScheduler to control grace period",
     )
 
