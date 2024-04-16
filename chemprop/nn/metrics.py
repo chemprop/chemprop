@@ -70,9 +70,11 @@ MetricRegistry = ClassRegistry[Metric]()
 class ThresholdedMixin:
     threshold: float | None = 0.5
 
+    def extra_repr(self) -> str:
+        return f"threshold={self.threshold}"
 
 @dataclass
-class TaskMixin:
+class TaskedMixin:
     task: str
 
     def extra_repr(self) -> str:
@@ -139,7 +141,7 @@ class R2Metric(Metric):
 
 
 @MetricRegistry.register("roc")
-class AUROCMetric(Metric, TaskMixin):
+class AUROCMetric(TaskedMixin, Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
@@ -150,7 +152,7 @@ class AUROCMetric(Metric, TaskMixin):
 
 
 @MetricRegistry.register("prc")
-class AUPRCMetric(Metric, TaskMixin):
+class AUPRCMetric(TaskedMixin, Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
@@ -159,7 +161,7 @@ class AUPRCMetric(Metric, TaskMixin):
 
 
 @MetricRegistry.register("accuracy")
-class AccuracyMetric(Metric, ThresholdedMixin, TaskMixin):
+class AccuracyMetric(TaskedMixin, ThresholdedMixin, Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
@@ -169,7 +171,7 @@ class AccuracyMetric(Metric, ThresholdedMixin, TaskMixin):
 
 
 @MetricRegistry.register("f1")
-class F1Metric(Metric, ThresholdedMixin, TaskMixin):
+class F1Metric(TaskedMixin, ThresholdedMixin, Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
