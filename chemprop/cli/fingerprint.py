@@ -47,7 +47,7 @@ class FingerprintSubcommand(Subcommand):
             "--ffn-block-index",
             required=True,
             type=int,
-            default=0,
+            default=-1,
             help="The index indicates which linear layer returns the encoding in the FFN. An index of 0 denotes the post-aggregation representation through a 0-layer MLP, while an index of 1 represents the output from the first linear layer in the FFN, and so forth.",
         )
 
@@ -154,12 +154,6 @@ def make_fingerprint_for_model(
     )
 
     logger.info(model)
-
-    n_layers = len(model.predictor.ffn) - 1
-    if args.ffn_block_index > n_layers:
-        raise ValueError(
-            f"The argument of `ffn_block_index` should not be larger then the `n_layers` of {n_layers} in predictor."
-        )
 
     with torch.no_grad():
         if multicomponent:
