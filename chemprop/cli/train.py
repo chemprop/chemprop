@@ -815,9 +815,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
         if args.task_type == "regression":
-            model.predictor.register_buffer(
-                "loc", torch.tensor(scaler.mean_).view(1, -1).float()
-            )
+            model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1).float())
             model.predictor.register_buffer(
                 "scale", torch.tensor(scaler.scale_).view(1, -1).float()
             )
