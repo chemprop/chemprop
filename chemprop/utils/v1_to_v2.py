@@ -39,6 +39,13 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
         ]
         state_dict_v2[f"predictor.ffn.{i}.{suffix}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
 
+    if args_v1.target_weights is not None:
+        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
+    else:
+        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
+
+    state_dict_v2["predictor.criterion.task_weights"] = task_weights
+
     return state_dict_v2
 
 
@@ -99,6 +106,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
             "criterion": Factory.build(
                 LossFunctionRegistry[args_v1.loss_function], task_weights=task_weights
             ),
+            "task_weights": None,
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
             "input_dim": args_v1.hidden_size,
