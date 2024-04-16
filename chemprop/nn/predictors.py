@@ -68,7 +68,7 @@ class Predictor(nn.Module, HasHParams):
         Parameters
         ----------
         Z : Tensor
-            a tensor of shape ``n x d`` containing the input data to encode, where `d` is the
+            a tensor of shape ``n x d`` containing the input data to encode, where ``d`` is the
             input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
