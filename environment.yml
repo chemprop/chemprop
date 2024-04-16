@@ -5,9 +5,7 @@ channels:
 dependencies:
   - python>=3.11
   - pytorch::pytorch>=2.1
-  - pytorch::torchaudio
-  - pytorch::torchvision
-  - astartes[molecules]
+  - astartes
   - aimsim
   - configargparse
   - lightning>=2.0
