@@ -382,10 +382,6 @@ def main(args: Namespace):
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    import ray
-
-    ray.init(num_cpus=1)
-
     results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
 
     best_result = results.get_best_result()
