@@ -23,9 +23,9 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        X_d_transform: TensorTransform | None = None,
         V_f_transform: list[GraphTransform | None] | None = None,
         E_f_transform: list[GraphTransform | None] | None = None,
+        X_d_transform: TensorTransform | None = None,
     ):
         super().__init__(
             message_passing,
@@ -38,9 +38,9 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
-            X_d_transform,
             V_f_transform,
             E_f_transform,
+            X_d_transform,
         )
         self.message_passing: MulticomponentMessagePassing
 
