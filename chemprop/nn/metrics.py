@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from torchmetrics import functional as F
-from torchmetrics.functional.classification import average_precision
+from sklearn.metrics import auc
 
 from chemprop.utils.registry import ClassRegistry
 from chemprop.nn.loss import (
@@ -70,6 +70,13 @@ MetricRegistry = ClassRegistry[Metric]()
 class ThresholdedMixin:
     threshold: float | None = 0.5
 
+@dataclass
+class TaskMixin:
+    task: str
+
+    def extra_repr(self) -> str:
+        return f"task={self.task}"
+
 
 @MetricRegistry.register("mae")
 class MAEMetric(Metric):
@@ -131,12 +138,8 @@ class R2Metric(Metric):
 
 
 @MetricRegistry.register("roc")
-class AUROCMetric(Metric):
+class AUROCMetric(Metric, TaskMixin):
     minimize = False
-
-    def __init__(self, task: str) -> None:
-        super().__init__()
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return self._calc_unreduced_loss(preds, targets, mask)
@@ -144,36 +147,30 @@ class AUROCMetric(Metric):
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task=self.task)
 
-    def extra_repr(self) -> str:
-        return f"task={self.task}"
-
 
 @MetricRegistry.register("prc")
-class AUPRCMetric(Metric):
+class AUPRCMetric(Metric, TaskMixin):
     minimize = False
 
-    def __init__(self, task: str) -> None:
-        super().__init__()
-        self.task = task
-
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
-        return average_precision(preds, targets.long(), task=self.task)
+        p, r, _ = F.precision_recall_curve(preds, targets.long())
+        return auc(r, p)
 
 
 @MetricRegistry.register("accuracy")
-class AccuracyMetric(Metric, ThresholdedMixin):
+class AccuracyMetric(Metric, ThresholdedMixin, TaskMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
+        return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task)
 
 
 @MetricRegistry.register("f1")
-class F1Metric(Metric):
+class F1Metric(Metric, ThresholdedMixin, TaskMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
+        return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task)
 
 
 @MetricRegistry.register("bce")
