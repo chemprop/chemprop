@@ -79,14 +79,11 @@ def get_column_names(
     df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
     input_cols = []
-    target_cols = []
 
     if smiles_cols is not None:
         input_cols.extend(smiles_cols)
     if rxn_cols is not None:
         input_cols.extend(rxn_cols)
-    if target_cols is not None:
-        target_cols.extend(target_cols)
 
     if len(input_cols) == 0:
         if no_header_row:
@@ -94,7 +91,7 @@ def get_column_names(
         else:
             input_cols = [df.columns[0]]
 
-    if len(target_cols) == 0:
+    if target_cols is None:
         if no_header_row:
             ignore_len = len(ignore_cols) if ignore_cols else 0
             ["pred_" + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
