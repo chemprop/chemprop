@@ -12,7 +12,8 @@ class _ScaleTransformMixin(nn.Module):
 
         mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
         scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
-
+if mean.shape != scale.shape:
+    raise ValueError("uneven shapes for 'mean' and 'scale'! got: mean={mean.shape}, scale={scale.shape}")
         self.register_buffer("mean", torch.tensor(mean, dtype=torch.float).unsqueeze(0))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float).unsqueeze(0))
 
