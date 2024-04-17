@@ -120,10 +120,10 @@ class MPNN(pl.LightningModule):
         return H if X_d is None else torch.cat((H, X_d), 1)
 
     def encoding(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None, i: int = -1
     ) -> Tensor:
-        """the final hidden representations for the input molecules"""
-        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d))
+        """Calculate the :attr:`i`-th hidden representation"""
+        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), i)
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
