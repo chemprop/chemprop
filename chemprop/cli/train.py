@@ -499,7 +499,9 @@ def normalize_inputs(train_dset, val_dset, args):
         scaler = scaler if not isinstance(scaler, list) else scaler[0]
 
         if scaler is not None:
-            logger.info(f"Descriptors: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}")
+            logger.info(
+                f"Descriptors: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
             X_d_transform = ScaleTransform.from_standard_scaler(scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
@@ -533,7 +535,9 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 continue
 
-            logger.info(f"Bond features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}")
+            logger.info(
+                f"Bond features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
             featurizer = (
                 train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
             )
