@@ -17,8 +17,8 @@ class _ScaleTransformMixin(nn.Module):
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float).unsqueeze(0))
 
     @classmethod
-    def from_standard_scaler(cls, scaler: StandardScaler):
-        return cls(scaler.mean_, scaler.scale_)
+    def from_standard_scaler(cls, scaler: StandardScaler, pad: int = 0):
+        return cls(scaler.mean_, scaler.scale_, pad=pad)
 
 
 class ScaleTransform(_ScaleTransformMixin):
