@@ -512,8 +512,12 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            featurizer = train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
-            V_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler, pad=featurizer.atom_fdim - featurizer.extra_atom_fdim)
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            V_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.atom_fdim - featurizer.extra_atom_fdim
+            )
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
@@ -526,8 +530,12 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            featurizer = train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
-            E_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler, pad=featurizer.bond_fdim - featurizer.extra_bond_fdim)
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            E_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.bond_fdim - featurizer.extra_bond_fdim
+            )
 
     for V_f_transform, E_f_transform in zip(V_f_transforms, E_f_transforms):
         graph_transforms.append(GraphTransform(V_f_transform, E_f_transform))
