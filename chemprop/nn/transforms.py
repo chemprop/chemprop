@@ -9,8 +9,12 @@ from chemprop.data.collate import BatchMolGraph
 
 
 class _ScaleTransformMixin(nn.Module):
-    def __init__(self, mean: ArrayLike, scale: ArrayLike):
+    def __init__(self, mean: ArrayLike, scale: ArrayLike, pad: int = 0):
         super().__init__()
+
+        if pad > 0:
+            mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
+            scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
 
         self.register_buffer("mean", torch.tensor(mean, dtype=torch.float))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float))
@@ -24,7 +28,7 @@ class _ScaleTransformMixin(nn.Module):
         pass
 
 
-class ScaleTransform(TensorTransformBase):
+class ScaleTransform(_ScaleTransformMixin):
     def forward(self, X: Tensor) -> Tensor:
         if self.training:
             return X
@@ -32,7 +36,7 @@ class ScaleTransform(TensorTransformBase):
         return (X - self.mean) / self.scale
 
 
-class UnscaleTransform(TensorTransformBase):
+class UnscaleTransform(_ScaleTransformMixin):
     def forward(self, X: Tensor) -> Tensor:
         if self.training:
             return X
@@ -41,23 +45,20 @@ class UnscaleTransform(TensorTransformBase):
 
 
 class GraphTransform(nn.Module):
-    def __init__(self, mean: ArrayLike, scale: ArrayLike, key: str, inds: ArrayLike):
+    def __init__(self, V_mean: ArrayLike, V_scale: ArrayLike, atom_fdim: int, E_mean: ArrayLike, E_scale: ArrayLike, bond_fdim: int):
         super().__init__()
 
-        assert key in {"V", "E"}
+        self.V_transform = ScaleTransform(V_mean, V_scale, pad=atom_fdim)
+        self.E_transform = ScaleTransform(E_mean, E_scale, pad=bond_fdim)
 
-        self.transform = TensorTransform(mean, scale)
-        self.key = key
-        self.inds = inds
-
-    def from_standard_scaler(scaler: StandardScaler, key: str, inds: ArrayLike):
-        return GraphTransform(scaler.mean_, scaler.scale_, key, inds)
+    def from_standard_scaler(V_scaler: StandardScaler, E_scaler: StandardScaler):
+        return GraphTransform(V_scaler.mean_, V_scaler.scale_, E_scaler.mean_, E_scaler.scale_)
 
     def forward(self, bmg: BatchMolGraph) -> BatchMolGraph:
         if self.training:
             return bmg
 
-        X = getattr(bmg, self.key)
-        X[:, self.inds] = self.transform(X[:, -self.inds])
+        bmg.V = self.V_transform(bmg.V)
+        bmg.E = self.E_transform(bmg.E)
 
         return bmg
