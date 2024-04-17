@@ -114,7 +114,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=["output_transform"])
+        self.save_hyperparameters()
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
