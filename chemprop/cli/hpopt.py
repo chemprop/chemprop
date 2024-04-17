@@ -253,7 +253,9 @@ def train_model(config, args, train_loader, val_loader, logger, output_scaler, i
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms):
+def tune_model(
+    args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms
+):
     scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
@@ -272,7 +274,9 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode, output_scal
     )
 
     ray_trainer = TorchTrainer(
-        lambda config: train_model(config, args, train_loader, val_loader, logger, output_scaler, input_transforms),
+        lambda config: train_model(
+            config, args, train_loader, val_loader, logger, output_scaler, input_transforms
+        ),
         scaling_config=scaling_config,
         run_config=run_config,
     )
@@ -361,7 +365,9 @@ def main(args: Namespace):
     model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    results = tune_model(args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms)
+    results = tune_model(
+        args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms
+    )
 
     best_result = results.get_best_result()
     best_config = best_result.config
