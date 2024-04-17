@@ -22,7 +22,7 @@ from chemprop.data import (
 from chemprop.data import SplitType, make_split_indices, split_data_by_indices
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
-from chemprop.nn.transforms import GraphTransform, TensorTransform, TensorUntransform
+from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     BondMessagePassing,
@@ -477,8 +477,9 @@ def validate_train_args(args):
 
 def normalize_inputs(train_dset, val_dset, args):
     X_d_transform = None
-    V_f_transforms = [None] * len(train_dset)
-    E_f_transforms = [None] * len(train_dset)
+    graph_transforms = [None] * len(train_dset)
+    V_f_scalers = [None] * len(train_dset)
+    E_f_scalers = [None] * len(train_dset)
     V_d_transforms = [None] * len(train_dset)
 
     d_xd = train_dset.d_xd
@@ -494,7 +495,7 @@ def normalize_inputs(train_dset, val_dset, args):
 
         if scaler is not None:
             logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            X_d_transform = TensorTransform.from_standard_scaler(scaler)
+            X_d_transform = ScaleTransform.from_standard_scaler(scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         scaler = train_dset.normalize_inputs("V_f")
@@ -507,8 +508,7 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            transform = GraphTransform.from_standard_scaler(scaler, "V", d_vf)
-            V_f_transforms[i] = transform
+            V_f_scalers[i] = scaler
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
@@ -521,8 +521,12 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            transform = GraphTransform.from_standard_scaler(scaler, "E", d_ef)
-            E_f_transforms[i] = transform
+            E_f_scalers[i] = scaler
+
+    for V_f_scaler, E_f_scaler in zip(V_f_scalers, E_f_scalers):
+        graph_transforms[i] = GraphTransform.from_standard_scalers(
+            V_f_scaler, E_f_scaler, d_vf, d_ef
+        )
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         scaler = train_dset.normalize_inputs("V_d")
@@ -537,10 +541,10 @@ def normalize_inputs(train_dset, val_dset, args):
             logger.info(
                 f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
             )
-            transform = TensorTransform.from_standard_scaler(scaler)
+            transform = ScaleTransform.from_standard_scaler(scaler)
             V_d_transforms[i] = transform
 
-    return X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms
+    return X_d_transform, graph_transforms, V_d_transforms
 
 
 def save_config(parser: ArgumentParser, args: Namespace):
@@ -673,11 +677,11 @@ def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
     output_scaler: StandardScaler,
-    input_transforms: tuple[TensorTransform, GraphTransform, GraphTransform, TensorTransform],
+    input_transforms: tuple[list[ScaleTransform], list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
-    X_d_transform, V_f_transforms, E_f_transforms, V_d_transforms = input_transforms
+    X_d_transform, graph_transforms, V_d_transforms = input_transforms
 
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -748,7 +752,7 @@ def build_model(
         metrics = None
 
     output_transform = (
-        TensorUntransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+        UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
     )
     predictor = Factory.build(
         predictor_cls,
@@ -783,11 +787,7 @@ def build_model(
         return model
 
     if mpnn_cls == MPNN:
-        V_f_transform = V_f_transforms[0] if len(V_f_transforms) > 0 else None
-        E_f_transform = E_f_transforms[0] if len(E_f_transforms) > 0 else None
-    else:
-        V_f_transform = V_f_transforms
-        E_f_transform = E_f_transforms
+        graph_transforms = graph_transforms[0]
 
     return mpnn_cls(
         mp_block,
@@ -801,8 +801,7 @@ def build_model(
         args.max_lr,
         args.final_lr,
         X_d_transform=X_d_transform,
-        V_f_transform=V_f_transform,
-        E_f_transform=E_f_transform,
+        graph_transforms=graph_transforms,
     )
 
 
