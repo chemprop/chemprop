@@ -4,7 +4,6 @@ from torch import nn, Tensor
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn.hparams import HasHParams
-from chemprop.nn.transforms import GraphTransform
 
 
 class MessagePassing(nn.Module, HasHParams):
