@@ -7,7 +7,7 @@ from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
 from chemprop.models.model import MPNN
 from chemprop.nn.metrics import Metric
-from chemprop.nn.transforms import TensorTransform, GraphTransform
+from chemprop.nn.transforms import ScaleTransform, GraphTransform
 
 
 class MulticomponentMPNN(MPNN):
@@ -25,7 +25,7 @@ class MulticomponentMPNN(MPNN):
         final_lr: float = 1e-4,
         V_f_transform: list[GraphTransform | None] | None = None,
         E_f_transform: list[GraphTransform | None] | None = None,
-        X_d_transform: TensorTransform | None = None,
+        X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__(
             message_passing,

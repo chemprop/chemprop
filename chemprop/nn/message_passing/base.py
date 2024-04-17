@@ -9,7 +9,7 @@ from chemprop.exceptions import InvalidShapeError
 from chemprop.data import BatchMolGraph
 from chemprop.nn.utils import Activation, get_activation_function
 from chemprop.nn.message_passing.proto import MessagePassing
-from chemprop.nn.transforms import TensorTransform
+from chemprop.nn.transforms import ScaleTransform
 
 
 class _MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -56,7 +56,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
-        V_d_transform: TensorTransform | None = None,
+        V_d_transform: ScaleTransform | None = None,
         # layers_per_message: int = 1,
     ):
         super().__init__()

@@ -10,7 +10,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
-from chemprop.nn.transforms import GraphTransform, TensorTransform
+from chemprop.nn.transforms import GraphTransform, ScaleTransform
 
 
 class MPNN(pl.LightningModule):
@@ -69,7 +69,7 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        X_d_transform: TensorTransform | None = None,
+        X_d_transform: ScaleTransform | None = None,
         graph_transform: GraphTransform = None,
     ):
         super().__init__()

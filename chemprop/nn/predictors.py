@@ -18,7 +18,7 @@ from chemprop.nn.loss import (
 )
 from chemprop.nn.metrics import AUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
 from chemprop.nn.ffn import MLP
-from chemprop.nn.transforms import TensorUntransform
+from chemprop.nn.transforms import UnscaleTransform
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
@@ -53,7 +53,7 @@ class Predictor(nn.Module, HasHParams):
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
     """the loss function to use for training"""
-    output_transform: TensorUntransform
+    output_transform: UnscaleTransform
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
@@ -111,7 +111,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        output_transform: TensorUntransform | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["output_transform"])
@@ -255,7 +255,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
-        output_transform: TensorUntransform | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__(
             n_tasks * n_classes,
