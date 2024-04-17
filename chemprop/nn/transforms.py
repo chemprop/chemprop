@@ -9,22 +9,11 @@ from chemprop.data.collate import BatchMolGraph
 
 
 class _ScaleTransformMixin(nn.Module):
-    def __init__(self, mean: ArrayLike | None, scale: ArrayLike | None, pad: int = 0):
+    def __init__(self, mean: ArrayLike, scale: ArrayLike, pad: int = 0):
         super().__init__()
 
-        if pad == 0:
-            assert mean is not None
-            assert scale is not None
-
-        if mean is None:
-            mean = torch.zeros(pad)
-        else:
-            mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
-
-        if scale is None:
-            scale = torch.ones(pad)
-        else:
-            scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
+        mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
+        scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
 
         self.register_buffer("mean", torch.tensor(mean, dtype=torch.float).unsqueeze(0))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float).unsqueeze(0))

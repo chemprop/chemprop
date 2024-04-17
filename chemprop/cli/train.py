@@ -11,6 +11,7 @@ from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
+import torch.nn as nn
 
 from chemprop.data import (
     MolGraphDataLoader,
@@ -477,10 +478,10 @@ def validate_train_args(args):
 
 def normalize_inputs(train_dset, val_dset, args):
     X_d_transform = None
-    graph_transforms = [None] * len(train_dset)
-    V_f_scalers = [None] * len(train_dset)
-    E_f_scalers = [None] * len(train_dset)
+    V_f_transforms = [None] * len(train_dset)
+    E_f_transforms = [None] * len(train_dset)
     V_d_transforms = [None] * len(train_dset)
+    graph_transforms = []
 
     d_xd = train_dset.d_xd
     d_vf = train_dset.d_vf
@@ -505,10 +506,11 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
+                V_f_transforms[i] = nn.Identity()
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            V_f_scalers[i] = scaler
+            V_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
@@ -518,15 +520,14 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
+                E_f_transforms[i] = nn.Identity()
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            E_f_scalers[i] = scaler
+            E_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
-    for V_f_scaler, E_f_scaler in zip(V_f_scalers, E_f_scalers):
-        graph_transforms[i] = GraphTransform.from_standard_scalers(
-            V_f_scaler, E_f_scaler, d_vf, d_ef
-        )
+    for V_f_transform, E_f_transform in zip(V_f_transforms, E_f_transforms):
+        graph_transforms.append(GraphTransform(V_f_transform, E_f_transform))
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         scaler = train_dset.normalize_inputs("V_d")
