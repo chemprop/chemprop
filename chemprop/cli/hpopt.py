@@ -230,10 +230,10 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     return args
 
 
-def train_model(config, args, train_loader, val_loader, logger):
+def train_model(config, args, train_loader, val_loader, logger, output_scaler, input_transforms):
     update_args_with_config(args, config)
 
-    model = build_model(args, train_loader.dataset)
+    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
     logger.info(model)
 
     monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -361,7 +361,7 @@ def main(args: Namespace):
     model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
+    results = tune_model(args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms)
 
     best_result = results.get_best_result()
     best_config = best_result.config
