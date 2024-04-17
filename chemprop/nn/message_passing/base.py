@@ -251,6 +251,7 @@ class BondMessagePassing(_MessagePassingBase):
         return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        bmg = self.graph_transform(bmg)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
@@ -301,6 +302,7 @@ class AtomMessagePassing(_MessagePassingBase):
         return self.W_i(bmg.V[bmg.edge_index[0]])
 
     def message(self, H: Tensor, bmg: BatchMolGraph):
+        bmg = self.graph_transform(bmg)
         H = torch.cat((H, bmg.E), dim=1)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(

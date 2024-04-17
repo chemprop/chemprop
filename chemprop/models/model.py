@@ -88,7 +88,6 @@ class MPNN(pl.LightningModule):
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
 
-        self.graph_transform = graph_transform if graph_transform is not None else nn.Identity()
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
@@ -124,7 +123,6 @@ class MPNN(pl.LightningModule):
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
-        bmg = self.graph_transform(bmg)
         H_v = self.message_passing(bmg, V_d)
         H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
