@@ -511,7 +511,7 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 continue
 
-            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_:0.3f}, scale = {scaler.scale_:0.3f}")
             featurizer = (
                 train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
             )
