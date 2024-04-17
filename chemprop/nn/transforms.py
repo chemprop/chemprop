@@ -51,6 +51,7 @@ class GraphTransform(nn.Module):
         self.V_transform = ScaleTransform(V_mean, V_scale, pad=atom_fdim)
         self.E_transform = ScaleTransform(E_mean, E_scale, pad=bond_fdim)
 
+    @classmethod
     def from_standard_scaler(V_scaler: StandardScaler, E_scaler: StandardScaler):
         return GraphTransform(V_scaler.mean_, V_scaler.scale_, E_scaler.mean_, E_scaler.scale_)
 
