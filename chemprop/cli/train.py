@@ -6,6 +6,7 @@ from copy import deepcopy
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import json
+import numpy as np
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -498,7 +499,7 @@ def normalize_inputs(train_dset, val_dset, args):
         scaler = scaler if not isinstance(scaler, list) else scaler[0]
 
         if scaler is not None:
-            logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            logger.info(f"Descriptors: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}")
             X_d_transform = ScaleTransform.from_standard_scaler(scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
@@ -511,7 +512,10 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 continue
 
-            logger.info(f"Atom features for mol {i}: loc = {scaler.mean_:0.3f}, scale = {scaler.scale_:0.3f}")
+            print(type(scaler.mean_))
+            logger.info(
+                f"Atom features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
             featurizer = (
                 train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
             )
@@ -529,7 +533,7 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 continue
 
-            logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
+            logger.info(f"Bond features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}")
             featurizer = (
                 train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
             )
@@ -551,7 +555,7 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(
-                f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
+                f"Atom descriptors for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
             )
             transform = ScaleTransform.from_standard_scaler(scaler)
             V_d_transforms[i] = transform
