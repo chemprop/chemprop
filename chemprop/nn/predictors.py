@@ -266,9 +266,17 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        task_weights: Tensor | None = None,
     ):
         super().__init__(
-            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
+            n_tasks * n_classes,
+            input_dim,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            criterion,
+            task_weights,
         )
 
         self.n_classes = n_classes
