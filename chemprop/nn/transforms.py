@@ -16,20 +16,18 @@ class _ScaleTransformMixin(nn.Module):
             assert mean is not None
             assert scale is not None
 
-        if pad > 0:
+        if mean is None:
+            mean = torch.zeros(pad)
+        else:
+            mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
 
-            if mean is None:
-                mean = torch.zeros(pad)
-            else:
-                mean = torch.cat([torch.zeros(pad), torch.tensor(mean, dtype=torch.float)])
+        if scale is None:
+            scale = torch.ones(pad)
+        else:
+            scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
 
-            if scale is None:
-                scale = torch.ones(pad)
-            else:
-                scale = torch.cat([torch.ones(pad), torch.tensor(scale, dtype=torch.float)])
-
-        self.register_buffer("mean", torch.tensor(mean, dtype=torch.float))
-        self.register_buffer("scale", torch.tensor(scale, dtype=torch.float))
+        self.register_buffer("mean", torch.tensor(mean, dtype=torch.float).unsqueeze(0))
+        self.register_buffer("scale", torch.tensor(scale, dtype=torch.float).unsqueeze(0))
 
     @classmethod
     def from_standard_scaler(cls, scaler: StandardScaler):
@@ -57,19 +55,11 @@ class UnscaleTransform(_ScaleTransformMixin):
 
 
 class GraphTransform(nn.Module):
-    def __init__(self, V_mean: ArrayLike, V_scale: ArrayLike, atom_fdim: int, E_mean: ArrayLike, E_scale: ArrayLike, bond_fdim: int):
+    def __init__(self, V_transform: ScaleTransform, E_transform: ScaleTransform):
         super().__init__()
 
-        self.V_transform = ScaleTransform(V_mean, V_scale, pad=atom_fdim)
-        self.E_transform = ScaleTransform(E_mean, E_scale, pad=bond_fdim)
-
-    @classmethod
-    def from_standard_scaler(V_scaler: StandardScaler | None, E_scaler: StandardScaler | None, atom_fdim: int, bond_fdim: int) -> GraphTransform:
-        V_mean = V_scaler.mean_ if V_scaler is not None else None
-        V_scale = V_scaler.scale_ if V_scaler is not None else None
-        E_mean = E_scaler.mean_ if E_scaler is not None else None
-        E_scale = E_scaler.scale_ if E_scaler is not None else None
-        return GraphTransform(V_mean, V_scale, atom_fdim, E_mean, E_scale, bond_fdim)
+        self.V_transform = V_transform
+        self.E_transform = E_transform
 
     def forward(self, bmg: BatchMolGraph) -> BatchMolGraph:
         if self.training:
