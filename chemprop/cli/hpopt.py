@@ -340,14 +340,14 @@ def main(args: Namespace):
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
 
-    _ = normalize_inputs(train_dset, val_dset, args)
+    input_transforms = normalize_inputs(train_dset, val_dset, args)
 
     if "regression" in args.task_type:
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        output_scaler = train_dset.normalize_targets()
+        val_dset.normalize_targets(output_scaler)
+        logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
     else:
-        scaler = None
+        output_scaler = None
 
     train_loader = MolGraphDataLoader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -358,7 +358,7 @@ def main(args: Namespace):
 
     torch.manual_seed(seed)
 
-    model = build_model(args, train_loader.dataset)
+    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
     results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
