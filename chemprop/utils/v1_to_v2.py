@@ -9,6 +9,7 @@ from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.nn.transforms import UnscaleTransform
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -38,10 +39,10 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     if args_v1.dataset_type == "regression":
         state_dict_v2["predictor.output_transform.mean"] = torch.tensor(
             model_v1_dict["data_scaler"]["means"], dtype=torch.float32
-        )
+        ).unsqueeze(0)
         state_dict_v2["predictor.output_transform.scale"] = torch.tensor(
             model_v1_dict["data_scaler"]["stds"], dtype=torch.float32
-        )
+        ).unsqueeze(0)
 
     return state_dict_v2
 
@@ -107,6 +108,13 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
             "n_tasks": args_v1.num_tasks,
         }
     )
+
+    if args_v1.dataset_type == "regression":
+        print(model_v1_dict["data_scaler"]["means"])
+        hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(
+            model_v1_dict["data_scaler"]["means"],
+            model_v1_dict["data_scaler"]["stds"],
+        )
 
     return hyper_parameters_v2
 
