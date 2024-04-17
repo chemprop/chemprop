@@ -861,8 +861,6 @@ def train_model(
             if args.save_preds:
                 predss = trainer.predict(model, test_loader)
                 preds = torch.concat(predss, 0).numpy()
-                if args.task_type == "regression":
-                    preds = output_scaler.inverse_transform(preds)
                 columns = get_column_names(
                     args.data_path,
                     args.smiles_columns,

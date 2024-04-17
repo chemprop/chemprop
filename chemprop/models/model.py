@@ -88,7 +88,7 @@ class MPNN(pl.LightningModule):
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
 
-        self.graph_transform = graph_transform
+        self.graph_transform = graph_transform if graph_transform is not None else nn.Identity()
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (

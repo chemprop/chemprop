@@ -22,9 +22,6 @@ class _ScaleTransformMixin(nn.Module):
     def from_standard_scaler(cls, scaler: StandardScaler):
         return cls(scaler.mean_, scaler.scale_)
 
-    @abstractmethod
-    def forward(self, X: Tensor) -> Tensor:
-        pass
 
 
 class ScaleTransform(_ScaleTransformMixin):
