@@ -253,7 +253,7 @@ def train_model(config, args, train_loader, val_loader, logger, output_scaler, i
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_loader, val_loader, logger, monitor_mode):
+def tune_model(args, train_loader, val_loader, logger, monitor_mode, output_scaler, input_transforms):
     scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
 
     scaling_config = ScalingConfig(
@@ -272,7 +272,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     ray_trainer = TorchTrainer(
-        lambda config: train_model(config, args, train_loader, val_loader, logger),
+        lambda config: train_model(config, args, train_loader, val_loader, logger, output_scaler, input_transforms),
         scaling_config=scaling_config,
         run_config=run_config,
     )
