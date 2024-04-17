@@ -477,10 +477,13 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
+    multicomponent = isinstance(train_dset, MulticomponentDataset)
+    num_components = train_dset.n_components if multicomponent else 1
+
     X_d_transform = None
-    V_f_transforms = [nn.Identity()] * len(train_dset)
-    E_f_transforms = [nn.Identity()] * len(train_dset)
-    V_d_transforms = [None] * len(train_dset)
+    V_f_transforms = [nn.Identity()] * num_components
+    E_f_transforms = [nn.Identity()] * num_components
+    V_d_transforms = [None] * num_components
     graph_transforms = []
 
     d_xd = train_dset.d_xd
@@ -509,7 +512,8 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            V_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
+            featurizer = train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            V_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler, pad=featurizer.atom_fdim - featurizer.extra_atom_fdim)
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
@@ -522,7 +526,8 @@ def normalize_inputs(train_dset, val_dset, args):
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
-            E_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
+            featurizer = train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            E_f_transforms[i] = ScaleTransform.from_standard_scaler(scaler, pad=featurizer.bond_fdim - featurizer.extra_bond_fdim)
 
     for V_f_transform, E_f_transform in zip(V_f_transforms, E_f_transforms):
         graph_transforms.append(GraphTransform(V_f_transform, E_f_transform))
