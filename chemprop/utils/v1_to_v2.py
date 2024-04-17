@@ -112,8 +112,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     if args_v1.dataset_type == "regression":
         print(model_v1_dict["data_scaler"]["means"])
         hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(
-            model_v1_dict["data_scaler"]["means"],
-            model_v1_dict["data_scaler"]["stds"],
+            model_v1_dict["data_scaler"]["means"], model_v1_dict["data_scaler"]["stds"]
         )
 
     return hyper_parameters_v2
