@@ -13,7 +13,6 @@ class MessagePassing(nn.Module, HasHParams):
 
     input_dim: int
     output_dim: int
-    graph_transform: GraphTransform = nn.Identity()
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:

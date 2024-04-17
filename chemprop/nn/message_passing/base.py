@@ -9,7 +9,7 @@ from chemprop.exceptions import InvalidShapeError
 from chemprop.data import BatchMolGraph
 from chemprop.nn.utils import Activation, get_activation_function
 from chemprop.nn.message_passing.proto import MessagePassing
-from chemprop.nn.transforms import ScaleTransform
+from chemprop.nn.transforms import ScaleTransform, GraphTransform
 
 
 class _MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -57,6 +57,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         undirected: bool = False,
         d_vd: int | None = None,
         V_d_transform: ScaleTransform | None = None,
+        graph_transform: GraphTransform | None = None,
         # layers_per_message: int = 1,
     ):
         super().__init__()
@@ -69,6 +70,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
         self.V_d_transform = V_d_transform if V_d_transform is not None else nn.Identity()
+        self.graph_transform = graph_transform if graph_transform is not None else nn.Identity()
 
     @property
     def output_dim(self) -> int:
