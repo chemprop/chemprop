@@ -478,8 +478,8 @@ def validate_train_args(args):
 
 def normalize_inputs(train_dset, val_dset, args):
     X_d_transform = None
-    V_f_transforms = [None] * len(train_dset)
-    E_f_transforms = [None] * len(train_dset)
+    V_f_transforms = [nn.Identity()] * len(train_dset)
+    E_f_transforms = [nn.Identity()] * len(train_dset)
     V_d_transforms = [None] * len(train_dset)
     graph_transforms = []
 
@@ -506,7 +506,6 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
-                V_f_transforms[i] = nn.Identity()
                 continue
 
             logger.info(f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
@@ -520,7 +519,6 @@ def normalize_inputs(train_dset, val_dset, args):
 
         for i, scaler in enumerate(scalers):
             if scaler is None:
-                E_f_transforms[i] = nn.Identity()
                 continue
 
             logger.info(f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}")
@@ -802,7 +800,7 @@ def build_model(
         args.max_lr,
         args.final_lr,
         X_d_transform=X_d_transform,
-        graph_transforms=graph_transforms,
+        graph_transform=graph_transforms,
     )
 
 
