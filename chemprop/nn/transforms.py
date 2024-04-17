@@ -8,7 +8,7 @@ from torch import Tensor, nn
 from chemprop.data.collate import BatchMolGraph
 
 
-class TensorTransformBase(nn.Module):
+class _ScaleTransformMixin(nn.Module):
     def __init__(self, mean: ArrayLike, scale: ArrayLike):
         super().__init__()
 
@@ -24,7 +24,7 @@ class TensorTransformBase(nn.Module):
         pass
 
 
-class TensorTransform(TensorTransformBase):
+class ScaleTransform(TensorTransformBase):
     def forward(self, X: Tensor) -> Tensor:
         if self.training:
             return X
@@ -32,7 +32,7 @@ class TensorTransform(TensorTransformBase):
         return (X - self.mean) / self.scale
 
 
-class TensorUntransform(TensorTransformBase):
+class UnscaleTransform(TensorTransformBase):
     def forward(self, X: Tensor) -> Tensor:
         if self.training:
             return X
