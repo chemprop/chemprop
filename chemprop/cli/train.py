@@ -843,6 +843,8 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     args.reaction_columns,
                     args.target_columns,
                     args.ignore_columns,
+                    args.splits_column,
+                    args.weight_column,
                     args.no_header_row,
                 )
                 names = test_loader.dataset.names
