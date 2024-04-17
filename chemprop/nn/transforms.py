@@ -1,8 +1,9 @@
 import torch
-from chemprop.data.collate import BatchMolGraph
 from numpy.typing import ArrayLike
 from sklearn.preprocessing import StandardScaler
 from torch import Tensor, nn
+
+from chemprop.data.collate import BatchMolGraph
 
 
 class _ScaleTransformMixin(nn.Module):
