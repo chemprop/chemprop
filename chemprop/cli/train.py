@@ -699,6 +699,7 @@ def build_model(
                 dropout=args.dropout,
                 activation=args.activation,
                 V_d_transform=V_d_transforms[i],
+                graph_transform=graph_transforms[i],
             )
             for i in range(train_dset.n_components)
         ]
@@ -728,7 +729,8 @@ def build_model(
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
-            V_d_transform=V_d_transforms[0] if len(V_d_transforms) > 0 else None,
+            V_d_transform=V_d_transforms[0],
+            graph_transform=graph_transforms[0],
         )
         d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
@@ -785,9 +787,6 @@ def build_model(
 
         return model
 
-    if mpnn_cls == MPNN:
-        graph_transforms = graph_transforms[0]
-
     return mpnn_cls(
         mp_block,
         agg,
@@ -800,7 +799,6 @@ def build_model(
         args.max_lr,
         args.final_lr,
         X_d_transform=X_d_transform,
-        graph_transform=graph_transforms,
     )
 
 
