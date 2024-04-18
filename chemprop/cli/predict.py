@@ -194,6 +194,7 @@ def make_prediction_for_model(
         rxn_cols=args.reaction_columns,
         target_cols=None,
         ignore_cols=None,
+        splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
@@ -220,10 +221,16 @@ def make_prediction_for_model(
     else:
         test_dset = test_dsets[0]
 
-    X_d_scaler = input_scalers.get("X_d", None) if input_scalers else None
-    V_f_scaler = input_scalers.get("V_f", None) if input_scalers else None
-    E_f_scaler = input_scalers.get("E_f", None) if input_scalers else None
-    V_d_scaler = input_scalers.get("V_d", None) if input_scalers else None
+    if input_scalers:
+        X_d_scaler = input_scalers.get("X_d")
+        V_f_scaler = input_scalers.get("V_f")
+        E_f_scaler = input_scalers.get("E_f")
+        V_d_scaler = input_scalers.get("V_d")
+    else:
+        X_d_scaler = None
+        V_f_scaler = None
+        E_f_scaler = None
+        V_d_scaler = None
 
     if X_d_scaler is not None:
         test_dset.normalize_inputs("X_d", X_d_scaler)
@@ -262,15 +269,11 @@ def make_prediction_for_model(
 
     logger.info(model)
 
-    with torch.inference_mode():
-        trainer = pl.Trainer(
-            logger=False,
-            enable_progress_bar=True,
-            accelerator=args.accelerator,
-            devices=args.devices,
-        )
+    trainer = pl.Trainer(
+        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+    )
 
-        predss = trainer.predict(model, test_loader)
+    predss = trainer.predict(model, test_loader)
 
     # TODO: add uncertainty and calibration
     # if cal_dset is not None:

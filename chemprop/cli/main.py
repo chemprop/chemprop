@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from configargparse import ArgumentParser
 import logging
 import sys
 from pathlib import Path
@@ -6,10 +6,8 @@ from pathlib import Path
 from chemprop.cli.train import TrainSubcommand
 from chemprop.cli.predict import PredictSubcommand
 from chemprop.cli.convert import ConvertSubcommand
-
-# TODO: add subcommands for Fingerprint and Hyperopt
-# from chemprop.cli.fingerprint import FingerprintSubcommand
-# from chemprop.cli.hyperopt import HyperoptSubcommand
+from chemprop.cli.fingerprint import FingerprintSubcommand
+from chemprop.cli.hpopt import HpoptSubcommand
 
 from chemprop.cli.utils import pop_attr
 from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
@@ -20,7 +18,9 @@ SUBCOMMANDS = [
     TrainSubcommand,
     PredictSubcommand,
     ConvertSubcommand,
-]  # , FingerprintSubcommand, HyperoptSubcommand]
+    FingerprintSubcommand,
+    HpoptSubcommand,
+]
 
 
 def construct_parser():

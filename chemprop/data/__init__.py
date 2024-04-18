@@ -10,7 +10,7 @@ from .datasets import (
 )
 from .molgraph import MolGraph
 from .samplers import ClassBalanceSampler, SeededSampler
-from .splitting import split_component, SplitType
+from .splitting import SplitType, make_split_indices, split_data_by_indices
 
 __all__ = [
     "BatchMolGraph",
@@ -28,6 +28,7 @@ __all__ = [
     "MolGraph",
     "ClassBalanceSampler",
     "SeededSampler",
-    "split_component",
     "SplitType",
+    "make_split_indices",
+    "split_data_by_indices",
 ]

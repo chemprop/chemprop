@@ -21,7 +21,6 @@ from .loss import (
     DirichletMixin,
     BinaryDirichletLoss,
     MulticlassDirichletLoss,
-    _ThresholdMixin,
     SIDLoss,
     WassersteinLoss,
 )
@@ -90,7 +89,6 @@ __all__ = [
     "DirichletMixin",
     "BinaryDirichletLoss",
     "MulticlassDirichletLoss",
-    "_ThresholdMixin",
     "SIDLoss",
     "WassersteinLoss",
     "Metric",

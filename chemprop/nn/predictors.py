@@ -62,7 +62,30 @@ class Predictor(nn.Module, HasHParams):
         pass
 
     @abstractmethod
-    def encode(self, Z: Tensor) -> Tensor:
+    def encode(self, Z: Tensor, i: int) -> Tensor:
+        """Calculate the :attr:`i`-th hidden representation
+
+        Parameters
+        ----------
+        Z : Tensor
+            a tensor of shape ``n x d`` containing the input data to encode, where ``d`` is the
+            input dimensionality.
+        i : int
+            The stop index of slice of the MLP used to encode the input. That is, use all
+            layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
+            value, and the behavior of this function is dependent on the underlying list
+            slicing behavior. For example:
+
+            * ``i=0``: use a 0-layer MLP (i.e., a no-op)
+            * ``i=1``: use only the first block
+            * ``i=-1``: use _up to_ the final block
+
+        Returns
+        -------
+        Tensor
+            a tensor of shape ``n x h`` containing the :attr:`i`-th hidden representation, where
+            ``h`` is the number of neurons in the :attr:`i`-th hidden layer.
+        """
         pass
 
 
@@ -83,7 +106,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):
@@ -114,8 +137,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def train_step(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
 
-    def encode(self, Z: Tensor) -> Tensor:
-        return self.ffn[:-1](Z)
+    def encode(self, Z: Tensor, i: int) -> Tensor:
+        return self.ffn[:i](Z)
 
 
 @PredictorRegistry.register("regression")
@@ -130,7 +153,7 @@ class RegressionFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
         loc: float | Tensor = 0.0,
@@ -256,7 +279,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         input_dim: int = DEFAULT_HIDDEN_DIM,
         hidden_dim: int = 300,
         n_layers: int = 1,
-        dropout: float = 0,
+        dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
     ):

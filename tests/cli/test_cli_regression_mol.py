@@ -3,9 +3,12 @@
 
 import pytest
 import torch
+import json
 
 from chemprop.cli.main import main
+from chemprop.cli.train import TrainSubcommand
 from chemprop.models.model import MPNN
+from chemprop.cli.hpopt import NO_RAY, NO_HYPEROPT  # , NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 
@@ -26,6 +29,11 @@ def model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
 
+@pytest.fixture
+def config_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "config.toml")
+
+
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
@@ -34,6 +42,37 @@ def test_train_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_train_config(monkeypatch, config_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        config_path,
+        "--epochs",
+        "2",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    new_config_path = tmp_path / "config.toml"
+    parser = TrainSubcommand.parser
+
+    new_args = parser.parse_args(["--config-path", str(new_config_path)])
+    old_args = parser.parse_args(["--config-path", str(config_path)])
+
+    for key, value in old_args.__dict__.items():
+        if key not in ["config_path", "output_dir", "epochs"]:
+            assert getattr(new_args, key) == value
+
+    assert new_args.epochs == 2
 
 
 def test_train_quick_features(monkeypatch, data_path):
@@ -72,6 +111,25 @@ def test_train_quick_features(monkeypatch, data_path):
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--ffn-block-index",
+        ffn_block_index,
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -143,6 +201,63 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
 
 
+def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
+    input_path = str(data_dir / "regression" / "mol" / "mol_with_splits.csv")
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_splits_file(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+    splits_file = str(tmp_path / "splits.json")
+    splits = [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+    with open(splits_file, "w") as f:
+        json.dump(splits, f)
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--splits-file",
+        splits_file,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
     input_path, *_ = data_path
     args = [
@@ -161,6 +276,31 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         main()
 
     assert (tmp_path / "preds_0.csv").exists()
+
+
+@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
+def test_fingerprint_output_structure(
+    monkeypatch, data_path, model_path, tmp_path, ffn_block_index
+):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "fingerprint",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--output",
+        str(tmp_path / "fps.csv"),
+        "--ffn-block-index",
+        ffn_block_index,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "fps_0.csv").exists()
 
 
 def test_train_outputs(monkeypatch, data_path, tmp_path):
@@ -223,3 +363,61 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     assert torch.equal(
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
+
+
+# @pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
+# def test_optuna_quick(monkeypatch, data_path, tmp_path):
+#     input_path, *_ = data_path
+
+#     args = [
+#         "chemprop",
+#         "hpopt",
+#         "-i",
+#         input_path,
+#         "--epochs",
+#         "1",
+#         "--hpopt-save-dir",
+#         str(tmp_path),
+#         "--raytune-num-samples",
+#         "2",
+#         "--raytune-search-algorithm",
+#         "optuna",
+#     ]
+
+#     with monkeypatch.context() as m:
+#         m.setattr("sys.argv", args)
+#         main()
+
+#     assert (tmp_path / "best_params.json").exists()
+#     assert (tmp_path / "best_checkpoint.ckpt").exists()
+#     assert (tmp_path / "all_progress.csv").exists()
+#     assert (tmp_path / "ray_results").exists()
+
+
+@pytest.mark.skipif(NO_RAY and NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "hpopt",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--hpopt-save-dir",
+        str(tmp_path),
+        "--raytune-num-samples",
+        "2",
+        "--raytune-search-algorithm",
+        "hyperopt",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_checkpoint.ckpt").exists()
+    assert (tmp_path / "all_progress.csv").exists()
+    assert (tmp_path / "ray_results").exists()
