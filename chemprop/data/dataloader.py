@@ -39,26 +39,35 @@ class MolGraphDataLoader(DataLoader):
         shuffle: bool = True,
         **kwargs,
     ):
-        if class_balance:
-            sampler = ClassBalanceSampler(dataset.Y, seed, shuffle)
-        elif shuffle and seed is not None:
-            sampler = SeededSampler(len(dataset), seed)
+        if "sampler" in kwargs:
+            sampler = kwargs.pop("sampler")
         else:
-            sampler = None
+            if class_balance:
+                sampler = ClassBalanceSampler(dataset.Y, seed, shuffle)
+            elif shuffle and seed is not None:
+                sampler = SeededSampler(len(dataset), seed)
+            else:
+                sampler = None
 
-        if isinstance(dataset, MulticomponentDataset):
-            collate_fn = collate_multicomponent
+        if "collate_fn" in kwargs:
+            collate_fn = kwargs.pop("collate_fn")
         else:
-            collate_fn = collate_batch
+            if isinstance(dataset, MulticomponentDataset):
+                collate_fn = collate_multicomponent
+            else:
+                collate_fn = collate_batch
 
-        if len(dataset) % batch_size == 1:
-            warnings.warn(
-                f"Dropping last batch of size 1 to avoid issues with batch normalization \
-(dataset size = {len(dataset)}, batch_size = {batch_size})"
-            )
-            drop_last = True
+        if "drop_last" in kwargs:
+            drop_last = kwargs.pop("drop_last")
         else:
-            drop_last = False
+            if len(dataset) % batch_size == 1:
+                warnings.warn(
+                    "Dropping last batch of size 1 to avoid issues with batch normalization "
+                    f"(dataset size = {len(dataset)}, batch_size = {batch_size})"
+                )
+                drop_last = True
+            else:
+                drop_last = False
 
         super().__init__(
             dataset,
@@ -68,4 +77,5 @@ class MolGraphDataLoader(DataLoader):
             num_workers=num_workers,
             collate_fn=collate_fn,
             drop_last=drop_last,
+            **kwargs,
         )
