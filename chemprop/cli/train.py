@@ -132,11 +132,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     action="store_true",
     #     help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
     # )
-    parser.add_argument(
-        "--save-preds",
-        action="store_true",
-        help="Whether to save test split predictions during training.",
-    )
+
     # TODO: Add in v2.1
     # parser.add_argument(
     #     "--resume-experiment",
@@ -832,63 +828,59 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 model.predictor.register_buffer(
                     "scale", torch.tensor(scaler.scale_).view(1, -1).float()
                 )
-            results = trainer.test(model, test_loader)[0]
-            logger.info(f"Batch Averaged Test results: {results}")
+            predss = trainer.predict(model, test_loader)
+            preds = torch.concat(predss, 0).numpy()
+            if isinstance(test_loader.dataset, MulticomponentDataset):
+                test_dset = test_loader.dataset.datasets[0]
+            else:
+                test_dset = test_loader.dataset
+            targets = test_dset.Y
+            mask = torch.from_numpy(np.isfinite(targets))
+            targets = np.nan_to_num(targets, nan=0.0)
+            w_s = torch.from_numpy(test_dset.weights)
+            w_t = model.w_t
+            lt_mask = (
+                torch.from_numpy(test_dset.lt_mask)
+                if test_dset.lt_mask[0] is not None
+                else None
+            )
+            gt_mask = (
+                torch.from_numpy(test_dset.gt_mask)
+                if test_dset.gt_mask[0] is not None
+                else None
+            )
+            preds_losses = [
+                metric(
+                    torch.from_numpy(preds),
+                    torch.from_numpy(targets),
+                    mask,
+                    w_s,
+                    w_t,
+                    lt_mask,
+                    gt_mask,
+                )
+                for metric in model.metrics
+            ]
+            preds_metrics = {
+                f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
+            }
+            logger.info(f"Entire Test Set results: {preds_metrics}")
 
-            if args.save_preds:
-                predss = trainer.predict(model, test_loader)
-                preds = torch.concat(predss, 0).numpy()
-                if isinstance(test_loader.dataset, MulticomponentDataset):
-                    test_dset = test_loader.dataset.datasets[0]
-                else:
-                    test_dset = test_loader.dataset
-                targets = test_dset.Y
-                mask = torch.from_numpy(np.isfinite(targets))
-                targets = np.nan_to_num(targets, nan=0.0)
-                w_s = torch.from_numpy(test_dset.weights)
-                w_t = model.w_t
-                lt_mask = (
-                    torch.from_numpy(test_dset.lt_mask)
-                    if test_dset.lt_mask[0] is not None
-                    else None
-                )
-                gt_mask = (
-                    torch.from_numpy(test_dset.gt_mask)
-                    if test_dset.gt_mask[0] is not None
-                    else None
-                )
-                preds_losses = [
-                    metric(
-                        torch.from_numpy(preds),
-                        torch.from_numpy(targets),
-                        mask,
-                        w_s,
-                        w_t,
-                        lt_mask,
-                        gt_mask,
-                    )
-                    for metric in model.metrics
-                ]
-                preds_metrics = {
-                    f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
-                }
-                logger.info(f"Entire Test Set results: {preds_metrics}")
-
-                columns = get_column_names(
-                    args.data_path,
-                    args.smiles_columns,
-                    args.reaction_columns,
-                    args.target_columns,
-                    args.ignore_columns,
-                    args.no_header_row,
-                )
-                names = test_loader.dataset.names
-                if not isinstance(test_loader.dataset, MulticomponentDataset):
-                    namess = [names]
-                else:
-                    namess = list(zip(*names))
-                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
-                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+            columns = get_column_names(
+                args.data_path,
+                args.smiles_columns,
+                args.reaction_columns,
+                args.target_columns,
+                args.ignore_columns,
+                args.no_header_row,
+            )
+            names = test_loader.dataset.names
+            if not isinstance(test_loader.dataset, MulticomponentDataset):
+                namess = [names]
+            else:
+                namess = list(zip(*names))
+            df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+            df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         output_scaler = scaler
