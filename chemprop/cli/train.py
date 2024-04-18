@@ -840,14 +840,10 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             w_s = torch.from_numpy(test_dset.weights)
             w_t = model.w_t
             lt_mask = (
-                torch.from_numpy(test_dset.lt_mask)
-                if test_dset.lt_mask[0] is not None
-                else None
+                torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
             )
             gt_mask = (
-                torch.from_numpy(test_dset.gt_mask)
-                if test_dset.gt_mask[0] is not None
-                else None
+                torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
             )
             preds_losses = [
                 metric(
