@@ -50,7 +50,11 @@ def parse_csv(
 
     if target_cols is None:
         target_cols = list(
-            set(df.columns) - set(input_cols) - set(ignore_cols or []) - set(splits_col or [])
+            set(df.columns)
+            - set(input_cols)
+            - set(ignore_cols or [])
+            - set(splits_col or [])
+            - set(weight_col or [])
         )
 
     Y = df[target_cols]
@@ -74,32 +78,30 @@ def get_column_names(
     rxn_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
+    splits_col: str | None,
+    weight_col: str | None,
     no_header_row: bool = False,
 ):
     df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
-    input_cols = []
+    if no_header_row:
+        return ["SMILES"] + ["pred_" + str(i) for i in range((len(df.columns) - 1))]
 
-    if smiles_cols is not None:
-        input_cols.extend(smiles_cols)
-    if rxn_cols is not None:
-        input_cols.extend(rxn_cols)
+    input_cols = (smiles_cols or []) + (rxn_cols or [])
 
     if len(input_cols) == 0:
-        if no_header_row:
-            input_cols = ["SMILES"]
-        else:
-            input_cols = [df.columns[0]]
+        input_cols = [df.columns[0]]
 
     if target_cols is None:
-        if no_header_row:
-            ignore_len = len(ignore_cols) if ignore_cols else 0
-            ["pred_" + str(i) for i in range((len(df.columns) - len(input_cols) - ignore_len))]
-        else:
-            target_cols = list(set(df.columns) - set(input_cols) - set(ignore_cols or []))
+        target_cols = list(
+            set(df.columns)
+            - set(input_cols)
+            - set(ignore_cols or [])
+            - set(splits_col or [])
+            - set(weight_col or [])
+        )
 
-    cols = input_cols + target_cols
-    return cols
+    return input_cols + target_cols
 
 
 def make_datapoints(
