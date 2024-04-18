@@ -87,12 +87,7 @@ def get_column_names(
     if no_header_row:
         return ["SMILES"] + ["pred_" + str(i) for i in range((len(df.columns) - 1))]
 
-    input_cols = []
-
-    if smiles_cols is not None:
-        input_cols.extend(smiles_cols)
-    if rxn_cols is not None:
-        input_cols.extend(rxn_cols)
+    input_cols = (smiles_cols or []) + (rxn_cols or [])
 
     if len(input_cols) == 0:
         input_cols = [df.columns[0]]
