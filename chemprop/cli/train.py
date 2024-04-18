@@ -449,7 +449,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--pytorch-seed",
         type=int,
-        default=0,
+        default=None,
         help="Seed for PyTorch randomness (e.g., random initial weights).",
     )
 
@@ -781,7 +781,14 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
-        torch.manual_seed(args.pytorch_seed + model_idx)
+        if args.pytorch_seed is None:
+            seed = torch.seed()
+            deterministic = False
+        else:
+            seed = args.pytorch_seed + model_idx
+            deterministic = True
+
+        torch.manual_seed(seed)
 
         model = build_model(args, train_loader.dataset)
         logger.info(model)
@@ -813,6 +820,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
             gradient_clip_val=args.grad_clip,
+            deterministic=deterministic,
         )
         trainer.fit(model, train_loader, val_loader)
 
