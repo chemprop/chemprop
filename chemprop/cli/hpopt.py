@@ -20,7 +20,7 @@ from chemprop.cli.train import (
     validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
-from chemprop.data import MolGraphDataLoader
+from chemprop.data import build_dataloader
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.utils import Activation
 
@@ -373,10 +373,10 @@ def main(args: Namespace):
     else:
         scaler = None
 
-    train_loader = MolGraphDataLoader(
+    train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
-    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 

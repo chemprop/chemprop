@@ -5,7 +5,7 @@ import numpy as np
 
 from lightning import pytorch as pl
 
-from chemprop.data.dataloader import MolGraphDataLoader
+from chemprop.data.dataloader import build_dataloader
 from chemprop.data.datapoints import MoleculeDatapoint
 from chemprop.data.datasets import MoleculeDataset
 from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
@@ -34,7 +34,7 @@ def example_model_v1_prediction(data_dir):
     test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
     test_dset = MoleculeDataset(test_data, featurizer)
 
-    test_loader = MolGraphDataLoader(test_dset, shuffle=False)
+    test_loader = build_dataloader(test_dset, shuffle=False)
     return ys, test_loader
 
 

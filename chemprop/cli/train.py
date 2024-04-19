@@ -12,7 +12,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.data import (
-    MolGraphDataLoader,
+    build_dataloader,
     MolGraphDataset,
     MulticomponentDataset,
     MoleculeDataset,
@@ -442,7 +442,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-seed",
         type=int,
         default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`build_dataloader` when :code:`shuffle` is True.",
     )
 
     parser.add_argument(
@@ -912,12 +912,12 @@ def main(args):
         else:
             scaler = None
 
-        train_loader = MolGraphDataLoader(
+        train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
         )
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
-            test_loader = MolGraphDataLoader(
+            test_loader = build_dataloader(
                 test_dset, args.batch_size, args.num_workers, shuffle=False
             )
         else:

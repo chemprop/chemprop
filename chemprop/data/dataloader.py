@@ -7,7 +7,7 @@ from chemprop.data.datasets import MoleculeDataset, MulticomponentDataset, React
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 
-def MolGraphDataLoader(
+def build_dataloader(
     dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
     batch_size: int = 50,
     num_workers: int = 0,
