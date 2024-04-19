@@ -125,7 +125,6 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
-        "--save-preds",
     ]
 
     with monkeypatch.context() as m:
