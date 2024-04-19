@@ -786,7 +786,7 @@ def build_model(
 
     if args.loss_function is None:
         logger.info(
-            f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
 
     if args.model_frzn is not None:
@@ -853,7 +853,6 @@ def train_model(
 
         patience = args.patience if args.patience is not None else args.epochs
         early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
-
 
         trainer = pl.Trainer(
             logger=trainer_logger,

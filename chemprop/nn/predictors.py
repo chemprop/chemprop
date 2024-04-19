@@ -102,8 +102,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output.
     """
 
-    _default_criterion: LossFunction
-    _default_metric: Metric
+    _T_default_criterion: LossFunction
+    _T_default_metric: Metric
 
     def __init__(
         self,
@@ -127,7 +127,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         )
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         self.criterion = criterion or Factory.build(
-            self._default_criterion, task_weights=task_weights, threshold=threshold
+            self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
 
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
@@ -156,8 +156,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
 @PredictorRegistry.register("regression")
 class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = MSELoss
-    _default_metric = MSEMetric
+    _T_default_criterion = MSELoss
+    _T_default_metric = MSEMetric
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z)
@@ -166,7 +166,7 @@ class RegressionFFN(_FFNPredictorBase):
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
-    _default_criterion = MVELoss
+    _T_default_criterion = MVELoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -188,7 +188,7 @@ class MveFFN(RegressionFFN):
 @PredictorRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
-    _default_criterion = EvidentialLoss
+    _T_default_criterion = EvidentialLoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -217,8 +217,8 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 @PredictorRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
-    _default_criterion = BCELoss
-    _default_metric = BinaryAUROCMetric
+    _T_default_criterion = BCELoss
+    _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -232,8 +232,8 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _default_criterion = BinaryDirichletLoss
-    _default_metric = BinaryAUROCMetric
+    _T_default_criterion = BinaryDirichletLoss
+    _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -250,8 +250,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("multiclass")
 class MulticlassClassificationFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = CrossEntropyLoss
-    _default_metric = CrossEntropyMetric
+    _T_default_criterion = CrossEntropyLoss
+    _T_default_metric = CrossEntropyMetric
 
     def __init__(
         self,
@@ -292,8 +292,8 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _default_criterion = MulticlassDirichletLoss
-    _default_metric = CrossEntropyMetric
+    _T_default_criterion = MulticlassDirichletLoss
+    _T_default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -320,8 +320,8 @@ class _Exp(nn.Module):
 @PredictorRegistry.register("spectral")
 class SpectralFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = SIDLoss
-    _default_metric = SIDMetric
+    _T_default_criterion = SIDLoss
+    _T_default_metric = SIDMetric
 
     def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
         super().__init__(*args, **kwargs)
