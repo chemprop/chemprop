@@ -11,7 +11,6 @@ from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.models import load_model
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.train import build_dataloader
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +126,7 @@ def make_fingerprint_for_model(
     else:
         test_dset = test_dsets[0]
 
-    test_loader = build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
 
     logger.info(model)
 
