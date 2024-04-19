@@ -5,6 +5,7 @@ import sys
 from copy import deepcopy
 import pandas as pd
 import json
+import numpy as np
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
@@ -12,7 +13,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
 
 from chemprop.data import (
-    MolGraphDataLoader,
+    build_dataloader,
     MolGraphDataset,
     MulticomponentDataset,
     MoleculeDataset,
@@ -131,11 +132,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     action="store_true",
     #     help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
     # )
-    parser.add_argument(
-        "--save-preds",
-        action="store_true",
-        help="Whether to save test split predictions during training.",
-    )
+
     # TODO: Add in v2.1
     # parser.add_argument(
     #     "--resume-experiment",
@@ -442,7 +439,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-seed",
         type=int,
         default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`build_dataloader` when :code:`shuffle` is True.",
     )
 
     parser.add_argument(
@@ -833,29 +830,59 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            results = trainer.test(model, test_loader)[0]
-            logger.info(f"Test results: {results}")
+            predss = trainer.predict(model, test_loader)
+            preds = torch.concat(predss, 0).numpy()
 
-            if args.save_preds:
-                predss = trainer.predict(model, test_loader)
-                preds = torch.concat(predss, 0).numpy()
-                columns = get_column_names(
-                    args.data_path,
-                    args.smiles_columns,
-                    args.reaction_columns,
-                    args.target_columns,
-                    args.ignore_columns,
-                    args.splits_column,
-                    args.weight_column,
-                    args.no_header_row,
+            if isinstance(test_loader.dataset, MulticomponentDataset):
+                test_dset = test_loader.dataset.datasets[0]
+            else:
+                test_dset = test_loader.dataset
+            targets = test_dset.Y
+            mask = torch.from_numpy(np.isfinite(targets))
+            targets = np.nan_to_num(targets, nan=0.0)
+            weights = torch.from_numpy(test_dset.weights)
+            lt_mask = (
+                torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+            )
+            gt_mask = (
+                torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+            )
+            preds_losses = [
+                metric(
+                    torch.from_numpy(preds),
+                    torch.from_numpy(targets),
+                    mask,
+                    weights,
+                    lt_mask,
+                    gt_mask,
                 )
-                names = test_loader.dataset.names
-                if not isinstance(test_loader.dataset, MulticomponentDataset):
-                    namess = [names]
-                else:
-                    namess = list(zip(*names))
+                for metric in model.metrics
+            ]
+            preds_metrics = {
+                f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
+            }
+            print(f"Entire Test Set results: {preds_metrics}")
+
+            columns = get_column_names(
+                args.data_path,
+                args.smiles_columns,
+                args.reaction_columns,
+                args.target_columns,
+                args.ignore_columns,
+                args.splits_column,
+                args.weight_column,
+                args.no_header_row,
+            )
+            names = test_loader.dataset.names
+            if isinstance(test_loader.dataset, MulticomponentDataset):
+                namess = list(zip(*names))
+            else:
+                namess = [names]
+            if "multiclass" in args.task_type:
+                df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+            else:
                 df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
-                df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+            df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         p_model = model_output_dir / "model.pt"
         output_scaler = scaler
@@ -914,12 +941,12 @@ def main(args):
         else:
             scaler = None
 
-        train_loader = MolGraphDataLoader(
+        train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
         )
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
-            test_loader = MolGraphDataLoader(
+            test_loader = build_dataloader(
                 test_dset, args.batch_size, args.num_workers, shuffle=False
             )
         else:
