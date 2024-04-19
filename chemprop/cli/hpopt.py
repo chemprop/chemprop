@@ -247,8 +247,17 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     return args
 
 
-def train_model(config, args, train_loader, val_loader, logger):
+def train_model(config, args, train_dset, val_dset, logger):
     update_args_with_config(args, config)
+
+    train_loader = MolGraphDataLoader(
+        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+    )
+    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+
+    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
+
+    torch.manual_seed(seed)
 
     model = build_model(args, train_loader.dataset)
     logger.info(model)
@@ -273,7 +282,7 @@ def train_model(config, args, train_loader, val_loader, logger):
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_loader, val_loader, logger, monitor_mode):
+def tune_model(args, train_dset, val_dset, logger, monitor_mode):
     scheduler = ASHAScheduler(
         max_t=args.epochs,
         grace_period=min(args.raytune_grace_period, args.epochs),
@@ -296,7 +305,7 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     ray_trainer = TorchTrainer(
-        lambda config: train_model(config, args, train_loader, val_loader, logger),
+        lambda config: train_model(config, args, train_dset, val_dset, logger),
         scaling_config=scaling_config,
         run_config=run_config,
     )
@@ -376,16 +385,11 @@ def main(args: Namespace):
     train_loader = MolGraphDataLoader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
-    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
-
-    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
-
-    torch.manual_seed(seed)
 
     model = build_model(args, train_loader.dataset)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
+    results = tune_model(args, train_dset, val_dset, logger, monitor_mode)
 
     best_result = results.get_best_result()
     best_config = best_result.config
