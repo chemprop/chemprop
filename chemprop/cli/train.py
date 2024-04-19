@@ -764,7 +764,7 @@ def build_model(
         criterion = None
     if args.metrics is not None:
         metrics = [
-            Factory.build(MetricRegistry[metric], task_weights=torch.Tensor([1]))
+            Factory.build(MetricRegistry[metric], task_weights=torch.Tensor([1.0]))
             for metric in args.metrics
         ]
     else:

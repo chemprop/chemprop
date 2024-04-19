@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from torchmetrics import functional as F
+from torchmetrics.utilities.compute import auc
 
 from chemprop.utils.registry import ClassRegistry
 from chemprop.nn.loss import (
@@ -79,6 +80,9 @@ MetricRegistry = ClassRegistry[Metric]()
 @dataclass
 class ThresholdedMixin:
     threshold: float | None = 0.5
+
+    def extra_repr(self) -> str:
+        return f"threshold={self.threshold}"
 
 
 @MetricRegistry.register("mae")
@@ -156,24 +160,41 @@ class BinaryAUPRCMetric(Metric):
 
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
         p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
-
-        return torch.trapz(p, r) * -1
+        return auc(r, p)
 
 
 @MetricRegistry.register("accuracy")
 class AccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
 
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.accuracy(preds[mask], targets[mask].long(), threshold=self.threshold)
+        return F.accuracy(
+            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+        )
+
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("f1")
-class F1Metric(Metric):
+class F1Metric(Metric, ThresholdedMixin):
     minimize = False
 
+    def __init__(self, task: str, **kwargs):
+        super().__init__(**kwargs)
+        self.task = task
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        return F.f1_score(preds[mask], targets[mask].long(), threshold=self.threshold)
+        return F.f1_score(
+            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+        )
+
+    def extra_repr(self) -> str:
+        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("bce")
