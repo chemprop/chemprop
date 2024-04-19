@@ -32,8 +32,8 @@ __all__ = [
     "R2Metric",
     "BinaryAUROCMetric",
     "BinaryAUPRCMetric",
-    "AccuracyMetric",
-    "F1Metric",
+    "BinaryAccuracyMetric",
+    "BinaryF1Metric",
     "BCEMetric",
     "CrossEntropyMetric",
     "BinaryMCCMetric",
@@ -164,37 +164,24 @@ class BinaryAUPRCMetric(Metric):
 
 
 @MetricRegistry.register("accuracy")
-class AccuracyMetric(Metric, ThresholdedMixin):
+class BinaryAccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
-
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.accuracy(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
-
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("f1")
-class F1Metric(Metric, ThresholdedMixin):
+class BinaryF1Metric(Metric, ThresholdedMixin):
     minimize = False
-
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.f1_score(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
 
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("bce")
