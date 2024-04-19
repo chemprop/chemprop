@@ -18,8 +18,8 @@ class _ScaleTransformMixin(nn.Module):
                 f"uneven shapes for 'mean' and 'scale'! got: mean={mean.shape}, scale={scale.shape}"
             )
 
-        self.register_buffer("mean", torch.tensor(mean, dtype=torch.float).unsqueeze(0))
-        self.register_buffer("scale", torch.tensor(scale, dtype=torch.float).unsqueeze(0))
+        self.register_buffer("mean", mean.unsqueeze(0))
+        self.register_buffer("scale", scale.unsqueeze(0))
 
     @classmethod
     def from_standard_scaler(cls, scaler: StandardScaler, pad: int = 0):

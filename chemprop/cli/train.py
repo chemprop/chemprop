@@ -560,8 +560,7 @@ def normalize_inputs(train_dset, val_dset, args):
             logger.info(
                 f"Atom descriptors for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
             )
-            transform = ScaleTransform.from_standard_scaler(scaler)
-            V_d_transforms[i] = transform
+            V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
     return X_d_transform, graph_transforms, V_d_transforms
 
@@ -696,7 +695,7 @@ def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
     output_scaler: StandardScaler,
-    input_transforms: tuple[list[ScaleTransform], list[GraphTransform], list[ScaleTransform]],
+    input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
@@ -936,7 +935,7 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        input_scalers = normalize_inputs(train_dset, val_dset, args)
+        input_transforms = normalize_inputs(train_dset, val_dset, args)
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)

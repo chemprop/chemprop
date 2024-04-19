@@ -122,9 +122,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         )
         self.criterion = criterion or self._default_criterion
 
-        if output_transform is None:
-            output_transform = nn.Identity()
-        self.output_transform = output_transform
+        self.output_transform = output_transform if output_transform is not None else nn.Identity()
 
     @property
     def input_dim(self) -> int:
@@ -140,9 +138,6 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
 
     def forward(self, Z: Tensor) -> Tensor:
         return self.output_transform(self.ffn(Z))
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
