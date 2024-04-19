@@ -9,7 +9,7 @@ from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 def build_dataloader(
     dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
-    batch_size: int = 50,
+    batch_size: int = 64,
     num_workers: int = 0,
     class_balance: bool = False,
     seed: int | None = None,
@@ -22,7 +22,7 @@ def build_dataloader(
     ----------
     dataset : MoleculeDataset | ReactionDataset | MulticomponentDataset
         The dataset containing the molecules or reactions to load.
-    batch_size : int, default=50
+    batch_size : int, default=64
         the batch size to load.
     num_workers : int, default=0
         the number of workers used to build batches.

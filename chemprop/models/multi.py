@@ -7,6 +7,7 @@ from chemprop.data import BatchMolGraph
 from chemprop.nn import MulticomponentMessagePassing, Aggregation, Predictor
 from chemprop.models.model import MPNN
 from chemprop.nn.metrics import Metric
+from chemprop.nn.transforms import ScaleTransform
 
 
 class MulticomponentMPNN(MPNN):
@@ -21,6 +22,7 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__(
             message_passing,
@@ -32,6 +34,7 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
+            X_d_transform,
         )
         self.message_passing: MulticomponentMessagePassing
 
@@ -46,7 +49,7 @@ class MulticomponentMPNN(MPNN):
         H = torch.cat(Hs, 1)
         H = self.bn(H)
 
-        return H if X_d is None else torch.cat((H, X_d), 1)
+        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
     @classmethod
     def load_submodules(cls, checkpoint_path, **kwargs):

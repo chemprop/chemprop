@@ -67,6 +67,7 @@ from .predictors import (
     SpectralFFN,
 )
 from .utils import Activation
+from .transforms import UnscaleTransform
 
 __all__ = [
     "Aggregation",
@@ -128,4 +129,5 @@ __all__ = [
     "MulticlassDirichletFFN",
     "SpectralFFN",
     "Activation",
+    "UnscaleTransform",
 ]
