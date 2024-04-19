@@ -248,7 +248,7 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     return args
 
 
-def train_model(config, args, train_dset, val_dset, logger, output_scaler, input_transforms):
+def train_model(config, args, train_dset, val_dset, logger, output_transform, input_transforms):
     update_args_with_config(args, config)
 
     train_loader = build_dataloader(
@@ -259,10 +259,6 @@ def train_model(config, args, train_dset, val_dset, logger, output_scaler, input
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 
     torch.manual_seed(seed)
-
-    output_transform = (
-        UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler else None
-    )
 
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
@@ -287,7 +283,9 @@ def train_model(config, args, train_dset, val_dset, logger, output_scaler, input
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_dset, val_dset, logger, monitor_mode, output_scaler, input_transforms):
+def tune_model(
+    args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
+):
     scheduler = ASHAScheduler(
         max_t=args.epochs,
         grace_period=min(args.raytune_grace_period, args.epochs),
@@ -311,7 +309,7 @@ def tune_model(args, train_dset, val_dset, logger, monitor_mode, output_scaler, 
 
     ray_trainer = TorchTrainer(
         lambda config: train_model(
-            config, args, train_dset, val_dset, logger, output_scaler, input_transforms
+            config, args, train_dset, val_dset, logger, output_transform, input_transforms
         ),
         scaling_config=scaling_config,
         run_config=run_config,
@@ -386,18 +384,19 @@ def main(args: Namespace):
         output_scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(output_scaler)
         logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+        output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
     else:
-        output_scaler = None
+        output_transform = None
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
-    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
     results = tune_model(
-        args, train_dset, val_dset, logger, monitor_mode, output_scaler, input_transforms
+        args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
     )
 
     best_result = results.get_best_result()
