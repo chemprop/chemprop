@@ -18,6 +18,7 @@ from chemprop.nn.loss import (
 )
 from chemprop.nn.metrics import AUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
 from chemprop.nn.ffn import MLP
+from chemprop.nn.transforms import UnscaleTransform
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
@@ -52,6 +53,7 @@ class Predictor(nn.Module, HasHParams):
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
     """the loss function to use for training"""
+    output_transform: UnscaleTransform
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
@@ -109,6 +111,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -118,6 +121,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         self.criterion = criterion or self._default_criterion
+
+        self.output_transform = output_transform if output_transform is not None else nn.Identity()
 
     @property
     def input_dim(self) -> int:
@@ -132,10 +137,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.output_dim // self.n_targets
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
+        return self.output_transform(self.ffn(Z))
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -146,37 +148,6 @@ class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
-
-    def __init__(
-        self,
-        n_tasks: int = 1,
-        input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-        criterion: LossFunction | None = None,
-        loc: float | Tensor = 0.0,
-        scale: float | Tensor = 1.0,
-    ):
-        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
-
-        if isinstance(loc, float):
-            loc = torch.ones(1, self.n_tasks) * loc
-        else:
-            loc = torch.tensor(loc).view(1, -1)
-        self.register_buffer("loc", loc)
-
-        if isinstance(scale, float):
-            scale = torch.ones(1, self.n_tasks) * scale
-        else:
-            scale = torch.tensor(scale).view(1, -1)
-        self.register_buffer("scale", scale)
-
-    def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-
-        return self.scale * Y + self.loc
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z)
@@ -282,9 +253,17 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__(
-            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
+            n_tasks * n_classes,
+            input_dim,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            criterion,
+            output_transform,
         )
 
         self.n_classes = n_classes

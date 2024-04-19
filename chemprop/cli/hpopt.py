@@ -1,7 +1,15 @@
-from chemprop.nn.utils import Activation
-from chemprop.nn import AggregationRegistry
-from chemprop.data import MolGraphDataLoader
-from chemprop.cli.utils.command import Subcommand
+import json
+import logging
+import sys
+from argparse import ArgumentParser, Namespace
+from copy import deepcopy
+from pathlib import Path
+
+import torch
+from lightning import pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
     add_train_args,
     build_datasets,
@@ -11,16 +19,11 @@ from chemprop.cli.train import (
     process_train_args,
     validate_train_args,
 )
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-import json
-import logging
-import sys
-from argparse import ArgumentParser, Namespace
-from pathlib import Path
-from copy import deepcopy
-
-import torch
-from lightning import pytorch as pl
+from chemprop.cli.utils.command import Subcommand
+from chemprop.data import build_dataloader
+from chemprop.nn import AggregationRegistry
+from chemprop.nn.utils import Activation
+from chemprop.nn.transforms import UnscaleTransform
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
@@ -41,12 +44,12 @@ try:
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
         "batch_size": tune.loguniform(lower=16, upper=256, base=2),
-        "depth": tune.randint(lower=2, upper=6),
+        "depth": tune.quniform(lower=2, upper=6, q=1),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
-        "ffn_hidden_size": tune.quniform(lower=300, upper=2400, q=100),
-        "ffn_num_layers": tune.randint(lower=1, upper=3),
+        "ffn_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
+        "ffn_num_layers": tune.quniform(lower=1, upper=3, q=1),
         "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "hidden_size": tune.quniform(lower=300, upper=2400, q=100),
+        "message_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
         "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
         "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
         "warmup_epochs": None,
@@ -72,7 +75,7 @@ logger = logging.getLogger(__name__)
 SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
 SEARCH_PARAM_KEYWORDS_MAP = {
-    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_size", "hidden_size"],
+    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "message_hidden_dim"],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
 }
@@ -110,7 +113,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     Some options are bundles of parameters or otherwise special parameter operations.
 
     Special keywords:
-        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, hidden_size, and ffn_hidden_size.
+        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim.
         learning_rate - search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
             are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
         all - include search for all 13 inidividual keyword options
@@ -160,6 +163,20 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=1,
         help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-grace-period",
+        type=int,
+        default=10,
+        help="Passed directly to Ray Tune ASHAScheduler to control grace period",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-reduction-factor",
+        type=int,
+        default=2,
+        help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
     )
 
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
@@ -225,19 +242,36 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
                 setattr(args, "init_lr", value * args.max_lr)
 
             case _:
+                assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
 
     return args
 
 
-def train_model(config, args, train_loader, val_loader, logger):
+def train_model(config, args, train_dset, val_dset, logger, output_scaler, input_transforms):
     update_args_with_config(args, config)
 
-    model = build_model(args, train_loader.dataset)
+    train_loader = build_dataloader(
+        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+    )
+    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+
+    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
+
+    torch.manual_seed(seed)
+
+    output_transform = (
+        UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler else None
+    )
+
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
     monitor_mode = "min" if model.metrics[0].minimize else "max"
     logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+
+    patience = args.patience if args.patience is not None else args.epochs
+    early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
     trainer = pl.Trainer(
         accelerator=args.accelerator,
@@ -245,7 +279,7 @@ def train_model(config, args, train_loader, val_loader, logger):
         max_epochs=args.epochs,
         gradient_clip_val=args.grad_clip,
         strategy=RayDDPStrategy(find_unused_parameters=True),
-        callbacks=[RayTrainReportCallback()],
+        callbacks=[RayTrainReportCallback(), early_stopping],
         plugins=[RayLightningEnvironment()],
         deterministic=args.pytorch_seed is not None,
     )
@@ -253,8 +287,12 @@ def train_model(config, args, train_loader, val_loader, logger):
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_loader, val_loader, logger, monitor_mode):
-    scheduler = ASHAScheduler(max_t=args.epochs, grace_period=1, reduction_factor=2)
+def tune_model(args, train_dset, val_dset, logger, monitor_mode, output_scaler, input_transforms):
+    scheduler = ASHAScheduler(
+        max_t=args.epochs,
+        grace_period=min(args.raytune_grace_period, args.epochs),
+        reduction_factor=args.raytune_reduction_factor,
+    )
 
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
@@ -272,7 +310,9 @@ def tune_model(args, train_loader, val_loader, logger, monitor_mode):
     )
 
     ray_trainer = TorchTrainer(
-        lambda config: train_model(config, args, train_loader, val_loader, logger),
+        lambda config: train_model(
+            config, args, train_dset, val_dset, logger, output_scaler, input_transforms
+        ),
         scaling_config=scaling_config,
         run_config=run_config,
     )
@@ -340,28 +380,25 @@ def main(args: Namespace):
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
 
-    _ = normalize_inputs(train_dset, val_dset, args)
+    input_transforms = normalize_inputs(train_dset, val_dset, args)
 
     if "regression" in args.task_type:
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        output_scaler = train_dset.normalize_targets()
+        val_dset.normalize_targets(output_scaler)
+        logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
     else:
-        scaler = None
+        output_scaler = None
 
-    train_loader = MolGraphDataLoader(
+    train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
-    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
-    seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
-
-    torch.manual_seed(seed)
-
-    model = build_model(args, train_loader.dataset)
+    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    results = tune_model(args, train_loader, val_loader, logger, monitor_mode)
+    results = tune_model(
+        args, train_dset, val_dset, logger, monitor_mode, output_scaler, input_transforms
+    )
 
     best_result = results.get_best_result()
     best_config = best_result.config

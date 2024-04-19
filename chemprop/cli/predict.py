@@ -178,9 +178,7 @@ def find_models(model_path: Path):
 def make_prediction_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
-    model, input_scalers, output_scaler = load_model(
-        model_path, multicomponent
-    )  # TODO: connect input_scalers and output_scaler to the model
+    model = load_model(model_path, multicomponent)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -221,26 +219,6 @@ def make_prediction_for_model(
     else:
         test_dset = test_dsets[0]
 
-    if input_scalers:
-        X_d_scaler = input_scalers.get("X_d")
-        V_f_scaler = input_scalers.get("V_f")
-        E_f_scaler = input_scalers.get("E_f")
-        V_d_scaler = input_scalers.get("V_d")
-    else:
-        X_d_scaler = None
-        V_f_scaler = None
-        E_f_scaler = None
-        V_d_scaler = None
-
-    if X_d_scaler is not None:
-        test_dset.normalize_inputs("X_d", X_d_scaler)
-    if V_f_scaler is not None:
-        test_dset.normalize_inputs("V_f", V_f_scaler)
-    if E_f_scaler is not None:
-        test_dset.normalize_inputs("E_f", E_f_scaler)
-    if V_d_scaler is not None:
-        test_dset.normalize_inputs("V_d", V_d_scaler)
-
     # TODO: add uncertainty and calibration
     # if args.cal_path is not None:
     #     cal_data = build_data_from_files(
@@ -257,13 +235,11 @@ def make_prediction_for_model(
     # else:
     #     cal_data = None
 
-    test_loader = data.MolGraphDataLoader(
-        test_dset, args.batch_size, args.num_workers, shuffle=False
-    )
+    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
-    #     cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
+    #     cal_loader = data.build_dataloader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
     # else:
     #     cal_loader = None
 
@@ -284,6 +260,7 @@ def make_prediction_for_model(
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
     preds = torch.concat(predss, 0)
+
     if isinstance(model.predictor, MulticlassClassificationFFN):
         preds = torch.argmax(preds, dim=-1)
 
