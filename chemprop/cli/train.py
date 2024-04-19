@@ -694,7 +694,7 @@ def build_datasets(args, train_data, val_data, test_data):
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
-    output_scaler: StandardScaler,
+    output_transform: UnscaleTransform,
     input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
@@ -771,9 +771,6 @@ def build_model(
     else:
         metrics = None
 
-    output_transform = (
-        UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
-    )
     predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xd,
@@ -944,8 +941,12 @@ def main(args):
             output_scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(output_scaler)
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+
+            output_transform = (
+                UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+            )
         else:
-            output_scaler = None
+            output_transform = None
 
         train_loader = MolGraphDataLoader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -959,7 +960,7 @@ def main(args):
             test_loader = None
 
         train_model(
-            args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+            args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
         )
 
 
