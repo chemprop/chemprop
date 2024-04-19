@@ -830,6 +830,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 )
             predss = trainer.predict(model, test_loader)
             preds = torch.concat(predss, 0).numpy()
+
             if isinstance(test_loader.dataset, MulticomponentDataset):
                 test_dset = test_loader.dataset.datasets[0]
             else:
@@ -860,7 +861,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             preds_metrics = {
                 f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
             }
-            logger.info(f"Entire Test Set results: {preds_metrics}")
+            print(f"Entire Test Set results: {preds_metrics}")
 
             columns = get_column_names(
                 args.data_path,
@@ -873,10 +874,10 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 args.no_header_row,
             )
             names = test_loader.dataset.names
-            if not isinstance(test_loader.dataset, MulticomponentDataset):
-                namess = [names]
-            else:
+            if isinstance(test_loader.dataset, MulticomponentDataset):
                 namess = list(zip(*names))
+            else:
+                namess = [names]
             if "multiclass" in args.task_type:
                 df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
             else:
