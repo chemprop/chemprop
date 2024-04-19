@@ -971,11 +971,7 @@ def main(args):
             val_dset.normalize_targets(output_scaler)
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
 
-            output_transform = (
-                UnscaleTransform.from_standard_scaler(output_scaler)
-                if output_scaler is not None
-                else None
-            )
+            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
             output_transform = None
 
