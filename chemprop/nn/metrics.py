@@ -30,7 +30,7 @@ __all__ = [
     "BoundedRMSEMetric",
     "R2Metric",
     "BinaryAUROCMetric",
-    "AUPRCMetric",
+    "BinaryAUPRCMetric",
     "AccuracyMetric",
     "F1Metric",
     "BCEMetric",
@@ -149,18 +149,15 @@ class BinaryAUROCMetric(Metric):
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
         return F.auroc(preds[mask], targets[mask].long(), task="binary")
 
-    def extra_repr(self) -> str:
-        return f"task={self.task}"
-
 
 @MetricRegistry.register("prc")
-class AUPRCMetric(Metric):
+class BinaryAUPRCMetric(Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
-        p, r, _ = F.precision_recall(preds, targets.long())
+        p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
 
-        return F.auc(r, p)
+        return torch.trapz(p, r) * -1
 
 
 @MetricRegistry.register("accuracy")
