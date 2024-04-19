@@ -23,6 +23,7 @@ from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.utils import Activation
+from chemprop.nn.transforms import UnscaleTransform
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
@@ -259,7 +260,9 @@ def train_model(config, args, train_dset, val_dset, logger, output_scaler, input
 
     torch.manual_seed(seed)
 
-    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
+    output_transform = UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler else None
+
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
     monitor_mode = "min" if model.metrics[0].minimize else "max"
