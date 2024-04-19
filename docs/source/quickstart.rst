@@ -45,7 +45,7 @@ With our trained model in hand, we can now use it to predict solubilities of new
 .. code-block:: bash
 
     chemprop predict --test-path tests/data/regression.csv \
-        --model-path train_example/model_0/model.pt \
+        --model-path train_example/model_0/best.pt \
         --preds-path train_example/predictions.csv
 
 This should output a file ``train_example/predictions_0.csv`` containing the predicted log(solubility) values for the molecules contained in ``tests/data/regression.csv``.
