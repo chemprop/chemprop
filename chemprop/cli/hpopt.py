@@ -388,17 +388,17 @@ def main(args: Namespace):
             UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler else None
         )
     else:
-        output_scaler = None
+        output_transform = None
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
-    model = build_model(args, train_loader.dataset, output_scaler, input_transforms)
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
     results = tune_model(
-        args, train_dset, val_dset, logger, monitor_mode, output_scaler, input_transforms
+        args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
     )
 
     best_result = results.get_best_result()
