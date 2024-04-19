@@ -9,6 +9,7 @@ from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.nn.transforms import UnscaleTransform
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -28,20 +29,20 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     state_dict_v2["message_passing.W_o.weight"] = state_dict_v1["encoder.encoder.0.W_o.weight"]
     state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
 
-    if args_v1.dataset_type == "regression":
-        state_dict_v2["predictor.loc"] = torch.from_numpy(
-            model_v1_dict["data_scaler"]["means"]
-        ).unsqueeze(0)
-        state_dict_v2["predictor.scale"] = torch.from_numpy(
-            model_v1_dict["data_scaler"]["stds"]
-        ).unsqueeze(0)
-
     for i in range(args_v1.ffn_num_layers):
         suffix = 0 if i == 0 else 2
         state_dict_v2[f"predictor.ffn.{i}.{suffix}.weight"] = state_dict_v1[
             f"readout.{i*3+1}.weight"
         ]
         state_dict_v2[f"predictor.ffn.{i}.{suffix}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
+
+    if args_v1.dataset_type == "regression":
+        state_dict_v2["predictor.output_transform.mean"] = torch.tensor(
+            model_v1_dict["data_scaler"]["means"], dtype=torch.float32
+        ).unsqueeze(0)
+        state_dict_v2["predictor.output_transform.scale"] = torch.tensor(
+            model_v1_dict["data_scaler"]["stds"], dtype=torch.float32
+        ).unsqueeze(0)
 
     return state_dict_v2
 
@@ -109,8 +110,10 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     )
 
     if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["predictor"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
-        hyper_parameters_v2["predictor"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
+        print(model_v1_dict["data_scaler"]["means"])
+        hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(
+            model_v1_dict["data_scaler"]["means"], model_v1_dict["data_scaler"]["stds"]
+        )
 
     return hyper_parameters_v2
 

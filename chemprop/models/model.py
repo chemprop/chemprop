@@ -10,6 +10,7 @@ from chemprop.data import TrainingBatch, BatchMolGraph
 from chemprop.nn.metrics import Metric
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.schedulers import NoamLR
+from chemprop.nn.transforms import ScaleTransform
 
 
 class MPNN(pl.LightningModule):
@@ -68,6 +69,7 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__()
 
@@ -84,6 +86,8 @@ class MPNN(pl.LightningModule):
         self.agg = agg
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
+
+        self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
             [*metrics, self.criterion]
@@ -122,7 +126,7 @@ class MPNN(pl.LightningModule):
         H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
 
-        return H if X_d is None else torch.cat((H, X_d), 1)
+        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
     def encoding(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None, i: int = -1

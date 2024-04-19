@@ -53,8 +53,8 @@ def ys(model, test_loader, trainer):
 
 
 def test_roundtrip(tmp_path, model, test_loader, trainer, ys):
-    save_path = Path(tmp_path) / "test.pkl"
-    save_model(save_path, model, None, None)
+    save_path = Path(tmp_path) / "test.pt"
+    save_model(save_path, model)
 
     model_from_file = MPNN.load_from_file(save_path)
 
