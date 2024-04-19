@@ -4,7 +4,6 @@ from pathlib import Path
 import sys
 from copy import deepcopy
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 import json
 import numpy as np
 
@@ -865,7 +864,6 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            
             predss = trainer.predict(model, test_loader)
             preds = torch.concat(predss, 0).numpy()
 
@@ -974,7 +972,9 @@ def main(args):
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
 
             output_transform = (
-                UnscaleTransform.from_standard_scaler(output_scaler) if output_scaler is not None else None
+                UnscaleTransform.from_standard_scaler(output_scaler)
+                if output_scaler is not None
+                else None
             )
         else:
             output_transform = None
@@ -991,7 +991,13 @@ def main(args):
             test_loader = None
 
         train_model(
-            args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
+            args,
+            train_loader,
+            val_loader,
+            test_loader,
+            output_dir,
+            output_transform,
+            input_transforms,
         )
 
 
