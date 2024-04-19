@@ -924,6 +924,12 @@ def train_model(
         save_model(p_model, model)
         logger.info(f"Model from last epoch saved to '{p_model}'")
 
+        best_model_path = checkpointing.best_model_path
+        model = model.__class__.load_from_checkpoint(best_model_path)
+        p_model = model_output_dir / "best.pt"
+        save_model(p_model, model)
+        logger.info(f"Best model saved to '{p_model}'")
+
 
 def main(args):
     format_kwargs = dict(
