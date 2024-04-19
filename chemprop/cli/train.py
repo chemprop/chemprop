@@ -514,7 +514,6 @@ def normalize_inputs(train_dset, val_dset, args):
             if scaler is None:
                 continue
 
-            print(type(scaler.mean_))
             logger.info(
                 f"Atom features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
             )
