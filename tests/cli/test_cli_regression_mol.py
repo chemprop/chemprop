@@ -219,7 +219,6 @@ def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
-        "--save-preds",
     ]
 
     with monkeypatch.context() as m:
